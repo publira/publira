@@ -15,6 +15,7 @@
 #   CMD_NAME=api-server          PORT=8000
 #   CMD_NAME=admin-api-server    PORT=8001
 #   CMD_NAME=platform-api-server PORT=8002
+#   CMD_NAME=outbox-worker       PORT=8003
 
 FROM golang:1.27-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452 AS builder
 

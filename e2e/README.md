@@ -34,6 +34,7 @@ Dev Container Traefik のホストベースルーティングは、同じく Pla
 | admin API (gRPC 口 / web-admin が向ける先)             | `8101` |
 | platform API (Connect)                                 | `8002` |
 | platform API (gRPC 口 / web-platform が向ける先)       | `8102` |
+| outbox-worker (`/livez` `/readyz`)                     | `8003` |
 | E2E Postgres（compose 公開）                           | `5433` |
 | E2E Redis（compose 公開）                              | `6380` |
 | E2E RustFS / S3（compose 公開）                        | `9003` |
@@ -57,7 +58,7 @@ task e2e
 | `task e2e:prepare` | server 全バイナリ / `web-host` / `web-admin` / `web-platform` ビルド + Playwright Chromium インストール |
 | `task e2e:up` | Postgres + Redis + RustFS のみ起動 |
 | `task e2e:db` | migrate + dev seed + S3 バケット作成（`task storage:init`） |
-| `task e2e:start-apps` | api-server / admin-api-server / platform-api-server / publish-episodes / web-host / web-admin / web-platform をバックグラウンド起動 |
+| `task e2e:start-apps` | api-server / admin-api-server / platform-api-server / publish-episodes / outbox-worker / web-host / web-admin / web-platform をバックグラウンド起動 |
 | `bash e2e/scripts/api-server.sh <start\|start-wait\|stop>` | api-server だけを操作（障害シナリオが使用） |
 | `bash e2e/scripts/admin-api-server.sh <start\|start-wait\|stop>` | admin-api-server だけを操作 |
 | `bash e2e/scripts/platform-api-server.sh <start\|start-wait\|stop>` | platform-api-server だけを操作 |
@@ -107,7 +108,7 @@ e2e/
 ├── routing/               # Dev Container Traefik 疎通（Playwright を使わない別ライフサイクル）
 ├── compose.yaml           # postgres + redis + rustfs（project: publira-e2e）
 ├── playwright.config.ts
-├── scripts/               # up / db / start / api-server / admin-api / platform-api / publish-episodes / wait-ready / stop-apps / test / lib_test / run / down
+├── scripts/               # up / db / start / api-server / admin-api / platform-api / publish-episodes / outbox-worker / wait-ready / stop-apps / test / lib_test / run / down
 ├── src/
 │   ├── admin.ts           # web-admin ログイン・フォーム操作ヘルパー
 │   ├── api-server.ts      # api-server の停止・再起動（障害シナリオ用）
@@ -137,7 +138,7 @@ e2e/
 
 - **依存 (Compose):** Postgres 18・Valkey（Redis 互換）・RustFS（S3 互換。path-style / バケット `publira`）
 - **アプリ (ホストプロセス):**
-  - `server/bin/api-server` + `server/bin/admin-api-server` + `server/bin/platform-api-server` + `server/bin/publish-episodes`
+  - `server/bin/api-server` + `server/bin/admin-api-server` + `server/bin/platform-api-server` + `server/bin/publish-episodes` + `server/bin/outbox-worker`
   - `apps/web-host` / `apps/web-admin` / `apps/web-platform`（standalone の `node server.js`）
 - **seed:** 開発用 `task db:setup`（public domain `localhost` / admin domain `admin.localhost` / テナント名 `Seed Tenant` / platform `platform@example.com`）
 
@@ -261,7 +262,7 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 ## 失敗時のトリアージ
 
 1. ログ先頭が `readiness failed:` か `Playwright tests failed` かを見る
-2. `$E2E_RUN_DIR/logs/`（既定は `e2e/.run/logs/`。ポートや project をずらした実行では `e2e/.run/<project>-pg…/` 配下）の `api-server.log` / `admin-api-server.log` / `platform-api-server.log` / `publish-episodes.log` / `web-host.log` / `web-admin.log` / `web-platform.log`
+2. `$E2E_RUN_DIR/logs/`（既定は `e2e/.run/logs/`。ポートや project をずらした実行では `e2e/.run/<project>-pg…/` 配下）の `api-server.log` / `admin-api-server.log` / `platform-api-server.log` / `publish-episodes.log` / `outbox-worker.log` / `web-host.log` / `web-admin.log` / `web-platform.log`
 3. `docker compose -p publira-e2e -f e2e/compose.yaml ps`
 4. CI なら artifact `e2e-artifacts` の HTML report と trace
 

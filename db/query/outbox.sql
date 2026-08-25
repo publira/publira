@@ -1,5 +1,6 @@
--- Outbox query skeleton (#610). Worker and business-event emitters land in
--- later issues; these queries pin insert, claim, and status transitions.
+-- Outbox queries (#610 / #611). Producers insert a pending row in the
+-- same transaction as the domain write. The worker claims due rows,
+-- runs the handler, and records done / retry / dead.
 --
 -- Expected plans (empty table may still seq-scan; SET enable_seqscan = off
 -- in the integration test to confirm the index is eligible):
@@ -93,4 +94,27 @@ SET
     updated_at = NOW()
 WHERE id = sqlc.arg('id')
     AND status = 'processing'
+RETURNING *;
+
+-- Release a claim when River already has an in-flight process job for
+-- this event (unique skip). attempts and available_at stay as they were.
+-- name: UnclaimOutboxEvent :one
+UPDATE outbox_events
+SET
+    status = 'pending',
+    updated_at = NOW()
+WHERE id = sqlc.arg('id')
+    AND status = 'processing'
+RETURNING *;
+
+-- Re-queue rows left in processing after a worker crash. updated_at is the
+-- claim time; callers pass now minus the stale-processing grace period.
+-- name: RecoverStaleProcessingOutboxEvents :many
+UPDATE outbox_events
+SET
+    status = 'pending',
+    available_at = NOW(),
+    updated_at = NOW()
+WHERE status = 'processing'
+    AND updated_at <= sqlc.arg('stale_before')
 RETURNING *;

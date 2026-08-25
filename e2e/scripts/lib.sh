@@ -28,6 +28,7 @@ export E2E_ADMIN_API_PORT="${E2E_ADMIN_API_PORT:-8001}"
 export E2E_ADMIN_API_GRPC_PORT="${E2E_ADMIN_API_GRPC_PORT:-8101}"
 export E2E_PLATFORM_API_PORT="${E2E_PLATFORM_API_PORT:-8002}"
 export E2E_PLATFORM_API_GRPC_PORT="${E2E_PLATFORM_API_GRPC_PORT:-8102}"
+export E2E_OUTBOX_WORKER_PORT="${E2E_OUTBOX_WORKER_PORT:-8003}"
 
 export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL:-postgres://publira_public:publicpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
@@ -96,7 +97,8 @@ else
     [[ "${E2E_ADMIN_API_PORT}" != "8001" ]] ||
     [[ "${E2E_ADMIN_API_GRPC_PORT}" != "8101" ]] ||
     [[ "${E2E_PLATFORM_API_PORT}" != "8002" ]] ||
-    [[ "${E2E_PLATFORM_API_GRPC_PORT}" != "8102" ]]; then
+    [[ "${E2E_PLATFORM_API_GRPC_PORT}" != "8102" ]] ||
+    [[ "${E2E_OUTBOX_WORKER_PORT}" != "8003" ]]; then
     _e2e_uses_default_stack=0
   fi
   if [[ "${_e2e_uses_default_stack}" -eq 1 ]]; then
@@ -104,7 +106,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-s3${E2E_RUSTFS_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}"
+    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-s3${E2E_RUSTFS_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}-ow${E2E_OUTBOX_WORKER_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi

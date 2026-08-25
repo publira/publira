@@ -152,8 +152,9 @@ type InsertOutboxEventParams struct {
 	AvailableAt    time.Time       `json:"available_at"`
 }
 
-// Outbox query skeleton (#610). Worker and business-event emitters land in
-// later issues; these queries pin insert, claim, and status transitions.
+// Outbox queries (#610 / #611). Producers insert a pending row in the
+// same transaction as the domain write. The worker claims due rows,
+// runs the handler, and records done / retry / dead.
 //
 // Expected plans (empty table may still seq-scan; SET enable_seqscan = off
 // in the integration test to confirm the index is eligible):
@@ -279,6 +280,85 @@ type MarkOutboxEventRetryParams struct {
 
 func (q *Queries) MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventRetryParams) (OutboxEvent, error) {
 	row := q.db.QueryRowContext(ctx, markOutboxEventRetry, arg.AvailableAt, arg.LastError, arg.ID)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EventType,
+		&i.Payload,
+		&i.IdempotencyKey,
+		&i.Status,
+		&i.Attempts,
+		&i.AvailableAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const recoverStaleProcessingOutboxEvents = `-- name: RecoverStaleProcessingOutboxEvents :many
+UPDATE outbox_events
+SET
+    status = 'pending',
+    available_at = NOW(),
+    updated_at = NOW()
+WHERE status = 'processing'
+    AND updated_at <= $1
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+`
+
+// Re-queue rows left in processing after a worker crash. updated_at is the
+// claim time; callers pass now minus the stale-processing grace period.
+func (q *Queries) RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error) {
+	rows, err := q.db.QueryContext(ctx, recoverStaleProcessingOutboxEvents, staleBefore)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OutboxEvent
+	for rows.Next() {
+		var i OutboxEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.EventType,
+			&i.Payload,
+			&i.IdempotencyKey,
+			&i.Status,
+			&i.Attempts,
+			&i.AvailableAt,
+			&i.LastError,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const unclaimOutboxEvent = `-- name: UnclaimOutboxEvent :one
+UPDATE outbox_events
+SET
+    status = 'pending',
+    updated_at = NOW()
+WHERE id = $1
+    AND status = 'processing'
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+`
+
+// Release a claim when River already has an in-flight process job for
+// this event (unique skip). attempts and available_at stay as they were.
+func (q *Queries) UnclaimOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
+	row := q.db.QueryRowContext(ctx, unclaimOutboxEvent, id)
 	var i OutboxEvent
 	err := row.Scan(
 		&i.ID,

@@ -74,6 +74,10 @@ wait_http "platform-api/readyz" \
   "http://127.0.0.1:${E2E_PLATFORM_API_GRPC_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
+wait_http "outbox-worker/readyz" \
+  "http://127.0.0.1:${E2E_OUTBOX_WORKER_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
+
 # Use localhost (not 127.0.0.1) to match browser Host / server bind hostname.
 # Substring `ok`, matching the previous check_http_body.
 wait_http "web-host/livez" \
