@@ -41,7 +41,7 @@ func TestAcquireSetsTenantAndReleaseReturnsConnectionToPool(t *testing.T) {
 		t.Fatalf("set_config(tenant) calls = %d, want 1", got)
 	}
 	if got := drv.clearCalls(); got != 1 {
-		t.Fatalf("set_config('') calls = %d, want 1", got)
+		t.Fatalf("set_config(tenant '') calls = %d, want 1", got)
 	}
 	if !drv.lastClear().hasDeadline {
 		t.Fatal("clear ran without a deadline")
@@ -59,6 +59,28 @@ func TestAcquireSetsTenantAndReleaseReturnsConnectionToPool(t *testing.T) {
 	}
 	if drv.openCount() != 1 {
 		t.Fatalf("driver Open calls = %d, want 1 (reused)", drv.openCount())
+	}
+}
+
+func TestSetUserIsClearedWhenTheConnectionReturnsToThePool(t *testing.T) {
+	t.Parallel()
+
+	drv := newFakeDriver(nil)
+	db := openFakeDB(t, drv)
+	conn, cleanup, err := Acquire(context.Background(), db, uuid.Must(uuid.NewV7()), discardLogger())
+	if err != nil {
+		t.Fatalf("Acquire: %v", err)
+	}
+	if err := SetUser(context.Background(), conn, uuid.Must(uuid.NewV7())); err != nil {
+		t.Fatalf("SetUser: %v", err)
+	}
+	cleanup()
+
+	if got := drv.countQueries(func(query string) bool { return query == setUserSQL }); got != 1 {
+		t.Fatalf("set_config(user) calls = %d, want 1", got)
+	}
+	if got := drv.countQueries(func(query string) bool { return query == clearUserSQL }); got != 1 {
+		t.Fatalf("clear_config(user) calls = %d, want 1", got)
 	}
 }
 

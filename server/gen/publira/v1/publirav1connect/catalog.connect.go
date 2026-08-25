@@ -23,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// CatalogServiceName is the fully-qualified name of the CatalogService service.
 	CatalogServiceName = "publira.v1.CatalogService"
+	// FollowServiceName is the fully-qualified name of the FollowService service.
+	FollowServiceName = "publira.v1.FollowService"
 	// PurchaseServiceName is the fully-qualified name of the PurchaseService service.
 	PurchaseServiceName = "publira.v1.PurchaseService"
 )
@@ -59,6 +61,16 @@ const (
 	// CatalogServiceSearchPublishedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// SearchPublishedSeries RPC.
 	CatalogServiceSearchPublishedSeriesProcedure = "/publira.v1.CatalogService/SearchPublishedSeries"
+	// FollowServiceGetMyFollowStatusProcedure is the fully-qualified name of the FollowService's
+	// GetMyFollowStatus RPC.
+	FollowServiceGetMyFollowStatusProcedure = "/publira.v1.FollowService/GetMyFollowStatus"
+	// FollowServiceFollowProcedure is the fully-qualified name of the FollowService's Follow RPC.
+	FollowServiceFollowProcedure = "/publira.v1.FollowService/Follow"
+	// FollowServiceUnfollowProcedure is the fully-qualified name of the FollowService's Unfollow RPC.
+	FollowServiceUnfollowProcedure = "/publira.v1.FollowService/Unfollow"
+	// FollowServiceListMyFollowsProcedure is the fully-qualified name of the FollowService's
+	// ListMyFollows RPC.
+	FollowServiceListMyFollowsProcedure = "/publira.v1.FollowService/ListMyFollows"
 	// PurchaseServiceStartEpisodeCheckoutProcedure is the fully-qualified name of the PurchaseService's
 	// StartEpisodeCheckout RPC.
 	PurchaseServiceStartEpisodeCheckoutProcedure = "/publira.v1.PurchaseService/StartEpisodeCheckout"
@@ -348,6 +360,164 @@ func (UnimplementedCatalogServiceHandler) GetPublishedLabelDetail(context.Contex
 
 func (UnimplementedCatalogServiceHandler) SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.SearchPublishedSeries is not implemented"))
+}
+
+// FollowServiceClient is a client for the publira.v1.FollowService service.
+type FollowServiceClient interface {
+	// Returns the authenticated member's relation to a currently public target.
+	GetMyFollowStatus(context.Context, *connect.Request[v1.GetMyFollowStatusRequest]) (*connect.Response[v1.GetMyFollowStatusResponse], error)
+	// Idempotently follows a currently public target.
+	Follow(context.Context, *connect.Request[v1.FollowRequest]) (*connect.Response[v1.FollowResponse], error)
+	// Idempotently removes the follow for a currently public target.
+	Unfollow(context.Context, *connect.Request[v1.UnfollowRequest]) (*connect.Response[v1.UnfollowResponse], error)
+	// Lists only the authenticated member's follows whose targets remain public,
+	// newest follow first.
+	ListMyFollows(context.Context, *connect.Request[v1.ListMyFollowsRequest]) (*connect.Response[v1.ListMyFollowsResponse], error)
+}
+
+// NewFollowServiceClient constructs a client for the publira.v1.FollowService service. By default,
+// it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and
+// sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC()
+// or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewFollowServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) FollowServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	followServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("FollowService").Methods()
+	return &followServiceClient{
+		getMyFollowStatus: connect.NewClient[v1.GetMyFollowStatusRequest, v1.GetMyFollowStatusResponse](
+			httpClient,
+			baseURL+FollowServiceGetMyFollowStatusProcedure,
+			connect.WithSchema(followServiceMethods.ByName("GetMyFollowStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		follow: connect.NewClient[v1.FollowRequest, v1.FollowResponse](
+			httpClient,
+			baseURL+FollowServiceFollowProcedure,
+			connect.WithSchema(followServiceMethods.ByName("Follow")),
+			connect.WithClientOptions(opts...),
+		),
+		unfollow: connect.NewClient[v1.UnfollowRequest, v1.UnfollowResponse](
+			httpClient,
+			baseURL+FollowServiceUnfollowProcedure,
+			connect.WithSchema(followServiceMethods.ByName("Unfollow")),
+			connect.WithClientOptions(opts...),
+		),
+		listMyFollows: connect.NewClient[v1.ListMyFollowsRequest, v1.ListMyFollowsResponse](
+			httpClient,
+			baseURL+FollowServiceListMyFollowsProcedure,
+			connect.WithSchema(followServiceMethods.ByName("ListMyFollows")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// followServiceClient implements FollowServiceClient.
+type followServiceClient struct {
+	getMyFollowStatus *connect.Client[v1.GetMyFollowStatusRequest, v1.GetMyFollowStatusResponse]
+	follow            *connect.Client[v1.FollowRequest, v1.FollowResponse]
+	unfollow          *connect.Client[v1.UnfollowRequest, v1.UnfollowResponse]
+	listMyFollows     *connect.Client[v1.ListMyFollowsRequest, v1.ListMyFollowsResponse]
+}
+
+// GetMyFollowStatus calls publira.v1.FollowService.GetMyFollowStatus.
+func (c *followServiceClient) GetMyFollowStatus(ctx context.Context, req *connect.Request[v1.GetMyFollowStatusRequest]) (*connect.Response[v1.GetMyFollowStatusResponse], error) {
+	return c.getMyFollowStatus.CallUnary(ctx, req)
+}
+
+// Follow calls publira.v1.FollowService.Follow.
+func (c *followServiceClient) Follow(ctx context.Context, req *connect.Request[v1.FollowRequest]) (*connect.Response[v1.FollowResponse], error) {
+	return c.follow.CallUnary(ctx, req)
+}
+
+// Unfollow calls publira.v1.FollowService.Unfollow.
+func (c *followServiceClient) Unfollow(ctx context.Context, req *connect.Request[v1.UnfollowRequest]) (*connect.Response[v1.UnfollowResponse], error) {
+	return c.unfollow.CallUnary(ctx, req)
+}
+
+// ListMyFollows calls publira.v1.FollowService.ListMyFollows.
+func (c *followServiceClient) ListMyFollows(ctx context.Context, req *connect.Request[v1.ListMyFollowsRequest]) (*connect.Response[v1.ListMyFollowsResponse], error) {
+	return c.listMyFollows.CallUnary(ctx, req)
+}
+
+// FollowServiceHandler is an implementation of the publira.v1.FollowService service.
+type FollowServiceHandler interface {
+	// Returns the authenticated member's relation to a currently public target.
+	GetMyFollowStatus(context.Context, *connect.Request[v1.GetMyFollowStatusRequest]) (*connect.Response[v1.GetMyFollowStatusResponse], error)
+	// Idempotently follows a currently public target.
+	Follow(context.Context, *connect.Request[v1.FollowRequest]) (*connect.Response[v1.FollowResponse], error)
+	// Idempotently removes the follow for a currently public target.
+	Unfollow(context.Context, *connect.Request[v1.UnfollowRequest]) (*connect.Response[v1.UnfollowResponse], error)
+	// Lists only the authenticated member's follows whose targets remain public,
+	// newest follow first.
+	ListMyFollows(context.Context, *connect.Request[v1.ListMyFollowsRequest]) (*connect.Response[v1.ListMyFollowsResponse], error)
+}
+
+// NewFollowServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewFollowServiceHandler(svc FollowServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	followServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("FollowService").Methods()
+	followServiceGetMyFollowStatusHandler := connect.NewUnaryHandler(
+		FollowServiceGetMyFollowStatusProcedure,
+		svc.GetMyFollowStatus,
+		connect.WithSchema(followServiceMethods.ByName("GetMyFollowStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	followServiceFollowHandler := connect.NewUnaryHandler(
+		FollowServiceFollowProcedure,
+		svc.Follow,
+		connect.WithSchema(followServiceMethods.ByName("Follow")),
+		connect.WithHandlerOptions(opts...),
+	)
+	followServiceUnfollowHandler := connect.NewUnaryHandler(
+		FollowServiceUnfollowProcedure,
+		svc.Unfollow,
+		connect.WithSchema(followServiceMethods.ByName("Unfollow")),
+		connect.WithHandlerOptions(opts...),
+	)
+	followServiceListMyFollowsHandler := connect.NewUnaryHandler(
+		FollowServiceListMyFollowsProcedure,
+		svc.ListMyFollows,
+		connect.WithSchema(followServiceMethods.ByName("ListMyFollows")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/publira.v1.FollowService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case FollowServiceGetMyFollowStatusProcedure:
+			followServiceGetMyFollowStatusHandler.ServeHTTP(w, r)
+		case FollowServiceFollowProcedure:
+			followServiceFollowHandler.ServeHTTP(w, r)
+		case FollowServiceUnfollowProcedure:
+			followServiceUnfollowHandler.ServeHTTP(w, r)
+		case FollowServiceListMyFollowsProcedure:
+			followServiceListMyFollowsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedFollowServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedFollowServiceHandler struct{}
+
+func (UnimplementedFollowServiceHandler) GetMyFollowStatus(context.Context, *connect.Request[v1.GetMyFollowStatusRequest]) (*connect.Response[v1.GetMyFollowStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.FollowService.GetMyFollowStatus is not implemented"))
+}
+
+func (UnimplementedFollowServiceHandler) Follow(context.Context, *connect.Request[v1.FollowRequest]) (*connect.Response[v1.FollowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.FollowService.Follow is not implemented"))
+}
+
+func (UnimplementedFollowServiceHandler) Unfollow(context.Context, *connect.Request[v1.UnfollowRequest]) (*connect.Response[v1.UnfollowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.FollowService.Unfollow is not implemented"))
+}
+
+func (UnimplementedFollowServiceHandler) ListMyFollows(context.Context, *connect.Request[v1.ListMyFollowsRequest]) (*connect.Response[v1.ListMyFollowsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.FollowService.ListMyFollows is not implemented"))
 }
 
 // PurchaseServiceClient is a client for the publira.v1.PurchaseService service.

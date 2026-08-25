@@ -372,6 +372,10 @@ type Querier interface {
 	ListPublishedAuthorIDsByNameDesc(ctx context.Context, arg ListPublishedAuthorIDsByNameDescParams) ([]uuid.UUID, error)
 	// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
 	ListPublishedAuthorsByIDs(ctx context.Context, arg ListPublishedAuthorsByIDsParams) ([]ListPublishedAuthorsByIDsRow, error)
+	ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedCreatorFollowTargetPublicIDsByIDsParams) ([]ListPublishedCreatorFollowTargetPublicIDsByIDsRow, error)
+	// These projections are used only while constructing the public Follow API
+	// response. The follow relations and their cursor queries remain UUID-only.
+	ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedEpisodeFollowTargetPublicIDsByIDsParams) ([]ListPublishedEpisodeFollowTargetPublicIDsByIDsRow, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// テナントの公開中かつフッター表示対象のページ一覧を取得する
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
@@ -451,8 +455,12 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
+	// The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
+	// the returned rows to preserve the public newest-first display order.
+	ListUserFollowsByCreatedAtAsc(ctx context.Context, arg ListUserFollowsByCreatedAtAscParams) ([]ListUserFollowsByCreatedAtAscRow, error)
 	// The API can expose one timeline while keeping each relationship's storage
-	// and future aggregates independent. The full sort key is stable for cursors.
+	// and future aggregates independent. Public joins make a target that is no
+	// longer visible disappear from this member's list without revealing why.
 	ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error)
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
 	// calls serialize. The following read of the current order (or
