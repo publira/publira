@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   followTarget,
   getMyFollowStatus,
+  toFollowTargetKind,
   toFollowTargetType,
   unfollowTarget,
 } from "./follow";
@@ -41,6 +42,18 @@ describe("toFollowTargetType", () => {
   it("maps author and series kinds onto the Follow API enum", () => {
     expect(toFollowTargetType("author")).toBe(FollowTargetType.AUTHOR);
     expect(toFollowTargetType("series")).toBe(FollowTargetType.SERIES);
+  });
+});
+
+describe("toFollowTargetKind", () => {
+  it("maps author and series enums back onto the app kinds", () => {
+    expect(toFollowTargetKind(FollowTargetType.AUTHOR)).toBe("author");
+    expect(toFollowTargetKind(FollowTargetType.SERIES)).toBe("series");
+  });
+
+  it("drops episode and unspecified — this app has no public page for those", () => {
+    expect(toFollowTargetKind(FollowTargetType.EPISODE)).toBeNull();
+    expect(toFollowTargetKind(FollowTargetType.UNSPECIFIED)).toBeNull();
   });
 });
 

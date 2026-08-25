@@ -68,7 +68,7 @@ const SettingsLayout = ({
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">アカウント設定</h1>
         <p className="text-sm text-muted-foreground">
-          プロフィール・通知・セキュリティ・アカウント情報を管理できます。
+          プロフィール・フォロー・通知・セキュリティ・アカウント情報を管理できます。
         </p>
       </div>
       <SettingsTabs />

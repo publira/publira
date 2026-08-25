@@ -103,6 +103,31 @@ describe("toggleFollowAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);
   });
 
+  it("一覧からの解除も同じ Action で会員のフォローキャッシュだけを更新する", async () => {
+    mockUnfollowTarget.mockResolvedValueOnce({ isFollowing: false, ok: true });
+
+    const { toggleFollowAction } = await import("./follow-actions");
+    const result = await toggleFollowAction(
+      null,
+      formData({
+        intent: "unfollow",
+        publicId: "SERIES01",
+        returnTo: "/settings/follows",
+        targetKind: "series",
+        tenantId,
+      })
+    );
+
+    expect(result).toEqual({
+      isFollowing: false,
+      message: "フォローを解除しました。",
+      ok: true,
+    });
+    expect(mockRequirePublicSession).toHaveBeenCalledWith("/settings/follows");
+    expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);
+    expect(mockUpdateTag).toHaveBeenCalledTimes(1);
+  });
+
   it("不正な対象種別は API を呼ばない", async () => {
     const { toggleFollowAction } = await import("./follow-actions");
     const result = await toggleFollowAction(
