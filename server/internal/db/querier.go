@@ -15,6 +15,10 @@ type Querier interface {
 	BumpPlatformUserCredentialsVersion(ctx context.Context, id uuid.UUID) (PlatformUser, error)
 	BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error)
 	CancelTenantAdminInvitation(ctx context.Context, arg CancelTenantAdminInvitationParams) (TenantAdminInvitation, error)
+	// Claim the next due pending rows. SKIP LOCKED lets concurrent workers
+	// drain without waiting on each other's locks. The CTE is required:
+	// FOR UPDATE is not allowed in an IN subquery.
+	ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
 	// テナントの下書きエピソード数を取得する（ダッシュボード用）
@@ -117,6 +121,8 @@ type Querier interface {
 	// Non-revoked ticket for a user+episode pair (may already be expired).
 	// Used for idempotent issue under the unique partial index on non-revoked rows.
 	GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error)
+	GetOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
+	GetOutboxEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (OutboxEvent, error)
 	// テナントのページをIDで取得する
 	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (Page, error)
 	// ページバージョンをIDで取得する
@@ -194,6 +200,19 @@ type Querier interface {
 	// :one returns no rows on conflict (same as CreateNotification).
 	InsertDebouncedEpisodeViewEvent(ctx context.Context, arg InsertDebouncedEpisodeViewEventParams) (ContentEvent, error)
 	InsertDebouncedSeriesViewEvent(ctx context.Context, arg InsertDebouncedSeriesViewEventParams) (ContentEvent, error)
+	// Outbox query skeleton (#610). Worker and business-event emitters land in
+	// later issues; these queries pin insert, claim, and status transitions.
+	//
+	// Expected plans (empty table may still seq-scan; SET enable_seqscan = off
+	// in the integration test to confirm the index is eligible):
+	//   ClaimPendingOutboxEvents
+	//     -> idx_outbox_events_pending_available_at
+	//   GetOutboxEventByIdempotencyKey
+	//     -> outbox_events_idempotency_key_key
+	// Worker insert. Same idempotency_key is a no-op so retries of the
+	// producing transaction do not create a second row. :one returns no
+	// rows on conflict.
+	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) (OutboxEvent, error)
 	// 管理操作監査ログを記録する
 	InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error
 	// Idempotent projection from a SoT row (purchases.id, access_tickets.id).
@@ -446,6 +465,9 @@ type Querier interface {
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
 	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error)
+	MarkOutboxEventDead(ctx context.Context, arg MarkOutboxEventDeadParams) (OutboxEvent, error)
+	MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
+	MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventRetryParams) (OutboxEvent, error)
 	MarkPlatformNotificationAsRead(ctx context.Context, arg MarkPlatformNotificationAsReadParams) (PlatformNotificationRead, error)
 	MarkPlatformUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
