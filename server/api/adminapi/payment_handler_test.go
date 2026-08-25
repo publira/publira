@@ -28,6 +28,13 @@ const (
 	testPaymentWebhookSecret = "whsec_AdminLeakYYYY"
 )
 
+func TestTenantPaymentRevalidateTags(t *testing.T) {
+	tags := tenantPaymentRevalidateTags(" tenant-id ")
+	if len(tags) != 1 || tags[0] != "tenant:tenant-id:site" {
+		t.Fatalf("tags = %v, want [tenant:tenant-id:site]", tags)
+	}
+}
+
 func tenantPaymentColumns() []string {
 	return []string{
 		"tenant_id", "provider", "enabled",

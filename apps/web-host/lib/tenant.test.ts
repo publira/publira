@@ -25,6 +25,7 @@ vi.mock("./api-client", () => ({
 }));
 
 const tenantResponse = {
+  acceptsPayments: true,
   copyrightText: "© Example",
   siteDescription: "",
   siteTagline: "",
@@ -59,6 +60,18 @@ describe("tenant", () => {
       tenant: { tenantId: "TENANT_001" },
     });
     expect(info?.timeZone).toBe("America/Los_Angeles");
+    expect(info?.acceptsPayments).toBe(true);
+  });
+
+  it("決済を受け付けられないテナントを false として扱う", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      acceptsPayments: false,
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.acceptsPayments).toBe(false);
   });
 
   it("テナント icon が設定されていればバリアントを取得できる", async () => {

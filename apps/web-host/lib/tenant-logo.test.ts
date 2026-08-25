@@ -5,6 +5,7 @@ import type { TenantImageVariant, TenantSiteInfo } from "./tenant";
 import { resolveTenantLogoVariant } from "./tenant-logo";
 
 const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
+  acceptsPayments: false,
   domain: "example.test",
   name: "テナント",
   publicId: "TENANT_PUBLIC",

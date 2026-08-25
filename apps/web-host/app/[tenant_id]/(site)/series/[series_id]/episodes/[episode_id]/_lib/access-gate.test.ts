@@ -4,7 +4,7 @@ import { episodeAccessGateCopy, episodeLoginHref } from "./access-gate";
 
 describe("episodeAccessGateCopy", () => {
   it("未ログインは購入とチケット付与を案内する", () => {
-    const copy = episodeAccessGateCopy(false);
+    const copy = episodeAccessGateCopy(false, true);
 
     expect(copy.title).toBe("このエピソードは有料です");
     expect(copy.description).toContain("ログイン");
@@ -13,11 +13,19 @@ describe("episodeAccessGateCopy", () => {
   });
 
   it("ログイン済みは失効と未付与を案内する", () => {
-    const copy = episodeAccessGateCopy(true);
+    const copy = episodeAccessGateCopy(true, true);
 
     expect(copy.title).toBe("このエピソードは閲覧できません");
     expect(copy.description).toContain("有効期限");
     expect(copy.description).toContain("付与");
+  });
+
+  it("決済不可時は購入を案内せずチケット付与に留める", () => {
+    const copy = episodeAccessGateCopy(false, false);
+
+    expect(copy.description).not.toContain("購入する");
+    expect(copy.description).toContain("チケット");
+    expect(copy.description).toContain("購入手続きを利用できません");
   });
 });
 

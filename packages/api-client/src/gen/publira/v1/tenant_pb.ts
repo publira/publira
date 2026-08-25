@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/tenant.proto.
  */
 export const file_publira_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCL5AQoRR2V0VGVuYW50UmVzcG9uc2USGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCRITCgt0ZW5hbnRfbmFtZRgCIAEoCRIVCg10ZW5hbnRfZG9tYWluGAMgASgJEhYKDmNvcHlyaWdodF90ZXh0GAQgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YBSABKAkSFAoMc2l0ZV90YWdsaW5lGAYgASgJEiwKBXRoZW1lGAcgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZRIQCgh0aW1lem9uZRgIIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgJIAEoCTJbCg1UZW5hbnRTZXJ2aWNlEkoKCUdldFRlbmFudBIcLnB1YmxpcmEudjEuR2V0VGVuYW50UmVxdWVzdBodLnB1YmxpcmEudjEuR2V0VGVuYW50UmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCKTAgoRR2V0VGVuYW50UmVzcG9uc2USGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCRITCgt0ZW5hbnRfbmFtZRgCIAEoCRIVCg10ZW5hbnRfZG9tYWluGAMgASgJEhYKDmNvcHlyaWdodF90ZXh0GAQgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YBSABKAkSFAoMc2l0ZV90YWdsaW5lGAYgASgJEiwKBXRoZW1lGAcgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZRIQCgh0aW1lem9uZRgIIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgJIAEoCRIYChBhY2NlcHRzX3BheW1lbnRzGAogASgIMlsKDVRlbmFudFNlcnZpY2USSgoJR2V0VGVuYW50EhwucHVibGlyYS52MS5HZXRUZW5hbnRSZXF1ZXN0Gh0ucHVibGlyYS52MS5HZXRUZW5hbnRSZXNwb25zZSIAQjxaOmdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.GetTenantRequest
@@ -87,6 +87,14 @@ export type GetTenantResponse = Message<"publira.v1.GetTenantResponse"> & {
    * @generated from field: string default_locale = 9;
    */
   defaultLocale: string;
+
+  /**
+   * Whether the tenant can currently accept episode payments. This never
+   * exposes payment-provider credentials or their configuration details.
+   *
+   * @generated from field: bool accepts_payments = 10;
+   */
+  acceptsPayments: boolean;
 };
 
 /**

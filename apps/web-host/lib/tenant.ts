@@ -24,6 +24,8 @@ export interface TenantImageVariant {
 }
 
 export interface TenantSiteInfo {
+  /** Whether the public API verified that Checkout can be offered safely. */
+  acceptsPayments: boolean;
   copyrightText?: string;
   domain: string;
   /** The public site's `rel="icon"` (#549); no icon is declared without it. */
@@ -138,6 +140,7 @@ export const getTenantSiteInfo = async (
     const name = trimmed(response.tenantName) ?? "";
 
     return {
+      acceptsPayments: response.acceptsPayments === true,
       copyrightText: trimmed(response.copyrightText),
       domain: trimmed(response.tenantDomain) ?? "",
       iconImageUpdatedAt: nonEmpty(response.theme?.iconImageUpdatedAt),

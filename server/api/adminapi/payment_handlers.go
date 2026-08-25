@@ -3,6 +3,8 @@ package adminapi
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
 
@@ -10,6 +12,12 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/paymentsettings"
 )
+
+// tenantPaymentRevalidateTags lists the cached public tenant response that
+// controls whether the reader-facing Checkout CTA is rendered.
+func tenantPaymentRevalidateTags(tenantID string) []string {
+	return []string{fmt.Sprintf("tenant:%s:site", strings.TrimSpace(tenantID))}
+}
 
 func (s *adminServer) paymentStore(ctx context.Context) *paymentsettings.Store {
 	return paymentsettings.New(s.queriesFor(ctx), s.encryptor, s.recorderFor(ctx), s.logger)
@@ -93,6 +101,11 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 			return nil, mapped
 		}
 		return nil, s.internalDBError(ctx, "failed to upsert tenant payment settings", err, "tenant_id", tenant.ID.String())
+	}
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tenantPaymentRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after tenant payment settings update", "tenant_public_id", tenant.PublicID, "error", err)
+		}
 	}
 
 	return connect.NewResponse(&publiraadminv1.UpdateTenantPaymentSettingsResponse{
