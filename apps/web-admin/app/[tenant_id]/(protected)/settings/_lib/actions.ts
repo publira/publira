@@ -1,7 +1,11 @@
 "use server";
 
 import { isValidTimeZone } from "@publira/utils";
-import { toFormErrorMessage } from "@publira/utils/field-errors";
+import {
+  toFieldErrors,
+  toFormErrorMessage,
+  VALIDATION_ERROR_MESSAGE,
+} from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { LOCALES } from "@publira/utils/i18n";
 import { updateTag } from "next/cache";
@@ -19,7 +23,15 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
-import { requiredTrimmedString } from "#lib/form-schemas";
+import {
+  checkboxOnFormSchema,
+  flagOneFormSchema,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
+import {
+  tenantPaymentSettingsCacheTag,
+  updateTenantPaymentSettings,
+} from "#lib/payment-settings";
 import { updateTenantSiteSettings } from "#lib/site-settings";
 import {
   tenantDefaultLocaleCacheTag,
@@ -45,6 +57,7 @@ import type {
   TenantEmailSettingsFormState,
   TenantIconActionState,
   TenantLogoActionState,
+  TenantPaymentSettingsFormState,
   TenantSmtpTestFormState,
   TenantTimezoneActionState,
   ThemeSettingsActionState,
@@ -577,6 +590,101 @@ export const updateTenantDefaultLocaleAction = async (
     defaultLocale: result.defaultLocale,
     message: "既定言語を保存しました。",
     ok: true,
+  };
+};
+
+const optionalSecretSchema = z.preprocess(
+  (value) => (typeof value === "string" ? value : ""),
+  z.string()
+);
+
+const tenantPaymentSettingsSchema = z
+  .object({
+    enabled: checkboxOnFormSchema,
+    secretKey: optionalSecretSchema,
+    secretKeyConfigured: flagOneFormSchema,
+    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+    webhookSecret: optionalSecretSchema,
+    webhookSecretConfigured: flagOneFormSchema,
+  })
+  .superRefine((value, ctx) => {
+    if (!value.enabled) {
+      return;
+    }
+    if (!value.secretKeyConfigured && value.secretKey.trim() === "") {
+      ctx.addIssue({
+        code: "custom",
+        message: "シークレットキーを入力してください。",
+        path: ["secretKey"],
+      });
+    }
+    if (!value.webhookSecretConfigured && value.webhookSecret.trim() === "") {
+      ctx.addIssue({
+        code: "custom",
+        message: "Webhook 署名シークレットを入力してください。",
+        path: ["webhookSecret"],
+      });
+    }
+  });
+
+const tenantPaymentSettingsFormFields = {
+  enabled: "value",
+  secretKey: { kind: "value", name: "secret_key" },
+  secretKeyConfigured: { kind: "value", name: "secret_key_configured" },
+  tenantId: { kind: "value", name: "tenant_id" },
+  webhookSecret: { kind: "value", name: "webhook_secret" },
+  webhookSecretConfigured: {
+    kind: "value",
+    name: "webhook_secret_configured",
+  },
+} as const;
+
+const secretUpdateMode = (value: string): number =>
+  value.trim() === ""
+    ? SECRET_UPDATE_MODE_UNCHANGED
+    : SECRET_UPDATE_MODE_REPLACE;
+
+export const updateTenantPaymentSettingsAction = async (
+  _prevState: TenantPaymentSettingsFormState,
+  formData: FormData
+): Promise<TenantPaymentSettingsFormState> => {
+  const parsed = tenantPaymentSettingsSchema.safeParse(
+    toFormDataInput(formData, tenantPaymentSettingsFormFields)
+  );
+  if (!parsed.success) {
+    return {
+      fieldErrors: toFieldErrors(parsed.error),
+      message: VALIDATION_ERROR_MESSAGE,
+      ok: false,
+    };
+  }
+
+  const secretKey = parsed.data.secretKey.trim();
+  const webhookSecret = parsed.data.webhookSecret.trim();
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantPaymentSettings({
+      enabled: parsed.data.enabled,
+      secretKey,
+      secretKeyUpdateMode: secretUpdateMode(secretKey),
+      tenantId: parsed.data.tenantId,
+      webhookSecret,
+      webhookSecretUpdateMode: secretUpdateMode(webhookSecret),
+    })
+  );
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  updateTag(tenantPaymentSettingsCacheTag(parsed.data.tenantId));
+
+  return {
+    message: "決済設定を保存しました。",
+    ok: true,
+    settings: result.settings,
   };
 };
 

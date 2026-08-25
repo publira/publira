@@ -181,6 +181,23 @@ test.describe("web-admin auth", () => {
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "保存" })).toBeDisabled();
   });
+
+  test("会員は決済設定を閲覧専用で権限エラーを見る", async ({ page }) => {
+    await signInAsAdmin(page, SEED_MEMBER, "/settings/payment");
+
+    await expect(page).toHaveURL(/\/settings\/payment/u);
+    await expect(page.getByRole("heading", { name: "設定" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "決済" })).toBeVisible();
+    await expect(
+      page.getByText(
+        "この設定はテナント管理者のみ編集できます。現在は閲覧専用です。"
+      )
+    ).toBeVisible();
+    await expect(
+      page.getByText("この操作を行う権限がありません。")
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "保存" })).toBeDisabled();
+  });
 });
 
 test.describe("admin GET /logout", () => {

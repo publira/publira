@@ -6,6 +6,7 @@ const {
   mockGetAccessToken,
   mockUpdateTag,
   mockUpdateTenantDefaultLocale,
+  mockUpdateTenantPaymentSettings,
   mockUpdateTenantTimezone,
   mockUploadTenantIcon,
   mockUploadTenantLogo,
@@ -15,6 +16,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantDefaultLocale: vi.fn(),
+  mockUpdateTenantPaymentSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
   mockUploadTenantIcon: vi.fn(),
   mockUploadTenantLogo: vi.fn(),
@@ -50,6 +52,14 @@ vi.mock("#lib/tenant-default-locale", () => ({
 vi.mock("#lib/tenant-timezone", () => ({
   tenantTimezoneCacheTag: (tenantId: string) => `tenant:${tenantId}:timezone`,
   updateTenantTimezone: mockUpdateTenantTimezone,
+}));
+
+vi.mock("#lib/payment-settings", () => ({
+  SECRET_UPDATE_MODE_REPLACE: 2,
+  SECRET_UPDATE_MODE_UNCHANGED: 1,
+  tenantPaymentSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:payment-settings`,
+  updateTenantPaymentSettings: mockUpdateTenantPaymentSettings,
 }));
 
 vi.mock("#lib/theme-settings", () => ({
@@ -288,6 +298,152 @@ describe("updateTenantDefaultLocaleAction", () => {
     );
 
     expect(result).toEqual({ message: "権限がありません。", ok: false });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+const storedPaymentSettings = {
+  enabled: true,
+  provider: "stripe",
+  ready: true,
+  secretKeyConfigured: true,
+  secretKeyHint: "sk_test_••••••••KLMN",
+  webhookSecretConfigured: true,
+  webhookSecretHint: "whsec_••••••••WXYZ",
+};
+
+describe("updateTenantPaymentSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("シークレットを置換して保存し、キャッシュタグを更新する", async () => {
+    mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: storedPaymentSettings,
+    });
+
+    const { updateTenantPaymentSettingsAction } = await import("./actions");
+
+    const result = await updateTenantPaymentSettingsAction(
+      null,
+      textFormData({
+        enabled: "on",
+        secret_key: "sk_test_51NEW",
+        tenant_id: "TENANT001",
+        webhook_secret: "whsec_NEW",
+      })
+    );
+
+    expect(result).toEqual({
+      message: "決済設定を保存しました。",
+      ok: true,
+      settings: storedPaymentSettings,
+    });
+    expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith({
+      enabled: true,
+      secretKey: "sk_test_51NEW",
+      secretKeyUpdateMode: 2,
+      tenantId: "TENANT001",
+      webhookSecret: "whsec_NEW",
+      webhookSecretUpdateMode: 2,
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:payment-settings"
+    );
+  });
+
+  it("空のシークレットは未変更として送り、登録済みなら有効化できる", async () => {
+    mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: storedPaymentSettings,
+    });
+
+    const { updateTenantPaymentSettingsAction } = await import("./actions");
+
+    const result = await updateTenantPaymentSettingsAction(
+      null,
+      textFormData({
+        enabled: "on",
+        secret_key_configured: "1",
+        tenant_id: "TENANT001",
+        webhook_secret_configured: "1",
+      })
+    );
+
+    expect(result?.ok).toBe(true);
+    expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith({
+      enabled: true,
+      secretKey: "",
+      secretKeyUpdateMode: 1,
+      tenantId: "TENANT001",
+      webhookSecret: "",
+      webhookSecretUpdateMode: 1,
+    });
+  });
+
+  it("未設定のまま有効化するとフィールドエラーを返し API を呼ばない", async () => {
+    const { updateTenantPaymentSettingsAction } = await import("./actions");
+
+    const result = await updateTenantPaymentSettingsAction(
+      null,
+      textFormData({
+        enabled: "on",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      fieldErrors: {
+        secretKey: "シークレットキーを入力してください。",
+        webhookSecret: "Webhook 署名シークレットを入力してください。",
+      },
+      message: "入力内容を確認してください。",
+      ok: false,
+    });
+    expect(mockUpdateTenantPaymentSettings).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("テナント ID がない場合は保存しない", async () => {
+    const { updateTenantPaymentSettingsAction } = await import("./actions");
+
+    const result = await updateTenantPaymentSettingsAction(
+      null,
+      textFormData({})
+    );
+
+    expect(result).toEqual({
+      fieldErrors: {
+        tenantId: "テナント ID が見つかりません。",
+      },
+      message: "入力内容を確認してください。",
+      ok: false,
+    });
+    expect(mockUpdateTenantPaymentSettings).not.toHaveBeenCalled();
+  });
+
+  it("保存に失敗した場合はメッセージを返し、キャッシュタグを更新しない", async () => {
+    mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
+      message: "この操作を行う権限がありません。",
+      ok: false,
+    });
+
+    const { updateTenantPaymentSettingsAction } = await import("./actions");
+
+    const result = await updateTenantPaymentSettingsAction(
+      null,
+      textFormData({
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message: "この操作を行う権限がありません。",
+      ok: false,
+    });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });

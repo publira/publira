@@ -2,6 +2,7 @@ import type { Locale } from "@publira/utils/i18n";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 
 import type { TenantSmtpSettings } from "#lib/email-settings";
+import type { TenantPaymentSettings } from "#lib/payment-settings";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 
 export type SiteSettingsActionState =
@@ -106,6 +107,23 @@ export type TenantDefaultLocaleActionState =
   | {
       ok: false;
       message: string;
+    }
+  | null;
+
+export type TenantPaymentSettingsFieldErrors = Partial<
+  Record<"secretKey" | "webhookSecret", string>
+>;
+
+export type TenantPaymentSettingsFormState =
+  | {
+      ok: true;
+      message: string;
+      settings: TenantPaymentSettings;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: TenantPaymentSettingsFieldErrors;
     }
   | null;
 
