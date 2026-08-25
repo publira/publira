@@ -23,8 +23,20 @@ const followTargetTypeByKind: Record<FollowTargetKind, FollowTargetType> = {
   series: FollowTargetType.SERIES,
 };
 
+const followTargetKindByType: Partial<
+  Record<FollowTargetType, FollowTargetKind>
+> = {
+  [FollowTargetType.AUTHOR]: "author",
+  [FollowTargetType.SERIES]: "series",
+};
+
 export const toFollowTargetType = (kind: FollowTargetKind): FollowTargetType =>
   followTargetTypeByKind[kind];
+
+/** `null` for episode / unspecified — this app has no public page for those. */
+export const toFollowTargetKind = (
+  type: FollowTargetType
+): FollowTargetKind | null => followTargetKindByType[type] ?? null;
 
 const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
 const statusErrorMessage =
@@ -35,9 +47,9 @@ const unfollowErrorMessage =
   "フォローの解除に失敗しました。時間をおいて再試行してください。";
 
 /**
- * Tag the private follow-status read carries, so `updateTag` in the Server
- * Action refreshes only this member's follow island — not the public series or
- * author catalog cache.
+ * Tag the private follow-status and follow-list reads carry, so `updateTag`
+ * in the Server Action refreshes only this member's follow island and list —
+ * not the public series or author catalog cache.
  */
 export const followsCacheTag = tenantFollowsTag;
 
