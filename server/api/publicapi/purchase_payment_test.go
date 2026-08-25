@@ -36,8 +36,6 @@ const (
 	testCheckoutSecretKey     = "sk_test_51TenantALeakXXXX"
 	testCheckoutWebhookSecret = "whsec_TenantALeakYYYY"
 	testOtherWebhookSecret    = "whsec_TenantBLeakZZZZ"
-	testEnvSecretKey          = "sk_live_env_must_not_be_used"
-	testEnvWebhookSecret      = "whsec_env_must_not_be_used"
 )
 
 type capturingCheckoutProvider struct {
@@ -78,8 +76,6 @@ type publicPaymentServer struct {
 
 func newPublicPaymentServer(t *testing.T, encryptor *secretcrypto.Manager) publicPaymentServer {
 	t.Helper()
-	t.Setenv("STRIPE_SECRET_KEY", testEnvSecretKey)
-	t.Setenv("STRIPE_WEBHOOK_SECRET", testEnvWebhookSecret)
 	if encryptor == nil {
 		encryptor = newPublicTestEncryptor(t)
 	}
@@ -154,7 +150,7 @@ func TestStartEpisodeCheckoutRefusesWhenTenantSettingsMissing(t *testing.T) {
 	assertPublicExpectations(t, env.mock)
 }
 
-func TestStartEpisodeCheckoutUsesTenantSecretNotProcessEnv(t *testing.T) {
+func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	encryptor := newPublicTestEncryptor(t)
 	env := newPublicPaymentServer(t, encryptor)
 
@@ -187,9 +183,6 @@ func TestStartEpisodeCheckoutUsesTenantSecretNotProcessEnv(t *testing.T) {
 	if env.checkout.secretKey != testCheckoutSecretKey {
 		t.Fatalf("checkout secret = %q, want tenant secret", env.checkout.secretKey)
 	}
-	if env.checkout.secretKey == testEnvSecretKey {
-		t.Fatal("checkout used process-wide STRIPE_SECRET_KEY")
-	}
 	assertNoSecretLeak(t, env.logs.String())
 	assertPublicExpectations(t, env.mock)
 }
@@ -203,7 +196,7 @@ func TestProcessStripeWebhookRefusesWhenTenantSettingsMissing(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
-	payload, header := signedStripeEvent(t, testEnvWebhookSecret, "ping", map[string]any{"object": "checkout.session"})
+	payload, header := signedStripeEvent(t, testOtherWebhookSecret, "ping", map[string]any{"object": "checkout.session"})
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
 	_, err := client.ProcessStripeWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
 		Payload:         payload,
@@ -243,7 +236,7 @@ func TestProcessStripeWebhookRejectsOtherTenantSigningSecret(t *testing.T) {
 	assertPublicExpectations(t, env.mock)
 }
 
-func TestProcessStripeWebhookAcceptsTenantSigningSecretAndIgnoresProcessEnv(t *testing.T) {
+func TestProcessStripeWebhookAcceptsTenantSigningSecret(t *testing.T) {
 	encryptor := newPublicTestEncryptor(t)
 	env := newPublicPaymentServer(t, encryptor)
 
@@ -363,8 +356,6 @@ func assertNoSecretLeak(t *testing.T, haystack string) {
 		testCheckoutSecretKey,
 		testCheckoutWebhookSecret,
 		testOtherWebhookSecret,
-		testEnvSecretKey,
-		testEnvWebhookSecret,
 	} {
 		if strings.Contains(haystack, secret) {
 			t.Fatalf("leaked secret %q in %s", secret, haystack)

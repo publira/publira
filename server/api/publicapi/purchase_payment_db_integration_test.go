@@ -21,9 +21,6 @@ import (
 )
 
 func TestDBProcessStripeWebhookIsolatesTenantSigningSecrets(t *testing.T) {
-	t.Setenv("STRIPE_SECRET_KEY", testEnvSecretKey)
-	t.Setenv("STRIPE_WEBHOOK_SECRET", testEnvWebhookSecret)
-
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -99,7 +96,6 @@ func TestDBProcessStripeWebhookIsolatesTenantSigningSecrets(t *testing.T) {
 }
 
 func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
-	t.Setenv("STRIPE_SECRET_KEY", testEnvSecretKey)
 	t.Setenv("PUBLIRA_WEB_HOST_URL", "https://host.example")
 
 	pg := testutil.StartPostgres(t)

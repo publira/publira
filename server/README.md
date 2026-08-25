@@ -82,23 +82,15 @@ task server:test
 
 ## Stripe Checkout（エピソード購入）
 
-有料エピソードは Stripe Checkout の一回払いで販売します。ブラウザが戻る URL は購入を確定しません。`web-host` の `POST /[tenant_id]/api/v1/webhook/stripe` は、Stripe の生 body と署名を PurchaseService へ転送するだけです。API サーバーが **そのテナントの有効な決済設定** で署名を検証し、`checkout.session.completed`（非同期決済は `checkout.session.async_payment_succeeded`）を受信したときだけ `purchases` を作成します。
+有料エピソードは Stripe Checkout の一回払いで販売します。ブラウザが戻る URL は購入を確定しません。`web-host` の `POST /[tenant_id]/api/v1/webhook/stripe` は、Stripe の生 body と署名を PurchaseService へ転送するだけです。API サーバーが対象テナントの有効な決済設定で署名を検証し、`checkout.session.completed`（非同期決済は `checkout.session.async_payment_succeeded`）を受信したときだけ `purchases` を作成します。
 
-Checkout 開始と Webhook 検証は、対象テナントの `tenant_payment_config` だけを使います。設定が無い・無効・復号できないときは決済を開始せず、Webhook も購入を反映しません（web-host は `FailedPrecondition` を 503 にします）。プロセス環境変数 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` は参照しません。
+Checkout 開始と Webhook 検証は `tenant_payment_config` の有効設定を使います。設定が無い・無効・復号できないときは決済を開始せず、Webhook も購入を反映しません（web-host は `FailedPrecondition` を 503 にします）。
 
 - `PUBLIRA_WEB_HOST_URL`: 購入完了・取消後に戻す web-host の絶対 URL。例: `http://localhost:3000`。未設定または不正なときは Checkout を開始できません。
 
 テナント管理者は `AdminPaymentSettingsService` で Stripe secret key と Webhook signing secret を登録します。公開読み出しは有効状態とマスク済み hint だけを返し、平文は `paymentsettings.Store.LoadEnabledSecrets` 経由のサーバー内部利用に限ります。署名・通貨・金額・購入権限の検証は API サーバーに残します。
 
-### 環境変数からの移行
-
-以前は API サーバーがプロセス全体の `STRIPE_SECRET_KEY` と `STRIPE_WEBHOOK_SECRET` を読んでいました。テナントごとに Stripe アカウントを持つため、同じ値をそのテナントの決済設定へ移してください。
-
-1. Stripe Dashboard でテナント用の secret key と、Webhook endpoint `https://<web-host>/<tenant_id>/api/v1/webhook/stripe` の signing secret を用意する。上記 2 イベントを有効化する。
-2. テナント管理者として `UpdateTenantPaymentSettings` を呼び、両シークレットを `SECRET_UPDATE_MODE_REPLACE` で保存し `enabled = true` にする。
-3. プロセス環境変数は削除してよい。残っていても API サーバーは参照しない。
-
-ローカル開発では Stripe CLI を使います。
+Stripe Dashboard では `https://<web-host>/<tenant_id>/api/v1/webhook/stripe` を Webhook endpoint として登録し、上記 2 イベントを有効化してください。ローカル開発では次のように Stripe CLI で転送します。
 
 ```bash
 stripe listen --forward-to localhost:3000/<tenant_id>/api/v1/webhook/stripe
