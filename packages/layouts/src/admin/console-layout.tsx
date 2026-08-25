@@ -186,9 +186,11 @@ export const ConsoleSidebar = ({
             Publira
           </p>
         )}
-        <p className="text-xs tracking-[0.22em] text-muted-foreground uppercase">
-          {logoLabel}
-        </p>
+        {logoLabel ? (
+          <p className="text-xs tracking-[0.22em] text-muted-foreground uppercase">
+            {logoLabel}
+          </p>
+        ) : null}
       </Link>
     </div>
     {children ? (
@@ -250,7 +252,7 @@ export interface ConsoleHeaderProps {
 
 export interface ConsoleSidebarProps {
   brandMark?: ReactNode;
-  logoLabel: string;
+  logoLabel?: string;
   navigation: NavSection[];
   footerNote?: ReactNode;
   children?: ReactNode;

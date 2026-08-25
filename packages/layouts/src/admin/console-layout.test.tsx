@@ -69,24 +69,35 @@ describe("ConsoleHeader", () => {
 describe("ConsoleSidebar", () => {
   it("brandMark がなければ Publira のテキストブランドを出す", () => {
     render(
-      <ConsoleSidebar logoLabel="Admin Console" navigation={navigation} />
+      <ConsoleSidebar logoLabel="Platform Console" navigation={navigation} />
     );
 
     expect(screen.getByText("Publira")).toBeDefined();
-    expect(screen.getByText("Admin Console")).toBeDefined();
+    expect(screen.getByText("Platform Console")).toBeDefined();
   });
 
   it("brandMark があれば Publira の代わりに載せる", () => {
     render(
       <ConsoleSidebar
         brandMark={<span>テナントロゴ</span>}
-        logoLabel="Admin Console"
         navigation={navigation}
       />
     );
 
     expect(screen.queryByText("Publira")).toBeNull();
     expect(screen.getByText("テナントロゴ")).toBeDefined();
-    expect(screen.getByText("Admin Console")).toBeDefined();
+  });
+
+  it("logoLabel がなければサブタイトルは出さない", () => {
+    render(
+      <ConsoleSidebar
+        brandMark={<span>青枝出版</span>}
+        navigation={navigation}
+      />
+    );
+
+    expect(screen.getByText("青枝出版")).toBeDefined();
+    expect(screen.queryByText("Admin Console")).toBeNull();
+    expect(screen.queryByText("Platform Console")).toBeNull();
   });
 });

@@ -41,7 +41,7 @@ vi.mock("@publira/layouts/admin", () => ({
   }) => (
     <aside>
       {brandMark}
-      <p>{logoLabel}</p>
+      {logoLabel ? <p>{logoLabel}</p> : null}
       {children}
     </aside>
   ),
@@ -109,10 +109,10 @@ describe("AdminLayout", () => {
     expect(screen.getAllByAltText("青枝出版のロゴ")).toHaveLength(2);
     expect(screen.getAllByText("青枝出版").length).toBeGreaterThan(0);
     expect(screen.queryByText("Publira")).toBeNull();
-    expect(screen.getByText("Admin Console")).toBeDefined();
+    expect(screen.queryByText("Admin Console")).toBeNull();
   });
 
-  it("ロゴがないときはテナント名をブランドにし、Publira は出さない", () => {
+  it("ロゴがないときはテナント名をブランドにし、製品名は出さない", () => {
     render(
       <AdminLayout logo={null} tenant={tenant}>
         <p>本文</p>
@@ -121,6 +121,7 @@ describe("AdminLayout", () => {
 
     expect(screen.queryByAltText("青枝出版のロゴ")).toBeNull();
     expect(screen.queryByText("Publira")).toBeNull();
+    expect(screen.queryByText("Admin Console")).toBeNull();
     expect(screen.getAllByText("青枝出版").length).toBeGreaterThan(0);
   });
 });

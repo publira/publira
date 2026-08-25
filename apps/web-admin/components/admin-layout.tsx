@@ -91,11 +91,7 @@ export const AdminLayout = ({
 
   return (
     <ConsoleLayout gradient={adminGradient}>
-      <ConsoleSidebar
-        brandMark={sidebarBrand}
-        logoLabel="Admin Console"
-        navigation={navigation}
-      >
+      <ConsoleSidebar brandMark={sidebarBrand} navigation={navigation}>
         <div className="flex items-start justify-between gap-3">
           <div className="grid gap-1">
             <p className="text-sm font-medium text-foreground">{tenant.name}</p>
