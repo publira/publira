@@ -138,6 +138,7 @@ export const ConsoleHeaderUserSkeleton = () => (
 );
 
 export const ConsoleHeader = ({
+  brandMark,
   eyebrow,
   contextLabel,
   logoutAction,
@@ -147,6 +148,7 @@ export const ConsoleHeader = ({
     <header className="sticky top-0 z-20 border-b border-border/70 bg-background/80 backdrop-blur">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
+          {brandMark}
           <div className="min-w-0">
             <p className="text-xs tracking-[0.24em] text-muted-foreground uppercase">
               {eyebrow}
@@ -170,6 +172,7 @@ export const ConsoleHeader = ({
 );
 
 export const ConsoleSidebar = ({
+  brandMark,
   logoLabel,
   navigation,
   footerNote,
@@ -178,9 +181,11 @@ export const ConsoleSidebar = ({
   <aside className="hidden w-72 max-w-none flex-col border-r border-border/70 bg-card/95 px-4 py-4 lg:flex">
     <div className="flex items-center justify-between gap-3 px-2 pb-4">
       <Link className="min-w-0" href="/">
-        <p className="font-serif text-xl font-semibold tracking-tight text-foreground">
-          Publira
-        </p>
+        {brandMark ?? (
+          <p className="font-serif text-xl font-semibold tracking-tight text-foreground">
+            Publira
+          </p>
+        )}
         <p className="text-xs tracking-[0.22em] text-muted-foreground uppercase">
           {logoLabel}
         </p>
@@ -236,6 +241,7 @@ export interface ConsoleCurrentUser {
 }
 
 export interface ConsoleHeaderProps {
+  brandMark?: ReactNode;
   eyebrow: string;
   contextLabel: string;
   logoutAction: (formData: FormData) => void | Promise<void>;
@@ -243,6 +249,7 @@ export interface ConsoleHeaderProps {
 }
 
 export interface ConsoleSidebarProps {
+  brandMark?: ReactNode;
   logoLabel: string;
   navigation: NavSection[];
   footerNote?: ReactNode;

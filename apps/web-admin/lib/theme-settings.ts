@@ -178,6 +178,22 @@ export const getTenantThemeSettings = async (
   }
 };
 
+/**
+ * Logo for the console chrome. An unset theme, a classified RPC failure, or
+ * an unexpected throw all become `null` — the shell keeps the tenant-name
+ * text instead of taking the layout down.
+ */
+export const getTenantThemeLogo = async (
+  tenantId: string
+): Promise<TenantBrandingImage | null> => {
+  try {
+    const result = await getTenantThemeSettings(tenantId);
+    return result.ok ? result.logo : null;
+  } catch {
+    return null;
+  }
+};
+
 export const updateTenantThemeSettings = async (
   input: UpdateTenantThemeSettingsInput
 ): Promise<TenantThemeSettingsResult> => {

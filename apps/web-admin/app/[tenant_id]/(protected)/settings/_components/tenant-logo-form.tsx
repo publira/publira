@@ -72,7 +72,7 @@ export const TenantLogoForm = ({
       <CardHeader>
         <CardTitle>ロゴ</CardTitle>
         <CardDescription>
-          公開サイトのブランド表示に使う画像です。縦横比はそのまま保存されます。
+          公開サイトと管理画面のブランド表示に使う画像です。縦横比はそのまま保存されます。
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -123,7 +123,7 @@ export const TenantLogoForm = ({
               <ConfirmDialog
                 actionText="削除する"
                 actionVariant="destructive"
-                description="公開サイトのブランド表示はテナント名に戻ります。"
+                description="公開サイトと管理画面のブランド表示はテナント名に戻ります。"
                 onAction={() => {
                   formRef.current?.requestSubmit(deleteButtonRef.current);
                 }}
