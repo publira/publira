@@ -35,28 +35,145 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 
 -- name: ListUserFollowsByCreatedAtDesc :many
 -- The API can expose one timeline while keeping each relationship's storage
--- and future aggregates independent. The full sort key is stable for cursors.
+-- and future aggregates independent. Public joins make a target that is no
+-- longer visible disappear from this member's list without revealing why.
 SELECT target_type,
     target_id,
+    target_public_id,
     created_at
 FROM (
     SELECT 'episode'::text AS target_type,
-        episode_id AS target_id,
-        created_at
+        ef.episode_id AS target_id,
+        e.public_id AS target_public_id,
+        ef.created_at
     FROM episode_follows ef
+        JOIN episodes e ON e.tenant_id = ef.tenant_id
+            AND e.id = ef.episode_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
     WHERE ef.tenant_id = sqlc.arg('tenant_id')
         AND ef.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
     UNION ALL
     SELECT 'creator'::text AS target_type,
-        creator_id AS target_id,
-        created_at
+        cf.creator_id AS target_id,
+        c.public_id AS target_public_id,
+        cf.created_at
     FROM creator_follows cf
+        JOIN creators c ON c.tenant_id = cf.tenant_id
+            AND c.id = cf.creator_id
     WHERE cf.tenant_id = sqlc.arg('tenant_id')
         AND cf.user_id = sqlc.arg('user_id')
-) follows
+        AND EXISTS (
+            SELECT 1
+            FROM series_creators sc
+                JOIN series s ON s.id = sc.series_id
+            WHERE sc.tenant_id = c.tenant_id
+                AND sc.creator_id = c.id
+                AND s.tenant_id = c.tenant_id
+                AND s.is_published = true
+                AND s.published_at IS NOT NULL
+                AND s.published_at <= NOW()
+        )
+) AS follows
+WHERE sqlc.narg('cursor_created_at')::timestamptz IS NULL
+    OR (
+        sqlc.arg('cursor_inclusive')::boolean
+        AND (created_at, target_type, target_id) <= (
+            sqlc.narg('cursor_created_at')::timestamptz,
+            sqlc.narg('cursor_target_type')::text,
+            sqlc.narg('cursor_target_id')::uuid
+        )
+    )
+    OR (
+        NOT sqlc.arg('cursor_inclusive')::boolean
+        AND (created_at, target_type, target_id) < (
+            sqlc.narg('cursor_created_at')::timestamptz,
+            sqlc.narg('cursor_target_type')::text,
+            sqlc.narg('cursor_target_id')::uuid
+        )
+    )
 ORDER BY created_at DESC,
     target_type ASC,
     target_id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListUserFollowsByCreatedAtAsc :many
+-- The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
+-- the returned rows to preserve the public newest-first display order.
+SELECT target_type,
+    target_id,
+    target_public_id,
+    created_at
+FROM (
+    SELECT 'episode'::text AS target_type,
+        ef.episode_id AS target_id,
+        e.public_id AS target_public_id,
+        ef.created_at
+    FROM episode_follows ef
+        JOIN episodes e ON e.tenant_id = ef.tenant_id
+            AND e.id = ef.episode_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE ef.tenant_id = sqlc.arg('tenant_id')
+        AND ef.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    UNION ALL
+    SELECT 'creator'::text AS target_type,
+        cf.creator_id AS target_id,
+        c.public_id AS target_public_id,
+        cf.created_at
+    FROM creator_follows cf
+        JOIN creators c ON c.tenant_id = cf.tenant_id
+            AND c.id = cf.creator_id
+    WHERE cf.tenant_id = sqlc.arg('tenant_id')
+        AND cf.user_id = sqlc.arg('user_id')
+        AND EXISTS (
+            SELECT 1
+            FROM series_creators sc
+                JOIN series s ON s.id = sc.series_id
+            WHERE sc.tenant_id = c.tenant_id
+                AND sc.creator_id = c.id
+                AND s.tenant_id = c.tenant_id
+                AND s.is_published = true
+                AND s.published_at IS NOT NULL
+                AND s.published_at <= NOW()
+        )
+) AS follows
+WHERE sqlc.narg('cursor_created_at')::timestamptz IS NULL
+    OR (
+        sqlc.arg('cursor_inclusive')::boolean
+        AND (created_at, target_type, target_id) >= (
+            sqlc.narg('cursor_created_at')::timestamptz,
+            sqlc.narg('cursor_target_type')::text,
+            sqlc.narg('cursor_target_id')::uuid
+        )
+    )
+    OR (
+        NOT sqlc.arg('cursor_inclusive')::boolean
+        AND (created_at, target_type, target_id) > (
+            sqlc.narg('cursor_created_at')::timestamptz,
+            sqlc.narg('cursor_target_type')::text,
+            sqlc.narg('cursor_target_id')::uuid
+        )
+    )
+ORDER BY created_at ASC,
+    target_type DESC,
+    target_id DESC
 LIMIT sqlc.arg('limit');
 
 -- name: UserFollowsPublishedEpisode :one

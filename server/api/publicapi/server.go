@@ -136,6 +136,8 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	mux.Handle(path, handler)
 	purchasePath, purchaseHandler := publirav1connect.NewPurchaseServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(purchasePath, purchaseHandler)
+	followPath, followHandler := publirav1connect.NewFollowServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
+	mux.Handle(followPath, followHandler)
 	pagesPath, pagesHandler := publirav1connect.NewPublicPagesServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(pagesPath, pagesHandler)
 	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
@@ -186,6 +188,7 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 
 			tracing.SetTenant(ctx, tenant.PublicID)
 			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
+			ctx = rpcmiddleware.WithTenantConn(ctx, conn)
 			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
 			return next(ctx, req)
 		}

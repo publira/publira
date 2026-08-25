@@ -244,6 +244,85 @@ service CatalogService {
   rpc SearchPublishedSeries(SearchPublishedSeriesRequest) returns (SearchPublishedSeriesResponse) {}
 }
 
+// Kinds of public catalog targets a member can follow.
+enum FollowTargetType {
+  FOLLOW_TARGET_TYPE_UNSPECIFIED = 0;
+  FOLLOW_TARGET_TYPE_EPISODE = 1;
+  FOLLOW_TARGET_TYPE_AUTHOR = 2;
+}
+
+// A public catalog target. The public ID is interpreted according to type.
+message FollowTarget {
+  FollowTargetType type = 1;
+  string public_id = 2;
+}
+
+// The current member's state for one public target. This is deliberately kept
+// separate from CatalogService so catalog reads remain shared-cacheable.
+message GetMyFollowStatusRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  FollowTarget target = 2;
+}
+
+message GetMyFollowStatusResponse {
+  bool is_following = 1;
+}
+
+message FollowRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  FollowTarget target = 2;
+}
+
+message FollowResponse {
+  bool is_following = 1;
+}
+
+message UnfollowRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  FollowTarget target = 2;
+}
+
+message UnfollowResponse {
+  bool is_following = 1;
+}
+
+// One currently public target followed by the authenticated member.
+message MyFollow {
+  // Explicitly distinguishes episode and author follows in a mixed timeline.
+  FollowTargetType target_type = 1;
+  string target_public_id = 2;
+  string followed_at = 3;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListMyFollowsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListMyFollowsResponse {
+  repeated MyFollow follows = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+service FollowService {
+  // Returns the authenticated member's relation to a currently public target.
+  rpc GetMyFollowStatus(GetMyFollowStatusRequest) returns (GetMyFollowStatusResponse) {}
+  // Idempotently follows a currently public target.
+  rpc Follow(FollowRequest) returns (FollowResponse) {}
+  // Idempotently removes the follow for a currently public target.
+  rpc Unfollow(UnfollowRequest) returns (UnfollowResponse) {}
+  // Lists only the authenticated member's follows whose targets remain public,
+  // newest follow first.
+  rpc ListMyFollows(ListMyFollowsRequest) returns (ListMyFollowsResponse) {}
+}
+
 // A one-time paid-episode checkout. Purchases are created only by the Stripe
 // webhook after a successful payment, never by the browser's return URL.
 message StartEpisodeCheckoutRequest {

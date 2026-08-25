@@ -31,6 +31,8 @@ const (
 
 	setTenantSQL   = "SELECT set_config('app.current_tenant_id', $1, false)"
 	clearTenantSQL = "SELECT set_config('app.current_tenant_id', '', false)"
+	setUserSQL     = "SELECT set_config('app.current_user_id', $1, false)"
+	clearUserSQL   = "SELECT set_config('app.current_user_id', '', false)"
 )
 
 // Acquire takes a connection from db, sets app.current_tenant_id, and
@@ -59,6 +61,18 @@ func Acquire(ctx context.Context, db *sql.DB, tenantID uuid.UUID, logger *slog.L
 	}, nil
 }
 
+// SetUser binds a tenant-scoped request connection to an authenticated member.
+// It is only needed for relations whose RLS policy additionally isolates rows
+// by app.current_user_id. Release clears it before the connection returns to
+// the pool.
+func SetUser(ctx context.Context, conn *sql.Conn, userID uuid.UUID) error {
+	if conn == nil {
+		return errors.New("tenant connection is nil")
+	}
+	_, err := conn.ExecContext(ctx, setUserSQL, userID.String())
+	return err
+}
+
 // Release clears app.current_tenant_id with [ClearTimeout] and returns
 // conn to the pool, or discards it when the reset fails. Prefer the
 // cleanup from [Acquire] at call sites that also set the GUC.
@@ -73,6 +87,12 @@ func release(conn *sql.Conn, logger *slog.Logger, timeout time.Duration) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
+	if _, err := conn.ExecContext(ctx, clearUserSQL); err != nil {
+		logger.Error("failed to clear app.current_user_id; discarding connection", "error", err)
+		discard(conn, logger)
+		return
+	}
 
 	if _, err := conn.ExecContext(ctx, clearTenantSQL); err != nil {
 		logger.Error("failed to clear app.current_tenant_id; discarding connection", "error", err)

@@ -7,6 +7,7 @@ import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 import { AuthService } from "../gen/publira/v1/auth_pb.js";
 import {
   CatalogService,
+  FollowService,
   PurchaseService,
 } from "../gen/publira/v1/catalog_pb.js";
 import { DomainService } from "../gen/publira/v1/domain_pb.js";
@@ -27,6 +28,7 @@ export type PublicApiClientOptions = {
 export interface PublicApiClient {
   auth: Client<typeof AuthService>;
   catalog: Client<typeof CatalogService>;
+  follow: Client<typeof FollowService>;
   notification: Client<typeof NotificationService>;
   pages: Client<typeof PublicPagesService>;
   purchase: Client<typeof PurchaseService>;
@@ -69,6 +71,7 @@ export const createPublicApiClient = (
     auth: createClient(AuthService, transportInstance),
     catalog: createClient(CatalogService, transportInstance),
     domain: createClient(DomainService, transportInstance),
+    follow: createClient(FollowService, transportInstance),
     notification: createClient(NotificationService, transportInstance),
     pages: createClient(PublicPagesService, transportInstance),
     purchase: createClient(PurchaseService, transportInstance),
