@@ -1,3 +1,4 @@
+import type { AdminApiClient } from "@publira/api-client/admin/client";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
@@ -58,13 +59,15 @@ const throwIfUnexpected = (unexpected: boolean, message: string): void => {
   }
 };
 
-const mapNotification = (item: {
-  createdAt: string;
-  id: string;
-  isRead: boolean;
-  notificationType: string;
-  payload: string;
-}): NotificationItem => {
+/** The generated `AdminNotification` fields {@link mapNotification} reads (see `series.ts`). */
+type RawNotification = Pick<
+  Awaited<
+    ReturnType<AdminApiClient["notification"]["listNotifications"]>
+  >["notifications"][number],
+  "createdAt" | "id" | "isRead" | "notificationType" | "payload"
+>;
+
+const mapNotification = (item: RawNotification): NotificationItem => {
   const display = notificationDisplay(
     item.notificationType,
     parseNotificationPayload(item.payload)
