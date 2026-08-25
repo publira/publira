@@ -33,10 +33,14 @@ type Querier interface {
 	// お知らせを作成
 	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
 	CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error)
+	CreateCreatorFollow(ctx context.Context, arg CreateCreatorFollowParams) (CreatorFollow, error)
 	CreateCreatorImage(ctx context.Context, arg CreateCreatorImageParams) (CreatorImage, error)
 	CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error)
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
+	// Durable member follows (#1128). Episode and creator follows have distinct
+	// source tables; content_events must not be used to model either relation.
+	CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
 	CreateEpisodeImageVariant(ctx context.Context, arg CreateEpisodeImageVariantParams) (EpisodeImageVariant, error)
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
@@ -75,6 +79,8 @@ type Querier interface {
 	CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error)
 	CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error)
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
+	DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error)
+	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
 	DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
@@ -426,6 +432,9 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
+	// The API can expose one timeline while keeping each relationship's storage
+	// and future aggregates independent. The full sort key is stable for cursors.
+	ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error)
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
 	// calls serialize. The following read of the current order (or
 	// MAX(order_index)) must be a separate statement: READ COMMITTED
@@ -527,6 +536,12 @@ type Querier interface {
 	// ユーザーの通知設定を作成または更新
 	UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error)
 	UpsertUserRecommendFeatures(ctx context.Context, arg UpsertUserRecommendFeaturesParams) (UserRecommendFeature, error)
+	// Creators are public when they have at least one active series, matching
+	// GetPublishedAuthorByPublicID.
+	UserFollowsPublishedCreator(ctx context.Context, arg UserFollowsPublishedCreatorParams) (bool, error)
+	// Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or
+	// otherwise non-public episode is indistinguishable from an unfollowed one.
+	UserFollowsPublishedEpisode(ctx context.Context, arg UserFollowsPublishedEpisodeParams) (bool, error)
 	// True when the user may view paid body content for the episode via purchase or active access ticket.
 	// Free episodes (price = 0) are evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (sql.NullBool, error)

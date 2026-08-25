@@ -112,6 +112,13 @@ type Creator struct {
 	IconImageID uuid.NullUUID  `json:"icon_image_id"`
 }
 
+type CreatorFollow struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type CreatorImage struct {
 	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`
@@ -142,6 +149,13 @@ type Episode struct {
 	OrderIndex int32     `json:"order_index"`
 	CreatedAt  time.Time `json:"created_at"`
 	TenantID   uuid.UUID `json:"tenant_id"`
+}
+
+type EpisodeFollow struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type EpisodeImage struct {

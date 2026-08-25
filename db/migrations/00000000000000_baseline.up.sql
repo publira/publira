@@ -66,6 +66,16 @@ CREATE TABLE creators (
     icon_image_id uuid
 );
 
+-- TABLE: creator_follows
+-- Creator follows are a separate relation from episode follows because their
+-- aggregation and lifecycle requirements differ.
+CREATE TABLE creator_follows (
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    creator_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 -- TABLE: content_daily_stats
 -- L2: daily per-item aggregates consumed by ranking (#39) and later feature builds.
 CREATE TABLE content_daily_stats (
@@ -167,6 +177,15 @@ CREATE TABLE episode_listings (
     published_at timestamp with time zone,
     tenant_id uuid NOT NULL,
     CONSTRAINT episode_listings_status_check CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'scheduled'::character varying, 'published'::character varying])::text[])))
+);
+
+-- TABLE: episode_follows
+-- Episode follows are intentionally independent from creator follows.
+CREATE TABLE episode_follows (
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    episode_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 -- TABLE: episodes
@@ -754,6 +773,15 @@ ALTER TABLE ONLY creators
 ALTER TABLE ONLY creators
     ADD CONSTRAINT creators_public_id_key UNIQUE (public_id);
 
+-- CONSTRAINT: creators creators_tenant_id_id_key
+-- Enables composite FKs that keep child rows on the same tenant as the creator.
+ALTER TABLE ONLY creators
+    ADD CONSTRAINT creators_tenant_id_id_key UNIQUE (tenant_id, id);
+
+-- CONSTRAINT: creator_follows creator_follows_pkey
+ALTER TABLE ONLY creator_follows
+    ADD CONSTRAINT creator_follows_pkey PRIMARY KEY (tenant_id, user_id, creator_id);
+
 -- CONSTRAINT: content_daily_stats content_daily_stats_pkey
 ALTER TABLE ONLY content_daily_stats
     ADD CONSTRAINT content_daily_stats_pkey PRIMARY KEY (id);
@@ -777,6 +805,10 @@ ALTER TABLE ONLY episode_images
 -- CONSTRAINT: episode_listings episode_listings_pkey
 ALTER TABLE ONLY episode_listings
     ADD CONSTRAINT episode_listings_pkey PRIMARY KEY (episode_id);
+
+-- CONSTRAINT: episode_follows episode_follows_pkey
+ALTER TABLE ONLY episode_follows
+    ADD CONSTRAINT episode_follows_pkey PRIMARY KEY (tenant_id, user_id, episode_id);
 
 -- CONSTRAINT: episodes episodes_pkey
 ALTER TABLE ONLY episodes
@@ -1078,6 +1110,9 @@ CREATE INDEX idx_creator_images_tenant_id ON creator_images USING btree (tenant_
 -- INDEX: idx_creators_tenant_created_at
 CREATE INDEX idx_creators_tenant_created_at ON creators USING btree (tenant_id, created_at DESC, id DESC);
 
+-- INDEX: idx_creator_follows_tenant_user_created_at
+CREATE INDEX idx_creator_follows_tenant_user_created_at ON creator_follows USING btree (tenant_id, user_id, created_at DESC, creator_id);
+
 -- INDEX: idx_creators_tenant_name
 -- 公開著者一覧の cursor 用。並び替えキーと同じ (name, id) の組で張る。
 -- btree は逆順にも走査できるので、この 1 本で名前昇順と前ページ用の降順の
@@ -1142,6 +1177,9 @@ CREATE INDEX idx_episode_listings_status_scheduled ON episode_listings USING btr
 
 -- INDEX: idx_episode_listings_tenant_id
 CREATE INDEX idx_episode_listings_tenant_id ON episode_listings USING btree (tenant_id);
+
+-- INDEX: idx_episode_follows_tenant_user_created_at
+CREATE INDEX idx_episode_follows_tenant_user_created_at ON episode_follows USING btree (tenant_id, user_id, created_at DESC, episode_id);
 
 -- INDEX: idx_episodes_series_order_index
 CREATE INDEX idx_episodes_series_order_index ON episodes USING btree (series_id, order_index, id);
@@ -1413,6 +1451,14 @@ ALTER TABLE ONLY creators
 ALTER TABLE ONLY creators
     ADD CONSTRAINT creators_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
+-- FK CONSTRAINT: creator_follows creator_follows_tenant_creator_id_fkey
+ALTER TABLE ONLY creator_follows
+    ADD CONSTRAINT creator_follows_tenant_creator_id_fkey FOREIGN KEY (tenant_id, creator_id) REFERENCES creators(tenant_id, id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: creator_follows creator_follows_tenant_user_id_fkey
+ALTER TABLE ONLY creator_follows
+    ADD CONSTRAINT creator_follows_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
+
 -- FK CONSTRAINT: content_daily_stats content_daily_stats_tenant_id_fkey
 ALTER TABLE ONLY content_daily_stats
     ADD CONSTRAINT content_daily_stats_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
@@ -1455,6 +1501,14 @@ ALTER TABLE ONLY episode_images
 -- FK CONSTRAINT: episode_listings episode_listings_episode_id_fkey
 ALTER TABLE ONLY episode_listings
     ADD CONSTRAINT episode_listings_episode_id_fkey FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: episode_follows episode_follows_tenant_episode_id_fkey
+ALTER TABLE ONLY episode_follows
+    ADD CONSTRAINT episode_follows_tenant_episode_id_fkey FOREIGN KEY (tenant_id, episode_id) REFERENCES episodes(tenant_id, id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: episode_follows episode_follows_tenant_user_id_fkey
+ALTER TABLE ONLY episode_follows
+    ADD CONSTRAINT episode_follows_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
 
 -- FK CONSTRAINT: episodes episodes_series_id_fkey
 ALTER TABLE ONLY episodes
@@ -1750,6 +1804,20 @@ ALTER TABLE creators ENABLE ROW LEVEL SECURITY;
 -- POLICY: creators creators_tenant_isolation
 CREATE POLICY creators_tenant_isolation ON creators USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
+-- ROW SECURITY: creator_follows
+ALTER TABLE creator_follows ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: creator_follows creator_follows_member_isolation
+CREATE POLICY creator_follows_member_isolation ON creator_follows
+    USING (
+        (tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)
+        AND (user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid)
+    )
+    WITH CHECK (
+        (tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)
+        AND (user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid)
+    );
+
 -- ROW SECURITY: content_daily_stats
 ALTER TABLE content_daily_stats ENABLE ROW LEVEL SECURITY;
 
@@ -1779,6 +1847,20 @@ ALTER TABLE episode_listings ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: episode_listings episode_listings_tenant_isolation
 CREATE POLICY episode_listings_tenant_isolation ON episode_listings USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: episode_follows
+ALTER TABLE episode_follows ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: episode_follows episode_follows_member_isolation
+CREATE POLICY episode_follows_member_isolation ON episode_follows
+    USING (
+        (tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)
+        AND (user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid)
+    )
+    WITH CHECK (
+        (tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)
+        AND (user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid)
+    );
 
 -- ROW SECURITY: episodes
 ALTER TABLE episodes ENABLE ROW LEVEL SECURITY;
