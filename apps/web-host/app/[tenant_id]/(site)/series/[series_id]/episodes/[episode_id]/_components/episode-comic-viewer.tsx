@@ -18,7 +18,12 @@ import {
 import type { PageStatusProps, ViewerPage } from "@publira/comic-viewer";
 
 import "@publira/comic-viewer/core.css";
-import { ChevronLeftIcon, ChevronRightIcon } from "@publira/icons";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MaximizeIcon,
+  MinimizeIcon,
+} from "@publira/icons";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 
 import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
@@ -116,12 +121,19 @@ const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
   }
 
   return (
+    /* Placed against the physical right edge rather than laid out in the
+       toolbar's flow, which runs right to left with the reading direction. */
     <button
-      className="shrink-0 rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-neutral-100 transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100"
+      aria-label={isFullscreen ? "全画面表示を終了" : "全画面表示にする"}
+      className="absolute right-3 bottom-3 grid size-9 place-items-center rounded-full bg-black/60 text-neutral-100 transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100"
       onClick={onToggle}
       type="button"
     >
-      {isFullscreen ? "全画面を終了" : "全画面"}
+      {isFullscreen ? (
+        <MinimizeIcon aria-hidden="true" className="size-5" />
+      ) : (
+        <MaximizeIcon aria-hidden="true" className="size-5" />
+      )}
     </button>
   );
 };
