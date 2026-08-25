@@ -32,7 +32,8 @@ export interface MessageProps {
  * the count of them costs a page nothing.
  */
 export const Message = async ({ message, values }: MessageProps) => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
 
   return getMessage(messages, message, values);
 };

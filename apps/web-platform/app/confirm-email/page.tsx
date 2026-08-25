@@ -5,23 +5,44 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import type { PlatformMessageKey } from "#components/message";
 import { confirmPlatformEmailChange } from "#lib/email-change";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
 import { parseConfirmEmailSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
 
   return { title: getMessage(messages, "platform.auth.confirm_email.title") };
 };
 
-const ResultLink = ({ children, href }: { children: string; href: string }) => (
-  <div className="text-center text-sm">
-    <Link className="font-medium text-primary hover:underline" href={href}>
-      {children}
-    </Link>
-  </div>
+const ConfirmationBody = ({
+  href,
+  link,
+  message,
+}: {
+  href: string;
+  link: PlatformMessageKey;
+  message: PlatformMessageKey;
+}) => (
+  <>
+    <section className="space-y-3 text-sm leading-6">
+      <p>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message={message} />
+        </Suspense>
+      </p>
+    </section>
+    <div className="text-center text-sm">
+      <Link className="font-medium text-primary hover:underline" href={href}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+          <Message message={link} />
+        </Suspense>
+      </Link>
+    </div>
+  </>
 );
 
 const ConfirmationSkeleton = () => (
@@ -36,69 +57,50 @@ const ConfirmationSkeleton = () => (
   </>
 );
 
-/**
- * Which sentence this screen shows is the RPC's answer, so nothing here can
- * render before that call returns. Per-string boundaries would only add
- * skeletons inside a section that is already a skeleton, so the copy is
- * resolved as strings.
- */
+/** Which sentence this screen shows is the RPC's answer. */
 const ConfirmationResult = async ({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string | string[] }>;
 }) => {
   const { token } = parseConfirmEmailSearchParams(await searchParams);
-  const messages = await loadPlatformMessages(await getPlatformLocale());
 
   if (!token) {
     return (
-      <>
-        <section className="space-y-3 text-sm leading-6">
-          <p>
-            {getMessage(messages, "platform.auth.confirm_email.invalid_link")}
-          </p>
-        </section>
-        <ResultLink href="/settings/account">
-          {getMessage(messages, "platform.auth.confirm_email.back_to_settings")}
-        </ResultLink>
-      </>
+      <ConfirmationBody
+        href="/settings/account"
+        link="platform.auth.confirm_email.back_to_settings"
+        message="platform.auth.confirm_email.invalid_link"
+      />
     );
   }
 
   const result = await confirmPlatformEmailChange(token);
-  let message = getMessage(messages, "platform.auth.confirm_email.failed");
 
-  if (result) {
-    if (result.changed) {
-      message = getMessage(messages, "platform.auth.confirm_email.changed");
-    } else if (result.confirmed) {
-      message =
-        result.pendingConfirmationFor === "current_email"
-          ? getMessage(
-              messages,
-              "platform.auth.confirm_email.pending_current_email"
-            )
-          : getMessage(
-              messages,
-              "platform.auth.confirm_email.pending_new_email"
-            );
-    }
+  if (result?.changed) {
+    return (
+      <ConfirmationBody
+        href="/"
+        link="platform.auth.confirm_email.to_dashboard"
+        message="platform.auth.confirm_email.changed"
+      />
+    );
+  }
+
+  let message: PlatformMessageKey = "platform.auth.confirm_email.failed";
+  if (result?.confirmed) {
+    message =
+      result.pendingConfirmationFor === "current_email"
+        ? "platform.auth.confirm_email.pending_current_email"
+        : "platform.auth.confirm_email.pending_new_email";
   }
 
   return (
-    <>
-      <section className="space-y-3 text-sm leading-6">
-        <p>{message}</p>
-      </section>
-      <ResultLink href={result?.changed ? "/" : "/settings/account"}>
-        {result?.changed
-          ? getMessage(messages, "platform.auth.confirm_email.to_dashboard")
-          : getMessage(
-              messages,
-              "platform.auth.confirm_email.back_to_settings"
-            )}
-      </ResultLink>
-    </>
+    <ConfirmationBody
+      href="/settings/account"
+      link="platform.auth.confirm_email.back_to_settings"
+      message={message}
+    />
   );
 };
 

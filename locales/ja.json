@@ -111,7 +111,6 @@
         "confirm_password_label": "パスワード（確認）",
         "description": "最初の管理ユーザーアカウントを作成してください。",
         "name_label": "氏名",
-        "name_placeholder": "管理者 太郎",
         "name_required": "すべての項目を入力してください。",
         "password_mismatch": "パスワードと確認用パスワードが一致しません。",
         "pending": "作成中...",

@@ -11,7 +11,8 @@ import { LoginForm } from "./_components/login-form";
 import { parseLoginSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
 
   return { title: getMessage(messages, "platform.auth.login.title") };
 };

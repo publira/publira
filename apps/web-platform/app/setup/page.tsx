@@ -12,17 +12,13 @@ import { isSetupCompleted } from "#lib/setup";
 import { SetupForm } from "./_components/setup-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
 
   return { title: getMessage(messages, "platform.auth.setup.title") };
 };
 
-/**
- * Nothing inside the card can render before the setup-status RPC answers — it
- * decides between the form, the unreachable-API message, and a redirect — so
- * this section resolves its copy as strings instead of giving each string a
- * boundary that would never buy the reader anything.
- */
+/** The setup-status RPC decides between the form, a warning, and a redirect. */
 const SetupContent = async () => {
   const setupStatus = await isSetupCompleted();
 
@@ -30,12 +26,12 @@ const SetupContent = async () => {
     redirect("/login");
   }
 
-  const messages = await loadPlatformMessages(await getPlatformLocale());
-
   if (setupStatus === null) {
     return (
       <FormMessage variant="destructive">
-        {getMessage(messages, "platform.auth.setup.api_unavailable")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="platform.auth.setup.api_unavailable" />
+        </Suspense>
       </FormMessage>
     );
   }
@@ -43,27 +39,43 @@ const SetupContent = async () => {
   return (
     <>
       <p className="text-sm text-muted-foreground">
-        {getMessage(messages, "platform.auth.setup.description")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="platform.auth.setup.description" />
+        </Suspense>
       </p>
 
       <SetupForm
         copy={{
-          confirmPasswordLabel: getMessage(
-            messages,
-            "platform.auth.setup.confirm_password_label"
+          confirmPasswordLabel: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+              <Message message="platform.auth.setup.confirm_password_label" />
+            </Suspense>
           ),
-          emailLabel: getMessage(messages, "platform.auth.fields.email_label"),
-          nameLabel: getMessage(messages, "platform.auth.setup.name_label"),
-          namePlaceholder: getMessage(
-            messages,
-            "platform.auth.setup.name_placeholder"
+          emailLabel: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="platform.auth.fields.email_label" />
+            </Suspense>
           ),
-          passwordLabel: getMessage(
-            messages,
-            "platform.auth.fields.password_label"
+          nameLabel: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="platform.auth.setup.name_label" />
+            </Suspense>
           ),
-          pendingLabel: getMessage(messages, "platform.auth.setup.pending"),
-          submitLabel: getMessage(messages, "platform.auth.setup.submit"),
+          passwordLabel: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="platform.auth.fields.password_label" />
+            </Suspense>
+          ),
+          pendingLabel: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="platform.auth.setup.pending" />
+            </Suspense>
+          ),
+          submitLabel: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.auth.setup.submit" />
+            </Suspense>
+          ),
         }}
       />
     </>

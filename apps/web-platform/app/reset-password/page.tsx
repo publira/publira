@@ -9,7 +9,8 @@ import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { ResetPasswordForm } from "./_components/reset-password-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
 
   return { title: getMessage(messages, "platform.auth.reset_password.title") };
 };

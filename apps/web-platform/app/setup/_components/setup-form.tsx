@@ -3,18 +3,18 @@
 import { ActionForm } from "@publira/ui-components/action-form";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import type { ReactNode } from "react";
 
 import { setupAction } from "../_lib/actions";
 
-/** Resolved on the server; see `LoginFormCopy` for why. */
+/** Nodes rather than strings; see `LoginFormCopy` for why. */
 export interface SetupFormCopy {
-  confirmPasswordLabel: string;
-  emailLabel: string;
-  nameLabel: string;
-  namePlaceholder: string;
-  passwordLabel: string;
-  pendingLabel: string;
-  submitLabel: string;
+  confirmPasswordLabel: ReactNode;
+  emailLabel: ReactNode;
+  nameLabel: ReactNode;
+  passwordLabel: ReactNode;
+  pendingLabel: ReactNode;
+  submitLabel: ReactNode;
 }
 
 export const SetupForm = ({ copy }: { copy: SetupFormCopy }) => (
@@ -30,14 +30,7 @@ export const SetupForm = ({ copy }: { copy: SetupFormCopy }) => (
         {copy.nameLabel}
       </FieldLabel>
       <FieldContent>
-        <Input
-          autoComplete="name"
-          id="name"
-          name="name"
-          placeholder={copy.namePlaceholder}
-          required
-          type="text"
-        />
+        <Input autoComplete="name" id="name" name="name" required type="text" />
       </FieldContent>
     </Field>
 

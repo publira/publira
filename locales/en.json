@@ -111,7 +111,6 @@
         "confirm_password_label": "Password (confirm)",
         "description": "Create the first administrator account.",
         "name_label": "Full name",
-        "name_placeholder": "Jane Doe",
         "name_required": "Fill in every field.",
         "password_mismatch": "The password and its confirmation do not match.",
         "pending": "Creating...",

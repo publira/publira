@@ -12,7 +12,8 @@ import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { parseResetPasswordRequestedSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
 
   return {
     title: getMessage(messages, "platform.auth.reset_password_requested.title"),

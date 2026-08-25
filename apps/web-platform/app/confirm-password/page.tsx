@@ -9,44 +9,47 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import type { PlatformMessageKey } from "#components/message";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
 
 import { confirmPasswordAction } from "./_lib/actions";
 import { parseConfirmPasswordSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
 
   return {
     title: getMessage(messages, "platform.auth.confirm_password.title"),
   };
 };
 
-const FailureState = ({
-  messages,
-  status,
-}: {
-  messages: PlatformMessages;
-  status: "expired" | "invalid";
-}) => (
+const FailureState = ({ reason }: { reason: PlatformMessageKey }) => (
   <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
     <FormMessage variant="destructive">
-      {getMessage(messages, `platform.auth.confirm_password.${status}`)}
+      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+        <Message message={reason} />
+      </Suspense>
     </FormMessage>
     <p className="text-sm text-muted-foreground">
-      {getMessage(messages, "platform.auth.confirm_password.failure_help")}
+      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+        <Message message="platform.auth.confirm_password.failure_help" />
+      </Suspense>
     </p>
     <div className="flex flex-col gap-3 sm:flex-row">
       <LinkButton className="flex-1" render={<Link href="/reset-password" />}>
-        {getMessage(messages, "platform.auth.confirm_password.request_again")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="platform.auth.confirm_password.request_again" />
+        </Suspense>
       </LinkButton>
       <LinkButton
         className="flex-1"
         render={<Link href="/login" />}
         variant="outline"
       >
-        {getMessage(messages, "platform.auth.confirm_password.to_login")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+          <Message message="platform.auth.confirm_password.to_login" />
+        </Suspense>
       </LinkButton>
     </div>
   </div>
@@ -61,12 +64,7 @@ const ConfirmPasswordFallback = () => (
   </div>
 );
 
-/**
- * The query decides between the form and the expired / invalid states, so the
- * whole card waits on it either way. Per-string boundaries inside a section
- * that is already a skeleton would buy the reader nothing, so the copy is
- * resolved as strings.
- */
+/** The query decides between the form and the two failure states. */
 const ConfirmPasswordPageContent = async ({
   searchParams,
 }: {
@@ -79,21 +77,20 @@ const ConfirmPasswordPageContent = async ({
   const { errorMessage, status, token } = parseConfirmPasswordSearchParams(
     await searchParams
   );
-  const messages = await loadPlatformMessages(await getPlatformLocale());
 
-  let failureStatus: "expired" | "invalid" | null = null;
-  if (status === "expired" || status === "invalid") {
-    failureStatus = status;
-  } else if (token === "") {
-    failureStatus = "invalid";
+  if (status === "expired") {
+    return <FailureState reason="platform.auth.confirm_password.expired" />;
+  }
+  if (status === "invalid" || token === "") {
+    return <FailureState reason="platform.auth.confirm_password.invalid" />;
   }
 
-  return failureStatus ? (
-    <FailureState messages={messages} status={failureStatus} />
-  ) : (
+  return (
     <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
       <p className="text-sm text-muted-foreground">
-        {getMessage(messages, "platform.auth.confirm_password.description")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="platform.auth.confirm_password.description" />
+        </Suspense>
       </p>
 
       <form action={confirmPasswordAction} className="space-y-4">
@@ -101,10 +98,9 @@ const ConfirmPasswordPageContent = async ({
 
         <Field>
           <FieldLabel htmlFor="password" required>
-            {getMessage(
-              messages,
-              "platform.auth.confirm_password.password_label"
-            )}
+            <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+              <Message message="platform.auth.confirm_password.password_label" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
@@ -120,10 +116,9 @@ const ConfirmPasswordPageContent = async ({
 
         <Field>
           <FieldLabel htmlFor="confirm_password" required>
-            {getMessage(
-              messages,
-              "platform.auth.confirm_password.confirm_password_label"
-            )}
+            <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+              <Message message="platform.auth.confirm_password.confirm_password_label" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
@@ -142,7 +137,9 @@ const ConfirmPasswordPageContent = async ({
         ) : null}
 
         <Button className="w-full" type="submit">
-          {getMessage(messages, "platform.auth.confirm_password.submit")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="platform.auth.confirm_password.submit" />
+          </Suspense>
         </Button>
       </form>
     </div>
