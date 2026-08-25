@@ -7,6 +7,8 @@ export default defineConfig({
     "src/bell-icon.tsx",
     "src/check-icon.tsx",
     "src/chevron-down-icon.tsx",
+    "src/chevron-left-icon.tsx",
+    "src/chevron-right-icon.tsx",
     "src/close-icon.tsx",
     "src/collection-icon.tsx",
     "src/dashboard-icon.tsx",

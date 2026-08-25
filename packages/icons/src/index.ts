@@ -1,6 +1,8 @@
 export { BellIcon } from "./bell-icon";
 export { CheckIcon } from "./check-icon";
 export { ChevronDownIcon } from "./chevron-down-icon";
+export { ChevronLeftIcon } from "./chevron-left-icon";
+export { ChevronRightIcon } from "./chevron-right-icon";
 export { CloseIcon } from "./close-icon";
 export { CollectionIcon } from "./collection-icon";
 export { DashboardIcon } from "./dashboard-icon";

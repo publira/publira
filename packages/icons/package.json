@@ -23,6 +23,14 @@
       "types": "./dist/chevron-down-icon.d.mts",
       "default": "./dist/chevron-down-icon.mjs"
     },
+    "./chevron-left-icon": {
+      "types": "./dist/chevron-left-icon.d.mts",
+      "default": "./dist/chevron-left-icon.mjs"
+    },
+    "./chevron-right-icon": {
+      "types": "./dist/chevron-right-icon.d.mts",
+      "default": "./dist/chevron-right-icon.mjs"
+    },
     "./close-icon": {
       "types": "./dist/close-icon.d.mts",
       "default": "./dist/close-icon.mjs"
