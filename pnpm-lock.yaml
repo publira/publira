@@ -12,6 +12,9 @@ catalogs:
     '@buf/googleapis_googleapis.bufbuild_es':
       specifier: 2.13.0-20260414192239-c17df5b2beca.1
       version: 2.13.0-20260414192239-c17df5b2beca.1
+    '@publira/comic-viewer':
+      specifier: 0.6.1
+      version: 0.6.1
     '@tailwindcss/postcss':
       specifier: 4.3.3
       version: 4.3.3
@@ -229,6 +232,9 @@ importers:
       '@publira/brand':
         specifier: workspace:*
         version: link:../../packages/brand
+      '@publira/comic-viewer':
+        specifier: 'catalog:'
+        version: 0.6.1(react@19.2.8)
       '@publira/icons':
         specifier: workspace:*
         version: link:../../packages/icons
@@ -1755,6 +1761,11 @@ packages:
     resolution: {integrity: sha512-DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ==}
     engines: {node: '>=20'}
     hasBin: true
+
+  '@publira/comic-viewer@0.6.1':
+    resolution: {integrity: sha512-hAwDl/jD17whXpYCMxauvc5AyUNjWO7Ak3gIihdzQLdeo6XxwBrUVQeUxtib6e8lVtk+rh544/Qgm44Gxu7MNw==}
+    peerDependencies:
+      react: '>=19'
 
   '@quansync/fs@1.0.0':
     resolution: {integrity: sha512-4TJ3DFtlf1L5LDMaM6CanJ/0lckGNtJcMjQ1NAV6zDmA0tEHKZtxNKin8EgPaVX1YzljbxckyT2tJrpQKAtngQ==}
@@ -5540,6 +5551,10 @@ snapshots:
   '@playwright/test@1.62.1':
     dependencies:
       playwright: 1.62.1
+
+  '@publira/comic-viewer@0.6.1(react@19.2.8)':
+    dependencies:
+      react: 19.2.8
 
   '@quansync/fs@1.0.0':
     dependencies:

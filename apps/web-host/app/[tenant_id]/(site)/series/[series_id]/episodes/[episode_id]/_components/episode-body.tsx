@@ -6,6 +6,7 @@ import type { EpisodeAccessState, EpisodeImageItem } from "#lib/catalog";
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
 
 import { EpisodeAccessGate } from "./episode-access-gate";
+import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeViewer } from "./episode-viewer";
 
 export const EpisodeBody = async ({
@@ -34,13 +35,15 @@ export const EpisodeBody = async ({
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return (
-      <EpisodeAccessGate
-        acceptsPayments={acceptsPayments}
-        episodePublicId={episodePublicId}
-        seriesPublicId={seriesPublicId}
-        signedIn={false}
-        tenantId={tenantId}
-      />
+      <EpisodeBodyNotice>
+        <EpisodeAccessGate
+          acceptsPayments={acceptsPayments}
+          episodePublicId={episodePublicId}
+          seriesPublicId={seriesPublicId}
+          signedIn={false}
+          tenantId={tenantId}
+        />
+      </EpisodeBodyNotice>
     );
   }
 
@@ -53,10 +56,12 @@ export const EpisodeBody = async ({
   );
   if (!viewer.ok) {
     return (
-      <SectionError
-        description={viewer.message}
-        title="本文を表示できませんでした"
-      />
+      <EpisodeBodyNotice>
+        <SectionError
+          description={viewer.message}
+          title="本文を表示できませんでした"
+        />
+      </EpisodeBodyNotice>
     );
   }
   if (!viewer.value) {
@@ -69,12 +74,14 @@ export const EpisodeBody = async ({
   }
 
   return (
-    <EpisodeAccessGate
-      acceptsPayments={acceptsPayments}
-      episodePublicId={episodePublicId}
-      seriesPublicId={seriesPublicId}
-      signedIn
-      tenantId={tenantId}
-    />
+    <EpisodeBodyNotice>
+      <EpisodeAccessGate
+        acceptsPayments={acceptsPayments}
+        episodePublicId={episodePublicId}
+        seriesPublicId={seriesPublicId}
+        signedIn
+        tenantId={tenantId}
+      />
+    </EpisodeBodyNotice>
   );
 };

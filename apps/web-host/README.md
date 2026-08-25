@@ -35,6 +35,15 @@ pnpm dev
 
 `next.config.ts` の `images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` で、`next/image` が image-server の Manael 変換を直接使います。`/images/...` を読むときだけ要求幅を `w` として渡し、WebP / AVIF はブラウザの `Accept` で決まります。`blob:` の一時プレビューなど image-server を経由しない `<Image>` は `unoptimized` のままにしてください。ローダーの実装と仕様は [`packages/utils/README.md`](../../packages/utils/README.md) にあります。
 
+### エピソードビューア (Canvas)
+
+エピソード本文は `@publira/comic-viewer` が Canvas に描画します。`<img>` を出さないので、本文画像はドラッグ保存も右クリック保存もできません。ページの取得・デコード・先読みはこのライブラリのパイプラインが持ちます。
+
+- 本文画像は `next/image` を通りません。image-server の配信 URL（メディアトークン付き）をそのままページの `src` に渡し、読み込み中に見せる縮小版だけ `@publira/utils/image-loader` の `imageServerLoader` で Manael の変換幅を付けます
+- 操作はページ送り・綴じ方向（右開き / 左開き）・表示サイズ（高さ / 幅 / 原寸）・全画面。ピンチによる拡大と 1 本指ダブルタップのリセットはライブラリ側のジェスチャです
+- ページ単位の読み込み失敗はビューア内で `再読み込み` を出し、そのページだけ再試行します。エピソード全体は落としません
+- ビューアの高さは `_lib/viewer-layout.ts` の `VIEWER_HEIGHT_CLASS` が持ち、本文のスケルトンが同じ箱を予約します。下に続くエピソード情報が初回描画から動きません
+
 ### サイトアイコン (`rel="icon"` / apple-touch-icon)
 
 `link rel="icon"` と `link rel="apple-touch-icon"` は、テナントアイコンが設定されていればその配信 URL（`/images/tenants/{media_id}/icon`）を指します。画像は image-server が配り、正方形の PNG への整形はアップロード時にサーバー側で済んでいるため、web-host 側での変換はありません。未設定のテナントではアイコンを宣言せず、ブラウザの既定に任せます。
