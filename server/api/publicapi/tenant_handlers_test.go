@@ -16,6 +16,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/paymentsettings"
 )
 
 const (
@@ -118,6 +119,12 @@ func tenantThemeSelectRowWithBrandingImages(
 	}
 }
 
+func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(getEnabledTenantPaymentConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+}
+
 func TestGetTenantIncludesTheme(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
@@ -137,6 +144,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 			now,
 			sql.NullString{String: "Tagline", Valid: true},
 		))
+	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
@@ -189,6 +197,7 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
@@ -263,6 +272,7 @@ func TestGetTenantReturnsConfiguredTimezone(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
@@ -292,6 +302,7 @@ func TestGetTenantFallsBackToDefaultTimezone(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
@@ -321,6 +332,7 @@ func TestGetTenantReturnsConfiguredDefaultLocale(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
@@ -350,6 +362,7 @@ func TestGetTenantFallsBackToPlatformDefaultLocale(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
@@ -380,6 +393,7 @@ func TestGetTenantFallsBackToDefaultLocale(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
@@ -401,4 +415,71 @@ func TestGetTenantFallsBackToDefaultLocale(t *testing.T) {
 		t.Fatalf("default_locale = %q, want ja", resp.Msg.DefaultLocale)
 	}
 	assertPublicExpectations(t, mock)
+}
+
+func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {
+	encryptor := newPublicTestEncryptor(t)
+	env := newPublicPaymentServer(t, encryptor)
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Second)
+	expectTenantLookup(env.mock, tenantID, "TENANT001", now)
+	env.mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	env.mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+
+	client := publirav1connect.NewTenantServiceClient(env.ts.Client(), env.ts.URL)
+	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if !resp.Msg.AcceptsPayments {
+		t.Fatal("accepts_payments = false, want true")
+	}
+	assertPublicExpectations(t, env.mock)
+}
+
+func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
+	env := newPublicPaymentServer(t, nil)
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Second)
+	expectTenantLookup(env.mock, tenantID, "TENANT001", now)
+	env.mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	env.mock.ExpectQuery(regexp.QuoteMeta(getEnabledTenantPaymentConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(publicPaymentColumns()).AddRow(
+			tenantID,
+			paymentsettings.ProviderStripe,
+			true,
+			sql.NullString{String: "enc:invalid", Valid: true},
+			sql.NullString{String: "enc:invalid", Valid: true},
+			sql.NullString{String: "********", Valid: true},
+			sql.NullString{String: "********", Valid: true},
+			now,
+			now,
+		))
+	env.mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+
+	client := publirav1connect.NewTenantServiceClient(env.ts.Client(), env.ts.URL)
+	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if resp.Msg.AcceptsPayments {
+		t.Fatal("accepts_payments = true, want false")
+	}
+	assertPublicExpectations(t, env.mock)
 }

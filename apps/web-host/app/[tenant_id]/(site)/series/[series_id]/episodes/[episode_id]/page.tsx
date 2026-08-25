@@ -1,4 +1,4 @@
-import { formatDateTime } from "@publira/utils";
+import { DEFAULT_TIME_ZONE, formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -12,7 +12,7 @@ import { z } from "zod";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getEpisodeDetail, isPublicEpisodeBody } from "#lib/catalog";
-import { getTenantDisplayTimeZone } from "#lib/tenant";
+import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { EpisodeBody } from "./_components/episode-body";
@@ -64,9 +64,9 @@ const EpisodeContent = async (
   // `null`, and the public site must not tell those apart. A failed read is a
   // value as well: a `"use cache"` fill that throws fails the whole request,
   // so nothing downstream would get to render (#672).
-  const [result, timeZone] = await Promise.all([
+  const [result, tenant] = await Promise.all([
     getEpisodeDetail(tenantId, series_id, episode_id),
-    getTenantDisplayTimeZone(tenantId),
+    getTenantSiteInfo(tenantId),
   ]);
 
   if (!result.ok) {
@@ -78,6 +78,9 @@ const EpisodeContent = async (
   }
 
   const { access, episode, images, series } = result.value;
+  // The site-info read resolves the tenant zone. The fallback only covers an
+  // unavailable tenant read, never the host machine's local zone.
+  const timeZone = tenant?.timeZone ?? DEFAULT_TIME_ZONE;
   const priceLabel =
     episode.price > 0 ? `¥${episode.price.toLocaleString("ja-JP")}` : "無料";
 
@@ -151,6 +154,7 @@ const EpisodeContent = async (
               <Suspense fallback={<EpisodeBodySkeleton />}>
                 <EpisodeBody
                   access={access}
+                  acceptsPayments={tenant?.acceptsPayments ?? false}
                   checkoutSessionId={
                     purchaseSearchParams.checkout === "success"
                       ? purchaseSearchParams.session_id

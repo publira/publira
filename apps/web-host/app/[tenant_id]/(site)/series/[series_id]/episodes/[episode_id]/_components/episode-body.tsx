@@ -9,6 +9,7 @@ import { EpisodeAccessGate } from "./episode-access-gate";
 import { EpisodeViewer } from "./episode-viewer";
 
 export const EpisodeBody = async ({
+  acceptsPayments,
   access,
   checkoutSessionId,
   episodePublicId,
@@ -17,6 +18,7 @@ export const EpisodeBody = async ({
   seriesPublicId,
   tenantId,
 }: {
+  acceptsPayments: boolean;
   access: EpisodeAccessState;
   checkoutSessionId: string;
   episodePublicId: string;
@@ -33,6 +35,7 @@ export const EpisodeBody = async ({
   if (!sessionId) {
     return (
       <EpisodeAccessGate
+        acceptsPayments={acceptsPayments}
         episodePublicId={episodePublicId}
         seriesPublicId={seriesPublicId}
         signedIn={false}
@@ -67,6 +70,7 @@ export const EpisodeBody = async ({
 
   return (
     <EpisodeAccessGate
+      acceptsPayments={acceptsPayments}
       episodePublicId={episodePublicId}
       seriesPublicId={seriesPublicId}
       signedIn

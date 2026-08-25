@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -47,6 +49,7 @@ func (s *apiServer) GetTenant(
 		// Log error but don't fail the request
 		_ = err
 	}
+	acceptsPayments := s.tenantAcceptsPayments(ctx, tenant.ID)
 
 	var theme *publirattypesv1.TenantTheme
 	themeRow, themeErr := queries.GetTenantThemeByTenantID(ctx, tenant.ID)
@@ -68,7 +71,23 @@ func (s *apiServer) GetTenant(
 		Theme:           theme,
 		Timezone:        tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 		DefaultLocale:   locale.Resolve(tenant.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, queries)),
+		AcceptsPayments: acceptsPayments,
 	}), nil
+}
+
+// tenantAcceptsPayments deliberately fails closed. The public response only
+// exposes whether Checkout can be offered; plaintext credentials remain inside
+// paymentsettings while it verifies that the enabled settings can be decrypted.
+func (s *apiServer) tenantAcceptsPayments(ctx context.Context, tenantID uuid.UUID) bool {
+	_, secrets, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID)
+	if err != nil {
+		if paymentsettings.IsUnavailable(err) {
+			return false
+		}
+		s.logger.WarnContext(ctx, "could not determine tenant payment availability", "tenant_id", tenantID, "error", err)
+		return false
+	}
+	return strings.TrimSpace(secrets.SecretKey) != "" && strings.TrimSpace(secrets.WebhookSecret) != ""
 }
 
 // tenantBrandingImageVariants reads the variants of the theme's icon and

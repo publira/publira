@@ -13,6 +13,7 @@ import { apiClient, buildSessionHeaders } from "#lib/api-client";
 import { tenantIdFormSchema } from "#lib/auth-input";
 import { redirectToLogin, requirePublicSession } from "#lib/auth-session";
 import { isUnauthenticatedError } from "#lib/auth-shared";
+import { getTenantSiteInfo } from "#lib/tenant";
 
 const publicIDFormSchema = z.string().trim().min(1).max(64);
 
@@ -49,6 +50,12 @@ export const startEpisodeCheckoutAction = async (
   // helpers would give them a `/login?...` URL, which `sanitizeRedirectPath`
   // rejects — the reader would come back to the tenant home instead.
   const returnTo = episodePath(seriesPublicId, episodePublicId);
+  // Guard crafted form posts as well as the hidden CTA. A failed availability
+  // read is not permission to attempt Checkout.
+  const tenant = await getTenantSiteInfo(tenantId);
+  if (!tenant?.acceptsPayments) {
+    redirect(returnTo);
+  }
   const sessionId = await requirePublicSession(returnTo);
 
   let checkoutURL = "";
