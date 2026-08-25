@@ -1,3 +1,4 @@
+import type { TenantEmailSettings } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
@@ -80,17 +81,28 @@ const parseErrorMessage = (error: unknown): string => {
   });
 };
 
-const toTenantSmtpSettings = (settings?: {
-  smtpOverrideEnabled?: boolean;
-  host?: string;
-  port?: number;
-  username?: string;
-  encryption?: string;
-  fromName?: string;
-  fromAddress?: string;
-  replyTo?: string;
-  hasPassword?: boolean;
-}): TenantSmtpSettings => ({
+/**
+ * The generated `TenantEmailSettings` fields {@link toTenantSmtpSettings}
+ * reads. Naming them against the message type is what makes a proto rename fail
+ * here — a restated structural type keeps compiling, and the mapper silently
+ * substitutes an empty string for the field it can no longer find.
+ */
+type RawTenantEmailSettings = Pick<
+  TenantEmailSettings,
+  | "encryption"
+  | "fromAddress"
+  | "fromName"
+  | "hasPassword"
+  | "host"
+  | "port"
+  | "replyTo"
+  | "smtpOverrideEnabled"
+  | "username"
+>;
+
+const toTenantSmtpSettings = (
+  settings?: RawTenantEmailSettings
+): TenantSmtpSettings => ({
   encryption: settings?.encryption ?? "starttls",
   fromAddress: settings?.fromAddress ?? "",
   fromName: settings?.fromName ?? "",

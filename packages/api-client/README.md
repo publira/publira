@@ -40,7 +40,13 @@ await client.auth.getMe({
 
 型だけ使う場合:
 
+`@publira/api-client/admin/types` は共有の `publira.types.v1` メッセージに加え、web-admin のマッパーが `Pick` する admin.v1 のエンティティも再エクスポートする。リクエスト / レスポンス型はサービスごとのモジュールに残す。
+
 ```ts
+import type {
+  Series,
+  AdminAccessTicket,
+} from "@publira/api-client/admin/types";
 import type { CreateSessionRequest } from "@publira/api-client/public/auth";
 import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/auth";
 ```

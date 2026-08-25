@@ -1,3 +1,7 @@
+import type {
+  AdminAuditLog,
+  AdminTenantUser,
+} from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
@@ -92,18 +96,22 @@ const normalizeDateEnd = (
   timeZone: string
 ): string => endOfDayIsoString(value ?? "", timeZone);
 
-const mapAuditLog = (item: {
-  action: string;
-  actorName: string;
-  actorRole: string;
-  actorUserPublicId: string;
-  clientIp: string;
-  createdAt: string;
-  outcome: string;
-  reason: string;
-  targetId: string;
-  targetType: string;
-}): AuditLogItem => ({
+/** The generated `AdminAuditLog` fields {@link mapAuditLog} reads (see `series.ts`). */
+type RawAuditLog = Pick<
+  AdminAuditLog,
+  | "action"
+  | "actorName"
+  | "actorRole"
+  | "actorUserPublicId"
+  | "clientIp"
+  | "createdAt"
+  | "outcome"
+  | "reason"
+  | "targetId"
+  | "targetType"
+>;
+
+const mapAuditLog = (item: RawAuditLog): AuditLogItem => ({
   action: item.action,
   actorName: item.actorName,
   actorRole: item.actorRole,
@@ -119,11 +127,15 @@ const mapAuditLog = (item: {
   targetType: item.targetType,
 });
 
-const mapAuditActorCandidate = (item: {
-  name: string;
-  publicId: string;
-  role: string;
-}): AuditActorCandidate => ({
+/** The generated `AdminTenantUser` fields {@link mapAuditActorCandidate} reads (see `series.ts`). */
+type RawAuditActorCandidate = Pick<
+  AdminTenantUser,
+  "name" | "publicId" | "role"
+>;
+
+const mapAuditActorCandidate = (
+  item: RawAuditActorCandidate
+): AuditActorCandidate => ({
   name: item.name,
   publicId: item.publicId,
   role: item.role,

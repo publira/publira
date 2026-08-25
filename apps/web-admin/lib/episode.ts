@@ -1,3 +1,4 @@
+import type { Episode, EpisodeImage } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
@@ -138,16 +139,20 @@ const mapReorderErrorToMessage = (error: unknown): string =>
     precondition: episodeOrderConflictMessage,
   });
 
-const mapEpisode = (episode: {
-  publicId: string;
-  title: string;
-  orderIndex: number;
-  price: number;
-  readingPeriodHours?: number;
-  status: string;
-  scheduledAt: string;
-  publishedAt: string;
-}): EpisodeItem => ({
+/** The generated `Episode` fields {@link mapEpisode} reads (see `series.ts`). */
+type RawEpisode = Pick<
+  Episode,
+  | "orderIndex"
+  | "price"
+  | "publicId"
+  | "publishedAt"
+  | "readingPeriodHours"
+  | "scheduledAt"
+  | "status"
+  | "title"
+>;
+
+const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
   orderIndex: episode.orderIndex,
   price: episode.price,
   publicId: episode.publicId,
@@ -158,15 +163,19 @@ const mapEpisode = (episode: {
   title: episode.title,
 });
 
-const mapEpisodeImage = (image: {
-  id: string;
-  imageUrl: string;
-  contentType: string;
-  fileSizeBytes: bigint;
-  displayOrder: number;
-  width: number;
-  height: number;
-}): EpisodeImageItem => ({
+/** The generated `EpisodeImage` fields {@link mapEpisodeImage} reads (see `series.ts`). */
+type RawEpisodeImage = Pick<
+  EpisodeImage,
+  | "contentType"
+  | "displayOrder"
+  | "fileSizeBytes"
+  | "height"
+  | "id"
+  | "imageUrl"
+  | "width"
+>;
+
+const mapEpisodeImage = (image: RawEpisodeImage): EpisodeImageItem => ({
   contentType: image.contentType,
   displayOrder: image.displayOrder,
   fileSizeBytes: image.fileSizeBytes.toString(),

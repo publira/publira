@@ -1,3 +1,4 @@
+import type { Page, PageVersion } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   Code,
@@ -124,15 +125,19 @@ const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
       "対象のページまたはバージョンが見つかりませんでした。ページを再読み込みしてください。",
   });
 
-const mapPage = (page: {
-  id: string;
-  slug: string;
-  title: string;
-  publishedVersionId?: string;
-  displayInFooter?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}): PageItem => ({
+/** The generated `Page` fields {@link mapPage} reads (see `series.ts`). */
+type RawPage = Pick<
+  Page,
+  | "createdAt"
+  | "displayInFooter"
+  | "id"
+  | "publishedVersionId"
+  | "slug"
+  | "title"
+  | "updatedAt"
+>;
+
+const mapPage = (page: RawPage): PageItem => ({
   createdAt: page.createdAt ?? "",
   displayInFooter: page.displayInFooter === true,
   id: page.id,
@@ -142,17 +147,21 @@ const mapPage = (page: {
   updatedAt: page.updatedAt ?? "",
 });
 
-const mapPageVersion = (version: {
-  id: string;
-  pageId: string;
-  versionNumber: number;
-  contentMarkdown: string;
-  authorUserId?: string;
-  status?: string;
-  publishAt?: string;
-  createdAt?: string;
-  publishedAt?: string;
-}): PageVersionItem => ({
+/** The generated `PageVersion` fields {@link mapPageVersion} reads (see `series.ts`). */
+type RawPageVersion = Pick<
+  PageVersion,
+  | "authorUserId"
+  | "contentMarkdown"
+  | "createdAt"
+  | "id"
+  | "pageId"
+  | "publishAt"
+  | "publishedAt"
+  | "status"
+  | "versionNumber"
+>;
+
+const mapPageVersion = (version: RawPageVersion): PageVersionItem => ({
   authorUserId: version.authorUserId ?? "",
   contentMarkdown: version.contentMarkdown,
   createdAt: version.createdAt ?? "",

@@ -1,3 +1,4 @@
+import type { AdminAccessTicket } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
@@ -95,21 +96,25 @@ const mapErrorMessage = (error: unknown, fallback: string): string =>
     precondition: "対象ユーザーが有効ではありません。",
   });
 
-const mapTicket = (item: {
-  createdAt: string;
-  episodePublicId: string;
-  episodeTitle: string;
-  expiresAt: string;
-  note: string;
-  publicId: string;
-  revokedAt: string;
-  seriesPublicId: string;
-  seriesTitle: string;
-  status: string;
-  userEmail: string;
-  userName: string;
-  userPublicId: string;
-}): AccessTicketItem => ({
+/** The generated `AdminAccessTicket` fields {@link mapTicket} reads (see `series.ts`). */
+type RawAccessTicket = Pick<
+  AdminAccessTicket,
+  | "createdAt"
+  | "episodePublicId"
+  | "episodeTitle"
+  | "expiresAt"
+  | "note"
+  | "publicId"
+  | "revokedAt"
+  | "seriesPublicId"
+  | "seriesTitle"
+  | "status"
+  | "userEmail"
+  | "userName"
+  | "userPublicId"
+>;
+
+const mapTicket = (item: RawAccessTicket): AccessTicketItem => ({
   createdAt: item.createdAt,
   episodePublicId: item.episodePublicId,
   episodeTitle: item.episodeTitle,
