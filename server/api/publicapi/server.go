@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
-	"os"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -31,16 +29,19 @@ type Querier interface {
 	dbmodels.Querier
 }
 
+type stripeSessionCreator interface {
+	create(ctx context.Context, input stripeCheckoutInput) (string, error)
+}
+
 type apiServer struct {
-	db         *sql.DB
-	queries    Querier
-	storage    storage.Provider
-	encryptor  emailsettings.SecretManager
-	mailer     internalsmtp.Sender
-	tokens     *auth.TokenManager
-	logger     *slog.Logger
-	stripe     *stripeCheckoutProvider
-	webHostURL *url.URL
+	db                *sql.DB
+	queries           Querier
+	storage           storage.Provider
+	encryptor         emailsettings.SecretManager
+	mailer            internalsmtp.Sender
+	tokens            *auth.TokenManager
+	logger            *slog.Logger
+	newStripeProvider func(secretKey string) stripeSessionCreator
 }
 
 func invalidSessionError() error {
@@ -91,23 +92,38 @@ func (s *apiServer) queriesFor(ctx context.Context) Querier {
 // NewHandler は公開 API 専用の HTTP ハンドラを返します。
 // CatalogService / AuthService / NotificationService / TenantService / DomainService を公開し、管理 API は含みません。
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender, tokens *auth.TokenManager) http.Handler {
-	webHostURL, err := parseWebHostURL(os.Getenv("PUBLIRA_WEB_HOST_URL"))
-	if err != nil {
-		slog.Error("Stripe Checkout is disabled because PUBLIRA_WEB_HOST_URL is invalid", "error", err)
+	return handlerFromServer(newAPIServer(db, queries, storageProvider, encryptor, mailer, tokens, slog.Default()))
+}
+
+func newAPIServer(
+	db *sql.DB,
+	queries Querier,
+	storageProvider storage.Provider,
+	encryptor emailsettings.SecretManager,
+	mailer internalsmtp.Sender,
+	tokens *auth.TokenManager,
+	logger *slog.Logger,
+) *apiServer {
+	if logger == nil {
+		logger = slog.Default()
 	}
-	server := &apiServer{
-		db:         db,
-		queries:    queries,
-		storage:    storageProvider,
-		encryptor:  encryptor,
-		mailer:     mailer,
-		tokens:     tokens,
-		logger:     slog.Default(),
-		stripe:     newStripeCheckoutProvider(os.Getenv("STRIPE_SECRET_KEY")),
-		webHostURL: webHostURL,
+	return &apiServer{
+		db:        db,
+		queries:   queries,
+		storage:   storageProvider,
+		encryptor: encryptor,
+		mailer:    mailer,
+		tokens:    tokens,
+		logger:    logger,
+		newStripeProvider: func(secretKey string) stripeSessionCreator {
+			return newStripeCheckoutProvider(secretKey)
+		},
 	}
+}
+
+func handlerFromServer(server *apiServer) http.Handler {
 	mux := http.NewServeMux()
-	health.Register(mux, health.WithDB(db))
+	health.Register(mux, health.WithDB(server.db))
 	registerPublicRoutes(mux, server)
 	return mux
 }

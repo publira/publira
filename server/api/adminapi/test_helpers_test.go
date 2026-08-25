@@ -30,6 +30,8 @@ const (
 	getPlatformConfigQuery                                   = "-- name: GetPlatformConfig :one\n"
 	getTenantSMTPConfigByTenantIDQuery                       = "-- name: GetTenantSMTPConfigByTenantID :one\n"
 	upsertTenantSMTPConfigQuery                              = "-- name: UpsertTenantSMTPConfig :one\n"
+	getTenantPaymentConfigByTenantIDQuery                    = "-- name: GetTenantPaymentConfigByTenantID :one\n"
+	upsertTenantPaymentConfigQuery                           = "-- name: UpsertTenantPaymentConfig :one\n"
 	getTenantThemeByTenantIDQuery                            = "-- name: GetTenantThemeByTenantID :one\n"
 	upsertTenantThemeQuery                                   = "-- name: UpsertTenantTheme :one\n"
 	updateTenantTimezoneQuery                                = "-- name: UpdateTenantTimezone :one\n"

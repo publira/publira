@@ -191,3 +191,13 @@ func TestApplySecretUpdateModes(t *testing.T) {
 		t.Fatalf("invalid mode error = %v, want ErrInvalidSecretUpdateMode", err)
 	}
 }
+
+func TestIsUnavailable(t *testing.T) {
+	t.Parallel()
+	if !IsUnavailable(ErrNotEnabled) || !IsUnavailable(fmt.Errorf("wrap: %w", ErrDecryptFailed)) {
+		t.Fatal("sentinel payment errors must be unavailable")
+	}
+	if IsUnavailable(errors.New("pq: connection refused")) {
+		t.Fatal("database errors must not be treated as unavailable settings")
+	}
+}

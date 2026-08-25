@@ -45,7 +45,7 @@ pnpm dev
 
 ### エピソード購入
 
-有料エピソードの「購入手続きへ」は Stripe Checkout へ遷移します。Stripe から戻った後、`checkout.session.completed` Webhook の購入反映が本文画像へのアクセスを許可します。web-host 自身に Stripe の秘密鍵は置きません。公開 API の `PUBLIRA_WEB_HOST_URL` にこのアプリの絶対 URL（例: `http://localhost:3000`）を設定し、Stripe / Webhook の設定手順は [server README](../../server/README.md#stripe-checkoutエピソード購入) を参照してください。
+有料エピソードの「購入手続きへ」は Stripe Checkout へ遷移します。Stripe から戻った後、`checkout.session.completed` Webhook の購入反映が本文画像へのアクセスを許可します。web-host 自身に Stripe の秘密鍵は置きません。戻り先と Webhook はテナントの公開ドメインで受け、手順は [server README](../../server/README.md#stripe-checkoutエピソード購入) を参照してください。
 
 ## 含まれる領域
 

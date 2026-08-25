@@ -82,21 +82,19 @@ task server:test
 
 ## Stripe Checkout（エピソード購入）
 
-有料エピソードは Stripe Checkout の一回払いで販売します。ブラウザが戻る URL は購入を確定しません。`web-host` の `POST /[tenant_id]/api/v1/webhook/stripe` は、Stripe の生 body と署名を PurchaseService へ転送するだけです。API サーバーが署名を検証し、`checkout.session.completed`（非同期決済は `checkout.session.async_payment_succeeded`）を受信したときだけ `purchases` を作成します。
+有料エピソードは Stripe Checkout の一回払いで販売します。ブラウザが戻る URL は購入を確定しません。`web-host` の `POST /api/v1/webhook/stripe` はテナントの公開ドメインで受け、Stripe の生 body と署名を PurchaseService へ転送するだけです。API サーバーが対象テナントの有効な決済設定で署名を検証し、`checkout.session.completed`（非同期決済は `checkout.session.async_payment_succeeded`）を受信したときだけ `purchases` を作成します。
 
-- `STRIPE_SECRET_KEY`: Stripe のシークレットキー。未設定時は Checkout 開始 API を無効化します。
-- `STRIPE_WEBHOOK_SECRET`: Stripe Webhook endpoint の signing secret。未設定時は Webhook を処理せず、web-host は 503 を返します。
-- `PUBLIRA_WEB_HOST_URL`: 購入完了・取消後に戻す web-host の絶対 URL。例: `http://localhost:3000`。
+Checkout 開始と Webhook 検証は `tenant_payment_config` の有効設定を使います。設定が無い・無効・復号できないときは決済を開始せず、Webhook も購入を反映しません（web-host は `FailedPrecondition` を 503 にします）。購入完了・取消後の戻り先はテナントの `domain` 上のエピソード URL です。
 
-Stripe Dashboard では `https://<web-host>/<tenant_id>/api/v1/webhook/stripe` を Webhook endpoint として登録し、上記 2 イベントを有効化してください。ローカル開発では次のように Stripe CLI で転送します。
+テナント管理者は `AdminPaymentSettingsService` で Stripe secret key と Webhook signing secret を登録します。公開読み出しは有効状態とマスク済み hint だけを返し、平文は `paymentsettings.Store.LoadEnabledSecrets` 経由のサーバー内部利用に限ります。署名・通貨・金額・購入権限の検証は API サーバーに残します。
+
+Stripe Dashboard ではテナントの公開ドメイン `https://<tenant-domain>/api/v1/webhook/stripe` を Webhook endpoint として登録し、上記 2 イベントを有効化してください。ローカル開発では次のように Stripe CLI で転送します。
 
 ```bash
-stripe listen --forward-to localhost:3000/<tenant_id>/api/v1/webhook/stripe
+stripe listen --forward-to localhost:3000/api/v1/webhook/stripe
 ```
 
-表示された `whsec_...` を `STRIPE_WEBHOOK_SECRET` に設定します。テストカードは Stripe の `4242 4242 4242 4242`、任意の将来日、有効な CVC を使えます。Webhook は再送されても `stripe_checkout_session_id` の一意制約により購入を重複作成しません。すでに有効な購入があるエピソードは Checkout を開始せず、期限切れ後は再購入できます。
-
-テナント単位の Stripe 秘密鍵と Webhook signing secret は `tenant_payment_config` に `secretcrypto` の封筒形式で保存します。公開読み出しは有効状態とマスク済み hint だけを返し、平文は `paymentsettings.Store.LoadEnabledSecrets` 経由のサーバー内部利用に限ります。Checkout と Webhook は当面プロセス環境変数を使い、テナント設定への切り替えは後続作業です。
+表示された `whsec_...` を、そのテナントの Webhook signing secret として `UpdateTenantPaymentSettings` に保存します。テストカードは Stripe の `4242 4242 4242 4242`、任意の将来日、有効な CVC を使えます。Webhook は再送されても `stripe_checkout_session_id` の一意制約により購入を重複作成しません。すでに有効な購入があるエピソードは Checkout を開始せず、期限切れ後は再購入できます。
 
 ## 画像ストレージ設定
 
