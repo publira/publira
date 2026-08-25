@@ -355,6 +355,7 @@ UI の表示ロケールは `ja` / `en` の二択で、既定は `ja`。未知�
 | ロケール判定・カタログ読み込み・`{name}` 補間 | `@publira/utils/i18n`（`parseLocale` / `parseLocaleCookie` / `loadMessages` / `getMessage`） |
 | メッセージ本体 | リポジトリルートの `locales/{locale}.json`（Go / Flutter と共通） |
 | ロケールの解決元 | `web-platform` / `web-admin` は Cookie `publira_locale`、`web-host` は URL の `locale` セグメント |
+| Cookie が無いときの落とし先 | `web-platform` はプラットフォーム既定言語（[#1047](https://github.com/publira/publira/issues/1047)）、`web-admin` はテナント既定言語（[#1046](https://github.com/publira/publira/issues/1046)）。どちらも読み取れないときだけ `ja` |
 
 共有層はリクエスト状態を読まない。`cookies()` と `next/root-params` はアプリ側に残す。
 
@@ -362,6 +363,7 @@ UI の表示ロケールは `ja` / `en` の二択で、既定は `ja`。未知�
 - **`"use cache"` の中でロケールを読まない。** locale は引数で渡し、キャッシュキーの一部にする
 - **メッセージ待ちは `Suspense` + `Skeleton`。** 静的シェルはロケール非依存
 - **`import()` のパスをテンプレート文字列にしない。** ロケールごとに静的なパスを書く（`loadMessages` の importer）
+- **Cookie アプリの解決順は Cookie → 管理画面の既定言語 → `ja`。** 対応する Cookie が入っていれば（`ja` でも）常にそれが勝ち、未設定・未知の値だけが既定言語に落ちる。既定言語は API 越しの設定なので、セッションが無いログイン画面や読み取り失敗時は `ja` のままにする
 
 ### Cookie アプリの `<html lang>`
 

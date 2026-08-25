@@ -3,6 +3,8 @@
 import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { LOCALES } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 
@@ -23,6 +25,7 @@ import {
 import { intFormSchema, optionalTrimmedString } from "#lib/form-schemas";
 import {
   platformSettingsCacheTag,
+  updatePlatformDefaultLocale,
   updatePlatformDefaultTimezone,
 } from "#lib/platform-settings";
 
@@ -46,6 +49,11 @@ export type PlatformDefaultTimezoneActionState =
   | { message: string; ok: false }
   | null;
 
+export type PlatformDefaultLocaleActionState =
+  | { defaultLocale: Locale; message: string; ok: true }
+  | { message: string; ok: false }
+  | null;
+
 /**
  * The Go server validates against the IANA tzdata it embeds
  * (`server/internal/tenanttz`) and stays the authority; this only gives the
@@ -59,6 +67,17 @@ const platformDefaultTimezoneSchema = z.object({
     .refine(isValidTimeZone, {
       error: "有効なタイムゾーンを選択してください。",
     }),
+});
+
+/**
+ * The Go server validates against the supported locale list
+ * (`server/internal/locale`) and stays the authority; this only gives the
+ * operator immediate feedback instead of a round trip.
+ */
+const platformDefaultLocaleSchema = z.object({
+  defaultLocale: z.enum(LOCALES, {
+    error: "言語を選択してください。",
+  }),
 });
 
 const secretUpdateModeFormSchema = z.preprocess((value) => {
@@ -184,6 +203,39 @@ export const updatePlatformDefaultTimezoneAction = async (
   return {
     defaultTimezone: result.defaultTimezone,
     message: "既定タイムゾーンを保存しました。",
+    ok: true,
+  };
+};
+
+export const updatePlatformDefaultLocaleAction = async (
+  _prevState: PlatformDefaultLocaleActionState,
+  formData: FormData
+): Promise<PlatformDefaultLocaleActionState> => {
+  const parsed = platformDefaultLocaleSchema.safeParse(
+    toFormDataInput(formData, {
+      defaultLocale: { kind: "value", name: "default_locale" },
+    })
+  );
+  if (!parsed.success) {
+    // One control, so the field message is the form message.
+    return { message: toFormErrorMessage(parsed.error), ok: false };
+  }
+
+  const result = await withPlatformSessionReauth(() =>
+    updatePlatformDefaultLocale(parsed.data.defaultLocale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  // The settings screen and the cookie-less `getPlatformLocale()` read the
+  // setting through a private cache, so without this the operator would keep
+  // seeing the previous language in the same session.
+  updateTag(platformSettingsCacheTag);
+
+  return {
+    defaultLocale: result.defaultLocale,
+    message: "既定言語を保存しました。",
     ok: true,
   };
 };
