@@ -234,16 +234,15 @@ func decodeFollowCursorKeys(cursor pagination.Cursor) (followCursorKeys, error) 
 }
 
 type followPageRow struct {
-	targetType     string
-	targetID       uuid.UUID
-	targetPublicID string
-	createdAt      time.Time
+	targetType string
+	targetID   uuid.UUID
+	createdAt  time.Time
 }
 
 func mapFollowDescRows(rows []dbmodels.ListUserFollowsByCreatedAtDescRow) []followPageRow {
 	mapped := make([]followPageRow, 0, len(rows))
 	for _, row := range rows {
-		mapped = append(mapped, followPageRow{targetType: row.TargetType, targetID: row.TargetID, targetPublicID: row.TargetPublicID, createdAt: row.CreatedAt})
+		mapped = append(mapped, followPageRow{targetType: row.TargetType, targetID: row.TargetID, createdAt: row.CreatedAt})
 	}
 	return mapped
 }
@@ -251,9 +250,64 @@ func mapFollowDescRows(rows []dbmodels.ListUserFollowsByCreatedAtDescRow) []foll
 func mapFollowAscRows(rows []dbmodels.ListUserFollowsByCreatedAtAscRow) []followPageRow {
 	mapped := make([]followPageRow, 0, len(rows))
 	for _, row := range rows {
-		mapped = append(mapped, followPageRow{targetType: row.TargetType, targetID: row.TargetID, targetPublicID: row.TargetPublicID, createdAt: row.CreatedAt})
+		mapped = append(mapped, followPageRow{targetType: row.TargetType, targetID: row.TargetID, createdAt: row.CreatedAt})
 	}
 	return mapped
+}
+
+type followTargetPublicIDs struct {
+	episodes map[uuid.UUID]string
+	creators map[uuid.UUID]string
+}
+
+// followTargetPublicIDs resolves public identifiers only at the API boundary.
+// Follow rows and cursor keys retain just their internal UUID target IDs.
+func (s *apiServer) followTargetPublicIDs(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	follows []followPageRow,
+) (followTargetPublicIDs, error) {
+	ids := followTargetPublicIDs{
+		episodes: make(map[uuid.UUID]string),
+		creators: make(map[uuid.UUID]string),
+	}
+	episodeIDs := make([]uuid.UUID, 0, len(follows))
+	creatorIDs := make([]uuid.UUID, 0, len(follows))
+	for _, follow := range follows {
+		switch follow.targetType {
+		case followTargetEpisode:
+			episodeIDs = append(episodeIDs, follow.targetID)
+		case followTargetCreator:
+			creatorIDs = append(creatorIDs, follow.targetID)
+		}
+	}
+
+	queries := s.queriesFor(ctx)
+	if len(episodeIDs) > 0 {
+		rows, err := queries.ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx, dbmodels.ListPublishedEpisodeFollowTargetPublicIDsByIDsParams{
+			TenantID: tenantID,
+			Ids:      episodeIDs,
+		})
+		if err != nil {
+			return followTargetPublicIDs{}, err
+		}
+		for _, row := range rows {
+			ids.episodes[row.ID] = row.PublicID
+		}
+	}
+	if len(creatorIDs) > 0 {
+		rows, err := queries.ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx, dbmodels.ListPublishedCreatorFollowTargetPublicIDsByIDsParams{
+			TenantID: tenantID,
+			Ids:      creatorIDs,
+		})
+		if err != nil {
+			return followTargetPublicIDs{}, err
+		}
+		for _, row := range rows {
+			ids.creators[row.ID] = row.PublicID
+		}
+	}
+	return ids, nil
 }
 
 func (s *apiServer) followPage(
@@ -334,15 +388,31 @@ func (s *apiServer) ListMyFollows(
 		return nil, s.internalDBError(ctx, "failed to list follows", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+	publicIDs, err := s.followTargetPublicIDs(ctx, tenant.ID, rows)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to resolve public follow targets", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
 	items := make([]*publirav1.MyFollow, 0, len(rows))
 	for _, row := range rows {
 		targetType, ok := followTargetTypeFromRow(row.targetType)
 		if !ok {
 			return nil, s.internalDBError(ctx, "invalid follow target type from database", errors.New("unknown follow target type"), "tenant_id", tenant.ID.String())
 		}
+		var publicID string
+		switch row.targetType {
+		case followTargetEpisode:
+			publicID = publicIDs.episodes[row.targetID]
+		case followTargetCreator:
+			publicID = publicIDs.creators[row.targetID]
+		}
+		// A target can lose publication between the cursor query and this public
+		// projection. Omit it rather than reveal its identifier.
+		if publicID == "" {
+			continue
+		}
 		items = append(items, &publirav1.MyFollow{
 			TargetType:     targetType,
-			TargetPublicId: row.targetPublicID,
+			TargetPublicId: publicID,
 			FollowedAt:     row.createdAt.UTC().Format(time.RFC3339),
 		})
 	}

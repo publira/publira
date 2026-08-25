@@ -372,6 +372,10 @@ type Querier interface {
 	ListPublishedAuthorIDsByNameDesc(ctx context.Context, arg ListPublishedAuthorIDsByNameDescParams) ([]uuid.UUID, error)
 	// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
 	ListPublishedAuthorsByIDs(ctx context.Context, arg ListPublishedAuthorsByIDsParams) ([]ListPublishedAuthorsByIDsRow, error)
+	ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedCreatorFollowTargetPublicIDsByIDsParams) ([]ListPublishedCreatorFollowTargetPublicIDsByIDsRow, error)
+	// These projections are used only while constructing the public Follow API
+	// response. The follow relations and their cursor queries remain UUID-only.
+	ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedEpisodeFollowTargetPublicIDsByIDsParams) ([]ListPublishedEpisodeFollowTargetPublicIDsByIDsRow, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// テナントの公開中かつフッター表示対象のページ一覧を取得する
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)

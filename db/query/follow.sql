@@ -39,12 +39,10 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 -- longer visible disappear from this member's list without revealing why.
 SELECT target_type,
     target_id,
-    target_public_id,
     created_at
 FROM (
     SELECT 'episode'::text AS target_type,
         ef.episode_id AS target_id,
-        e.public_id AS target_public_id,
         ef.created_at
     FROM episode_follows ef
         JOIN episodes e ON e.tenant_id = ef.tenant_id
@@ -64,7 +62,6 @@ FROM (
     UNION ALL
     SELECT 'creator'::text AS target_type,
         cf.creator_id AS target_id,
-        c.public_id AS target_public_id,
         cf.created_at
     FROM creator_follows cf
         JOIN creators c ON c.tenant_id = cf.tenant_id
@@ -110,12 +107,10 @@ LIMIT sqlc.arg('limit');
 -- the returned rows to preserve the public newest-first display order.
 SELECT target_type,
     target_id,
-    target_public_id,
     created_at
 FROM (
     SELECT 'episode'::text AS target_type,
         ef.episode_id AS target_id,
-        e.public_id AS target_public_id,
         ef.created_at
     FROM episode_follows ef
         JOIN episodes e ON e.tenant_id = ef.tenant_id
@@ -135,7 +130,6 @@ FROM (
     UNION ALL
     SELECT 'creator'::text AS target_type,
         cf.creator_id AS target_id,
-        c.public_id AS target_public_id,
         cf.created_at
     FROM creator_follows cf
         JOIN creators c ON c.tenant_id = cf.tenant_id
@@ -175,6 +169,43 @@ ORDER BY created_at ASC,
     target_type DESC,
     target_id DESC
 LIMIT sqlc.arg('limit');
+
+-- These projections are used only while constructing the public Follow API
+-- response. The follow relations and their cursor queries remain UUID-only.
+-- name: ListPublishedEpisodeFollowTargetPublicIDsByIDs :many
+SELECT e.id,
+    e.public_id
+FROM episodes e
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+    JOIN episode_listings el ON el.tenant_id = e.tenant_id
+        AND el.episode_id = e.id
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND e.id = ANY(sqlc.arg('ids')::uuid [])
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW();
+
+-- name: ListPublishedCreatorFollowTargetPublicIDsByIDs :many
+SELECT c.id,
+    c.public_id
+FROM creators c
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.id = ANY(sqlc.arg('ids')::uuid [])
+    AND EXISTS (
+        SELECT 1
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.tenant_id = c.tenant_id
+            AND sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    );
 
 -- name: UserFollowsPublishedEpisode :one
 -- Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or

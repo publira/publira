@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const createCreatorFollow = `-- name: CreateCreatorFollow :one
@@ -116,15 +117,118 @@ func (q *Queries) DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFoll
 	return result.RowsAffected()
 }
 
+const listPublishedCreatorFollowTargetPublicIDsByIDs = `-- name: ListPublishedCreatorFollowTargetPublicIDsByIDs :many
+SELECT c.id,
+    c.public_id
+FROM creators c
+WHERE c.tenant_id = $1
+    AND c.id = ANY($2::uuid [])
+    AND EXISTS (
+        SELECT 1
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.tenant_id = c.tenant_id
+            AND sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+`
+
+type ListPublishedCreatorFollowTargetPublicIDsByIDsParams struct {
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
+}
+
+type ListPublishedCreatorFollowTargetPublicIDsByIDsRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+}
+
+func (q *Queries) ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedCreatorFollowTargetPublicIDsByIDsParams) ([]ListPublishedCreatorFollowTargetPublicIDsByIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedCreatorFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedCreatorFollowTargetPublicIDsByIDsRow
+	for rows.Next() {
+		var i ListPublishedCreatorFollowTargetPublicIDsByIDsRow
+		if err := rows.Scan(&i.ID, &i.PublicID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedEpisodeFollowTargetPublicIDsByIDs = `-- name: ListPublishedEpisodeFollowTargetPublicIDsByIDs :many
+SELECT e.id,
+    e.public_id
+FROM episodes e
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+    JOIN episode_listings el ON el.tenant_id = e.tenant_id
+        AND el.episode_id = e.id
+WHERE e.tenant_id = $1
+    AND e.id = ANY($2::uuid [])
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+`
+
+type ListPublishedEpisodeFollowTargetPublicIDsByIDsParams struct {
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
+}
+
+type ListPublishedEpisodeFollowTargetPublicIDsByIDsRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+}
+
+// These projections are used only while constructing the public Follow API
+// response. The follow relations and their cursor queries remain UUID-only.
+func (q *Queries) ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedEpisodeFollowTargetPublicIDsByIDsParams) ([]ListPublishedEpisodeFollowTargetPublicIDsByIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedEpisodeFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedEpisodeFollowTargetPublicIDsByIDsRow
+	for rows.Next() {
+		var i ListPublishedEpisodeFollowTargetPublicIDsByIDsRow
+		if err := rows.Scan(&i.ID, &i.PublicID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserFollowsByCreatedAtAsc = `-- name: ListUserFollowsByCreatedAtAsc :many
 SELECT target_type,
     target_id,
-    target_public_id,
     created_at
 FROM (
     SELECT 'episode'::text AS target_type,
         ef.episode_id AS target_id,
-        e.public_id AS target_public_id,
         ef.created_at
     FROM episode_follows ef
         JOIN episodes e ON e.tenant_id = ef.tenant_id
@@ -144,7 +248,6 @@ FROM (
     UNION ALL
     SELECT 'creator'::text AS target_type,
         cf.creator_id AS target_id,
-        c.public_id AS target_public_id,
         cf.created_at
     FROM creator_follows cf
         JOIN creators c ON c.tenant_id = cf.tenant_id
@@ -197,10 +300,9 @@ type ListUserFollowsByCreatedAtAscParams struct {
 }
 
 type ListUserFollowsByCreatedAtAscRow struct {
-	TargetType     string    `json:"target_type"`
-	TargetID       uuid.UUID `json:"target_id"`
-	TargetPublicID string    `json:"target_public_id"`
-	CreatedAt      time.Time `json:"created_at"`
+	TargetType string    `json:"target_type"`
+	TargetID   uuid.UUID `json:"target_id"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
@@ -222,12 +324,7 @@ func (q *Queries) ListUserFollowsByCreatedAtAsc(ctx context.Context, arg ListUse
 	var items []ListUserFollowsByCreatedAtAscRow
 	for rows.Next() {
 		var i ListUserFollowsByCreatedAtAscRow
-		if err := rows.Scan(
-			&i.TargetType,
-			&i.TargetID,
-			&i.TargetPublicID,
-			&i.CreatedAt,
-		); err != nil {
+		if err := rows.Scan(&i.TargetType, &i.TargetID, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -244,12 +341,10 @@ func (q *Queries) ListUserFollowsByCreatedAtAsc(ctx context.Context, arg ListUse
 const listUserFollowsByCreatedAtDesc = `-- name: ListUserFollowsByCreatedAtDesc :many
 SELECT target_type,
     target_id,
-    target_public_id,
     created_at
 FROM (
     SELECT 'episode'::text AS target_type,
         ef.episode_id AS target_id,
-        e.public_id AS target_public_id,
         ef.created_at
     FROM episode_follows ef
         JOIN episodes e ON e.tenant_id = ef.tenant_id
@@ -269,7 +364,6 @@ FROM (
     UNION ALL
     SELECT 'creator'::text AS target_type,
         cf.creator_id AS target_id,
-        c.public_id AS target_public_id,
         cf.created_at
     FROM creator_follows cf
         JOIN creators c ON c.tenant_id = cf.tenant_id
@@ -322,10 +416,9 @@ type ListUserFollowsByCreatedAtDescParams struct {
 }
 
 type ListUserFollowsByCreatedAtDescRow struct {
-	TargetType     string    `json:"target_type"`
-	TargetID       uuid.UUID `json:"target_id"`
-	TargetPublicID string    `json:"target_public_id"`
-	CreatedAt      time.Time `json:"created_at"`
+	TargetType string    `json:"target_type"`
+	TargetID   uuid.UUID `json:"target_id"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // The API can expose one timeline while keeping each relationship's storage
@@ -348,12 +441,7 @@ func (q *Queries) ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUs
 	var items []ListUserFollowsByCreatedAtDescRow
 	for rows.Next() {
 		var i ListUserFollowsByCreatedAtDescRow
-		if err := rows.Scan(
-			&i.TargetType,
-			&i.TargetID,
-			&i.TargetPublicID,
-			&i.CreatedAt,
-		); err != nil {
+		if err := rows.Scan(&i.TargetType, &i.TargetID, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
