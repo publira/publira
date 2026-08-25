@@ -34,10 +34,11 @@
 ### 表示ロケール
 
 - UI ロケールは Cookie `publira_locale`（`Path=/`、`SameSite=Lax`、`Max-Age` 1 年、`httpOnly` なし）に保存する。URL には出さない
-- 未設定・未知の値は `ja` に落ちる（`@publira/utils/i18n` の `parseLocaleCookie`）
+- 解決順は Cookie → プラットフォーム既定言語 → `ja`。対応する Cookie が入っていればそれが常に勝ち、未設定・未知の値だけが既定言語に落ちる。既定言語の読み取り自体が失敗する場合（ログイン画面などセッションがない場合を含む）は `ja`
 - 読み取りは `lib/locale.ts` の `getPlatformLocale()`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す
 - メッセージはリポジトリルートの [`locales/*.json`](../../locales/README.md) を `loadPlatformMessages(locale)` が動的 `import()` する
 - 切替は `/settings/general` の「表示言語」カード。Server Action `setPlatformLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
+- プラットフォーム既定言語は同じ画面の「既定言語」カード（`lib/platform-settings.ts` の `getPlatformSettings` / `updatePlatformDefaultLocale`）。新規テナントの初期言語でもある。保存すると Server Action が `platform:settings` タグを `updateTag` するので、同じセッションの Cookie なし表示にも即反映される
 - `<html lang>` はルート layout の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定
 
 ### web-admin との役割分担

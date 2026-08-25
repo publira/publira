@@ -2,23 +2,26 @@
  * UI locale for web-platform.
  *
  * The console has no dynamic segment, so the locale is not in the URL: it lives
- * in the `publira_locale` cookie. `cookies()` is a request-time read, so every
- * caller of {@link getPlatformLocale} must sit inside a `<Suspense>` boundary —
- * reading it above one would leave the route with no static shell under Cache
+ * in the `publira_locale` cookie. When that cookie is missing, an
+ * authenticated request falls through to the platform default locale set in
+ * `設定 > 一般` (#1047). `cookies()` is a request-time read, so every caller of
+ * {@link getPlatformLocale} must sit inside a `<Suspense>` boundary — reading
+ * it above one would leave the route with no static shell under Cache
  * Components. `<html lang>` is handled separately, by the inline script in
  * `app/layout.tsx` (see `LOCALE_LANG_SCRIPT`).
  */
 
 import {
+  isLocale,
   loadMessages,
   LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
-  parseLocaleCookie,
 } from "@publira/utils/i18n";
 import type { Locale } from "@publira/utils/i18n";
 import { cookies } from "next/headers";
 
 import type ja from "../../../locales/ja.json";
+import { getPlatformDisplayLocale } from "./platform-settings";
 
 /** `ja.json` is the source of truth for the key set (`locales/README.md`). */
 export type PlatformMessages = typeof ja;
@@ -31,8 +34,8 @@ export type PlatformMessages = typeof ja;
  * to set `<html lang>` before the first paint, which it can only do from
  * `document.cookie`. The value is a two-letter UI preference chosen from a
  * fixed list — nothing an attacker gains by reading, and the server re-parses
- * it against {@link parseLocaleCookie} on every request, so a hand-edited value
- * falls back to `ja` rather than reaching application code.
+ * it against {@link isLocale} on every request, so a hand-edited value is not
+ * treated as a choice and the platform default (or `ja`) is used instead.
  */
 export const platformLocaleCookieOptions = {
   httpOnly: false as const,
@@ -43,8 +46,13 @@ export const platformLocaleCookieOptions = {
 };
 
 /**
- * The locale this request should render in. Unset, unknown, and malformed
- * cookie values all resolve to `ja`.
+ * The locale this request should render in.
+ *
+ * Resolution is cookie → platform default locale → `ja`. A set, supported
+ * cookie always wins, including when it is `ja`; unset, unknown, and malformed
+ * values fall through to the platform default, which itself degrades to `ja`
+ * when the settings read is unavailable — on the login screen, for instance,
+ * where there is no session to read it with.
  *
  * **Inside `<Suspense>` only.** Never call this from a `"use cache"` scope
  * either — pass the resolved locale in as an argument instead, so it becomes
@@ -53,7 +61,15 @@ export const platformLocaleCookieOptions = {
 export const getPlatformLocale = async (): Promise<Locale> => {
   const cookieStore = await cookies();
 
-  return parseLocaleCookie(cookieStore.get(LOCALE_COOKIE_NAME)?.value);
+  const raw = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (isLocale(trimmed)) {
+      return trimmed;
+    }
+  }
+
+  return getPlatformDisplayLocale();
 };
 
 /**

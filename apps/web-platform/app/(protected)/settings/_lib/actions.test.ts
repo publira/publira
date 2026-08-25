@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockResolveAccessToken,
+  mockUpdatePlatformDefaultLocale,
   mockUpdatePlatformDefaultTimezone,
   mockUpdateTag,
 } = vi.hoisted(() => ({
   mockResolveAccessToken: vi.fn(),
+  mockUpdatePlatformDefaultLocale: vi.fn(),
   mockUpdatePlatformDefaultTimezone: vi.fn(),
   mockUpdateTag: vi.fn(),
 }));
@@ -30,12 +32,19 @@ vi.mock("#lib/email-settings", () => ({
 
 vi.mock("#lib/platform-settings", () => ({
   platformSettingsCacheTag: "platform:settings",
+  updatePlatformDefaultLocale: mockUpdatePlatformDefaultLocale,
   updatePlatformDefaultTimezone: mockUpdatePlatformDefaultTimezone,
 }));
 
 const timezoneFormData = (defaultTimezone: string): FormData => {
   const formData = new FormData();
   formData.set("default_timezone", defaultTimezone);
+  return formData;
+};
+
+const localeFormData = (defaultLocale: string): FormData => {
+  const formData = new FormData();
+  formData.set("default_locale", defaultLocale);
   return formData;
 };
 
@@ -156,6 +165,75 @@ describe("updatePlatformDefaultTimezoneAction", () => {
 
     expect(result).toEqual({
       message: "default_timezone must be a valid IANA time zone name",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("updatePlatformDefaultLocaleAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockResolveAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("対応するロケールを保存し、キャッシュタグを更新する", async () => {
+    mockUpdatePlatformDefaultLocale.mockResolvedValueOnce({
+      defaultLocale: "en",
+      ok: true,
+    });
+
+    const { updatePlatformDefaultLocaleAction } = await import("./actions");
+
+    const result = await updatePlatformDefaultLocaleAction(
+      null,
+      localeFormData("en")
+    );
+
+    expect(result).toEqual({
+      defaultLocale: "en",
+      message: "既定言語を保存しました。",
+      ok: true,
+    });
+    expect(mockUpdatePlatformDefaultLocale).toHaveBeenCalledWith("en");
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:settings");
+  });
+
+  it.each(["fr", "ja-JP", ""])(
+    "対応していない %s は往復せずに拒否する",
+    async (defaultLocale) => {
+      const { updatePlatformDefaultLocaleAction } = await import("./actions");
+
+      const result = await updatePlatformDefaultLocaleAction(
+        null,
+        localeFormData(defaultLocale)
+      );
+
+      expect(result).toEqual({
+        message: "言語を選択してください。",
+        ok: false,
+      });
+      expect(mockUpdatePlatformDefaultLocale).not.toHaveBeenCalled();
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    }
+  );
+
+  it("保存に失敗した場合はキャッシュタグを更新しない", async () => {
+    mockUpdatePlatformDefaultLocale.mockResolvedValueOnce({
+      message: "既定言語の保存に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    });
+
+    const { updatePlatformDefaultLocaleAction } = await import("./actions");
+
+    const result = await updatePlatformDefaultLocaleAction(
+      null,
+      localeFormData("en")
+    );
+
+    expect(result).toEqual({
+      message: "既定言語の保存に失敗しました。時間をおいて再試行してください。",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

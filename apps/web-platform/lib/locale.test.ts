@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCookies } = vi.hoisted(() => ({
+const { mockCookies, mockGetPlatformDisplayLocale } = vi.hoisted(() => ({
   mockCookies: vi.fn(),
+  mockGetPlatformDisplayLocale: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({
   cookies: mockCookies,
+}));
+
+vi.mock("./platform-settings", () => ({
+  getPlatformDisplayLocale: mockGetPlatformDisplayLocale,
 }));
 
 const setLocaleCookie = (value?: string) => {
@@ -24,34 +29,62 @@ describe("web-platform locale", () => {
     vi.clearAllMocks();
     vi.resetModules();
     setLocaleCookie();
+    mockGetPlatformDisplayLocale.mockResolvedValue("ja");
   });
 
   describe("getPlatformLocale", () => {
-    it("falls back to ja when the cookie is not set", async () => {
-      const { getPlatformLocale } = await importLocale();
-
-      await expect(getPlatformLocale()).resolves.toBe("ja");
-    });
-
-    it("returns the locale stored in the cookie", async () => {
-      setLocaleCookie("en");
+    it("falls back to the platform default locale when the cookie is not set", async () => {
+      mockGetPlatformDisplayLocale.mockResolvedValue("en");
       const { getPlatformLocale } = await importLocale();
 
       await expect(getPlatformLocale()).resolves.toBe("en");
     });
 
-    it("falls back to ja for an unsupported cookie value", async () => {
-      setLocaleCookie("fr");
+    it("falls back to ja when the platform default cannot be read", async () => {
       const { getPlatformLocale } = await importLocale();
 
       await expect(getPlatformLocale()).resolves.toBe("ja");
     });
 
-    it("falls back to ja for a full BCP 47 tag", async () => {
-      setLocaleCookie("ja-JP");
+    it("keeps a cookie of ja instead of falling through to the platform default", async () => {
+      mockGetPlatformDisplayLocale.mockResolvedValue("en");
+      setLocaleCookie("ja");
       const { getPlatformLocale } = await importLocale();
 
       await expect(getPlatformLocale()).resolves.toBe("ja");
+      expect(mockGetPlatformDisplayLocale).not.toHaveBeenCalled();
+    });
+
+    it("returns the locale stored in the cookie", async () => {
+      mockGetPlatformDisplayLocale.mockResolvedValue("ja");
+      setLocaleCookie("en");
+      const { getPlatformLocale } = await importLocale();
+
+      await expect(getPlatformLocale()).resolves.toBe("en");
+      expect(mockGetPlatformDisplayLocale).not.toHaveBeenCalled();
+    });
+
+    it("trims surrounding whitespace in the cookie value", async () => {
+      setLocaleCookie("  en  ");
+      const { getPlatformLocale } = await importLocale();
+
+      await expect(getPlatformLocale()).resolves.toBe("en");
+    });
+
+    it("falls back to the platform default for an unsupported cookie value", async () => {
+      mockGetPlatformDisplayLocale.mockResolvedValue("en");
+      setLocaleCookie("fr");
+      const { getPlatformLocale } = await importLocale();
+
+      await expect(getPlatformLocale()).resolves.toBe("en");
+    });
+
+    it("falls back to the platform default for a full BCP 47 tag", async () => {
+      mockGetPlatformDisplayLocale.mockResolvedValue("en");
+      setLocaleCookie("ja-JP");
+      const { getPlatformLocale } = await importLocale();
+
+      await expect(getPlatformLocale()).resolves.toBe("en");
     });
   });
 

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import { getMessage, LOCALES } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -19,9 +20,14 @@ import { setPlatformLocaleAction } from "#lib/locale-action";
 import { getPlatformSettings } from "#lib/platform-settings";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
-import { updatePlatformDefaultTimezoneAction } from "../_lib/actions";
+import {
+  updatePlatformDefaultLocaleAction,
+  updatePlatformDefaultTimezoneAction,
+} from "../_lib/actions";
 import { LocaleForm } from "./_components/locale-form";
 import type { LocaleFormOption } from "./_components/locale-form";
+import { PlatformDefaultLocaleForm } from "./_components/platform-default-locale-form";
+import type { PlatformDefaultLocaleFormOption } from "./_components/platform-default-locale-form";
 import { PlatformTimezoneForm } from "./_components/platform-timezone-form";
 
 export const metadata: Metadata = {
@@ -66,6 +72,52 @@ const LocaleSection = async () => {
   );
 };
 
+const DefaultLocaleSectionSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <Skeleton className="h-6 w-32" />
+      <Skeleton className="h-4 w-3/4" />
+    </CardHeader>
+    <CardContent className="grid gap-4 sm:max-w-lg">
+      <Skeleton className="h-9 w-full" />
+      <Skeleton className="h-9 w-40 justify-self-end" />
+    </CardContent>
+  </Card>
+);
+
+interface DefaultLocaleSectionProps {
+  initialDefaultLocale: Locale;
+  loadErrorMessage?: string;
+}
+
+/**
+ * The card labels its options from the message catalog, so it needs the
+ * request's locale and stays behind its own `<Suspense>` boundary for the same
+ * reason {@link LocaleSection} does. The stored value comes from the settings
+ * read the screen already does, so the card adds no round trip of its own.
+ */
+const DefaultLocaleSection = async ({
+  initialDefaultLocale,
+  loadErrorMessage,
+}: DefaultLocaleSectionProps) => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const options: PlatformDefaultLocaleFormOption[] = LOCALES.map((value) => ({
+    label: getMessage(messages, `locale.${value}`),
+    locale: value,
+  }));
+
+  return (
+    <PlatformDefaultLocaleForm
+      action={updatePlatformDefaultLocaleAction}
+      initialDefaultLocale={initialDefaultLocale}
+      loadErrorMessage={loadErrorMessage}
+      options={options}
+    />
+  );
+};
+
 const PlatformGeneralSettingsPage = async () => {
   const settingsResult = await getPlatformSettings();
 
@@ -87,6 +139,14 @@ const PlatformGeneralSettingsPage = async () => {
           <SettingsTabNav current="general" />
           <Suspense fallback={<LocaleSectionSkeleton />}>
             <LocaleSection />
+          </Suspense>
+          <Suspense fallback={<DefaultLocaleSectionSkeleton />}>
+            <DefaultLocaleSection
+              initialDefaultLocale={settingsResult.defaultLocale}
+              loadErrorMessage={
+                settingsResult.ok ? undefined : settingsResult.message
+              }
+            />
           </Suspense>
           <PlatformTimezoneForm
             action={updatePlatformDefaultTimezoneAction}
