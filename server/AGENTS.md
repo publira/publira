@@ -6,7 +6,7 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 
 | Path | Role |
 | --- | --- |
-| `cmd/` | Thin entrypoints only (`api-server`, `admin-api-server`, `platform-api-server`, image servers, batches) |
+| `cmd/` | Thin entrypoints only (`api-server`, `admin-api-server`, `platform-api-server`, image servers, `publish-episodes`, `outbox-worker`) |
 | `api/` | ConnectRPC handlers (admin / platform / public) |
 | `internal/` | Shared business logic, middleware, storage, auth |
 | `internal/db/` | **sqlc-generated** — do not hand-edit |
@@ -21,7 +21,7 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
    - DB: edit `db/migrations/` baseline and/or `db/query/`, then `task gen`. Early-stage migration policy is in `db/AGENTS.md` (fold into `00000000000000_baseline`, do not add new migration files).
    - List RPC pagination is cursor-based and shared across RPCs: field names, token format, sort key rules, and the `pagination` helper are in [`proto/README.md`](../proto/README.md).
 2. Keep `cmd/` thin; put real logic in `api/` / `internal/`.
-3. Batches are one-shot processes (run once and exit), not long-lived daemons.
+3. `publish-episodes` is a ticker batch, not a job queue. The Outbox worker (`cmd/outbox-worker`) is a long-lived River process, process-separated from the APIs.
 4. Never commit hand-edits under `gen/` or `internal/db/`. Regenerate instead.
 
 ## Verification after Go changes

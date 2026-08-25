@@ -39,6 +39,7 @@ full_web_platform='{"role":"web","target":"web-platform","port":"4100","task":"d
 full_api='{"role":"api","target":"api-server","port":"8000","task":"docker:build:api","arg":"CMD_NAME=api-server","extra":"PORT=8000"}'
 full_admin_api='{"role":"api","target":"admin-api-server","port":"8001","task":"docker:build:api","arg":"CMD_NAME=admin-api-server","extra":"PORT=8001"}'
 full_platform_api='{"role":"api","target":"platform-api-server","port":"8002","task":"docker:build:api","arg":"CMD_NAME=platform-api-server","extra":"PORT=8002"}'
+full_outbox_worker='{"role":"api","target":"outbox-worker","port":"8003","task":"docker:build:api","arg":"CMD_NAME=outbox-worker","extra":"PORT=8003"}'
 full_batch='{"role":"batch","target":"publish-episodes","port":"","task":"docker:build:batch","arg":"CMD_NAME=publish-episodes","extra":""}'
 full_image='{"role":"image","target":"image-server","port":"8200","task":"docker:build:image","arg":"CMD_NAME=image-server","extra":"PORT=8200"}'
 full_admin_image='{"role":"image","target":"admin-image-server","port":"8201","task":"docker:build:image","arg":"CMD_NAME=admin-image-server","extra":"PORT=8201"}'
@@ -86,6 +87,7 @@ case "${event}" in
       "${full_api}"
       "${full_admin_api}"
       "${full_platform_api}"
+      "${full_outbox_worker}"
       "${full_batch}"
       "${full_image}"
       "${full_admin_image}"
@@ -113,6 +115,7 @@ case "${event}" in
         "${full_api}"
         "${full_admin_api}"
         "${full_platform_api}"
+        "${full_outbox_worker}"
         "${full_batch}"
         "${full_image}"
         "${full_admin_image}"
@@ -143,6 +146,7 @@ case "${event}" in
         "${full_api}"
         "${full_admin_api}"
         "${full_platform_api}"
+        "${full_outbox_worker}"
         "${full_batch}"
         "${full_image}"
         "${full_admin_image}"

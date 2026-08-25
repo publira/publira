@@ -12,7 +12,8 @@ server/
 │   ├── platform-api-server/ # プラットフォーム管理向け ConnectRPC API サーバー
 │   ├── image-server/      # 公開向け画像配送（Manael 変換）
 │   ├── admin-image-server/ # 管理向け画像配送
-│   └── publish-episodes/  # 単発バッチ処理
+│   ├── publish-episodes/  # 予約公開バッチ
+│   └── outbox-worker/     # Outbox + River 常駐ワーカー
 ├── bin/                   # task build で生成されるバイナリ
 ├── gen/                   # buf 自動生成コード (編集禁止)
 └── internal/
@@ -31,7 +32,7 @@ server/
 
 1. スキーマ駆動開発: API/DB の変更は `proto/` または `db/migrations/` の golang-migrate 形式 (`.up.sql` / `.down.sql`) を先に変更し、`task gen` を実行する
 2. `cmd/` は薄く保ち、実装は `internal/` に寄せる
-3. バッチは常駐型にせず、1 回の処理で終了する
+3. `publish-episodes` は予約公開のティック処理。Outbox ワーカー (`cmd/outbox-worker`) は API から分離した常駐プロセスで、River がジョブを実行する
 
 ## 開発コマンド
 
@@ -42,6 +43,7 @@ task db:create NAME=add_example_column
 task server:dev-api
 task server:dev-admin-api
 task server:dev-platform-api
+task server:dev-outbox-worker
 task server:tidy
 task server:build
 task server:lint
@@ -73,10 +75,11 @@ task server:test
 - 公開画像サーバー: [cmd/image-server/README.md](cmd/image-server/README.md)
 - 管理画像サーバー: [cmd/admin-image-server/README.md](cmd/admin-image-server/README.md)
 - 予約公開バッチ: [cmd/publish-episodes/README.md](cmd/publish-episodes/README.md)
+- Outbox ワーカー: [cmd/outbox-worker/README.md](cmd/outbox-worker/README.md)
 
 ## Graceful shutdown
 
-常駐プロセス（`api-server` / `admin-api-server` / `platform-api-server` / `image-server` / `admin-image-server`）は SIGINT / SIGTERM で `http.Server.Shutdown` を呼びます。処理中リクエストの排出と、登録済みのシャットダウンフックは同じ 30 秒の期限を共有します。猶予を超えた接続は `Close` で切断します。各 `main` は DB プールのクローズをフックとして渡し、起動失敗経路の安全網として `defer db.Close()` も残しています。OpenTelemetry の span flush は [#196](https://github.com/publira/publira/issues/196) がフックを追加したあとにこの経路へ乗ります。
+常駐プロセス（`api-server` / `admin-api-server` / `platform-api-server` / `image-server` / `admin-image-server` / `outbox-worker`）は SIGINT / SIGTERM で `http.Server.Shutdown` を呼びます。`outbox-worker` は同じ期限で River クライアントも停止します。処理中リクエストの排出と、登録済みのシャットダウンフックは同じ 30 秒の期限を共有します。猶予を超えた接続は `Close` で切断します。各 `main` は DB プールのクローズをフックとして渡し、起動失敗経路の安全網として `defer db.Close()` も残しています。OpenTelemetry の span flush は [#196](https://github.com/publira/publira/issues/196) がフックを追加したあとにこの経路へ乗ります。
 
 オーケストレータの SIGKILL 猶予は 30 秒より長くしてください（Kubernetes なら `terminationGracePeriodSeconds` を 45 以上）。ロードバランサの readiness 排出は別途の設定です。
 
@@ -160,6 +163,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 | 素の HTTP の inbound（image-server / admin-image-server） | `otelhttp` | ルートパターンごとに 1 本（`GET /images/creators/{media_id}`）。`/livez` `/readyz` は除外 |
 | DB クエリ | `XSAM/otelsql`（`internal/sqldb` で pgx ドライバをラップ） | 文ごとに `db.query` 1 本 |
 | 予約公開バッチ | `internal/publishepisodes` | `RunOnce` 1 サイクルにつき 1 本の親 span |
+| Outbox ワーカー | `internal/outbox` | drain 1 回とイベント処理 1 件につき各 1 本（`outbox.drain` / `outbox.process`） |
 | outbound HTTP（Next.js 再検証 / email-renderer） | `otelhttp` の Transport | client span と `traceparent` の伝播 |
 
 伝播は W3C Trace Context（`traceparent`）と Baggage です。inbound の `traceparent` は**親として信頼**するため、web アプリから API、その先の DB クエリまでが 1 トレースに繋がります。
@@ -168,7 +172,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 | キー | 値 |
 | --- | --- |
-| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-publish-episodes`）。`OTEL_SERVICE_NAME` で上書き可能 |
+| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-publish-episodes` / `publira-outbox-worker`）。`OTEL_SERVICE_NAME` で上書き可能 |
 | `service.version` | ビルド時に埋め込んだ version。無ければチェックアウトの VCS リビジョン、それも無ければ `dev`（`internal/buildinfo`） |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`。未設定なら `development` |
 
@@ -310,6 +314,7 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 | platform-api | `publira_platform` | `PUBLIRA_PLATFORM_DB_URL` | `postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable` |
 | admin-api | `publira_admin` | `PUBLIRA_ADMIN_DB_URL` | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable` |
 | api (public) | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
+| outbox-worker | BYPASSRLS 相当（ローカルは superuser） | `PUBLIRA_WORKER_DB_URL`（未設定時 `PUBLIRA_DB_URL`） | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
 
 `publira_platform` は BYPASSRLS 属性を持ち、全テナントのデータに横断アクセスします。  
 `publira_admin` / `publira_public` は RLS が有効で、テナント ID でスコープされます。

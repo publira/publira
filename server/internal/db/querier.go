@@ -7,6 +7,7 @@ package dbmodels
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -206,8 +207,9 @@ type Querier interface {
 	// :one returns no rows on conflict (same as CreateNotification).
 	InsertDebouncedEpisodeViewEvent(ctx context.Context, arg InsertDebouncedEpisodeViewEventParams) (ContentEvent, error)
 	InsertDebouncedSeriesViewEvent(ctx context.Context, arg InsertDebouncedSeriesViewEventParams) (ContentEvent, error)
-	// Outbox query skeleton (#610). Worker and business-event emitters land in
-	// later issues; these queries pin insert, claim, and status transitions.
+	// Outbox queries (#610 / #611). Producers insert a pending row in the
+	// same transaction as the domain write. The worker claims due rows,
+	// runs the handler, and records done / retry / dead.
 	//
 	// Expected plans (empty table may still seq-scan; SET enable_seqscan = off
 	// in the integration test to confirm the index is eligible):
@@ -498,6 +500,9 @@ type Querier interface {
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
 	// ページバージョンを公開状態にする
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
+	// Re-queue rows left in processing after a worker crash. updated_at is the
+	// claim time; callers pass now minus the stale-processing grace period.
+	RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error)
 	RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error)
 	// ページの公開バージョンIDを更新する
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)

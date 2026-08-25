@@ -126,6 +126,10 @@ docker build -f infra/docker/api/Dockerfile \
   --build-arg CMD_NAME=platform-api-server --build-arg PORT=8002 \
   -t publira/platform-api-server:local .
 
+docker build -f infra/docker/api/Dockerfile \
+  --build-arg CMD_NAME=outbox-worker --build-arg PORT=8003 \
+  -t publira/outbox-worker:local .
+
 # Image (Manael / libvips)
 docker build -f infra/docker/image/Dockerfile \
   --build-arg CMD_NAME=image-server --build-arg PORT=8200 \
