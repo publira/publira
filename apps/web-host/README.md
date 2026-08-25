@@ -39,6 +39,10 @@ pnpm dev
 
 `link rel="icon"` と `link rel="apple-touch-icon"` は、テナントアイコンが設定されていればその配信 URL（`/images/tenants/{media_id}/icon`）を指します。画像は image-server が配り、正方形の PNG への整形はアップロード時にサーバー側で済んでいるため、web-host 側での変換はありません。未設定のテナントではアイコンを宣言せず、ブラウザの既定に任せます。
 
+### サイトロゴ（ヘッダ）
+
+テナントロゴが設定されていれば、公開サイトヘッダのブランド領域にその配信 URL（`/images/tenants/{media_id}/logo`）を表示します。未設定・空 URL・読み込み失敗はいずれも既存のサイト名テキストにフォールバックします。
+
 ### エピソード購入
 
 有料エピソードの「購入手続きへ」は Stripe Checkout へ遷移します。Stripe から戻った後、`checkout.session.completed` Webhook の購入反映が本文画像へのアクセスを許可します。web-host 自身に Stripe の秘密鍵は置きません。公開 API の `PUBLIRA_WEB_HOST_URL` にこのアプリの絶対 URL（例: `http://localhost:3000`）を設定し、Stripe / Webhook の設定手順は [server README](../../server/README.md#stripe-checkoutエピソード購入) を参照してください。

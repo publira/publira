@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getAuthActions } from "./auth-actions";
 import {
   SiteLayout,
+  SiteLayoutBrandLink,
   SiteLayoutBrandSkeleton,
   SiteLayoutFooterSkeleton,
   SiteLayoutHeader,
@@ -77,6 +78,44 @@ describe("SiteLayout components", () => {
     );
 
     expect(screen.getAllByTestId("skeleton").length).toBeGreaterThan(0);
+  });
+});
+
+describe("SiteLayoutBrandLink", () => {
+  it("brandMark がなければテキストブランドを next/link で出す", () => {
+    render(<SiteLayoutBrandLink href="/" label="青枝出版" />);
+
+    const brand = screen.getByRole("link", { name: "青枝出版" });
+    expect(brand.getAttribute("href")).toBe("/");
+    expect(brand.dataset.nextLink).toBe("true");
+  });
+
+  it("brandMark があればテキストブランドの代わりに載せる", () => {
+    render(
+      <SiteLayoutBrandLink
+        brandMark={<span>テナントロゴ</span>}
+        href="/"
+        label="青枝出版"
+      />
+    );
+
+    expect(screen.getByText("テナントロゴ")).toBeDefined();
+    expect(screen.queryByText("青枝出版")).toBeNull();
+    expect(screen.getByRole("link").getAttribute("href")).toBe("/");
+  });
+
+  it("brandMark が undefined ならテキストブランドにフォールバックする", () => {
+    render(
+      <SiteLayoutBrandLink brandMark={undefined} href="/" label="青枝出版" />
+    );
+
+    expect(screen.getByRole("link", { name: "青枝出版" })).toBeDefined();
+  });
+
+  it("label も brandMark もなければ何も出さない", () => {
+    const { container } = render(<SiteLayoutBrandLink href="/" />);
+
+    expect(container.querySelector("a")).toBeNull();
   });
 });
 
