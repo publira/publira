@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
+import { DashboardIcon } from "@publira/icons";
 import { cleanup, render, screen } from "@testing-library/react";
-import type { AnchorHTMLAttributes, SVGProps } from "react";
+import type { AnchorHTMLAttributes } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ConsoleHeader, ConsoleSidebar } from "./console-layout";
@@ -17,15 +18,13 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-const DummyIcon = (props: SVGProps<SVGSVGElement>) => <svg {...props} />;
-
 const navigation = [
   {
     items: [
       {
         description: "公開準備と編集状況の概況",
         href: "/",
-        icon: DummyIcon,
+        icon: DashboardIcon,
         label: "ダッシュボード",
       },
     ],
