@@ -9,22 +9,28 @@ import { z } from "zod";
 import { emailFormSchema } from "#lib/auth-input";
 import { withPlatformSessionReauth } from "#lib/auth-session";
 import { requiredTrimmedString } from "#lib/form-schemas";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 import { createPlatformOperator } from "#lib/operators";
 
-const createOperatorFormSchema = z.object({
-  email: emailFormSchema,
-  name: requiredTrimmedString("名前・メール・ロールはすべて必須です。"),
-  role: z.enum(
-    ["platform_auditor", "platform_operator", "platform_super_admin"],
-    { error: "名前・メール・ロールはすべて必須です。" }
-  ),
-});
+const createOperatorFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    email: emailFormSchema(messages),
+    name: requiredTrimmedString("名前・メール・ロールはすべて必須です。"),
+    role: z.enum(
+      ["platform_auditor", "platform_operator", "platform_super_admin"],
+      { error: "名前・メール・ロールはすべて必須です。" }
+    ),
+  });
 
 export const createOperatorAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = createOperatorFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = createOperatorFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       email: { kind: "value", name: "operator_email" },
       name: { kind: "value", name: "operator_name" },
@@ -33,7 +39,7 @@ export const createOperatorAction = async (
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }

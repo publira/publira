@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import en from "../../../locales/en.json" with { type: "json" };
+import ja from "../../../locales/ja.json" with { type: "json" };
 import {
   authTokenFormSchema,
   authTokenSearchParamSchema,
@@ -10,8 +12,15 @@ import {
   nextPathSearchParamSchema,
   passwordFormSchema,
 } from "./auth-input";
+import type { PlatformMessages } from "./locale";
 
 const VALID_TOKEN = "a".repeat(64);
+
+const JA: PlatformMessages = ja;
+const EN: PlatformMessages = en;
+
+const firstIssue = (result: { error?: { issues: { message: string }[] } }) =>
+  result.error?.issues[0]?.message;
 
 describe("nextPathSearchParamSchema", () => {
   it("keeps a same-origin path", () => {
@@ -60,9 +69,18 @@ describe("authTokenSearchParamSchema", () => {
 
 describe("authTokenFormSchema", () => {
   it("rejects a missing or malformed token", () => {
-    expect(authTokenFormSchema.safeParse(null).success).toBe(false);
-    expect(authTokenFormSchema.safeParse("short").success).toBe(false);
-    expect(authTokenFormSchema.parse(VALID_TOKEN)).toBe(VALID_TOKEN);
+    expect(authTokenFormSchema(JA).safeParse(null).success).toBe(false);
+    expect(authTokenFormSchema(JA).safeParse("short").success).toBe(false);
+    expect(authTokenFormSchema(JA).parse(VALID_TOKEN)).toBe(VALID_TOKEN);
+  });
+
+  it("reports the rejection in the catalog's locale", () => {
+    expect(firstIssue(authTokenFormSchema(JA).safeParse("short"))).toBe(
+      "確認リンクが無効です。"
+    );
+    expect(firstIssue(authTokenFormSchema(EN).safeParse("short"))).toBe(
+      "This confirmation link is invalid."
+    );
   });
 });
 
@@ -87,17 +105,38 @@ describe("errorSearchParamSchema", () => {
 
 describe("emailFormSchema", () => {
   it("trims and requires an email", () => {
-    expect(emailFormSchema.parse("  operator@example.com  ")).toBe(
+    expect(emailFormSchema(JA).parse("  operator@example.com  ")).toBe(
       "operator@example.com"
     );
-    expect(emailFormSchema.safeParse("").success).toBe(false);
-    expect(emailFormSchema.safeParse("not-an-email").success).toBe(false);
+    expect(emailFormSchema(JA).safeParse("").success).toBe(false);
+    expect(emailFormSchema(JA).safeParse("not-an-email").success).toBe(false);
+  });
+
+  it("reports the rejection in the catalog's locale", () => {
+    expect(firstIssue(emailFormSchema(JA).safeParse(""))).toBe(
+      "メールアドレスを入力してください。"
+    );
+    expect(firstIssue(emailFormSchema(EN).safeParse(""))).toBe(
+      "Enter your email address."
+    );
+    expect(firstIssue(emailFormSchema(EN).safeParse("not-an-email"))).toBe(
+      "Enter a valid email address."
+    );
   });
 });
 
 describe("passwordFormSchema", () => {
   it("does not trim, and rejects an empty value", () => {
-    expect(passwordFormSchema.parse(" secret ")).toBe(" secret ");
-    expect(passwordFormSchema.safeParse("").success).toBe(false);
+    expect(passwordFormSchema(JA).parse(" secret ")).toBe(" secret ");
+    expect(passwordFormSchema(JA).safeParse("").success).toBe(false);
+  });
+
+  it("reports the rejection in the catalog's locale", () => {
+    expect(firstIssue(passwordFormSchema(JA).safeParse(""))).toBe(
+      "パスワードを入力してください。"
+    );
+    expect(firstIssue(passwordFormSchema(EN).safeParse(""))).toBe(
+      "Enter your password."
+    );
   });
 });

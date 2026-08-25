@@ -3,13 +3,11 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 
 import { apiClient } from "./api-client";
-
-const genericPasswordResetRequestErrorMessage =
-  "再設定メールの送信に失敗しました。時間をおいて再試行してください。";
-const genericPasswordResetConfirmErrorMessage =
-  "パスワード再設定に失敗しました。時間をおいて再試行してください。";
+import { loadPlatformMessages } from "./locale";
 
 export type PlatformPasswordResetRequestResult =
   | {
@@ -33,12 +31,14 @@ export type PlatformPasswordResetConfirmResult =
     };
 
 export const requestPlatformPasswordReset = async (
-  email: string
+  email: string,
+  locale: Locale
 ): Promise<PlatformPasswordResetRequestResult> => {
   const normalizedEmail = email.trim();
   if (!normalizedEmail) {
+    const messages = await loadPlatformMessages(locale);
     return {
-      message: "メールアドレスを入力してください。",
+      message: getMessage(messages, "platform.auth.fields.email_required"),
       ok: false,
     };
   }
@@ -54,11 +54,23 @@ export const requestPlatformPasswordReset = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    const messages = await loadPlatformMessages(locale);
+
     return {
-      message: rpcErrorMessage(error, genericPasswordResetRequestErrorMessage, {
-        // Email is the only field this call takes.
-        "invalid-argument": "メールアドレスを確認してください。",
-      }),
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "platform.auth.errors.reset_request_failed"),
+        {
+          locale,
+          overrides: {
+            // Email is the only field this call takes.
+            "invalid-argument": getMessage(
+              messages,
+              "platform.auth.errors.reset_request_invalid_email"
+            ),
+          },
+        }
+      ),
       ok: false,
     };
   }
@@ -85,15 +97,16 @@ export const verifyPlatformPasswordResetToken = async (
 
 export const confirmPlatformPasswordReset = async (
   token: string,
-  newPassword: string
+  newPassword: string,
+  locale: Locale
 ): Promise<PlatformPasswordResetConfirmResult> => {
   const normalizedToken = token.trim();
   const normalizedPassword = newPassword.trim();
+  const messages = await loadPlatformMessages(locale);
 
   if (!normalizedToken) {
     return {
-      message:
-        "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+      message: getMessage(messages, "platform.auth.errors.reset_link_invalid"),
       ok: false,
       reason: "invalid",
     };
@@ -101,7 +114,10 @@ export const confirmPlatformPasswordReset = async (
 
   if (!normalizedPassword) {
     return {
-      message: "新しいパスワードを入力してください。",
+      message: getMessage(
+        messages,
+        "platform.auth.errors.new_password_required"
+      ),
       ok: false,
       reason: "system",
     };
@@ -122,8 +138,10 @@ export const confirmPlatformPasswordReset = async (
     const disposition = rpcErrorDisposition(error);
     if (disposition === "precondition") {
       return {
-        message:
-          "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
+        message: getMessage(
+          messages,
+          "platform.auth.errors.reset_link_expired"
+        ),
         ok: false,
         reason: "expired",
       };
@@ -131,15 +149,20 @@ export const confirmPlatformPasswordReset = async (
     // An unknown token and a malformed one both mean "start over".
     if (disposition === "not-found" || disposition === "invalid-argument") {
       return {
-        message:
-          "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+        message: getMessage(
+          messages,
+          "platform.auth.errors.reset_link_invalid"
+        ),
         ok: false,
         reason: "invalid",
       };
     }
 
     return {
-      message: genericPasswordResetConfirmErrorMessage,
+      message: getMessage(
+        messages,
+        "platform.auth.errors.reset_confirm_failed"
+      ),
       ok: false,
       reason: "system",
     };

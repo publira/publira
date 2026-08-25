@@ -6,24 +6,35 @@ import { Input } from "@publira/ui-components/input";
 
 import { setupAction } from "../_lib/actions";
 
-export const SetupForm = () => (
+/** Resolved on the server; see `LoginFormCopy` for why. */
+export interface SetupFormCopy {
+  confirmPasswordLabel: string;
+  emailLabel: string;
+  nameLabel: string;
+  namePlaceholder: string;
+  passwordLabel: string;
+  pendingLabel: string;
+  submitLabel: string;
+}
+
+export const SetupForm = ({ copy }: { copy: SetupFormCopy }) => (
   <ActionForm
     action={setupAction}
     className="space-y-4"
-    pendingLabel="作成中..."
+    pendingLabel={copy.pendingLabel}
     submitClassName="mt-2 w-full"
-    submitLabel="管理ユーザーを作成する"
+    submitLabel={copy.submitLabel}
   >
     <Field>
       <FieldLabel htmlFor="name" required>
-        氏名
+        {copy.nameLabel}
       </FieldLabel>
       <FieldContent>
         <Input
           autoComplete="name"
           id="name"
           name="name"
-          placeholder="管理者 太郎"
+          placeholder={copy.namePlaceholder}
           required
           type="text"
         />
@@ -32,7 +43,7 @@ export const SetupForm = () => (
 
     <Field>
       <FieldLabel htmlFor="email" required>
-        メールアドレス
+        {copy.emailLabel}
       </FieldLabel>
       <FieldContent>
         <Input
@@ -48,7 +59,7 @@ export const SetupForm = () => (
 
     <Field>
       <FieldLabel htmlFor="password" required>
-        パスワード
+        {copy.passwordLabel}
       </FieldLabel>
       <FieldContent>
         <Input
@@ -64,7 +75,7 @@ export const SetupForm = () => (
 
     <Field>
       <FieldLabel htmlFor="confirmPassword" required>
-        パスワード（確認）
+        {copy.confirmPasswordLabel}
       </FieldLabel>
       <FieldContent>
         <Input

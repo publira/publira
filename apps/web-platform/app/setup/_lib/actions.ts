@@ -3,30 +3,39 @@
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { getMessage } from "@publira/utils/i18n";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { emailFormSchema, passwordFormSchema } from "#lib/auth-input";
 import { requiredTrimmedString } from "#lib/form-schemas";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 import { createInitialUser } from "#lib/setup";
 
-const setupFormSchema = z
-  .object({
-    confirmPassword: passwordFormSchema,
-    email: emailFormSchema,
-    name: requiredTrimmedString("すべての項目を入力してください。"),
-    password: passwordFormSchema,
-  })
-  .refine((value) => value.password === value.confirmPassword, {
-    error: "パスワードと確認用パスワードが一致しません。",
-    path: ["confirmPassword"],
-  });
+const setupFormSchema = (messages: PlatformMessages) =>
+  z
+    .object({
+      confirmPassword: passwordFormSchema(messages),
+      email: emailFormSchema(messages),
+      name: requiredTrimmedString(
+        getMessage(messages, "platform.auth.setup.name_required")
+      ),
+      password: passwordFormSchema(messages),
+    })
+    .refine((value) => value.password === value.confirmPassword, {
+      error: getMessage(messages, "platform.auth.setup.password_mismatch"),
+      path: ["confirmPassword"],
+    });
 
 export const setupAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = setupFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = setupFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
       email: "value",
@@ -36,13 +45,13 @@ export const setupAction = async (
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
 
   const { email, name, password } = parsed.data;
-  const result = await createInitialUser(name, email, password);
+  const result = await createInitialUser(name, email, password, locale);
   if (!result.ok) {
     if (result.alreadyCompleted) {
       redirect("/login");

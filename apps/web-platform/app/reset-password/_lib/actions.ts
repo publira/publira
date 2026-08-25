@@ -7,30 +7,36 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { emailFormSchema } from "#lib/auth-input";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 import { requestPlatformPasswordReset } from "#lib/password-reset";
 
-const requestPasswordResetFormSchema = z.object({
-  email: emailFormSchema,
-});
+const requestPasswordResetFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    email: emailFormSchema(messages),
+  });
 
 export const requestPasswordResetAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = requestPasswordResetFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = requestPasswordResetFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       email: "value",
     })
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
 
   const { email } = parsed.data;
-  const result = await requestPlatformPasswordReset(email);
+  const result = await requestPlatformPasswordReset(email, locale);
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

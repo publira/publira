@@ -365,6 +365,17 @@ UI の表示ロケールは `ja` / `en` の二択で、既定は `ja`。未知�
 - **`import()` のパスをテンプレート文字列にしない。** ロケールごとに静的なパスを書く（`loadMessages` の importer）
 - **Cookie アプリの解決順は Cookie → 管理画面の既定言語 → `ja`。** 対応する Cookie が入っていれば（`ja` でも）常にそれが勝ち、未設定・未知の値だけが既定言語に落ちる。既定言語は API 越しの設定なので、セッションが無いログイン画面や読み取り失敗時は `ja` のままにする
 
+### 画面をカタログ化する
+
+1 画面ぶんの文言をカタログへ移すときの形。実装例は `web-platform` の認証・セットアップ画面（[#871](https://github.com/publira/publira/issues/871)）。
+
+- **キーはアプリの名前空間の下に置く。** `platform.*` / `admin.*` / `host.*` のように読み手で分け、画面（領域）ごとに区切る。複数画面で使う文言だけを領域の共通セクション（`platform.auth.fields` など）へ上げる。トップレベルの一覧は `locales/README.md`
+- **カタログを引くのは Server Component と Server Action だけ。** Client Component には解決済みの文字列を `copy` プロップ（`LoginFormCopy` など）で渡す。Client からカタログを `import()` すると両ロケールがブラウザに載る
+- **ユーザーに見えるメッセージを持つ zod スキーマは、モジュール定数ではなくカタログを受け取る関数にする。** 文言はリクエストのロケールで決まるので、Server Action か `<Suspense>` の内側でしか解決できない。`toFormErrorMessage(parsed.error, { locale })` と `rpcErrorMessage(error, fallback, { locale, overrides })` にも同じ locale を渡す
+- **`Suspense` の fallback に文章を書かない。** fallback は静的シェルの一部でロケールに追従できない。文言待ちは `Skeleton` にする（「メッセージ待ちは `Suspense` + `Skeleton`」の具体形）
+- **静的シェルに残せるのはロケール非依存のものだけ。** ブランド名やカードの枠は外に置いたままでよいが、見出しや説明文は `<Suspense>` の内側へ移す
+- **`metadata` は `generateMetadata` にする。** `<title>` も画面文言なので、ロケールを読んで組み立てる。本文側にリクエスト時の読み取りがあるルートではそのままストリームされる（`node_modules/next/dist/docs/` の generate-metadata / With Cache Components）
+
 ### Cookie アプリの `<html lang>`
 
 ルート layout で Cookie を読むことはできない。`<html>` 属性には逃がし先の `<Suspense>` 境界がなく、`cookies()` を待てば配下の全ルートが静的シェルを失う。代わりに次の 3 点で解決する。

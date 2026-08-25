@@ -23,6 +23,8 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
 import { intFormSchema, optionalTrimmedString } from "#lib/form-schemas";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 import {
   platformSettingsCacheTag,
   updatePlatformDefaultLocale,
@@ -132,11 +134,12 @@ const smtpFormFields = {
   username: "value",
 } as const;
 
-const emailChangeFormSchema = z.object({
-  currentEmail: emailFormSchema,
-  currentPassword: passwordFormSchema,
-  newEmail: emailFormSchema,
-});
+const emailChangeFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    currentEmail: emailFormSchema(messages),
+    currentPassword: passwordFormSchema(messages),
+    newEmail: emailFormSchema(messages),
+  });
 
 export const updatePlatformEmailSettingsAction = async (
   _prevState: PlatformEmailSettingsFormState,
@@ -281,7 +284,10 @@ export const requestPlatformEmailChangeAction = async (
   _prevState: PlatformEmailChangeActionState,
   formData: FormData
 ): Promise<PlatformEmailChangeActionState> => {
-  const parsed = emailChangeFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = emailChangeFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       currentEmail: { kind: "value", name: "current_email" },
       currentPassword: { kind: "value", name: "current_password" },
@@ -289,7 +295,7 @@ export const requestPlatformEmailChangeAction = async (
     })
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>

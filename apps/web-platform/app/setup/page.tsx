@@ -1,18 +1,33 @@
 import { FormMessage } from "@publira/ui-components/form-message";
+import { Skeleton } from "@publira/ui-components/skeleton";
+import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { isSetupCompleted } from "#lib/setup";
 
 import { SetupForm } from "./_components/setup-form";
 
-export const metadata: Metadata = {
-  title: "初期セットアップ",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const messages = await loadPlatformMessages(await getPlatformLocale());
+
+  return { title: getMessage(messages, "platform.auth.setup.title") };
 };
 
-const Guard = async ({ children }: { children: React.ReactNode }) => {
+const SetupEyebrow = async () => {
+  const messages = await loadPlatformMessages(await getPlatformLocale());
+
+  return (
+    <p className="mt-2 text-sm text-muted-foreground">
+      {getMessage(messages, "platform.auth.setup.title")}
+    </p>
+  );
+};
+
+const SetupContent = async () => {
   await connection();
 
   const setupStatus = await isSetupCompleted();
@@ -21,32 +36,70 @@ const Guard = async ({ children }: { children: React.ReactNode }) => {
     redirect("/login");
   }
 
-  return setupStatus === null ? (
-    <FormMessage variant="destructive">
-      APIサーバーに接続できません。サーバーの起動状態を確認してから再試行してください。
-    </FormMessage>
-  ) : (
-    children
+  const messages = await loadPlatformMessages(await getPlatformLocale());
+
+  if (setupStatus === null) {
+    return (
+      <FormMessage variant="destructive">
+        {getMessage(messages, "platform.auth.setup.api_unavailable")}
+      </FormMessage>
+    );
+  }
+
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">
+        {getMessage(messages, "platform.auth.setup.description")}
+      </p>
+
+      <SetupForm
+        copy={{
+          confirmPasswordLabel: getMessage(
+            messages,
+            "platform.auth.setup.confirm_password_label"
+          ),
+          emailLabel: getMessage(messages, "platform.auth.fields.email_label"),
+          nameLabel: getMessage(messages, "platform.auth.setup.name_label"),
+          namePlaceholder: getMessage(
+            messages,
+            "platform.auth.setup.name_placeholder"
+          ),
+          passwordLabel: getMessage(
+            messages,
+            "platform.auth.fields.password_label"
+          ),
+          pendingLabel: getMessage(messages, "platform.auth.setup.pending"),
+          submitLabel: getMessage(messages, "platform.auth.setup.submit"),
+        }}
+      />
+    </>
   );
 };
+
+const SetupContentSkeleton = () => (
+  <div className="space-y-4">
+    <Skeleton className="h-5 w-3/4" />
+    <Skeleton className="h-5 w-1/2" />
+    <Skeleton className="h-5 w-1/2" />
+    <Skeleton className="h-5 w-1/2" />
+    <Skeleton className="h-5 w-1/2" />
+    <Skeleton className="h-5 w-full" />
+  </div>
+);
 
 const SetupPage = () => (
   <main className="flex min-h-dvh items-center justify-center px-4 py-10">
     <div className="w-full max-w-sm">
       <div className="mb-8 text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <p className="mt-2 text-sm text-muted-foreground">初期セットアップ</p>
+        <Suspense fallback={<Skeleton className="mx-auto mt-2 h-5 w-40" />}>
+          <SetupEyebrow />
+        </Suspense>
       </div>
 
       <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <Suspense fallback={null}>
-          <Guard>
-            <p className="text-sm text-muted-foreground">
-              最初の管理ユーザーアカウントを作成してください。
-            </p>
-
-            <SetupForm />
-          </Guard>
+        <Suspense fallback={<SetupContentSkeleton />}>
+          <SetupContent />
         </Suspense>
       </div>
     </div>

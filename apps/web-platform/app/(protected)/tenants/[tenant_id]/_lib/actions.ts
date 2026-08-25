@@ -12,6 +12,8 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 import {
   addPlatformTenantMember,
   cancelPlatformTenantAdminInvitation,
@@ -50,11 +52,12 @@ const updateTenantDomainFormSchema = z.object({
   tenantId: tenantIdFormSchema,
 });
 
-const addTenantMemberFormSchema = z.object({
-  email: emailFormSchema,
-  role: tenantMemberRoleFormSchema,
-  tenantId: tenantIdFormSchema,
-});
+const addTenantMemberFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    email: emailFormSchema(messages),
+    role: tenantMemberRoleFormSchema,
+    tenantId: tenantIdFormSchema,
+  });
 
 const updateTenantMemberRoleFormSchema = z.object({
   role: tenantMemberRoleFormSchema,
@@ -67,10 +70,11 @@ const removeTenantMemberFormSchema = z.object({
   userPublicId: requiredTrimmedString("必須項目が入力されていません。"),
 });
 
-const createInvitationFormSchema = z.object({
-  email: emailFormSchema,
-  tenantId: tenantIdFormSchema,
-});
+const createInvitationFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    email: emailFormSchema(messages),
+    tenantId: tenantIdFormSchema,
+  });
 
 const invitationIdFormSchema = z.object({
   invitationId: requiredTrimmedString("必須項目が入力されていません。"),
@@ -182,7 +186,10 @@ export const addTenantMemberAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = addTenantMemberFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = addTenantMemberFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       email: { kind: "value", name: "member_email" },
       role: { kind: "value", name: "member_role" },
@@ -190,7 +197,7 @@ export const addTenantMemberAction = async (
     })
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
@@ -269,14 +276,17 @@ export const createTenantAdminInvitationAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = createInvitationFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = createInvitationFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       email: { kind: "value", name: "invite_email" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>

@@ -5,8 +5,11 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 
 import { apiClient } from "./api-client";
+import { loadPlatformMessages } from "./locale";
 
 /**
  * Setup status is unknown rather than failed when the platform has not been
@@ -39,27 +42,36 @@ export type SetupResult =
       alreadyCompleted: boolean;
     };
 
-const genericErrorMessage =
-  "セットアップに失敗しました。時間をおいて再試行してください。";
-
 export const createInitialUser = async (
   name: string,
   email: string,
-  password: string
+  password: string,
+  locale: Locale
 ): Promise<SetupResult> => {
   try {
     await apiClient.setup.createInitialUser({ email, name, password });
     return { ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    const messages = await loadPlatformMessages(locale);
+
     return {
       // `already_exists` is only ever raised here for "setup already completed"
       // (`server/api/platformapi/setup_handlers.go`).
       alreadyCompleted: rpcErrorDisposition(error) === "conflict",
-      message: rpcErrorMessage(error, genericErrorMessage, {
-        conflict:
-          "セットアップは既に完了しています。ログイン画面からサインインしてください。",
-      }),
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "platform.auth.errors.setup_failed"),
+        {
+          locale,
+          overrides: {
+            conflict: getMessage(
+              messages,
+              "platform.auth.errors.setup_already_completed"
+            ),
+          },
+        }
+      ),
       ok: false,
     };
   }

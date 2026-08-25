@@ -8,11 +8,27 @@ import Link from "next/link";
 
 import { loginAction } from "../_lib/actions";
 
+/**
+ * The screen's copy, resolved on the server. A Client Component never loads a
+ * catalog itself — that would ship both locales to the browser.
+ */
+export interface LoginFormCopy {
+  emailLabel: string;
+  forgotPassword: string;
+  passwordLabel: string;
+  pendingLabel: string;
+  resetDone: string;
+  sessionRevoked: string;
+  submitLabel: string;
+}
+
 export const LoginForm = ({
+  copy,
   nextPath,
   resetDone,
   sessionRevoked,
 }: {
+  copy: LoginFormCopy;
   nextPath?: string;
   resetDone?: boolean;
   sessionRevoked?: boolean;
@@ -21,15 +37,15 @@ export const LoginForm = ({
     <ActionForm
       action={loginAction}
       className="space-y-4"
-      pendingLabel="ログイン中..."
+      pendingLabel={copy.pendingLabel}
       submitClassName="mt-2 w-full"
-      submitLabel="ログイン"
+      submitLabel={copy.submitLabel}
     >
       <input name="next" type="hidden" value={nextPath} />
 
       <Field>
         <FieldLabel htmlFor="email" required>
-          メールアドレス
+          {copy.emailLabel}
         </FieldLabel>
         <FieldContent>
           <Input
@@ -45,7 +61,7 @@ export const LoginForm = ({
 
       <Field>
         <FieldLabel htmlFor="password" required>
-          パスワード
+          {copy.passwordLabel}
         </FieldLabel>
         <FieldContent>
           <Input
@@ -60,15 +76,11 @@ export const LoginForm = ({
       </Field>
 
       {sessionRevoked ? (
-        <FormMessage variant="destructive">
-          セッションの有効期限が切れました。もう一度ログインしてください。
-        </FormMessage>
+        <FormMessage variant="destructive">{copy.sessionRevoked}</FormMessage>
       ) : null}
 
       {resetDone ? (
-        <FormMessage variant="success">
-          パスワードが再設定されました。新しいパスワードでログインしてください。
-        </FormMessage>
+        <FormMessage variant="success">{copy.resetDone}</FormMessage>
       ) : null}
     </ActionForm>
 
@@ -77,7 +89,7 @@ export const LoginForm = ({
         className="font-medium text-primary hover:underline"
         href="/reset-password"
       >
-        パスワードを忘れた場合
+        {copy.forgotPassword}
       </Link>
     </div>
   </>

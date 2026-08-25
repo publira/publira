@@ -37,5 +37,87 @@
     "en": "English",
     "ja": "Japanese",
     "label": "Display language"
+  },
+  "platform": {
+    "auth": {
+      "confirm_email": {
+        "back_to_settings": "Back to settings",
+        "changed": "Your email address has been changed.",
+        "failed": "Could not change your email address. The link may have expired or be invalid.",
+        "invalid_link": "This confirmation link is invalid.",
+        "pending_current_email": "This confirmation is done. The change applies once the current email address is confirmed as well.",
+        "pending_new_email": "This confirmation is done. The change applies once the new email address is confirmed as well.",
+        "title": "Confirm email change",
+        "to_dashboard": "Go to dashboard"
+      },
+      "confirm_password": {
+        "confirm_password_label": "New password (confirm)",
+        "description": "Enter a new password. You can sign in with it right away.",
+        "expired": "This reset link has expired.",
+        "failure_help": "Request the reset email again to receive a new link.",
+        "invalid": "This reset link is invalid.",
+        "password_label": "New password",
+        "password_mismatch": "The passwords do not match.",
+        "request_again": "Send reset email",
+        "submit": "Set new password",
+        "title": "Set a new password",
+        "to_login": "Go to sign-in"
+      },
+      "errors": {
+        "new_password_required": "Enter a new password.",
+        "reset_confirm_failed": "Could not reset your password. Please try again later.",
+        "reset_link_expired": "This reset link has expired. Request the reset email again.",
+        "reset_link_invalid": "This reset link is invalid. Request the reset email again.",
+        "reset_request_failed": "Could not send the reset email. Please try again later.",
+        "reset_request_invalid_email": "Check the email address.",
+        "setup_already_completed": "Setup is already complete. Sign in from the sign-in screen.",
+        "setup_failed": "Setup failed. Please try again later."
+      },
+      "fields": {
+        "email_invalid": "Enter a valid email address.",
+        "email_label": "Email address",
+        "email_required": "Enter your email address.",
+        "invalid_token": "This confirmation link is invalid.",
+        "password_label": "Password",
+        "password_required": "Enter your password."
+      },
+      "login": {
+        "eyebrow": "Platform Console sign-in",
+        "failed": "The email address or password is incorrect.",
+        "forgot_password": "Forgot your password?",
+        "pending": "Signing in...",
+        "reset_done": "Your password has been reset. Sign in with the new password.",
+        "session_revoked": "Your session has expired. Please sign in again.",
+        "submit": "Sign in",
+        "title": "Sign in"
+      },
+      "reset_password": {
+        "description": "We will send a reset link to your registered email address.",
+        "pending": "Sending...",
+        "submit": "Send reset email",
+        "title": "Reset password",
+        "to_login": "Back to sign-in"
+      },
+      "reset_password_requested": {
+        "check_spam": "Set a new password from the link in the email. If it does not arrive, check your spam folder.",
+        "sent": "If that email address is registered, a password reset email has been sent.",
+        "sent_to": "Sent to: {email}",
+        "title": "Reset email sent",
+        "to_login": "Back to sign-in",
+        "try_another_email": "Try another email address"
+      },
+      "setup": {
+        "api_unavailable": "Cannot reach the API server. Check that it is running, then try again.",
+        "confirm_password_label": "Password (confirm)",
+        "description": "Create the first administrator account.",
+        "name_label": "Full name",
+        "name_placeholder": "Jane Doe",
+        "name_required": "Fill in every field.",
+        "password_mismatch": "The password and its confirmation do not match.",
+        "pending": "Creating...",
+        "submit": "Create administrator",
+        "title": "Initial setup"
+      }
+    }
   }
 }

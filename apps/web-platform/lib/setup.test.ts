@@ -51,7 +51,7 @@ describe("createInitialUser", () => {
     mockCreateInitialUser.mockResolvedValueOnce({});
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password")
+      createInitialUser("管理者", "admin@example.com", "password", "ja")
     ).resolves.toEqual({ ok: true });
     expect(mockCreateInitialUser).toHaveBeenCalledWith({
       email: "admin@example.com",
@@ -66,7 +66,7 @@ describe("createInitialUser", () => {
     );
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password")
+      createInitialUser("管理者", "admin@example.com", "password", "ja")
     ).resolves.toEqual({
       alreadyCompleted: true,
       message:
@@ -81,10 +81,24 @@ describe("createInitialUser", () => {
     );
 
     await expect(
-      createInitialUser("管理者", "invalid", "password")
+      createInitialUser("管理者", "invalid", "password", "ja")
     ).resolves.toEqual({
       alreadyCompleted: false,
       message: "入力内容に誤りがあります。",
+      ok: false,
+    });
+  });
+
+  it("locale=en では英語のメッセージを返す", async () => {
+    mockCreateInitialUser.mockRejectedValueOnce(
+      new ConnectError("setup already completed", Code.AlreadyExists)
+    );
+
+    await expect(
+      createInitialUser("Admin", "admin@example.com", "password", "en")
+    ).resolves.toEqual({
+      alreadyCompleted: true,
+      message: "Setup is already complete. Sign in from the sign-in screen.",
       ok: false,
     });
   });
@@ -95,7 +109,7 @@ describe("createInitialUser", () => {
     );
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password")
+      createInitialUser("管理者", "admin@example.com", "password", "ja")
     ).rejects.toThrow("boom");
   });
 
@@ -103,7 +117,7 @@ describe("createInitialUser", () => {
     mockCreateInitialUser.mockRejectedValueOnce("boom");
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password")
+      createInitialUser("管理者", "admin@example.com", "password", "ja")
     ).rejects.toBe("boom");
   });
 });

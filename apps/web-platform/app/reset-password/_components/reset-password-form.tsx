@@ -7,19 +7,31 @@ import Link from "next/link";
 
 import { requestPasswordResetAction } from "../_lib/actions";
 
-export const ResetPasswordForm = () => (
+/** Resolved on the server; see `LoginFormCopy` for why. */
+export interface ResetPasswordFormCopy {
+  emailLabel: string;
+  pendingLabel: string;
+  submitLabel: string;
+  toLogin: string;
+}
+
+export const ResetPasswordForm = ({
+  copy,
+}: {
+  copy: ResetPasswordFormCopy;
+}) => (
   <>
     <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
       <ActionForm
         action={requestPasswordResetAction}
         className="space-y-4"
-        pendingLabel="送信中..."
+        pendingLabel={copy.pendingLabel}
         submitClassName="mt-2 w-full"
-        submitLabel="再設定メールを送信"
+        submitLabel={copy.submitLabel}
       >
         <Field>
           <FieldLabel htmlFor="email" required>
-            メールアドレス
+            {copy.emailLabel}
           </FieldLabel>
           <FieldContent>
             <Input
@@ -37,7 +49,7 @@ export const ResetPasswordForm = () => (
 
     <div className="mt-4 text-center text-sm">
       <Link className="font-medium text-primary hover:underline" href="/login">
-        ログイン画面へ戻る
+        {copy.toLogin}
       </Link>
     </div>
   </>
