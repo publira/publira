@@ -13,6 +13,7 @@ import {
   followsCacheTag,
   unfollowTarget,
 } from "./follow";
+import { localeFormSchema } from "./locale-form";
 
 export type FollowActionState =
   | { isFollowing: boolean; message: string; ok: true }
@@ -23,6 +24,7 @@ const publicIdFormSchema = z.string().trim().min(1).max(64);
 
 const followFormSchema = z.object({
   intent: z.enum(["follow", "unfollow"]),
+  locale: localeFormSchema,
   publicId: publicIdFormSchema,
   returnTo: returnToFormSchema,
   targetKind: z.enum(followTargetKinds),
@@ -36,6 +38,7 @@ export const toggleFollowAction = async (
   const parsed = followFormSchema.safeParse(
     toFormDataInput(formData, {
       intent: "value",
+      locale: "value",
       publicId: "value",
       returnTo: "value",
       targetKind: "value",
@@ -49,9 +52,10 @@ export const toggleFollowAction = async (
     };
   }
 
-  const { intent, publicId, returnTo, targetKind, tenantId } = parsed.data;
-  await requirePublicSession(returnTo);
-  const result = await withPublicSessionReauth(returnTo, () =>
+  const { intent, locale, publicId, returnTo, targetKind, tenantId } =
+    parsed.data;
+  await requirePublicSession(locale, returnTo);
+  const result = await withPublicSessionReauth(locale, returnTo, () =>
     intent === "follow"
       ? followTarget({ publicId, targetKind, tenantId })
       : unfollowTarget({ publicId, targetKind, tenantId })

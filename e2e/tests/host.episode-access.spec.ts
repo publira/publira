@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { signInAsSeedMember } from "../src/host";
 import { SEED_MEMBER } from "../src/scenarios/member-announcements";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
+import { hostPath } from "../src/urls";
 
 const paidEpisodePath = `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_TENANT.series.paidEpisodeId}`;
 
@@ -15,7 +16,7 @@ const paidEpisodePath = `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_
  */
 test.describe("web-host episode access", () => {
   test("未ログインの有料エピソードはログイン導線を出す", async ({ page }) => {
-    await page.goto(paidEpisodePath);
+    await page.goto(hostPath(paidEpisodePath));
 
     await expect(
       page.getByRole("heading", {
@@ -28,7 +29,7 @@ test.describe("web-host episode access", () => {
       page.getByRole("link", { name: "ログインして閲覧する" })
     ).toHaveAttribute(
       "href",
-      `/login?returnTo=${encodeURIComponent(paidEpisodePath)}`
+      `${hostPath("/login")}?returnTo=${encodeURIComponent(paidEpisodePath)}`
     );
     await expect(
       page.getByText("本文画像はまだ公開されていません。")
@@ -58,7 +59,7 @@ test.describe("web-host episode access", () => {
   });
 
   test("ゲートのログインから戻るとチケット閲覧できる", async ({ page }) => {
-    await page.goto(paidEpisodePath);
+    await page.goto(hostPath(paidEpisodePath));
     await page.getByRole("link", { name: "ログインして閲覧する" }).click();
 
     await expect(page).toHaveURL(/\/login\?returnTo=/u);

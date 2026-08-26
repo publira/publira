@@ -1,12 +1,12 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { describe, expect, it, vi } from "vitest";
 
-import { createTenantIdResolver } from "./tenant-resolution";
+import { createTenantResolver } from "./tenant-resolution";
 
-describe("createTenantIdResolver", () => {
+describe("createTenantResolver", () => {
   it("候補が空なら API を呼ばず null を返す", async () => {
     const getTenantByDomain = vi.fn();
-    const resolver = createTenantIdResolver(
+    const resolver = createTenantResolver(
       { domain: { getTenantByDomain } } as never,
       { max: 10, ttl: 1000 }
     );
@@ -15,21 +15,56 @@ describe("createTenantIdResolver", () => {
     expect(getTenantByDomain).not.toHaveBeenCalled();
   });
 
-  it("解決結果をキャッシュし同一キーの2回目呼び出しで再取得しない", async () => {
+  it("テナント既定ロケールを同じ応答から取り出す", async () => {
     const getTenantByDomain = vi.fn().mockResolvedValue({
-      tenantId: " 018f0e6a-1000-7000-8000-000000000001 ",
+      defaultLocale: "en",
+      tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
-    const resolver = createTenantIdResolver(
+    const resolver = createTenantResolver(
       { domain: { getTenantByDomain } } as never,
       { max: 10, ttl: 10_000 }
     );
 
-    await expect(resolver(["a.example.com", "example.com"])).resolves.toBe(
-      "018f0e6a-1000-7000-8000-000000000001"
+    await expect(resolver(["en.example.com"])).resolves.toEqual({
+      defaultLocale: "en",
+      tenantId: "018f0e6a-1000-7000-8000-000000000001",
+    });
+  });
+
+  it("このビルドが配信しないロケールだけ ja に落とす", async () => {
+    const getTenantByDomain = vi.fn().mockResolvedValue({
+      defaultLocale: "fr",
+      tenantId: "018f0e6a-1000-7000-8000-000000000001",
+    });
+    const resolver = createTenantResolver(
+      { domain: { getTenantByDomain } } as never,
+      { max: 10, ttl: 10_000 }
     );
-    await expect(resolver(["a.example.com", "example.com"])).resolves.toBe(
-      "018f0e6a-1000-7000-8000-000000000001"
+
+    await expect(resolver(["fr.example.com"])).resolves.toEqual({
+      defaultLocale: "ja",
+      tenantId: "018f0e6a-1000-7000-8000-000000000001",
+    });
+  });
+
+  it("解決結果をキャッシュし同一キーの2回目呼び出しで再取得しない", async () => {
+    const getTenantByDomain = vi.fn().mockResolvedValue({
+      defaultLocale: "ja",
+      tenantId: " 018f0e6a-1000-7000-8000-000000000001 ",
+    });
+    const resolver = createTenantResolver(
+      { domain: { getTenantByDomain } } as never,
+      { max: 10, ttl: 10_000 }
     );
+
+    await expect(resolver(["a.example.com", "example.com"])).resolves.toEqual({
+      defaultLocale: "ja",
+      tenantId: "018f0e6a-1000-7000-8000-000000000001",
+    });
+    await expect(resolver(["a.example.com", "example.com"])).resolves.toEqual({
+      defaultLocale: "ja",
+      tenantId: "018f0e6a-1000-7000-8000-000000000001",
+    });
 
     expect(getTenantByDomain).toHaveBeenCalledOnce();
   });
@@ -38,7 +73,7 @@ describe("createTenantIdResolver", () => {
     const getTenantByDomain = vi
       .fn()
       .mockRejectedValue(new ConnectError("tenant not found", Code.NotFound));
-    const resolver = createTenantIdResolver(
+    const resolver = createTenantResolver(
       { domain: { getTenantByDomain } } as never,
       { max: 10, ttl: 10_000 }
     );
@@ -53,7 +88,7 @@ describe("createTenantIdResolver", () => {
     const getTenantByDomain = vi
       .fn()
       .mockRejectedValue(new ConnectError("upstream down", Code.Unavailable));
-    const resolver = createTenantIdResolver(
+    const resolver = createTenantResolver(
       { domain: { getTenantByDomain } } as never,
       { max: 10, ttl: 10_000 }
     );

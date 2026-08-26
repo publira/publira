@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 import { startApiServer, stopApiServer } from "../src/api-server";
-import { uncachedTenantBaseUrl } from "../src/urls";
+import { hostPath, uncachedTenantBaseUrl } from "../src/urls";
 
 /**
  * A series id no run has ever requested, so no `"use cache"` entry can answer
@@ -37,7 +37,9 @@ test.describe("web-host public API outage", () => {
   test("テナント解決できない間は 503 と Retry-After を返す", async ({
     page,
   }) => {
-    const response = await page.goto(`${uncachedTenantBaseUrl()}/`);
+    const response = await page.goto(
+      `${uncachedTenantBaseUrl()}${hostPath("/")}`
+    );
 
     expect(response?.status(), await page.content()).toBe(503);
     expect(response?.headers()["retry-after"]).toBe("30");
@@ -79,7 +81,7 @@ test.describe("web-host public API outage", () => {
     // no published page warms the tenant lookup without filling any catalog
     // cache entry, which is what keeps the reads below cold.
     startApiServer();
-    await page.goto("/no-such-page-in-any-spec");
+    await page.goto(hostPath("/no-such-page-in-any-spec"));
     await expect(
       page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
     ).toBeVisible();
@@ -90,7 +92,7 @@ test.describe("web-host public API outage", () => {
     try {
       stopApiServer();
 
-      const response = await page.goto(`/series/${uncachedSeriesId}`);
+      const response = await page.goto(hostPath(`/series/${uncachedSeriesId}`));
 
       expect(response?.status(), await page.content()).toBe(200);
       await expect(
@@ -109,7 +111,7 @@ test.describe("web-host public API outage", () => {
       // and is requested by no other spec, which keeps this list read cold — a
       // page whose entry is already cached would rightly answer from the cache
       // and prove nothing.
-      await page.goto("/series?token=OUTAGE00");
+      await page.goto(hostPath("/series?token=OUTAGE00"));
       await expect(
         page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
       ).toBeVisible();
@@ -125,7 +127,7 @@ test.describe("web-host public API outage", () => {
     // Same URL, no revalidation and no wait: the failure just rendered must not
     // have been stored, so the next request shows the real answer — which for
     // this id is "not found", not the failure display.
-    await page.goto(`/series/${uncachedSeriesId}`);
+    await page.goto(hostPath(`/series/${uncachedSeriesId}`));
     await expect(
       page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
     ).toBeVisible();
@@ -134,7 +136,7 @@ test.describe("web-host public API outage", () => {
     // The list is checked without the token: a healthy API rejects
     // `OUTAGE00` as a malformed cursor, so that URL shows a section failure by
     // design and says nothing about caching.
-    await page.goto("/series");
+    await page.goto(hostPath("/series"));
     await expect(
       page.getByText("シリーズ一覧を表示できませんでした")
     ).toHaveCount(0);
@@ -148,10 +150,12 @@ test.describe("web-host public API outage", () => {
 
     // Another never-resolved Host: 503 → 404 means tenant resolution reached
     // the API again and got a definitive answer, not a cached one.
-    const resolved = await page.goto(`${uncachedTenantBaseUrl()}/`);
+    const resolved = await page.goto(
+      `${uncachedTenantBaseUrl()}${hostPath("/")}`
+    );
     expect(resolved?.status(), await page.content()).toBe(404);
 
-    const response = await page.goto("/");
+    const response = await page.goto(hostPath("/"));
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: "カタログトップ" })

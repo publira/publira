@@ -22,9 +22,10 @@ import {
   MULTI_TENANT_SCENARIO,
   OTHER_TENANT,
 } from "../src/scenarios/multi-tenant";
-import { WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "../src/urls";
+import { hostPath, WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "../src/urls";
 
-const hostUrl = (pathname: string): string => `${WEB_HOST_BASE_URL}${pathname}`;
+const hostUrl = (pathname: string): string =>
+  `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
 
 const adminUrl = (pathname: string): string =>
   `${WEB_ADMIN_BASE_URL}${pathname}`;

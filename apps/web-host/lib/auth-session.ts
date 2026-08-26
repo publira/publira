@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/utils/i18n";
 import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -26,12 +27,21 @@ export const clearPublicSessionCookie = async (): Promise<void> => {
 };
 
 /**
- * Send the reader to `/login` with a sanitized `returnTo`, flagged as a
- * rejected session so the proxy clears the cookie instead of bouncing them
+ * Send the reader to `/{locale}/login` with a sanitized `returnTo`, flagged as
+ * a rejected session so the proxy clears the cookie instead of bouncing them
  * back. Safe to call while rendering.
+ *
+ * `locale` is explicit rather than read from `next/root-params`, because half
+ * the callers are Server Actions, where root params are unavailable. A Server
+ * Component passes `await getLocale()`; an Action takes the locale the way it
+ * takes the tenant id — bound by the component that rendered the form, or read
+ * from the hidden field in `lib/locale-form.ts`.
  */
-export const redirectToLogin = (returnTo: string | null | undefined): never => {
-  redirect(buildLoginPath(returnTo, { revoked: true }));
+export const redirectToLogin = (
+  locale: Locale,
+  returnTo: string | null | undefined
+): never => {
+  redirect(buildLoginPath(locale, returnTo, { revoked: true }));
 };
 
 /**
@@ -41,11 +51,12 @@ export const redirectToLogin = (returnTo: string | null | undefined): never => {
  * route that rendered the form it was submitted from.
  */
 export const requirePublicSession = async (
+  locale: Locale,
   returnTo: string
 ): Promise<string> => {
   const accessToken = await resolveAccessToken();
   if (!accessToken) {
-    redirectToLogin(returnTo);
+    redirectToLogin(locale, returnTo);
   }
   return accessToken;
 };
@@ -59,6 +70,7 @@ export const requirePublicSession = async (
  * never mistaken for a lost session (Epic #65 / #679).
  */
 export const withPublicSessionReauth = async <T>(
+  locale: Locale,
   returnTo: string,
   run: () => Promise<T>
 ): Promise<T> => {
@@ -66,7 +78,7 @@ export const withPublicSessionReauth = async <T>(
     return await run();
   } catch (error) {
     if (isUnauthenticatedError(error)) {
-      redirectToLogin(returnTo);
+      redirectToLogin(locale, returnTo);
     }
     throw error;
   }

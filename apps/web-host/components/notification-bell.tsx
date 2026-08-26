@@ -1,6 +1,7 @@
 import { BellIcon } from "@publira/icons";
 import { Skeleton } from "@publira/ui-components/skeleton";
-import Link from "next/link";
+
+import { LocaleLink } from "#components/locale-link";
 
 export const NotificationBellSkeleton = () => (
   <span
@@ -16,7 +17,7 @@ export const NotificationBell = ({ unreadCount }: { unreadCount: number }) => {
   const label = count > 0 ? `通知、未読${count}件` : "通知、未読はありません";
 
   return (
-    <Link
+    <LocaleLink
       aria-label={label}
       className="relative inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted"
       href="/notifications"
@@ -27,6 +28,6 @@ export const NotificationBell = ({ unreadCount }: { unreadCount: number }) => {
           {count > 99 ? "99+" : count}
         </span>
       ) : null}
-    </Link>
+    </LocaleLink>
   );
 };

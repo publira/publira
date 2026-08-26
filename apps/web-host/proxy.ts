@@ -1,5 +1,6 @@
 import { getTenantDomainCandidates } from "@publira/utils";
 import { isHealthProbePath } from "@publira/utils/health";
+import type { Locale } from "@publira/utils/i18n";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -10,10 +11,16 @@ import {
   isSessionRevokedRedirect,
   PUBLIC_SESSION_COOKIE_NAME,
 } from "./lib/auth-shared";
+import {
+  isLocaleExemptPathname,
+  splitLocalePathname,
+  withLocalePrefix,
+} from "./lib/locale-path";
 import { buildTenantRewritePathname } from "./lib/published-page-path";
-import { createTenantIdResolver } from "./lib/tenant-resolution";
+import { createTenantResolver } from "./lib/tenant-resolution";
+import type { ResolvedTenant } from "./lib/tenant-resolution";
 
-const resolveTenantId = createTenantIdResolver(apiClient);
+const resolveTenantByDomain = createTenantResolver(apiClient);
 
 // `/notifications` is the personal inbox. `/settings/notifications` is the
 // email-preference screen and stays under `/settings`.
@@ -30,8 +37,14 @@ const isMemberPath = (pathname: string): boolean =>
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 
-const redirectToLogin = (request: NextRequest, clearSession = false) => {
-  const response = NextResponse.redirect(buildLoginUrl(request.nextUrl));
+const redirectToLogin = (
+  request: NextRequest,
+  locale: Locale,
+  clearSession = false
+) => {
+  const response = NextResponse.redirect(
+    buildLoginUrl(request.nextUrl, locale)
+  );
   if (clearSession) {
     response.cookies.delete(PUBLIC_SESSION_COOKIE_NAME);
   }
@@ -44,6 +57,51 @@ const serviceUnavailableResponse = () =>
     status: 503,
   });
 
+/**
+ * Send a URL from before the locale prefix existed to the tenant's own default
+ * locale — the setting `GetTenantByDomain` returns alongside the tenant id, so
+ * this costs no extra round trip.
+ *
+ * Temporary on purpose: a permanent redirect would be cached by the browser,
+ * and neither a change to that setting nor the day this site negotiates a
+ * locale from `Accept-Language` would reach a reader already pinned to
+ * whatever they were first sent to.
+ */
+const redirectToTenantLocale = (
+  request: NextRequest,
+  locale: Locale
+): NextResponse => {
+  const url = request.nextUrl.clone();
+  url.pathname = withLocalePrefix(locale, request.nextUrl.pathname);
+  return NextResponse.redirect(url);
+};
+
+/** The tenant this host resolves to, or the response that says why not. */
+const resolveTenant = async (
+  request: NextRequest
+): Promise<ResolvedTenant | { response: NextResponse }> => {
+  let tenant: ResolvedTenant | null;
+  try {
+    tenant = await resolveTenantByDomain(
+      getTenantDomainCandidates(request.headers)
+    );
+  } catch {
+    return { response: serviceUnavailableResponse() };
+  }
+
+  if (!tenant) {
+    return { response: new NextResponse("Not Found", { status: 404 }) };
+  }
+
+  return tenant;
+};
+
+const rewriteTo = (request: NextRequest, pathname: string): NextResponse => {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  return NextResponse.rewrite(url);
+};
+
 export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const { pathname } = request.nextUrl;
 
@@ -52,10 +110,34 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     return NextResponse.next();
   }
 
+  // `/theme.css` and the Route Handlers answer machines rather than readers,
+  // and Route Handlers cannot read `next/root-params`, so they are rewritten
+  // onto the tenant alone and never gain a locale segment.
+  if (isLocaleExemptPathname(pathname)) {
+    const tenant = await resolveTenant(request);
+    if ("response" in tenant) {
+      return tenant.response;
+    }
+    return rewriteTo(request, `/${tenant.tenantId}${pathname}`);
+  }
+
+  const { locale, pathname: publicPath } = splitLocalePathname(pathname);
+
+  // `/privacy`, `/series/SR01` — a bookmark from before the locale prefix.
+  // Which language it lands in is the tenant's decision, so the Host has to be
+  // resolved before the redirect can be written.
+  if (!locale) {
+    const tenant = await resolveTenant(request);
+    if ("response" in tenant) {
+      return tenant.response;
+    }
+    return redirectToTenantLocale(request, tenant.defaultLocale);
+  }
+
   const sessionCookie = request.cookies.get(PUBLIC_SESSION_COOKIE_NAME)?.value;
   const hasStoredSessionCookie = Boolean(sessionCookie?.trim());
   const hasSessionCookie = await hasActivePublicSessionCookie(sessionCookie);
-  const isGuestOnlyPath = GUEST_ONLY_PATHS.has(pathname);
+  const isGuestOnlyPath = GUEST_ONLY_PATHS.has(publicPath);
 
   // The API rejected this session while a page was rendering, where the cookie
   // cannot be touched. Clearing it here is what stops the guest-only rule below
@@ -64,33 +146,26 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     isGuestOnlyPath && isSessionRevokedRedirect(request.nextUrl);
 
   if (hasSessionCookie && isGuestOnlyPath && !isRejectedSession) {
-    return NextResponse.redirect(new URL("/my", request.url));
-  }
-
-  if (!hasSessionCookie && isMemberPath(pathname)) {
-    return redirectToLogin(request, hasStoredSessionCookie);
-  }
-
-  const clearSession = isRejectedSession && hasStoredSessionCookie;
-
-  let tenantId: string | null;
-  try {
-    tenantId = await resolveTenantId(
-      getTenantDomainCandidates(request.headers)
+    return NextResponse.redirect(
+      new URL(withLocalePrefix(locale, "/my"), request.url)
     );
-  } catch {
-    return serviceUnavailableResponse();
   }
 
-  if (!tenantId) {
-    return new NextResponse("Not Found", { status: 404 });
+  if (!hasSessionCookie && isMemberPath(publicPath)) {
+    return redirectToLogin(request, locale, hasStoredSessionCookie);
   }
 
-  const url = request.nextUrl.clone();
+  const tenant = await resolveTenant(request);
+  if ("response" in tenant) {
+    return tenant.response;
+  }
+
   // Single-segment published pages (admin slugs) rewrite to /page/[slug].
-  url.pathname = buildTenantRewritePathname(tenantId, pathname);
-  const response = NextResponse.rewrite(url);
-  if (clearSession) {
+  const response = rewriteTo(
+    request,
+    buildTenantRewritePathname(tenant.tenantId, locale, publicPath)
+  );
+  if (isRejectedSession && hasStoredSessionCookie) {
     response.cookies.delete(PUBLIC_SESSION_COOKIE_NAME);
   }
   return response;

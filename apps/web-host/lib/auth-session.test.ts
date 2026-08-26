@@ -35,20 +35,20 @@ describe("web-host auth-session", () => {
   it("redirectToLogin は sanitize した returnTo と失効理由を付けて /login へ送る", async () => {
     const { redirectToLogin } = await importAuthSession();
 
-    expect(() => redirectToLogin("/settings")).toThrow(/NEXT_REDIRECT/u);
+    expect(() => redirectToLogin("ja", "/settings")).toThrow(/NEXT_REDIRECT/u);
     expect(mockRedirect).toHaveBeenCalledWith(
-      "/login?returnTo=%2Fsettings&reason=session_revoked"
+      "/ja/login?returnTo=%2Fsettings&reason=session_revoked"
     );
   });
 
   it("redirectToLogin は外部 URL を返送先にしない", async () => {
     const { redirectToLogin } = await importAuthSession();
 
-    expect(() => redirectToLogin("https://evil.example.com")).toThrow(
+    expect(() => redirectToLogin("en", "https://evil.example.com")).toThrow(
       /NEXT_REDIRECT/u
     );
     expect(mockRedirect).toHaveBeenCalledWith(
-      "/login?returnTo=%2F&reason=session_revoked"
+      "/en/login?returnTo=%2F&reason=session_revoked"
     );
   });
 
@@ -56,7 +56,9 @@ describe("web-host auth-session", () => {
     mockResolveAccessToken.mockResolvedValueOnce("session-token");
     const { requirePublicSession } = await importAuthSession();
 
-    await expect(requirePublicSession("/my")).resolves.toBe("session-token");
+    await expect(requirePublicSession("ja", "/my")).resolves.toBe(
+      "session-token"
+    );
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
@@ -64,9 +66,11 @@ describe("web-host auth-session", () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
     const { requirePublicSession } = await importAuthSession();
 
-    await expect(requirePublicSession("/my")).rejects.toThrow(/NEXT_REDIRECT/u);
+    await expect(requirePublicSession("ja", "/my")).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
     expect(mockRedirect).toHaveBeenCalledWith(
-      "/login?returnTo=%2Fmy&reason=session_revoked"
+      "/ja/login?returnTo=%2Fmy&reason=session_revoked"
     );
   });
 
@@ -74,7 +78,7 @@ describe("web-host auth-session", () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
     await expect(
-      withPublicSessionReauth("/settings", () => Promise.resolve("ok"))
+      withPublicSessionReauth("ja", "/settings", () => Promise.resolve("ok"))
     ).resolves.toBe("ok");
     expect(mockRedirect).not.toHaveBeenCalled();
   });
@@ -83,12 +87,12 @@ describe("web-host auth-session", () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
     await expect(
-      withPublicSessionReauth("/settings", () =>
+      withPublicSessionReauth("en", "/settings", () =>
         Promise.reject(new ConnectError("invalid token", Code.Unauthenticated))
       )
     ).rejects.toThrow(/NEXT_REDIRECT/u);
     expect(mockRedirect).toHaveBeenCalledWith(
-      "/login?returnTo=%2Fsettings&reason=session_revoked"
+      "/en/login?returnTo=%2Fsettings&reason=session_revoked"
     );
   });
 
@@ -98,7 +102,7 @@ describe("web-host auth-session", () => {
     // A wrong password reaches the client as invalid_argument (#679); turning it
     // into a re-login would log a reader out over a typo.
     await expect(
-      withPublicSessionReauth("/settings", () =>
+      withPublicSessionReauth("ja", "/settings", () =>
         Promise.reject(
           new ConnectError("invalid password", Code.InvalidArgument)
         )
@@ -111,7 +115,7 @@ describe("web-host auth-session", () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
     await expect(
-      withPublicSessionReauth("/settings", () =>
+      withPublicSessionReauth("ja", "/settings", () =>
         Promise.reject(new Error("boom"))
       )
     ).rejects.toThrow("boom");

@@ -7,12 +7,13 @@ import {
   SEED_TENANT,
 } from "../src/scenarios/multi-tenant";
 import {
+  hostPath,
   WEB_HOST_OTHER_TENANT_BASE_URL,
   WEB_HOST_UNKNOWN_TENANT_BASE_URL,
 } from "../src/urls";
 
 const otherTenantUrl = (pathname: string): string =>
-  `${WEB_HOST_OTHER_TENANT_BASE_URL}${pathname}`;
+  `${WEB_HOST_OTHER_TENANT_BASE_URL}${hostPath(pathname)}`;
 
 /**
  * Host-based tenant resolution and the isolation it has to guarantee: the
@@ -220,7 +221,9 @@ test.describe("web-host tenant boundary", () => {
   });
 
   test("テナントに紐づかない Host は 404", async ({ page }) => {
-    const response = await page.goto(`${WEB_HOST_UNKNOWN_TENANT_BASE_URL}/`);
+    const response = await page.goto(
+      `${WEB_HOST_UNKNOWN_TENANT_BASE_URL}${hostPath("/")}`
+    );
 
     // Still a real 404: `proxy.ts` answers an unmapped Host before any route
     // renders, so nothing has been committed yet.

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { signInAsSeedMember } from "../src/host";
+import { hostPath } from "../src/urls";
 
 /**
  * The host inbox (#883) is header chrome plus `/notifications`. Seed data
@@ -16,7 +17,7 @@ test.describe("web-host notification bell", () => {
 
     const bell = page.getByRole("link", { name: "通知、未読はありません" });
     await expect(bell).toBeVisible();
-    await expect(bell).toHaveAttribute("href", "/notifications");
+    await expect(bell).toHaveAttribute("href", hostPath("/notifications"));
 
     await expect(page).toHaveURL(/\/notifications\/?$/u);
     await expect(
@@ -24,7 +25,7 @@ test.describe("web-host notification bell", () => {
     ).toBeVisible();
     await expect(page.getByText("通知はまだありません。")).toBeVisible();
 
-    await page.goto("/announcements");
+    await page.goto(hostPath("/announcements"));
     await expect(page).toHaveURL(/\/announcements\/?$/u);
     await expect(
       page.getByRole("heading", { exact: true, level: 1, name: "お知らせ" })
@@ -33,7 +34,7 @@ test.describe("web-host notification bell", () => {
   });
 
   test("未ログインの /notifications はログインへ送る", async ({ page }) => {
-    await page.goto("/notifications");
+    await page.goto(hostPath("/notifications"));
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
     await expect(
       page.getByRole("link", { name: "通知、未読はありません" })

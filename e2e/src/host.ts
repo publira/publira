@@ -2,9 +2,10 @@ import type { Page } from "@playwright/test";
 
 import { SEED_MEMBER } from "./scenarios/member-announcements";
 import { fillLoginForm } from "./session";
-import { WEB_HOST_BASE_URL } from "./urls";
+import { hostPath, WEB_HOST_BASE_URL } from "./urls";
 
-const hostUrl = (pathname: string): string => `${WEB_HOST_BASE_URL}${pathname}`;
+const hostUrl = (pathname: string): string =>
+  `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
 
 export const signInAsMember = async (
   page: Page,

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { MISSING_PUBLIC_ID, SEED_TENANT } from "../src/scenarios/multi-tenant";
+import { hostPath } from "../src/urls";
 
 /**
  * Missing content inside a resolved tenant. Every route renders
@@ -18,7 +19,7 @@ test.describe("web-host catalog not found", () => {
   test("存在しないシリーズはサイト UI を保った案内を表示する", async ({
     page,
   }) => {
-    const response = await page.goto(`/series/${MISSING_PUBLIC_ID}`);
+    const response = await page.goto(hostPath(`/series/${MISSING_PUBLIC_ID}`));
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
@@ -35,7 +36,9 @@ test.describe("web-host catalog not found", () => {
 
   test("存在しないエピソードは見つからない案内を表示する", async ({ page }) => {
     const response = await page.goto(
-      `/series/${SEED_TENANT.series.publicId}/episodes/${MISSING_PUBLIC_ID}`
+      hostPath(
+        `/series/${SEED_TENANT.series.publicId}/episodes/${MISSING_PUBLIC_ID}`
+      )
     );
 
     expect(response?.status(), await page.content()).toBe(200);
@@ -46,7 +49,9 @@ test.describe("web-host catalog not found", () => {
 
   test("別シリーズのエピソード ID は見つからない", async ({ page }) => {
     const response = await page.goto(
-      `/series/${MISSING_PUBLIC_ID}/episodes/${SEED_TENANT.series.freeEpisodeId}`
+      hostPath(
+        `/series/${MISSING_PUBLIC_ID}/episodes/${SEED_TENANT.series.freeEpisodeId}`
+      )
     );
 
     expect(response?.status(), await page.content()).toBe(200);
@@ -59,7 +64,7 @@ test.describe("web-host catalog not found", () => {
     // Base58 uses both cases, so a case-folded lookup would resolve two
     // different IDs to the same record (#673).
     const response = await page.goto(
-      `/series/${SEED_TENANT.series.publicId.toUpperCase()}`
+      hostPath(`/series/${SEED_TENANT.series.publicId.toUpperCase()}`)
     );
 
     expect(response?.status(), await page.content()).toBe(200);
@@ -67,7 +72,7 @@ test.describe("web-host catalog not found", () => {
   });
 
   test("存在しないレーベルは見つからない案内を表示する", async ({ page }) => {
-    const response = await page.goto(`/labels/${MISSING_PUBLIC_ID}`);
+    const response = await page.goto(hostPath(`/labels/${MISSING_PUBLIC_ID}`));
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
@@ -76,7 +81,7 @@ test.describe("web-host catalog not found", () => {
   });
 
   test("存在しない著者は見つからない案内を表示する", async ({ page }) => {
-    const response = await page.goto(`/authors/${MISSING_PUBLIC_ID}`);
+    const response = await page.goto(hostPath(`/authors/${MISSING_PUBLIC_ID}`));
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
@@ -85,7 +90,7 @@ test.describe("web-host catalog not found", () => {
   });
 
   test("存在しない公開ページは見つからない案内を表示する", async ({ page }) => {
-    const response = await page.goto("/page/no-such-published-page");
+    const response = await page.goto(hostPath("/page/no-such-published-page"));
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(

@@ -1,9 +1,12 @@
 import { isUnauthenticatedRpcError } from "@publira/api-client/errors";
+import type { Locale } from "@publira/utils/i18n";
 import {
   decryptSessionPayload,
   isSessionExpired,
   resolveAuthSecret,
 } from "@publira/web-session";
+
+import { splitLocalePathname, withLocalePrefix } from "./locale-path";
 
 export const PUBLIC_SESSION_COOKIE_NAME = "publira_web_host_auth";
 
@@ -12,6 +15,17 @@ const PUBLIC_SESSION_CACHE_TAG_PREFIX = "public-session-cookie";
 export const getPublicSessionCacheTag = (cookieName: string): string =>
   `${PUBLIC_SESSION_CACHE_TAG_PREFIX}-${cookieName}`;
 
+/**
+ * Normalize a return destination to a **locale-less** in-app path.
+ *
+ * `returnTo` travels through URLs and form fields that a reader can edit, and
+ * the locale it should come back in is decided by whoever performs the
+ * redirect — the login page is served under a locale, so pinning one into the
+ * stored path would let `/en/login?returnTo=/ja/my` throw the reader back into
+ * the other language. Dropping the locale segment here also means the
+ * `/login` check below still sees `/login` when the submitted value was
+ * `/ja/login`, so the re-authentication loop stays closed.
+ */
 export const sanitizeRedirectPath = (
   path: string | null | undefined
 ): string => {
@@ -20,15 +34,19 @@ export const sanitizeRedirectPath = (
   }
 
   // Browsers can treat `/\evil.example` as the protocol-relative `//evil.example`.
-  if (
-    path.startsWith("//") ||
-    path.startsWith("/\\") ||
-    path.startsWith("/login")
-  ) {
+  if (path.startsWith("//") || path.startsWith("/\\")) {
     return "/";
   }
 
-  return path;
+  const suffixStart = path.search(/[?#]/u);
+  const pathname = suffixStart === -1 ? path : path.slice(0, suffixStart);
+  const suffix = suffixStart === -1 ? "" : path.slice(suffixStart);
+  const bare = splitLocalePathname(pathname).pathname;
+  if (bare.startsWith("/login")) {
+    return "/";
+  }
+
+  return `${bare}${suffix}`;
 };
 
 /**
@@ -48,6 +66,7 @@ export const SESSION_REVOKED_PARAM_NAME = "reason";
 export const SESSION_REVOKED_REASON = "session_revoked";
 
 export const buildLoginPath = (
+  locale: Locale,
   returnTo: string | null | undefined,
   options?: { revoked?: boolean }
 ): string => {
@@ -57,7 +76,7 @@ export const buildLoginPath = (
   if (options?.revoked) {
     params.set(SESSION_REVOKED_PARAM_NAME, SESSION_REVOKED_REASON);
   }
-  return `/login?${params.toString()}`;
+  return `${withLocalePrefix(locale, "/login")}?${params.toString()}`;
 };
 
 /** Whether this request is the redirect a rejected session produced. */
@@ -86,19 +105,18 @@ export const hasActivePublicSessionCookie = async (
   return payload !== null && !isSessionExpired(payload.expiresAt);
 };
 
+/**
+ * The `/{locale}/login` URL a proxy redirect goes to, carrying the path the
+ * reader was denied as a locale-less `returnTo`.
+ */
 export const buildLoginUrl = (
   requestUrl: URL,
-  options?: {
-    returnToParamName?: string;
-    tenantId?: string;
-  }
+  locale: Locale,
+  options?: { returnToParamName?: string }
 ): URL => {
-  const { returnToParamName = "returnTo", tenantId } = options ?? {};
+  const { returnToParamName = "returnTo" } = options ?? {};
 
-  const loginUrl = tenantId
-    ? new URL(`/${tenantId}/login`, requestUrl)
-    : new URL("/login", requestUrl);
-
+  const loginUrl = new URL(withLocalePrefix(locale, "/login"), requestUrl);
   const returnToPath = sanitizeRedirectPath(
     `${requestUrl.pathname}${requestUrl.search}`
   );

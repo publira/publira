@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
+import { hostPath } from "../src/urls";
 
 /** Keep in sync with `SERIES_PAGE_SIZE` in the web-host series list page. */
 const SERIES_PAGE_SIZE = 24;
@@ -17,7 +18,7 @@ test.describe("web-host catalog browsing", () => {
   test("カタログトップの各セクションが公開データを表示する", async ({
     page,
   }) => {
-    const response = await page.goto("/");
+    const response = await page.goto(hostPath("/"));
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
@@ -26,7 +27,7 @@ test.describe("web-host catalog browsing", () => {
 
     const recommended = page.getByRole("region", { name: "おすすめ作品" });
     await expect(
-      recommended.locator('a[href^="/series/"]').first()
+      recommended.locator(`a[href^="${hostPath("/series/")}"]`).first()
     ).toBeVisible();
 
     const newEpisodes = page.getByRole("region", { name: "新着エピソード" });
@@ -36,7 +37,7 @@ test.describe("web-host catalog browsing", () => {
 
     const updatedSeries = page.getByRole("region", { name: "更新作品" });
     await expect(
-      updatedSeries.locator('a[href^="/series/"]').first()
+      updatedSeries.locator(`a[href^="${hostPath("/series/")}"]`).first()
     ).toBeVisible();
 
     const featuredLabels = page.getByRole("region", { name: "注目のレーベル" });
@@ -46,7 +47,7 @@ test.describe("web-host catalog browsing", () => {
 
     const featuredAuthors = page.getByRole("region", { name: "注目の著者" });
     await expect(
-      featuredAuthors.locator('a[href^="/authors/"]').first()
+      featuredAuthors.locator(`a[href^="${hostPath("/authors/")}"]`).first()
     ).toBeVisible();
 
     // The per-section fallback must not have kicked in. Every section's
@@ -57,7 +58,7 @@ test.describe("web-host catalog browsing", () => {
   test("シリーズ一覧からシリーズ詳細とエピソードまで辿れる", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto(hostPath("/"));
     await page.getByRole("link", { name: "シリーズ一覧へ" }).click();
 
     await expect(
@@ -67,9 +68,11 @@ test.describe("web-host catalog browsing", () => {
     // series is not guaranteed to sit on page 1 of published_at-desc order.
     // Assert the list itself is populated; the known seed series is opened by
     // public_id below.
-    await expect(page.locator('a[href^="/series/"]').first()).toBeVisible();
+    await expect(
+      page.locator(`a[href^="${hostPath("/series/")}"]`).first()
+    ).toBeVisible();
 
-    await page.goto(`/series/${SEED_TENANT.series.publicId}`);
+    await page.goto(hostPath(`/series/${SEED_TENANT.series.publicId}`));
     await expect(
       page.getByRole("heading", { level: 1, name: SEED_TENANT.series.title })
     ).toBeVisible();
@@ -107,14 +110,14 @@ test.describe("web-host catalog browsing", () => {
   });
 
   test("シリーズ一覧を cursor でページ送りできる", async ({ page }) => {
-    const response = await page.goto("/series");
+    const response = await page.goto(hostPath("/series"));
     expect(response?.status(), await page.content()).toBe(200);
 
     // db/seeds/dev/010_catalog.sql publishes more series than one page holds.
     // `:not([href*="/episodes/"])`: a series detail page stays mounted while
     // the next route streams in, and its episode links share the prefix.
     const seriesCards = page.locator(
-      'a[href^="/series/"]:not([href*="/episodes/"])'
+      `a[href^="${hostPath("/series/")}"]:not([href*="/episodes/"])`
     );
     await expect(seriesCards).toHaveCount(SERIES_PAGE_SIZE);
     const firstPageHrefs = await seriesCards.evaluateAll((links) =>
@@ -162,7 +165,7 @@ test.describe("web-host catalog browsing", () => {
   });
 
   test("レーベル一覧からレーベル詳細に辿れる", async ({ page }) => {
-    const response = await page.goto("/labels");
+    const response = await page.goto(hostPath("/labels"));
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
@@ -197,7 +200,7 @@ test.describe("web-host catalog browsing", () => {
   });
 
   test("代表キーワードで期待シリーズがヒットする", async ({ page }) => {
-    const response = await page.goto("/search");
+    const response = await page.goto(hostPath("/search"));
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
@@ -221,7 +224,7 @@ test.describe("web-host catalog browsing", () => {
   });
 
   test("著者一覧から著者詳細に辿れる", async ({ page }) => {
-    const response = await page.goto("/authors");
+    const response = await page.goto(hostPath("/authors"));
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(

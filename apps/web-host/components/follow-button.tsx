@@ -9,6 +9,8 @@ import type { FollowTargetKind } from "#lib/follow";
 import type { FollowActionState } from "#lib/follow-actions";
 import { toggleFollowAction } from "#lib/follow-actions";
 
+import { LocaleField } from "./locale-field";
+
 const followButtonClassName = "shrink-0";
 
 export const FollowControlSkeleton = () => (
@@ -69,6 +71,7 @@ export const FollowButton = ({
 
   return (
     <form action={formAction} className="grid justify-items-end gap-2">
+      <LocaleField />
       <input name="intent" type="hidden" value={intent} />
       <input name="publicId" type="hidden" value={publicId} />
       <input name="returnTo" type="hidden" value={returnTo} />

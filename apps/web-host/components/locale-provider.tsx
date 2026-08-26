@@ -1,0 +1,40 @@
+"use client";
+
+import { DEFAULT_LOCALE } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
+import { createContext, use } from "react";
+import type { ReactNode } from "react";
+
+const LocaleContext = createContext<Locale>(DEFAULT_LOCALE);
+
+/**
+ * Carries the `[locale]` root parameter to Client Components.
+ *
+ * The obvious implementation reads `useParams()`, and that is what breaks the
+ * build: `useParams()` and `usePathname()` call Next.js's dynamic-route-param
+ * hook, which aborts a **fallback shell** — the prerender of a route whose own
+ * dynamic segment has no value yet, such as `/series/[series_id]` — with a
+ * bail-out to client rendering. Every in-app link would then pull the shell of
+ * every dynamic route out of the static prerender.
+ *
+ * The root layout knows the locale without any of that: it is a root parameter,
+ * enumerated by `generateStaticParams`, so each shell is prerendered with a
+ * literal value. Passing it down through context keeps `<LocaleLink>` and
+ * `<LocaleField>` free of dynamic APIs, and the value is identical during SSR
+ * and after hydration because it comes from the route tree rather than the
+ * browser URL.
+ */
+export const LocaleProvider = ({
+  children,
+  locale,
+}: {
+  children: ReactNode;
+  locale: Locale;
+}) => <LocaleContext value={locale}>{children}</LocaleContext>;
+
+/**
+ * Client-side UI locale.
+ * Prefer this over prop-drilling in Client Components.
+ * Server Components should use `getLocale()` from `#lib/locale` instead.
+ */
+export const useLocale = (): Locale => use(LocaleContext);

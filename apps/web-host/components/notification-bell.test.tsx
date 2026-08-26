@@ -23,7 +23,7 @@ describe("NotificationBell", () => {
     render(<NotificationBell unreadCount={0} />);
 
     const link = screen.getByRole("link", { name: "通知、未読はありません" });
-    expect(link.getAttribute("href")).toBe("/notifications");
+    expect(link.getAttribute("href")).toBe("/ja/notifications");
     expect(link.textContent).not.toContain("0");
   });
 

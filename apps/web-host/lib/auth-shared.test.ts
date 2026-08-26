@@ -29,29 +29,41 @@ describe("web-host auth-shared", () => {
     expect(PUBLIC_SESSION_COOKIE_NAME).toBe("publira_web_host_auth");
   });
 
-  it("buildLoginUrl は returnTo を引き継ぐ", () => {
-    const url = buildLoginUrl(new URL("https://example.com/me?from=settings"));
+  it("buildLoginUrl は locale 配下の /login へ returnTo を引き継ぐ", () => {
+    const url = buildLoginUrl(
+      new URL("https://example.com/ja/me?from=settings"),
+      "ja"
+    );
 
-    expect(url.pathname).toBe("/login");
+    expect(url.pathname).toBe("/ja/login");
+    // `returnTo` は locale を落とした形で保存する。
     expect(url.searchParams.get("returnTo")).toBe("/me?from=settings");
   });
 
-  it("sanitizeRedirectPath は外部URLと login パスを拒否する", () => {
+  it("sanitizeRedirectPath は外部URLと login パスを拒否し、locale を落とす", () => {
     expect(sanitizeRedirectPath("/dashboard")).toBe("/dashboard");
+    expect(sanitizeRedirectPath("/en/dashboard")).toBe("/dashboard");
     expect(sanitizeRedirectPath("https://example.com")).toBe("/");
     expect(sanitizeRedirectPath("/login?returnTo=/dashboard")).toBe("/");
+    // locale 付きの /login も再ログインループを作らせない。
+    expect(sanitizeRedirectPath("/ja/login?returnTo=/dashboard")).toBe("/");
     expect(sanitizeRedirectPath(null)).toBe("/");
     expect(sanitizeRedirectPath("//evil.example.com")).toBe("/");
     expect(sanitizeRedirectPath("/\\evil.example.com")).toBe("/");
   });
 
   it("buildLoginPath は returnTo を sanitize し、失効時だけ理由を付ける", () => {
-    expect(buildLoginPath("/settings")).toBe("/login?returnTo=%2Fsettings");
-    expect(buildLoginPath("https://evil.example.com")).toBe(
-      "/login?returnTo=%2F"
+    expect(buildLoginPath("ja", "/settings")).toBe(
+      "/ja/login?returnTo=%2Fsettings"
     );
-    expect(buildLoginPath("/settings", { revoked: true })).toBe(
-      "/login?returnTo=%2Fsettings&reason=session_revoked"
+    expect(buildLoginPath("en", "/settings")).toBe(
+      "/en/login?returnTo=%2Fsettings"
+    );
+    expect(buildLoginPath("ja", "https://evil.example.com")).toBe(
+      "/ja/login?returnTo=%2F"
+    );
+    expect(buildLoginPath("ja", "/settings", { revoked: true })).toBe(
+      "/ja/login?returnTo=%2Fsettings&reason=session_revoked"
     );
   });
 

@@ -1,16 +1,23 @@
+import type { Locale } from "@publira/utils/i18n";
+
 /**
- * Top-level path segments that belong to app features / auth / API,
- * not to tenant-published content pages.
+ * First segments **below the locale prefix** that belong to app features or
+ * auth rather than to a tenant-published content page — every route directory
+ * under `app/[tenant_id]/[locale]`.
+ *
+ * The locale is stripped before this set is consulted, so a locale code can
+ * never collide with a reserved name and `/{locale}/{locale}` still reaches a
+ * published page whose slug happens to be `ja` or `en`. The paths served
+ * outside the locale tree — `/theme.css`, `/api/*`, `/livez`, `/readyz` — are
+ * settled in `lib/locale-path.ts` and `@publira/utils/health` before a
+ * pathname gets here.
  */
 const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "announcements",
-  "api",
   "authors",
   "confirm-email",
   "confirm-password",
   "labels",
-  "livez",
-  "readyz",
   "login",
   "my",
   "notifications",
@@ -20,7 +27,6 @@ const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "series",
   "settings",
   "signup",
-  "theme.css",
   "verify",
 ]);
 
@@ -77,24 +83,29 @@ export const getPublishedPageSlugFromPathname = (
 };
 
 /**
- * Rewrite public pathname under a resolved tenant:
- * - `/privacy` → `/{tenantId}/page/privacy`
- * - `/legal/terms` → `/{tenantId}/page/legal/terms`
- * - `/series` (reserved) → `/{tenantId}/series`
+ * Rewrite a locale-less public pathname onto the resolved tenant and locale:
+ * - `/privacy` → `/{tenantId}/{locale}/page/privacy`
+ * - `/legal/terms` → `/{tenantId}/{locale}/page/legal/terms`
+ * - `/series` (reserved) → `/{tenantId}/{locale}/series`
+ *
+ * `pathname` is what `splitLocalePathname` left behind, so the published-page
+ * decision is made on the path the reader actually asked for rather than on a
+ * locale code.
  */
 export const buildTenantRewritePathname = (
   tenantId: string,
+  locale: Locale,
   pathname: string
 ): string => {
-  const normalizedTenantId = tenantId.trim();
+  const prefix = `/${tenantId.trim()}/${locale}`;
   const publishedSlug = getPublishedPageSlugFromPathname(pathname);
   if (publishedSlug) {
-    return `/${normalizedTenantId}/page/${publishedSlug}`;
+    return `${prefix}/page/${publishedSlug}`;
   }
 
   const suffix = pathname.startsWith("/") ? pathname : `/${pathname}`;
   if (suffix === "/") {
-    return `/${normalizedTenantId}`;
+    return prefix;
   }
-  return `/${normalizedTenantId}${suffix}`;
+  return `${prefix}${suffix}`;
 };

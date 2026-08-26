@@ -7,6 +7,7 @@ import {
   MEMBER_ANNOUNCEMENTS,
   MEMBER_ANNOUNCEMENTS_SCENARIO,
 } from "../src/scenarios/member-announcements";
+import { hostPath } from "../src/urls";
 
 /** Keep in sync with `ANNOUNCEMENTS_PAGE_SIZE` in the web-host announcements page. */
 const ANNOUNCEMENTS_PAGE_SIZE = 20;
@@ -143,7 +144,7 @@ test.describe("web-host member announcements", () => {
       ANNOUNCEMENTS_PAGE_SIZE
     );
 
-    await page.goto("/announcements?token=not%20a%20token");
+    await page.goto(hostPath("/announcements?token=not%20a%20token"));
 
     await expect(page.locator("article h3")).toHaveCount(
       ANNOUNCEMENTS_PAGE_SIZE
