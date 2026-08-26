@@ -4,6 +4,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
+import type { PlatformApiClient } from "@publira/api-client/platform/client";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
@@ -189,14 +190,27 @@ export const listPlatformTenants = async (
   }
 };
 
-const mapTenant = (tenant?: {
-  adminDomain: string;
-  createdAt: string;
-  domain: string;
-  name: string;
-  publicId: string;
-  status: string;
-}): PlatformTenantDetail | null => {
+/**
+ * The generated `Tenant` message. `publira.platform.v1` has no `types` subpath,
+ * so the message is named through the client method that returns it
+ * (`apps/AGENTS.md`).
+ */
+type TenantMessage = Awaited<
+  ReturnType<PlatformApiClient["tenants"]["listTenants"]>
+>["tenants"][number];
+
+/**
+ * The generated `Tenant` fields {@link mapTenant} reads. Naming them against
+ * the message type is what makes a proto rename fail here — a restated
+ * structural type keeps compiling, and the detail page then renders a tenant
+ * whose domain column is blank with nothing pointing at the cause.
+ */
+type RawTenant = Pick<
+  TenantMessage,
+  "adminDomain" | "createdAt" | "domain" | "name" | "publicId" | "status"
+>;
+
+const mapTenant = (tenant?: RawTenant): PlatformTenantDetail | null => {
   if (!tenant) {
     return null;
   }
@@ -477,15 +491,31 @@ export type UpdateTenantAdminInvitationResult =
   | { ok: true; invitation?: PlatformTenantAdminInvitation }
   | { ok: false; message: string };
 
-const mapInvitation = (invitation: {
-  acceptedAt: string;
-  canceledAt: string;
-  createdAt: string;
-  email: string;
-  expiresAt: string;
-  id: string;
-  status: string;
-}): PlatformTenantAdminInvitation => ({
+/** The generated `TenantAdminInvitation` message (see {@link TenantMessage}). */
+type TenantAdminInvitationMessage = Awaited<
+  ReturnType<PlatformApiClient["tenants"]["listTenantAdminInvitations"]>
+>["invitations"][number];
+
+/**
+ * The generated `TenantAdminInvitation` fields {@link mapInvitation} reads.
+ * Naming them against the message type is what makes a proto rename fail here —
+ * a restated structural type is a second copy of the message that goes on
+ * compiling once the two drift.
+ */
+type RawTenantAdminInvitation = Pick<
+  TenantAdminInvitationMessage,
+  | "acceptedAt"
+  | "canceledAt"
+  | "createdAt"
+  | "email"
+  | "expiresAt"
+  | "id"
+  | "status"
+>;
+
+const mapInvitation = (
+  invitation: RawTenantAdminInvitation
+): PlatformTenantAdminInvitation => ({
   acceptedAt: invitation.acceptedAt,
   canceledAt: invitation.canceledAt,
   createdAt: invitation.createdAt,

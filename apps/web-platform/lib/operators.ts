@@ -1,5 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import type { PlatformApiClient } from "@publira/api-client/platform/client";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { z } from "zod";
 
@@ -62,14 +63,29 @@ export type ListPlatformOperatorsResult =
       requiresSignIn: boolean;
     };
 
-const mapOperator = (operator: {
-  createdAt: string;
-  email: string;
-  name: string;
-  publicId: string;
-  role: string;
-  status: string;
-}): PlatformOperatorSummary => ({
+/**
+ * The generated `PlatformOperator` message. `publira.platform.v1` has no
+ * `types` subpath, so the message is named through the client method that
+ * returns it (`apps/AGENTS.md`).
+ */
+type PlatformOperatorMessage = Awaited<
+  ReturnType<PlatformApiClient["operators"]["listOperators"]>
+>["operators"][number];
+
+/**
+ * The generated `PlatformOperator` fields {@link mapOperator} reads. Naming
+ * them against the message type is what makes a proto rename fail here — a
+ * restated structural type is a second copy of the message that goes on
+ * compiling once the two drift.
+ */
+type RawPlatformOperator = Pick<
+  PlatformOperatorMessage,
+  "createdAt" | "email" | "name" | "publicId" | "role" | "status"
+>;
+
+const mapOperator = (
+  operator: RawPlatformOperator
+): PlatformOperatorSummary => ({
   createdAt: operator.createdAt,
   email: operator.email,
   name: operator.name,
