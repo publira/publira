@@ -19,6 +19,9 @@ const (
 	originPathPrefix        = "/objects/"
 	originContentTypeHeader = "X-Publira-Origin-Content-Type"
 	imageCacheHeader        = "X-Publira-Image-Cache"
+	imageEncryptionHeader   = "X-Publira-Image-Encryption"
+	imageContentTypeHeader  = "X-Publira-Image-Content-Type"
+	imageKeyIDHeader        = "X-Publira-Image-Key-Id"
 	originReadHeaderTimeout = 5 * time.Second
 	originShutdownTimeout   = 5 * time.Second
 	// defaultMaxConvertedBytes matches Manael's default upstream limit so a
@@ -113,10 +116,10 @@ func (h *Handler) serveOrigin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, objectKey, fallbackContentType, cacheControl string) {
+func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, objectKey, fallbackContentType, cacheControl string, cipher *imageCipher) {
 	key := cacheKey(objectKey, r)
 	if entry, ok := h.cache.Get(r.Context(), key); ok {
-		writeImage(w, entry.ContentType, cacheControl, "hit", http.StatusOK, entry.Data)
+		h.writeConvertedImage(w, entry.ContentType, cacheControl, "hit", http.StatusOK, entry.Data, cipher, key)
 		return
 	}
 
@@ -156,7 +159,26 @@ func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, objectK
 	if contentType == "" {
 		contentType = fallbackContentType
 	}
-	writeImage(w, contentType, cacheControl, "miss", rec.code, body)
+	h.writeConvertedImage(w, contentType, cacheControl, "miss", rec.code, body, cipher, key)
+}
+
+func (h *Handler) writeConvertedImage(w http.ResponseWriter, contentType, cacheControl, cacheStatus string, status int, body []byte, cipher *imageCipher, keyID string) {
+	if cipher == nil || status < http.StatusOK || status >= http.StatusMultipleChoices || len(body) == 0 {
+		writeImage(w, contentType, cacheControl, cacheStatus, status, body)
+		return
+	}
+
+	encrypted, err := cipher.xor(body, keyID)
+	if err != nil {
+		h.logger.Error("failed to encrypt converted image", "error", err)
+		writeImage(w, "text/plain; charset=utf-8", "", cacheStatus, http.StatusInternalServerError, []byte("internal server error\n"))
+		return
+	}
+	w.Header().Set(imageEncryptionHeader, imageEncryptionAlgorithm)
+	w.Header().Set(imageContentTypeHeader, contentType)
+	w.Header().Set(imageKeyIDHeader, keyID)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	writeImage(w, "application/octet-stream", cacheControl, cacheStatus, status, encrypted)
 }
 
 func rewriteOriginRequest(r *http.Request, objectKey, contentType string) *http.Request {

@@ -484,6 +484,97 @@ func TestEpisodeImageMediaToken(t *testing.T) {
 	})
 }
 
+func TestEpisodeImageMediaTokenEncryptsAfterSharedConversionCache(t *testing.T) {
+	t.Setenv("PUBLIRA_IMAGE_ENCRYPTION", "enabled")
+
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
+	episodeID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
+	userID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	tokens := auth.NewTokenManager([]byte(testMediaJWTSecret))
+	store := &countingStore{objects: map[string]storedObject{
+		"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+	}}
+	srv := newTestServerWithTokens(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: paidEpisodeQueries(mediaID, episodeID, userID, 4)},
+		store,
+		tokens,
+	)
+
+	issue := func(t *testing.T, at time.Time) string {
+		t.Helper()
+		token, _, err := tokens.IssueMediaToken("reader-public-id", tenantID.String(), episodeID.String(), 4, at)
+		if err != nil {
+			t.Fatalf("IssueMediaToken: %v", err)
+		}
+		return token
+	}
+	serve := func(t *testing.T, token string) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, "/images/episodes/"+mediaID.String()+"?t="+url.QueryEscape(token), nil)
+		req.Host = "example.test"
+		req.Header.Set("Accept", "image/webp")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		return rec
+	}
+
+	firstToken := issue(t, time.Now())
+	first := serve(t, firstToken)
+	if first.Code != http.StatusOK {
+		t.Fatalf("first status = %d, body = %q", first.Code, first.Body.String())
+	}
+	if got := first.Header().Get("Content-Type"); got != "application/octet-stream" {
+		t.Fatalf("first Content-Type = %q, want application/octet-stream", got)
+	}
+	if got := first.Header().Get(imageEncryptionHeader); got != imageEncryptionAlgorithm {
+		t.Fatalf("first %s = %q, want %q", imageEncryptionHeader, got, imageEncryptionAlgorithm)
+	}
+	if got := first.Header().Get(imageContentTypeHeader); got != "image/webp" {
+		t.Fatalf("first %s = %q, want image/webp", imageContentTypeHeader, got)
+	}
+	keyID := first.Header().Get(imageKeyIDHeader)
+	if keyID == "" {
+		t.Fatalf("first %s is empty", imageKeyIDHeader)
+	}
+	if got := first.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("first X-Content-Type-Options = %q, want nosniff", got)
+	}
+	firstPlain, err := (imageCipher{rawToken: firstToken, subject: "reader-public-id"}).xor(first.Body.Bytes(), keyID)
+	if err != nil {
+		t.Fatalf("first decrypt: %v", err)
+	}
+	if bytes.Equal(firstPlain, first.Body.Bytes()) {
+		t.Fatal("first response was not encrypted")
+	}
+
+	secondToken := issue(t, time.Now().Add(time.Second))
+	second := serve(t, secondToken)
+	if second.Code != http.StatusOK {
+		t.Fatalf("second status = %d, body = %q", second.Code, second.Body.String())
+	}
+	if got := second.Header().Get(imageCacheHeader); got != "hit" {
+		t.Fatalf("second %s = %q, want hit", imageCacheHeader, got)
+	}
+	if got := second.Header().Get(imageKeyIDHeader); got != keyID {
+		t.Fatalf("second %s = %q, want %q", imageKeyIDHeader, got, keyID)
+	}
+	if bytes.Equal(first.Body.Bytes(), second.Body.Bytes()) {
+		t.Fatal("different media tokens produced identical ciphertext")
+	}
+	secondPlain, err := (imageCipher{rawToken: secondToken, subject: "reader-public-id"}).xor(second.Body.Bytes(), keyID)
+	if err != nil {
+		t.Fatalf("second decrypt: %v", err)
+	}
+	if !bytes.Equal(firstPlain, secondPlain) {
+		t.Fatal("different encrypted responses did not decrypt to one cached rendition")
+	}
+	if got := store.getCount(); got != 1 {
+		t.Fatalf("origin gets = %d, want 1", got)
+	}
+}
+
 func unpublishedPaidEpisodeQueries(mediaID, episodeID, userID uuid.UUID, credentialsVersion int32, tenantID uuid.UUID, roles []string) stubTenantQueries {
 	q := paidEpisodeQueries(mediaID, episodeID, userID, credentialsVersion)
 	q.public.IsPublished = sql.NullBool{Bool: false, Valid: true}
@@ -864,7 +955,7 @@ func TestServeConvertedRejectsOversizeConversion(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodGet, "/images/episodes/x", nil)
 	rec := httptest.NewRecorder()
-	h.serveConverted(rec, req, "obj", "image/jpeg", "public, max-age=3600")
+	h.serveConverted(rec, req, "obj", "image/jpeg", "public, max-age=3600", nil)
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
 	}
