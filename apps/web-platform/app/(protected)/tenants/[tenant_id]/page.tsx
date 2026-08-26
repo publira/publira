@@ -10,6 +10,7 @@ import {
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { getMessage } from "@publira/utils/i18n";
 import {
@@ -23,6 +24,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { AdminDomainPreview } from "#components/admin-domain-preview";
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -36,7 +38,6 @@ import {
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { getPlatformTenant } from "#lib/tenants";
@@ -118,21 +119,21 @@ const TenantDetailSkeleton = () => (
  * `notFound()` would tell the operator to stop looking for a tenant that is
  * still there, so an outage keeps the console's own wording and a way back.
  */
-const TenantLoadError = ({
-  messages,
-  message,
-}: {
-  message: string;
-  messages: PlatformMessages;
-}) => (
+const TenantLoadError = ({ message }: { message: string }) => (
   <SectionError
     actions={
       <LinkButton render={<Link href="/tenants" />} variant="outline">
-        {getMessage(messages, "platform.common.back_to_list")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="platform.common.back_to_list" />
+        </Suspense>
       </LinkButton>
     }
     description={message}
-    title={getMessage(messages, "platform.tenants.load_one_failed")}
+    title={
+      <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+        <Message message="platform.tenants.load_one_failed" />
+      </Suspense>
+    }
   />
 );
 
@@ -157,9 +158,7 @@ const TenantDetailContent = async ({
   await redirectToLoginIfSessionRejected(tenantResult);
 
   if (!tenantResult.ok) {
-    return (
-      <TenantLoadError message={tenantResult.message} messages={messages} />
-    );
+    return <TenantLoadError message={tenantResult.message} />;
   }
 
   const { tenant } = tenantResult;
@@ -218,14 +217,7 @@ const TenantDetailContent = async ({
       </PlatformPageHeader>
       <PlatformPageContent>
         <div className="grid gap-6">
-          <TenantSectionNav
-            current="detail"
-            labels={{
-              basic: getMessage(messages, "platform.tenants.section_basic"),
-              members: getMessage(messages, "platform.tenants.members_nav"),
-            }}
-            tenantId={tenant.publicId}
-          />
+          <TenantSectionNav current="detail" tenantId={tenant.publicId} />
 
           <div className="grid gap-6">
             <Card>
@@ -312,20 +304,7 @@ const TenantDetailContent = async ({
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
-                <TenantDomainCautions
-                  copy={{
-                    items: [
-                      getMessage(messages, "platform.tenants.caution_cache"),
-                      getMessage(messages, "platform.tenants.caution_unique"),
-                      getMessage(messages, "platform.tenants.caution_dns"),
-                      getMessage(messages, "platform.tenants.caution_update"),
-                    ],
-                    title: getMessage(
-                      messages,
-                      "platform.tenants.caution_title"
-                    ),
-                  }}
-                />
+                <TenantDomainCautions showUpdateCaution />
                 <TenantUpdateForm
                   action={updateTenantDomainAction}
                   pendingLabel={savingLabel}
@@ -370,20 +349,6 @@ const TenantDetailContent = async ({
                       />
                       <AdminDomainPreview
                         adminDomain={tenant.adminDomain}
-                        copy={{
-                          current: getMessage(
-                            messages,
-                            "platform.tenants.admin_domain_preview_current"
-                          ),
-                          prefix: getMessage(
-                            messages,
-                            "platform.tenants.admin_domain_preview_prefix"
-                          ),
-                          set: getMessage(
-                            messages,
-                            "platform.tenants.admin_domain_preview_set"
-                          ),
-                        }}
                         domain={tenant.domain}
                         showCurrentDomain
                       />

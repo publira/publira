@@ -36,7 +36,6 @@ import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import {
   getOperatorRoleCardDescription,
   getOperatorRoleLabel,
-  getOperatorRoleSelectItems,
   getOperatorStatusLabel,
 } from "#lib/operator-labels";
 import { getPlatformOperator } from "#lib/operators";
@@ -49,7 +48,6 @@ import {
   deactivateOperatorAction,
   suspendOperatorAction,
   unsuspendOperatorAction,
-  updateOperatorRoleAction,
 } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -306,23 +304,9 @@ const OperatorDetailContent = async ({
               </CardHeader>
               <CardContent>
                 <OperatorRoleForm
-                  action={updateOperatorRoleAction}
-                  copy={{
-                    pendingLabel: getMessage(
-                      messages,
-                      "platform.common.saving"
-                    ),
-                    roleLabel: getMessage(messages, "platform.common.role"),
-                    rolePlaceholder: getMessage(
-                      messages,
-                      "platform.common.select_placeholder"
-                    ),
-                    submitLabel: getMessage(messages, "platform.common.save"),
-                  }}
                   currentRole={operator.role}
                   disabled={!canModify}
                   operatorPublicId={operator.publicId}
-                  roleItems={getOperatorRoleSelectItems(messages)}
                 />
               </CardContent>
             </Card>

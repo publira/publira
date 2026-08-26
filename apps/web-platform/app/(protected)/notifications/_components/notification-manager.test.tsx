@@ -4,8 +4,53 @@ import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import ja from "../../../../../../locales/ja.json";
 import type { NotificationItem } from "../notification-types";
 import { NotificationManager } from "./notification-manager";
+
+const notificationMessages = {
+  "platform.common.next": "次へ",
+  "platform.common.previous": "前へ",
+  "platform.notifications.card_description":
+    "自分宛の業務イベントです。テナント詳細へ遷移できます。",
+  "platform.notifications.card_title": "通知一覧",
+  "platform.notifications.columns.action": "操作",
+  "platform.notifications.columns.at": "日時",
+  "platform.notifications.columns.content": "内容",
+  "platform.notifications.columns.status": "状態",
+  "platform.notifications.list_failed": "通知一覧を表示できませんでした",
+  "platform.notifications.mark_all_read": "すべて既読にする",
+  "platform.notifications.mark_read": "既読にする",
+  "platform.notifications.per_page":
+    "新しい順に、1ページあたり 20 件まで表示します。",
+  "platform.notifications.read": "既読",
+  "platform.notifications.unread": "未読",
+} as const;
+
+vi.mock("#components/message", () => ({
+  Message: ({ message }: { message: keyof typeof notificationMessages }) =>
+    notificationMessages[message],
+}));
+
+vi.mock("#components/pagination-controls", () => ({
+  PaginationControls: ({
+    nextHref,
+    previousHref,
+  }: {
+    nextHref?: string;
+    previousHref?: string;
+  }) => (
+    <nav aria-label="通知一覧のページ送り">
+      {previousHref ? <a href={previousHref}>前へ</a> : null}
+      {nextHref ? <a href={nextHref}>次へ</a> : null}
+    </nav>
+  ),
+}));
+
+vi.mock("#lib/locale", () => ({
+  getPlatformLocale: () => Promise.resolve("ja"),
+  loadPlatformMessages: () => Promise.resolve(ja),
+}));
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: React.ComponentProps<"a">) => (
@@ -38,45 +83,18 @@ const notification = (
   ...overrides,
 });
 
-const copy = {
-  actionColumn: "操作",
-  cardDescription: "自分宛の業務イベントです。テナント詳細へ遷移できます。",
-  cardTitle: "通知一覧",
-  columnAt: "日時",
-  columnContent: "内容",
-  columnStatus: "状態",
-  emptyDescription:
-    "予約公開の失敗など、運営者向けの業務イベントが起きると、ここに自分宛の通知が届きます。",
-  emptyPageDescription:
-    "表示中に他の操作で削除された可能性があります。前後のページへ移動してください。",
-  emptyPageTitle: "このページに表示できる通知はありません。",
-  emptyTitle: "通知はまだありません。",
-  listErrorTitle: "通知一覧を表示できませんでした",
-  markAllRead: "すべて既読にする",
-  markRead: "既読にする",
-  markReadAriaLabel: (title: string) => `${title}を既読にする`,
-  markReadPending: "更新中…",
-  paginationAriaLabel: "通知一覧のページ送り",
-  perPage: "新しい順に、1ページあたり 20 件まで表示します。",
-  read: "既読",
-  unread: "未読",
-};
-
 afterEach(() => {
   cleanup();
 });
 
 describe("NotificationManager", () => {
-  it("最初のページが空なら未着として案内する", () => {
+  it("最初のページが空なら未着として案内する", async () => {
     render(
-      <NotificationManager
-        copy={copy}
-        notifications={[]}
-        nextLabel="次へ"
-        previousLabel="前へ"
-        timeZone="Asia/Tokyo"
-        unreadCount={0}
-      />
+      await NotificationManager({
+        notifications: [],
+        timeZone: "Asia/Tokyo",
+        unreadCount: 0,
+      })
     );
 
     expect(screen.getByText("通知はまだありません。")).toBeDefined();
@@ -84,17 +102,14 @@ describe("NotificationManager", () => {
     expect(screen.queryByText("すべて既読にする")).toBeNull();
   });
 
-  it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
+  it("ページ送りの先が空でも一覧全体が空だとは案内しない", async () => {
     render(
-      <NotificationManager
-        copy={copy}
-        notifications={[]}
-        nextLabel="次へ"
-        previousHref="/notifications?token=previous"
-        previousLabel="前へ"
-        timeZone="Asia/Tokyo"
-        unreadCount={0}
-      />
+      await NotificationManager({
+        notifications: [],
+        previousHref: "/notifications?token=previous",
+        timeZone: "Asia/Tokyo",
+        unreadCount: 0,
+      })
     );
 
     expect(
@@ -104,13 +119,11 @@ describe("NotificationManager", () => {
     expect(previous.getAttribute("href")).toBe("/notifications?token=previous");
   });
 
-  it("未読行とリンク、既読ボタンを描画する", () => {
+  it("未読行とリンク、既読ボタンを描画する", async () => {
     render(
-      <NotificationManager
-        copy={copy}
-        nextHref="/notifications?token=next"
-        nextLabel="次へ"
-        notifications={[
+      await NotificationManager({
+        nextHref: "/notifications?token=next",
+        notifications: [
           notification("n1"),
           notification("n2", {
             createdAt: "2026-05-31T00:00:00Z",
@@ -118,12 +131,11 @@ describe("NotificationManager", () => {
             isRead: true,
             title: "通知",
           }),
-        ]}
-        previousHref="/notifications?token=previous"
-        previousLabel="前へ"
-        timeZone="Asia/Tokyo"
-        unreadCount={1}
-      />
+        ],
+        previousHref: "/notifications?token=previous",
+        timeZone: "Asia/Tokyo",
+        unreadCount: 1,
+      })
     );
 
     const titleLink = screen.getByRole("link", {
@@ -144,19 +156,16 @@ describe("NotificationManager", () => {
     ).toBe("/notifications?token=next");
   });
 
-  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", () => {
+  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", async () => {
     render(
-      <NotificationManager
-        copy={copy}
-        listErrorMessage="通知一覧を取得できませんでした。"
-        nextHref="/notifications?token=next"
-        notifications={[]}
-        nextLabel="次へ"
-        previousHref="/notifications?token=previous"
-        previousLabel="前へ"
-        timeZone="Asia/Tokyo"
-        unreadCount={2}
-      />
+      await NotificationManager({
+        listErrorMessage: "通知一覧を取得できませんでした。",
+        nextHref: "/notifications?token=next",
+        notifications: [],
+        previousHref: "/notifications?token=previous",
+        timeZone: "Asia/Tokyo",
+        unreadCount: 2,
+      })
     );
 
     const sectionError = screen.getByRole("alert");
@@ -171,16 +180,13 @@ describe("NotificationManager", () => {
     expect(screen.queryByText("すべて既読にする")).toBeNull();
   });
 
-  it("作成日時をプラットフォーム既定タイムゾーンの壁時計で表示する", () => {
+  it("作成日時をプラットフォーム既定タイムゾーンの壁時計で表示する", async () => {
     render(
-      <NotificationManager
-        copy={copy}
-        notifications={[notification("n1")]}
-        nextLabel="次へ"
-        previousLabel="前へ"
-        timeZone="America/Los_Angeles"
-        unreadCount={1}
-      />
+      await NotificationManager({
+        notifications: [notification("n1")],
+        timeZone: "America/Los_Angeles",
+        unreadCount: 1,
+      })
     );
 
     expect(screen.getByText("2026/05/31 17:00")).toBeDefined();

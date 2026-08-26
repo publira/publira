@@ -245,129 +245,130 @@ const buildTenantFilterMessages = ({
 const shouldListUsers = (resolution: TenantFilterResolution): boolean =>
   resolution.kind === "resolved" || resolution.kind === "unselected";
 
-const UsersFilterForm = ({
+const UsersFilterForm = async ({
   filters,
   hasFilter,
-  messages,
   tenantItems,
   tenantId,
   tenantMessages,
 }: {
   filters: UsersFilters;
   hasFilter: boolean;
-  messages: PlatformMessages;
   tenantItems: PlatformTenantFilterOption[];
   tenantId: string;
   tenantMessages: TenantFilterMessage[];
-}) => (
-  <div className="grid gap-3">
-    <Form
-      action="/users"
-      className="flex flex-wrap gap-3"
-      key={`${filters.status}::${tenantId}::${filters.tenantQuery}::${filters.createdFrom}::${filters.createdTo}::${filters.limit}`}
-    >
-      <Select
-        className="w-44"
-        defaultValue={filters.status || undefined}
-        items={[
-          {
-            label: getMessage(
-              messages,
-              "platform.common.account_status.active"
-            ),
-            value: "active",
-          },
-          {
-            label: getMessage(
-              messages,
-              "platform.common.account_status.suspended"
-            ),
-            value: "suspended",
-          },
-        ]}
-        name="status"
-        placeholder={getMessage(messages, "platform.users.all_statuses")}
-      />
-      <Input
-        aria-label={getMessage(messages, "platform.users.search_tenant")}
-        className="w-56"
-        defaultValue={filters.tenantQuery}
-        name="tenant_q"
-        placeholder={getMessage(
-          messages,
-          "platform.users.search_tenant_placeholder"
-        )}
-        type="search"
-      />
-      {tenantItems.length > 0 ? (
-        <Select
-          className="w-56"
-          defaultValue={tenantId || undefined}
-          items={tenantItems.map((tenant) => ({
-            label: tenant.name,
-            value: tenant.publicId,
-          }))}
-          name="tenant_id"
-          placeholder={getMessage(messages, "platform.users.select_tenant")}
-        />
-      ) : null}
-      <Input
-        className="w-44"
-        defaultValue={filters.createdFrom}
-        name="created_from"
-        type="date"
-      />
-      <Input
-        className="w-44"
-        defaultValue={filters.createdTo}
-        name="created_to"
-        type="date"
-      />
-      <Select
-        className="w-32"
-        defaultValue={String(filters.limit)}
-        items={[
-          {
-            label: getMessage(messages, "platform.users.page_size_10"),
-            value: "10",
-          },
-          {
-            label: getMessage(messages, "platform.users.page_size_20"),
-            value: "20",
-          },
-          {
-            label: getMessage(messages, "platform.users.page_size_50"),
-            value: "50",
-          },
-        ]}
-        name="limit"
-        placeholder={getMessage(messages, "platform.users.page_size_20")}
-      />
-      <Button type="submit">
-        {getMessage(messages, "platform.common.filter")}
-      </Button>
-      {hasFilter ? (
-        <Link
-          className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
-          href="/users"
-        >
-          {getMessage(messages, "platform.common.clear")}
-        </Link>
-      ) : null}
-    </Form>
-    {tenantMessages.map((message) => (
-      <FormMessage key={message.text} variant={message.variant}>
-        {message.text}
-      </FormMessage>
-    ))}
-  </div>
-);
+}) => {
+  const messages = await loadPlatformMessages(await getPlatformLocale());
 
-const UsersTableSection = ({
+  return (
+    <div className="grid gap-3">
+      <Form
+        action="/users"
+        className="flex flex-wrap gap-3"
+        key={`${filters.status}::${tenantId}::${filters.tenantQuery}::${filters.createdFrom}::${filters.createdTo}::${filters.limit}`}
+      >
+        <Select
+          className="w-44"
+          defaultValue={filters.status || undefined}
+          items={[
+            {
+              label: getMessage(
+                messages,
+                "platform.common.account_status.active"
+              ),
+              value: "active",
+            },
+            {
+              label: getMessage(
+                messages,
+                "platform.common.account_status.suspended"
+              ),
+              value: "suspended",
+            },
+          ]}
+          name="status"
+          placeholder={getMessage(messages, "platform.users.all_statuses")}
+        />
+        <Input
+          aria-label={getMessage(messages, "platform.users.search_tenant")}
+          className="w-56"
+          defaultValue={filters.tenantQuery}
+          name="tenant_q"
+          placeholder={getMessage(
+            messages,
+            "platform.users.search_tenant_placeholder"
+          )}
+          type="search"
+        />
+        {tenantItems.length > 0 ? (
+          <Select
+            className="w-56"
+            defaultValue={tenantId || undefined}
+            items={tenantItems.map((tenant) => ({
+              label: tenant.name,
+              value: tenant.publicId,
+            }))}
+            name="tenant_id"
+            placeholder={getMessage(messages, "platform.users.select_tenant")}
+          />
+        ) : null}
+        <Input
+          className="w-44"
+          defaultValue={filters.createdFrom}
+          name="created_from"
+          type="date"
+        />
+        <Input
+          className="w-44"
+          defaultValue={filters.createdTo}
+          name="created_to"
+          type="date"
+        />
+        <Select
+          className="w-32"
+          defaultValue={String(filters.limit)}
+          items={[
+            {
+              label: getMessage(messages, "platform.users.page_size_10"),
+              value: "10",
+            },
+            {
+              label: getMessage(messages, "platform.users.page_size_20"),
+              value: "20",
+            },
+            {
+              label: getMessage(messages, "platform.users.page_size_50"),
+              value: "50",
+            },
+          ]}
+          name="limit"
+          placeholder={getMessage(messages, "platform.users.page_size_20")}
+        />
+        <Button type="submit">
+          {getMessage(messages, "platform.common.filter")}
+        </Button>
+        {hasFilter ? (
+          <Link
+            className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
+            href="/users"
+          >
+            {getMessage(messages, "platform.common.clear")}
+          </Link>
+        ) : null}
+      </Form>
+      {tenantMessages.map((message) => (
+        <FormMessage key={message.text} variant={message.variant}>
+          {message.text}
+        </FormMessage>
+      ))}
+    </div>
+  );
+};
+
+const UsersTableSection = async ({
   hasFilter,
   hideEmptyMessage = false,
   locale,
-  messages,
   result,
   timeZone,
   users,
@@ -375,88 +376,91 @@ const UsersTableSection = ({
   hasFilter: boolean;
   hideEmptyMessage?: boolean;
   locale: Locale;
-  messages: PlatformMessages;
   result: ListPlatformEndUsersResult;
   timeZone: string;
   users: PlatformEndUserSummary[];
-}) => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>
-          {getMessage(messages, "platform.users.columns_public_id")}
-        </TableHead>
-        <TableHead>
-          {getMessage(messages, "platform.users.columns_name")}
-        </TableHead>
-        <TableHead>
-          {getMessage(messages, "platform.users.columns_tenant")}
-        </TableHead>
-        <TableHead className="w-44">
-          {getMessage(messages, "platform.users.columns_created")}
-        </TableHead>
-        <TableHead className="w-32">
-          {getMessage(messages, "platform.users.columns_status")}
-        </TableHead>
-        <TableHead className="w-28" />
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {result.ok && users.length === 0 && !hideEmptyMessage ? (
+}) => {
+  const messages = await loadPlatformMessages(await getPlatformLocale());
+
+  return (
+    <Table>
+      <TableHeader>
         <TableRow>
-          <TableCell className="text-muted-foreground" colSpan={6}>
-            {buildEmptyMessage(hasFilter, messages)}
-          </TableCell>
+          <TableHead>
+            {getMessage(messages, "platform.users.columns_public_id")}
+          </TableHead>
+          <TableHead>
+            {getMessage(messages, "platform.users.columns_name")}
+          </TableHead>
+          <TableHead>
+            {getMessage(messages, "platform.users.columns_tenant")}
+          </TableHead>
+          <TableHead className="w-44">
+            {getMessage(messages, "platform.users.columns_created")}
+          </TableHead>
+          <TableHead className="w-32">
+            {getMessage(messages, "platform.users.columns_status")}
+          </TableHead>
+          <TableHead className="w-28" />
         </TableRow>
-      ) : null}
-      {result.ok
-        ? users.map((user) => (
-            <TableRow key={user.publicId}>
-              <TableCell className="font-mono text-xs">
-                {user.publicId}
-              </TableCell>
-              <TableCell>
-                {user.name || getMessage(messages, "platform.common.unset")}
-              </TableCell>
-              <TableCell>
-                {user.primaryTenantPublicId ? (
-                  <Link
-                    className="underline-offset-4 hover:underline"
-                    href={`/tenants/${user.primaryTenantPublicId}`}
+      </TableHeader>
+      <TableBody>
+        {result.ok && users.length === 0 && !hideEmptyMessage ? (
+          <TableRow>
+            <TableCell className="text-muted-foreground" colSpan={6}>
+              {buildEmptyMessage(hasFilter, messages)}
+            </TableCell>
+          </TableRow>
+        ) : null}
+        {result.ok
+          ? users.map((user) => (
+              <TableRow key={user.publicId}>
+                <TableCell className="font-mono text-xs">
+                  {user.publicId}
+                </TableCell>
+                <TableCell>
+                  {user.name || getMessage(messages, "platform.common.unset")}
+                </TableCell>
+                <TableCell>
+                  {user.primaryTenantPublicId ? (
+                    <Link
+                      className="underline-offset-4 hover:underline"
+                      href={`/tenants/${user.primaryTenantPublicId}`}
+                    >
+                      {user.primaryTenantName || user.primaryTenantPublicId}
+                    </Link>
+                  ) : (
+                    getMessage(messages, "platform.users.no_tenant")
+                  )}
+                </TableCell>
+                <TableCell>
+                  {formatDate(user.createdAt, {
+                    fallback: getMessage(messages, "platform.common.unset"),
+                    locale,
+                    timeZone,
+                  })}
+                </TableCell>
+                <TableCell>
+                  <Badge tone={getEndUserStatusTone(user.status)}>
+                    {getEndUserStatusLabel(user.status, messages)}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <LinkButton
+                    render={<Link href={`/users/${user.publicId}`} />}
+                    size="sm"
+                    variant="outline"
                   >
-                    {user.primaryTenantName || user.primaryTenantPublicId}
-                  </Link>
-                ) : (
-                  getMessage(messages, "platform.users.no_tenant")
-                )}
-              </TableCell>
-              <TableCell>
-                {formatDate(user.createdAt, {
-                  fallback: getMessage(messages, "platform.common.unset"),
-                  locale,
-                  timeZone,
-                })}
-              </TableCell>
-              <TableCell>
-                <Badge tone={getEndUserStatusTone(user.status)}>
-                  {getEndUserStatusLabel(user.status, messages)}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <LinkButton
-                  render={<Link href={`/users/${user.publicId}`} />}
-                  size="sm"
-                  variant="outline"
-                >
-                  {getMessage(messages, "platform.common.detail")}
-                </LinkButton>
-              </TableCell>
-            </TableRow>
-          ))
-        : null}
-    </TableBody>
-  </Table>
-);
+                    {getMessage(messages, "platform.common.detail")}
+                  </LinkButton>
+                </TableCell>
+              </TableRow>
+            ))
+          : null}
+      </TableBody>
+    </Table>
+  );
+};
 
 const UsersContent = async ({
   searchParams,
@@ -552,7 +556,6 @@ const UsersContent = async ({
         <UsersFilterForm
           filters={filters}
           hasFilter={hasFilter}
-          messages={messages}
           tenantId={tenantId}
           tenantItems={tenantItems}
           tenantMessages={tenantMessages}
@@ -569,7 +572,6 @@ const UsersContent = async ({
           hasFilter={hasFilter}
           hideEmptyMessage={pendingTenantPick}
           locale={locale}
-          messages={messages}
           result={result}
           timeZone={timeZone}
           users={users}

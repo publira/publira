@@ -28,6 +28,7 @@ import { Select } from "@publira/ui-components/select";
 import type { ChangeEvent } from "react";
 import { useActionState, useCallback, useId, useState } from "react";
 
+import { ClientMessage } from "#components/client-message";
 import {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
@@ -41,33 +42,16 @@ import type {
   PlatformSmtpTestFormState,
 } from "../../_lib/actions";
 
-export interface EmailSettingsFormCopy {
-  cardDescription: string;
-  cardTitle: string;
-  encryptionLabel: string;
-  encryptionNone: string;
-  fromAddress: string;
-  host: string;
-  password: string;
-  passwordChange: string;
-  passwordUndo: string;
-  port: string;
-  replyTo: string;
-  save: string;
-  saving: string;
-  test: string;
-  testClose: string;
-  testCustom: string;
-  testDescription: string;
-  testPending: string;
-  testSelf: string;
-  testSubmit: string;
-  testTitle: string;
-  username: string;
-}
+const encryptionOptions = [
+  { label: "TLS", value: "tls" },
+  { label: "STARTTLS", value: "starttls" },
+  {
+    label: <ClientMessage message="platform.settings.encryption_none" />,
+    value: "none",
+  },
+];
 
 interface EmailSettingsFormProps {
-  copy: EmailSettingsFormCopy;
   initialSettings: PlatformSmtpSettings;
   loadErrorMessage?: string;
   saveAction: (
@@ -81,7 +65,6 @@ interface EmailSettingsFormProps {
 }
 
 export const EmailSettingsForm = ({
-  copy,
   initialSettings,
   loadErrorMessage,
   saveAction,
@@ -129,17 +112,15 @@ export const EmailSettingsForm = ({
     []
   );
 
-  const encryptionOptions = [
-    { label: "TLS", value: "tls" },
-    { label: "STARTTLS", value: "starttls" },
-    { label: copy.encryptionNone, value: "none" },
-  ];
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{copy.cardTitle}</CardTitle>
-        <CardDescription>{copy.cardDescription}</CardDescription>
+        <CardTitle>
+          <ClientMessage message="platform.settings.smtp_card_title" />
+        </CardTitle>
+        <CardDescription>
+          <ClientMessage message="platform.settings.smtp_card_description" />
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -149,7 +130,7 @@ export const EmailSettingsForm = ({
         >
           <Field>
             <FieldLabel htmlFor="host" required>
-              {copy.host}
+              <ClientMessage message="platform.settings.host" />
             </FieldLabel>
             <FieldContent>
               <Input
@@ -165,7 +146,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="port" required>
-              {copy.port}
+              <ClientMessage message="platform.settings.port" />
             </FieldLabel>
             <FieldContent>
               <Input
@@ -182,7 +163,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="username" required>
-              {copy.username}
+              <ClientMessage message="platform.settings.username" />
             </FieldLabel>
             <FieldContent>
               <Input
@@ -197,7 +178,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="password" required={isPasswordEditing}>
-              {copy.password}
+              <ClientMessage message="platform.settings.password" />
             </FieldLabel>
             <FieldContent>
               {hasStoredPassword && !isPasswordEditing ? (
@@ -214,7 +195,7 @@ export const EmailSettingsForm = ({
                     type="button"
                     variant="outline"
                   >
-                    {copy.passwordChange}
+                    <ClientMessage message="platform.settings.password_change" />
                   </Button>
                 </div>
               ) : (
@@ -233,7 +214,7 @@ export const EmailSettingsForm = ({
                       type="button"
                       variant="outline"
                     >
-                      {copy.passwordUndo}
+                      <ClientMessage message="platform.settings.password_undo" />
                     </Button>
                   ) : null}
                 </div>
@@ -253,7 +234,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="encryption" required>
-              {copy.encryptionLabel}
+              <ClientMessage message="platform.settings.smtp_encryption" />
             </FieldLabel>
             <FieldContent>
               <Select
@@ -268,7 +249,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="from_address" required>
-              {copy.fromAddress}
+              <ClientMessage message="platform.settings.from_address" />
             </FieldLabel>
             <FieldContent>
               <Input
@@ -283,7 +264,9 @@ export const EmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="reply_to">{copy.replyTo}</FieldLabel>
+            <FieldLabel htmlFor="reply_to">
+              <ClientMessage message="platform.settings.reply_to" />
+            </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.replyTo}
@@ -310,7 +293,7 @@ export const EmailSettingsForm = ({
               <DialogTrigger
                 render={
                   <Button type="button" variant="outline">
-                    {copy.test}
+                    <ClientMessage message="platform.settings.smtp_test" />
                   </Button>
                 }
               />
@@ -319,9 +302,11 @@ export const EmailSettingsForm = ({
                 <DialogViewport>
                   <DialogPopup>
                     <DialogHeader>
-                      <DialogTitle>{copy.testTitle}</DialogTitle>
+                      <DialogTitle>
+                        <ClientMessage message="platform.settings.smtp_test_title" />
+                      </DialogTitle>
                       <DialogDescription>
-                        {copy.testDescription}
+                        <ClientMessage message="platform.settings.smtp_test_description" />
                       </DialogDescription>
                     </DialogHeader>
 
@@ -332,7 +317,7 @@ export const EmailSettingsForm = ({
                           onChange={handleSendToSelfChange}
                           type="checkbox"
                         />
-                        {copy.testSelf}
+                        <ClientMessage message="platform.settings.smtp_test_self" />
                       </label>
                       <input
                         form={formId}
@@ -348,7 +333,7 @@ export const EmailSettingsForm = ({
                       {sendToSelf ? null : (
                         <Field>
                           <FieldLabel htmlFor="recipient_email" required>
-                            {copy.testCustom}
+                            <ClientMessage message="platform.settings.smtp_test_custom" />
                           </FieldLabel>
                           <FieldContent>
                             <Input
@@ -376,7 +361,7 @@ export const EmailSettingsForm = ({
                       <DialogClose
                         render={
                           <Button type="button" variant="outline">
-                            {copy.testClose}
+                            <ClientMessage message="platform.settings.smtp_test_close" />
                           </Button>
                         }
                       />
@@ -387,7 +372,7 @@ export const EmailSettingsForm = ({
                         type="submit"
                         variant="outline"
                       >
-                        {isTesting ? copy.testPending : copy.testSubmit}
+                        <ClientMessage message="platform.settings.smtp_test_submit" />
                       </Button>
                     </DialogFooter>
                   </DialogPopup>
@@ -396,7 +381,7 @@ export const EmailSettingsForm = ({
             </Dialog>
 
             <Button disabled={isSaving} type="submit">
-              {isSaving ? copy.saving : copy.save}
+              <ClientMessage message="platform.common.save" />
             </Button>
           </div>
         </form>

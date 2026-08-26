@@ -37,6 +37,16 @@ const readDocumentLocale = (): string => {
  * server `<Message>`. The locale cookie is not httpOnly, and this chunk is
  * isolated to the error boundary.
  */
+/**
+ * Catalog for client-only controls whose DOM APIs require a string attribute.
+ * The hook stays local to that control; no catalog object crosses a component
+ * boundary.
+ */
+export const useClientMessages = () => {
+  const locale = parseLocaleCookie(readDocumentLocale());
+  return use(loadPlatformMessages(locale));
+};
+
 export const ClientMessage = ({
   message,
   values,
@@ -44,8 +54,7 @@ export const ClientMessage = ({
   message: PlatformMessageKey;
   values?: MessageValues;
 }) => {
-  const locale = parseLocaleCookie(readDocumentLocale());
-  const messages = use(loadPlatformMessages(locale));
+  const messages = useClientMessages();
 
   return getMessage(messages, message, values);
 };

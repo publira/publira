@@ -1,38 +1,23 @@
-"use client";
-
-import { ActionForm } from "@publira/ui-components/action-form";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense } from "react";
+
+import { ActionForm, ActionFormSubmit } from "#components/action-form";
+import { Message } from "#components/message";
 
 import { requestPasswordResetAction } from "../_lib/actions";
 
-/** Nodes rather than strings; see `LoginFormCopy` for why. */
-export interface ResetPasswordFormCopy {
-  emailLabel: ReactNode;
-  pendingLabel: ReactNode;
-  submitLabel: ReactNode;
-  toLogin: ReactNode;
-}
-
-export const ResetPasswordForm = ({
-  copy,
-}: {
-  copy: ResetPasswordFormCopy;
-}) => (
+export const ResetPasswordForm = () => (
   <>
     <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <ActionForm
-        action={requestPasswordResetAction}
-        className="space-y-4"
-        pendingLabel={copy.pendingLabel}
-        submitClassName="mt-2 w-full"
-        submitLabel={copy.submitLabel}
-      >
+      <ActionForm action={requestPasswordResetAction} className="space-y-4">
         <Field>
           <FieldLabel htmlFor="email" required>
-            {copy.emailLabel}
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="platform.auth.fields.email_label" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
@@ -45,12 +30,19 @@ export const ResetPasswordForm = ({
             />
           </FieldContent>
         </Field>
+        <ActionFormSubmit className="mt-2 w-full">
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.auth.reset_password.submit" />
+          </Suspense>
+        </ActionFormSubmit>
       </ActionForm>
     </div>
 
     <div className="mt-4 text-center text-sm">
       <Link className="font-medium text-primary hover:underline" href="/login">
-        {copy.toLogin}
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="platform.auth.reset_password.to_login" />
+        </Suspense>
       </Link>
     </div>
   </>

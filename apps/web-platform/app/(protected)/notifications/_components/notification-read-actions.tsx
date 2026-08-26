@@ -12,14 +12,12 @@ import {
 
 export const MarkNotificationAsReadButton = ({
   ariaLabel,
-  idleLabel,
+  children,
   notificationId,
-  pendingLabel,
 }: {
   ariaLabel: string;
-  idleLabel: ReactNode;
+  children: ReactNode;
   notificationId: string;
-  pendingLabel: ReactNode;
 }) => {
   const [state, formAction, isPending] = useActionState(
     markNotificationAsReadAction,
@@ -36,7 +34,7 @@ export const MarkNotificationAsReadButton = ({
         type="submit"
         variant="outline"
       >
-        {isPending ? pendingLabel : idleLabel}
+        {children}
       </Button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
@@ -46,11 +44,9 @@ export const MarkNotificationAsReadButton = ({
 };
 
 export const MarkAllNotificationsAsReadButton = ({
-  idleLabel,
-  pendingLabel,
+  children,
 }: {
-  idleLabel: ReactNode;
-  pendingLabel: ReactNode;
+  children: ReactNode;
 }) => {
   const [state, formAction, isPending] = useActionState(
     markAllNotificationsAsReadAction,
@@ -60,7 +56,7 @@ export const MarkAllNotificationsAsReadButton = ({
   return (
     <form action={formAction} className="grid justify-items-end gap-1">
       <Button disabled={isPending} size="sm" type="submit" variant="outline">
-        {isPending ? pendingLabel : idleLabel}
+        {children}
       </Button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

@@ -27,30 +27,7 @@ const ResetPasswordPage = () => (
         </p>
       </div>
 
-      <ResetPasswordForm
-        copy={{
-          emailLabel: (
-            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-              <Message message="platform.auth.fields.email_label" />
-            </Suspense>
-          ),
-          pendingLabel: (
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <Message message="platform.auth.reset_password.pending" />
-            </Suspense>
-          ),
-          submitLabel: (
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="platform.auth.reset_password.submit" />
-            </Suspense>
-          ),
-          toLogin: (
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="platform.auth.reset_password.to_login" />
-            </Suspense>
-          ),
-        }}
-      />
+      <ResetPasswordForm />
     </div>
   </main>
 );

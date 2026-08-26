@@ -306,22 +306,22 @@ const renderAuditLogTarget = (log: PlatformAuditLogSummary) => {
   return <p>{buildTargetLabel(log.targetType, log.targetId)}</p>;
 };
 
-const AuditLogsTableBody = ({
+const AuditLogsTableBody = async ({
   hasFilter,
   locale,
-  messages,
   result,
   timeZone,
 }: {
   hasFilter: boolean;
   locale: Locale;
-  messages: PlatformMessages;
   result: ListPlatformAuditLogsResult;
   timeZone: string;
 }) => {
   if (!result.ok) {
     return <TableBody />;
   }
+
+  const messages = await loadPlatformMessages(await getPlatformLocale());
 
   if (result.auditLogs.length === 0) {
     return (
@@ -498,7 +498,6 @@ const AuditLogsContent = async ({
           <AuditLogsTableBody
             hasFilter={hasFilter}
             locale={locale}
-            messages={messages}
             result={result}
             timeZone={timeZone}
           />

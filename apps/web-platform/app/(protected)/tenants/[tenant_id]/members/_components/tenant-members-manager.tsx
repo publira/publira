@@ -38,11 +38,26 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDate, formatDateTime } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
 import type { Locale } from "@publira/utils/i18n";
-import { useActionState, useCallback, useState, useTransition } from "react";
+import {
+  createContext,
+  useActionState,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 
+import { useClientMessages } from "#components/client-message";
 import { PaginationControls } from "#components/pagination-controls";
-import { getTenantStatusTone } from "#lib/tenant-labels";
+import {
+  getInvitationStatusLabel,
+  getTenantRoleLabel,
+  getTenantStatusLabel,
+  getTenantStatusTone,
+} from "#lib/tenant-labels";
 import type {
   PlatformTenantAdminInvitation,
   PlatformTenantMemberSummary,
@@ -113,7 +128,6 @@ interface TenantMembersManagerProps {
     prevState: FormActionState,
     formData: FormData
   ) => Promise<FormActionState>;
-  copy: TenantMembersManagerCopy;
   createInvitationAction: (
     prevState: FormActionState,
     formData: FormData
@@ -156,6 +170,193 @@ const invitationStatusTone = (status: string) => {
   return "destructive" as const;
 };
 
+const memberRoleValues = [
+  "tenant_admin",
+  "tenant_editor",
+  "tenant_auditor",
+] as const;
+const tenantRoleValues = [
+  "tenant_admin",
+  "tenant_auditor",
+  "tenant_editor",
+  "tenant_member",
+  "tenant_owner",
+] as const;
+const tenantStatusValues = [
+  "active",
+  "inactive",
+  "suspended",
+  "trial",
+] as const;
+const invitationStatusValues = [
+  "accepted",
+  "canceled",
+  "expired",
+  "pending",
+] as const;
+
+const buildTenantMembersLabels = (
+  messages: ReturnType<typeof useClientMessages>
+): TenantMembersManagerCopy => ({
+  addDescription: getMessage(
+    messages,
+    "platform.tenants.add_member_description"
+  ),
+  addEmailLabel: getMessage(messages, "platform.tenants.add_member_email"),
+  addPending: getMessage(messages, "platform.tenants.add_member_pending"),
+  addSubmit: getMessage(messages, "platform.tenants.add_member_submit"),
+  addTitle: getMessage(messages, "platform.tenants.add_member"),
+  cancel: getMessage(messages, "platform.common.cancel"),
+  cancelInvite: getMessage(messages, "platform.tenants.cancel_invite"),
+  cancelInviteAction: getMessage(
+    messages,
+    "platform.tenants.cancel_invite_action"
+  ),
+  cancelInviteDescription: getMessage(
+    messages,
+    "platform.tenants.cancel_invite_description"
+  ),
+  cancelInvitePending: getMessage(
+    messages,
+    "platform.tenants.cancel_invite_pending"
+  ),
+  cancelInviteTitle: getMessage(
+    messages,
+    "platform.tenants.cancel_invite_title"
+  ),
+  changeRole: getMessage(messages, "platform.tenants.change_role"),
+  changeRoleSubmit: getMessage(messages, "platform.tenants.change_role_submit"),
+  changeRoleUpdating: getMessage(
+    messages,
+    "platform.tenants.change_role_updating"
+  ),
+  deleteMember: getMessage(messages, "platform.tenants.delete_member"),
+  deleteMemberAction: getMessage(
+    messages,
+    "platform.tenants.delete_member_action"
+  ),
+  deleteMemberDescription: getMessage(
+    messages,
+    "platform.tenants.delete_member_description"
+  ),
+  deleteMemberPending: getMessage(
+    messages,
+    "platform.tenants.delete_member_pending"
+  ),
+  deleteMemberTitle: getMessage(
+    messages,
+    "platform.tenants.delete_member_title"
+  ),
+  invitationStatusLabels: Object.fromEntries(
+    invitationStatusValues.map((status) => [
+      status,
+      getInvitationStatusLabel(status, messages),
+    ])
+  ),
+  invitationsAria: getMessage(
+    messages,
+    "platform.tenants.invitations_pagination_aria"
+  ),
+  invitationsDescription: getMessage(
+    messages,
+    "platform.tenants.invitations_description"
+  ),
+  invitationsEmpty: getMessage(messages, "platform.tenants.invitations_empty"),
+  invitationsLoadFailed: getMessage(
+    messages,
+    "platform.tenants.invitations_load_failed"
+  ),
+  invitationsTitle: getMessage(messages, "platform.tenants.invitations_title"),
+  inviteAdmin: getMessage(messages, "platform.tenants.invite_admin"),
+  inviteAdminDescription: getMessage(
+    messages,
+    "platform.tenants.invite_admin_description"
+  ),
+  inviteAdminEmail: getMessage(messages, "platform.tenants.invite_admin_email"),
+  inviteAdminPending: getMessage(
+    messages,
+    "platform.tenants.invite_admin_pending"
+  ),
+  inviteAdminTitle: getMessage(messages, "platform.tenants.invite_admin_title"),
+  membersAria: getMessage(messages, "platform.tenants.members_pagination_aria"),
+  membersColumnsActions: getMessage(
+    messages,
+    "platform.tenants.members_columns_actions"
+  ),
+  membersColumnsCreated: getMessage(
+    messages,
+    "platform.tenants.members_columns_created"
+  ),
+  membersColumnsEmail: getMessage(
+    messages,
+    "platform.tenants.members_columns_email"
+  ),
+  membersColumnsExpires: getMessage(
+    messages,
+    "platform.tenants.members_columns_expires"
+  ),
+  membersColumnsInvitedAt: getMessage(
+    messages,
+    "platform.tenants.members_columns_invited_at"
+  ),
+  membersColumnsName: getMessage(
+    messages,
+    "platform.tenants.members_columns_name"
+  ),
+  membersColumnsRole: getMessage(
+    messages,
+    "platform.tenants.members_columns_role"
+  ),
+  membersColumnsStatus: getMessage(
+    messages,
+    "platform.tenants.members_columns_status"
+  ),
+  membersEmpty: getMessage(messages, "platform.tenants.members_empty"),
+  membersListDescription: getMessage(
+    messages,
+    "platform.tenants.members_list_description"
+  ),
+  membersListFailed: getMessage(
+    messages,
+    "platform.tenants.members_load_failed"
+  ),
+  membersListTitle: getMessage(messages, "platform.tenants.members_list_title"),
+  newRole: getMessage(messages, "platform.tenants.new_role"),
+  next: getMessage(messages, "platform.common.next"),
+  previous: getMessage(messages, "platform.common.previous"),
+  resendInvite: getMessage(messages, "platform.tenants.resend_invite"),
+  role: getMessage(messages, "platform.common.role"),
+  roleLabels: Object.fromEntries(
+    tenantRoleValues.map((role) => [role, getTenantRoleLabel(role, messages)])
+  ),
+  roleOptions: memberRoleValues.map((value) => ({
+    label: getTenantRoleLabel(value, messages),
+    value,
+  })),
+  roleUpdateDescription: getMessage(
+    messages,
+    "platform.tenants.role_update_description"
+  ),
+  statusLabels: Object.fromEntries(
+    tenantStatusValues.map((status) => [
+      status,
+      getTenantStatusLabel(status, messages),
+    ])
+  ),
+  unset: getMessage(messages, "platform.common.unset"),
+});
+
+const TenantMembersLabelsContext =
+  createContext<TenantMembersManagerCopy | null>(null);
+
+const useTenantMembersLabels = () => {
+  const labels = useContext(TenantMembersLabelsContext);
+  if (!labels) {
+    throw new Error("TenantMembersLabelsContext is missing");
+  }
+  return labels;
+};
+
 const interpolateRoleUpdateDescription = (
   template: string,
   member: PlatformTenantMemberSummary
@@ -165,7 +366,6 @@ const interpolateRoleUpdateDescription = (
     .replaceAll("{email}", member.email);
 
 interface TenantMemberRowProps {
-  copy: TenantMembersManagerCopy;
   locale: Locale;
   member: PlatformTenantMemberSummary;
   removeAction: (
@@ -182,7 +382,6 @@ interface TenantMemberRowProps {
 }
 
 interface TenantMemberRoleDialogProps {
-  copy: TenantMembersManagerCopy;
   member: PlatformTenantMemberSummary;
   tenantId: string;
   updateRoleAction: (
@@ -192,7 +391,6 @@ interface TenantMemberRoleDialogProps {
 }
 
 interface TenantMemberDeleteButtonProps {
-  copy: TenantMembersManagerCopy;
   removeAction: (
     prevState: FormActionState,
     formData: FormData
@@ -203,7 +401,6 @@ interface TenantMemberDeleteButtonProps {
 }
 
 interface TenantInvitationRowProps {
-  copy: TenantMembersManagerCopy;
   invitation: PlatformTenantAdminInvitation;
   isCancelPending: boolean;
   isResendPending: boolean;
@@ -214,12 +411,12 @@ interface TenantInvitationRowProps {
 }
 
 const TenantMemberDeleteButton = ({
-  copy,
   removeAction,
   setDeleteState,
   tenantId,
   userPublicId,
 }: TenantMemberDeleteButtonProps) => {
+  const copy = useTenantMembersLabels();
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = useCallback(() => {
@@ -258,11 +455,11 @@ const TenantMemberDeleteButton = ({
 };
 
 const TenantMemberRoleDialog = ({
-  copy,
   member,
   tenantId,
   updateRoleAction,
 }: TenantMemberRoleDialogProps) => {
+  const copy = useTenantMembersLabels();
   const [open, setOpen] = useState(false);
   const [updateState, roleFormAction, isRolePending] = useActionState(
     updateRoleAction,
@@ -368,7 +565,6 @@ const TenantMemberRoleDialog = ({
 };
 
 const TenantMemberRow = ({
-  copy,
   locale,
   member,
   removeAction,
@@ -376,47 +572,48 @@ const TenantMemberRow = ({
   tenantId,
   timeZone,
   updateRoleAction,
-}: TenantMemberRowProps) => (
-  <TableRow key={member.userPublicId || member.email}>
-    <TableCell>
-      <p className="font-medium text-foreground">{member.name}</p>
-    </TableCell>
-    <TableCell>{member.email}</TableCell>
-    <TableCell>{copy.roleLabels[member.role] ?? member.role}</TableCell>
-    <TableCell>
-      <Badge tone={getTenantStatusTone(member.status)}>
-        {copy.statusLabels[member.status] ?? member.status}
-      </Badge>
-    </TableCell>
-    <TableCell>
-      {formatDate(member.createdAt, {
-        fallback: copy.unset,
-        locale,
-        timeZone,
-      })}
-    </TableCell>
-    <TableCell>
-      <div className="flex flex-wrap gap-2">
-        <TenantMemberRoleDialog
-          copy={copy}
-          member={member}
-          tenantId={tenantId}
-          updateRoleAction={updateRoleAction}
-        />
-        <TenantMemberDeleteButton
-          copy={copy}
-          removeAction={removeAction}
-          setDeleteState={setDeleteState}
-          tenantId={tenantId}
-          userPublicId={member.userPublicId}
-        />
-      </div>
-    </TableCell>
-  </TableRow>
-);
+}: TenantMemberRowProps) => {
+  const copy = useTenantMembersLabels();
+
+  return (
+    <TableRow key={member.userPublicId || member.email}>
+      <TableCell>
+        <p className="font-medium text-foreground">{member.name}</p>
+      </TableCell>
+      <TableCell>{member.email}</TableCell>
+      <TableCell>{copy.roleLabels[member.role] ?? member.role}</TableCell>
+      <TableCell>
+        <Badge tone={getTenantStatusTone(member.status)}>
+          {copy.statusLabels[member.status] ?? member.status}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        {formatDate(member.createdAt, {
+          fallback: copy.unset,
+          locale,
+          timeZone,
+        })}
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-wrap gap-2">
+          <TenantMemberRoleDialog
+            member={member}
+            tenantId={tenantId}
+            updateRoleAction={updateRoleAction}
+          />
+          <TenantMemberDeleteButton
+            removeAction={removeAction}
+            setDeleteState={setDeleteState}
+            tenantId={tenantId}
+            userPublicId={member.userPublicId}
+          />
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+};
 
 interface TenantInvitationsSectionProps {
-  copy: TenantMembersManagerCopy;
   invitationErrorMessage?: string;
   invitations: PlatformTenantAdminInvitation[];
   invitationsNextHref?: string;
@@ -430,7 +627,6 @@ interface TenantInvitationsSectionProps {
 }
 
 const TenantInvitationRow = ({
-  copy,
   invitation,
   isCancelPending,
   isResendPending,
@@ -439,6 +635,7 @@ const TenantInvitationRow = ({
   onResend,
   timeZone,
 }: TenantInvitationRowProps) => {
+  const copy = useTenantMembersLabels();
   const canOperate = invitation.status === "pending";
 
   const handleResendClick = useCallback(() => {
@@ -511,7 +708,6 @@ const TenantInvitationRow = ({
 };
 
 const TenantInvitationsSection = ({
-  copy,
   invitationErrorMessage,
   invitations,
   invitationsNextHref,
@@ -523,6 +719,7 @@ const TenantInvitationsSection = ({
   onResend,
   timeZone,
 }: TenantInvitationsSectionProps) => {
+  const copy = useTenantMembersLabels();
   // A failed fetch still hands an empty `invitations` array. Keeping the table
   // header and the pager next to the error reads as "there are no invitations",
   // so the error replaces the whole list instead of sitting on top of it.
@@ -558,7 +755,6 @@ const TenantInvitationsSection = ({
 
           {invitations.map((invitation) => (
             <TenantInvitationRow
-              copy={copy}
               invitation={invitation}
               isCancelPending={isCancelPending}
               isResendPending={isResendPending}
@@ -586,7 +782,6 @@ const TenantInvitationsSection = ({
 export const TenantMembersManager = ({
   addAction,
   cancelInvitationAction,
-  copy,
   createInvitationAction,
   invitationErrorMessage,
   invitations,
@@ -603,6 +798,8 @@ export const TenantMembersManager = ({
   timeZone,
   updateRoleAction,
 }: TenantMembersManagerProps) => {
+  const messages = useClientMessages();
+  const copy = useMemo(() => buildTenantMembersLabels(messages), [messages]);
   const [addState, addFormAction, isAddPending] = useActionState(
     addAction,
     null
@@ -645,194 +842,199 @@ export const TenantMembersManager = ({
   );
 
   return (
-    <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{copy.inviteAdminTitle}</CardTitle>
-          <CardDescription>{copy.inviteAdminDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={createInviteAction} className="grid gap-4">
-            <input name="tenant_id" type="hidden" value={tenantId} />
-            <Field>
-              <FieldLabel htmlFor="invite_email" required>
-                {copy.inviteAdminEmail}
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  id="invite_email"
-                  name="invite_email"
-                  placeholder="admin@example.com"
-                  required
-                  type="email"
-                />
-              </FieldContent>
-            </Field>
+    <TenantMembersLabelsContext value={copy}>
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{copy.inviteAdminTitle}</CardTitle>
+            <CardDescription>{copy.inviteAdminDescription}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={createInviteAction} className="grid gap-4">
+              <input name="tenant_id" type="hidden" value={tenantId} />
+              <Field>
+                <FieldLabel htmlFor="invite_email" required>
+                  {copy.inviteAdminEmail}
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="invite_email"
+                    name="invite_email"
+                    placeholder="admin@example.com"
+                    required
+                    type="email"
+                  />
+                </FieldContent>
+              </Field>
 
-            {inviteState ? (
-              <FormMessage variant={inviteState.ok ? "success" : "destructive"}>
-                {inviteState.message}
+              {inviteState ? (
+                <FormMessage
+                  variant={inviteState.ok ? "success" : "destructive"}
+                >
+                  {inviteState.message}
+                </FormMessage>
+              ) : null}
+
+              <div className="flex justify-end">
+                <Button
+                  disabled={isInvitePending}
+                  type="submit"
+                  variant="outline"
+                >
+                  {isInvitePending ? copy.inviteAdminPending : copy.inviteAdmin}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{copy.membersListTitle}</CardTitle>
+            <CardDescription>{copy.membersListDescription}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {deleteState ? (
+              <FormMessage variant={deleteState.ok ? "success" : "destructive"}>
+                {deleteState.message}
               </FormMessage>
             ) : null}
-
-            <div className="flex justify-end">
-              <Button
-                disabled={isInvitePending}
-                type="submit"
-                variant="outline"
-              >
-                {isInvitePending ? copy.inviteAdminPending : copy.inviteAdmin}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{copy.membersListTitle}</CardTitle>
-          <CardDescription>{copy.membersListDescription}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {deleteState ? (
-            <FormMessage variant={deleteState.ok ? "success" : "destructive"}>
-              {deleteState.message}
-            </FormMessage>
-          ) : null}
-          {membersErrorMessage ? (
-            <SectionError
-              description={membersErrorMessage}
-              title={copy.membersListFailed}
-            />
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{copy.membersColumnsName}</TableHead>
-                    <TableHead>{copy.membersColumnsEmail}</TableHead>
-                    <TableHead>{copy.membersColumnsRole}</TableHead>
-                    <TableHead>{copy.membersColumnsStatus}</TableHead>
-                    <TableHead>{copy.membersColumnsCreated}</TableHead>
-                    <TableHead className="w-56">
-                      {copy.membersColumnsActions}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {members.length === 0 ? (
-                    <TableRow>
-                      <TableCell className="text-muted-foreground" colSpan={6}>
-                        {copy.membersEmpty}
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                  {members.map((member) => (
-                    <TenantMemberRow
-                      copy={copy}
-                      key={member.userPublicId || member.email}
-                      locale={locale}
-                      member={member}
-                      removeAction={removeAction}
-                      setDeleteState={setDeleteState}
-                      tenantId={tenantId}
-                      timeZone={timeZone}
-                      updateRoleAction={updateRoleAction}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-              <PaginationControls
-                ariaLabel={copy.membersAria}
-                nextHref={membersNextHref}
-                nextLabel={copy.next}
-                previousHref={membersPreviousHref}
-                previousLabel={copy.previous}
+            {membersErrorMessage ? (
+              <SectionError
+                description={membersErrorMessage}
+                title={copy.membersListFailed}
               />
-            </>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{copy.membersColumnsName}</TableHead>
+                      <TableHead>{copy.membersColumnsEmail}</TableHead>
+                      <TableHead>{copy.membersColumnsRole}</TableHead>
+                      <TableHead>{copy.membersColumnsStatus}</TableHead>
+                      <TableHead>{copy.membersColumnsCreated}</TableHead>
+                      <TableHead className="w-56">
+                        {copy.membersColumnsActions}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {members.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          className="text-muted-foreground"
+                          colSpan={6}
+                        >
+                          {copy.membersEmpty}
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                    {members.map((member) => (
+                      <TenantMemberRow
+                        key={member.userPublicId || member.email}
+                        locale={locale}
+                        member={member}
+                        removeAction={removeAction}
+                        setDeleteState={setDeleteState}
+                        tenantId={tenantId}
+                        timeZone={timeZone}
+                        updateRoleAction={updateRoleAction}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
+                <PaginationControls
+                  ariaLabel={copy.membersAria}
+                  nextHref={membersNextHref}
+                  nextLabel={copy.next}
+                  previousHref={membersPreviousHref}
+                  previousLabel={copy.previous}
+                />
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{copy.addTitle}</CardTitle>
-          <CardDescription>{copy.addDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={addFormAction} className="grid gap-4">
-            <input name="tenant_id" type="hidden" value={tenantId} />
-            <Field>
-              <FieldLabel htmlFor="member_email" required>
-                {copy.addEmailLabel}
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  id="member_email"
-                  name="member_email"
-                  placeholder="member@example.com"
-                  required
-                  type="email"
-                />
-              </FieldContent>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="member_role" required>
-                {copy.role}
-              </FieldLabel>
-              <FieldContent>
-                <Select
-                  defaultValue="tenant_admin"
-                  id="member_role"
-                  items={copy.roleOptions}
-                  name="member_role"
-                  required
-                />
-              </FieldContent>
-            </Field>
-            {addState ? (
-              <FormMessage variant={addState.ok ? "success" : "destructive"}>
-                {addState.message}
+        <Card>
+          <CardHeader>
+            <CardTitle>{copy.addTitle}</CardTitle>
+            <CardDescription>{copy.addDescription}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={addFormAction} className="grid gap-4">
+              <input name="tenant_id" type="hidden" value={tenantId} />
+              <Field>
+                <FieldLabel htmlFor="member_email" required>
+                  {copy.addEmailLabel}
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="member_email"
+                    name="member_email"
+                    placeholder="member@example.com"
+                    required
+                    type="email"
+                  />
+                </FieldContent>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="member_role" required>
+                  {copy.role}
+                </FieldLabel>
+                <FieldContent>
+                  <Select
+                    defaultValue="tenant_admin"
+                    id="member_role"
+                    items={copy.roleOptions}
+                    name="member_role"
+                    required
+                  />
+                </FieldContent>
+              </Field>
+              {addState ? (
+                <FormMessage variant={addState.ok ? "success" : "destructive"}>
+                  {addState.message}
+                </FormMessage>
+              ) : null}
+              <div className="flex justify-end">
+                <Button disabled={isAddPending} type="submit" variant="outline">
+                  {isAddPending ? copy.addPending : copy.addSubmit}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{copy.invitationsTitle}</CardTitle>
+            <CardDescription>{copy.invitationsDescription}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {invitationActionState ? (
+              <FormMessage
+                variant={invitationActionState.ok ? "success" : "destructive"}
+              >
+                {invitationActionState.message}
               </FormMessage>
             ) : null}
-            <div className="flex justify-end">
-              <Button disabled={isAddPending} type="submit" variant="outline">
-                {isAddPending ? copy.addPending : copy.addSubmit}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{copy.invitationsTitle}</CardTitle>
-          <CardDescription>{copy.invitationsDescription}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {invitationActionState ? (
-            <FormMessage
-              variant={invitationActionState.ok ? "success" : "destructive"}
-            >
-              {invitationActionState.message}
-            </FormMessage>
-          ) : null}
-
-          <TenantInvitationsSection
-            copy={copy}
-            invitationErrorMessage={invitationErrorMessage}
-            invitations={invitations}
-            invitationsNextHref={invitationsNextHref}
-            invitationsPreviousHref={invitationsPreviousHref}
-            isCancelPending={isCancelPending}
-            isResendPending={isResendPending}
-            locale={locale}
-            onCancel={handleCancel}
-            onResend={handleResend}
-            timeZone={timeZone}
-          />
-        </CardContent>
-      </Card>
-    </div>
+            <TenantInvitationsSection
+              invitationErrorMessage={invitationErrorMessage}
+              invitations={invitations}
+              invitationsNextHref={invitationsNextHref}
+              invitationsPreviousHref={invitationsPreviousHref}
+              isCancelPending={isCancelPending}
+              isResendPending={isResendPending}
+              locale={locale}
+              onCancel={handleCancel}
+              onResend={handleResend}
+              timeZone={timeZone}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    </TenantMembersLabelsContext>
   );
 };

@@ -1,6 +1,3 @@
-"use client";
-
-import { Button } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -16,107 +13,96 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Select } from "@publira/ui-components/select";
-import { isLocale } from "@publira/utils/i18n";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { getMessage, LOCALES } from "@publira/utils/i18n";
 import type { Locale } from "@publira/utils/i18n";
-import { useActionState, useState } from "react";
+import { Suspense } from "react";
 
-import type { PlatformDefaultLocaleActionState } from "../../_lib/actions";
+import { ActionForm, ActionFormSubmit } from "#components/action-form";
+import { Message } from "#components/message";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
-export interface PlatformDefaultLocaleFormOption {
-  label: string;
-  locale: Locale;
-}
+import { updatePlatformDefaultLocaleAction } from "../../_lib/actions";
 
-export interface PlatformDefaultLocaleFormCopy {
-  description: string;
-  fieldDescription: string;
-  label: string;
-  placeholder: string;
-  reloadWarning: string;
-  saveLabel: string;
-  savingLabel: string;
-  title: string;
-}
-
-interface PlatformDefaultLocaleFormProps {
-  action: (
-    prevState: PlatformDefaultLocaleActionState,
-    formData: FormData
-  ) => Promise<PlatformDefaultLocaleActionState>;
-  copy: PlatformDefaultLocaleFormCopy;
-  initialDefaultLocale: Locale;
-  loadErrorMessage?: string;
-  options: readonly PlatformDefaultLocaleFormOption[];
-}
-
-export const PlatformDefaultLocaleForm = ({
-  action,
-  copy,
+export const PlatformDefaultLocaleForm = async ({
   initialDefaultLocale,
   loadErrorMessage,
-  options,
-}: PlatformDefaultLocaleFormProps) => {
-  const [state, formAction, isPending] = useActionState(action, null);
-  const [defaultLocale, setDefaultLocale] = useState(initialDefaultLocale);
-
-  // A failed read hands the form `DEFAULT_LOCALE` as a stand-in, not the
-  // stored value, so saving from that state would overwrite the real default
-  // with the fallback. Editing stays closed until the read succeeds.
+}: {
+  initialDefaultLocale: Locale;
+  loadErrorMessage?: string;
+}) => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
   const hasLoadError = Boolean(loadErrorMessage);
-
-  const items = options.map((option) => ({
-    label: option.label,
-    value: option.locale,
+  const items = LOCALES.map((value) => ({
+    label: getMessage(messages, `locale.${value}`),
+    value,
   }));
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-        <CardDescription>{copy.description}</CardDescription>
+        <CardTitle>
+          <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+            <Message message="platform.settings.default_locale_title" />
+          </Suspense>
+        </CardTitle>
+        <CardDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="platform.settings.default_locale_description" />
+          </Suspense>
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="grid gap-4 sm:max-w-lg">
-          <input name="default_locale" type="hidden" value={defaultLocale} />
-
+        <ActionForm
+          action={updatePlatformDefaultLocaleAction}
+          className="grid gap-4 sm:max-w-lg"
+        >
           <Field>
-            <FieldLabel htmlFor="default_locale">{copy.label}</FieldLabel>
+            <FieldLabel htmlFor="default_locale">
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="platform.settings.default_locale_label" />
+              </Suspense>
+            </FieldLabel>
             <FieldContent>
-              <Select
-                disabled={hasLoadError}
-                id="default_locale"
-                items={items}
-                onValueChange={(value) => {
-                  if (isLocale(value)) {
-                    setDefaultLocale(value);
-                  }
-                }}
-                placeholder={copy.placeholder}
-                value={defaultLocale}
-              />
-              <FieldDescription>{copy.fieldDescription}</FieldDescription>
+              <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+                <Select
+                  defaultValue={initialDefaultLocale}
+                  disabled={hasLoadError}
+                  id="default_locale"
+                  items={items}
+                  name="default_locale"
+                  placeholder={getMessage(
+                    messages,
+                    "platform.settings.default_locale_placeholder"
+                  )}
+                />
+              </Suspense>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                  <Message message="platform.settings.default_locale_help" />
+                </Suspense>
+              </FieldDescription>
             </FieldContent>
           </Field>
 
           {loadErrorMessage ? (
             <FormMessage variant="destructive">
               {loadErrorMessage}
-              {copy.reloadWarning}
-            </FormMessage>
-          ) : null}
-
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
+              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                <Message message="platform.settings.default_locale_reload" />
+              </Suspense>
             </FormMessage>
           ) : null}
 
           <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={hasLoadError || isPending} type="submit">
-              {isPending ? copy.savingLabel : copy.saveLabel}
-            </Button>
+            <ActionFormSubmit disabled={hasLoadError}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="platform.settings.default_locale_save" />
+              </Suspense>
+            </ActionFormSubmit>
           </div>
-        </form>
+        </ActionForm>
       </CardContent>
     </Card>
   );

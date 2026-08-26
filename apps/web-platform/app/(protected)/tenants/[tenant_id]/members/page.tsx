@@ -12,6 +12,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -24,13 +25,7 @@ import {
 } from "#components/platform-page";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
-import {
-  getInvitationStatusLabel,
-  getTenantRoleLabel,
-  getTenantStatusLabel,
-} from "#lib/tenant-labels";
 import {
   getPlatformTenant,
   listPlatformTenantAdminInvitations,
@@ -47,7 +42,6 @@ import {
   updateTenantMemberRoleAction,
 } from "../_lib/actions";
 import { TenantMembersManager } from "./_components/tenant-members-manager";
-import type { TenantMembersManagerCopy } from "./_components/tenant-members-manager";
 import {
   buildMemberInvitationsPath,
   buildMembersPath,
@@ -55,30 +49,6 @@ import {
 } from "./_lib/search-params";
 
 const invitationPageSize = 20;
-const memberRoleValues = [
-  "tenant_admin",
-  "tenant_editor",
-  "tenant_auditor",
-] as const;
-const tenantRoleValues = [
-  "tenant_admin",
-  "tenant_auditor",
-  "tenant_editor",
-  "tenant_member",
-  "tenant_owner",
-] as const;
-const tenantStatusValues = [
-  "active",
-  "inactive",
-  "suspended",
-  "trial",
-] as const;
-const invitationStatusValues = [
-  "accepted",
-  "canceled",
-  "expired",
-  "pending",
-] as const;
 
 type TenantMembersPageProps = PageProps<"/tenants/[tenant_id]/members">;
 
@@ -135,174 +105,23 @@ const TenantMembersSkeleton = () => (
  * `notFound()` would tell the operator to stop looking for a tenant that is
  * still there, so an outage keeps the console's own wording and a way back.
  */
-const TenantMembersLoadError = ({
-  message,
-  messages,
-}: {
-  message: string;
-  messages: PlatformMessages;
-}) => (
+const TenantMembersLoadError = ({ message }: { message: string }) => (
   <SectionError
     actions={
       <LinkButton render={<Link href="/tenants" />} variant="outline">
-        {getMessage(messages, "platform.common.back_to_list")}
+        <Suspense fallback="…">
+          <Message message="platform.common.back_to_list" />
+        </Suspense>
       </LinkButton>
     }
     description={message}
-    title={getMessage(messages, "platform.tenants.members_load_failed")}
+    title={
+      <Suspense fallback="…">
+        <Message message="platform.tenants.members_load_failed" />
+      </Suspense>
+    }
   />
 );
-
-const buildMembersManagerCopy = (
-  messages: PlatformMessages
-): TenantMembersManagerCopy => ({
-  addDescription: getMessage(
-    messages,
-    "platform.tenants.add_member_description"
-  ),
-  addEmailLabel: getMessage(messages, "platform.tenants.add_member_email"),
-  addPending: getMessage(messages, "platform.tenants.add_member_pending"),
-  addSubmit: getMessage(messages, "platform.tenants.add_member_submit"),
-  addTitle: getMessage(messages, "platform.tenants.add_member"),
-  cancel: getMessage(messages, "platform.common.cancel"),
-  cancelInvite: getMessage(messages, "platform.tenants.cancel_invite"),
-  cancelInviteAction: getMessage(
-    messages,
-    "platform.tenants.cancel_invite_action"
-  ),
-  cancelInviteDescription: getMessage(
-    messages,
-    "platform.tenants.cancel_invite_description"
-  ),
-  cancelInvitePending: getMessage(
-    messages,
-    "platform.tenants.cancel_invite_pending"
-  ),
-  cancelInviteTitle: getMessage(
-    messages,
-    "platform.tenants.cancel_invite_title"
-  ),
-  changeRole: getMessage(messages, "platform.tenants.change_role"),
-  changeRoleSubmit: getMessage(messages, "platform.tenants.change_role_submit"),
-  changeRoleUpdating: getMessage(
-    messages,
-    "platform.tenants.change_role_updating"
-  ),
-  deleteMember: getMessage(messages, "platform.tenants.delete_member"),
-  deleteMemberAction: getMessage(
-    messages,
-    "platform.tenants.delete_member_action"
-  ),
-  deleteMemberDescription: getMessage(
-    messages,
-    "platform.tenants.delete_member_description"
-  ),
-  deleteMemberPending: getMessage(
-    messages,
-    "platform.tenants.delete_member_pending"
-  ),
-  deleteMemberTitle: getMessage(
-    messages,
-    "platform.tenants.delete_member_title"
-  ),
-  invitationStatusLabels: Object.fromEntries(
-    invitationStatusValues.map((status) => [
-      status,
-      getInvitationStatusLabel(status, messages),
-    ])
-  ),
-  invitationsAria: getMessage(
-    messages,
-    "platform.tenants.invitations_pagination_aria"
-  ),
-  invitationsDescription: getMessage(
-    messages,
-    "platform.tenants.invitations_description"
-  ),
-  invitationsEmpty: getMessage(messages, "platform.tenants.invitations_empty"),
-  invitationsLoadFailed: getMessage(
-    messages,
-    "platform.tenants.invitations_load_failed"
-  ),
-  invitationsTitle: getMessage(messages, "platform.tenants.invitations_title"),
-  inviteAdmin: getMessage(messages, "platform.tenants.invite_admin"),
-  inviteAdminDescription: getMessage(
-    messages,
-    "platform.tenants.invite_admin_description"
-  ),
-  inviteAdminEmail: getMessage(messages, "platform.tenants.invite_admin_email"),
-  inviteAdminPending: getMessage(
-    messages,
-    "platform.tenants.invite_admin_pending"
-  ),
-  inviteAdminTitle: getMessage(messages, "platform.tenants.invite_admin_title"),
-  membersAria: getMessage(messages, "platform.tenants.members_pagination_aria"),
-  membersColumnsActions: getMessage(
-    messages,
-    "platform.tenants.members_columns_actions"
-  ),
-  membersColumnsCreated: getMessage(
-    messages,
-    "platform.tenants.members_columns_created"
-  ),
-  membersColumnsEmail: getMessage(
-    messages,
-    "platform.tenants.members_columns_email"
-  ),
-  membersColumnsExpires: getMessage(
-    messages,
-    "platform.tenants.members_columns_expires"
-  ),
-  membersColumnsInvitedAt: getMessage(
-    messages,
-    "platform.tenants.members_columns_invited_at"
-  ),
-  membersColumnsName: getMessage(
-    messages,
-    "platform.tenants.members_columns_name"
-  ),
-  membersColumnsRole: getMessage(
-    messages,
-    "platform.tenants.members_columns_role"
-  ),
-  membersColumnsStatus: getMessage(
-    messages,
-    "platform.tenants.members_columns_status"
-  ),
-  membersEmpty: getMessage(messages, "platform.tenants.members_empty"),
-  membersListDescription: getMessage(
-    messages,
-    "platform.tenants.members_list_description"
-  ),
-  membersListFailed: getMessage(
-    messages,
-    "platform.tenants.members_load_failed"
-  ),
-  membersListTitle: getMessage(messages, "platform.tenants.members_list_title"),
-  newRole: getMessage(messages, "platform.tenants.new_role"),
-  next: getMessage(messages, "platform.common.next"),
-  previous: getMessage(messages, "platform.common.previous"),
-  resendInvite: getMessage(messages, "platform.tenants.resend_invite"),
-  role: getMessage(messages, "platform.common.role"),
-  roleLabels: Object.fromEntries(
-    tenantRoleValues.map((role) => [role, getTenantRoleLabel(role, messages)])
-  ),
-  roleOptions: memberRoleValues.map((value) => ({
-    label: getTenantRoleLabel(value, messages),
-    value,
-  })),
-  roleUpdateDescription: getMessage(
-    messages,
-    "platform.tenants.role_update_description"
-  ),
-  statusLabels: Object.fromEntries(
-    tenantStatusValues.map((status) => [
-      status,
-      getTenantStatusLabel(status, messages),
-    ])
-  ),
-  unset: getMessage(messages, "platform.common.unset"),
-});
 
 const TenantMembersContent = async ({
   params,
@@ -346,12 +165,7 @@ const TenantMembersContent = async ({
   );
 
   if (!tenantResult.ok) {
-    return (
-      <TenantMembersLoadError
-        message={tenantResult.message}
-        messages={messages}
-      />
-    );
+    return <TenantMembersLoadError message={tenantResult.message} />;
   }
 
   const { tenant } = tenantResult;
@@ -406,19 +220,11 @@ const TenantMembersContent = async ({
       </PlatformPageHeader>
       <PlatformPageContent>
         <div className="grid gap-6">
-          <TenantSectionNav
-            current="members"
-            labels={{
-              basic: getMessage(messages, "platform.tenants.section_basic"),
-              members: getMessage(messages, "platform.tenants.members_nav"),
-            }}
-            tenantId={tenant.publicId}
-          />
+          <TenantSectionNav current="members" tenantId={tenant.publicId} />
 
           <TenantMembersManager
             addAction={addTenantMemberAction}
             cancelInvitationAction={cancelTenantAdminInvitationAction}
-            copy={buildMembersManagerCopy(messages)}
             createInvitationAction={createTenantAdminInvitationAction}
             invitationErrorMessage={
               invitationsResult.ok ? undefined : invitationsResult.message

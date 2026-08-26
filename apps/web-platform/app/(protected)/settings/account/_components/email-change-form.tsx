@@ -1,6 +1,3 @@
-"use client";
-
-import { Button } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -14,135 +11,101 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import type { ChangeEvent, ReactNode } from "react";
-import { useActionState, useCallback, useState } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import type { PlatformEmailChangeActionState } from "../../_lib/actions";
+import { ActionForm, ActionFormSubmit } from "#components/action-form";
+import { Message } from "#components/message";
 
-export interface EmailChangeFormCopy {
-  currentEmailLabel: ReactNode;
-  description: ReactNode;
-  newEmailLabel: ReactNode;
-  passwordHelp: ReactNode;
-  passwordLabel: ReactNode;
-  pendingLabel: ReactNode;
-  submitLabel: ReactNode;
-  title: ReactNode;
-}
+import { requestPlatformEmailChangeAction } from "../../_lib/actions";
 
-interface EmailChangeFormProps {
-  action: (
-    prevState: PlatformEmailChangeActionState,
-    formData: FormData
-  ) => Promise<PlatformEmailChangeActionState>;
-  copy: EmailChangeFormCopy;
-}
+export const EmailChangeForm = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle>
+        <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+          <Message message="platform.settings.email_change_title" />
+        </Suspense>
+      </CardTitle>
+      <CardDescription>
+        <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+          <Message message="platform.settings.email_change_description" />
+        </Suspense>
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <ActionForm
+        action={requestPlatformEmailChangeAction}
+        className="grid gap-4"
+      >
+        <Field>
+          <FieldLabel htmlFor="current_email" required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.settings.email_change_current" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              autoComplete="email"
+              id="current_email"
+              name="current_email"
+              placeholder="current@example.com"
+              required
+              type="email"
+            />
+          </FieldContent>
+        </Field>
 
-export const EmailChangeForm = ({ action, copy }: EmailChangeFormProps) => {
-  const [state, formAction, isPending] = useActionState(action, null);
-  const [currentEmail, setCurrentEmail] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
+        <Field>
+          <FieldLabel htmlFor="new_email" required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.settings.email_change_new" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              autoComplete="email"
+              id="new_email"
+              name="new_email"
+              placeholder="new@example.com"
+              required
+              type="email"
+            />
+          </FieldContent>
+        </Field>
 
-  const handleCurrentEmailChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setCurrentEmail(event.target.value);
-    },
-    []
-  );
+        <Field>
+          <FieldLabel htmlFor="current_password" required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.settings.email_change_password" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              autoComplete="current-password"
+              id="current_password"
+              name="current_password"
+              placeholder="••••••••"
+              required
+              type="password"
+            />
+            <FieldDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                <Message message="platform.settings.email_change_password_help" />
+              </Suspense>
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-  const handleNewEmailChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setNewEmail(event.target.value);
-    },
-    []
-  );
-
-  const handleCurrentPasswordChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setCurrentPassword(event.target.value);
-    },
-    []
-  );
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-        <CardDescription>{copy.description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="grid gap-4">
-          <Field>
-            <FieldLabel htmlFor="current_email" required>
-              {copy.currentEmailLabel}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                autoComplete="email"
-                id="current_email"
-                name="current_email"
-                onChange={handleCurrentEmailChange}
-                placeholder="current@example.com"
-                required
-                type="email"
-                value={currentEmail}
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="new_email" required>
-              {copy.newEmailLabel}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                autoComplete="email"
-                id="new_email"
-                name="new_email"
-                onChange={handleNewEmailChange}
-                placeholder="new@example.com"
-                required
-                type="email"
-                value={newEmail}
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="current_password" required>
-              {copy.passwordLabel}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                autoComplete="current-password"
-                id="current_password"
-                name="current_password"
-                onChange={handleCurrentPasswordChange}
-                placeholder="••••••••"
-                required
-                type="password"
-                value={currentPassword}
-              />
-              <FieldDescription>{copy.passwordHelp}</FieldDescription>
-            </FieldContent>
-          </Field>
-
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
-
-          <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={isPending} type="submit">
-              {isPending ? copy.pendingLabel : copy.submitLabel}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  );
-};
+        <div className="mt-2 flex justify-end gap-2">
+          <ActionFormSubmit>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.settings.email_change_submit" />
+            </Suspense>
+          </ActionFormSubmit>
+        </div>
+      </ActionForm>
+    </CardContent>
+  </Card>
+);

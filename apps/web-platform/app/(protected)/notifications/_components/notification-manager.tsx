@@ -8,6 +8,7 @@ import {
 } from "@publira/ui-components/card";
 import { EmptyState } from "@publira/ui-components/empty-state";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -17,11 +18,16 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 
+import { defaultNotificationsPageSize } from "../_lib/search-params";
 import type { NotificationItem } from "../notification-types";
 import {
   MarkAllNotificationsAsReadButton,
@@ -29,37 +35,12 @@ import {
 } from "./notification-read-actions";
 
 interface NotificationManagerProps {
-  copy: NotificationManagerCopy;
   listErrorMessage?: string;
   nextHref?: string;
-  nextLabel: ReactNode;
   notifications: NotificationItem[];
   previousHref?: string;
-  previousLabel: ReactNode;
   timeZone: string;
   unreadCount: number;
-}
-
-export interface NotificationManagerCopy {
-  actionColumn: ReactNode;
-  cardDescription: ReactNode;
-  cardTitle: ReactNode;
-  columnAt: ReactNode;
-  columnContent: ReactNode;
-  columnStatus: ReactNode;
-  emptyDescription: string;
-  emptyPageDescription: string;
-  emptyPageTitle: string;
-  emptyTitle: string;
-  listErrorTitle: string;
-  markAllRead: ReactNode;
-  markRead: ReactNode;
-  markReadPending: ReactNode;
-  markReadAriaLabel: (title: string) => string;
-  paginationAriaLabel: string;
-  perPage: ReactNode;
-  read: ReactNode;
-  unread: ReactNode;
 }
 
 const formatNotificationDateTime = (value: string, timeZone: string): string =>
@@ -80,16 +61,18 @@ const NotificationTitle = ({ item }: { item: NotificationItem }) => {
   return <span className="font-medium">{item.title}</span>;
 };
 
-const NotificationListBody = ({
-  copy,
+const renderNotificationListBody = ({
   hasPageLinks,
   listErrorMessage,
+  markReadAriaLabel,
+  messages,
   notifications,
   timeZone,
 }: {
-  copy: NotificationManagerCopy;
   hasPageLinks: boolean;
   listErrorMessage?: string;
+  markReadAriaLabel: (title: string) => string;
+  messages: PlatformMessages;
   notifications: NotificationItem[];
   timeZone: string;
 }) => {
@@ -97,7 +80,11 @@ const NotificationListBody = ({
     return (
       <SectionError
         description={listErrorMessage}
-        title={copy.listErrorTitle}
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="platform.notifications.list_failed" />
+          </Suspense>
+        }
       />
     );
   }
@@ -105,11 +92,20 @@ const NotificationListBody = ({
   if (notifications.length === 0) {
     return hasPageLinks ? (
       <EmptyState
-        description={copy.emptyPageDescription}
-        title={copy.emptyPageTitle}
+        description={getMessage(
+          messages,
+          "platform.notifications.empty_page_description"
+        )}
+        title={getMessage(messages, "platform.notifications.empty_page_title")}
       />
     ) : (
-      <EmptyState description={copy.emptyDescription} title={copy.emptyTitle} />
+      <EmptyState
+        description={getMessage(
+          messages,
+          "platform.notifications.empty_description"
+        )}
+        title={getMessage(messages, "platform.notifications.empty_title")}
+      />
     );
   }
 
@@ -117,11 +113,27 @@ const NotificationListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-24">{copy.columnStatus}</TableHead>
-          <TableHead className="w-44">{copy.columnAt}</TableHead>
-          <TableHead>{copy.columnContent}</TableHead>
+          <TableHead className="w-24">
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="platform.notifications.columns.status" />
+            </Suspense>
+          </TableHead>
+          <TableHead className="w-44">
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="platform.notifications.columns.at" />
+            </Suspense>
+          </TableHead>
+          <TableHead>
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="platform.notifications.columns.content" />
+            </Suspense>
+          </TableHead>
           <TableHead className="w-36">
-            <span className="sr-only">{copy.actionColumn}</span>
+            <span className="sr-only">
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="platform.notifications.columns.action" />
+              </Suspense>
+            </span>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -130,9 +142,17 @@ const NotificationListBody = ({
           <TableRow key={item.id}>
             <TableCell>
               {item.isRead ? (
-                <StatusChip status="muted">{copy.read}</StatusChip>
+                <StatusChip status="muted">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                    <Message message="platform.notifications.read" />
+                  </Suspense>
+                </StatusChip>
               ) : (
-                <StatusChip status="info">{copy.unread}</StatusChip>
+                <StatusChip status="info">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                    <Message message="platform.notifications.unread" />
+                  </Suspense>
+                </StatusChip>
               )}
             </TableCell>
             <TableCell>
@@ -149,11 +169,13 @@ const NotificationListBody = ({
             <TableCell>
               {item.isRead ? null : (
                 <MarkNotificationAsReadButton
-                  ariaLabel={copy.markReadAriaLabel(item.title)}
-                  idleLabel={copy.markRead}
+                  ariaLabel={markReadAriaLabel(item.title)}
                   notificationId={item.id}
-                  pendingLabel={copy.markReadPending}
-                />
+                >
+                  <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                    <Message message="platform.notifications.mark_read" />
+                  </Suspense>
+                </MarkNotificationAsReadButton>
               )}
             </TableCell>
           </TableRow>
@@ -163,17 +185,16 @@ const NotificationListBody = ({
   );
 };
 
-export const NotificationManager = ({
-  copy,
+export const NotificationManager = async ({
   listErrorMessage,
   nextHref,
-  nextLabel,
   notifications,
   previousHref,
-  previousLabel,
   timeZone,
   unreadCount,
 }: NotificationManagerProps) => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
   const hasPageLinks = Boolean(previousHref || nextHref);
   const showPagination =
     !listErrorMessage && (notifications.length > 0 || hasPageLinks);
@@ -184,35 +205,66 @@ export const NotificationManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>{copy.cardTitle}</CardTitle>
-          <CardDescription>{copy.cardDescription}</CardDescription>
+          <CardTitle>
+            <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+              <Message message="platform.notifications.card_title" />
+            </Suspense>
+          </CardTitle>
+          <CardDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="platform.notifications.card_description" />
+            </Suspense>
+          </CardDescription>
         </div>
         {hasUnread && !listErrorMessage ? (
-          <MarkAllNotificationsAsReadButton
-            idleLabel={copy.markAllRead}
-            pendingLabel={copy.markReadPending}
-          />
+          <MarkAllNotificationsAsReadButton>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.notifications.mark_all_read" />
+            </Suspense>
+          </MarkAllNotificationsAsReadButton>
         ) : null}
       </CardHeader>
 
       <CardContent className="grid gap-4">
-        <NotificationListBody
-          copy={copy}
-          hasPageLinks={hasPageLinks}
-          listErrorMessage={listErrorMessage}
-          notifications={notifications}
-          timeZone={timeZone}
-        />
+        {renderNotificationListBody({
+          hasPageLinks,
+          listErrorMessage,
+          markReadAriaLabel: (title) =>
+            getMessage(messages, "platform.notifications.mark_read_aria", {
+              title,
+            }),
+          messages,
+          notifications,
+          timeZone,
+        })}
 
         {showPagination ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">{copy.perPage}</p>
+            <p className="text-sm text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                <Message
+                  message="platform.notifications.per_page"
+                  values={{ count: defaultNotificationsPageSize }}
+                />
+              </Suspense>
+            </p>
             <PaginationControls
-              ariaLabel={copy.paginationAriaLabel}
+              ariaLabel={getMessage(
+                messages,
+                "platform.notifications.pagination_aria"
+              )}
               nextHref={nextHref}
-              nextLabel={nextLabel}
+              nextLabel={
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="platform.common.next" />
+                </Suspense>
+              }
               previousHref={previousHref}
-              previousLabel={previousLabel}
+              previousLabel={
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="platform.common.previous" />
+                </Suspense>
+              }
             />
           </div>
         ) : null}

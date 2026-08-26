@@ -21,14 +21,10 @@ import { setPlatformLocaleAction } from "#lib/locale-action";
 import { getPlatformSettings } from "#lib/platform-settings";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
-import {
-  updatePlatformDefaultLocaleAction,
-  updatePlatformDefaultTimezoneAction,
-} from "../_lib/actions";
+import { updatePlatformDefaultTimezoneAction } from "../_lib/actions";
 import { LocaleForm } from "./_components/locale-form";
 import type { LocaleFormOption } from "./_components/locale-form";
 import { PlatformDefaultLocaleForm } from "./_components/platform-default-locale-form";
-import type { PlatformDefaultLocaleFormOption } from "./_components/platform-default-locale-form";
 import { PlatformTimezoneForm } from "./_components/platform-timezone-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -109,102 +105,31 @@ interface DefaultLocaleSectionProps {
  * reason {@link LocaleSection} does. The stored value comes from the settings
  * read the screen already does, so the card adds no round trip of its own.
  */
-const DefaultLocaleSection = async ({
+const DefaultLocaleSection = ({
   initialDefaultLocale,
   loadErrorMessage,
-}: DefaultLocaleSectionProps) => {
-  const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
-
-  const options: PlatformDefaultLocaleFormOption[] = LOCALES.map((value) => ({
-    label: getMessage(messages, `locale.${value}`),
-    locale: value,
-  }));
-
-  return (
-    <PlatformDefaultLocaleForm
-      action={updatePlatformDefaultLocaleAction}
-      copy={{
-        description: getMessage(
-          messages,
-          "platform.settings.default_locale_description"
-        ),
-        fieldDescription: getMessage(
-          messages,
-          "platform.settings.default_locale_help"
-        ),
-        label: getMessage(messages, "platform.settings.default_locale_label"),
-        placeholder: getMessage(
-          messages,
-          "platform.settings.default_locale_placeholder"
-        ),
-        reloadWarning: getMessage(
-          messages,
-          "platform.settings.default_locale_reload"
-        ),
-        saveLabel: getMessage(
-          messages,
-          "platform.settings.default_locale_save"
-        ),
-        savingLabel: getMessage(messages, "platform.common.saving"),
-        title: getMessage(messages, "platform.settings.default_locale_title"),
-      }}
-      initialDefaultLocale={initialDefaultLocale}
-      loadErrorMessage={loadErrorMessage}
-      options={options}
-    />
-  );
-};
+}: DefaultLocaleSectionProps) => (
+  <PlatformDefaultLocaleForm
+    initialDefaultLocale={initialDefaultLocale}
+    loadErrorMessage={loadErrorMessage}
+  />
+);
 
 interface TimezoneSectionProps {
   initialTimezone: string;
   loadErrorMessage?: string;
 }
 
-const TimezoneSection = async ({
+const TimezoneSection = ({
   initialTimezone,
   loadErrorMessage,
-}: TimezoneSectionProps) => {
-  const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
-
-  return (
-    <PlatformTimezoneForm
-      action={updatePlatformDefaultTimezoneAction}
-      copy={{
-        description: getMessage(
-          messages,
-          "platform.settings.default_timezone_description"
-        ),
-        emptyMessage: getMessage(
-          messages,
-          "platform.settings.default_timezone_empty"
-        ),
-        fieldDescription: getMessage(
-          messages,
-          "platform.settings.default_timezone_help"
-        ),
-        label: getMessage(messages, "platform.settings.default_timezone_label"),
-        placeholder: getMessage(
-          messages,
-          "platform.settings.default_timezone_placeholder"
-        ),
-        reloadWarning: getMessage(
-          messages,
-          "platform.settings.default_timezone_reload"
-        ),
-        saveLabel: getMessage(
-          messages,
-          "platform.settings.default_timezone_save"
-        ),
-        savingLabel: getMessage(messages, "platform.common.saving"),
-        title: getMessage(messages, "platform.settings.default_timezone_title"),
-      }}
-      initialTimezone={initialTimezone}
-      loadErrorMessage={loadErrorMessage}
-    />
-  );
-};
+}: TimezoneSectionProps) => (
+  <PlatformTimezoneForm
+    action={updatePlatformDefaultTimezoneAction}
+    initialTimezone={initialTimezone}
+    loadErrorMessage={loadErrorMessage}
+  />
+);
 
 const GeneralSettingsContent = async () => {
   const locale = await getPlatformLocale();

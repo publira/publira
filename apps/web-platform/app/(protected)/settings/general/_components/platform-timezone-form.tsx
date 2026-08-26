@@ -18,40 +18,30 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { listSupportedTimeZones } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
 import { useActionState, useMemo, useState } from "react";
 
-import type { PlatformDefaultTimezoneActionState } from "../../_lib/actions";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 
-export interface PlatformTimezoneFormCopy {
-  description: string;
-  emptyMessage: string;
-  fieldDescription: string;
-  label: string;
-  placeholder: string;
-  reloadWarning: string;
-  saveLabel: string;
-  savingLabel: string;
-  title: string;
-}
+import type { PlatformDefaultTimezoneActionState } from "../../_lib/actions";
 
 interface PlatformTimezoneFormProps {
   action: (
     prevState: PlatformDefaultTimezoneActionState,
     formData: FormData
   ) => Promise<PlatformDefaultTimezoneActionState>;
-  copy: PlatformTimezoneFormCopy;
   initialTimezone: string;
   loadErrorMessage?: string;
 }
 
 export const PlatformTimezoneForm = ({
   action,
-  copy,
   initialTimezone,
   loadErrorMessage,
 }: PlatformTimezoneFormProps) => {
   const [state, formAction, isPending] = useActionState(action, null);
   const [timezone, setTimezone] = useState(initialTimezone);
+  const messages = useClientMessages();
 
   // A failed read hands the form `DEFAULT_TIME_ZONE` as a stand-in, not the
   // stored value, so saving from that state would overwrite the real default
@@ -73,33 +63,47 @@ export const PlatformTimezoneForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-        <CardDescription>{copy.description}</CardDescription>
+        <CardTitle>
+          <ClientMessage message="platform.settings.default_timezone_title" />
+        </CardTitle>
+        <CardDescription>
+          <ClientMessage message="platform.settings.default_timezone_description" />
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="grid gap-4 sm:max-w-lg">
           <input name="default_timezone" type="hidden" value={timezone} />
 
           <Field>
-            <FieldLabel htmlFor="default_timezone">{copy.label}</FieldLabel>
+            <FieldLabel htmlFor="default_timezone">
+              <ClientMessage message="platform.settings.default_timezone_label" />
+            </FieldLabel>
             <FieldContent>
               <Combobox
                 disabled={hasLoadError}
-                emptyMessage={copy.emptyMessage}
+                emptyMessage={getMessage(
+                  messages,
+                  "platform.settings.default_timezone_empty"
+                )}
                 id="default_timezone"
                 items={items}
                 onValueChange={setTimezone}
-                placeholder={copy.placeholder}
+                placeholder={getMessage(
+                  messages,
+                  "platform.settings.default_timezone_placeholder"
+                )}
                 value={timezone}
               />
-              <FieldDescription>{copy.fieldDescription}</FieldDescription>
+              <FieldDescription>
+                <ClientMessage message="platform.settings.default_timezone_help" />
+              </FieldDescription>
             </FieldContent>
           </Field>
 
           {loadErrorMessage ? (
             <FormMessage variant="destructive">
               {loadErrorMessage}
-              {copy.reloadWarning}
+              <ClientMessage message="platform.settings.default_timezone_reload" />
             </FormMessage>
           ) : null}
 
@@ -111,7 +115,7 @@ export const PlatformTimezoneForm = ({
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={hasLoadError || isPending} type="submit">
-              {isPending ? copy.savingLabel : copy.saveLabel}
+              <ClientMessage message="platform.settings.default_timezone_save" />
             </Button>
           </div>
         </form>

@@ -69,10 +69,7 @@ const EmailSettingsFormSkeleton = () => (
 
 const EmailSettingsSection = async () => {
   const locale = await getPlatformLocale();
-  const [settingsResult, messages] = await Promise.all([
-    getPlatformEmailSettings(locale),
-    loadPlatformMessages(locale),
-  ]);
+  const settingsResult = await getPlatformEmailSettings(locale);
 
   await redirectToLoginIfSessionRejected(settingsResult);
 
@@ -85,48 +82,6 @@ const EmailSettingsSection = async () => {
 
   return (
     <EmailSettingsForm
-      copy={{
-        cardDescription: getMessage(
-          messages,
-          "platform.settings.smtp_card_description"
-        ),
-        cardTitle: getMessage(messages, "platform.settings.smtp_card_title"),
-        encryptionLabel: getMessage(
-          messages,
-          "platform.settings.smtp_encryption"
-        ),
-        encryptionNone: getMessage(
-          messages,
-          "platform.settings.encryption_none"
-        ),
-        fromAddress: getMessage(messages, "platform.settings.from_address"),
-        host: getMessage(messages, "platform.settings.host"),
-        password: getMessage(messages, "platform.settings.password"),
-        passwordChange: getMessage(
-          messages,
-          "platform.settings.password_change"
-        ),
-        passwordUndo: getMessage(messages, "platform.settings.password_undo"),
-        port: getMessage(messages, "platform.settings.port"),
-        replyTo: getMessage(messages, "platform.settings.reply_to"),
-        save: getMessage(messages, "platform.common.save"),
-        saving: getMessage(messages, "platform.common.saving"),
-        test: getMessage(messages, "platform.settings.smtp_test"),
-        testClose: getMessage(messages, "platform.settings.smtp_test_close"),
-        testCustom: getMessage(messages, "platform.settings.smtp_test_custom"),
-        testDescription: getMessage(
-          messages,
-          "platform.settings.smtp_test_description"
-        ),
-        testPending: getMessage(
-          messages,
-          "platform.settings.smtp_test_pending"
-        ),
-        testSelf: getMessage(messages, "platform.settings.smtp_test_self"),
-        testSubmit: getMessage(messages, "platform.settings.smtp_test_submit"),
-        testTitle: getMessage(messages, "platform.settings.smtp_test_title"),
-        username: getMessage(messages, "platform.settings.username"),
-      }}
       initialSettings={initialSettings}
       loadErrorMessage={loadErrorMessage}
       saveAction={updatePlatformEmailSettingsAction}
