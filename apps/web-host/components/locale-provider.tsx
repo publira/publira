@@ -1,7 +1,7 @@
 "use client";
 
-import { DEFAULT_LOCALE } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
+import { DEFAULT_LOCALE } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { createContext, use } from "react";
 import type { ReactNode } from "react";
 

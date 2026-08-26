@@ -59,7 +59,7 @@ RUN pnpm install --frozen-lockfile
 COPY --from=prepare /app/out/full/ .
 
 # The message catalogs live at the repository root, outside the pnpm workspace, so
-# `turbo prune` leaves them behind. @publira/utils/catalog imports them relatively
+# `turbo prune` leaves them behind. @publira/i18n/catalog imports them relatively
 # and bundles them at build time.
 COPY --from=prepare /app/locales ./locales
 

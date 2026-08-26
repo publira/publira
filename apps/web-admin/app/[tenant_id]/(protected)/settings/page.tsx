@@ -1,7 +1,7 @@
+import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import { SectionError } from "@publira/ui-components/section-error";
 import { Skeleton } from "@publira/ui-components/skeleton";
-import { getMessage, LOCALES } from "@publira/utils/i18n";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -67,8 +67,8 @@ const LocaleSection = async () => {
   const locale = await getLocale(await getTenantId());
   const messages = await loadAdminMessages(locale);
 
-  const options: LocaleFormOption[] = LOCALES.map((value) => ({
-    label: getMessage(messages, `locale.${value}`),
+  const options: LocaleFormOption[] = getLocales().map((value) => ({
+    label: getLocaleLabel(value),
     locale: value,
   }));
 
@@ -104,17 +104,11 @@ const SettingsFormsSkeleton = () => (
   </div>
 );
 
-const tenantDefaultLocaleOptions = async (
-  tenantId: string
-): Promise<TenantDefaultLocaleFormOption[]> => {
-  const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
-
-  return LOCALES.map((value) => ({
-    label: getMessage(messages, `locale.${value}`),
+const tenantDefaultLocaleOptions = (): TenantDefaultLocaleFormOption[] =>
+  getLocales().map((value) => ({
+    label: getLocaleLabel(value),
     locale: value,
   }));
-};
 
 const SettingsForms = async () => {
   const tenantId = await getTenantId();
@@ -130,7 +124,7 @@ const SettingsForms = async () => {
     getTenantTimezone(tenantId),
     getTenantDefaultLocale(tenantId),
     getAdminCurrentUser(tenantId),
-    tenantDefaultLocaleOptions(tenantId),
+    tenantDefaultLocaleOptions(),
   ]);
 
   await redirectToLoginIfSessionRejected(

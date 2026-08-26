@@ -1,10 +1,10 @@
 "use server";
 
+import { getLocales, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { getMessage, LOCALES } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 
@@ -89,7 +89,7 @@ const platformDefaultTimezoneSchema = (messages: PlatformMessages) => {
  */
 const platformDefaultLocaleSchema = (messages: PlatformMessages) =>
   z.object({
-    defaultLocale: z.enum(LOCALES, {
+    defaultLocale: z.enum(getLocales(), {
       error: getMessage(messages, "platform.settings.locale_required"),
     }),
   });

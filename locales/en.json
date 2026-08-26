@@ -34,9 +34,96 @@
   },
   "locale": {
     "description": "The language this console is shown in. It is stored in your browser and reused on your next visit.",
-    "en": "English",
-    "ja": "Japanese",
     "label": "Display language"
+  },
+  "admin": {
+    "auth": {
+      "accept_invite": {
+        "account_exists": "Accept as an existing account. You can sign in with this email address after accepting.",
+        "accepted": "This invitation has already been accepted.",
+        "canceled": "This invitation has been canceled.",
+        "email_invited": "{email} has been invited as a tenant administrator.",
+        "expired": "This invitation has expired.",
+        "expired_action": "This invitation link has expired.",
+        "invalid_token": "The invitation token was not found.",
+        "name_label": "Full name",
+        "name_placeholder": "Jane Doe",
+        "not_found": "The invitation could not be found.",
+        "password_confirm_label": "Password (confirm)",
+        "password_mismatch": "The passwords do not match.",
+        "submit": "Accept invitation",
+        "title": "Accept administrator invitation",
+        "description": "Accept the invitation to access this tenant's admin console."
+      },
+      "confirm_email": {
+        "changed": "Your email address has been changed.",
+        "changed_help": "You can sign in with your new email address.",
+        "failed": "Could not change your email address. The link may have expired or be invalid.",
+        "failure_help": "Request the email address change again.",
+        "invalid_link": "This confirmation link is invalid.",
+        "pending": "Confirmation is complete.",
+        "pending_current_email": "This confirmation is complete. The change applies once the current email address is confirmed as well.",
+        "pending_new_email": "This confirmation is complete. The change applies once the new email address is confirmed as well.",
+        "processing": "Confirming your email address change.",
+        "title": "Confirm email address change",
+        "to_login": "Go to sign-in"
+      },
+      "confirm_password": {
+        "confirm_password_label": "New password (confirm)",
+        "description": "Enter a new password. You can sign in with it right away.",
+        "eyebrow": "Set a new password for the admin console from the link in your email.",
+        "expired": "This reset link has expired.",
+        "failure_help": "Request the reset email again to receive a new link.",
+        "invalid": "This reset link is invalid.",
+        "password_label": "New password",
+        "password_mismatch": "The passwords do not match.",
+        "request_again": "Send reset email",
+        "submit": "Set new password",
+        "title": "Set a new password",
+        "to_login": "Go to sign-in"
+      },
+      "errors": {
+        "accept_invite_failed": "Could not accept the invitation. Please try again later.",
+        "email_change_failed": "Could not request the email address change. Please try again later.",
+        "login_failed": "The email address or password is incorrect.",
+        "login_processing_failed": "Could not sign you in. Please try again later.",
+        "name_and_password_required": "Enter your name and password.",
+        "new_password_required": "Enter a new password.",
+        "reset_confirm_failed": "Could not reset your password. Please try again later.",
+        "reset_link_expired": "This reset link has expired. Request the reset email again.",
+        "reset_link_invalid": "This reset link is invalid. Request the reset email again.",
+        "reset_request_failed": "Could not send the reset email. Please try again later.",
+        "reset_request_invalid_email": "Check the email address.",
+        "tenant_missing": "The tenant identifier could not be found."
+      },
+      "fields": {
+        "email_invalid": "Enter a valid email address.",
+        "email_label": "Email address",
+        "email_required": "Enter your email address.",
+        "invalid_token": "This confirmation link is invalid.",
+        "password_label": "Password",
+        "password_required": "Enter your password.",
+        "tenant_missing": "The tenant ID could not be found."
+      },
+      "forgot_password": {
+        "description": "We will send a reset link to the email address registered for this admin console.",
+        "requested_help": "Set a new password from the link in the email. If it does not arrive, wait a moment and try again.",
+        "requested_sent": "If that email address is registered, a password reset email has been sent.",
+        "submit": "Send reset email",
+        "title": "Reset password",
+        "to_login": "Back to sign-in",
+        "try_another_email": "Try another email address"
+      },
+      "login": {
+        "eyebrow": "Admin console sign-in",
+        "forgot_password": "Forgot your password?",
+        "invited_done": "The invitation has been accepted. Please sign in.",
+        "reset_done": "Your password has been reset. Sign in with the new password.",
+        "session_revoked": "Your session has expired. Please sign in again.",
+        "submit": "Sign in",
+        "title": "Sign in"
+      }
+    }
   },
   "platform": {
     "audit": {

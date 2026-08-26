@@ -1,21 +1,26 @@
 /**
- * Locale parsing and message lookup for Server Components.
+ * Locale parsing and message lookup.
  *
  * Apps resolve Cookie / `root-params` themselves and pass the value in. This
  * module never reads request state, so it is safe to call from `"use cache"`
  * (the cache key is the locale argument, not a cookie).
  *
  * Catalogs live at the repo-root `locales/*.json` so Go, Next.js, and Flutter
- * read the same files. The loader takes per-locale `import()` functions —
- * never a template-string path — and `switch`es on {@link Locale}.
+ * read the same files. Generated per-locale `import()` functions load the
+ * catalog for {@link Locale}.
  */
 
-/** First-cut UI locales. `ja` is the catalog source of truth. */
-export const LOCALES = ["ja", "en"] as const;
+import {
+  getIntlLocale,
+  getLocaleLabel as getLocaleLabelForSupportedLocale,
+  getLocales,
+} from "./gen/locale-registry";
+import type { Locale } from "./gen/locale-registry";
 
-export type Locale = (typeof LOCALES)[number];
+export { getLocales } from "./gen/locale-registry";
+export type { Locale } from "./gen/locale-registry";
 
-/** Fallback when the value is missing or not in {@link LOCALES}. */
+/** Fallback when the value is missing or not in {@link getLocales}. */
 export const DEFAULT_LOCALE: Locale = "ja";
 
 /** Cookie that stores the UI locale for apps that do not put lang in the URL. */
@@ -50,23 +55,18 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
  * Everything interpolated below is a constant of this module, so no
  * request-derived value reaches the script source.
  */
-export const LOCALE_LANG_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${LOCALE_COOKIE_NAME}=([^;]*)/);if(!m){return}var l=decodeURIComponent(m[1]).trim();if(${JSON.stringify(LOCALES)}.indexOf(l)<0){return}document.documentElement.lang=l}catch(e){}})()`;
+export const LOCALE_LANG_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${LOCALE_COOKIE_NAME}=([^;]*)/);if(!m){return}var l=decodeURIComponent(m[1]).trim();if(${JSON.stringify(getLocales())}.indexOf(l)<0){return}document.documentElement.lang=l}catch(e){}})()`;
 
-const LOCALE_SET: ReadonlySet<string> = new Set(LOCALES);
+const LOCALE_SET: ReadonlySet<string> = new Set(getLocales());
 
 /** Named `{placeholder}` only — no ICU, no plurals. */
 const PLACEHOLDER_RE = /\{[A-Za-z_][A-Za-z0-9_]*\}/gu;
-
-const INTL_LOCALES = {
-  en: "en-US",
-  ja: "ja-JP",
-} as const satisfies Record<Locale, string>;
 
 export type MessageValues = Record<string, number | string>;
 
 /**
  * Nested catalog. Leaves are the message strings. A dotted key such as
- * `locale.ja` walks this tree; a same-named top-level string key wins.
+ * `errors.validation` walks this tree; a same-named top-level string key wins.
  */
 export interface MessageTree {
   readonly [key: string]: MessageTree | string;
@@ -141,7 +141,11 @@ export const parseLocaleCookie = (value: string | null | undefined): Locale => {
 };
 
 /** BCP 47 tag for `Intl.DateTimeFormat`. `<html lang>` stays `ja` / `en`. */
-export const toIntlLocale = (locale: Locale): string => INTL_LOCALES[locale];
+export const toIntlLocale = (locale: Locale): string => getIntlLocale(locale);
+
+/** Display name configured for a supported locale. */
+export const getLocaleLabel = (locale: Locale): string =>
+  getLocaleLabelForSupportedLocale(locale);
 
 const isModuleNamespace = (value: object): boolean =>
   Object.prototype.toString.call(value) === "[object Module]";
@@ -175,23 +179,7 @@ export const loadMessages = async <TCatalog>(
   importers: LocaleCatalogImporters<TCatalog>
 ): Promise<TCatalog> => {
   const resolved = parseLocale(locale);
-  let loaded: CatalogModule<TCatalog>;
-
-  switch (resolved) {
-    case "en": {
-      loaded = await importers.en();
-      break;
-    }
-    case "ja": {
-      loaded = await importers.ja();
-      break;
-    }
-    default: {
-      throw new Error(`Unsupported locale: ${String(resolved)}`);
-    }
-  }
-
-  return unwrapCatalog(loaded);
+  return unwrapCatalog(await importers[resolved]());
 };
 
 const isMessageTree = (value: unknown): value is MessageTree =>

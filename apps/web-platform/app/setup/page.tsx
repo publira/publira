@@ -1,6 +1,6 @@
+import { getMessage } from "@publira/i18n";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";

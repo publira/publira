@@ -19,10 +19,9 @@
  * Only top-level fields are reported, which is the shape of a form schema.
  */
 
+import type { Locale } from "@publira/i18n";
+import { sharedMessage } from "@publira/i18n/catalog";
 import { z } from "zod";
-
-import { sharedMessage } from "./catalog";
-import type { Locale } from "./i18n";
 
 /**
  * Shared wording so a rejected form reads the same in all three apps.

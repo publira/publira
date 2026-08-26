@@ -278,7 +278,7 @@ docker build -f infra/docker/web/Dockerfile \
 | node | `email-renderer` | `apps/email-renderer/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/node/**` |
 
 `server/**` 変更時は api、batch、image の代表をビルドする（共有モジュールのため）。  
-`locales/**` は web と node が見る。`@publira/utils/catalog` と `@publira/email-templates` がリポジトリルートの文言カタログを相対 import してバンドルするため。
+`locales/**` は web と node が見る。`@publira/i18n/catalog` と `@publira/email-templates` がリポジトリルートの文言カタログを相対 import してバンドルするため。
 
 実装: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の `docker` ジョブ。  
 ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Docker 行列を決定）。  

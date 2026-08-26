@@ -1,4 +1,4 @@
-import type { Locale } from "@publira/utils/i18n";
+import type { Locale } from "@publira/i18n";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 
 import type { TenantSmtpSettings } from "#lib/email-settings";

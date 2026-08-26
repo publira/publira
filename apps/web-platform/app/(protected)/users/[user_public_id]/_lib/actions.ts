@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/utils/i18n";
+import { getMessage } from "@publira/i18n";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 

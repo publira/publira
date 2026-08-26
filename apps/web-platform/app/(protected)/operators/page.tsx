@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { Badge, StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -17,7 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";

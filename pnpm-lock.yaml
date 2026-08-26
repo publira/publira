@@ -153,6 +153,9 @@ importers:
       '@publira/brand':
         specifier: workspace:*
         version: link:../../packages/brand
+      '@publira/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@publira/icons':
         specifier: workspace:*
         version: link:../../packages/icons
@@ -235,6 +238,9 @@ importers:
       '@publira/comic-viewer':
         specifier: 'catalog:'
         version: 0.6.1(react@19.2.8)
+      '@publira/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@publira/icons':
         specifier: workspace:*
         version: link:../../packages/icons
@@ -320,6 +326,9 @@ importers:
       '@publira/brand':
         specifier: workspace:*
         version: link:../../packages/brand
+      '@publira/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@publira/icons':
         specifier: workspace:*
         version: link:../../packages/icons
@@ -432,6 +441,9 @@ importers:
       '@connectrpc/connect-web':
         specifier: 2.1.2
         version: 2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))
+      '@publira/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@publira/utils':
         specifier: workspace:*
         version: link:../utils
@@ -453,6 +465,9 @@ importers:
 
   packages/email-templates:
     dependencies:
+      '@publira/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@publira/utils':
         specifier: workspace:*
         version: link:../utils
@@ -490,6 +505,24 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.11(@types/node@26.2.0)(jsdom@30.0.1)(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+
+  packages/i18n:
+    devDependencies:
+      '@publira/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.22.14(typescript@6.0.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.11(@types/node@24.13.3)(jsdom@30.0.1)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
 
   packages/icons:
     dependencies:
@@ -661,6 +694,9 @@ importers:
 
   packages/utils:
     dependencies:
+      '@publira/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       clsx:
         specifier: 2.1.1
         version: 2.1.1

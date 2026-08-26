@@ -1,4 +1,4 @@
-import type { Locale } from "@publira/utils/i18n";
+import type { Locale } from "@publira/i18n";
 import type { CSSProperties } from "react";
 import { Text } from "react-email";
 import { z } from "zod";

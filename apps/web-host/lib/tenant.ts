@@ -1,9 +1,9 @@
 import { isExpectedNullableRpcError } from "@publira/api-client/errors";
 import type { TenantImageVariant as TenantImageVariantMessage } from "@publira/api-client/public/types";
+import { DEFAULT_LOCALE, parseLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { DEFAULT_LOCALE, parseLocale } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";

@@ -41,7 +41,7 @@ describe("PlatformDefaultLocaleForm", () => {
 
     const trigger = screen.getByLabelText("既定言語");
 
-    expect(trigger.textContent).toContain("英語");
+    expect(trigger.textContent).toContain("English");
     expect(trigger).toHaveProperty("disabled", false);
     expect(
       screen.getByRole<HTMLButtonElement>("button", {

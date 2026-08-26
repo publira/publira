@@ -13,8 +13,8 @@
  * Components, and tests all share one implementation.
  */
 
-import { isLocale } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
+import { isLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 
 import { isTenantIdFormat } from "./tenant-id-format";
 

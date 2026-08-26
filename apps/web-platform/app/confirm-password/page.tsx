@@ -1,9 +1,9 @@
+import { getMessage } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";

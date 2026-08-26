@@ -1,5 +1,6 @@
 "use server";
 
+import { getLocales } from "@publira/i18n";
 import { isValidTimeZone } from "@publira/utils";
 import {
   toFieldErrors,
@@ -7,7 +8,6 @@ import {
   VALIDATION_ERROR_MESSAGE,
 } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { LOCALES } from "@publira/utils/i18n";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
@@ -196,7 +196,7 @@ const tenantTimezoneSchema = z.object({
  * operator immediate feedback instead of a round trip.
  */
 const tenantDefaultLocaleSchema = z.object({
-  defaultLocale: z.enum(LOCALES, {
+  defaultLocale: z.enum(getLocales(), {
     error: "言語を選択してください。",
   }),
 });

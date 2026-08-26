@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
@@ -38,8 +40,6 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDate, formatDateTime } from "@publira/utils";
-import { getMessage } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 import {
   createContext,
   useActionState,

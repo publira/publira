@@ -1,7 +1,7 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
 import type { PublicApiClient } from "@publira/api-client/public/client";
-import { parseLocale } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
+import { parseLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { LRUCache } from "lru-cache";
 
 /**

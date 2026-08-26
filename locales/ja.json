@@ -34,9 +34,96 @@
   },
   "locale": {
     "description": "この管理画面の表示言語です。ブラウザに保存され、次回以降も同じ言語で表示されます。",
-    "en": "英語",
-    "ja": "日本語",
     "label": "表示言語"
+  },
+  "admin": {
+    "auth": {
+      "accept_invite": {
+        "account_exists": "既存アカウントとして承諾します。承諾後はこのメールアドレスでログインできます。",
+        "accepted": "この招待はすでに承諾済みです。",
+        "canceled": "この招待は取り消されています。",
+        "email_invited": "{email} をテナント管理者として招待しています。",
+        "expired": "この招待は期限切れです。",
+        "expired_action": "招待リンクの有効期限が切れています。",
+        "invalid_token": "招待トークンが見つかりません。",
+        "name_label": "お名前",
+        "name_placeholder": "山田 太郎",
+        "not_found": "招待が見つかりません。",
+        "password_confirm_label": "パスワード（確認）",
+        "password_mismatch": "パスワード確認が一致しません。",
+        "submit": "招待を承諾する",
+        "title": "管理者招待の承諾",
+        "description": "招待を承諾すると、このテナントの管理画面にアクセスできます。"
+      },
+      "confirm_email": {
+        "changed": "メールアドレスの変更が完了しました。",
+        "changed_help": "新しいメールアドレスでログインできます。",
+        "failed": "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。",
+        "failure_help": "メールアドレス変更を再度リクエストしてください。",
+        "invalid_link": "確認リンクが無効です。",
+        "pending": "確認が完了しました。",
+        "pending_current_email": "この確認は完了しました。現在のメールアドレス側の確認が完了すると変更が反映されます。",
+        "pending_new_email": "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。",
+        "processing": "メールアドレス変更の確認を処理しています。",
+        "title": "メールアドレス変更確認",
+        "to_login": "ログイン画面へ"
+      },
+      "confirm_password": {
+        "confirm_password_label": "新しいパスワード（確認）",
+        "description": "新しいパスワードを入力してください。設定後はログイン画面からすぐに利用できます。",
+        "eyebrow": "メールで受け取ったリンクから、管理画面用の新しいパスワードを設定します。",
+        "expired": "この再設定リンクは有効期限が切れています。",
+        "failure_help": "もう一度メール送信からやり直すと、新しい再設定リンクを受け取れます。",
+        "invalid": "この再設定リンクは無効です。",
+        "password_label": "新しいパスワード",
+        "password_mismatch": "パスワード確認が一致しません。",
+        "request_again": "再設定メールを送信",
+        "submit": "新しいパスワードを設定",
+        "title": "新しいパスワードの設定",
+        "to_login": "ログイン画面へ"
+      },
+      "errors": {
+        "accept_invite_failed": "招待の承諾に失敗しました。時間をおいて再試行してください。",
+        "email_change_failed": "メールアドレス変更リクエストに失敗しました。時間をおいて再試行してください。",
+        "login_failed": "メールアドレスまたはパスワードが正しくありません。",
+        "login_processing_failed": "ログイン処理に失敗しました。時間をおいて再試行してください。",
+        "name_and_password_required": "名前とパスワードを入力してください。",
+        "new_password_required": "新しいパスワードを入力してください。",
+        "reset_confirm_failed": "パスワード再設定に失敗しました。時間をおいて再試行してください。",
+        "reset_link_expired": "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
+        "reset_link_invalid": "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+        "reset_request_failed": "再設定メールの送信に失敗しました。時間をおいて再試行してください。",
+        "reset_request_invalid_email": "メールアドレスを確認してください。",
+        "tenant_missing": "テナント識別子が見つかりません。"
+      },
+      "fields": {
+        "email_invalid": "メールアドレスの形式が正しくありません。",
+        "email_label": "メールアドレス",
+        "email_required": "メールアドレスを入力してください。",
+        "invalid_token": "確認リンクが無効です。",
+        "password_label": "パスワード",
+        "password_required": "パスワードを入力してください。",
+        "tenant_missing": "テナント ID が見つかりません。"
+      },
+      "forgot_password": {
+        "description": "管理画面に登録済みのメールアドレス宛てに、再設定リンクを送信します。",
+        "requested_help": "メール内のリンクから新しいパスワードを設定してください。届かない場合は、少し時間を置いて再度お試しください。",
+        "requested_sent": "メールアドレスが登録されている場合、パスワード再設定メールを送信しました。",
+        "submit": "再設定メールを送信",
+        "title": "パスワード再設定",
+        "to_login": "ログイン画面へ戻る",
+        "try_another_email": "別のメールアドレスで試す"
+      },
+      "login": {
+        "eyebrow": "管理画面ログイン",
+        "forgot_password": "パスワードを忘れた場合",
+        "invited_done": "招待の承諾が完了しました。ログインしてください。",
+        "reset_done": "パスワードを再設定しました。新しいパスワードでログインしてください。",
+        "session_revoked": "セッションの有効期限が切れました。もう一度ログインしてください。",
+        "submit": "ログイン",
+        "title": "ログイン"
+      }
+    }
   },
   "platform": {
     "audit": {

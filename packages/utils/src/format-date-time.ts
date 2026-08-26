@@ -10,8 +10,8 @@
  * (`YYYY-MM-DDTHH:mm`, optionally with seconds / fractional seconds).
  */
 
-import { parseLocale, toIntlLocale } from "./i18n";
-import type { Locale } from "./i18n";
+import { parseLocale, toIntlLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 
 /** Default IANA zone when `timeZone` is omitted (gradual migration from fixed JST). */
 export const DEFAULT_TIME_ZONE = "Asia/Tokyo";

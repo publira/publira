@@ -6,29 +6,29 @@
 
 ## ファイル
 
-| ファイル  | ロケール | 役割                               |
-| --------- | -------- | ---------------------------------- |
-| `ja.json` | `ja`     | 正本。キーと入れ子の形はここが基準 |
-| `en.json` | `en`     | `ja.json` と同じキー。訳だけが違う |
+| ファイル | 役割 |
+| --- | --- |
+| `index.json` | 対応言語、表示名、`Intl` 用 BCP 47 タグの唯一の手編集レジストリ |
+| `ja.json` | 正本。キーと入れ子の形はここが基準 |
+| `en.json` | `ja.json` と同じキー。訳だけが違う |
 
 葉は必ず文字列です。補間は `{name}` のみです（ICU / 複数形は使いません）。
 
 ```json
 {
-  "locale": {
-    "ja": "日本語",
-    "en": "英語"
+  "errors": {
+    "validation": "入力内容を確認してください。"
   }
 }
 ```
 
-キー `"locale.ja"` は入れ子 `locale.ja` を指します。トップレベルに同じ名前の文字列キーがあるときは、そちらの完全一致が勝ります。
+キー `"errors.validation"` は入れ子 `errors.validation` を指します。トップレベルに同じ名前の文字列キーがあるときは、そちらの完全一致が勝ります。
 
 ## 読み方
 
-カタログの中身を増やすのは各画面の Issue です。このディレクトリは置き場と形式だけを決めます。読み取り側は動的パスを組み立てず、ロケールごとに静的なパスを書きます。
+カタログの中身を増やすのは各画面の Issue です。このディレクトリは置き場と形式だけを決めます。読み取り側は動的パスを組み立てず、`index.json` から生成した静的 import マップを共有します。
 
-アプリ横断の共有コピー（RPC エラー分類、フォームのバリデーション要約、`searchParamEnum` の拒否メッセージ）は `errors.*` に置きます。`@publira/utils/catalog` と `@publira/api-client/error-messages` がここを読みます。
+アプリ横断の共有コピー（RPC エラー分類、フォームのバリデーション要約、`searchParamEnum` の拒否メッセージ）は `errors.*` に置きます。`@publira/i18n/catalog` と `@publira/api-client/error-messages` がここを読みます。
 
 トップレベルのキーは読み手ごとに分かれます。1 つのアプリでしか出ない文言は、そのアプリの名前空間の下に置いてください。
 
@@ -41,23 +41,16 @@
 
 アプリ名前空間の中は画面（またはひとまとまりの領域）ごとに区切り、複数の画面が同じ文言を使うときだけ、その領域の共通セクション（`platform.auth.fields` など）に上げます。
 
-### TypeScript（`@publira/utils/i18n`）
+### TypeScript（`@publira/i18n`）
 
 ```ts
-import { loadMessages, type Locale } from "@publira/utils/i18n";
+import { loadLocaleMessages } from "@publira/i18n/messages";
+import type { Locale } from "@publira/i18n";
 
-import type ja from "../../locales/ja.json";
-
-export type Messages = typeof ja;
-
-export const loadCatalog = (locale: Locale) =>
-  loadMessages<Messages>(locale, {
-    en: () => import("../../locales/en.json", { with: { type: "json" } }),
-    ja: () => import("../../locales/ja.json", { with: { type: "json" } }),
-  });
+export const loadCatalog = (locale: Locale) => loadLocaleMessages(locale);
 ```
 
-JSON は import attributes（`with { type: "json" }`）を付けます。`import()` のパスはテンプレート文字列にしないでください。バンドラがロケール分を全部束ねます。欠け・余剰キーの検査は `packages/utils` の `ExactCatalog` テストがルートカタログ全体に対して行います。
+生成物の JSON import には import attributes（`with { type: "json" }`）を付けます。`import()` のパスはテンプレート文字列にしません。欠け・余剰キーの検査は `@publira/i18n` の `ExactCatalog` テストがルートカタログ全体に対して行います。
 
 ### Go
 
@@ -78,13 +71,13 @@ raw, err := files.ReadFile(locale + ".json")
 
 1. `ja.json` にキーを足す
 2. 同じキーを `en.json` にも足す（訳が未定なら英語でも、空文字にはしない）
-3. `pnpm --filter @publira/utils typecheck` が通ることを確認する（`ExactCatalog` の検査が `packages/utils` のテストから掛かる）
+3. `pnpm --filter @publira/i18n typecheck` が通ることを確認する（`ExactCatalog` の検査が `packages/i18n` のテストから掛かる）
 
 ## ロケールを増やすとき
 
-対応ロケール一覧は TypeScript と Go で二重管理です。ファイルを足すだけでは足りません。
+手編集する一覧は `index.json` だけです。TypeScript の静的 import マップと Go の許可リストは生成物なので、個別に編集しません。
 
 1. このディレクトリに `<code>.json` を足し、上の「キーを足すとき」どおり `ja.json` と同じキーにする
-2. `packages/utils/src/i18n.ts` の `LOCALES`（と `INTL_LOCALES`）にコードを足す
-3. `server/internal/locale` の `Supported` に同じコードを足す（テナント / プラットフォーム既定言語の API 検証がここを見る）
-4. 各アプリの `loadMessages` 呼び出しが持つ importer マップにも静的な `import()` を足す
+2. `index.json` の `locales` に `{ "code": "<code>", "label": "…", "intl": "…" }` を足す
+3. `pnpm locales:generate` を実行して生成物を更新する
+4. `pnpm preflight` と `task server:test-short` を実行する

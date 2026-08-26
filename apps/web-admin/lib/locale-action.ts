@@ -1,7 +1,7 @@
 "use server";
 
+import { getLocales, LOCALE_COOKIE_NAME } from "@publira/i18n";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { LOCALE_COOKIE_NAME, LOCALES } from "@publira/utils/i18n";
 import { cookies } from "next/headers";
 import { z } from "zod";
 
@@ -9,7 +9,7 @@ import { adminLocaleCookieOptions } from "./locale";
 import { LOCALE_FIELD_NAME } from "./locale-shared";
 
 const localeFormSchema = z.object({
-  locale: z.enum(LOCALES),
+  locale: z.enum(getLocales()),
 });
 
 /**

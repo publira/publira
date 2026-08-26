@@ -18,11 +18,11 @@
 import {
   DEFAULT_LOCALE,
   isLocale,
-  loadMessages,
   LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
-} from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
+} from "@publira/i18n";
+import type { Locale, MessageKey } from "@publira/i18n";
+import { loadLocaleMessages } from "@publira/i18n/messages";
 import { cookies } from "next/headers";
 
 import type ja from "../../../locales/ja.json";
@@ -32,6 +32,9 @@ import { isTenantIdFormat } from "./tenant-id-format";
 
 /** `ja.json` is the source of truth for the key set (`locales/README.md`). */
 export type AdminMessages = typeof ja;
+
+/** Dotted key of any string in the catalog, checked at the call site. */
+export type AdminMessageKey = MessageKey<AdminMessages>;
 
 /**
  * Options the locale cookie is written with, from the Server Action in
@@ -106,11 +109,8 @@ export const getLocale = async (tenantId?: string): Promise<Locale> => {
 /**
  * The message catalog for `locale`.
  *
- * One static `import()` per locale, never a template-string path, so the
- * bundler keeps the locale that was not asked for out of the chunk.
+ * Generated static `import()` specifiers keep the locale that was not asked
+ * for out of the chunk.
  */
 export const loadAdminMessages = (locale: Locale): Promise<AdminMessages> =>
-  loadMessages<AdminMessages>(locale, {
-    en: () => import("../../../locales/en.json", { with: { type: "json" } }),
-    ja: () => import("../../../locales/ja.json", { with: { type: "json" } }),
-  });
+  loadLocaleMessages(locale) as Promise<AdminMessages>;

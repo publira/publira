@@ -1,7 +1,7 @@
+import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { getMessage, LOCALES } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -65,8 +65,8 @@ const LocaleSection = async () => {
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
-  const options: LocaleFormOption[] = LOCALES.map((value) => ({
-    label: getMessage(messages, `locale.${value}`),
+  const options: LocaleFormOption[] = getLocales().map((value) => ({
+    label: getLocaleLabel(value),
     locale: value,
   }));
 

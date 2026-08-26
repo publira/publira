@@ -5,13 +5,11 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/cached-read.ts",
-    "src/catalog.ts",
     "src/cn.ts",
     "src/field-errors.ts",
     "src/form-data.ts",
     "src/format-date-time.ts",
     "src/health.ts",
-    "src/i18n.ts",
     "src/image-loader.ts",
     "src/next-static-params.ts",
     "src/route-params.ts",

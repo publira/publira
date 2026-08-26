@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import {
@@ -25,8 +27,6 @@ import {
   formatDate,
   startOfDayIsoString,
 } from "@publira/utils";
-import { getMessage } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";

@@ -103,6 +103,7 @@
     "@connectrpc/connect": "2.1.2",
     "@connectrpc/connect-node": "2.1.2",
     "@connectrpc/connect-web": "2.1.2",
+    "@publira/i18n": "workspace:*",
     "@publira/utils": "workspace:*"
   },
   "devDependencies": {
