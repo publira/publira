@@ -90,6 +90,13 @@ const quoteSqlLiteral = (value: string): string =>
  * Remove series created by admin publish-flow tests (and their episodes).
  * Episodes do not cascade from series, so they are deleted first. Listings /
  * creators cascade from their parents.
+ *
+ * View events do not cascade either: `content_events` references both series
+ * and episodes with `ON DELETE RESTRICT`, so an engagement row survives the
+ * content it describes on purpose. The app never deletes a series, so only this
+ * fixture — which reaches past the app and drops rows directly — has to clear
+ * the log first. Every event for an episode also carries its series, so one
+ * delete by `series_id` covers both kinds.
  */
 export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
   const quoted: string[] = [];
@@ -104,6 +111,10 @@ export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
   }
   const list = quoted.join(", ");
   runSql(`
+    DELETE FROM content_events ce
+    USING series s
+    WHERE ce.series_id = s.id
+      AND s.public_id IN (${list});
     DELETE FROM episodes e
     USING series s
     WHERE e.series_id = s.id
@@ -118,6 +129,10 @@ export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
  * Most tenant-scoped tables cascade; series does not, so wipe empty
  * series/episodes first for safety. Platform audit log rows keep their
  * target_id text (no FK to tenants).
+ *
+ * `content_events` would cascade from the tenant, but the series and episode
+ * deletes run before that and both restrict, so the log has to go first here
+ * too.
  */
 export const deleteTenantsByPublicIds = (
   publicIds: readonly string[]
@@ -134,6 +149,10 @@ export const deleteTenantsByPublicIds = (
   }
   const list = quoted.join(", ");
   runSql(`
+    DELETE FROM content_events ce
+    USING tenants t
+    WHERE ce.tenant_id = t.id
+      AND t.public_id IN (${list});
     DELETE FROM episodes e
     USING series s, tenants t
     WHERE e.series_id = s.id
