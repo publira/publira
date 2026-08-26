@@ -5,24 +5,39 @@ import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { Select } from "@publira/ui-components/select";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { createOperatorAction } from "../_lib/actions";
 
-const ROLE_OPTIONS = [
-  { label: "スーパー管理者", value: "platform_super_admin" },
-  { label: "オペレーター", value: "platform_operator" },
-  { label: "監査担当", value: "platform_auditor" },
-] as const;
+/**
+ * Copy arrives as already-rendered nodes, not strings: each one carries its own
+ * `<Suspense>` boundary, so this form is part of the static shell and only the
+ * labels stream in.
+ */
+export interface CreateOperatorFormCopy {
+  cancelLabel: ReactNode;
+  emailLabel: ReactNode;
+  nameLabel: ReactNode;
+  pendingLabel: ReactNode;
+  roleLabel: ReactNode;
+  submitLabel: ReactNode;
+}
 
-export const CreateOperatorForm = () => (
+export const CreateOperatorForm = ({
+  copy,
+  roleSelect,
+}: {
+  copy: CreateOperatorFormCopy;
+  /** Localized role options; `placeholder` cannot stream as a node. */
+  roleSelect: ReactNode;
+}) => (
   <ActionForm action={createOperatorAction} className="grid gap-4 sm:max-w-2xl">
     {({ isPending, state }) => (
       <>
         <Field>
           <FieldLabel htmlFor="operator_name" required>
-            名前
+            {copy.nameLabel}
           </FieldLabel>
           <FieldContent>
             <Input
@@ -36,7 +51,7 @@ export const CreateOperatorForm = () => (
 
         <Field>
           <FieldLabel htmlFor="operator_email" required>
-            メールアドレス
+            {copy.emailLabel}
           </FieldLabel>
           <FieldContent>
             <Input
@@ -51,17 +66,9 @@ export const CreateOperatorForm = () => (
 
         <Field>
           <FieldLabel htmlFor="operator_role" required>
-            ロール
+            {copy.roleLabel}
           </FieldLabel>
-          <FieldContent>
-            <Select
-              id="operator_role"
-              items={ROLE_OPTIONS}
-              name="operator_role"
-              placeholder="選択してください"
-              required
-            />
-          </FieldContent>
+          <FieldContent>{roleSelect}</FieldContent>
         </Field>
 
         {state && !state.ok ? (
@@ -70,10 +77,10 @@ export const CreateOperatorForm = () => (
 
         <div className="mt-2 flex gap-3">
           <Button disabled={isPending} type="submit">
-            {isPending ? "追加中..." : "追加"}
+            {isPending ? copy.pendingLabel : copy.submitLabel}
           </Button>
           <LinkButton render={<Link href="/operators" />} variant="outline">
-            キャンセル
+            {copy.cancelLabel}
           </LinkButton>
         </div>
       </>

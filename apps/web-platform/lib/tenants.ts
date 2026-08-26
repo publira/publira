@@ -9,6 +9,8 @@ import type {
   TenantAdminInvitation,
 } from "@publira/api-client/platform/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 
 import {
   apiClient,
@@ -19,6 +21,23 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
+import { loadPlatformMessages } from "./locale";
+import type { PlatformMessages } from "./locale";
+
+const loadTenantCopy = async (
+  locale: Locale
+): Promise<{ locale: Locale; messages: PlatformMessages }> => ({
+  locale,
+  messages: await loadPlatformMessages(locale),
+});
+
+const loadTenantCopyAndSession = async (locale: Locale) => {
+  const [{ locale: resolvedLocale, messages }, sid] = await Promise.all([
+    loadTenantCopy(locale),
+    resolveAccessToken(),
+  ]);
+  return { locale: resolvedLocale, messages, sid };
+};
 
 export interface PlatformTenantSummary {
   adminDomain: string;
@@ -31,6 +50,7 @@ export interface PlatformTenantSummary {
 
 export interface ListPlatformTenantsInput {
   limit?: number;
+  locale: Locale;
   name?: string;
   status?: string;
   token?: string;
@@ -79,6 +99,7 @@ export interface PlatformTenantAdminInvitation {
 
 export interface ListPlatformTenantAdminInvitationsInput {
   limit?: number;
+  locale: Locale;
   tenantId: string;
   token?: string;
 }
@@ -104,15 +125,13 @@ export interface CreatePlatformTenantInput {
   adminDomain?: string;
   domain: string;
   initialAdminEmails?: string[];
+  locale: Locale;
   name: string;
 }
 
 export type CreatePlatformTenantResult =
   | { ok: true; publicId?: string }
   | { ok: false; message: string };
-
-const genericErrorMessage =
-  "テナント作成に失敗しました。時間をおいて再試行してください。";
 
 export type ListPlatformTenantsResult =
   | {
@@ -139,8 +158,9 @@ export const listPlatformTenants = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
+    const { messages } = await loadTenantCopy(input.locale);
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -179,10 +199,12 @@ export const listPlatformTenants = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
+    const { locale, messages } = await loadTenantCopy(input.locale);
     return {
       message: rpcErrorMessage(
         error,
-        "テナント一覧の取得に失敗しました。時間をおいて再試行してください。"
+        getMessage(messages, "platform.tenants.list_failed"),
+        { locale }
       ),
       nextToken: "",
       ok: false,
@@ -220,14 +242,16 @@ const mapTenant = (tenant?: RawTenant): PlatformTenantDetail | null => {
 };
 
 export const getPlatformTenant = async (
-  publicId: string
+  publicId: string,
+  locale: Locale
 ): Promise<GetPlatformTenantResult> => {
   "use cache: private";
 
   const sid = await resolveAccessToken();
   if (!sid) {
+    const { messages } = await loadTenantCopy(locale);
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -254,10 +278,12 @@ export const getPlatformTenant = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
+    const { locale: resolvedLocale, messages } = await loadTenantCopy(locale);
     return {
       message: rpcErrorMessage(
         error,
-        "テナントの取得に失敗しました。時間をおいて再試行してください。"
+        getMessage(messages, "platform.tenants.get_failed"),
+        { locale: resolvedLocale }
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
@@ -267,6 +293,7 @@ export const getPlatformTenant = async (
 
 export interface ListPlatformTenantMembersInput {
   limit?: number;
+  locale: Locale;
   tenantId: string;
   token?: string;
 }
@@ -297,9 +324,10 @@ export const listPlatformTenantMembers = async (
   const sid = await resolveAccessToken();
   if (!tenantId || !sid) {
     dropFailedCacheEntry();
+    const { messages } = await loadTenantCopy(input.locale);
     return {
       members: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -332,11 +360,13 @@ export const listPlatformTenantMembers = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
+    const { locale, messages } = await loadTenantCopy(input.locale);
     return {
       members: [],
       message: rpcErrorMessage(
         error,
-        "メンバー一覧の取得に失敗しました。時間をおいて再試行してください。"
+        getMessage(messages, "platform.tenants.members_list_failed"),
+        { locale }
       ),
       nextToken: "",
       ok: false,
@@ -393,23 +423,36 @@ export const resumePlatformTenant = async (
  * rejected field with `google.rpc.BadRequest`, so this wording stays stable
  * when its message changes.
  */
-const duplicateDomainMessage = (error: unknown, verb: string): string => {
+const duplicateDomainMessage = (
+  error: unknown,
+  messages: PlatformMessages,
+  kind: "create" | "update"
+): string => {
   if (rpcErrorHasFieldViolation(error, "admin_domain")) {
-    return "管理画面ドメインが既に使用されています。";
+    return getMessage(messages, "platform.tenants.admin_domain_taken");
   }
   if (rpcErrorHasFieldViolation(error, "domain")) {
-    return "ドメインが既に使用されています。";
+    return getMessage(messages, "platform.tenants.domain_taken");
   }
-  return `重複するデータがあるため${verb}できません。`;
+  return getMessage(
+    messages,
+    kind === "create"
+      ? "platform.tenants.duplicate_create"
+      : "platform.tenants.duplicate_update"
+  );
 };
 
 export const createPlatformTenant = async (
   input: CreatePlatformTenantInput
 ): Promise<CreatePlatformTenantResult> => {
-  const sid = await resolveAccessToken();
+  const {
+    locale: resolvedLocale,
+    messages,
+    sid,
+  } = await loadTenantCopyAndSession(input.locale);
   if (!sid) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -443,9 +486,16 @@ export const createPlatformTenant = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(error, genericErrorMessage, {
-        conflict: duplicateDomainMessage(error, "作成"),
-      }),
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "platform.tenants.create_failed"),
+        {
+          locale: resolvedLocale,
+          overrides: {
+            conflict: duplicateDomainMessage(error, messages, "create"),
+          },
+        }
+      ),
       ok: false,
     };
   }
@@ -461,6 +511,7 @@ export type UpdatePlatformTenantMemberRoleResult =
 
 export interface AddPlatformTenantMemberInput {
   email: string;
+  locale: Locale;
   role: string;
   tenantId: string;
 }
@@ -519,13 +570,14 @@ export const listPlatformTenantAdminInvitations = async (
 ): Promise<ListPlatformTenantAdminInvitationsResult> => {
   "use cache: private";
 
+  const { locale, messages } = await loadTenantCopy(input.locale);
   const tenantId = input.tenantId.trim();
   const sid = await resolveAccessToken();
   if (!tenantId || !sid) {
     dropFailedCacheEntry();
     return {
       invitations: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -560,7 +612,8 @@ export const listPlatformTenantAdminInvitations = async (
       invitations: [],
       message: rpcErrorMessage(
         error,
-        "管理者招待一覧の取得に失敗しました。時間をおいて再試行してください。"
+        getMessage(messages, "platform.tenants.invitations_list_failed"),
+        { locale }
       ),
       nextToken: "",
       ok: false,
@@ -572,17 +625,25 @@ export const listPlatformTenantAdminInvitations = async (
 
 export const createPlatformTenantAdminInvitation = async (
   tenantId: string,
-  email: string
+  email: string,
+  locale: Locale
 ): Promise<CreateTenantAdminInvitationResult> => {
-  const sid = await resolveAccessToken();
+  const {
+    locale: resolvedLocale,
+    messages,
+    sid,
+  } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
   if (!tenantId.trim() || !email.trim()) {
-    return { message: "必須項目が入力されていません。", ok: false };
+    return {
+      message: getMessage(messages, "platform.common.required"),
+      ok: false,
+    };
   }
 
   try {
@@ -606,10 +667,16 @@ export const createPlatformTenantAdminInvitation = async (
     return {
       message: rpcErrorMessage(
         error,
-        "招待の作成に失敗しました。時間をおいて再試行してください。",
+        getMessage(messages, "platform.tenants.invite_create_failed"),
         {
-          // Email is the only free-form field on this call.
-          "invalid-argument": "メールアドレスの形式を確認してください。",
+          locale: resolvedLocale,
+          overrides: {
+            // Email is the only free-form field on this call.
+            "invalid-argument": getMessage(
+              messages,
+              "platform.tenants.invite_email_invalid"
+            ),
+          },
         }
       ),
       ok: false,
@@ -619,17 +686,25 @@ export const createPlatformTenantAdminInvitation = async (
 
 export const resendPlatformTenantAdminInvitation = async (
   tenantId: string,
-  invitationId: string
+  invitationId: string,
+  locale: Locale
 ): Promise<UpdateTenantAdminInvitationResult> => {
-  const sid = await resolveAccessToken();
+  const {
+    locale: resolvedLocale,
+    messages,
+    sid,
+  } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
   if (!tenantId.trim() || !invitationId.trim()) {
-    return { message: "必須項目が入力されていません。", ok: false };
+    return {
+      message: getMessage(messages, "platform.common.required"),
+      ok: false,
+    };
   }
 
   try {
@@ -652,10 +727,19 @@ export const resendPlatformTenantAdminInvitation = async (
     return {
       message: rpcErrorMessage(
         error,
-        "招待メールの再送に失敗しました。時間をおいて再試行してください。",
+        getMessage(messages, "platform.tenants.resend_invite_failed"),
         {
-          "not-found": "対象の招待が見つかりません。",
-          precondition: "この招待は再送できない状態です。",
+          locale: resolvedLocale,
+          overrides: {
+            "not-found": getMessage(
+              messages,
+              "platform.tenants.invite_not_found"
+            ),
+            precondition: getMessage(
+              messages,
+              "platform.tenants.resend_invite_precondition"
+            ),
+          },
         }
       ),
       ok: false,
@@ -665,17 +749,25 @@ export const resendPlatformTenantAdminInvitation = async (
 
 export const cancelPlatformTenantAdminInvitation = async (
   tenantId: string,
-  invitationId: string
+  invitationId: string,
+  locale: Locale
 ): Promise<UpdateTenantAdminInvitationResult> => {
-  const sid = await resolveAccessToken();
+  const {
+    locale: resolvedLocale,
+    messages,
+    sid,
+  } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
   if (!tenantId.trim() || !invitationId.trim()) {
-    return { message: "必須項目が入力されていません。", ok: false };
+    return {
+      message: getMessage(messages, "platform.common.required"),
+      ok: false,
+    };
   }
 
   try {
@@ -698,10 +790,19 @@ export const cancelPlatformTenantAdminInvitation = async (
     return {
       message: rpcErrorMessage(
         error,
-        "招待の取り消しに失敗しました。時間をおいて再試行してください。",
+        getMessage(messages, "platform.tenants.cancel_invite_failed"),
         {
-          "not-found": "対象の招待が見つかりません。",
-          precondition: "この招待は取り消しできない状態です。",
+          locale: resolvedLocale,
+          overrides: {
+            "not-found": getMessage(
+              messages,
+              "platform.tenants.invite_not_found"
+            ),
+            precondition: getMessage(
+              messages,
+              "platform.tenants.cancel_invite_precondition"
+            ),
+          },
         }
       ),
       ok: false,
@@ -713,12 +814,17 @@ export const updatePlatformTenant = async (
   publicId: string,
   name: string,
   domain: string,
+  locale: Locale,
   adminDomain?: string
 ): Promise<UpdatePlatformTenantResult> => {
-  const sid = await resolveAccessToken();
+  const {
+    locale: resolvedLocale,
+    messages,
+    sid,
+  } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -726,10 +832,16 @@ export const updatePlatformTenant = async (
   const trimmedDomain = domain.trim();
   const trimmedAdminDomain = adminDomain?.trim() ?? "";
   if (!trimmedName) {
-    return { message: "テナント名は必須です。", ok: false };
+    return {
+      message: getMessage(messages, "platform.tenants.name_required"),
+      ok: false,
+    };
   }
   if (!trimmedDomain) {
-    return { message: "ドメインは必須です。", ok: false };
+    return {
+      message: getMessage(messages, "platform.tenants.domain_required"),
+      ok: false,
+    };
   }
 
   try {
@@ -749,10 +861,13 @@ export const updatePlatformTenant = async (
     return {
       message: rpcErrorMessage(
         error,
-        "更新に失敗しました。時間をおいて再試行してください。",
+        getMessage(messages, "platform.tenants.update_failed"),
         {
-          conflict: duplicateDomainMessage(error, "更新"),
-          "not-found": "テナントが見つかりません。",
+          locale: resolvedLocale,
+          overrides: {
+            conflict: duplicateDomainMessage(error, messages, "update"),
+            "not-found": getMessage(messages, "platform.tenants.not_found"),
+          },
         }
       ),
       ok: false,
@@ -763,18 +878,24 @@ export const updatePlatformTenant = async (
 export const addPlatformTenantMember = async (
   input: AddPlatformTenantMemberInput
 ): Promise<AddPlatformTenantMemberResult> => {
+  const { locale: resolvedLocale, messages } = await loadTenantCopy(
+    input.locale
+  );
   const tenantId = input.tenantId.trim();
   const role = input.role.trim();
   const email = input.email.trim();
 
   if (!tenantId || !email || !role) {
-    return { message: "必須項目が入力されていません。", ok: false };
+    return {
+      message: getMessage(messages, "platform.common.required"),
+      ok: false,
+    };
   }
 
   const sid = await resolveAccessToken();
   if (!sid) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -795,10 +916,19 @@ export const addPlatformTenantMember = async (
     return {
       message: rpcErrorMessage(
         error,
-        "メンバー追加に失敗しました。時間をおいて再試行してください。",
+        getMessage(messages, "platform.tenants.add_member_failed"),
         {
-          conflict: "このユーザーは既にメンバーとして追加されています。",
-          "not-found": "指定したメールアドレスのユーザーが見つかりません。",
+          locale: resolvedLocale,
+          overrides: {
+            conflict: getMessage(
+              messages,
+              "platform.tenants.member_already_added"
+            ),
+            "not-found": getMessage(
+              messages,
+              "platform.tenants.user_not_found"
+            ),
+          },
         }
       ),
       ok: false,
@@ -809,18 +939,26 @@ export const addPlatformTenantMember = async (
 export const updatePlatformTenantMemberRole = async (
   tenantId: string,
   userPublicId: string,
-  role: string
+  role: string,
+  locale: Locale
 ): Promise<UpdatePlatformTenantMemberRoleResult> => {
-  const sid = await resolveAccessToken();
+  const {
+    locale: resolvedLocale,
+    messages,
+    sid,
+  } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
 
   if (!tenantId.trim() || !userPublicId.trim() || !role.trim()) {
-    return { message: "必須項目が入力されていません。", ok: false };
+    return {
+      message: getMessage(messages, "platform.common.required"),
+      ok: false,
+    };
   }
 
   try {
@@ -840,9 +978,15 @@ export const updatePlatformTenantMemberRole = async (
     return {
       message: rpcErrorMessage(
         error,
-        "ロール変更に失敗しました。時間をおいて再試行してください。",
+        getMessage(messages, "platform.tenants.member_role_update_failed"),
         {
-          "not-found": "対象のメンバーが見つかりません。",
+          locale: resolvedLocale,
+          overrides: {
+            "not-found": getMessage(
+              messages,
+              "platform.tenants.member_not_found"
+            ),
+          },
         }
       ),
       ok: false,
@@ -852,18 +996,26 @@ export const updatePlatformTenantMemberRole = async (
 
 export const removePlatformTenantMember = async (
   tenantId: string,
-  userPublicId: string
+  userPublicId: string,
+  locale: Locale
 ): Promise<RemovePlatformTenantMemberResult> => {
-  const sid = await resolveAccessToken();
+  const {
+    locale: resolvedLocale,
+    messages,
+    sid,
+  } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
 
   if (!tenantId.trim() || !userPublicId.trim()) {
-    return { message: "必須項目が入力されていません。", ok: false };
+    return {
+      message: getMessage(messages, "platform.common.required"),
+      ok: false,
+    };
   }
 
   try {
@@ -882,9 +1034,15 @@ export const removePlatformTenantMember = async (
     return {
       message: rpcErrorMessage(
         error,
-        "メンバー削除に失敗しました。時間をおいて再試行してください。",
+        getMessage(messages, "platform.tenants.remove_member_failed"),
         {
-          "not-found": "対象のメンバーが見つかりません。",
+          locale: resolvedLocale,
+          overrides: {
+            "not-found": getMessage(
+              messages,
+              "platform.tenants.member_not_found"
+            ),
+          },
         }
       ),
       ok: false,

@@ -3,6 +3,8 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 
 import {
   apiClient,
@@ -10,9 +12,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
-
-const genericErrorMessage =
-  "メールアドレスの変更リクエストに失敗しました。しばらくしてからもう一度お試しください。";
+import { loadPlatformMessages } from "./locale";
 
 export type EmailChangeRequestResult =
   | { message: string; ok: false }
@@ -21,21 +21,27 @@ export type EmailChangeRequestResult =
 export const requestPlatformEmailChange = async (
   currentEmail: string,
   newEmail: string,
-  currentPassword: string
+  currentPassword: string,
+  locale: Locale
 ): Promise<EmailChangeRequestResult> => {
   const normalizedCurrentEmail = currentEmail.trim();
   const normalizedNewEmail = newEmail.trim();
-
-  const sessionId = await resolveAccessToken();
+  const [messages, sessionId] = await Promise.all([
+    loadPlatformMessages(locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再度ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
 
   if (!normalizedCurrentEmail || !normalizedNewEmail || !currentPassword) {
-    return { message: "すべての項目を入力してください。", ok: false };
+    return {
+      message: getMessage(messages, "platform.auth.setup.name_required"),
+      ok: false,
+    };
   }
 
   try {
@@ -53,12 +59,22 @@ export const requestPlatformEmailChange = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(error, genericErrorMessage, {
-        conflict: "このメールアドレスは既に使用されています。",
-        "invalid-argument": rpcErrorHasFieldViolation(error, "current_password")
-          ? "パスワードが正しくありません。"
-          : "入力内容を確認してください。",
-      }),
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "platform.settings.email_change_failed"),
+        {
+          locale,
+          overrides: {
+            conflict: getMessage(messages, "platform.settings.email_in_use"),
+            "invalid-argument": rpcErrorHasFieldViolation(
+              error,
+              "current_password"
+            )
+              ? getMessage(messages, "platform.settings.wrong_password")
+              : getMessage(messages, "errors.validation"),
+          },
+        }
+      ),
       ok: false,
     };
   }

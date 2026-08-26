@@ -1,6 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 
 import {
   apiClient,
@@ -8,6 +10,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { isUnauthenticatedError } from "./auth-shared";
+import { loadPlatformMessages } from "./locale";
 
 export interface PlatformDashboardRecentEvent {
   action: string;
@@ -42,7 +45,8 @@ const normalizeRecentEventsLimit = (value?: number): number => {
   return Math.max(1, Math.min(50, Math.trunc(value)));
 };
 
-export const getPlatformDashboardSummary = async (input?: {
+export const getPlatformDashboardSummary = async (input: {
+  locale: Locale;
   recentEventsLimit?: number;
 }): Promise<GetPlatformDashboardSummaryResult> => {
   "use cache: private";
@@ -50,8 +54,9 @@ export const getPlatformDashboardSummary = async (input?: {
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(input.locale);
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -60,7 +65,7 @@ export const getPlatformDashboardSummary = async (input?: {
   try {
     const response = await apiClient.dashboard.getDashboardSummary(
       {
-        recentEventsLimit: normalizeRecentEventsLimit(input?.recentEventsLimit),
+        recentEventsLimit: normalizeRecentEventsLimit(input.recentEventsLimit),
       } as never,
       buildSessionHeaders(sid)
     );
@@ -87,10 +92,12 @@ export const getPlatformDashboardSummary = async (input?: {
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(input.locale);
     return {
       message: rpcErrorMessage(
         error,
-        "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。"
+        getMessage(messages, "platform.dashboard.list_failed"),
+        { locale: input.locale }
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),

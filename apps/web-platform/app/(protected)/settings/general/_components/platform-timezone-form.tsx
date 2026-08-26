@@ -22,17 +22,31 @@ import { useActionState, useMemo, useState } from "react";
 
 import type { PlatformDefaultTimezoneActionState } from "../../_lib/actions";
 
+export interface PlatformTimezoneFormCopy {
+  description: string;
+  emptyMessage: string;
+  fieldDescription: string;
+  label: string;
+  placeholder: string;
+  reloadWarning: string;
+  saveLabel: string;
+  savingLabel: string;
+  title: string;
+}
+
 interface PlatformTimezoneFormProps {
   action: (
     prevState: PlatformDefaultTimezoneActionState,
     formData: FormData
   ) => Promise<PlatformDefaultTimezoneActionState>;
+  copy: PlatformTimezoneFormCopy;
   initialTimezone: string;
   loadErrorMessage?: string;
 }
 
 export const PlatformTimezoneForm = ({
   action,
+  copy,
   initialTimezone,
   loadErrorMessage,
 }: PlatformTimezoneFormProps) => {
@@ -59,39 +73,33 @@ export const PlatformTimezoneForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>既定タイムゾーン</CardTitle>
-        <CardDescription>
-          新規に作成するテナントの初期タイムゾーンであり、このプラットフォーム管理画面が日時を表示・集計するときの基準にもなります。
-        </CardDescription>
+        <CardTitle>{copy.title}</CardTitle>
+        <CardDescription>{copy.description}</CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="grid gap-4 sm:max-w-lg">
           <input name="default_timezone" type="hidden" value={timezone} />
 
           <Field>
-            <FieldLabel htmlFor="default_timezone">既定タイムゾーン</FieldLabel>
+            <FieldLabel htmlFor="default_timezone">{copy.label}</FieldLabel>
             <FieldContent>
               <Combobox
                 disabled={hasLoadError}
-                emptyMessage="一致するタイムゾーンが見つかりません。"
+                emptyMessage={copy.emptyMessage}
                 id="default_timezone"
                 items={items}
                 onValueChange={setTimezone}
-                placeholder="例: Asia/Tokyo"
+                placeholder={copy.placeholder}
                 value={timezone}
               />
-              <FieldDescription>
-                IANA タイムゾーン名（例:
-                Asia/Tokyo）で保存されます。地域名や都市名を入力して絞り込めます。
-                変更しても作成済みテナントのタイムゾーンは変わりません。各テナントのタイムゾーンはテナント管理画面から変更します。
-              </FieldDescription>
+              <FieldDescription>{copy.fieldDescription}</FieldDescription>
             </FieldContent>
           </Field>
 
           {loadErrorMessage ? (
             <FormMessage variant="destructive">
               {loadErrorMessage}
-              保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。
+              {copy.reloadWarning}
             </FormMessage>
           ) : null}
 
@@ -103,7 +111,7 @@ export const PlatformTimezoneForm = ({
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={hasLoadError || isPending} type="submit">
-              {isPending ? "保存中..." : "既定タイムゾーンを保存"}
+              {isPending ? copy.savingLabel : copy.saveLabel}
             </Button>
           </div>
         </form>

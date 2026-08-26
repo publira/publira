@@ -1,11 +1,10 @@
 import { getMessage } from "@publira/utils/i18n";
-import type { MessageKey, MessageValues } from "@publira/utils/i18n";
+import type { MessageValues } from "@publira/utils/i18n";
 
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
+import type { PlatformMessageKey } from "#lib/locale";
 
-/** Dotted key of any string in the catalog, checked at the call site. */
-export type PlatformMessageKey = MessageKey<PlatformMessages>;
+export type { PlatformMessageKey } from "#lib/locale";
 
 export interface MessageProps {
   message: PlatformMessageKey;

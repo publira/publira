@@ -27,11 +27,23 @@ export interface PlatformDefaultLocaleFormOption {
   locale: Locale;
 }
 
+export interface PlatformDefaultLocaleFormCopy {
+  description: string;
+  fieldDescription: string;
+  label: string;
+  placeholder: string;
+  reloadWarning: string;
+  saveLabel: string;
+  savingLabel: string;
+  title: string;
+}
+
 interface PlatformDefaultLocaleFormProps {
   action: (
     prevState: PlatformDefaultLocaleActionState,
     formData: FormData
   ) => Promise<PlatformDefaultLocaleActionState>;
+  copy: PlatformDefaultLocaleFormCopy;
   initialDefaultLocale: Locale;
   loadErrorMessage?: string;
   options: readonly PlatformDefaultLocaleFormOption[];
@@ -39,6 +51,7 @@ interface PlatformDefaultLocaleFormProps {
 
 export const PlatformDefaultLocaleForm = ({
   action,
+  copy,
   initialDefaultLocale,
   loadErrorMessage,
   options,
@@ -59,17 +72,15 @@ export const PlatformDefaultLocaleForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>既定言語</CardTitle>
-        <CardDescription>
-          新規に作成するテナントの初期言語であり、表示言語を選んでいないときにこのプラットフォーム管理画面を表示する言語にもなります。
-        </CardDescription>
+        <CardTitle>{copy.title}</CardTitle>
+        <CardDescription>{copy.description}</CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="grid gap-4 sm:max-w-lg">
           <input name="default_locale" type="hidden" value={defaultLocale} />
 
           <Field>
-            <FieldLabel htmlFor="default_locale">既定言語</FieldLabel>
+            <FieldLabel htmlFor="default_locale">{copy.label}</FieldLabel>
             <FieldContent>
               <Select
                 disabled={hasLoadError}
@@ -80,20 +91,17 @@ export const PlatformDefaultLocaleForm = ({
                     setDefaultLocale(value);
                   }
                 }}
-                placeholder="言語を選択してください"
+                placeholder={copy.placeholder}
                 value={defaultLocale}
               />
-              <FieldDescription>
-                日本語または英語を選べます。変更しても作成済みテナントの既定言語は変わりません。各テナントの既定言語はテナント管理画面から変更します。
-                上の「表示言語」で言語を選んでいる場合、この画面の表示はそちらが優先されます。
-              </FieldDescription>
+              <FieldDescription>{copy.fieldDescription}</FieldDescription>
             </FieldContent>
           </Field>
 
           {loadErrorMessage ? (
             <FormMessage variant="destructive">
               {loadErrorMessage}
-              保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。
+              {copy.reloadWarning}
             </FormMessage>
           ) : null}
 
@@ -105,7 +113,7 @@ export const PlatformDefaultLocaleForm = ({
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={hasLoadError || isPending} type="submit">
-              {isPending ? "保存中..." : "既定言語を保存"}
+              {isPending ? copy.savingLabel : copy.saveLabel}
             </Button>
           </div>
         </form>

@@ -10,6 +10,7 @@ import {
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { SectionError } from "@publira/ui-components/section-error";
 import { formatDate } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
 import {
   parseRouteParams,
   routeParamString,
@@ -32,6 +33,7 @@ import {
 } from "#components/platform-page";
 import { getPlatformCurrentOperator } from "#lib/auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { canManageEndUsers } from "#lib/roles";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
@@ -44,8 +46,11 @@ import {
   unsuspendEndUserAction,
 } from "./_lib/actions";
 
-export const metadata: Metadata = {
-  title: "ユーザー詳細",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.users.detail_metadata") };
 };
 
 interface UserDetailPageProps {
@@ -91,15 +96,23 @@ const UserDetailSkeleton = () => (
  * `notFound()` would tell the operator to stop looking for an account that is
  * still there, so an outage keeps the console's own wording and a way back.
  */
-const UserLoadError = ({ message }: { message: string }) => (
+const UserLoadError = ({
+  backLabel,
+  message,
+  title,
+}: {
+  backLabel: string;
+  message: string;
+  title: string;
+}) => (
   <SectionError
     actions={
       <LinkButton render={<Link href="/users" />} variant="outline">
-        一覧へ戻る
+        {backLabel}
       </LinkButton>
     }
     description={message}
-    title="ユーザーを表示できませんでした"
+    title={title}
   />
 );
 
@@ -111,19 +124,27 @@ const UserDetailContent = async ({
     notFound();
   }
   const { user_public_id: userPublicId } = parsedParams;
-
-  const [userResult, currentOperatorResult, timeZone] = await Promise.all([
-    getPlatformEndUser(userPublicId),
-    getPlatformCurrentOperator(),
-    getPlatformDisplayTimeZone(),
-  ]);
+  const locale = await getPlatformLocale();
+  const [messages, userResult, currentOperatorResult, timeZone] =
+    await Promise.all([
+      loadPlatformMessages(locale),
+      getPlatformEndUser(userPublicId, locale),
+      getPlatformCurrentOperator(),
+      getPlatformDisplayTimeZone(),
+    ]);
 
   // Before both branches below: a rejected session reads every record as
   // missing, and a 404 would hide that the operator only needs to sign in again.
   await redirectToLoginIfSessionRejected(userResult, currentOperatorResult);
 
   if (!userResult.ok) {
-    return <UserLoadError message={userResult.message} />;
+    return (
+      <UserLoadError
+        backLabel={getMessage(messages, "platform.common.back_to_list")}
+        message={userResult.message}
+        title={getMessage(messages, "platform.users.load_one_failed")}
+      />
+    );
   }
 
   const { user } = userResult;
@@ -136,30 +157,42 @@ const UserDetailContent = async ({
   const canSuspend = canManage && user.status === "active";
   const canUnsuspend = canManage && user.status === "suspended";
   const canDelete = canManage;
+  const cancelText = getMessage(messages, "platform.common.cancel");
 
   return (
     <>
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageEyebrow>Platform Users</PlatformPageEyebrow>
-          <PlatformPageTitle>{`ユーザー詳細: ${user.name || user.publicId}`}</PlatformPageTitle>
+          <PlatformPageTitle>
+            {getMessage(messages, "platform.users.detail_title", {
+              name: user.name || user.publicId,
+            })}
+          </PlatformPageTitle>
           <PlatformPageDescription>
-            ユーザーの基本情報と所属テナントを確認し、アカウント状態を管理します。
+            {getMessage(messages, "platform.users.detail_description")}
           </PlatformPageDescription>
         </PlatformPageHeading>
         <PlatformPageActions>
           <LinkButton render={<Link href="/users" />} variant="outline">
-            一覧へ戻る
+            {getMessage(messages, "platform.common.back_to_list")}
           </LinkButton>
           {canUnsuspend ? (
             <DangerConfirmButton
               actionArg={user.publicId}
               actionCreator={unsuspendEndUserAction}
-              actionText="停止解除する"
+              actionText={getMessage(
+                messages,
+                "platform.users.unsuspend_action"
+              )}
               actionVariant="default"
-              description="停止中ユーザーのログインを再度許可します。"
-              title="アカウントの停止を解除しますか？"
-              triggerLabel="停止解除"
+              cancelText={cancelText}
+              description={getMessage(
+                messages,
+                "platform.users.unsuspend_description"
+              )}
+              title={getMessage(messages, "platform.users.unsuspend_title")}
+              triggerLabel={getMessage(messages, "platform.users.unsuspend")}
               triggerVariant="outline"
             />
           ) : null}
@@ -167,10 +200,14 @@ const UserDetailContent = async ({
             <DangerConfirmButton
               actionArg={user.publicId}
               actionCreator={suspendEndUserAction}
-              actionText="停止する"
-              description="停止中はログインできません。必要に応じて後から停止解除できます。"
-              title="アカウントを停止しますか？"
-              triggerLabel="停止"
+              actionText={getMessage(messages, "platform.users.suspend_action")}
+              cancelText={cancelText}
+              description={getMessage(
+                messages,
+                "platform.users.suspend_description"
+              )}
+              title={getMessage(messages, "platform.users.suspend_title")}
+              triggerLabel={getMessage(messages, "platform.users.suspend")}
               triggerVariant="outline"
             />
           ) : null}
@@ -178,10 +215,14 @@ const UserDetailContent = async ({
             <DangerConfirmButton
               actionArg={user.publicId}
               actionCreator={deleteEndUserAction}
-              actionText="削除する"
-              description="この操作は取り消せません。対象ユーザーのアカウントは完全に削除されます。"
-              title="アカウントを削除しますか？"
-              triggerLabel="削除"
+              actionText={getMessage(messages, "platform.users.delete_action")}
+              cancelText={cancelText}
+              description={getMessage(
+                messages,
+                "platform.users.delete_description"
+              )}
+              title={getMessage(messages, "platform.users.delete_title")}
+              triggerLabel={getMessage(messages, "platform.users.delete")}
             />
           ) : null}
         </PlatformPageActions>
@@ -190,35 +231,53 @@ const UserDetailContent = async ({
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
           <Card>
             <CardHeader>
-              <CardTitle>基本情報</CardTitle>
+              <CardTitle>
+                {getMessage(messages, "platform.users.info_title")}
+              </CardTitle>
               <CardDescription>
-                ユーザーの登録情報と現在ステータスを表示します。
+                {getMessage(messages, "platform.users.info_description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <Field>
-                <FieldLabel>公開ID</FieldLabel>
+                <FieldLabel>
+                  {getMessage(messages, "platform.users.public_id")}
+                </FieldLabel>
                 <p className="font-mono text-xs">{user.publicId}</p>
               </Field>
               <Field>
-                <FieldLabel>氏名</FieldLabel>
-                <p className="text-sm">{user.name || "未設定"}</p>
-              </Field>
-              <Field>
-                <FieldLabel>メールアドレス</FieldLabel>
-                <p className="text-sm">{user.email}</p>
-              </Field>
-              <Field>
-                <FieldLabel>登録日</FieldLabel>
+                <FieldLabel>
+                  {getMessage(messages, "platform.users.columns_name")}
+                </FieldLabel>
                 <p className="text-sm">
-                  {formatDate(user.createdAt, { fallback: "未設定", timeZone })}
+                  {user.name || getMessage(messages, "platform.common.unset")}
                 </p>
               </Field>
               <Field>
-                <FieldLabel>ステータス</FieldLabel>
+                <FieldLabel>
+                  {getMessage(messages, "platform.common.email")}
+                </FieldLabel>
+                <p className="text-sm">{user.email}</p>
+              </Field>
+              <Field>
+                <FieldLabel>
+                  {getMessage(messages, "platform.users.registered_at")}
+                </FieldLabel>
+                <p className="text-sm">
+                  {formatDate(user.createdAt, {
+                    fallback: getMessage(messages, "platform.common.unset"),
+                    locale,
+                    timeZone,
+                  })}
+                </p>
+              </Field>
+              <Field>
+                <FieldLabel>
+                  {getMessage(messages, "platform.users.status")}
+                </FieldLabel>
                 <p>
                   <Badge tone={getEndUserStatusTone(user.status)}>
-                    {getEndUserStatusLabel(user.status)}
+                    {getEndUserStatusLabel(user.status, messages)}
                   </Badge>
                 </p>
               </Field>
@@ -227,15 +286,17 @@ const UserDetailContent = async ({
 
           <Card>
             <CardHeader>
-              <CardTitle>所属テナント</CardTitle>
+              <CardTitle>
+                {getMessage(messages, "platform.users.affiliated_title")}
+              </CardTitle>
               <CardDescription>
-                このユーザーが所属するテナント一覧を表示します。
+                {getMessage(messages, "platform.users.affiliated_description")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {user.tenantIds.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  所属テナントはありません。
+                  {getMessage(messages, "platform.users.affiliated_empty")}
                 </p>
               ) : (
                 <ul className="grid gap-2">

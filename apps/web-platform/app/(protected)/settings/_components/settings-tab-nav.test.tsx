@@ -20,7 +20,13 @@ afterEach(() => {
 
 describe("SettingsTabNav", () => {
   it("プラットフォーム設定のタブだけを並べる", () => {
-    render(<SettingsTabNav current="general" />);
+    render(
+      <SettingsTabNav
+        current="general"
+        emailLabel="メール設定"
+        generalLabel="一般"
+      />
+    );
 
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
       ["一般", "メール設定"]
@@ -28,7 +34,13 @@ describe("SettingsTabNav", () => {
   });
 
   it("自分のアカウント設定はタブに混ぜない", () => {
-    render(<SettingsTabNav current="general" />);
+    render(
+      <SettingsTabNav
+        current="general"
+        emailLabel="メール設定"
+        generalLabel="一般"
+      />
+    );
 
     expect(screen.queryByRole("link", { name: "アカウント" })).toBeNull();
     expect(

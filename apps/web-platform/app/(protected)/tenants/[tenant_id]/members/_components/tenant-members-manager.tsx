@@ -38,24 +38,71 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDate, formatDateTime } from "@publira/utils";
+import type { Locale } from "@publira/utils/i18n";
 import { useActionState, useCallback, useState, useTransition } from "react";
 
 import { PaginationControls } from "#components/pagination-controls";
-import {
-  getTenantRoleLabel,
-  getTenantStatusLabel,
-  getTenantStatusTone,
-} from "#lib/tenant-labels";
+import { getTenantStatusTone } from "#lib/tenant-labels";
 import type {
   PlatformTenantAdminInvitation,
   PlatformTenantMemberSummary,
 } from "#lib/tenants";
 
-const tenantRoleOptions = [
-  { label: "テナント管理者", value: "tenant_admin" },
-  { label: "編集担当", value: "tenant_editor" },
-  { label: "監査担当", value: "tenant_auditor" },
-] as const;
+export interface TenantMembersManagerCopy {
+  addDescription: string;
+  addEmailLabel: string;
+  addPending: string;
+  addSubmit: string;
+  addTitle: string;
+  cancel: string;
+  cancelInvite: string;
+  cancelInviteAction: string;
+  cancelInviteDescription: string;
+  cancelInvitePending: string;
+  cancelInviteTitle: string;
+  changeRole: string;
+  changeRoleSubmit: string;
+  changeRoleUpdating: string;
+  deleteMember: string;
+  deleteMemberAction: string;
+  deleteMemberDescription: string;
+  deleteMemberPending: string;
+  deleteMemberTitle: string;
+  invitationStatusLabels: Record<string, string>;
+  invitationsAria: string;
+  invitationsDescription: string;
+  invitationsEmpty: string;
+  invitationsLoadFailed: string;
+  invitationsTitle: string;
+  inviteAdmin: string;
+  inviteAdminDescription: string;
+  inviteAdminEmail: string;
+  inviteAdminPending: string;
+  inviteAdminTitle: string;
+  membersAria: string;
+  membersColumnsActions: string;
+  membersColumnsCreated: string;
+  membersColumnsEmail: string;
+  membersColumnsExpires: string;
+  membersColumnsInvitedAt: string;
+  membersColumnsName: string;
+  membersColumnsRole: string;
+  membersColumnsStatus: string;
+  membersEmpty: string;
+  membersListDescription: string;
+  membersListFailed: string;
+  membersListTitle: string;
+  newRole: string;
+  next: string;
+  previous: string;
+  resendInvite: string;
+  role: string;
+  roleLabels: Record<string, string>;
+  roleOptions: { label: string; value: string }[];
+  roleUpdateDescription: string;
+  statusLabels: Record<string, string>;
+  unset: string;
+}
 
 interface TenantMembersManagerProps {
   addAction: (
@@ -66,6 +113,7 @@ interface TenantMembersManagerProps {
     prevState: FormActionState,
     formData: FormData
   ) => Promise<FormActionState>;
+  copy: TenantMembersManagerCopy;
   createInvitationAction: (
     prevState: FormActionState,
     formData: FormData
@@ -74,6 +122,7 @@ interface TenantMembersManagerProps {
   invitations: PlatformTenantAdminInvitation[];
   invitationsNextHref?: string;
   invitationsPreviousHref?: string;
+  locale: Locale;
   members: PlatformTenantMemberSummary[];
   membersErrorMessage?: string;
   membersNextHref?: string;
@@ -107,23 +156,17 @@ const invitationStatusTone = (status: string) => {
   return "destructive" as const;
 };
 
-const invitationStatusLabel = (status: string) => {
-  if (status === "pending") {
-    return "招待中";
-  }
-  if (status === "accepted") {
-    return "承諾済み";
-  }
-  if (status === "expired") {
-    return "期限切れ";
-  }
-  if (status === "canceled") {
-    return "取り消し";
-  }
-  return status;
-};
+const interpolateRoleUpdateDescription = (
+  template: string,
+  member: PlatformTenantMemberSummary
+): string =>
+  template
+    .replaceAll("{name}", member.name)
+    .replaceAll("{email}", member.email);
 
 interface TenantMemberRowProps {
+  copy: TenantMembersManagerCopy;
+  locale: Locale;
   member: PlatformTenantMemberSummary;
   removeAction: (
     prevState: FormActionState,
@@ -139,6 +182,7 @@ interface TenantMemberRowProps {
 }
 
 interface TenantMemberRoleDialogProps {
+  copy: TenantMembersManagerCopy;
   member: PlatformTenantMemberSummary;
   tenantId: string;
   updateRoleAction: (
@@ -148,6 +192,7 @@ interface TenantMemberRoleDialogProps {
 }
 
 interface TenantMemberDeleteButtonProps {
+  copy: TenantMembersManagerCopy;
   removeAction: (
     prevState: FormActionState,
     formData: FormData
@@ -158,15 +203,18 @@ interface TenantMemberDeleteButtonProps {
 }
 
 interface TenantInvitationRowProps {
+  copy: TenantMembersManagerCopy;
   invitation: PlatformTenantAdminInvitation;
   isCancelPending: boolean;
   isResendPending: boolean;
+  locale: Locale;
   onCancel: (invitationId: string) => void;
   onResend: (invitationId: string) => void;
   timeZone: string;
 }
 
 const TenantMemberDeleteButton = ({
+  copy,
   removeAction,
   setDeleteState,
   tenantId,
@@ -187,11 +235,14 @@ const TenantMemberDeleteButton = ({
 
   return (
     <ConfirmDialog
-      actionText={isPending ? "削除中..." : "削除する"}
+      actionText={
+        isPending ? copy.deleteMemberPending : copy.deleteMemberAction
+      }
       actionVariant="destructive"
-      description="削除したメンバーはこのテナントへのアクセス権を失います。必要に応じて再追加できます。"
+      cancelText={copy.cancel}
+      description={copy.deleteMemberDescription}
       onAction={handleDelete}
-      title="このメンバーを削除しますか？"
+      title={copy.deleteMemberTitle}
       trigger={
         <Button
           disabled={isPending}
@@ -199,7 +250,7 @@ const TenantMemberDeleteButton = ({
           type="button"
           variant="destructive"
         >
-          削除
+          {copy.deleteMember}
         </Button>
       }
     />
@@ -207,6 +258,7 @@ const TenantMemberDeleteButton = ({
 };
 
 const TenantMemberRoleDialog = ({
+  copy,
   member,
   tenantId,
   updateRoleAction,
@@ -230,7 +282,7 @@ const TenantMemberRoleDialog = ({
       <DialogTrigger
         render={
           <Button size="sm" type="button" variant="outline">
-            ロール変更
+            {copy.changeRole}
           </Button>
         }
       />
@@ -248,18 +300,21 @@ const TenantMemberRoleDialog = ({
 
               <DialogHeader>
                 <DialogTitle className="text-lg font-semibold">
-                  ロールを変更
+                  {copy.changeRoleSubmit}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground">
-                  {member.name}（{member.email}）のロールを更新します。
+                  {interpolateRoleUpdateDescription(
+                    copy.roleUpdateDescription,
+                    member
+                  )}
                 </DialogDescription>
               </DialogHeader>
 
               <Field>
-                <FieldLabel required>新しいロール</FieldLabel>
+                <FieldLabel required>{copy.newRole}</FieldLabel>
                 <FieldContent>
                   <div className="flex flex-wrap gap-2">
-                    {tenantRoleOptions.map((roleOption) => (
+                    {copy.roleOptions.map((roleOption) => (
                       <label
                         key={roleOption.value}
                         className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
@@ -290,7 +345,7 @@ const TenantMemberRoleDialog = ({
                 <DialogClose
                   render={
                     <Button type="button" variant="outline">
-                      キャンセル
+                      {copy.cancel}
                     </Button>
                   }
                 />
@@ -299,7 +354,9 @@ const TenantMemberRoleDialog = ({
                   type="submit"
                   variant="outline"
                 >
-                  {isRolePending ? "更新中..." : "更新する"}
+                  {isRolePending
+                    ? copy.changeRoleUpdating
+                    : copy.changeRoleSubmit}
                 </Button>
               </DialogFooter>
             </form>
@@ -311,6 +368,8 @@ const TenantMemberRoleDialog = ({
 };
 
 const TenantMemberRow = ({
+  copy,
+  locale,
   member,
   removeAction,
   setDeleteState,
@@ -323,23 +382,29 @@ const TenantMemberRow = ({
       <p className="font-medium text-foreground">{member.name}</p>
     </TableCell>
     <TableCell>{member.email}</TableCell>
-    <TableCell>{getTenantRoleLabel(member.role)}</TableCell>
+    <TableCell>{copy.roleLabels[member.role] ?? member.role}</TableCell>
     <TableCell>
       <Badge tone={getTenantStatusTone(member.status)}>
-        {getTenantStatusLabel(member.status)}
+        {copy.statusLabels[member.status] ?? member.status}
       </Badge>
     </TableCell>
     <TableCell>
-      {formatDate(member.createdAt, { fallback: "未設定", timeZone })}
+      {formatDate(member.createdAt, {
+        fallback: copy.unset,
+        locale,
+        timeZone,
+      })}
     </TableCell>
     <TableCell>
       <div className="flex flex-wrap gap-2">
         <TenantMemberRoleDialog
+          copy={copy}
           member={member}
           tenantId={tenantId}
           updateRoleAction={updateRoleAction}
         />
         <TenantMemberDeleteButton
+          copy={copy}
           removeAction={removeAction}
           setDeleteState={setDeleteState}
           tenantId={tenantId}
@@ -351,21 +416,25 @@ const TenantMemberRow = ({
 );
 
 interface TenantInvitationsSectionProps {
+  copy: TenantMembersManagerCopy;
   invitationErrorMessage?: string;
   invitations: PlatformTenantAdminInvitation[];
   invitationsNextHref?: string;
   invitationsPreviousHref?: string;
   isCancelPending: boolean;
   isResendPending: boolean;
+  locale: Locale;
   onCancel: (invitationId: string) => void;
   onResend: (invitationId: string) => void;
   timeZone: string;
 }
 
 const TenantInvitationRow = ({
+  copy,
   invitation,
   isCancelPending,
   isResendPending,
+  locale,
   onCancel,
   onResend,
   timeZone,
@@ -385,14 +454,22 @@ const TenantInvitationRow = ({
       <TableCell>{invitation.email}</TableCell>
       <TableCell>
         <Badge tone={invitationStatusTone(invitation.status)}>
-          {invitationStatusLabel(invitation.status)}
+          {copy.invitationStatusLabels[invitation.status] ?? invitation.status}
         </Badge>
       </TableCell>
       <TableCell>
-        {formatDateTime(invitation.createdAt, { fallback: "-", timeZone })}
+        {formatDateTime(invitation.createdAt, {
+          fallback: "-",
+          locale,
+          timeZone,
+        })}
       </TableCell>
       <TableCell>
-        {formatDateTime(invitation.expiresAt, { fallback: "-", timeZone })}
+        {formatDateTime(invitation.expiresAt, {
+          fallback: "-",
+          locale,
+          timeZone,
+        })}
       </TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-2">
@@ -403,14 +480,19 @@ const TenantInvitationRow = ({
             type="button"
             variant="outline"
           >
-            再送
+            {copy.resendInvite}
           </Button>
           <ConfirmDialog
-            actionText={isCancelPending ? "取り消し中..." : "取り消す"}
+            actionText={
+              isCancelPending
+                ? copy.cancelInvitePending
+                : copy.cancelInviteAction
+            }
             actionVariant="destructive"
-            description="この招待リンクは無効化され、受諾できなくなります。"
+            cancelText={copy.cancel}
+            description={copy.cancelInviteDescription}
             onAction={handleCancelAction}
-            title="この招待を取り消しますか？"
+            title={copy.cancelInviteTitle}
             trigger={
               <Button
                 disabled={!canOperate || isCancelPending || isResendPending}
@@ -418,7 +500,7 @@ const TenantInvitationRow = ({
                 type="button"
                 variant="destructive"
               >
-                取り消し
+                {copy.cancelInvite}
               </Button>
             }
           />
@@ -429,12 +511,14 @@ const TenantInvitationRow = ({
 };
 
 const TenantInvitationsSection = ({
+  copy,
   invitationErrorMessage,
   invitations,
   invitationsNextHref,
   invitationsPreviousHref,
   isCancelPending,
   isResendPending,
+  locale,
   onCancel,
   onResend,
   timeZone,
@@ -446,7 +530,7 @@ const TenantInvitationsSection = ({
     return (
       <SectionError
         description={invitationErrorMessage}
-        title="管理者招待一覧を表示できませんでした"
+        title={copy.invitationsLoadFailed}
       />
     );
   }
@@ -456,28 +540,30 @@ const TenantInvitationsSection = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>メール</TableHead>
-            <TableHead>状態</TableHead>
-            <TableHead>作成日時</TableHead>
-            <TableHead>有効期限</TableHead>
-            <TableHead className="w-56">操作</TableHead>
+            <TableHead>{copy.membersColumnsEmail}</TableHead>
+            <TableHead>{copy.membersColumnsStatus}</TableHead>
+            <TableHead>{copy.membersColumnsInvitedAt}</TableHead>
+            <TableHead>{copy.membersColumnsExpires}</TableHead>
+            <TableHead className="w-56">{copy.membersColumnsActions}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {invitations.length === 0 ? (
             <TableRow>
               <TableCell className="text-muted-foreground" colSpan={5}>
-                管理者招待はまだありません。
+                {copy.invitationsEmpty}
               </TableCell>
             </TableRow>
           ) : null}
 
           {invitations.map((invitation) => (
             <TenantInvitationRow
+              copy={copy}
               invitation={invitation}
               isCancelPending={isCancelPending}
               isResendPending={isResendPending}
               key={invitation.id}
+              locale={locale}
               onCancel={onCancel}
               onResend={onResend}
               timeZone={timeZone}
@@ -487,9 +573,11 @@ const TenantInvitationsSection = ({
       </Table>
 
       <PaginationControls
-        ariaLabel="管理者招待一覧のページ送り"
+        ariaLabel={copy.invitationsAria}
         nextHref={invitationsNextHref}
+        nextLabel={copy.next}
         previousHref={invitationsPreviousHref}
+        previousLabel={copy.previous}
       />
     </>
   );
@@ -498,11 +586,13 @@ const TenantInvitationsSection = ({
 export const TenantMembersManager = ({
   addAction,
   cancelInvitationAction,
+  copy,
   createInvitationAction,
   invitationErrorMessage,
   invitations,
   invitationsNextHref,
   invitationsPreviousHref,
+  locale,
   members,
   membersErrorMessage,
   membersNextHref,
@@ -558,17 +648,15 @@ export const TenantMembersManager = ({
     <div className="grid gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>テナント管理者を招待</CardTitle>
-          <CardDescription>
-            既存ユーザーなら即時に管理者権限を付与し、未登録メールには招待リンクを送信します。
-          </CardDescription>
+          <CardTitle>{copy.inviteAdminTitle}</CardTitle>
+          <CardDescription>{copy.inviteAdminDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={createInviteAction} className="grid gap-4">
             <input name="tenant_id" type="hidden" value={tenantId} />
             <Field>
               <FieldLabel htmlFor="invite_email" required>
-                招待するメールアドレス
+                {copy.inviteAdminEmail}
               </FieldLabel>
               <FieldContent>
                 <Input
@@ -593,7 +681,7 @@ export const TenantMembersManager = ({
                 type="submit"
                 variant="outline"
               >
-                {isInvitePending ? "招待中..." : "管理者を招待"}
+                {isInvitePending ? copy.inviteAdminPending : copy.inviteAdmin}
               </Button>
             </div>
           </form>
@@ -602,10 +690,8 @@ export const TenantMembersManager = ({
 
       <Card>
         <CardHeader>
-          <CardTitle>テナントメンバー一覧</CardTitle>
-          <CardDescription>
-            このテナントに所属するメンバーの一覧です。
-          </CardDescription>
+          <CardTitle>{copy.membersListTitle}</CardTitle>
+          <CardDescription>{copy.membersListDescription}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {deleteState ? (
@@ -616,32 +702,36 @@ export const TenantMembersManager = ({
           {membersErrorMessage ? (
             <SectionError
               description={membersErrorMessage}
-              title="メンバー一覧を表示できませんでした"
+              title={copy.membersListFailed}
             />
           ) : (
             <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>氏名</TableHead>
-                    <TableHead>メール</TableHead>
-                    <TableHead>ロール</TableHead>
-                    <TableHead>状態</TableHead>
-                    <TableHead>参加日</TableHead>
-                    <TableHead className="w-56">操作</TableHead>
+                    <TableHead>{copy.membersColumnsName}</TableHead>
+                    <TableHead>{copy.membersColumnsEmail}</TableHead>
+                    <TableHead>{copy.membersColumnsRole}</TableHead>
+                    <TableHead>{copy.membersColumnsStatus}</TableHead>
+                    <TableHead>{copy.membersColumnsCreated}</TableHead>
+                    <TableHead className="w-56">
+                      {copy.membersColumnsActions}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {members.length === 0 ? (
                     <TableRow>
                       <TableCell className="text-muted-foreground" colSpan={6}>
-                        メンバーがまだ登録されていません。メールアドレスを指定して追加してください。
+                        {copy.membersEmpty}
                       </TableCell>
                     </TableRow>
                   ) : null}
                   {members.map((member) => (
                     <TenantMemberRow
+                      copy={copy}
                       key={member.userPublicId || member.email}
+                      locale={locale}
                       member={member}
                       removeAction={removeAction}
                       setDeleteState={setDeleteState}
@@ -653,9 +743,11 @@ export const TenantMembersManager = ({
                 </TableBody>
               </Table>
               <PaginationControls
-                ariaLabel="テナントメンバー一覧のページ送り"
+                ariaLabel={copy.membersAria}
                 nextHref={membersNextHref}
+                nextLabel={copy.next}
                 previousHref={membersPreviousHref}
+                previousLabel={copy.previous}
               />
             </>
           )}
@@ -664,17 +756,15 @@ export const TenantMembersManager = ({
 
       <Card>
         <CardHeader>
-          <CardTitle>メンバーを追加</CardTitle>
-          <CardDescription>
-            メールアドレスとロールを指定して新しいメンバーを招待します。
-          </CardDescription>
+          <CardTitle>{copy.addTitle}</CardTitle>
+          <CardDescription>{copy.addDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={addFormAction} className="grid gap-4">
             <input name="tenant_id" type="hidden" value={tenantId} />
             <Field>
               <FieldLabel htmlFor="member_email" required>
-                追加するユーザーのメールアドレス
+                {copy.addEmailLabel}
               </FieldLabel>
               <FieldContent>
                 <Input
@@ -688,13 +778,13 @@ export const TenantMembersManager = ({
             </Field>
             <Field>
               <FieldLabel htmlFor="member_role" required>
-                ロール
+                {copy.role}
               </FieldLabel>
               <FieldContent>
                 <Select
                   defaultValue="tenant_admin"
                   id="member_role"
-                  items={tenantRoleOptions}
+                  items={copy.roleOptions}
                   name="member_role"
                   required
                 />
@@ -707,7 +797,7 @@ export const TenantMembersManager = ({
             ) : null}
             <div className="flex justify-end">
               <Button disabled={isAddPending} type="submit" variant="outline">
-                {isAddPending ? "追加中..." : "メンバーを追加"}
+                {isAddPending ? copy.addPending : copy.addSubmit}
               </Button>
             </div>
           </form>
@@ -716,10 +806,8 @@ export const TenantMembersManager = ({
 
       <Card>
         <CardHeader>
-          <CardTitle>管理者招待一覧</CardTitle>
-          <CardDescription>
-            送信済み招待の状態確認、再送、取り消しができます。承諾済みの招待は承諾後1週間のみ表示されます。
-          </CardDescription>
+          <CardTitle>{copy.invitationsTitle}</CardTitle>
+          <CardDescription>{copy.invitationsDescription}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {invitationActionState ? (
@@ -731,12 +819,14 @@ export const TenantMembersManager = ({
           ) : null}
 
           <TenantInvitationsSection
+            copy={copy}
             invitationErrorMessage={invitationErrorMessage}
             invitations={invitations}
             invitationsNextHref={invitationsNextHref}
             invitationsPreviousHref={invitationsPreviousHref}
             isCancelPending={isCancelPending}
             isResendPending={isResendPending}
+            locale={locale}
             onCancel={handleCancel}
             onResend={handleResend}
             timeZone={timeZone}

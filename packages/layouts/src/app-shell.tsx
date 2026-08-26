@@ -223,7 +223,15 @@ export const AppShellSidebar = ({
         <nav className="mt-6 flex-1 overflow-y-auto">
           <div className="grid gap-5">
             {navigation.map((section) => (
-              <div className="grid gap-2" key={section.title}>
+              <div
+                className="grid gap-2"
+                key={
+                  section.id ??
+                  (typeof section.title === "string"
+                    ? section.title
+                    : section.items[0]?.href)
+                }
+              >
                 <p className="px-2 text-xs font-medium tracking-[0.22em] text-muted-foreground uppercase">
                   {section.title}
                 </p>

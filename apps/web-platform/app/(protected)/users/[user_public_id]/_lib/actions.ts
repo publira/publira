@@ -1,5 +1,6 @@
 "use server";
 
+import { getMessage } from "@publira/utils/i18n";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -9,6 +10,7 @@ import {
   withPlatformSessionReauth,
 } from "#lib/auth-session";
 import { requiredTrimmedString } from "#lib/form-schemas";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { canManageEndUsers } from "#lib/roles";
 import {
   deletePlatformEndUser,
@@ -21,9 +23,17 @@ import {
  * over: the endpoint can be invoked directly with anything at all. Same schema
  * the operator Actions use (`operators/[operator_public_id]/_lib/actions.ts`).
  */
-const userPublicIdSchema = requiredTrimmedString(
-  "必須項目が入力されていません。"
-);
+const userPublicIdSchema = async () => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return {
+    locale,
+    schema: requiredTrimmedString(
+      getMessage(messages, "platform.common.required")
+    ),
+  };
+};
 
 /**
  * Whether the operator submitting this Action may manage end users, once a
@@ -40,7 +50,8 @@ const canCurrentOperatorManageEndUsers = async (): Promise<boolean> => {
 };
 
 export const suspendEndUserAction = async (publicId: string): Promise<void> => {
-  const parsed = userPublicIdSchema.safeParse(publicId);
+  const { schema } = await userPublicIdSchema();
+  const parsed = schema.safeParse(publicId);
   if (!parsed.success) {
     return;
   }
@@ -60,7 +71,8 @@ export const suspendEndUserAction = async (publicId: string): Promise<void> => {
 export const unsuspendEndUserAction = async (
   publicId: string
 ): Promise<void> => {
-  const parsed = userPublicIdSchema.safeParse(publicId);
+  const { schema } = await userPublicIdSchema();
+  const parsed = schema.safeParse(publicId);
   if (!parsed.success) {
     return;
   }
@@ -78,7 +90,8 @@ export const unsuspendEndUserAction = async (
 };
 
 export const deleteEndUserAction = async (publicId: string): Promise<void> => {
-  const parsed = userPublicIdSchema.safeParse(publicId);
+  const { locale, schema } = await userPublicIdSchema();
+  const parsed = schema.safeParse(publicId);
   if (!parsed.success) {
     return;
   }
@@ -89,7 +102,7 @@ export const deleteEndUserAction = async (publicId: string): Promise<void> => {
   }
 
   const result = await withPlatformSessionReauth(() =>
-    deletePlatformEndUser(normalizedPublicId)
+    deletePlatformEndUser(normalizedPublicId, locale)
   );
   if (!result.ok) {
     return;

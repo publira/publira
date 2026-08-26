@@ -50,7 +50,7 @@ describe("listPlatformAuditLogs", () => {
       ],
     });
 
-    await expect(listPlatformAuditLogs({})).resolves.toEqual({
+    await expect(listPlatformAuditLogs({ locale: "ja" })).resolves.toEqual({
       auditLogs: [
         {
           action: "tenant.created",
@@ -109,7 +109,7 @@ describe("listPlatformAuditLogs", () => {
     });
 
     await expect(
-      listPlatformAuditLogs({ token: "current-page" })
+      listPlatformAuditLogs({ locale: "ja", token: "current-page" })
     ).resolves.toEqual({
       auditLogs: [
         {
@@ -153,6 +153,7 @@ describe("listPlatformAuditLogs", () => {
         action: "tenant.status.updated",
         actorUserPublicId: "op_123",
         limit: 20,
+        locale: "ja",
         tenantId: "tenant_999",
         token: "page-2",
       })
@@ -196,7 +197,7 @@ describe("listPlatformAuditLogs", () => {
       ],
     });
 
-    await expect(listPlatformAuditLogs({})).resolves.toEqual({
+    await expect(listPlatformAuditLogs({ locale: "ja" })).resolves.toEqual({
       auditLogs: [
         {
           action: "operator.signed_in",
@@ -223,7 +224,7 @@ describe("listPlatformAuditLogs", () => {
   it("sessionId を解決できない場合は API を呼ばずエラーを返す", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
-    await expect(listPlatformAuditLogs({})).resolves.toEqual({
+    await expect(listPlatformAuditLogs({ locale: "ja" })).resolves.toEqual({
       auditLogs: [],
       message: "セッションが無効です。再ログインしてください。",
       nextToken: "",
@@ -235,12 +236,25 @@ describe("listPlatformAuditLogs", () => {
     expect(mockListAuditLogs).not.toHaveBeenCalled();
   });
 
+  it("locale=en では英語のセッションエラーを返す", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(listPlatformAuditLogs({ locale: "en" })).resolves.toEqual({
+      auditLogs: [],
+      message: "Your session is no longer valid. Please sign in again.",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+      requiresSignIn: true,
+    });
+  });
+
   it("到達不能エラーは共通文言で返す", async () => {
     mockListAuditLogs.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(listPlatformAuditLogs({})).resolves.toEqual({
+    await expect(listPlatformAuditLogs({ locale: "ja" })).resolves.toEqual({
       auditLogs: [],
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
@@ -256,6 +270,8 @@ describe("listPlatformAuditLogs", () => {
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(listPlatformAuditLogs({})).rejects.toThrow("boom");
+    await expect(listPlatformAuditLogs({ locale: "ja" })).rejects.toThrow(
+      "boom"
+    );
   });
 });

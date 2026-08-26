@@ -10,6 +10,7 @@ import {
 import { Input } from "@publira/ui-components/input";
 import { SectionError } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -19,11 +20,13 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
 import {
   PlatformPage,
@@ -37,25 +40,22 @@ import {
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { listPlatformTenants } from "#lib/tenants";
 
 import { buildTenantsPath, parseTenantFilters } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "テナント一覧",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.tenants.title") };
 };
 
-const statusSelectItems = [
-  { label: "稼働中", value: "active" },
-  { label: "トライアル", value: "trial" },
-  { label: "停止中", value: "suspended" },
-] as const;
-
-const allowedStatusValues = new Set(
-  statusSelectItems.map(({ value }) => value)
-);
+const statusFilterValues = ["active", "trial", "suspended"] as const;
+const allowedStatusValues = new Set<string>(statusFilterValues);
 const pageSize = 20;
 
 const TenantsTableSkeleton = () => (
@@ -84,11 +84,14 @@ type TenantsPageProps = PageProps<"/tenants">;
 const TenantsContent = async ({
   searchParams,
 }: Pick<TenantsPageProps, "searchParams">) => {
+  const locale = await getPlatformLocale();
   const filters = parseTenantFilters(await searchParams, allowedStatusValues);
 
-  const [result, timeZone] = await Promise.all([
+  const [messages, result, timeZone] = await Promise.all([
+    loadPlatformMessages(locale),
     listPlatformTenants({
       limit: pageSize,
+      locale,
       name: filters.name || undefined,
       status: filters.status || undefined,
       token: filters.token || undefined,
@@ -111,13 +114,19 @@ const TenantsContent = async ({
       })
     : undefined;
 
+  const statusSelectItems = statusFilterValues.map((value) => ({
+    label: getTenantStatusLabel(value, messages),
+    value,
+  }));
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>登録テナント</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "platform.tenants.card_title")}
+        </CardTitle>
         <CardDescription>
-          web-admin
-          と責務分離するため、ここではテナント単位の状態管理に限定します。
+          {getMessage(messages, "platform.tenants.card_description")}
         </CardDescription>
       </CardHeader>
 
@@ -131,7 +140,10 @@ const TenantsContent = async ({
             className="w-64"
             defaultValue={filters.name}
             name="name"
-            placeholder="テナント名・IDで検索"
+            placeholder={getMessage(
+              messages,
+              "platform.tenants.search_placeholder"
+            )}
             type="search"
           />
           <Select
@@ -139,15 +151,17 @@ const TenantsContent = async ({
             defaultValue={filters.status || undefined}
             items={statusSelectItems}
             name="status"
-            placeholder="すべての状態"
+            placeholder={getMessage(messages, "platform.tenants.all_statuses")}
           />
-          <Button type="submit">絞り込む</Button>
+          <Button type="submit">
+            {getMessage(messages, "platform.common.filter")}
+          </Button>
           {filters.name || filters.status ? (
             <Link
               className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
               href="/tenants"
             >
-              クリア
+              {getMessage(messages, "platform.common.clear")}
             </Link>
           ) : null}
         </Form>
@@ -155,16 +169,22 @@ const TenantsContent = async ({
         {result.ok ? null : (
           <SectionError
             description={result.message}
-            title="テナント一覧を表示できませんでした"
+            title={getMessage(messages, "platform.tenants.load_failed")}
           />
         )}
 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>テナント</TableHead>
-              <TableHead className="w-40">状態</TableHead>
-              <TableHead className="w-52">作成日時</TableHead>
+              <TableHead>
+                {getMessage(messages, "platform.tenants.columns_tenant")}
+              </TableHead>
+              <TableHead className="w-40">
+                {getMessage(messages, "platform.tenants.columns_status")}
+              </TableHead>
+              <TableHead className="w-52">
+                {getMessage(messages, "platform.tenants.columns_created")}
+              </TableHead>
               <TableHead className="w-40" />
             </TableRow>
           </TableHeader>
@@ -173,8 +193,8 @@ const TenantsContent = async ({
               <TableRow>
                 <TableCell className="text-muted-foreground" colSpan={4}>
                   {filters.name || filters.status
-                    ? "条件に一致するテナントが見つかりませんでした。"
-                    : "テナントはまだ登録されていません。"}
+                    ? getMessage(messages, "platform.tenants.empty_filtered")
+                    : getMessage(messages, "platform.tenants.empty")}
                 </TableCell>
               </TableRow>
             ) : null}
@@ -193,12 +213,13 @@ const TenantsContent = async ({
                   </TableCell>
                   <TableCell>
                     <Badge tone={getTenantStatusTone(tenant.status)}>
-                      {getTenantStatusLabel(tenant.status)}
+                      {getTenantStatusLabel(tenant.status, messages)}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     {formatDateTime(tenant.createdAt, {
-                      fallback: "未設定",
+                      fallback: getMessage(messages, "platform.common.unset"),
+                      locale,
                       timeZone,
                     })}
                   </TableCell>
@@ -208,7 +229,7 @@ const TenantsContent = async ({
                       size="sm"
                       variant="outline"
                     >
-                      詳細
+                      {getMessage(messages, "platform.common.detail")}
                     </LinkButton>
                   </TableCell>
                 </TableRow>
@@ -217,9 +238,11 @@ const TenantsContent = async ({
         </Table>
 
         <PaginationControls
-          ariaLabel="テナント一覧のページ送り"
+          ariaLabel={getMessage(messages, "platform.tenants.pagination_aria")}
           nextHref={nextHref}
+          nextLabel={getMessage(messages, "platform.common.next")}
           previousHref={previousHref}
+          previousLabel={getMessage(messages, "platform.common.previous")}
         />
       </CardContent>
     </Card>
@@ -231,19 +254,48 @@ const TenantsPage = ({ searchParams }: TenantsPageProps) => (
     <PlatformPageHeader>
       <PlatformPageHeading>
         <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
-        <PlatformPageTitle>テナント一覧</PlatformPageTitle>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
+            <Message message="platform.tenants.heading" />
+          </Suspense>
+        </PlatformPageTitle>
         <PlatformPageDescription>
-          プラットフォーム運営者が横断でテナントの状態を確認し、詳細画面へ遷移するための起点です。
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.tenants.page_description" />
+          </Suspense>
         </PlatformPageDescription>
       </PlatformPageHeading>
       <PlatformPageActions>
         <LinkButton render={<Link href="/tenants/new" />}>
-          新規テナント作成
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.tenants.new_tenant" />
+          </Suspense>
         </LinkButton>
       </PlatformPageActions>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <SectionErrorBoundary title="テナント一覧を表示できませんでした">
+      <SectionErrorBoundary
+        description={
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.common.retry_later" />
+          </Suspense>
+        }
+        digestLabel={
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="platform.common.error_id" />
+          </Suspense>
+        }
+        retryLabel={
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="platform.common.retry" />
+          </Suspense>
+        }
+        title={
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <Message message="platform.tenants.load_failed" />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<TenantsTableSkeleton />}>
           <TenantsContent searchParams={searchParams} />
         </Suspense>

@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { getMessage, LOCALES } from "@publira/utils/i18n";
 import type { Locale } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageContent,
@@ -30,9 +31,21 @@ import { PlatformDefaultLocaleForm } from "./_components/platform-default-locale
 import type { PlatformDefaultLocaleFormOption } from "./_components/platform-default-locale-form";
 import { PlatformTimezoneForm } from "./_components/platform-timezone-form";
 
-export const metadata: Metadata = {
-  title: "設定 - 一般",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.settings.general_title") };
 };
+
+const tabLabel = (
+  message: "platform.settings.email_tab" | "platform.settings.general_tab",
+  fallbackClassName: string
+) => (
+  <Suspense fallback={<SkeletonLine className={fallbackClassName} />}>
+    <Message message={message} />
+  </Suspense>
+);
 
 const LocaleSectionSkeleton = () => (
   <Card>
@@ -72,7 +85,7 @@ const LocaleSection = async () => {
   );
 };
 
-const DefaultLocaleSectionSkeleton = () => (
+const SettingsFormCardSkeleton = () => (
   <Card>
     <CardHeader>
       <Skeleton className="h-6 w-32" />
@@ -111,6 +124,31 @@ const DefaultLocaleSection = async ({
   return (
     <PlatformDefaultLocaleForm
       action={updatePlatformDefaultLocaleAction}
+      copy={{
+        description: getMessage(
+          messages,
+          "platform.settings.default_locale_description"
+        ),
+        fieldDescription: getMessage(
+          messages,
+          "platform.settings.default_locale_help"
+        ),
+        label: getMessage(messages, "platform.settings.default_locale_label"),
+        placeholder: getMessage(
+          messages,
+          "platform.settings.default_locale_placeholder"
+        ),
+        reloadWarning: getMessage(
+          messages,
+          "platform.settings.default_locale_reload"
+        ),
+        saveLabel: getMessage(
+          messages,
+          "platform.settings.default_locale_save"
+        ),
+        savingLabel: getMessage(messages, "platform.common.saving"),
+        title: getMessage(messages, "platform.settings.default_locale_title"),
+      }}
       initialDefaultLocale={initialDefaultLocale}
       loadErrorMessage={loadErrorMessage}
       options={options}
@@ -118,47 +156,127 @@ const DefaultLocaleSection = async ({
   );
 };
 
-const PlatformGeneralSettingsPage = async () => {
-  const settingsResult = await getPlatformSettings();
+interface TimezoneSectionProps {
+  initialTimezone: string;
+  loadErrorMessage?: string;
+}
+
+const TimezoneSection = async ({
+  initialTimezone,
+  loadErrorMessage,
+}: TimezoneSectionProps) => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return (
+    <PlatformTimezoneForm
+      action={updatePlatformDefaultTimezoneAction}
+      copy={{
+        description: getMessage(
+          messages,
+          "platform.settings.default_timezone_description"
+        ),
+        emptyMessage: getMessage(
+          messages,
+          "platform.settings.default_timezone_empty"
+        ),
+        fieldDescription: getMessage(
+          messages,
+          "platform.settings.default_timezone_help"
+        ),
+        label: getMessage(messages, "platform.settings.default_timezone_label"),
+        placeholder: getMessage(
+          messages,
+          "platform.settings.default_timezone_placeholder"
+        ),
+        reloadWarning: getMessage(
+          messages,
+          "platform.settings.default_timezone_reload"
+        ),
+        saveLabel: getMessage(
+          messages,
+          "platform.settings.default_timezone_save"
+        ),
+        savingLabel: getMessage(messages, "platform.common.saving"),
+        title: getMessage(messages, "platform.settings.default_timezone_title"),
+      }}
+      initialTimezone={initialTimezone}
+      loadErrorMessage={loadErrorMessage}
+    />
+  );
+};
+
+const GeneralSettingsContent = async () => {
+  const locale = await getPlatformLocale();
+  const settingsResult = await getPlatformSettings(locale);
 
   await redirectToLoginIfSessionRejected(settingsResult);
 
   return (
-    <PlatformPage>
-      <PlatformPageHeader>
-        <PlatformPageHeading>
-          <PlatformPageEyebrow>Platform Settings</PlatformPageEyebrow>
-          <PlatformPageTitle>設定</PlatformPageTitle>
-          <PlatformPageDescription>
-            プラットフォーム全体に適用される既定値を管理します。
-          </PlatformPageDescription>
-        </PlatformPageHeading>
-      </PlatformPageHeader>
-      <PlatformPageContent>
-        <div className="grid gap-6">
-          <SettingsTabNav current="general" />
-          <Suspense fallback={<LocaleSectionSkeleton />}>
-            <LocaleSection />
-          </Suspense>
-          <Suspense fallback={<DefaultLocaleSectionSkeleton />}>
-            <DefaultLocaleSection
-              initialDefaultLocale={settingsResult.defaultLocale}
-              loadErrorMessage={
-                settingsResult.ok ? undefined : settingsResult.message
-              }
-            />
-          </Suspense>
-          <PlatformTimezoneForm
-            action={updatePlatformDefaultTimezoneAction}
-            initialTimezone={settingsResult.defaultTimezone}
-            loadErrorMessage={
-              settingsResult.ok ? undefined : settingsResult.message
-            }
-          />
-        </div>
-      </PlatformPageContent>
-    </PlatformPage>
+    <div className="grid gap-6">
+      <SettingsTabNav
+        current="general"
+        emailLabel={tabLabel("platform.settings.email_tab", "h-4 w-20")}
+        generalLabel={tabLabel("platform.settings.general_tab", "h-4 w-8")}
+      />
+      <Suspense fallback={<LocaleSectionSkeleton />}>
+        <LocaleSection />
+      </Suspense>
+      <Suspense fallback={<SettingsFormCardSkeleton />}>
+        <DefaultLocaleSection
+          initialDefaultLocale={settingsResult.defaultLocale}
+          loadErrorMessage={
+            settingsResult.ok ? undefined : settingsResult.message
+          }
+        />
+      </Suspense>
+      <Suspense fallback={<SettingsFormCardSkeleton />}>
+        <TimezoneSection
+          initialTimezone={settingsResult.defaultTimezone}
+          loadErrorMessage={
+            settingsResult.ok ? undefined : settingsResult.message
+          }
+        />
+      </Suspense>
+    </div>
   );
 };
+
+const GeneralSettingsContentSkeleton = () => (
+  <div className="grid gap-6">
+    <div className="flex flex-wrap gap-2">
+      <Skeleton className="h-9 w-16" />
+      <Skeleton className="h-9 w-24" />
+    </div>
+    <LocaleSectionSkeleton />
+    <SettingsFormCardSkeleton />
+    <SettingsFormCardSkeleton />
+  </div>
+);
+
+const PlatformGeneralSettingsPage = () => (
+  <PlatformPage>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageEyebrow>Platform Settings</PlatformPageEyebrow>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-16" />}>
+            <Message message="platform.settings.general_heading" />
+          </Suspense>
+        </PlatformPageTitle>
+        <PlatformPageDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="platform.settings.general_page_description" />
+          </Suspense>
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+    </PlatformPageHeader>
+    <PlatformPageContent>
+      <Suspense fallback={<GeneralSettingsContentSkeleton />}>
+        <GeneralSettingsContent />
+      </Suspense>
+    </PlatformPageContent>
+  </PlatformPage>
+);
 
 export default PlatformGeneralSettingsPage;

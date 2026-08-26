@@ -3,6 +3,7 @@
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { getMessage } from "@publira/utils/i18n";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -26,60 +27,72 @@ import {
   updatePlatformTenantMemberRole,
 } from "#lib/tenants";
 
-const tenantIdFormSchema = requiredTrimmedString(
-  "必須項目が入力されていません。"
-);
+const requiredMessage = (messages: PlatformMessages) =>
+  getMessage(messages, "platform.common.required");
 
-const tenantMemberRoleFormSchema = z.enum(
-  ["tenant_admin", "tenant_auditor", "tenant_editor"],
-  { error: "必須項目が入力されていません。" }
-);
+const tenantIdFormSchema = (messages: PlatformMessages) =>
+  requiredTrimmedString(requiredMessage(messages));
 
-const tenantIdOnlySchema = z.object({
-  tenantId: tenantIdFormSchema,
-});
+const tenantMemberRoleFormSchema = (messages: PlatformMessages) =>
+  z.enum(["tenant_admin", "tenant_auditor", "tenant_editor"], {
+    error: requiredMessage(messages),
+  });
 
-const updateTenantNameFormSchema = z.object({
-  currentDomain: optionalTrimmedString(),
-  name: requiredTrimmedString("必須項目が入力されていません。"),
-  tenantId: tenantIdFormSchema,
-});
+const tenantIdOnlySchema = (messages: PlatformMessages) =>
+  z.object({
+    tenantId: tenantIdFormSchema(messages),
+  });
 
-const updateTenantDomainFormSchema = z.object({
-  adminDomain: optionalTrimmedString(),
-  currentName: requiredTrimmedString("必須項目が入力されていません。"),
-  domain: requiredTrimmedString("ドメインは必須です。"),
-  tenantId: tenantIdFormSchema,
-});
+const updateTenantNameFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    currentDomain: optionalTrimmedString(),
+    name: requiredTrimmedString(
+      getMessage(messages, "platform.tenants.name_required")
+    ),
+    tenantId: tenantIdFormSchema(messages),
+  });
+
+const updateTenantDomainFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    adminDomain: optionalTrimmedString(),
+    currentName: requiredTrimmedString(requiredMessage(messages)),
+    domain: requiredTrimmedString(
+      getMessage(messages, "platform.tenants.domain_required")
+    ),
+    tenantId: tenantIdFormSchema(messages),
+  });
 
 const addTenantMemberFormSchema = (messages: PlatformMessages) =>
   z.object({
     email: emailFormSchema(messages),
-    role: tenantMemberRoleFormSchema,
-    tenantId: tenantIdFormSchema,
+    role: tenantMemberRoleFormSchema(messages),
+    tenantId: tenantIdFormSchema(messages),
   });
 
-const updateTenantMemberRoleFormSchema = z.object({
-  role: tenantMemberRoleFormSchema,
-  tenantId: tenantIdFormSchema,
-  userPublicId: requiredTrimmedString("必須項目が入力されていません。"),
-});
+const updateTenantMemberRoleFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    role: tenantMemberRoleFormSchema(messages),
+    tenantId: tenantIdFormSchema(messages),
+    userPublicId: requiredTrimmedString(requiredMessage(messages)),
+  });
 
-const removeTenantMemberFormSchema = z.object({
-  tenantId: tenantIdFormSchema,
-  userPublicId: requiredTrimmedString("必須項目が入力されていません。"),
-});
+const removeTenantMemberFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    tenantId: tenantIdFormSchema(messages),
+    userPublicId: requiredTrimmedString(requiredMessage(messages)),
+  });
 
 const createInvitationFormSchema = (messages: PlatformMessages) =>
   z.object({
     email: emailFormSchema(messages),
-    tenantId: tenantIdFormSchema,
+    tenantId: tenantIdFormSchema(messages),
   });
 
-const invitationIdFormSchema = z.object({
-  invitationId: requiredTrimmedString("必須項目が入力されていません。"),
-  tenantId: tenantIdFormSchema,
-});
+const invitationIdFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    invitationId: requiredTrimmedString(requiredMessage(messages)),
+    tenantId: tenantIdFormSchema(messages),
+  });
 
 const revalidateTenantMemberPaths = (tenantId: string) => {
   revalidatePath(`/tenants/${tenantId}`);
@@ -89,7 +102,10 @@ const revalidateTenantMemberPaths = (tenantId: string) => {
 export const suspendTenantAction = async (
   formData: FormData
 ): Promise<void> => {
-  const parsed = tenantIdOnlySchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = tenantIdOnlySchema(messages).safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
     })
@@ -106,7 +122,10 @@ export const suspendTenantAction = async (
 };
 
 export const resumeTenantAction = async (formData: FormData): Promise<void> => {
-  const parsed = tenantIdOnlySchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = tenantIdOnlySchema(messages).safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
     })
@@ -126,7 +145,10 @@ export const updateTenantNameAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = updateTenantNameFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = updateTenantNameFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       currentDomain: { kind: "value", name: "tenant_current_domain" },
       name: { kind: "value", name: "tenant_name" },
@@ -134,28 +156,32 @@ export const updateTenantNameAction = async (
     })
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
     updatePlatformTenant(
       parsed.data.tenantId,
       parsed.data.name,
-      parsed.data.currentDomain
+      parsed.data.currentDomain,
+      locale
     )
   );
   revalidatePath(`/tenants/${parsed.data.tenantId}`);
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
-  return { message: "保存しました。", ok: true };
+  return { message: getMessage(messages, "platform.common.saved"), ok: true };
 };
 
 export const updateTenantDomainAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = updateTenantDomainFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = updateTenantDomainFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       adminDomain: { kind: "value", name: "tenant_admin_domain" },
       currentName: { kind: "value", name: "tenant_current_name" },
@@ -164,7 +190,7 @@ export const updateTenantDomainAction = async (
     })
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
@@ -172,6 +198,7 @@ export const updateTenantDomainAction = async (
       parsed.data.tenantId,
       parsed.data.currentName,
       parsed.data.domain,
+      locale,
       parsed.data.adminDomain
     )
   );
@@ -179,7 +206,7 @@ export const updateTenantDomainAction = async (
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
-  return { message: "保存しました。", ok: true };
+  return { message: getMessage(messages, "platform.common.saved"), ok: true };
 };
 
 export const addTenantMemberAction = async (
@@ -201,7 +228,7 @@ export const addTenantMemberAction = async (
   }
 
   const result = await withPlatformSessionReauth(() =>
-    addPlatformTenantMember(parsed.data)
+    addPlatformTenantMember({ ...parsed.data, locale })
   );
 
   revalidateTenantMemberPaths(parsed.data.tenantId);
@@ -210,14 +237,20 @@ export const addTenantMemberAction = async (
     return { message: result.message, ok: false };
   }
 
-  return { message: "メンバーを追加しました。", ok: true };
+  return {
+    message: getMessage(messages, "platform.tenants.add_member_success"),
+    ok: true,
+  };
 };
 
 export const updateTenantMemberRoleAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = updateTenantMemberRoleFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = updateTenantMemberRoleFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       role: { kind: "value", name: "member_role" },
       tenantId: { kind: "value", name: "tenant_id" },
@@ -225,14 +258,15 @@ export const updateTenantMemberRoleAction = async (
     })
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
     updatePlatformTenantMemberRole(
       parsed.data.tenantId,
       parsed.data.userPublicId,
-      parsed.data.role
+      parsed.data.role,
+      locale
     )
   );
 
@@ -242,25 +276,35 @@ export const updateTenantMemberRoleAction = async (
     return { message: result.message, ok: false };
   }
 
-  return { message: "ロールを更新しました。", ok: true };
+  return {
+    message: getMessage(messages, "platform.tenants.role_updated"),
+    ok: true,
+  };
 };
 
 export const removeTenantMemberAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = removeTenantMemberFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = removeTenantMemberFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
       userPublicId: { kind: "value", name: "member_user_public_id" },
     })
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
-    removePlatformTenantMember(parsed.data.tenantId, parsed.data.userPublicId)
+    removePlatformTenantMember(
+      parsed.data.tenantId,
+      parsed.data.userPublicId,
+      locale
+    )
   );
 
   revalidateTenantMemberPaths(parsed.data.tenantId);
@@ -269,7 +313,10 @@ export const removeTenantMemberAction = async (
     return { message: result.message, ok: false };
   }
 
-  return { message: "メンバーを削除しました。", ok: true };
+  return {
+    message: getMessage(messages, "platform.tenants.delete_member_success"),
+    ok: true,
+  };
 };
 
 export const createTenantAdminInvitationAction = async (
@@ -290,7 +337,11 @@ export const createTenantAdminInvitationAction = async (
   }
 
   const result = await withPlatformSessionReauth(() =>
-    createPlatformTenantAdminInvitation(parsed.data.tenantId, parsed.data.email)
+    createPlatformTenantAdminInvitation(
+      parsed.data.tenantId,
+      parsed.data.email,
+      locale
+    )
   );
 
   revalidateTenantMemberPaths(parsed.data.tenantId);
@@ -301,32 +352,39 @@ export const createTenantAdminInvitationAction = async (
 
   if (result.roleGrantedImmediately) {
     return {
-      message: "既存ユーザーをテナント管理者として追加しました。",
+      message: getMessage(messages, "platform.tenants.existing_admin_added"),
       ok: true,
     };
   }
 
-  return { message: "招待メールを送信しました。", ok: true };
+  return {
+    message: getMessage(messages, "platform.tenants.invite_sent"),
+    ok: true,
+  };
 };
 
 export const resendTenantAdminInvitationAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = invitationIdFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = invitationIdFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       invitationId: { kind: "value", name: "invitation_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
     resendPlatformTenantAdminInvitation(
       parsed.data.tenantId,
-      parsed.data.invitationId
+      parsed.data.invitationId,
+      locale
     )
   );
 
@@ -336,27 +394,34 @@ export const resendTenantAdminInvitationAction = async (
     return { message: result.message, ok: false };
   }
 
-  return { message: "招待メールを再送しました。", ok: true };
+  return {
+    message: getMessage(messages, "platform.tenants.resend_invite_success"),
+    ok: true,
+  };
 };
 
 export const cancelTenantAdminInvitationAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = invitationIdFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = invitationIdFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       invitationId: { kind: "value", name: "invitation_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
     cancelPlatformTenantAdminInvitation(
       parsed.data.tenantId,
-      parsed.data.invitationId
+      parsed.data.invitationId,
+      locale
     )
   );
 
@@ -366,5 +431,8 @@ export const cancelTenantAdminInvitationAction = async (
     return { message: result.message, ok: false };
   }
 
-  return { message: "招待を取り消しました。", ok: true };
+  return {
+    message: getMessage(messages, "platform.tenants.cancel_invite_success"),
+    ok: true,
+  };
 };

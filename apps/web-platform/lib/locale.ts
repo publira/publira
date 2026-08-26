@@ -17,7 +17,7 @@ import {
   LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
 } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
+import type { Locale, MessageKey } from "@publira/utils/i18n";
 import { cookies } from "next/headers";
 
 import type ja from "../../../locales/ja.json";
@@ -25,6 +25,9 @@ import { getPlatformDisplayLocale } from "./platform-settings";
 
 /** `ja.json` is the source of truth for the key set (`locales/README.md`). */
 export type PlatformMessages = typeof ja;
+
+/** Dotted key of any string in the catalog, checked at the call site. */
+export type PlatformMessageKey = MessageKey<PlatformMessages>;
 
 /**
  * Options the locale cookie is written with, from the Server Action in

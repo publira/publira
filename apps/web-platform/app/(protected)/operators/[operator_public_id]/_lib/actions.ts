@@ -3,6 +3,7 @@
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { getMessage } from "@publira/utils/i18n";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -14,6 +15,8 @@ import {
   withPlatformSessionReauth,
 } from "#lib/auth-session";
 import { requiredTrimmedString } from "#lib/form-schemas";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 import {
   deactivatePlatformOperator,
   suspendPlatformOperator,
@@ -22,9 +25,8 @@ import {
 } from "#lib/operators";
 import { isPlatformSuperAdmin } from "#lib/roles";
 
-const operatorPublicIdSchema = requiredTrimmedString(
-  "必須項目が入力されていません。"
-);
+const operatorPublicIdSchema = (messages: PlatformMessages) =>
+  requiredTrimmedString(getMessage(messages, "platform.common.required"));
 
 /**
  * The operator submitting this Action, once a rejected session has been sent to
@@ -42,19 +44,26 @@ const resolveCurrentOperator =
     return result.ok ? result.operator : null;
   };
 
-const updateOperatorRoleFormSchema = z.object({
-  publicId: operatorPublicIdSchema,
-  role: z.enum(
-    ["platform_auditor", "platform_operator", "platform_super_admin"],
-    { error: "必須項目が入力されていません。" }
-  ),
-});
+const updateOperatorRoleFormSchema = (messages: PlatformMessages) => {
+  const required = getMessage(messages, "platform.common.required");
+
+  return z.object({
+    publicId: operatorPublicIdSchema(messages),
+    role: z.enum(
+      ["platform_auditor", "platform_operator", "platform_super_admin"],
+      { error: required }
+    ),
+  });
+};
 
 export const updateOperatorRoleAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = updateOperatorRoleFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = updateOperatorRoleFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       publicId: { kind: "value", name: "operator_public_id" },
       role: { kind: "value", name: "operator_role" },
@@ -62,7 +71,7 @@ export const updateOperatorRoleAction = async (
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
@@ -71,14 +80,24 @@ export const updateOperatorRoleAction = async (
 
   const me = await resolveCurrentOperator();
   if (!(me && isPlatformSuperAdmin(me.role))) {
-    return { message: "この操作を行う権限がありません。", ok: false };
+    return {
+      message: getMessage(messages, "errors.rpc.forbidden"),
+      ok: false,
+    };
   }
   if (me.publicId === publicId) {
-    return { message: "自分自身のロールは変更できません。", ok: false };
+    return {
+      message: getMessage(
+        messages,
+        "platform.operators.cannot_change_own_role"
+      ),
+      ok: false,
+    };
   }
 
   const result = await withPlatformSessionReauth(() =>
     updatePlatformOperatorRole({
+      locale,
       publicId,
       role,
     })
@@ -89,13 +108,18 @@ export const updateOperatorRoleAction = async (
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
-  return { message: "ロールを更新しました。", ok: true };
+  return {
+    message: getMessage(messages, "platform.operators.role_updated"),
+    ok: true,
+  };
 };
 
 export const suspendOperatorAction = async (
   publicId: string
 ): Promise<void> => {
-  const parsed = operatorPublicIdSchema.safeParse(publicId);
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+  const parsed = operatorPublicIdSchema(messages).safeParse(publicId);
   if (!parsed.success) {
     return;
   }
@@ -112,7 +136,9 @@ export const suspendOperatorAction = async (
 export const unsuspendOperatorAction = async (
   publicId: string
 ): Promise<void> => {
-  const parsed = operatorPublicIdSchema.safeParse(publicId);
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+  const parsed = operatorPublicIdSchema(messages).safeParse(publicId);
   if (!parsed.success) {
     return;
   }
@@ -129,7 +155,9 @@ export const unsuspendOperatorAction = async (
 export const deactivateOperatorAction = async (
   publicId: string
 ): Promise<void> => {
-  const parsed = operatorPublicIdSchema.safeParse(publicId);
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+  const parsed = operatorPublicIdSchema(messages).safeParse(publicId);
   if (!parsed.success) {
     return;
   }

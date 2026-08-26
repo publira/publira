@@ -6,28 +6,34 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Select } from "@publira/ui-components/select";
+import type { ReactNode } from "react";
 
-const ROLE_OPTIONS = [
-  { label: "スーパー管理者", value: "platform_super_admin" },
-  { label: "オペレーター", value: "platform_operator" },
-  { label: "監査担当", value: "platform_auditor" },
-] as const;
+export interface OperatorRoleFormCopy {
+  pendingLabel: ReactNode;
+  roleLabel: ReactNode;
+  rolePlaceholder: string;
+  submitLabel: ReactNode;
+}
 
 interface OperatorRoleFormProps {
   action: (
     prevState: FormActionState,
     formData: FormData
   ) => Promise<FormActionState>;
+  copy: OperatorRoleFormCopy;
   currentRole: string;
   disabled?: boolean;
   operatorPublicId: string;
+  roleItems: readonly { label: string; value: string }[];
 }
 
 export const OperatorRoleForm = ({
   action,
+  copy,
   currentRole,
   disabled,
   operatorPublicId,
+  roleItems,
 }: OperatorRoleFormProps) => (
   <ActionForm action={action}>
     {({ isPending, state }) => (
@@ -40,17 +46,17 @@ export const OperatorRoleForm = ({
         <div className="grid gap-4">
           <Field>
             <FieldLabel htmlFor="operator_role" required={!disabled}>
-              ロール
+              {copy.roleLabel}
             </FieldLabel>
             <FieldContent>
               <Select
                 defaultValue={currentRole}
                 disabled={disabled}
                 id="operator_role"
-                items={ROLE_OPTIONS}
+                items={roleItems}
                 key={currentRole}
                 name="operator_role"
-                placeholder="選択してください"
+                placeholder={copy.rolePlaceholder}
                 required={!disabled}
               />
             </FieldContent>
@@ -67,7 +73,7 @@ export const OperatorRoleForm = ({
         {disabled ? null : (
           <div className="mt-4 flex justify-end">
             <Button disabled={isPending} type="submit" variant="outline">
-              {isPending ? "保存中..." : "保存"}
+              {isPending ? copy.pendingLabel : copy.submitLabel}
             </Button>
           </div>
         )}

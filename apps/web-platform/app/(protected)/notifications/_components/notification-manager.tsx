@@ -18,6 +18,7 @@ import {
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { PaginationControls } from "#components/pagination-controls";
 
@@ -28,13 +29,37 @@ import {
 } from "./notification-read-actions";
 
 interface NotificationManagerProps {
+  copy: NotificationManagerCopy;
   listErrorMessage?: string;
   nextHref?: string;
+  nextLabel: ReactNode;
   notifications: NotificationItem[];
-  pageSize: number;
   previousHref?: string;
+  previousLabel: ReactNode;
   timeZone: string;
   unreadCount: number;
+}
+
+export interface NotificationManagerCopy {
+  actionColumn: ReactNode;
+  cardDescription: ReactNode;
+  cardTitle: ReactNode;
+  columnAt: ReactNode;
+  columnContent: ReactNode;
+  columnStatus: ReactNode;
+  emptyDescription: string;
+  emptyPageDescription: string;
+  emptyPageTitle: string;
+  emptyTitle: string;
+  listErrorTitle: string;
+  markAllRead: ReactNode;
+  markRead: ReactNode;
+  markReadPending: ReactNode;
+  markReadAriaLabel: (title: string) => string;
+  paginationAriaLabel: string;
+  perPage: ReactNode;
+  read: ReactNode;
+  unread: ReactNode;
 }
 
 const formatNotificationDateTime = (value: string, timeZone: string): string =>
@@ -56,11 +81,13 @@ const NotificationTitle = ({ item }: { item: NotificationItem }) => {
 };
 
 const NotificationListBody = ({
+  copy,
   hasPageLinks,
   listErrorMessage,
   notifications,
   timeZone,
 }: {
+  copy: NotificationManagerCopy;
   hasPageLinks: boolean;
   listErrorMessage?: string;
   notifications: NotificationItem[];
@@ -70,7 +97,7 @@ const NotificationListBody = ({
     return (
       <SectionError
         description={listErrorMessage}
-        title="通知一覧を表示できませんでした"
+        title={copy.listErrorTitle}
       />
     );
   }
@@ -78,14 +105,11 @@ const NotificationListBody = ({
   if (notifications.length === 0) {
     return hasPageLinks ? (
       <EmptyState
-        description="表示中に他の操作で削除された可能性があります。前後のページへ移動してください。"
-        title="このページに表示できる通知はありません。"
+        description={copy.emptyPageDescription}
+        title={copy.emptyPageTitle}
       />
     ) : (
-      <EmptyState
-        description="予約公開の失敗など、運営者向けの業務イベントが起きると、ここに自分宛の通知が届きます。"
-        title="通知はまだありません。"
-      />
+      <EmptyState description={copy.emptyDescription} title={copy.emptyTitle} />
     );
   }
 
@@ -93,11 +117,11 @@ const NotificationListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-24">状態</TableHead>
-          <TableHead className="w-44">日時</TableHead>
-          <TableHead>内容</TableHead>
+          <TableHead className="w-24">{copy.columnStatus}</TableHead>
+          <TableHead className="w-44">{copy.columnAt}</TableHead>
+          <TableHead>{copy.columnContent}</TableHead>
           <TableHead className="w-36">
-            <span className="sr-only">操作</span>
+            <span className="sr-only">{copy.actionColumn}</span>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -106,9 +130,9 @@ const NotificationListBody = ({
           <TableRow key={item.id}>
             <TableCell>
               {item.isRead ? (
-                <StatusChip status="muted">既読</StatusChip>
+                <StatusChip status="muted">{copy.read}</StatusChip>
               ) : (
-                <StatusChip status="info">未読</StatusChip>
+                <StatusChip status="info">{copy.unread}</StatusChip>
               )}
             </TableCell>
             <TableCell>
@@ -125,8 +149,10 @@ const NotificationListBody = ({
             <TableCell>
               {item.isRead ? null : (
                 <MarkNotificationAsReadButton
-                  label={item.title}
+                  ariaLabel={copy.markReadAriaLabel(item.title)}
+                  idleLabel={copy.markRead}
                   notificationId={item.id}
+                  pendingLabel={copy.markReadPending}
                 />
               )}
             </TableCell>
@@ -138,11 +164,13 @@ const NotificationListBody = ({
 };
 
 export const NotificationManager = ({
+  copy,
   listErrorMessage,
   nextHref,
+  nextLabel,
   notifications,
-  pageSize,
   previousHref,
+  previousLabel,
   timeZone,
   unreadCount,
 }: NotificationManagerProps) => {
@@ -156,18 +184,20 @@ export const NotificationManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>通知一覧</CardTitle>
-          <CardDescription>
-            自分宛の業務イベントです。テナント詳細へ遷移できます。
-          </CardDescription>
+          <CardTitle>{copy.cardTitle}</CardTitle>
+          <CardDescription>{copy.cardDescription}</CardDescription>
         </div>
         {hasUnread && !listErrorMessage ? (
-          <MarkAllNotificationsAsReadButton />
+          <MarkAllNotificationsAsReadButton
+            idleLabel={copy.markAllRead}
+            pendingLabel={copy.markReadPending}
+          />
         ) : null}
       </CardHeader>
 
       <CardContent className="grid gap-4">
         <NotificationListBody
+          copy={copy}
           hasPageLinks={hasPageLinks}
           listErrorMessage={listErrorMessage}
           notifications={notifications}
@@ -176,13 +206,13 @@ export const NotificationManager = ({
 
         {showPagination ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              {`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
-            </p>
+            <p className="text-sm text-muted-foreground">{copy.perPage}</p>
             <PaginationControls
-              ariaLabel="通知一覧のページ送り"
+              ariaLabel={copy.paginationAriaLabel}
               nextHref={nextHref}
+              nextLabel={nextLabel}
               previousHref={previousHref}
+              previousLabel={previousLabel}
             />
           </div>
         ) : null}

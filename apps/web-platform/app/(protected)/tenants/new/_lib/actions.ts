@@ -3,6 +3,7 @@
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { getMessage } from "@publira/utils/i18n";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -12,20 +13,30 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 import { createPlatformTenant } from "#lib/tenants";
 
-const createTenantFormSchema = z.object({
-  adminDomain: optionalTrimmedString(),
-  domain: requiredTrimmedString("テナント名とドメインは必須です。"),
-  initialAdminEmails: commaOrNewlineStringListFormSchema,
-  name: requiredTrimmedString("テナント名とドメインは必須です。"),
-});
+const createTenantFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    adminDomain: optionalTrimmedString(),
+    domain: requiredTrimmedString(
+      getMessage(messages, "platform.tenants.domain_required")
+    ),
+    initialAdminEmails: commaOrNewlineStringListFormSchema,
+    name: requiredTrimmedString(
+      getMessage(messages, "platform.tenants.name_required")
+    ),
+  });
 
 export const createTenantAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = createTenantFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = createTenantFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       adminDomain: { kind: "value", name: "tenant_admin_domain" },
       domain: { kind: "value", name: "tenant_domain" },
@@ -35,13 +46,13 @@ export const createTenantAction = async (
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
 
   const result = await withPlatformSessionReauth(() =>
-    createPlatformTenant(parsed.data)
+    createPlatformTenant({ ...parsed.data, locale })
   );
 
   if (!result.ok) {

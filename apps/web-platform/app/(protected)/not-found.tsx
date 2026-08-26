@@ -1,6 +1,9 @@
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -56,15 +59,22 @@ const NotFound = () => (
     <PlatformPageHeader>
       <PlatformPageHeading>
         <PlatformPageEyebrow>404 Not Found</PlatformPageEyebrow>
-        <PlatformPageTitle>ページが見つかりません</PlatformPageTitle>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-56" />}>
+            <Message message="platform.not_found.title" />
+          </Suspense>
+        </PlatformPageTitle>
         <PlatformPageDescription>
-          お探しの項目は削除されたか、URL
-          が変更された可能性があります。一覧から選び直してください。
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.not_found.description" />
+          </Suspense>
         </PlatformPageDescription>
       </PlatformPageHeading>
       <PlatformPageActions>
         <LinkButton render={<Link href="/" />} variant="outline">
-          ダッシュボードへ戻る
+          <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+            <Message message="platform.common.back_to_dashboard" />
+          </Suspense>
         </LinkButton>
       </PlatformPageActions>
     </PlatformPageHeader>

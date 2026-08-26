@@ -3,7 +3,7 @@
 import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { LOCALES } from "@publira/utils/i18n";
+import { getMessage, LOCALES } from "@publira/utils/i18n";
 import type { Locale } from "@publira/utils/i18n";
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
@@ -56,31 +56,43 @@ export type PlatformDefaultLocaleActionState =
   | { message: string; ok: false }
   | null;
 
+const loadActionCatalog = async () => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { locale, messages };
+};
+
 /**
  * The Go server validates against the IANA tzdata it embeds
  * (`server/internal/tenanttz`) and stays the authority; this only gives the
  * operator immediate feedback instead of a round trip.
  */
-const platformDefaultTimezoneSchema = z.object({
-  defaultTimezone: z
-    .string({ error: "タイムゾーンを選択してください。" })
-    .trim()
-    .min(1, "タイムゾーンを選択してください。")
-    .refine(isValidTimeZone, {
-      error: "有効なタイムゾーンを選択してください。",
-    }),
-});
+const platformDefaultTimezoneSchema = (messages: PlatformMessages) => {
+  const required = getMessage(messages, "platform.settings.timezone_required");
+
+  return z.object({
+    defaultTimezone: z
+      .string({ error: required })
+      .trim()
+      .min(1, required)
+      .refine(isValidTimeZone, {
+        error: getMessage(messages, "platform.settings.timezone_invalid"),
+      }),
+  });
+};
 
 /**
  * The Go server validates against the supported locale list
  * (`server/internal/locale`) and stays the authority; this only gives the
  * operator immediate feedback instead of a round trip.
  */
-const platformDefaultLocaleSchema = z.object({
-  defaultLocale: z.enum(LOCALES, {
-    error: "言語を選択してください。",
-  }),
-});
+const platformDefaultLocaleSchema = (messages: PlatformMessages) =>
+  z.object({
+    defaultLocale: z.enum(LOCALES, {
+      error: getMessage(messages, "platform.settings.locale_required"),
+    }),
+  });
 
 const secretUpdateModeFormSchema = z.preprocess((value) => {
   const raw = typeof value === "string" ? value.trim() : "";
@@ -96,30 +108,35 @@ const recipientTypeFormSchema = z.preprocess((value) => {
     : TEST_EMAIL_RECIPIENT_TYPE_SELF;
 }, z.number());
 
-const smtpFormSchema = z.object({
-  encryption: z.preprocess(
-    (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
-    z.enum(["none", "starttls", "tls"], {
-      error: "暗号化方式を選択してください。",
-    })
-  ),
-  fromAddress: optionalTrimmedString(),
-  host: optionalTrimmedString(),
-  password: z.preprocess(
-    (value) => (typeof value === "string" ? value : ""),
-    z.string()
-  ),
-  passwordUpdateMode: secretUpdateModeFormSchema,
-  port: intFormSchema("ポートは 1〜65535 の整数で入力してください。", {
-    fallback: 587,
-    max: 65_535,
-    min: 1,
-  }),
-  recipientEmail: optionalTrimmedString(),
-  recipientType: recipientTypeFormSchema,
-  replyTo: optionalTrimmedString(),
-  username: optionalTrimmedString(),
-});
+const smtpFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    encryption: z.preprocess(
+      (value) =>
+        typeof value === "string" ? value.trim().toLowerCase() : value,
+      z.enum(["none", "starttls", "tls"], {
+        error: getMessage(messages, "platform.settings.encryption_required"),
+      })
+    ),
+    fromAddress: optionalTrimmedString(),
+    host: optionalTrimmedString(),
+    password: z.preprocess(
+      (value) => (typeof value === "string" ? value : ""),
+      z.string()
+    ),
+    passwordUpdateMode: secretUpdateModeFormSchema,
+    port: intFormSchema(
+      getMessage(messages, "platform.settings.port_invalid"),
+      {
+        fallback: 587,
+        max: 65_535,
+        min: 1,
+      }
+    ),
+    recipientEmail: optionalTrimmedString(),
+    recipientType: recipientTypeFormSchema,
+    replyTo: optionalTrimmedString(),
+    username: optionalTrimmedString(),
+  });
 
 const smtpFormFields = {
   encryption: "value",
@@ -145,11 +162,13 @@ export const updatePlatformEmailSettingsAction = async (
   _prevState: PlatformEmailSettingsFormState,
   formData: FormData
 ): Promise<PlatformEmailSettingsFormState> => {
-  const parsed = smtpFormSchema.safeParse(
+  const { locale, messages } = await loadActionCatalog();
+
+  const parsed = smtpFormSchema(messages).safeParse(
     toFormDataInput(formData, smtpFormFields)
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
@@ -157,6 +176,7 @@ export const updatePlatformEmailSettingsAction = async (
       encryption: parsed.data.encryption,
       fromAddress: parsed.data.fromAddress,
       host: parsed.data.host,
+      locale,
       password: parsed.data.password,
       passwordUpdateMode: parsed.data.passwordUpdateMode,
       port: parsed.data.port,
@@ -171,7 +191,7 @@ export const updatePlatformEmailSettingsAction = async (
 
   revalidatePath("/settings/email");
   return {
-    message: "メール設定を保存しました。",
+    message: getMessage(messages, "platform.settings.smtp_saved"),
     ok: true,
     settings: result.settings,
   };
@@ -181,18 +201,20 @@ export const updatePlatformDefaultTimezoneAction = async (
   _prevState: PlatformDefaultTimezoneActionState,
   formData: FormData
 ): Promise<PlatformDefaultTimezoneActionState> => {
-  const parsed = platformDefaultTimezoneSchema.safeParse(
+  const { locale, messages } = await loadActionCatalog();
+
+  const parsed = platformDefaultTimezoneSchema(messages).safeParse(
     toFormDataInput(formData, {
       defaultTimezone: { kind: "value", name: "default_timezone" },
     })
   );
   if (!parsed.success) {
     // One control, so the field message is the form message.
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
-    updatePlatformDefaultTimezone(parsed.data.defaultTimezone)
+    updatePlatformDefaultTimezone(parsed.data.defaultTimezone, locale)
   );
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -205,7 +227,7 @@ export const updatePlatformDefaultTimezoneAction = async (
 
   return {
     defaultTimezone: result.defaultTimezone,
-    message: "既定タイムゾーンを保存しました。",
+    message: getMessage(messages, "platform.settings.default_timezone_saved"),
     ok: true,
   };
 };
@@ -214,18 +236,20 @@ export const updatePlatformDefaultLocaleAction = async (
   _prevState: PlatformDefaultLocaleActionState,
   formData: FormData
 ): Promise<PlatformDefaultLocaleActionState> => {
-  const parsed = platformDefaultLocaleSchema.safeParse(
+  const { locale, messages } = await loadActionCatalog();
+
+  const parsed = platformDefaultLocaleSchema(messages).safeParse(
     toFormDataInput(formData, {
       defaultLocale: { kind: "value", name: "default_locale" },
     })
   );
   if (!parsed.success) {
     // One control, so the field message is the form message.
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
-    updatePlatformDefaultLocale(parsed.data.defaultLocale)
+    updatePlatformDefaultLocale(parsed.data.defaultLocale, locale)
   );
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -238,7 +262,7 @@ export const updatePlatformDefaultLocaleAction = async (
 
   return {
     defaultLocale: result.defaultLocale,
-    message: "既定言語を保存しました。",
+    message: getMessage(messages, "platform.settings.default_locale_saved"),
     ok: true,
   };
 };
@@ -247,11 +271,13 @@ export const sendPlatformSmtpTestEmailAction = async (
   _prevState: PlatformSmtpTestFormState,
   formData: FormData
 ): Promise<PlatformSmtpTestFormState> => {
-  const parsed = smtpFormSchema.safeParse(
+  const { locale, messages } = await loadActionCatalog();
+
+  const parsed = smtpFormSchema(messages).safeParse(
     toFormDataInput(formData, smtpFormFields)
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error), ok: false };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withPlatformSessionReauth(() =>
@@ -259,6 +285,7 @@ export const sendPlatformSmtpTestEmailAction = async (
       encryption: parsed.data.encryption,
       fromAddress: parsed.data.fromAddress,
       host: parsed.data.host,
+      locale,
       password: parsed.data.password,
       passwordUpdateMode: parsed.data.passwordUpdateMode,
       port: parsed.data.port,
@@ -274,7 +301,9 @@ export const sendPlatformSmtpTestEmailAction = async (
   }
 
   return {
-    message: `接続テストメールを送信しました（送信先: ${result.recipientEmail}）。`,
+    message: getMessage(messages, "platform.settings.smtp_test_success", {
+      email: result.recipientEmail,
+    }),
     ok: true,
     recipientEmail: result.recipientEmail,
   };
@@ -284,8 +313,7 @@ export const requestPlatformEmailChangeAction = async (
   _prevState: PlatformEmailChangeActionState,
   formData: FormData
 ): Promise<PlatformEmailChangeActionState> => {
-  const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const { locale, messages } = await loadActionCatalog();
 
   const parsed = emailChangeFormSchema(messages).safeParse(
     toFormDataInput(formData, {
@@ -302,7 +330,8 @@ export const requestPlatformEmailChangeAction = async (
     requestPlatformEmailChange(
       parsed.data.currentEmail,
       parsed.data.newEmail,
-      parsed.data.currentPassword
+      parsed.data.currentPassword,
+      locale
     )
   );
 
@@ -311,8 +340,7 @@ export const requestPlatformEmailChangeAction = async (
   }
 
   return {
-    message:
-      "現在のメールアドレスと新しいメールアドレスの両方に確認メールを送信しました。両方のリンクを開いて変更を完了してください。",
+    message: getMessage(messages, "platform.settings.email_change_success"),
     ok: true,
   };
 };

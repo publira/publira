@@ -21,7 +21,6 @@ vi.mock("./notification-read-actions", () => ({
     notificationId,
   }: {
     notificationId: string;
-    label: string;
   }) => <button type="button">既読にする {notificationId}</button>,
 }));
 
@@ -39,6 +38,30 @@ const notification = (
   ...overrides,
 });
 
+const copy = {
+  actionColumn: "操作",
+  cardDescription: "自分宛の業務イベントです。テナント詳細へ遷移できます。",
+  cardTitle: "通知一覧",
+  columnAt: "日時",
+  columnContent: "内容",
+  columnStatus: "状態",
+  emptyDescription:
+    "予約公開の失敗など、運営者向けの業務イベントが起きると、ここに自分宛の通知が届きます。",
+  emptyPageDescription:
+    "表示中に他の操作で削除された可能性があります。前後のページへ移動してください。",
+  emptyPageTitle: "このページに表示できる通知はありません。",
+  emptyTitle: "通知はまだありません。",
+  listErrorTitle: "通知一覧を表示できませんでした",
+  markAllRead: "すべて既読にする",
+  markRead: "既読にする",
+  markReadAriaLabel: (title: string) => `${title}を既読にする`,
+  markReadPending: "更新中…",
+  paginationAriaLabel: "通知一覧のページ送り",
+  perPage: "新しい順に、1ページあたり 20 件まで表示します。",
+  read: "既読",
+  unread: "未読",
+};
+
 afterEach(() => {
   cleanup();
 });
@@ -47,8 +70,10 @@ describe("NotificationManager", () => {
   it("最初のページが空なら未着として案内する", () => {
     render(
       <NotificationManager
+        copy={copy}
         notifications={[]}
-        pageSize={20}
+        nextLabel="次へ"
+        previousLabel="前へ"
         timeZone="Asia/Tokyo"
         unreadCount={0}
       />
@@ -62,9 +87,11 @@ describe("NotificationManager", () => {
   it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
     render(
       <NotificationManager
+        copy={copy}
         notifications={[]}
-        pageSize={20}
+        nextLabel="次へ"
         previousHref="/notifications?token=previous"
+        previousLabel="前へ"
         timeZone="Asia/Tokyo"
         unreadCount={0}
       />
@@ -80,7 +107,9 @@ describe("NotificationManager", () => {
   it("未読行とリンク、既読ボタンを描画する", () => {
     render(
       <NotificationManager
+        copy={copy}
         nextHref="/notifications?token=next"
+        nextLabel="次へ"
         notifications={[
           notification("n1"),
           notification("n2", {
@@ -90,8 +119,8 @@ describe("NotificationManager", () => {
             title: "通知",
           }),
         ]}
-        pageSize={20}
         previousHref="/notifications?token=previous"
+        previousLabel="前へ"
         timeZone="Asia/Tokyo"
         unreadCount={1}
       />
@@ -118,11 +147,13 @@ describe("NotificationManager", () => {
   it("取得失敗時はエラーだけを出し、空一覧としては案内しない", () => {
     render(
       <NotificationManager
+        copy={copy}
         listErrorMessage="通知一覧を取得できませんでした。"
         nextHref="/notifications?token=next"
         notifications={[]}
-        pageSize={20}
+        nextLabel="次へ"
         previousHref="/notifications?token=previous"
+        previousLabel="前へ"
         timeZone="Asia/Tokyo"
         unreadCount={2}
       />
@@ -143,8 +174,10 @@ describe("NotificationManager", () => {
   it("作成日時をプラットフォーム既定タイムゾーンの壁時計で表示する", () => {
     render(
       <NotificationManager
+        copy={copy}
         notifications={[notification("n1")]}
-        pageSize={20}
+        nextLabel="次へ"
+        previousLabel="前へ"
         timeZone="America/Los_Angeles"
         unreadCount={1}
       />

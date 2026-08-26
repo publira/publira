@@ -41,13 +41,33 @@ import type {
   PlatformSmtpTestFormState,
 } from "../../_lib/actions";
 
-const encryptionOptions = [
-  { label: "TLS", value: "tls" },
-  { label: "STARTTLS", value: "starttls" },
-  { label: "なし", value: "none" },
-] as const;
+export interface EmailSettingsFormCopy {
+  cardDescription: string;
+  cardTitle: string;
+  encryptionLabel: string;
+  encryptionNone: string;
+  fromAddress: string;
+  host: string;
+  password: string;
+  passwordChange: string;
+  passwordUndo: string;
+  port: string;
+  replyTo: string;
+  save: string;
+  saving: string;
+  test: string;
+  testClose: string;
+  testCustom: string;
+  testDescription: string;
+  testPending: string;
+  testSelf: string;
+  testSubmit: string;
+  testTitle: string;
+  username: string;
+}
 
 interface EmailSettingsFormProps {
+  copy: EmailSettingsFormCopy;
   initialSettings: PlatformSmtpSettings;
   loadErrorMessage?: string;
   saveAction: (
@@ -61,6 +81,7 @@ interface EmailSettingsFormProps {
 }
 
 export const EmailSettingsForm = ({
+  copy,
   initialSettings,
   loadErrorMessage,
   saveAction,
@@ -108,14 +129,17 @@ export const EmailSettingsForm = ({
     []
   );
 
+  const encryptionOptions = [
+    { label: "TLS", value: "tls" },
+    { label: "STARTTLS", value: "starttls" },
+    { label: copy.encryptionNone, value: "none" },
+  ];
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>メール設定</CardTitle>
-        <CardDescription>
-          プラットフォーム既定の SMTP
-          を管理します。接続テストは保存と分離して実行できます。
-        </CardDescription>
+        <CardTitle>{copy.cardTitle}</CardTitle>
+        <CardDescription>{copy.cardDescription}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -125,7 +149,7 @@ export const EmailSettingsForm = ({
         >
           <Field>
             <FieldLabel htmlFor="host" required>
-              ホスト
+              {copy.host}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -141,7 +165,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="port" required>
-              ポート
+              {copy.port}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -158,7 +182,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="username" required>
-              ユーザー名
+              {copy.username}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -173,7 +197,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="password" required={isPasswordEditing}>
-              パスワード
+              {copy.password}
             </FieldLabel>
             <FieldContent>
               {hasStoredPassword && !isPasswordEditing ? (
@@ -190,7 +214,7 @@ export const EmailSettingsForm = ({
                     type="button"
                     variant="outline"
                   >
-                    変更する
+                    {copy.passwordChange}
                   </Button>
                 </div>
               ) : (
@@ -209,7 +233,7 @@ export const EmailSettingsForm = ({
                       type="button"
                       variant="outline"
                     >
-                      変更を取り消す
+                      {copy.passwordUndo}
                     </Button>
                   ) : null}
                 </div>
@@ -229,7 +253,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="encryption" required>
-              暗号化方式
+              {copy.encryptionLabel}
             </FieldLabel>
             <FieldContent>
               <Select
@@ -244,7 +268,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="from_address" required>
-              送信者メールアドレス
+              {copy.fromAddress}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -259,9 +283,7 @@ export const EmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="reply_to">
-              返信先メールアドレス（任意）
-            </FieldLabel>
+            <FieldLabel htmlFor="reply_to">{copy.replyTo}</FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.replyTo}
@@ -288,7 +310,7 @@ export const EmailSettingsForm = ({
               <DialogTrigger
                 render={
                   <Button type="button" variant="outline">
-                    接続テスト
+                    {copy.test}
                   </Button>
                 }
               />
@@ -297,9 +319,9 @@ export const EmailSettingsForm = ({
                 <DialogViewport>
                   <DialogPopup>
                     <DialogHeader>
-                      <DialogTitle>SMTP 接続テスト</DialogTitle>
+                      <DialogTitle>{copy.testTitle}</DialogTitle>
                       <DialogDescription>
-                        現在のフォーム入力値でテストメールを送信します。
+                        {copy.testDescription}
                       </DialogDescription>
                     </DialogHeader>
 
@@ -310,7 +332,7 @@ export const EmailSettingsForm = ({
                           onChange={handleSendToSelfChange}
                           type="checkbox"
                         />
-                        自分に送信する
+                        {copy.testSelf}
                       </label>
                       <input
                         form={formId}
@@ -326,7 +348,7 @@ export const EmailSettingsForm = ({
                       {sendToSelf ? null : (
                         <Field>
                           <FieldLabel htmlFor="recipient_email" required>
-                            送信先メールアドレス
+                            {copy.testCustom}
                           </FieldLabel>
                           <FieldContent>
                             <Input
@@ -354,7 +376,7 @@ export const EmailSettingsForm = ({
                       <DialogClose
                         render={
                           <Button type="button" variant="outline">
-                            閉じる
+                            {copy.testClose}
                           </Button>
                         }
                       />
@@ -365,7 +387,7 @@ export const EmailSettingsForm = ({
                         type="submit"
                         variant="outline"
                       >
-                        {isTesting ? "送信中..." : "テストを実行"}
+                        {isTesting ? copy.testPending : copy.testSubmit}
                       </Button>
                     </DialogFooter>
                   </DialogPopup>
@@ -374,7 +396,7 @@ export const EmailSettingsForm = ({
             </Dialog>
 
             <Button disabled={isSaving} type="submit">
-              {isSaving ? "保存中..." : "保存"}
+              {isSaving ? copy.saving : copy.save}
             </Button>
           </div>
         </form>

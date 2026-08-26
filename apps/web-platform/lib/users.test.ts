@@ -59,7 +59,9 @@ describe("listPlatformEndUsers", () => {
       ],
     });
 
-    await expect(listPlatformEndUsers({ limit: 20 })).resolves.toEqual({
+    await expect(
+      listPlatformEndUsers({ limit: 20, locale: "ja" })
+    ).resolves.toEqual({
       nextToken: "",
       ok: true,
       previousToken: "",
@@ -110,6 +112,7 @@ describe("listPlatformEndUsers", () => {
     await expect(
       listPlatformEndUsers({
         limit: 20,
+        locale: "ja",
         tenantId: "tenant_a",
       })
     ).resolves.toEqual({
@@ -161,7 +164,7 @@ describe("listPlatformEndUsers", () => {
     });
 
     await expect(
-      listPlatformEndUsers({ limit: 10, token: "page-2" })
+      listPlatformEndUsers({ limit: 10, locale: "ja", token: "page-2" })
     ).resolves.toMatchObject({
       ok: true,
       users: [{ publicId: "USER000002" }],
@@ -189,7 +192,9 @@ describe("searchPlatformTenantFilterOptions", () => {
   });
 
   it("空の検索語では RPC を呼ばない", async () => {
-    await expect(searchPlatformTenantFilterOptions("   ")).resolves.toEqual({
+    await expect(
+      searchPlatformTenantFilterOptions("   ", "ja")
+    ).resolves.toEqual({
       hasMore: false,
       ok: true,
       tenants: [],
@@ -208,7 +213,9 @@ describe("searchPlatformTenantFilterOptions", () => {
       ],
     });
 
-    await expect(searchPlatformTenantFilterOptions("Tenant")).resolves.toEqual({
+    await expect(
+      searchPlatformTenantFilterOptions("Tenant", "ja")
+    ).resolves.toEqual({
       hasMore: true,
       ok: true,
       tenants: [
@@ -244,7 +251,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     });
 
     await expect(
-      searchPlatformTenantFilterOptions("abcdefghijkl")
+      searchPlatformTenantFilterOptions("abcdefghijkl", "ja")
     ).resolves.toEqual({
       hasMore: false,
       ok: true,
@@ -271,7 +278,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     );
 
     await expect(
-      searchPlatformTenantFilterOptions("abcdefghijkl")
+      searchPlatformTenantFilterOptions("abcdefghijkl", "ja")
     ).resolves.toEqual({
       hasMore: false,
       ok: true,
@@ -289,7 +296,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     );
 
     await expect(
-      searchPlatformTenantFilterOptions("abcdefghijkl")
+      searchPlatformTenantFilterOptions("abcdefghijkl", "ja")
     ).resolves.toEqual({
       hasMore: false,
       ok: true,
@@ -300,7 +307,9 @@ describe("searchPlatformTenantFilterOptions", () => {
   it("セッションがなければ RPC を呼ばずエラーを返す", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
-    await expect(searchPlatformTenantFilterOptions("Tenant")).resolves.toEqual({
+    await expect(
+      searchPlatformTenantFilterOptions("Tenant", "ja")
+    ).resolves.toEqual({
       hasMore: false,
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
@@ -312,12 +321,28 @@ describe("searchPlatformTenantFilterOptions", () => {
     expect(mockGetTenant).not.toHaveBeenCalled();
   });
 
+  it("locale=en では英語のセッションエラーを返す", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(
+      searchPlatformTenantFilterOptions("Tenant", "en")
+    ).resolves.toEqual({
+      hasMore: false,
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
+      requiresSignIn: true,
+      tenants: [],
+    });
+  });
+
   it("ListTenants が拒否されたら候補を返さない", async () => {
     mockListTenants.mockRejectedValueOnce(
       new ConnectError("permission denied", Code.PermissionDenied)
     );
 
-    await expect(searchPlatformTenantFilterOptions("Tenant")).resolves.toEqual({
+    await expect(
+      searchPlatformTenantFilterOptions("Tenant", "ja")
+    ).resolves.toEqual({
       hasMore: false,
       message: "この操作を行う権限がありません。",
       ok: false,
@@ -336,7 +361,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     );
 
     await expect(
-      searchPlatformTenantFilterOptions("abcdefghijkl")
+      searchPlatformTenantFilterOptions("abcdefghijkl", "ja")
     ).resolves.toEqual({
       hasMore: false,
       message:
@@ -357,7 +382,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     );
 
     await expect(
-      searchPlatformTenantFilterOptions("abcdefghijkl")
+      searchPlatformTenantFilterOptions("abcdefghijkl", "ja")
     ).rejects.toMatchObject({ code: Code.Internal });
   });
 });

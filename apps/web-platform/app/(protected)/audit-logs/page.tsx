@@ -10,6 +10,7 @@ import {
 import { Input } from "@publira/ui-components/input";
 import { SectionError } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -19,11 +20,14 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
 import {
   PlatformPage,
@@ -35,7 +39,10 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { auditActionOptions, getAuditActionLabel } from "#lib/audit-log-labels";
+import {
+  getAuditActionLabel,
+  getAuditActionOptions,
+} from "#lib/audit-log-labels";
 import { listPlatformAuditLogs } from "#lib/audit-logs";
 import type {
   ListPlatformAuditLogsResult,
@@ -43,6 +50,8 @@ import type {
 } from "#lib/audit-logs";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { DEFAULT_LIST_PAGE_SIZE } from "#lib/list-pagination";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 import { getOperatorRoleLabel } from "#lib/operator-labels";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantRoleLabel } from "#lib/tenant-labels";
@@ -53,13 +62,15 @@ import {
   toAllowedActionValues,
 } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "監査ログ",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.audit.title") };
 };
 
 type AuditLogsPageProps = PageProps<"/audit-logs">;
 
-const allowedActionValues = toAllowedActionValues(auditActionOptions);
 const pageSize = DEFAULT_LIST_PAGE_SIZE;
 
 const AuditLogsSkeleton = () => (
@@ -122,29 +133,35 @@ const isUserTargetType = (targetType: string): boolean => targetType === "user";
 const isTenantTargetType = (targetType: string): boolean =>
   targetType === "tenant";
 
-const buildEmptyMessage = (hasFilter: boolean): string =>
+const buildEmptyMessage = (
+  hasFilter: boolean,
+  messages: PlatformMessages
+): string =>
   hasFilter
-    ? "条件に一致する監査ログが見つかりませんでした。"
-    : "監査ログはまだ記録されていません。";
+    ? getMessage(messages, "platform.audit.empty_filtered")
+    : getMessage(messages, "platform.audit.empty");
 
-const getActorRoleLabel = (role: string): string => {
+const getActorRoleLabel = (
+  role: string,
+  messages: PlatformMessages
+): string => {
   if (!role) {
-    return "未設定";
+    return getMessage(messages, "platform.audit.unset");
   }
 
-  const operatorLabel = getOperatorRoleLabel(role);
+  const operatorLabel = getOperatorRoleLabel(role, messages);
   if (operatorLabel !== role) {
     return operatorLabel;
   }
 
-  const tenantLabel = getTenantRoleLabel(role);
+  const tenantLabel = getTenantRoleLabel(role, messages);
   if (tenantLabel !== role) {
     return tenantLabel;
   }
 
   switch (role) {
     case "platform_owner": {
-      return "プラットフォーム管理者";
+      return getMessage(messages, "platform.audit.actor_platform");
     }
     default: {
       return role;
@@ -152,23 +169,35 @@ const getActorRoleLabel = (role: string): string => {
   }
 };
 
-const getSummaryText = (result: ListPlatformAuditLogsResult): string => {
+const getSummaryText = (
+  result: ListPlatformAuditLogsResult,
+  messages: PlatformMessages
+): string => {
   if (!result.ok) {
     return "-";
   }
-  if (result.auditLogs.length === 0) {
-    return "0件を表示";
-  }
-  return `${result.auditLogs.length}件を表示`;
+  return getMessage(messages, "platform.audit.showing", {
+    count: result.auditLogs.length,
+  });
 };
 
 const AuditLogsFilters = ({
   actionFilter,
+  actionItems,
   actorFilter,
+  actorPlaceholder,
+  allEventsPlaceholder,
+  clearLabel,
+  filterLabel,
   hasFilter,
 }: {
   actionFilter: string;
+  actionItems: { label: string; value: string }[];
   actorFilter: string;
+  actorPlaceholder: string;
+  allEventsPlaceholder: string;
+  clearLabel: string;
+  filterLabel: string;
   hasFilter: boolean;
 }) => (
   <Form
@@ -180,43 +209,51 @@ const AuditLogsFilters = ({
       className="w-48"
       defaultValue={actorFilter}
       name="actor_user_public_id"
-      placeholder="操作者公開IDで絞り込み"
+      placeholder={actorPlaceholder}
       type="search"
     />
     <Select
       className="w-56"
       defaultValue={actionFilter || undefined}
-      items={auditActionOptions}
+      items={actionItems}
       name="action"
-      placeholder="すべてのイベント"
+      placeholder={allEventsPlaceholder}
     />
-    <Button type="submit">絞り込む</Button>
+    <Button type="submit">{filterLabel}</Button>
     {hasFilter ? (
       <Link
         className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
         href="/audit-logs"
       >
-        クリア
+        {clearLabel}
       </Link>
     ) : null}
   </Form>
 );
 
 const AuditLogsPagination = ({
+  ariaLabel,
   nextHref,
+  nextLabel,
   previousHref,
+  previousLabel,
   summaryText,
 }: {
+  ariaLabel: string;
   nextHref?: string;
+  nextLabel: string;
   previousHref?: string;
+  previousLabel: string;
   summaryText: string;
 }) => (
   <div className="flex items-center justify-between gap-3">
     <p className="text-xs text-muted-foreground">{summaryText}</p>
     <PaginationControls
-      ariaLabel="監査ログ一覧のページ送り"
+      ariaLabel={ariaLabel}
       nextHref={nextHref}
+      nextLabel={nextLabel}
       previousHref={previousHref}
+      previousLabel={previousLabel}
     />
   </div>
 );
@@ -271,10 +308,14 @@ const renderAuditLogTarget = (log: PlatformAuditLogSummary) => {
 
 const AuditLogsTableBody = ({
   hasFilter,
+  locale,
+  messages,
   result,
   timeZone,
 }: {
   hasFilter: boolean;
+  locale: Locale;
+  messages: PlatformMessages;
   result: ListPlatformAuditLogsResult;
   timeZone: string;
 }) => {
@@ -287,7 +328,7 @@ const AuditLogsTableBody = ({
       <TableBody>
         <TableRow>
           <TableCell className="text-muted-foreground" colSpan={4}>
-            {buildEmptyMessage(hasFilter)}
+            {buildEmptyMessage(hasFilter, messages)}
           </TableCell>
         </TableRow>
       </TableBody>
@@ -301,7 +342,11 @@ const AuditLogsTableBody = ({
           key={`${log.createdAt}-${log.actorUserPublicId}-${log.action}-${log.targetType}-${log.targetId}`}
         >
           <TableCell>
-            {formatDateTime(log.createdAt, { fallback: "-", timeZone })}
+            {formatDateTime(log.createdAt, {
+              fallback: "-",
+              locale,
+              timeZone,
+            })}
           </TableCell>
           <TableCell>
             <div className="grid gap-1">
@@ -319,13 +364,17 @@ const AuditLogsTableBody = ({
                 {log.actorUserPublicId || "-"}
               </p>
               <p>
-                <Badge tone="info">{getActorRoleLabel(log.actorRole)}</Badge>
+                <Badge tone="info">
+                  {getActorRoleLabel(log.actorRole, messages)}
+                </Badge>
               </p>
             </div>
           </TableCell>
           <TableCell>
             <div className="grid gap-1">
-              <p className="font-medium">{getAuditActionLabel(log.action)}</p>
+              <p className="font-medium">
+                {getAuditActionLabel(log.action, messages)}
+              </p>
               <p className="font-mono text-xs text-muted-foreground">
                 {log.action || "-"}
               </p>
@@ -353,11 +402,17 @@ const AuditLogsTableBody = ({
 const AuditLogsContent = async ({
   searchParams,
 }: Pick<AuditLogsPageProps, "searchParams">) => {
+  const [search, locale] = await Promise.all([
+    searchParams,
+    getPlatformLocale(),
+  ]);
+  const messages = await loadPlatformMessages(locale);
+  const actionItems = getAuditActionOptions(messages, locale);
   const {
     action: actionFilter,
     actorUserPublicId: actorFilter,
     token,
-  } = parseAuditLogFilters(await searchParams, allowedActionValues);
+  } = parseAuditLogFilters(search, toAllowedActionValues(actionItems));
 
   const hasFilter = Boolean(actorFilter || actionFilter);
 
@@ -368,6 +423,7 @@ const AuditLogsContent = async ({
       action: actionFilter || undefined,
       actorUserPublicId: actorFilter || undefined,
       limit: pageSize,
+      locale,
       token: token || undefined,
     }),
     getPlatformDisplayTimeZone(),
@@ -385,49 +441,75 @@ const AuditLogsContent = async ({
   const nextHref = result.nextToken
     ? buildAuditLogsPath({ ...filterParams, token: result.nextToken })
     : undefined;
-  const summaryText = getSummaryText(result);
+  const summaryText = getSummaryText(result, messages);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>イベント一覧</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "platform.audit.card_title")}
+        </CardTitle>
         <CardDescription>
-          actor / action / target / timestamp を基準に監査イベントを確認します。
+          {getMessage(messages, "platform.audit.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         <AuditLogsFilters
           actionFilter={actionFilter}
+          actionItems={actionItems}
           actorFilter={actorFilter}
+          actorPlaceholder={getMessage(
+            messages,
+            "platform.audit.actor_filter_placeholder"
+          )}
+          allEventsPlaceholder={getMessage(
+            messages,
+            "platform.audit.all_events"
+          )}
+          clearLabel={getMessage(messages, "platform.common.clear")}
+          filterLabel={getMessage(messages, "platform.common.filter")}
           hasFilter={hasFilter}
         />
 
         {result.ok ? null : (
           <SectionError
             description={result.message}
-            title="監査ログを表示できませんでした"
+            title={getMessage(messages, "platform.audit.load_failed")}
           />
         )}
 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>時刻</TableHead>
-              <TableHead>実行者</TableHead>
-              <TableHead>操作</TableHead>
-              <TableHead>対象</TableHead>
+              <TableHead>
+                {getMessage(messages, "platform.audit.columns.at")}
+              </TableHead>
+              <TableHead>
+                {getMessage(messages, "platform.audit.columns.actor")}
+              </TableHead>
+              <TableHead>
+                {getMessage(messages, "platform.audit.columns.action")}
+              </TableHead>
+              <TableHead>
+                {getMessage(messages, "platform.audit.columns.target")}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <AuditLogsTableBody
             hasFilter={hasFilter}
+            locale={locale}
+            messages={messages}
             result={result}
             timeZone={timeZone}
           />
         </Table>
 
         <AuditLogsPagination
+          ariaLabel={getMessage(messages, "platform.audit.pagination_aria")}
           nextHref={nextHref}
+          nextLabel={getMessage(messages, "platform.common.next")}
           previousHref={previousHref}
+          previousLabel={getMessage(messages, "platform.common.previous")}
           summaryText={summaryText}
         />
       </CardContent>
@@ -440,14 +522,26 @@ const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
     <PlatformPageHeader>
       <PlatformPageHeading>
         <PlatformPageEyebrow>Platform Governance</PlatformPageEyebrow>
-        <PlatformPageTitle>監査ログ</PlatformPageTitle>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-24" />}>
+            <Message message="platform.audit.heading" />
+          </Suspense>
+        </PlatformPageTitle>
         <PlatformPageDescription>
-          重要操作を横断的に追跡し、対象リソースの詳細へ遷移できる監査ログ画面です。
+          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+            <Message message="platform.audit.page_description" />
+          </Suspense>
         </PlatformPageDescription>
       </PlatformPageHeading>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <SectionErrorBoundary title="監査ログを表示できませんでした">
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="platform.audit.load_failed" />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<AuditLogsSkeleton />}>
           <AuditLogsContent searchParams={searchParams} />
         </Suspense>

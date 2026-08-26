@@ -2,6 +2,8 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { PlatformOperator } from "@publira/api-client/platform/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 import { z } from "zod";
 
 import {
@@ -13,6 +15,7 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
+import { loadPlatformMessages } from "./locale";
 import { normalizePlatformRole } from "./roles";
 
 const getPlatformOperatorInputSchema = z.object({
@@ -30,11 +33,13 @@ export interface PlatformOperatorSummary {
 
 export interface ListPlatformOperatorsInput {
   limit?: number;
+  locale: Locale;
   token?: string;
 }
 
 export interface CreatePlatformOperatorInput {
   email: string;
+  locale: Locale;
   name: string;
   role: string;
 }
@@ -42,9 +47,6 @@ export interface CreatePlatformOperatorInput {
 export type CreatePlatformOperatorResult =
   | { ok: true; publicId?: string }
   | { ok: false; message: string };
-
-const genericErrorMessage =
-  "処理に失敗しました。時間をおいて再試行してください。";
 
 export type ListPlatformOperatorsResult =
   | {
@@ -93,8 +95,9 @@ export const listPlatformOperators = async (
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(input.locale);
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       operators: [],
@@ -123,10 +126,12 @@ export const listPlatformOperators = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(input.locale);
     return {
       message: rpcErrorMessage(
         error,
-        "オペレーター一覧の取得に失敗しました。時間をおいて再試行してください。"
+        getMessage(messages, "platform.operators.list_failed"),
+        { locale: input.locale }
       ),
       nextToken: "",
       ok: false,
@@ -142,8 +147,9 @@ export const createPlatformOperator = async (
 ): Promise<CreatePlatformOperatorResult> => {
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
+    const messages = await loadPlatformMessages(input.locale);
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -157,10 +163,18 @@ export const createPlatformOperator = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+    const messages = await loadPlatformMessages(input.locale);
     return {
-      message: rpcErrorMessage(error, genericErrorMessage, {
-        conflict: "このメールアドレスはすでに登録されています。",
-      }),
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "platform.common.generic_failed"),
+        {
+          locale: input.locale,
+          overrides: {
+            conflict: getMessage(messages, "platform.operators.email_taken"),
+          },
+        }
+      ),
       ok: false,
     };
   }
@@ -213,9 +227,14 @@ export const unsuspendPlatformOperator = async (
 };
 
 export const getPlatformOperator = async (
-  publicId: string
+  publicId: string,
+  locale: Locale
 ): Promise<PlatformOperatorSummary | null> => {
   "use cache: private";
+
+  // Locale is a cache-key argument so a later localized miss does not replay
+  // under the wrong language. This read currently returns null on a miss.
+  void locale;
 
   const parsed = getPlatformOperatorInputSchema.safeParse({ publicId });
   if (!parsed.success) {
@@ -244,6 +263,7 @@ export const getPlatformOperator = async (
 };
 
 export interface UpdatePlatformOperatorRoleInput {
+  locale: Locale;
   publicId: string;
   role: string;
 }
@@ -257,8 +277,9 @@ export const updatePlatformOperatorRole = async (
 ): Promise<UpdatePlatformOperatorRoleResult> => {
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
+    const messages = await loadPlatformMessages(input.locale);
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -272,7 +293,15 @@ export const updatePlatformOperatorRole = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    return { message: rpcErrorMessage(error, genericErrorMessage), ok: false };
+    const messages = await loadPlatformMessages(input.locale);
+    return {
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "platform.common.generic_failed"),
+        { locale: input.locale }
+      ),
+      ok: false,
+    };
   }
 };
 

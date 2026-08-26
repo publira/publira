@@ -3,6 +3,7 @@
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
+import type { ReactNode } from "react";
 
 import {
   markAllNotificationsAsReadAction,
@@ -10,11 +11,15 @@ import {
 } from "../_lib/actions";
 
 export const MarkNotificationAsReadButton = ({
-  label,
+  ariaLabel,
+  idleLabel,
   notificationId,
+  pendingLabel,
 }: {
-  label: string;
+  ariaLabel: string;
+  idleLabel: ReactNode;
   notificationId: string;
+  pendingLabel: ReactNode;
 }) => {
   const [state, formAction, isPending] = useActionState(
     markNotificationAsReadAction,
@@ -25,13 +30,13 @@ export const MarkNotificationAsReadButton = ({
     <form action={formAction} className="grid justify-items-end gap-1">
       <input name="notification_id" type="hidden" value={notificationId} />
       <Button
-        aria-label={`${label}を既読にする`}
+        aria-label={ariaLabel}
         disabled={isPending}
         size="sm"
         type="submit"
         variant="outline"
       >
-        {isPending ? "更新中…" : "既読にする"}
+        {isPending ? pendingLabel : idleLabel}
       </Button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
@@ -40,7 +45,13 @@ export const MarkNotificationAsReadButton = ({
   );
 };
 
-export const MarkAllNotificationsAsReadButton = () => {
+export const MarkAllNotificationsAsReadButton = ({
+  idleLabel,
+  pendingLabel,
+}: {
+  idleLabel: ReactNode;
+  pendingLabel: ReactNode;
+}) => {
   const [state, formAction, isPending] = useActionState(
     markAllNotificationsAsReadAction,
     null
@@ -49,7 +60,7 @@ export const MarkAllNotificationsAsReadButton = () => {
   return (
     <form action={formAction} className="grid justify-items-end gap-1">
       <Button disabled={isPending} size="sm" type="submit" variant="outline">
-        {isPending ? "更新中…" : "すべて既読にする"}
+        {isPending ? pendingLabel : idleLabel}
       </Button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

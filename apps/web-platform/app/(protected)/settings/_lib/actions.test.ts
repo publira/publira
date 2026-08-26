@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockGetPlatformLocale,
   mockResolveAccessToken,
   mockUpdatePlatformDefaultLocale,
   mockUpdatePlatformDefaultTimezone,
   mockUpdateTag,
 } = vi.hoisted(() => ({
+  mockGetPlatformLocale: vi.fn(),
   mockResolveAccessToken: vi.fn(),
   mockUpdatePlatformDefaultLocale: vi.fn(),
   mockUpdatePlatformDefaultTimezone: vi.fn(),
@@ -29,6 +31,14 @@ vi.mock("#lib/email-settings", () => ({
   sendPlatformSmtpTestEmail: vi.fn(),
   updatePlatformEmailSettings: vi.fn(),
 }));
+
+vi.mock("#lib/locale", async (importOriginal) => {
+  const actual = (await importOriginal()) as object;
+  return {
+    ...actual,
+    getPlatformLocale: mockGetPlatformLocale,
+  };
+});
 
 vi.mock("#lib/platform-settings", () => ({
   platformSettingsCacheTag: "platform:settings",
@@ -55,6 +65,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     // `withPlatformSessionReauth` resolves the session before the mutation
     // runs; without a token every Action under test would redirect to /login.
     mockResolveAccessToken.mockResolvedValue("session-token");
+    mockGetPlatformLocale.mockResolvedValue("ja");
   });
 
   it("有効な IANA 名を保存し、キャッシュタグを更新する", async () => {
@@ -76,7 +87,8 @@ describe("updatePlatformDefaultTimezoneAction", () => {
       ok: true,
     });
     expect(mockUpdatePlatformDefaultTimezone).toHaveBeenCalledWith(
-      "America/Los_Angeles"
+      "America/Los_Angeles",
+      "ja"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:settings");
   });
@@ -100,7 +112,8 @@ describe("updatePlatformDefaultTimezoneAction", () => {
       ok: true,
     });
     expect(mockUpdatePlatformDefaultTimezone).toHaveBeenCalledWith(
-      "Asia/Calcutta"
+      "Asia/Calcutta",
+      "ja"
     );
   });
 
@@ -150,6 +163,27 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     expect(mockUpdatePlatformDefaultTimezone).not.toHaveBeenCalled();
   });
 
+  it("英語ロケールでは英語の成功メッセージを返す", async () => {
+    mockGetPlatformLocale.mockResolvedValue("en");
+    mockUpdatePlatformDefaultTimezone.mockResolvedValueOnce({
+      defaultTimezone: "Europe/Paris",
+      ok: true,
+    });
+
+    const { updatePlatformDefaultTimezoneAction } = await import("./actions");
+
+    const result = await updatePlatformDefaultTimezoneAction(
+      null,
+      timezoneFormData("Europe/Paris")
+    );
+
+    expect(result).toEqual({
+      defaultTimezone: "Europe/Paris",
+      message: "Default time zone saved.",
+      ok: true,
+    });
+  });
+
   it("保存に失敗した場合はキャッシュタグを更新しない", async () => {
     mockUpdatePlatformDefaultTimezone.mockResolvedValueOnce({
       message: "default_timezone must be a valid IANA time zone name",
@@ -176,6 +210,7 @@ describe("updatePlatformDefaultLocaleAction", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockResolveAccessToken.mockResolvedValue("session-token");
+    mockGetPlatformLocale.mockResolvedValue("ja");
   });
 
   it("対応するロケールを保存し、キャッシュタグを更新する", async () => {
@@ -196,7 +231,7 @@ describe("updatePlatformDefaultLocaleAction", () => {
       message: "既定言語を保存しました。",
       ok: true,
     });
-    expect(mockUpdatePlatformDefaultLocale).toHaveBeenCalledWith("en");
+    expect(mockUpdatePlatformDefaultLocale).toHaveBeenCalledWith("en", "ja");
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:settings");
   });
 

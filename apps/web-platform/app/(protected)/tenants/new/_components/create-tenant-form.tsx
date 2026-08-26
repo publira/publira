@@ -5,19 +5,29 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-
-import { AdminDomainPreview } from "#components/admin-domain-preview";
-import { TenantDomainCautions } from "#components/tenant-domain-cautions";
+import type { ReactNode } from "react";
 
 import { createTenantAction } from "../_lib/actions";
 
-export const CreateTenantForm = () => (
+export interface CreateTenantFormCopy {
+  adminDomainLabel: ReactNode;
+  adminDomainPreview: ReactNode;
+  createDraft: ReactNode;
+  createPending: ReactNode;
+  createSubmit: ReactNode;
+  domainCautions: ReactNode;
+  domainLabel: ReactNode;
+  initialAdminEmailsLabel: ReactNode;
+  nameLabel: ReactNode;
+}
+
+export const CreateTenantForm = ({ copy }: { copy: CreateTenantFormCopy }) => (
   <ActionForm action={createTenantAction} className="grid gap-4 sm:max-w-2xl">
     {({ isPending, state }) => (
       <>
         <Field>
           <FieldLabel htmlFor="tenant_name" required>
-            テナント名
+            {copy.nameLabel}
           </FieldLabel>
           <FieldContent>
             <Input id="tenant_name" name="tenant_name" required type="text" />
@@ -26,7 +36,7 @@ export const CreateTenantForm = () => (
 
         <Field>
           <FieldLabel htmlFor="tenant_domain" required>
-            ドメイン
+            {copy.domainLabel}
           </FieldLabel>
           <FieldContent>
             <Input
@@ -37,12 +47,12 @@ export const CreateTenantForm = () => (
               type="text"
             />
           </FieldContent>
-          <TenantDomainCautions mode="create" />
+          {copy.domainCautions}
         </Field>
 
         <Field>
           <FieldLabel htmlFor="tenant_admin_domain">
-            管理画面ドメイン
+            {copy.adminDomainLabel}
           </FieldLabel>
           <FieldContent>
             <Input
@@ -52,12 +62,12 @@ export const CreateTenantForm = () => (
               type="text"
             />
           </FieldContent>
-          <AdminDomainPreview adminDomain="" showCurrentDomain={false} />
+          {copy.adminDomainPreview}
         </Field>
 
         <Field>
           <FieldLabel htmlFor="initial_admin_emails">
-            初期管理者メール（任意・複数可）
+            {copy.initialAdminEmailsLabel}
           </FieldLabel>
           <FieldContent>
             <Input
@@ -75,10 +85,10 @@ export const CreateTenantForm = () => (
 
         <div className="mt-2 flex gap-3">
           <Button disabled={isPending} type="submit">
-            {isPending ? "作成中..." : "作成"}
+            {isPending ? copy.createPending : copy.createSubmit}
           </Button>
           <Button disabled={isPending} type="button" variant="outline">
-            下書きを保存
+            {copy.createDraft}
           </Button>
         </div>
       </>

@@ -11,6 +11,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SectionError } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -24,11 +25,14 @@ import {
   formatDate,
   startOfDayIsoString,
 } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
 import {
   PlatformPage,
@@ -41,6 +45,8 @@ import {
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import type { GetPlatformTenantResult } from "#lib/tenants";
 import { getPlatformTenant } from "#lib/tenants";
@@ -61,8 +67,11 @@ import type { UsersFilters } from "./_lib/search-params";
 import { resolveTenantFilter, resolvedTenantId } from "./_lib/tenant-filter";
 import type { TenantFilterResolution } from "./_lib/tenant-filter";
 
-export const metadata: Metadata = {
-  title: "ユーザー管理",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.users.title") };
 };
 
 const UsersTableSkeleton = () => (
@@ -86,17 +95,6 @@ const UsersTableSkeleton = () => (
     </CardContent>
   </Card>
 );
-
-const statusSelectItems = [
-  { label: "有効", value: "active" },
-  { label: "停止中", value: "suspended" },
-] as const;
-
-const pageSizeItems = [
-  { label: "10件", value: "10" },
-  { label: "20件", value: "20" },
-  { label: "50件", value: "50" },
-] as const;
 
 /**
  * The created_from / created_to filters are date-only (`YYYY-MM-DD`), so the
@@ -160,18 +158,25 @@ const buildUsersPageHrefs = (
 
 const buildSummaryText = (
   result: ListPlatformEndUsersResult,
-  usersLength: number
+  usersLength: number,
+  messages: PlatformMessages
 ): string => {
   if (result.ok) {
-    return usersLength === 0 ? "0件を表示" : `${usersLength}件を表示`;
+    return getMessage(messages, "platform.users.showing", {
+      count: String(usersLength),
+    });
   }
   return "-";
 };
 
-const buildEmptyMessage = (hasFilter: boolean): string =>
-  hasFilter
-    ? "条件に一致するユーザーが見つかりませんでした。"
-    : "ユーザーはまだ登録されていません。";
+const buildEmptyMessage = (
+  hasFilter: boolean,
+  messages: PlatformMessages
+): string =>
+  getMessage(
+    messages,
+    hasFilter ? "platform.users.empty_filtered" : "platform.users.empty"
+  );
 
 const buildTenantFilterItems = ({
   selectedName,
@@ -199,10 +204,12 @@ const buildTenantFilterItems = ({
 };
 
 const buildTenantFilterMessages = ({
+  messages,
   resolution,
   tenantQuery,
   tenantSearch,
 }: {
+  messages: PlatformMessages;
   resolution: TenantFilterResolution;
   tenantQuery: string;
   tenantSearch: SearchPlatformTenantFilterOptionsResult;
@@ -214,25 +221,25 @@ const buildTenantFilterMessages = ({
     return [{ text: tenantSearch.message, variant: "destructive" }];
   }
 
-  const messages: TenantFilterMessage[] = [];
+  const filterMessages: TenantFilterMessage[] = [];
   if (resolution.kind === "none") {
-    messages.push({
-      text: "一致するテナントが見つかりませんでした。",
+    filterMessages.push({
+      text: getMessage(messages, "platform.users.tenant_none"),
       variant: "info",
     });
   } else if (resolution.kind === "ambiguous") {
-    messages.push({
-      text: "候補が複数あります。テナントを選択して絞り込んでください。",
+    filterMessages.push({
+      text: getMessage(messages, "platform.users.tenant_ambiguous"),
       variant: "info",
     });
   }
   if (tenantSearch.hasMore) {
-    messages.push({
-      text: "一致するテナントが他にもあります。検索語を絞り込んでください。",
+    filterMessages.push({
+      text: getMessage(messages, "platform.users.tenant_more"),
       variant: "info",
     });
   }
-  return messages;
+  return filterMessages;
 };
 
 const shouldListUsers = (resolution: TenantFilterResolution): boolean =>
@@ -241,12 +248,14 @@ const shouldListUsers = (resolution: TenantFilterResolution): boolean =>
 const UsersFilterForm = ({
   filters,
   hasFilter,
+  messages,
   tenantItems,
   tenantId,
   tenantMessages,
 }: {
   filters: UsersFilters;
   hasFilter: boolean;
+  messages: PlatformMessages;
   tenantItems: PlatformTenantFilterOption[];
   tenantId: string;
   tenantMessages: TenantFilterMessage[];
@@ -260,16 +269,34 @@ const UsersFilterForm = ({
       <Select
         className="w-44"
         defaultValue={filters.status || undefined}
-        items={statusSelectItems}
+        items={[
+          {
+            label: getMessage(
+              messages,
+              "platform.common.account_status.active"
+            ),
+            value: "active",
+          },
+          {
+            label: getMessage(
+              messages,
+              "platform.common.account_status.suspended"
+            ),
+            value: "suspended",
+          },
+        ]}
         name="status"
-        placeholder="すべての状態"
+        placeholder={getMessage(messages, "platform.users.all_statuses")}
       />
       <Input
-        aria-label="テナント検索"
+        aria-label={getMessage(messages, "platform.users.search_tenant")}
         className="w-56"
         defaultValue={filters.tenantQuery}
         name="tenant_q"
-        placeholder="テナント名・IDで検索"
+        placeholder={getMessage(
+          messages,
+          "platform.users.search_tenant_placeholder"
+        )}
         type="search"
       />
       {tenantItems.length > 0 ? (
@@ -281,7 +308,7 @@ const UsersFilterForm = ({
             value: tenant.publicId,
           }))}
           name="tenant_id"
-          placeholder="テナントを選択"
+          placeholder={getMessage(messages, "platform.users.select_tenant")}
         />
       ) : null}
       <Input
@@ -299,17 +326,32 @@ const UsersFilterForm = ({
       <Select
         className="w-32"
         defaultValue={String(filters.limit)}
-        items={pageSizeItems}
+        items={[
+          {
+            label: getMessage(messages, "platform.users.page_size_10"),
+            value: "10",
+          },
+          {
+            label: getMessage(messages, "platform.users.page_size_20"),
+            value: "20",
+          },
+          {
+            label: getMessage(messages, "platform.users.page_size_50"),
+            value: "50",
+          },
+        ]}
         name="limit"
-        placeholder="20件"
+        placeholder={getMessage(messages, "platform.users.page_size_20")}
       />
-      <Button type="submit">絞り込む</Button>
+      <Button type="submit">
+        {getMessage(messages, "platform.common.filter")}
+      </Button>
       {hasFilter ? (
         <Link
           className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
           href="/users"
         >
-          クリア
+          {getMessage(messages, "platform.common.clear")}
         </Link>
       ) : null}
     </Form>
@@ -324,12 +366,16 @@ const UsersFilterForm = ({
 const UsersTableSection = ({
   hasFilter,
   hideEmptyMessage = false,
+  locale,
+  messages,
   result,
   timeZone,
   users,
 }: {
   hasFilter: boolean;
   hideEmptyMessage?: boolean;
+  locale: Locale;
+  messages: PlatformMessages;
   result: ListPlatformEndUsersResult;
   timeZone: string;
   users: PlatformEndUserSummary[];
@@ -337,11 +383,21 @@ const UsersTableSection = ({
   <Table>
     <TableHeader>
       <TableRow>
-        <TableHead>公開ID</TableHead>
-        <TableHead>氏名</TableHead>
-        <TableHead>テナント</TableHead>
-        <TableHead className="w-44">登録日</TableHead>
-        <TableHead className="w-32">状態</TableHead>
+        <TableHead>
+          {getMessage(messages, "platform.users.columns_public_id")}
+        </TableHead>
+        <TableHead>
+          {getMessage(messages, "platform.users.columns_name")}
+        </TableHead>
+        <TableHead>
+          {getMessage(messages, "platform.users.columns_tenant")}
+        </TableHead>
+        <TableHead className="w-44">
+          {getMessage(messages, "platform.users.columns_created")}
+        </TableHead>
+        <TableHead className="w-32">
+          {getMessage(messages, "platform.users.columns_status")}
+        </TableHead>
         <TableHead className="w-28" />
       </TableRow>
     </TableHeader>
@@ -349,7 +405,7 @@ const UsersTableSection = ({
       {result.ok && users.length === 0 && !hideEmptyMessage ? (
         <TableRow>
           <TableCell className="text-muted-foreground" colSpan={6}>
-            {buildEmptyMessage(hasFilter)}
+            {buildEmptyMessage(hasFilter, messages)}
           </TableCell>
         </TableRow>
       ) : null}
@@ -359,7 +415,9 @@ const UsersTableSection = ({
               <TableCell className="font-mono text-xs">
                 {user.publicId}
               </TableCell>
-              <TableCell>{user.name || "未設定"}</TableCell>
+              <TableCell>
+                {user.name || getMessage(messages, "platform.common.unset")}
+              </TableCell>
               <TableCell>
                 {user.primaryTenantPublicId ? (
                   <Link
@@ -369,15 +427,19 @@ const UsersTableSection = ({
                     {user.primaryTenantName || user.primaryTenantPublicId}
                   </Link>
                 ) : (
-                  "未所属"
+                  getMessage(messages, "platform.users.no_tenant")
                 )}
               </TableCell>
               <TableCell>
-                {formatDate(user.createdAt, { fallback: "未設定", timeZone })}
+                {formatDate(user.createdAt, {
+                  fallback: getMessage(messages, "platform.common.unset"),
+                  locale,
+                  timeZone,
+                })}
               </TableCell>
               <TableCell>
                 <Badge tone={getEndUserStatusTone(user.status)}>
-                  {getEndUserStatusLabel(user.status)}
+                  {getEndUserStatusLabel(user.status, messages)}
                 </Badge>
               </TableCell>
               <TableCell>
@@ -386,7 +448,7 @@ const UsersTableSection = ({
                   size="sm"
                   variant="outline"
                 >
-                  詳細
+                  {getMessage(messages, "platform.common.detail")}
                 </LinkButton>
               </TableCell>
             </TableRow>
@@ -399,17 +461,22 @@ const UsersTableSection = ({
 const UsersContent = async ({
   searchParams,
 }: Pick<UsersPageProps, "searchParams">) => {
-  const filters = parseUsersFilters(await searchParams);
-
-  const [tenantSearch, selectedTenantResult, timeZone] = await Promise.all([
-    filters.tenantQuery
-      ? searchPlatformTenantFilterOptions(filters.tenantQuery)
-      : Promise.resolve(emptyTenantSearch),
-    filters.tenantId
-      ? getPlatformTenant(filters.tenantId)
-      : Promise.resolve(emptySelectedTenant),
-    getPlatformDisplayTimeZone(),
+  const [rawSearchParams, locale] = await Promise.all([
+    searchParams,
+    getPlatformLocale(),
   ]);
+  const filters = parseUsersFilters(rawSearchParams);
+  const [messages, tenantSearch, selectedTenantResult, timeZone] =
+    await Promise.all([
+      loadPlatformMessages(locale),
+      filters.tenantQuery
+        ? searchPlatformTenantFilterOptions(filters.tenantQuery, locale)
+        : Promise.resolve(emptyTenantSearch),
+      filters.tenantId
+        ? getPlatformTenant(filters.tenantId, locale)
+        : Promise.resolve(emptySelectedTenant),
+      getPlatformDisplayTimeZone(),
+    ]);
 
   const selectedTenant = selectedTenantResult.ok
     ? selectedTenantResult.tenant
@@ -433,6 +500,7 @@ const UsersContent = async ({
     tenantId,
   };
   const tenantMessages = buildTenantFilterMessages({
+    messages,
     resolution,
     tenantQuery: filters.tenantQuery,
     tenantSearch,
@@ -444,6 +512,7 @@ const UsersContent = async ({
         createdAfter: createdRangeStart(filters.createdFrom, timeZone),
         createdBefore: createdRangeEnd(filters.createdTo, timeZone),
         limit: filters.limit,
+        locale,
         status: filters.status || undefined,
         tenantId: tenantId || undefined,
         token: filters.token || undefined,
@@ -472,15 +541,18 @@ const UsersContent = async ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>ユーザー一覧</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "platform.users.list_card_title")}
+        </CardTitle>
         <CardDescription>
-          公開ID・氏名・所属テナント・登録日・ステータスを確認し、詳細画面で操作します。
+          {getMessage(messages, "platform.users.list_card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         <UsersFilterForm
           filters={filters}
           hasFilter={hasFilter}
+          messages={messages}
           tenantId={tenantId}
           tenantItems={tenantItems}
           tenantMessages={tenantMessages}
@@ -489,13 +561,15 @@ const UsersContent = async ({
         {result.ok ? null : (
           <SectionError
             description={result.message}
-            title="ユーザー一覧を表示できませんでした"
+            title={getMessage(messages, "platform.users.load_failed")}
           />
         )}
 
         <UsersTableSection
           hasFilter={hasFilter}
           hideEmptyMessage={pendingTenantPick}
+          locale={locale}
+          messages={messages}
           result={result}
           timeZone={timeZone}
           users={users}
@@ -503,12 +577,16 @@ const UsersContent = async ({
 
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            {pendingTenantPick ? "-" : buildSummaryText(result, users.length)}
+            {pendingTenantPick
+              ? "-"
+              : buildSummaryText(result, users.length, messages)}
           </p>
           <PaginationControls
-            ariaLabel="ユーザー一覧のページ送り"
+            ariaLabel={getMessage(messages, "platform.users.pagination_aria")}
             nextHref={nextHref}
+            nextLabel={getMessage(messages, "platform.common.next")}
             previousHref={previousHref}
+            previousLabel={getMessage(messages, "platform.common.previous")}
           />
         </div>
       </CardContent>
@@ -521,14 +599,26 @@ const UsersPage = ({ searchParams }: UsersPageProps) => (
     <PlatformPageHeader>
       <PlatformPageHeading>
         <PlatformPageEyebrow>Platform Users</PlatformPageEyebrow>
-        <PlatformPageTitle>ユーザー管理</PlatformPageTitle>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-36" />}>
+            <Message message="platform.users.title" />
+          </Suspense>
+        </PlatformPageTitle>
         <PlatformPageDescription>
-          ユーザーの状態確認とアカウント停止・削除を管理します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="platform.users.page_description" />
+          </Suspense>
         </PlatformPageDescription>
       </PlatformPageHeading>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <SectionErrorBoundary title="ユーザー一覧を表示できませんでした">
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="platform.users.load_failed" />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<UsersTableSkeleton />}>
           <UsersContent searchParams={searchParams} />
         </Suspense>

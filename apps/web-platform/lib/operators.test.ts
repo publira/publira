@@ -87,7 +87,7 @@ describe("listPlatformOperators", () => {
     );
 
     await expect(
-      listPlatformOperators({ limit: 50, token: "current-page" })
+      listPlatformOperators({ limit: 50, locale: "ja", token: "current-page" })
     ).resolves.toEqual({
       nextToken: "next-page",
       ok: true,
@@ -112,7 +112,7 @@ describe("listPlatformOperators", () => {
   it("session を解決できない場合は API を呼ばずエラーを返す", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
-    await expect(listPlatformOperators({})).resolves.toEqual({
+    await expect(listPlatformOperators({ locale: "ja" })).resolves.toEqual({
       message: "セッションが無効です。再ログインしてください。",
       nextToken: "",
       ok: false,
@@ -123,12 +123,25 @@ describe("listPlatformOperators", () => {
     expect(mockListOperators).not.toHaveBeenCalled();
   });
 
+  it("locale=en では英語のセッションエラーを返す", async () => {
+    mockResolveAccessToken.mockResolvedValueOnce("");
+
+    await expect(listPlatformOperators({ locale: "en" })).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      nextToken: "",
+      ok: false,
+      operators: [],
+      previousToken: "",
+      requiresSignIn: true,
+    });
+  });
+
   it("分類済み RPC エラーは共通文言で返す", async () => {
     mockListOperators.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(listPlatformOperators({})).resolves.toEqual({
+    await expect(listPlatformOperators({ locale: "ja" })).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       nextToken: "",
@@ -144,13 +157,15 @@ describe("listPlatformOperators", () => {
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(listPlatformOperators({})).rejects.toThrow("boom");
+    await expect(listPlatformOperators({ locale: "ja" })).rejects.toThrow(
+      "boom"
+    );
   });
 });
 
 describe("getPlatformOperator", () => {
   it("不正な入力は RPC を呼ばずに null を返す", async () => {
-    await expect(getPlatformOperator("   ")).resolves.toBeNull();
+    await expect(getPlatformOperator("   ", "ja")).resolves.toBeNull();
     expect(mockGetOperator).not.toHaveBeenCalled();
     expect(mockResolveAccessToken).not.toHaveBeenCalled();
   });
@@ -160,11 +175,11 @@ describe("getPlatformOperator", () => {
       createGetOperatorResponse(createOperator())
     );
 
-    await expect(getPlatformOperator("  OPERATOR001  ")).resolves.toMatchObject(
-      {
-        publicId: "OPERATOR001",
-      }
-    );
+    await expect(
+      getPlatformOperator("  OPERATOR001  ", "ja")
+    ).resolves.toMatchObject({
+      publicId: "OPERATOR001",
+    });
     expect(mockGetOperator).toHaveBeenCalledExactlyOnceWith(
       { publicId: "OPERATOR001" },
       { headers: { Authorization: "Bearer sess_abc" } }
@@ -182,7 +197,7 @@ describe("getPlatformOperator", () => {
       )
     );
 
-    await expect(getPlatformOperator("OPERATOR101")).resolves.toEqual({
+    await expect(getPlatformOperator("OPERATOR101", "ja")).resolves.toEqual({
       createdAt: "2026-08-01T00:00:00Z",
       email: "second@example.com",
       name: "運営 次郎",
@@ -202,7 +217,7 @@ describe("getPlatformOperator", () => {
       new ConnectError("operator not found", Code.NotFound)
     );
 
-    await expect(getPlatformOperator("UNKNOWN")).resolves.toBeNull();
+    await expect(getPlatformOperator("UNKNOWN", "ja")).resolves.toBeNull();
   });
 
   it("分類済み RPC エラーは null を返す", async () => {
@@ -210,7 +225,7 @@ describe("getPlatformOperator", () => {
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(getPlatformOperator("OPERATOR001")).resolves.toBeNull();
+    await expect(getPlatformOperator("OPERATOR001", "ja")).resolves.toBeNull();
   });
 
   it("分類できない RPC エラーは伝播する", async () => {
@@ -218,6 +233,8 @@ describe("getPlatformOperator", () => {
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(getPlatformOperator("OPERATOR001")).rejects.toThrow("boom");
+    await expect(getPlatformOperator("OPERATOR001", "ja")).rejects.toThrow(
+      "boom"
+    );
   });
 });

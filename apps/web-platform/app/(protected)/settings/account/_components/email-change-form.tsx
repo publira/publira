@@ -16,39 +16,52 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import type { ChangeEvent, ReactNode } from "react";
 import { useActionState, useCallback, useState } from "react";
 
 import type { PlatformEmailChangeActionState } from "../../_lib/actions";
+
+export interface EmailChangeFormCopy {
+  currentEmailLabel: ReactNode;
+  description: ReactNode;
+  newEmailLabel: ReactNode;
+  passwordHelp: ReactNode;
+  passwordLabel: ReactNode;
+  pendingLabel: ReactNode;
+  submitLabel: ReactNode;
+  title: ReactNode;
+}
 
 interface EmailChangeFormProps {
   action: (
     prevState: PlatformEmailChangeActionState,
     formData: FormData
   ) => Promise<PlatformEmailChangeActionState>;
+  copy: EmailChangeFormCopy;
 }
 
-export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
+export const EmailChangeForm = ({ action, copy }: EmailChangeFormProps) => {
   const [state, formAction, isPending] = useActionState(action, null);
   const [currentEmail, setCurrentEmail] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
 
   const handleCurrentEmailChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLInputElement>) => {
       setCurrentEmail(event.target.value);
     },
     []
   );
 
   const handleNewEmailChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLInputElement>) => {
       setNewEmail(event.target.value);
     },
     []
   );
 
   const handleCurrentPasswordChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLInputElement>) => {
       setCurrentPassword(event.target.value);
     },
     []
@@ -57,16 +70,14 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>メールアドレス変更</CardTitle>
-        <CardDescription>
-          オペレーターアカウントのメールアドレスを変更します。変更には現在のメールアドレスと新しいメールアドレスの両方で確認が必要です。
-        </CardDescription>
+        <CardTitle>{copy.title}</CardTitle>
+        <CardDescription>{copy.description}</CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="grid gap-4">
           <Field>
             <FieldLabel htmlFor="current_email" required>
-              現在のメールアドレス
+              {copy.currentEmailLabel}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -84,7 +95,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
 
           <Field>
             <FieldLabel htmlFor="new_email" required>
-              新しいメールアドレス
+              {copy.newEmailLabel}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -102,7 +113,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
 
           <Field>
             <FieldLabel htmlFor="current_password" required>
-              現在のパスワード
+              {copy.passwordLabel}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -115,9 +126,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
                 type="password"
                 value={currentPassword}
               />
-              <FieldDescription>
-                セキュリティ上の理由から、パスワードの入力が必要です。
-              </FieldDescription>
+              <FieldDescription>{copy.passwordHelp}</FieldDescription>
             </FieldContent>
           </Field>
 
@@ -129,7 +138,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={isPending} type="submit">
-              {isPending ? "送信中..." : "確認メールを送信"}
+              {isPending ? copy.pendingLabel : copy.submitLabel}
             </Button>
           </div>
         </form>
