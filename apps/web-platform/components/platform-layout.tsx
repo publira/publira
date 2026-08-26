@@ -8,7 +8,6 @@ import {
   ConsoleSidebar,
 } from "@publira/layouts/admin";
 import { StatusChip } from "@publira/ui-components/badge";
-import { LinkButton } from "@publira/ui-components/button";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -76,9 +75,6 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
             <PlatformNotificationBell />
           </Suspense>
         </NotificationBellErrorBoundary>
-        <LinkButton href="/tenants/new" size="sm">
-          テナント作成
-        </LinkButton>
         <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
           <PlatformUser />
         </Suspense>

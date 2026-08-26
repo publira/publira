@@ -8,7 +8,6 @@ import {
   ConsoleSidebar,
 } from "@publira/layouts/admin";
 import { StatusChip } from "@publira/ui-components/badge";
-import { Button } from "@publira/ui-components/button";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -122,9 +121,6 @@ export const AdminLayout = ({
           <Suspense fallback={<NotificationBellSkeleton />}>
             <AdminNotificationBell />
           </Suspense>
-          <Button size="sm" type="button" variant="outline">
-            プレビュー
-          </Button>
           <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
             <AdminUser
               logoutAction={logoutAction.bind(null, tenant.publicId)}
