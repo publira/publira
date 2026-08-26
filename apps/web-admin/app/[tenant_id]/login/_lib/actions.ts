@@ -1,5 +1,6 @@
 "use server";
 
+import { getMessage } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { encryptSessionPayload, resolveAuthSecret } from "@publira/web-session";
@@ -18,15 +19,16 @@ import {
   passwordFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
+import { getLocale, loadAdminMessages } from "#lib/locale";
+import type { AdminMessages } from "#lib/locale";
 
-const TENANT_MISSING_MESSAGE = "テナント識別子が見つかりませんでした。";
-
-const loginFormSchema = z.object({
-  email: emailFormSchema,
-  next: nextPathFormSchema,
-  password: passwordFormSchema,
-  tenantId: tenantIdFormSchema,
-});
+const loginFormSchema = (messages: AdminMessages) =>
+  z.object({
+    email: emailFormSchema(messages),
+    next: nextPathFormSchema,
+    password: passwordFormSchema(messages),
+    tenantId: tenantIdFormSchema(messages),
+  });
 
 const buildLoginErrorPath = (message: string, nextPath: string): string => {
   const params = new URLSearchParams({
@@ -37,21 +39,25 @@ const buildLoginErrorPath = (message: string, nextPath: string): string => {
 };
 
 export const loginAction = async (formData: FormData): Promise<void> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
   const input = toFormDataInput(formData, {
     email: "value",
     next: "value",
     password: "value",
     tenantId: { kind: "value", name: "tenant_id" },
   });
-  const parsed = loginFormSchema.safeParse(input);
+  const parsed = loginFormSchema(messages).safeParse(input);
   if (!parsed.success) {
     const nextPath = nextPathFormSchema.parse(input.next);
-    const tenantIdResult = tenantIdFormSchema.safeParse(input.tenantId);
+    const tenantIdResult = tenantIdFormSchema(messages).safeParse(
+      input.tenantId
+    );
     redirect(
       buildLoginErrorPath(
         tenantIdResult.success
           ? toFormErrorMessage(parsed.error)
-          : TENANT_MISSING_MESSAGE,
+          : getMessage(messages, "admin.auth.errors.tenant_missing"),
         nextPath
       )
     );
@@ -59,7 +65,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
 
   const { email, next: nextPath, password, tenantId } = parsed.data;
 
-  const result = await loginAdmin(email, password, tenantId);
+  const result = await loginAdmin(email, password, tenantId, locale);
   if (!result.ok) {
     redirect(buildLoginErrorPath(result.message, nextPath));
   }
@@ -86,7 +92,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     console.error("[web-admin] login cookie seal failed", error);
     redirect(
       buildLoginErrorPath(
-        "ログイン処理に失敗しました。時間をおいて再試行してください。",
+        getMessage(messages, "admin.auth.errors.login_processing_failed"),
         nextPath
       )
     );

@@ -1,4 +1,4 @@
-import { LOCALES } from "@publira/utils/i18n";
+import { getLocales } from "@publira/i18n";
 import { STATIC_PARAM_PLACEHOLDER } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
@@ -25,7 +25,7 @@ import "../../globals.css";
  * build time.
  */
 export const generateStaticParams = () =>
-  LOCALES.map((locale) => ({
+  getLocales().map((locale) => ({
     locale,
     tenant_id: STATIC_PARAM_PLACEHOLDER,
   }));

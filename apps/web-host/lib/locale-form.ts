@@ -10,8 +10,8 @@
  * can import the name from the same place the action parses it.
  */
 
-import { parseLocale } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
+import { parseLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
 /** Name of the hidden field the locale travels in. */

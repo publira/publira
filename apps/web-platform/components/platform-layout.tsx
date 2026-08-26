@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import {
   ConsoleHeader,
   ConsoleHeaderUser,
@@ -9,7 +10,6 @@ import {
 } from "@publira/layouts/admin";
 import { StatusChip } from "@publira/ui-components/badge";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { getMessage } from "@publira/utils/i18n";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";

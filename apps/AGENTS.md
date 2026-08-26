@@ -365,7 +365,7 @@ The UI renders in `ja` or `en`, defaulting to `ja`; every unknown value falls ba
 
 | Layer | Where it lives |
 | --- | --- |
-| Locale parsing, catalog loading, `{name}` interpolation | `@publira/utils/i18n` (`parseLocale` / `parseLocaleCookie` / `loadMessages` / `getMessage`) |
+| Locale parsing, catalog loading, `{name}` interpolation | `@publira/i18n` (`parseLocale` / `parseLocaleCookie` / `loadMessages` / `getMessage`) |
 | The messages themselves | The repo-root `locales/{locale}.json`, shared with Go and Flutter |
 | Where the locale is resolved from | The `publira_locale` cookie in `web-platform` / `web-admin`; the URL's `locale` segment in `web-host` |
 | What a missing cookie falls through to | The platform default locale in `web-platform` ([#1047](https://github.com/publira/publira/issues/1047)), the tenant default locale in `web-admin` ([#1046](https://github.com/publira/publira/issues/1046)). `ja` only when neither can be read |
@@ -408,7 +408,7 @@ The shape a screen takes when its copy moves into the catalog. Worked example: `
 The root layout cannot read the cookie: an `<html>` attribute has no child `<Suspense>` boundary to move the read into, and awaiting `cookies()` there costs every route below it its static shell. Three pieces solve it instead.
 
 1. The root layout renders `lang={DEFAULT_LOCALE}` statically, with `suppressHydrationWarning`
-2. `<head>` carries `LOCALE_LANG_SCRIPT` (a constant of `@publira/utils/i18n`) as an inline script. The browser reads the cookie while parsing and replaces the attribute
+2. `<head>` carries `LOCALE_LANG_SCRIPT` (a constant of `@publira/i18n`) as an inline script. The browser reads the cookie while parsing and replaces the attribute
 3. The switcher writes `document.documentElement.lang` **after its Action resolves**. The script only runs on a full load, and a Server Action's re-render produces the same static attribute value, so React never touches the DOM. Writing it in the click handler would leave the document claiming a language that neither the cookie nor the copy on screen agrees with whenever the Action fails
 
 That third piece is why the cookie is not `httpOnly`. `instant = false` is not an option here (see **Never use `instant = false`**).
@@ -417,7 +417,7 @@ That third piece is why the cookie is not `httpOnly`. `instant = false` is not a
 
 ### Switching
 
-The switcher writes the cookie from a Server Action. Never write `document.cookie` from the client. Validate the value against a `LOCALES` zod schema and drop anything outside it rather than storing it. The cookie is `Path=/`, `SameSite=Lax`, with `LOCALE_COOKIE_MAX_AGE`.
+The switcher writes the cookie from a Server Action. Never write `document.cookie` from the client. Validate the value against a `getLocales()` zod schema and drop anything outside it rather than storing it. The cookie is `Path=/`, `SameSite=Lax`, with `LOCALE_COOKIE_MAX_AGE`.
 
 Worked examples:
 

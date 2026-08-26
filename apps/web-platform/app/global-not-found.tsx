@@ -1,4 +1,4 @@
-import { getMessage } from "@publira/utils/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
 

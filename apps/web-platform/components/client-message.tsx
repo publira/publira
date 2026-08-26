@@ -4,8 +4,8 @@ import {
   getMessage,
   LOCALE_COOKIE_NAME,
   parseLocaleCookie,
-} from "@publira/utils/i18n";
-import type { MessageValues } from "@publira/utils/i18n";
+} from "@publira/i18n";
+import type { MessageValues } from "@publira/i18n";
 import { use } from "react";
 
 import { loadPlatformMessages } from "#lib/messages";

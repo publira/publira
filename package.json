@@ -10,7 +10,9 @@
     "check": "ultracite check",
     "dev": "turbo run dev",
     "fix": "ultracite fix",
-    "preflight": "pnpm typegen && pnpm typecheck && pnpm check && pnpm test",
+    "locales:check": "node scripts/generate-locale-registry.ts --check",
+    "locales:generate": "node scripts/generate-locale-registry.ts",
+    "preflight": "pnpm locales:check && pnpm typegen && pnpm typecheck && pnpm check && pnpm test",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "typegen": "turbo run typegen"

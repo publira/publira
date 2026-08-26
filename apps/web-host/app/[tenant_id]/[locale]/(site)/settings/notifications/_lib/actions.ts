@@ -1,9 +1,9 @@
 "use server";
 
+import { parseLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { parseLocale } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 

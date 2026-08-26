@@ -1,5 +1,5 @@
-import { loadMessages } from "@publira/utils/i18n";
-import type { Locale, MessageKey } from "@publira/utils/i18n";
+import type { Locale, MessageKey } from "@publira/i18n";
+import { loadLocaleMessages } from "@publira/i18n/messages";
 
 import type ja from "../../../locales/ja.json";
 
@@ -19,7 +19,4 @@ export type PlatformMessageKey = MessageKey<PlatformMessages>;
 export const loadPlatformMessages = (
   locale: Locale
 ): Promise<PlatformMessages> =>
-  loadMessages<PlatformMessages>(locale, {
-    en: () => import("../../../locales/en.json", { with: { type: "json" } }),
-    ja: () => import("../../../locales/ja.json", { with: { type: "json" } }),
-  });
+  loadLocaleMessages(locale) as Promise<PlatformMessages>;

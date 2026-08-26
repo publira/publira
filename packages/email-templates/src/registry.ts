@@ -1,6 +1,6 @@
+import { parseLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { isValidTimeZone } from "@publira/utils";
-import { parseLocale } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 import { createElement } from "react";
 import type { ReactElement } from "react";
 import type { z } from "zod";

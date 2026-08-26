@@ -1,4 +1,4 @@
-import type { Locale } from "@publira/utils/i18n";
+import type { Locale } from "@publira/i18n";
 
 /**
  * First segments **below the locale prefix** that belong to app features or

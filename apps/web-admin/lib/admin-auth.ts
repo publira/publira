@@ -10,9 +10,12 @@ import {
   rpcErrorHasFieldViolation,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { loadAdminMessages } from "./locale";
 import { getAccessToken } from "./session";
 
 export {
@@ -108,28 +111,36 @@ export const isTenantAdminRole = (role: string | null | undefined): boolean => {
   return normalizedRole === "admin" || normalizedRole === "tenant_admin";
 };
 
-const loginFailedMessage = "メールアドレスまたはパスワードが正しくありません。";
-const genericErrorMessage =
-  "ログイン処理に失敗しました。時間をおいて再試行してください。";
-const genericPasswordResetRequestErrorMessage =
-  "再設定メールの送信に失敗しました。時間をおいて再試行してください。";
-const genericPasswordResetConfirmErrorMessage =
-  "パスワード再設定に失敗しました。時間をおいて再試行してください。";
+const toErrorMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const messages = await loadAdminMessages(locale);
+
+  return rpcErrorMessage(
+    error,
+    getMessage(messages, "admin.auth.errors.login_processing_failed"),
+    {
+      // The server answers a wrong email or password with `unauthenticated`;
+      // never say which of the two was wrong.
+      locale,
+      overrides: {
+        unauthenticated: getMessage(messages, "admin.auth.errors.login_failed"),
+      },
+    }
+  );
+};
+
 const genericEmailChangeRequestErrorMessage =
   "メールアドレス変更リクエストに失敗しました。時間をおいて再試行してください。";
-
-const toErrorMessage = (error: unknown): string =>
-  rpcErrorMessage(error, genericErrorMessage, {
-    // The server answers a wrong email or password with `unauthenticated`;
-    // never say which of the two was wrong.
-    unauthenticated: loginFailedMessage,
-  });
 
 export const loginAdmin = async (
   email: string,
   password: string,
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<AdminLoginResult> => {
+  const messages = await loadAdminMessages(locale);
   try {
     const response = await apiClient.auth.login({
       email,
@@ -143,7 +154,10 @@ export const loginAdmin = async (
 
     if (!accessToken || Number.isNaN(expiresAt.getTime())) {
       return {
-        message: genericErrorMessage,
+        message: getMessage(
+          messages,
+          "admin.auth.errors.login_processing_failed"
+        ),
         ok: false,
       };
     }
@@ -156,7 +170,7 @@ export const loginAdmin = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: toErrorMessage(error),
+      message: await toErrorMessage(error, locale),
       ok: false,
     };
   }
@@ -269,12 +283,14 @@ export const acceptTenantAdminInvitation = async (
   tenantId: string,
   token: string,
   name?: string,
-  password?: string
+  password?: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<AcceptTenantAdminInvitationResult> => {
+  const messages = await loadAdminMessages(locale);
   const normalizedToken = token.trim();
   if (!tenantId.trim() || !normalizedToken) {
     return {
-      message: "招待トークンが無効です。",
+      message: getMessage(messages, "admin.auth.accept_invite.invalid_token"),
       ok: false,
     };
   }
@@ -297,15 +313,21 @@ export const acceptTenantAdminInvitation = async (
     return {
       message: rpcErrorMessage(
         error,
-        "招待の承諾に失敗しました。時間をおいて再試行してください。",
+        getMessage(messages, "admin.auth.errors.accept_invite_failed"),
         {
-          "not-found": "招待が見つかりません。",
-          precondition: rpcErrorHasReason(
-            error,
-            RPC_ERROR_REASON.invitationCanceled
-          )
-            ? "この招待は取り消されています。"
-            : "招待リンクの有効期限が切れています。",
+          locale,
+          overrides: {
+            "not-found": getMessage(
+              messages,
+              "admin.auth.accept_invite.not_found"
+            ),
+            precondition: rpcErrorHasReason(
+              error,
+              RPC_ERROR_REASON.invitationCanceled
+            )
+              ? getMessage(messages, "admin.auth.accept_invite.canceled")
+              : getMessage(messages, "admin.auth.accept_invite.expired_action"),
+          },
         }
       ),
       ok: false,
@@ -315,12 +337,14 @@ export const acceptTenantAdminInvitation = async (
 
 export const requestAdminPasswordReset = async (
   tenantId: string,
-  email: string
+  email: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<AdminPasswordResetRequestResult> => {
+  const messages = await loadAdminMessages(locale);
   const normalizedEmail = email.trim();
   if (!tenantId.trim() || !normalizedEmail) {
     return {
-      message: "メールアドレスを入力してください。",
+      message: getMessage(messages, "admin.auth.fields.email_required"),
       ok: false,
     };
   }
@@ -338,10 +362,20 @@ export const requestAdminPasswordReset = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(error, genericPasswordResetRequestErrorMessage, {
-        // Email is the only field this call takes.
-        "invalid-argument": "メールアドレスを確認してください。",
-      }),
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "admin.auth.errors.reset_request_failed"),
+        {
+          locale,
+          overrides: {
+            // Email is the only field this call takes.
+            "invalid-argument": getMessage(
+              messages,
+              "admin.auth.errors.reset_request_invalid_email"
+            ),
+          },
+        }
+      ),
       ok: false,
     };
   }
@@ -350,15 +384,16 @@ export const requestAdminPasswordReset = async (
 export const confirmAdminPasswordReset = async (
   tenantId: string,
   token: string,
-  newPassword: string
+  newPassword: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<AdminPasswordResetConfirmResult> => {
   const normalizedToken = token.trim();
   const normalizedPassword = newPassword.trim();
+  const messages = await loadAdminMessages(locale);
 
   if (!tenantId.trim() || !normalizedToken) {
     return {
-      message:
-        "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+      message: getMessage(messages, "admin.auth.errors.reset_link_invalid"),
       ok: false,
       reason: "invalid",
     };
@@ -366,7 +401,7 @@ export const confirmAdminPasswordReset = async (
 
   if (!normalizedPassword) {
     return {
-      message: "新しいパスワードを入力してください。",
+      message: getMessage(messages, "admin.auth.errors.new_password_required"),
       ok: false,
       reason: "system",
     };
@@ -388,8 +423,7 @@ export const confirmAdminPasswordReset = async (
     const disposition = rpcErrorDisposition(error);
     if (disposition === "precondition") {
       return {
-        message:
-          "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
+        message: getMessage(messages, "admin.auth.errors.reset_link_expired"),
         ok: false,
         reason: "expired",
       };
@@ -397,15 +431,14 @@ export const confirmAdminPasswordReset = async (
     // An unknown token and a malformed one both mean "start over".
     if (disposition === "not-found" || disposition === "invalid-argument") {
       return {
-        message:
-          "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+        message: getMessage(messages, "admin.auth.errors.reset_link_invalid"),
         ok: false,
         reason: "invalid",
       };
     }
 
     return {
-      message: genericPasswordResetConfirmErrorMessage,
+      message: getMessage(messages, "admin.auth.errors.reset_confirm_failed"),
       ok: false,
       reason: "system",
     };

@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { Badge, StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -9,7 +10,6 @@ import {
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { formatDateTime } from "@publira/utils";
-import { getMessage } from "@publira/utils/i18n";
 import {
   parseRouteParams,
   routeParamString,

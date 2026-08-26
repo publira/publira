@@ -1,6 +1,6 @@
+import { getMessage } from "@publira/i18n";
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 

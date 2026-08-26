@@ -4,9 +4,9 @@ import {
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
 import type { PlatformEmailSettings } from "@publira/api-client/platform/types";
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { getMessage } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 
 import {
   apiClient,

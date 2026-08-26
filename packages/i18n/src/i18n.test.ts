@@ -3,16 +3,18 @@ import { runInNewContext } from "node:vm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import enCatalog from "../../../locales/en.json" with { type: "json" };
+import localeIndex from "../../../locales/index.json" with { type: "json" };
 import jaCatalog from "../../../locales/ja.json" with { type: "json" };
 import {
   DEFAULT_LOCALE,
+  getLocales,
   getMessage,
+  getLocaleLabel,
   isLocale,
   loadMessages,
   LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
   LOCALE_LANG_SCRIPT,
-  LOCALES,
   parseLocale,
   parseLocaleCookie,
   toIntlLocale,
@@ -58,12 +60,19 @@ const asModuleNamespace = <T extends object>(value: T): T =>
     value: "Module",
   });
 
-describe("LOCALES", () => {
-  it("starts with ja and en, default ja", () => {
-    expect(LOCALES).toEqual(["ja", "en"]);
+describe("getLocales", () => {
+  it("matches the locale index", () => {
+    expect(getLocales()).toEqual(localeIndex.locales.map(({ code }) => code));
+    for (const { code, label } of localeIndex.locales) {
+      expect(getLocaleLabel(code as Locale)).toBe(label);
+    }
     expect(DEFAULT_LOCALE).toBe("ja");
     expect(LOCALE_COOKIE_NAME).toBe("publira_locale");
     expect(LOCALE_COOKIE_MAX_AGE).toBe(31_536_000);
+  });
+
+  it("returns a new array", () => {
+    expect(getLocales()).not.toBe(getLocales());
   });
 });
 
@@ -142,9 +151,10 @@ describe("parseLocaleCookie", () => {
 });
 
 describe("toIntlLocale", () => {
-  it("maps UI locales to BCP 47 tags for Intl", () => {
-    expect(toIntlLocale("ja")).toBe("ja-JP");
-    expect(toIntlLocale("en")).toBe("en-US");
+  it("maps each UI locale to its BCP 47 tag", () => {
+    for (const { code, intl } of localeIndex.locales) {
+      expect(toIntlLocale(code as Locale)).toBe(intl);
+    }
   });
 });
 
@@ -239,8 +249,6 @@ describe("getMessage", () => {
 
   it("reads the shared root catalogs by dotted key", () => {
     expect(enMatchesJa).toBe(enCatalog);
-    expect(getMessage(jaCatalog, "locale.ja")).toBe("日本語");
-    expect(getMessage(enCatalog, "locale.en")).toBe("English");
     expect(getMessage(jaCatalog, "errors.rpc.unauthenticated")).toBe(
       "セッションが無効です。再ログインしてください。"
     );

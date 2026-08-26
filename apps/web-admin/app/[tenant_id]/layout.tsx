@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, LOCALE_LANG_SCRIPT } from "@publira/utils/i18n";
+import { DEFAULT_LOCALE, LOCALE_LANG_SCRIPT } from "@publira/i18n";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -8,6 +8,7 @@ import { tenant_id } from "next/root-params";
 import type { ReactNode } from "react";
 
 import { tenantIdFormSchema } from "#lib/auth-input";
+import { loadAdminMessages } from "#lib/locale";
 import { getTenantName } from "#lib/public-api";
 
 import "../globals.css";
@@ -22,7 +23,8 @@ export const generateMetadata = async (): Promise<Metadata> => {
   }
   guardPlaceholder(tenantId);
 
-  const parsed = tenantIdFormSchema.safeParse(tenantId);
+  const messages = await loadAdminMessages(DEFAULT_LOCALE);
+  const parsed = tenantIdFormSchema(messages).safeParse(tenantId);
   if (!parsed.success) {
     return { title: "管理画面" };
   }
@@ -51,7 +53,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * could move into. Reading the cookie in the script instead keeps the shell
  * static; `suppressHydrationWarning` is what lets the DOM the script produced
  * win over the attribute React rendered. The script's source and the reasoning
- * behind it live in `@publira/utils/i18n`.
+ * behind it live in `@publira/i18n`.
  */
 const TenantRootLayout = ({ children }: { children: ReactNode }) => (
   <html lang={DEFAULT_LOCALE} suppressHydrationWarning>

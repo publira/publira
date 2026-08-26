@@ -18,10 +18,9 @@
  * (see https://github.com/publira/publira/issues/573).
  */
 
+import type { Locale } from "@publira/i18n";
+import { sharedMessage } from "@publira/i18n/catalog";
 import { z } from "zod";
-
-import { sharedMessage } from "./catalog";
-import type { Locale } from "./i18n";
 
 /** A single entry of Next.js' resolved `searchParams` object. */
 export type SearchParamValue = string | string[] | undefined;

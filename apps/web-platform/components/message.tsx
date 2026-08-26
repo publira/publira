@@ -1,5 +1,5 @@
-import { getMessage } from "@publira/utils/i18n";
-import type { MessageValues } from "@publira/utils/i18n";
+import { getMessage } from "@publira/i18n";
+import type { MessageValues } from "@publira/i18n";
 
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import type { PlatformMessageKey } from "#lib/locale";

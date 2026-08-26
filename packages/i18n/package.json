@@ -1,0 +1,35 @@
+{
+  "name": "@publira/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./catalog": {
+      "types": "./dist/catalog.d.mts",
+      "default": "./dist/catalog.mjs"
+    },
+    "./messages": {
+      "types": "./dist/gen/locale-messages.d.mts",
+      "default": "./dist/gen/locale-messages.mjs"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsdown",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@publira/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
