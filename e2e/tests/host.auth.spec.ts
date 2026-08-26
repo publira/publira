@@ -21,9 +21,10 @@ import {
   plantExpiredSessionCookie,
   sessionCookieValue,
 } from "../src/session";
-import { WEB_HOST_BASE_URL } from "../src/urls";
+import { hostPath, WEB_HOST_BASE_URL } from "../src/urls";
 
-const hostUrl = (pathname: string): string => `${WEB_HOST_BASE_URL}${pathname}`;
+const hostUrl = (pathname: string): string =>
+  `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
 
 const currentSession = async (
   page: Parameters<typeof signInAsSeedMember>[0]

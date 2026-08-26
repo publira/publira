@@ -16,6 +16,17 @@ const envUrl = (name: string, fallback: string): string => {
   return value && value.length > 0 ? value.replace(/\/$/u, "") : fallback;
 };
 
+/**
+ * Default UI locale of the public site. `proxy.ts` redirects a locale-less URL
+ * to this prefix, so specs address `/ja/...` directly rather than exercising
+ * the compatibility redirect on every navigation.
+ */
+export const WEB_HOST_LOCALE = "ja";
+
+/** Public-site path under the default locale: `/series` → `/ja/series`. */
+export const hostPath = (pathname: string): string =>
+  pathname === "/" ? `/${WEB_HOST_LOCALE}` : `/${WEB_HOST_LOCALE}${pathname}`;
+
 /** Public catalog site (web-host). Matches seed domain `localhost`. */
 export const WEB_HOST_BASE_URL = envUrl(
   "E2E_WEB_HOST_BASE_URL",

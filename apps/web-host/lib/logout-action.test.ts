@@ -52,7 +52,7 @@ describe("logoutAction", () => {
   it("upstream を revoke して Cookie を消し、ログインへ redirect する", async () => {
     const { logoutAction } = await import("./logout-action");
 
-    await logoutAction("TENANT001");
+    await logoutAction("TENANT001", "ja");
 
     expect(mockResolveAccessToken).toHaveBeenCalledOnce();
     expect(mockLogoutPublic).toHaveBeenCalledWith("tok_abc", "TENANT001");
@@ -60,7 +60,7 @@ describe("logoutAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "public-session-cookie-publira_web_host_auth"
     );
-    expect(mockRedirect).toHaveBeenCalledWith("/login");
+    expect(mockRedirect).toHaveBeenCalledWith("/ja/login");
   });
 
   it("revoke が失敗しても Cookie 削除と redirect は行う", async () => {
@@ -68,12 +68,12 @@ describe("logoutAction", () => {
 
     const { logoutAction } = await import("./logout-action");
 
-    await logoutAction("TENANT001");
+    await logoutAction("TENANT001", "en");
 
     expect(mockDeleteCookie).toHaveBeenCalledWith("publira_web_host_auth");
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "public-session-cookie-publira_web_host_auth"
     );
-    expect(mockRedirect).toHaveBeenCalledWith("/login");
+    expect(mockRedirect).toHaveBeenCalledWith("/en/login");
   });
 });

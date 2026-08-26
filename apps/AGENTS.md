@@ -424,6 +424,29 @@ Worked examples:
 - `web-platform`: `lib/locale.ts` / `lib/locale-action.ts` and the 表示言語 card on `/settings/general` ([#867](https://github.com/publira/publira/issues/867))
 - `web-admin`: `lib/locale.ts` (`getLocale()`) / `lib/locale-action.ts` and the 表示言語 card on `/settings` ([#868](https://github.com/publira/publira/issues/868))
 
+### A URL-locale app (`web-host`)
+
+The public site keeps the locale in the path, not in a cookie ([#869](https://github.com/publira/publira/issues/869)). A reader shares a URL and gets the language it names, and every cache key downstream — CDN, `"use cache"`, the prerendered shell — already separates the two languages. None of the cookie machinery above applies: `<html lang>` is a root parameter, so the root layout renders it directly and there is no correction script and no `suppressHydrationWarning`.
+
+The route tree is `app/[tenant_id]/[locale]/...`, and `proxy.ts` rewrites a public `/{locale}{path}` onto it after resolving the tenant from the Host. Three rules follow from that shape:
+
+- **A path with no locale redirects to `/{DEFAULT_LOCALE}{path}`, temporarily.** Bookmarks predate the prefix. The redirect is 307 rather than 308 so a browser does not cache a decision that `Accept-Language` negotiation would later have to override
+- **`/theme.css` and the Route Handlers stay outside the locale tree.** They answer machines, and a Route Handler cannot read `next/root-params` anyway, so a locale segment there would be a value nothing could use. The exemption lives in `lib/locale-path.ts`
+- **The locale is stripped before a path is classified.** `buildTenantRewritePathname` decides "published page or app route" on the locale-less remainder, so a tenant page whose slug happens to be `ja` still resolves, and a locale code can never collide with a reserved segment
+
+Reading the locale, by context:
+
+| Context | How |
+| --- | --- |
+| Server Component | `getLocale()` from `lib/locale.ts` — `next/root-params`, `notFound()` on an unsupported value |
+| Client Component | `useLocale()` from `components/locale-provider.tsx` (React context, seeded by the root layout) |
+| Server Action | An argument bound by the Server Component, or the `<LocaleField />` hidden field parsed with `localeFormSchema` |
+
+- **Never read the locale with `useParams()` or `usePathname()`.** Both call Next.js's dynamic-route-param hook, which aborts the prerender of a **fallback shell** — a route whose own dynamic segment has no value yet, such as `/series/[series_id]` — by bailing out to client rendering. The build fails with an empty `Error occurred prerendering page` line, so the cause is not obvious from the output. A Client Component that genuinely needs the current path (the locale switcher) belongs inside a `<Suspense>` with a skeleton
+- **In-app links go through `<LocaleLink>`**, or through `withLocalePrefix()` where an href is handed to a shared component that renders a plain `next/link` (`@publira/layouts` is shared with the cookie apps and cannot add the prefix itself). A bare `<Link href="/series">` drops the prefix and bounces the reader through the compatibility redirect
+- **`returnTo` and other stored paths stay locale-less.** `sanitizeRedirectPath` strips the segment, so whoever performs the redirect decides the language and `/en/login?returnTo=/ja/my` cannot throw a reader back into the other one
+- **A path that a Server Action redirects to needs the prefix applied at the `redirect()` call**, from the locale the action was given — including an operator-authored internal link, where `withLocalePrefix` leaves external URLs untouched
+
 ## Icons: `@publira/icons`, never inline `<svg>`
 
 Icons come from `@publira/icons`, a thin wrapper around `lucide-react`. App and package code must not hand-write `<svg>` in JSX, and must not import `lucide-react` directly — `packages/icons` is the only place allowed to (#690).

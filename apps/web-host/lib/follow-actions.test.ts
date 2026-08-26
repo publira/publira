@@ -25,8 +25,11 @@ vi.mock("./follow", () => ({
 
 vi.mock("./auth-session", () => ({
   requirePublicSession: mockRequirePublicSession,
-  withPublicSessionReauth: (_returnTo: string, run: () => Promise<unknown>) =>
-    run(),
+  withPublicSessionReauth: (
+    _locale: string,
+    _returnTo: string,
+    run: () => Promise<unknown>
+  ) => run(),
 }));
 
 const formData = (values: Record<string, string>): FormData => {
@@ -54,6 +57,7 @@ describe("toggleFollowAction", () => {
       null,
       formData({
         intent: "follow",
+        locale: "en",
         publicId: "SERIES01",
         returnTo: "/series/SERIES01",
         targetKind: "series",
@@ -71,7 +75,11 @@ describe("toggleFollowAction", () => {
       targetKind: "series",
       tenantId,
     });
-    expect(mockRequirePublicSession).toHaveBeenCalledWith("/series/SERIES01");
+    // 再ログインへ送るときにリーダーの locale を保つ。
+    expect(mockRequirePublicSession).toHaveBeenCalledWith(
+      "en",
+      "/series/SERIES01"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);
   });
 
@@ -123,7 +131,10 @@ describe("toggleFollowAction", () => {
       message: "フォローを解除しました。",
       ok: true,
     });
-    expect(mockRequirePublicSession).toHaveBeenCalledWith("/settings/follows");
+    expect(mockRequirePublicSession).toHaveBeenCalledWith(
+      "ja",
+      "/settings/follows"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);
     expect(mockUpdateTag).toHaveBeenCalledTimes(1);
   });

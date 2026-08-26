@@ -11,6 +11,15 @@ pnpm dev
 
 デフォルトポートは `3000` です。
 
+### URL とロケール
+
+公開 URL は `/{locale}/...` です（`ja` / `en`）。`proxy.ts` が Host からテナントを解決し、`/{tenantId}/{locale}{path}` へ rewrite します。ロケールの無い URL は `/ja{path}` へ 307 でリダイレクトするので、プレフィックス導入前のブックマークもそのまま開けます。
+
+- `/theme.css` と Route Handler（`/api/*`）はロケールの外に置きます。Route Handler は `next/root-params` を読めません
+- 個別ページの slug 判定はロケールを外した残りのパスで行うので、`/{locale}/ja` のような slug も公開ページとして解決します
+- Server Component は `lib/locale.ts` の `getLocale()`、Client Component は `components/locale-provider.tsx` の `useLocale()`、Server Action は引数か `<LocaleField />` の hidden フィールドからロケールを受け取ります
+- ヘッダの言語切替はパスのロケールだけを差し替えるリンクです。クエリ文字列は引き継ぎません
+
 ### セッション Cookie (JWE)
 
 必須の環境変数:

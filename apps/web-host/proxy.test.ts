@@ -64,11 +64,26 @@ describe("web-host proxy session handling", () => {
   it("Cookie が無い会員ページはログインへ送る", async () => {
     const { proxy } = await import("./proxy");
 
-    const response = await proxy(request("https://shop.example.com/settings"));
+    const response = await proxy(
+      request("https://shop.example.com/ja/settings")
+    );
 
     expect(response.status).toBe(307);
     const location = new URL(response.headers.get("location") ?? "");
-    expect(location.pathname).toBe("/login");
+    expect(location.pathname).toBe("/ja/login");
+    // `returnTo` は locale を落とした形で持ち回る。
+    expect(location.searchParams.get("returnTo")).toBe("/settings");
+  });
+
+  it("ログインへの送出はリーダーの locale を保つ", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/en/settings")
+    );
+
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/en/login");
     expect(location.searchParams.get("returnTo")).toBe("/settings");
   });
 
@@ -76,10 +91,10 @@ describe("web-host proxy session handling", () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
-      request("https://shop.example.com/settings", "not-a-session")
+      request("https://shop.example.com/ja/settings", "not-a-session")
     );
 
-    expect(response.headers.get("location")).toContain("/login");
+    expect(response.headers.get("location")).toContain("/ja/login");
     expect(deletedCookieNames(response)).toContain(COOKIE_NAME);
   });
 
@@ -90,11 +105,11 @@ describe("web-host proxy session handling", () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
-      request("https://shop.example.com/login", cookie)
+      request("https://shop.example.com/ja/login", cookie)
     );
 
     expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
-      "/my"
+      "/ja/my"
     );
   });
 
@@ -112,7 +127,7 @@ describe("web-host proxy session handling", () => {
 
     const response = await proxy(
       request(
-        "https://shop.example.com/login?returnTo=%2Fmy&reason=session_revoked",
+        "https://shop.example.com/ja/login?returnTo=%2Fmy&reason=session_revoked",
         cookie
       )
     );
@@ -129,12 +144,74 @@ describe("web-host proxy session handling", () => {
 
     const response = await proxy(
       request(
-        "https://shop.example.com/settings?reason=session_revoked",
+        "https://shop.example.com/ja/settings?reason=session_revoked",
         cookie
       )
     );
 
     expect(response.headers.get("location")).toBeNull();
     expect(deletedCookieNames(response)).toEqual([]);
+  });
+});
+
+describe("web-host proxy locale routing", () => {
+  beforeAll(() => {
+    process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveTenantId.mockResolvedValue(TENANT_ID);
+  });
+
+  it("locale 付きのパスをテナントと locale の下へ rewrite する", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/en/series/SR01")
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/en/series/SR01`
+    );
+  });
+
+  it("個別ページの slug は locale の下で /page へ載る", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/ja/privacy")
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/page/privacy`
+    );
+  });
+
+  it("locale の無い旧 URL は既定 locale へリダイレクトする", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/series"));
+
+    expect(response.status).toBe(307);
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/ja/series"
+    );
+  });
+
+  it("theme.css と Route Handler は locale を挟まない", async () => {
+    const { proxy } = await import("./proxy");
+
+    const theme = await proxy(request("https://shop.example.com/theme.css"));
+    const route = await proxy(
+      request("https://shop.example.com/api/revalidate")
+    );
+
+    expect(theme.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/theme.css`
+    );
+    expect(route.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/api/revalidate`
+    );
   });
 });

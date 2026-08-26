@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 import { startApiServer, stopApiServer } from "../src/api-server";
+import { hostPath } from "../src/urls";
 
 /**
  * Route-level error boundary (#643), acceptance criterion "サーバー側の例外で
@@ -65,7 +66,7 @@ test.describe("web-host site error boundary", () => {
     // answers 503 for a Host it cannot resolve, which would end the request
     // before any page renders. A URL that matches no published page warms that
     // lookup without filling a catalog cache entry.
-    await page.goto("/no-such-page-for-the-error-boundary-spec");
+    await page.goto(hostPath("/no-such-page-for-the-error-boundary-spec"));
     await expect(
       page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
     ).toBeVisible();
@@ -73,7 +74,7 @@ test.describe("web-host site error boundary", () => {
     try {
       stopApiServer();
 
-      const response = await page.goto(`/series/${uncachedSeriesId}`);
+      const response = await page.goto(hostPath(`/series/${uncachedSeriesId}`));
 
       // The point of the whole issue: a failing route answers with the site's
       // own error screen, not a bare 500.
