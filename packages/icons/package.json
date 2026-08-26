@@ -47,6 +47,10 @@
       "types": "./dist/image-icon.d.mts",
       "default": "./dist/image-icon.mjs"
     },
+    "./logout-icon": {
+      "types": "./dist/logout-icon.d.mts",
+      "default": "./dist/logout-icon.mjs"
+    },
     "./maximize-icon": {
       "types": "./dist/maximize-icon.d.mts",
       "default": "./dist/maximize-icon.mjs"
