@@ -7,6 +7,7 @@ export default defineConfig({
     "src/site-layout.tsx",
     "src/admin/index.ts",
     "src/admin/console-layout-client.tsx",
+    "src/admin/console-user-menu.tsx",
     "src/navigation.ts",
   ],
   format: "esm",

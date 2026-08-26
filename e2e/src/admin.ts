@@ -31,8 +31,14 @@ export const signInAsSeedAdmin = async (
   await signInAsAdmin(page, SEED_ADMIN, nextPath);
 };
 
+/** Open the console header's user menu (avatar). */
+export const openAdminUserMenu = async (page: Page): Promise<void> => {
+  await page.getByRole("button", { name: "アカウントメニュー" }).click();
+};
+
 export const signOutAdmin = async (page: Page): Promise<void> => {
-  await page.getByRole("button", { name: "ログアウト" }).click();
+  await openAdminUserMenu(page);
+  await page.getByRole("menuitem", { name: "ログアウト" }).click();
   await page.waitForURL((url) => url.pathname.endsWith("/login"));
 };
 

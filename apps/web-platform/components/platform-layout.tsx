@@ -37,7 +37,13 @@ export const PlatformUser = async () => {
     redirect("/login");
   }
 
-  return <ConsoleHeaderUser currentUser={result.operator} />;
+  return (
+    <ConsoleHeaderUser
+      accountHref="/settings/account"
+      currentUser={result.operator}
+      logoutAction={logoutAction}
+    />
+  );
 };
 
 export const PlatformNotificationBell = async () => {
@@ -64,19 +70,18 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
       <ConsoleHeader
         contextLabel="テナント横断オペレーション"
         eyebrow="Platform Operations"
-        logoutAction={logoutAction}
       >
         <NotificationBellErrorBoundary>
           <Suspense fallback={<NotificationBellSkeleton />}>
             <PlatformNotificationBell />
           </Suspense>
         </NotificationBellErrorBoundary>
-        <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
-          <PlatformUser />
-        </Suspense>
         <LinkButton href="/tenants/new" size="sm">
           テナント作成
         </LinkButton>
+        <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
+          <PlatformUser />
+        </Suspense>
       </ConsoleHeader>
       <ConsoleLayoutMain>{children}</ConsoleLayoutMain>
     </ConsoleLayoutContent>

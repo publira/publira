@@ -43,7 +43,11 @@ interface AdminLayoutTenant {
 const adminGradient =
   "bg-[radial-gradient(circle_at_top_left,rgba(15,124,130,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(217,111,74,0.13),transparent_30%),linear-gradient(180deg,rgba(255,253,248,0.78),rgba(246,242,233,0.98))]";
 
-export const AdminUser = async () => {
+export const AdminUser = async ({
+  logoutAction: logout,
+}: {
+  logoutAction: () => Promise<void>;
+}) => {
   const tenantId = await getTenantId();
   const result = await getAdminCurrentUser(tenantId);
   if (!result.ok) {
@@ -51,7 +55,13 @@ export const AdminUser = async () => {
     redirect("/login");
   }
 
-  return <ConsoleHeaderUser currentUser={result.user} />;
+  return (
+    <ConsoleHeaderUser
+      accountHref="/settings/account"
+      currentUser={result.user}
+      logoutAction={logout}
+    />
+  );
 };
 
 export const AdminNotificationBell = async () => {
@@ -108,17 +118,18 @@ export const AdminLayout = ({
           brandMark={headerBrand}
           contextLabel={tenant.name}
           eyebrow="現在の運用先"
-          logoutAction={logoutAction.bind(null, tenant.publicId)}
         >
           <Suspense fallback={<NotificationBellSkeleton />}>
             <AdminNotificationBell />
           </Suspense>
-          <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
-            <AdminUser />
-          </Suspense>
           <Button size="sm" type="button" variant="outline">
             プレビュー
           </Button>
+          <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
+            <AdminUser
+              logoutAction={logoutAction.bind(null, tenant.publicId)}
+            />
+          </Suspense>
         </ConsoleHeader>
         <ConsoleLayoutMain>{children}</ConsoleLayoutMain>
       </ConsoleLayoutContent>

@@ -13,9 +13,12 @@ export {
 export type {
   ConsoleCurrentUser,
   ConsoleHeaderProps,
+  ConsoleHeaderUserProps,
   ConsoleLayoutProps,
   ConsoleSidebarProps,
 } from "./console-layout";
+export { ConsoleUserMenu } from "./console-user-menu";
+export type { ConsoleUserMenuProps } from "./console-user-menu";
 
 export {
   ConsolePage,
