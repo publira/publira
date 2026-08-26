@@ -15,7 +15,7 @@ import (
 )
 
 func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {
-	ts := httptest.NewServer(NewHandler(nil, nil, slog.Default(), nil, nil, nil, testutil.TokenManager()))
+	ts := httptest.NewServer(NewHandler(nil, nil, slog.Default(), nil, nil, testutil.TokenManager()))
 	t.Cleanup(ts.Close)
 
 	assertPlatformRouteRegistered(t, ts, "/publira.platform.v1.PlatformTenantService/ListTenants", true)

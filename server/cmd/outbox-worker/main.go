@@ -12,10 +12,13 @@ import (
 	"time"
 
 	"github.com/publira/publira/server/config"
+	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/secretcrypto"
+	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -49,7 +52,21 @@ func main() {
 	}
 	defer db.Close() //nolint:errcheck
 
-	worker, err := outbox.Start(context.Background(), db, workerConfig(logger))
+	var encryptor *secretcrypto.Manager
+	if len(cfg.Encryption.Keys) > 0 {
+		encryptor, err = secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
+		if err != nil {
+			logger.Error("failed to initialize secret encryption manager", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, outbox.TenantAdminInvitationHandlerConfig{
+		DB:        db,
+		Encryptor: encryptor,
+		Mailer:    internalsmtp.NewClient(),
+		Renderer:  emailrenderer.NewClient(resolveEmailRendererURL()),
+	}))
 	if err != nil {
 		logger.Error("failed to start outbox worker", "error", err)
 		os.Exit(1)
@@ -89,9 +106,12 @@ func resolveWorkerDBURL(fallback string) string {
 	return defaultWorkerDBURL
 }
 
-func workerConfig(logger *slog.Logger) outbox.Config {
+func workerConfig(logger *slog.Logger, invitationHandler outbox.TenantAdminInvitationHandlerConfig) outbox.Config {
+	handlers := outbox.DefaultRegistry()
+	handlers.Register(outbox.EventTypeTenantAdminInvitationEmail, outbox.NewTenantAdminInvitationHandler(invitationHandler))
 	return outbox.Config{
 		Logger:            logger,
+		Handlers:          handlers,
 		DrainInterval:     envDuration("PUBLIRA_OUTBOX_DRAIN_INTERVAL", 0),
 		ClaimLimit:        envInt32("PUBLIRA_OUTBOX_CLAIM_LIMIT", 0),
 		MaxAttempts:       envInt("PUBLIRA_OUTBOX_MAX_ATTEMPTS", 0),
@@ -100,6 +120,13 @@ func workerConfig(logger *slog.Logger) outbox.Config {
 		FetchCooldown:     envDuration("PUBLIRA_OUTBOX_FETCH_COOLDOWN", 0),
 		FetchPollInterval: envDuration("PUBLIRA_OUTBOX_FETCH_POLL_INTERVAL", 0),
 	}
+}
+
+func resolveEmailRendererURL() string {
+	if url := strings.TrimSpace(os.Getenv("PUBLIRA_EMAIL_RENDERER_URL")); url != "" {
+		return url
+	}
+	return emailrenderer.DefaultURL
 }
 
 func envDuration(name string, fallback time.Duration) time.Duration {

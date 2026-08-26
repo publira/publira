@@ -189,7 +189,7 @@ func newIntegrationTestServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) 
 		t.Fatalf("sqlmock.New: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), nil, nil, nil, testutil.TokenManager()))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return server, mock
 }

@@ -1,6 +1,6 @@
 # outbox-worker
 
-Outbox を drain して River ジョブとして処理する常駐ワーカーです。API プロセスとは別プロセスで動きます。初版のハンドラはテストイベント `outbox_test` だけです。業務イベント（招待メールなど）は後続 Issue で登録します。
+Outbox を drain して River ジョブとして処理する常駐ワーカーです。API プロセスとは別プロセスで動きます。`outbox_test` に加え、テナント管理者招待メール `tenant_admin_invitation_email` を処理します。
 
 ## 起動
 
@@ -40,6 +40,8 @@ task docker:build:api CMD_NAME=outbox-worker PORT=8003
 - `PUBLIRA_OUTBOX_MAX_ATTEMPTS` (任意, 既定 `10`。到達した失敗で `dead`)
 - `PUBLIRA_OUTBOX_STALE_PROCESSING` (任意, Go duration。既定 `15m`。この時間より古い `processing` を `pending` に戻す)
 - `PUBLIRA_OUTBOX_MAX_WORKERS` (任意, River の default キュー並列数。既定 `8`)
+- `PUBLIRA_EMAIL_RENDERER_URL` (任意, テナント管理者招待メールを描画する email-renderer の URL。未指定時 `http://localhost:8080`)
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (任意, SMTP パスワードを復号するためのキー。platform API と同じ値を設定する)
 - `PUBLIRA_TRACING_ENABLED` (任意, 既定は無効)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (任意, 未指定時 `development`)
 

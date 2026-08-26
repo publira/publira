@@ -145,7 +145,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 ## Email renderer
 
 - `PUBLIRA_EMAIL_RENDERER_URL`
-  - platform API がテナント管理者招待メールを HTML / プレーンテキストへ描画する ConnectRPC サービスの URL
+  - outbox-worker がテナント管理者招待メールを HTML / プレーンテキストへ描画する ConnectRPC サービスの URL
   - 例: `http://email-renderer:8080`（コンテナ間通信）
   - 未設定時はローカル開発向けに `http://localhost:8080` を使用する
 
