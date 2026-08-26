@@ -95,6 +95,14 @@ const AuditLogsSkeleton = () => (
   </Card>
 );
 
+const AuditLogsFiltersSkeleton = () => (
+  <div className="flex gap-3">
+    <SkeletonLine className="h-10 w-48" />
+    <SkeletonLine className="h-10 w-56" />
+    <SkeletonLine className="h-10 w-24" />
+  </div>
+);
+
 const getOutcomeTone = (
   outcome: string
 ): "destructive" | "info" | "muted" | "success" | "warning" => {
@@ -181,82 +189,83 @@ const getSummaryText = (
   });
 };
 
-const AuditLogsFilters = ({
+const AuditLogsFilters = async ({
   actionFilter,
-  actionItems,
   actorFilter,
-  actorPlaceholder,
-  allEventsPlaceholder,
-  clearLabel,
-  filterLabel,
   hasFilter,
 }: {
   actionFilter: string;
-  actionItems: { label: string; value: string }[];
   actorFilter: string;
-  actorPlaceholder: string;
-  allEventsPlaceholder: string;
-  clearLabel: string;
-  filterLabel: string;
   hasFilter: boolean;
-}) => (
-  <Form
-    action="/audit-logs"
-    className="flex flex-wrap gap-3"
-    key={`${actorFilter}::${actionFilter}`}
-  >
-    <Input
-      className="w-48"
-      defaultValue={actorFilter}
-      name="actor_user_public_id"
-      placeholder={actorPlaceholder}
-      type="search"
-    />
-    <Select
-      className="w-56"
-      defaultValue={actionFilter || undefined}
-      items={actionItems}
-      name="action"
-      placeholder={allEventsPlaceholder}
-    />
-    <Button type="submit">{filterLabel}</Button>
-    {hasFilter ? (
-      <Link
-        className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
-        href="/audit-logs"
-      >
-        {clearLabel}
-      </Link>
-    ) : null}
-  </Form>
-);
+}) => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+  const actionItems = getAuditActionOptions(messages, locale);
 
-const AuditLogsPagination = ({
-  ariaLabel,
+  return (
+    <Form
+      action="/audit-logs"
+      className="flex flex-wrap gap-3"
+      key={`${actorFilter}::${actionFilter}`}
+    >
+      <Input
+        className="w-48"
+        defaultValue={actorFilter}
+        name="actor_user_public_id"
+        placeholder={getMessage(
+          messages,
+          "platform.audit.actor_filter_placeholder"
+        )}
+        type="search"
+      />
+      <Select
+        className="w-56"
+        defaultValue={actionFilter || undefined}
+        items={actionItems}
+        name="action"
+        placeholder={getMessage(messages, "platform.audit.all_events")}
+      />
+      <Button type="submit">
+        <Message message="platform.common.filter" />
+      </Button>
+      {hasFilter ? (
+        <Link
+          className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
+          href="/audit-logs"
+        >
+          <Message message="platform.common.clear" />
+        </Link>
+      ) : null}
+    </Form>
+  );
+};
+
+const AuditLogsPagination = async ({
   nextHref,
-  nextLabel,
   previousHref,
-  previousLabel,
-  summaryText,
+  result,
 }: {
-  ariaLabel: string;
   nextHref?: string;
-  nextLabel: string;
   previousHref?: string;
-  previousLabel: string;
-  summaryText: string;
-}) => (
-  <div className="flex items-center justify-between gap-3">
-    <p className="text-xs text-muted-foreground">{summaryText}</p>
-    <PaginationControls
-      ariaLabel={ariaLabel}
-      nextHref={nextHref}
-      nextLabel={nextLabel}
-      previousHref={previousHref}
-      previousLabel={previousLabel}
-    />
-  </div>
-);
+  result: ListPlatformAuditLogsResult;
+}) => {
+  const messages = await loadPlatformMessages(await getPlatformLocale());
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-xs text-muted-foreground">
+        {getSummaryText(result, messages)}
+      </p>
+      <PaginationControls
+        ariaLabel={getMessage(messages, "platform.audit.pagination_aria")}
+        nextHref={nextHref}
+        nextLabel={<Message message="platform.common.next" />}
+        previousHref={previousHref}
+        previousLabel={<Message message="platform.common.previous" />}
+      />
+    </div>
+  );
+};
 
 const renderAuditLogTarget = (log: PlatformAuditLogSummary) => {
   if (log.targetPublicId && isOperatorTargetType(log.targetType)) {
@@ -441,8 +450,6 @@ const AuditLogsContent = async ({
   const nextHref = result.nextToken
     ? buildAuditLogsPath({ ...filterParams, token: result.nextToken })
     : undefined;
-  const summaryText = getSummaryText(result, messages);
-
   return (
     <Card>
       <CardHeader>
@@ -454,22 +461,13 @@ const AuditLogsContent = async ({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <AuditLogsFilters
-          actionFilter={actionFilter}
-          actionItems={actionItems}
-          actorFilter={actorFilter}
-          actorPlaceholder={getMessage(
-            messages,
-            "platform.audit.actor_filter_placeholder"
-          )}
-          allEventsPlaceholder={getMessage(
-            messages,
-            "platform.audit.all_events"
-          )}
-          clearLabel={getMessage(messages, "platform.common.clear")}
-          filterLabel={getMessage(messages, "platform.common.filter")}
-          hasFilter={hasFilter}
-        />
+        <Suspense fallback={<AuditLogsFiltersSkeleton />}>
+          <AuditLogsFilters
+            actionFilter={actionFilter}
+            actorFilter={actorFilter}
+            hasFilter={hasFilter}
+          />
+        </Suspense>
 
         {result.ok ? null : (
           <SectionError
@@ -503,14 +501,13 @@ const AuditLogsContent = async ({
           />
         </Table>
 
-        <AuditLogsPagination
-          ariaLabel={getMessage(messages, "platform.audit.pagination_aria")}
-          nextHref={nextHref}
-          nextLabel={getMessage(messages, "platform.common.next")}
-          previousHref={previousHref}
-          previousLabel={getMessage(messages, "platform.common.previous")}
-          summaryText={summaryText}
-        />
+        <Suspense fallback={<SkeletonLine className="ml-auto h-8 w-40" />}>
+          <AuditLogsPagination
+            nextHref={nextHref}
+            previousHref={previousHref}
+            result={result}
+          />
+        </Suspense>
       </CardContent>
     </Card>
   );
