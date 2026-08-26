@@ -1,7 +1,11 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getTenantDisplayTimeZone, getTenantSiteInfo } from "./tenant";
+import {
+  getTenantDefaultLocale,
+  getTenantDisplayTimeZone,
+  getTenantSiteInfo,
+} from "./tenant";
 
 const { mockCacheLife, mockCacheTag, mockGetTenant } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
@@ -27,6 +31,7 @@ vi.mock("./api-client", () => ({
 const tenantResponse = {
   acceptsPayments: true,
   copyrightText: "© Example",
+  defaultLocale: "en",
   siteDescription: "",
   siteTagline: "",
   tenantDomain: "example.test",
@@ -154,5 +159,38 @@ describe("tenant", () => {
   it("テナント ID が空のときも既定タイムゾーンで表示する", async () => {
     await expect(getTenantDisplayTimeZone("  ")).resolves.toBe("Asia/Tokyo");
     expect(mockGetTenant).not.toHaveBeenCalled();
+  });
+
+  it("公開 API の既定ロケールをサイト情報に載せる", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.defaultLocale).toBe("en");
+  });
+
+  it("このビルドが配信しないロケールだけ ja に落とす", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      defaultLocale: "fr",
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.defaultLocale).toBe("ja");
+  });
+
+  it("既定ロケールとしてテナントの設定値を返す", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    await expect(getTenantDefaultLocale("TENANT_001")).resolves.toBe("en");
+  });
+
+  it("テナントを取得できないときも既定ロケールは ja になる", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    await expect(getTenantDefaultLocale("TENANT_001")).resolves.toBe("ja");
   });
 });

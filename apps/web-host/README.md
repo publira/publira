@@ -19,6 +19,7 @@ pnpm dev
 - 個別ページの slug 判定はロケールを外した残りのパスで行うので、`/{locale}/ja` のような slug も公開ページとして解決します
 - Server Component は `lib/locale.ts` の `getLocale()`、Client Component は `components/locale-provider.tsx` の `useLocale()`、Server Action は引数か `<LocaleField />` の hidden フィールドからロケールを受け取ります
 - ヘッダの言語切替はパスのロケールだけを差し替えるリンクです。クエリ文字列は引き継ぎません
+- サーバー側でテナントの既定ロケールが要るときは `lib/tenant.ts` の `getTenantDefaultLocale()` を使います。`getTenantSiteInfo()` の `defaultLocale` を返すだけの入口で、テナントを読めなければ `ja` になります。`proxy.ts` はここを通りません（レンダリング前で `"use cache"` を読めないため、`GetTenantByDomain` の応答から直接取ります）
 
 ### セッション Cookie (JWE)
 

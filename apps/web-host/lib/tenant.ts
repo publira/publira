@@ -2,6 +2,8 @@ import { isExpectedNullableRpcError } from "@publira/api-client/errors";
 import type { TenantImageVariant as TenantImageVariantMessage } from "@publira/api-client/public/types";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { DEFAULT_LOCALE, parseLocale } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";
@@ -27,6 +29,8 @@ export interface TenantSiteInfo {
   /** Whether the public API verified that Checkout can be offered safely. */
   acceptsPayments: boolean;
   copyrightText?: string;
+  /** UI locale a reader gets when the URL does not name one. */
+  defaultLocale: Locale;
   domain: string;
   /** The public site's `rel="icon"` (#549); no icon is declared without it. */
   iconImageUpdatedAt?: string;
@@ -142,6 +146,10 @@ export const getTenantSiteInfo = async (
     return {
       acceptsPayments: response.acceptsPayments === true,
       copyrightText: trimmed(response.copyrightText),
+      // The server resolves the tenant value against the platform default
+      // before answering (`locale.Resolve`), so `parseLocale` only catches a
+      // code this build does not serve.
+      defaultLocale: parseLocale(response.defaultLocale),
       domain: trimmed(response.tenantDomain) ?? "",
       iconImageUpdatedAt: nonEmpty(response.theme?.iconImageUpdatedAt),
       iconImageVariants: toTenantImageVariants(
@@ -194,4 +202,29 @@ export const getTenantDisplayTimeZone = async (
 ): Promise<string> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.timeZone ?? DEFAULT_TIME_ZONE;
+};
+
+/**
+ * The tenant's default UI locale, for server-side code that has to name a
+ * language the reader did not choose. One entry point, the way
+ * {@link getTenantDisplayTimeZone} is, so no call site reaches for
+ * {@link DEFAULT_LOCALE} on its own and the site agrees with the admin console
+ * about what the tenant's default is.
+ *
+ * `proxy.ts` does **not** use this: the locale-less redirect happens before any
+ * route renders, where `"use cache"` reads are unavailable, so it takes the
+ * `default_locale` that `GetTenantByDomain` returns alongside the tenant id
+ * (`lib/tenant-resolution.ts`). Both paths resolve to the same setting.
+ *
+ * An unavailable tenant read degrades to {@link DEFAULT_LOCALE} rather than
+ * failing the render. The read carries `tenant:<id>:site`, which the admin API
+ * revalidates when the default locale is saved
+ * (`tenantDefaultLocaleRevalidateTags`), so a change reaches the site without
+ * waiting for the cache to age out.
+ */
+export const getTenantDefaultLocale = async (
+  tenantId: string
+): Promise<Locale> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return tenant?.defaultLocale ?? DEFAULT_LOCALE;
 };

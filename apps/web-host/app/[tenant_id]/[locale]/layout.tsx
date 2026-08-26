@@ -16,6 +16,13 @@ import "../../globals.css";
  * cannot be enumerated at build time — hence the placeholder every tenant read
  * guards against — while the locales are a closed set and really are
  * prerendered one entry per locale.
+ *
+ * Every supported locale is emitted, not just the tenant's default one. The
+ * default decides where `proxy.ts` sends a URL that names no locale; it does
+ * not narrow what the site serves, because the other locale stays reachable by
+ * its own URL and every tenant shares these shells anyway — the tenant segment
+ * is a placeholder here, so there is no tenant whose setting could be read at
+ * build time.
  */
 export const generateStaticParams = () =>
   LOCALES.map((locale) => ({
