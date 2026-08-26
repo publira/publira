@@ -1,5 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
+import type { PublishedAuthor } from "@publira/api-client/public/types";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
@@ -44,13 +45,20 @@ export interface PublishedAuthorListResult {
   nextToken: string;
 }
 
-const mapPublishedAuthor = (author: {
-  iconImageUrl?: string;
-  name?: string;
-  profileText?: string;
-  publicId?: string;
-  publishedSeriesCount?: number;
-}): Omit<PublishedAuthorDetail, "nextToken" | "previousToken" | "series"> => ({
+/**
+ * The generated `PublishedAuthor` fields {@link mapPublishedAuthor} reads.
+ * Naming them against the message type is what makes a proto rename fail here —
+ * a restated structural type keeps compiling, and the author page then renders
+ * a nameless author with no profile text and nothing pointing at the cause.
+ */
+type RawPublishedAuthor = Pick<
+  PublishedAuthor,
+  "iconImageUrl" | "name" | "profileText" | "publicId" | "publishedSeriesCount"
+>;
+
+const mapPublishedAuthor = (
+  author: RawPublishedAuthor
+): Omit<PublishedAuthorDetail, "nextToken" | "previousToken" | "series"> => ({
   iconImageUrl: author.iconImageUrl?.trim() ?? "",
   id: author.publicId ?? "",
   name: (author.name ?? "").trim(),

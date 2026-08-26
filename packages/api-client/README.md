@@ -40,7 +40,7 @@ await client.auth.getMe({
 
 型だけ使う場合:
 
-`@publira/api-client/admin/types` は共有の `publira.types.v1` メッセージに加え、web-admin のマッパーが `Pick` する admin.v1 のエンティティも再エクスポートする。`@publira/api-client/platform/types` は同じ役割を platform.v1 のエンティティについて担う。いずれもリクエスト / レスポンス型はサービスごとのモジュールに残す。
+`@publira/api-client/admin/types` は共有の `publira.types.v1` メッセージに加え、web-admin のマッパーが `Pick` する admin.v1 のエンティティも再エクスポートする。`@publira/api-client/public/types` は同じ共有メッセージに web-host が `Pick` する publira.v1 のエンティティを、`@publira/api-client/platform/types` は platform.v1 のエンティティを、それぞれ並べて再エクスポートする。いずれもリクエスト / レスポンス型はサービスごとのモジュールに残す。
 
 ```ts
 import type {
@@ -48,6 +48,7 @@ import type {
   AdminAccessTicket,
 } from "@publira/api-client/admin/types";
 import type { Tenant } from "@publira/api-client/platform/types";
+import type { MyPurchase } from "@publira/api-client/public/types";
 import type { CreateSessionRequest } from "@publira/api-client/public/auth";
 import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/auth";
 ```

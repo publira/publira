@@ -4,7 +4,7 @@ import {
   isRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
-import type { MyFollow } from "@publira/api-client/public/catalog";
+import type { MyFollow } from "@publira/api-client/public/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {

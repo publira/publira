@@ -4,6 +4,7 @@ import {
   isRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
+import type { MyPurchase } from "@publira/api-client/public/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
@@ -57,15 +58,25 @@ const emptyPurchasePage = {
   purchases: [] as PurchaseItem[],
 };
 
-const mapPurchase = (purchase: {
-  episode?: { orderIndex?: number; publicId?: string; title?: string };
-  expiresAt?: string;
-  id?: string;
-  isActive?: boolean;
-  priceAtPurchase?: number;
-  purchasedAt?: string;
-  series?: { publicId?: string; title?: string };
-}): PurchaseItem => ({
+/**
+ * The generated `MyPurchase` fields {@link mapPurchase} reads. Naming them
+ * against the message type is what makes a proto rename fail here — a restated
+ * structural type keeps compiling, and the purchases list then renders a row
+ * with a blank episode title and a zero price with nothing pointing at the
+ * cause.
+ */
+type RawPurchase = Pick<
+  MyPurchase,
+  | "episode"
+  | "expiresAt"
+  | "id"
+  | "isActive"
+  | "priceAtPurchase"
+  | "purchasedAt"
+  | "series"
+>;
+
+const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
   episode: {
     orderIndex: purchase.episode?.orderIndex ?? 0,
     publicId: purchase.episode?.publicId ?? "",
