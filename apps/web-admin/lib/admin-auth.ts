@@ -239,13 +239,6 @@ export const isAdminSessionValid = async (
   return result.ok;
 };
 
-export const sessionCookieOptions = {
-  httpOnly: true,
-  path: "/",
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-};
-
 export const getTenantAdminInvitationState = async (
   tenantId: string,
   token: string

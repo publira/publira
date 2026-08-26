@@ -4,16 +4,16 @@ import { getMessage } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { encryptSessionPayload, resolveAuthSecret } from "@publira/web-session";
+import {
+  encryptSessionPayload,
+  resolveAuthSecret,
+  sessionCookieOptions,
+} from "@publira/web-session";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import {
-  PLATFORM_SESSION_COOKIE_NAME,
-  loginPlatform,
-  sessionCookieOptions,
-} from "#lib/auth";
+import { PLATFORM_SESSION_COOKIE_NAME, loginPlatform } from "#lib/auth";
 import {
   emailFormSchema,
   nextPathFormSchema,
@@ -69,8 +69,7 @@ export const loginAction = async (
   );
   const cookieStore = await cookies();
   cookieStore.set({
-    ...sessionCookieOptions,
-    expires: result.expiresAt,
+    ...sessionCookieOptions(result.expiresAt),
     name: PLATFORM_SESSION_COOKIE_NAME,
     value: sealed,
   });

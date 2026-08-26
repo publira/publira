@@ -5,6 +5,7 @@ import {
   encryptSessionPayload,
   isSessionExpired,
   resolveAuthSecret,
+  sessionCookieOptions,
 } from "./index";
 
 const SECRET = "test-secret-value-that-is-long-enough-000000";
@@ -97,6 +98,37 @@ describe("web-session", () => {
       setSecret("あいうえおかきくけこさし");
 
       expect(resolveAuthSecret()).toBe("あいうえおかきくけこさし");
+    });
+  });
+
+  describe("sessionCookieOptions", () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    afterEach(() => {
+      if (originalNodeEnv === undefined) {
+        delete process.env.NODE_ENV;
+        return;
+      }
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    it("uses the required production cookie policy and preserves the expiry", () => {
+      const expiresAt = new Date("2027-01-15T08:01:00.000Z");
+      process.env.NODE_ENV = "production";
+
+      expect(sessionCookieOptions(expiresAt)).toEqual({
+        expires: expiresAt,
+        httpOnly: true,
+        path: "/",
+        sameSite: "lax",
+        secure: true,
+      });
+    });
+
+    it("allows HTTP cookies outside production", () => {
+      process.env.NODE_ENV = "development";
+
+      expect(sessionCookieOptions(new Date(FUTURE)).secure).toBe(false);
     });
   });
 });

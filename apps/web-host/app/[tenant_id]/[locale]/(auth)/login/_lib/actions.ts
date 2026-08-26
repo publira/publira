@@ -3,17 +3,14 @@
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { sessionCookieOptions } from "@publira/web-session";
 import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { sealSessionCookieValue } from "#lib/api-client";
-import {
-  PUBLIC_SESSION_COOKIE_NAME,
-  loginPublic,
-  sessionCookieOptions,
-} from "#lib/auth";
+import { PUBLIC_SESSION_COOKIE_NAME, loginPublic } from "#lib/auth";
 import {
   emailFormSchema,
   passwordFormSchema,
@@ -90,8 +87,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
   });
   const cookieStore = await cookies();
   cookieStore.set({
-    ...sessionCookieOptions,
-    expires: result.expiresAt,
+    ...sessionCookieOptions(result.expiresAt),
     name: PUBLIC_SESSION_COOKIE_NAME,
     value: sealed,
   });

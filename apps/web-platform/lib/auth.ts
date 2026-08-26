@@ -103,10 +103,3 @@ export const getPlatformCurrentOperator =
       throw error;
     }
   };
-
-export const sessionCookieOptions = {
-  httpOnly: true,
-  path: "/",
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-};
