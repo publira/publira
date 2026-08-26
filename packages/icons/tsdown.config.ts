@@ -13,6 +13,7 @@ export default defineConfig({
     "src/collection-icon.tsx",
     "src/dashboard-icon.tsx",
     "src/image-icon.tsx",
+    "src/logout-icon.tsx",
     "src/maximize-icon.tsx",
     "src/menu-icon.tsx",
     "src/minimize-icon.tsx",

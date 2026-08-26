@@ -1,5 +1,3 @@
-import { StatusChip } from "@publira/ui-components/badge";
-import { Button } from "@publira/ui-components/button";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import Link from "next/link";
@@ -8,6 +6,7 @@ import type { ReactNode } from "react";
 
 import type { NavSection } from "../navigation";
 import { ConsoleLayoutClient } from "./console-layout-client";
+import { ConsoleUserMenu } from "./console-user-menu";
 
 export interface ConsoleLayoutProps {
   children: ReactNode;
@@ -110,38 +109,27 @@ export const ConsoleSidebarSkeleton = () => (
 );
 
 export const ConsoleHeaderUser = ({
+  accountHref,
   currentUser,
-}: {
-  currentUser: ConsoleCurrentUser;
-}) => (
-  <div className="flex items-center gap-2 sm:gap-3">
-    <div className="hidden min-w-0 text-right sm:block">
-      <p className="truncate text-sm font-medium text-foreground">
-        {currentUser.name}
-      </p>
-      <p className="text-xs text-muted-foreground">{currentUser.publicId}</p>
-    </div>
-    <StatusChip className="hidden sm:inline-flex" status="info">
-      {toRoleLabel(currentUser.role)}
-    </StatusChip>
-  </div>
+  logoutAction,
+}: ConsoleHeaderUserProps) => (
+  <ConsoleUserMenu
+    accountHref={accountHref}
+    logoutAction={logoutAction}
+    name={currentUser.name}
+    publicId={currentUser.publicId}
+    roleLabel={toRoleLabel(currentUser.role)}
+  />
 );
 
 export const ConsoleHeaderUserSkeleton = () => (
-  <div className="flex items-center gap-2 sm:gap-3">
-    <div className="hidden min-w-0 text-right sm:block">
-      <Skeleton className="h-3.5 w-28 rounded" />
-      <Skeleton className="mt-1 h-3 w-20 rounded" />
-    </div>
-    <Skeleton className="h-7 w-20 rounded" />
-  </div>
+  <Skeleton className="size-9 rounded-full" />
 );
 
 export const ConsoleHeader = ({
   brandMark,
   eyebrow,
   contextLabel,
-  logoutAction,
   children,
 }: ConsoleHeaderProps) => (
   <Suspense fallback={<ConsoleHeaderSkeleton />}>
@@ -158,14 +146,7 @@ export const ConsoleHeader = ({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          {children}
-          <form action={logoutAction}>
-            <Button size="sm" type="submit" variant="outline">
-              ログアウト
-            </Button>
-          </form>
-        </div>
+        <div className="flex items-center gap-2 sm:gap-3">{children}</div>
       </div>
     </header>
   </Suspense>
@@ -246,8 +227,13 @@ export interface ConsoleHeaderProps {
   brandMark?: ReactNode;
   eyebrow: string;
   contextLabel: string;
-  logoutAction: (formData: FormData) => void | Promise<void>;
   children?: ReactNode;
+}
+
+export interface ConsoleHeaderUserProps {
+  accountHref: string;
+  currentUser: ConsoleCurrentUser;
+  logoutAction: (formData: FormData) => void | Promise<void>;
 }
 
 export interface ConsoleSidebarProps {

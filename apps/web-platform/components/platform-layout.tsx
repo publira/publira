@@ -8,7 +8,6 @@ import {
   ConsoleSidebar,
 } from "@publira/layouts/admin";
 import { StatusChip } from "@publira/ui-components/badge";
-import { LinkButton } from "@publira/ui-components/button";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -37,7 +36,13 @@ export const PlatformUser = async () => {
     redirect("/login");
   }
 
-  return <ConsoleHeaderUser currentUser={result.operator} />;
+  return (
+    <ConsoleHeaderUser
+      accountHref="/settings/account"
+      currentUser={result.operator}
+      logoutAction={logoutAction}
+    />
+  );
 };
 
 export const PlatformNotificationBell = async () => {
@@ -64,7 +69,6 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
       <ConsoleHeader
         contextLabel="テナント横断オペレーション"
         eyebrow="Platform Operations"
-        logoutAction={logoutAction}
       >
         <NotificationBellErrorBoundary>
           <Suspense fallback={<NotificationBellSkeleton />}>
@@ -74,9 +78,6 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
         <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
           <PlatformUser />
         </Suspense>
-        <LinkButton href="/tenants/new" size="sm">
-          テナント作成
-        </LinkButton>
       </ConsoleHeader>
       <ConsoleLayoutMain>{children}</ConsoleLayoutMain>
     </ConsoleLayoutContent>

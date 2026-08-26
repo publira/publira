@@ -4,7 +4,7 @@
 
 ## 提供物
 
-`BellIcon` / `CheckIcon` / `ChevronDownIcon` / `ChevronLeftIcon` / `ChevronRightIcon` / `CloseIcon` / `CollectionIcon` / `DashboardIcon` / `ImageIcon` / `MaximizeIcon` / `MenuIcon` / `MinimizeIcon` / `SettingsIcon` / `UserIcon`、および props 型の `IconProps`。
+`BellIcon` / `CheckIcon` / `ChevronDownIcon` / `ChevronLeftIcon` / `ChevronRightIcon` / `CloseIcon` / `CollectionIcon` / `DashboardIcon` / `ImageIcon` / `LogoutIcon` / `MaximizeIcon` / `MenuIcon` / `MinimizeIcon` / `SettingsIcon` / `UserIcon`、および props 型の `IconProps`。
 
 `IconProps` は `SVGProps<SVGSVGElement>` そのもので、各コンポーネントは受け取った props をラップ先へ透過します。サイズ・色・`aria-*` は呼び出し側が決めます。
 

@@ -12,11 +12,10 @@ import {
 } from "#components/admin-page";
 
 import { EmailChangeForm } from "../_components/email-change-form";
-import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { requestEmailChangeAction } from "../_lib/actions";
 
 export const metadata: Metadata = {
-  title: "設定 - アカウント",
+  title: "アカウント設定",
 };
 
 export const generateStaticParams = () =>
@@ -27,18 +26,14 @@ const AccountSettingsPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>設定</AdminPageTitle>
+        <AdminPageTitle>アカウント設定</AdminPageTitle>
         <AdminPageDescription>
-          管理者アカウントの設定を管理します。
+          ログイン中の管理者アカウントの情報を管理します。
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <div className="grid gap-6">
-        <SettingsTabNav current="account" />
-
-        <EmailChangeForm action={requestEmailChangeAction} />
-      </div>
+      <EmailChangeForm action={requestEmailChangeAction} />
     </AdminPageContent>
   </AdminPage>
 );

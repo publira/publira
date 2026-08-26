@@ -10,12 +10,11 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 
-import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { requestPlatformEmailChangeAction } from "../_lib/actions";
 import { EmailChangeForm } from "./_components/email-change-form";
 
 export const metadata: Metadata = {
-  title: "設定 - アカウント",
+  title: "アカウント設定",
 };
 
 const PlatformAccountSettingsPage = () => (
@@ -23,17 +22,14 @@ const PlatformAccountSettingsPage = () => (
     <PlatformPageHeader>
       <PlatformPageHeading>
         <PlatformPageEyebrow>Platform Settings</PlatformPageEyebrow>
-        <PlatformPageTitle>設定</PlatformPageTitle>
+        <PlatformPageTitle>アカウント設定</PlatformPageTitle>
         <PlatformPageDescription>
-          アカウント情報を管理します。
+          ログイン中のオペレーターアカウントの情報を管理します。
         </PlatformPageDescription>
       </PlatformPageHeading>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <div className="grid gap-6">
-        <SettingsTabNav current="account" />
-        <EmailChangeForm action={requestPlatformEmailChangeAction} />
-      </div>
+      <EmailChangeForm action={requestPlatformEmailChangeAction} />
     </PlatformPageContent>
   </PlatformPage>
 );

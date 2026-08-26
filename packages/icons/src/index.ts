@@ -7,6 +7,7 @@ export { CloseIcon } from "./close-icon";
 export { CollectionIcon } from "./collection-icon";
 export { DashboardIcon } from "./dashboard-icon";
 export { ImageIcon } from "./image-icon";
+export { LogoutIcon } from "./logout-icon";
 export { MaximizeIcon } from "./maximize-icon";
 export { MenuIcon } from "./menu-icon";
 export { MinimizeIcon } from "./minimize-icon";
