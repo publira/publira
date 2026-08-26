@@ -167,29 +167,6 @@ func (q *Queries) DeleteSeriesFollow(ctx context.Context, arg DeleteSeriesFollow
 	return result.RowsAffected()
 }
 
-const getPublishedSeriesByPublicIDForFollow = `-- name: GetPublishedSeriesByPublicIDForFollow :one
-SELECT s.id
-FROM series s
-WHERE s.tenant_id = $1
-    AND s.public_id = $2
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-LIMIT 1
-`
-
-type GetPublishedSeriesByPublicIDForFollowParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-}
-
-func (q *Queries) GetPublishedSeriesByPublicIDForFollow(ctx context.Context, arg GetPublishedSeriesByPublicIDForFollowParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedSeriesByPublicIDForFollow, arg.TenantID, arg.PublicID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
-}
-
 const listPublishedCreatorFollowTargetPublicIDsByIDs = `-- name: ListPublishedCreatorFollowTargetPublicIDsByIDs :many
 SELECT c.id,
     c.public_id
@@ -692,7 +669,7 @@ type UserFollowsPublishedSeriesParams struct {
 	SeriesID uuid.UUID `json:"series_id"`
 }
 
-// Matches GetPublishedSeriesByPublicIDForFollow, so an unpublished series is
+// Matches GetPublishedSeriesIDByPublicID, so an unpublished series is
 // indistinguishable from an unfollowed one.
 func (q *Queries) UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error) {
 	row := q.db.QueryRowContext(ctx, userFollowsPublishedSeries, arg.TenantID, arg.UserID, arg.SeriesID)

@@ -49,16 +49,6 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND user_id = sqlc.arg('user_id')
     AND series_id = sqlc.arg('series_id');
 
--- name: GetPublishedSeriesByPublicIDForFollow :one
-SELECT s.id
-FROM series s
-WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.public_id = sqlc.arg('public_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-LIMIT 1;
-
 -- name: ListUserFollowsByCreatedAtDesc :many
 -- The API can expose one timeline while keeping each relationship's storage
 -- and future aggregates independent. Public joins make a target that is no
@@ -315,7 +305,7 @@ SELECT EXISTS (
 ) AS follows_published_creator;
 
 -- name: UserFollowsPublishedSeries :one
--- Matches GetPublishedSeriesByPublicIDForFollow, so an unpublished series is
+-- Matches GetPublishedSeriesIDByPublicID, so an unpublished series is
 -- indistinguishable from an unfollowed one.
 SELECT EXISTS (
     SELECT 1

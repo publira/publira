@@ -91,12 +91,12 @@ const quoteSqlLiteral = (value: string): string =>
  * Episodes do not cascade from series, so they are deleted first. Listings /
  * creators cascade from their parents.
  *
- * View events do not cascade either: `content_events` references both series
- * and episodes with `ON DELETE RESTRICT`, so an engagement row survives the
- * content it describes on purpose. The app never deletes a series, so only this
- * fixture — which reaches past the app and drops rows directly — has to clear
- * the log first. Every event for an episode also carries its series, so one
- * delete by `series_id` covers both kinds.
+ * Engagement events do not cascade either: `content_events` references both
+ * series and episodes with `ON DELETE RESTRICT`, so a view or rating row
+ * survives the content it describes on purpose. The app never deletes a series,
+ * so only this fixture — which reaches past the app and drops rows directly —
+ * has to clear the log first. Every event carries its series, whether or not it
+ * also names an episode, so one delete by `series_id` covers them all.
  */
 export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
   const quoted: string[] = [];

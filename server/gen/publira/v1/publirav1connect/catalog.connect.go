@@ -25,6 +25,8 @@ const (
 	CatalogServiceName = "publira.v1.CatalogService"
 	// FollowServiceName is the fully-qualified name of the FollowService service.
 	FollowServiceName = "publira.v1.FollowService"
+	// RatingServiceName is the fully-qualified name of the RatingService service.
+	RatingServiceName = "publira.v1.RatingService"
 	// PurchaseServiceName is the fully-qualified name of the PurchaseService service.
 	PurchaseServiceName = "publira.v1.PurchaseService"
 )
@@ -71,6 +73,9 @@ const (
 	// FollowServiceListMyFollowsProcedure is the fully-qualified name of the FollowService's
 	// ListMyFollows RPC.
 	FollowServiceListMyFollowsProcedure = "/publira.v1.FollowService/ListMyFollows"
+	// RatingServiceRateContentProcedure is the fully-qualified name of the RatingService's RateContent
+	// RPC.
+	RatingServiceRateContentProcedure = "/publira.v1.RatingService/RateContent"
 	// PurchaseServiceStartEpisodeCheckoutProcedure is the fully-qualified name of the PurchaseService's
 	// StartEpisodeCheckout RPC.
 	PurchaseServiceStartEpisodeCheckoutProcedure = "/publira.v1.PurchaseService/StartEpisodeCheckout"
@@ -518,6 +523,82 @@ func (UnimplementedFollowServiceHandler) Unfollow(context.Context, *connect.Requ
 
 func (UnimplementedFollowServiceHandler) ListMyFollows(context.Context, *connect.Request[v1.ListMyFollowsRequest]) (*connect.Response[v1.ListMyFollowsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.FollowService.ListMyFollows is not implemented"))
+}
+
+// RatingServiceClient is a client for the publira.v1.RatingService service.
+type RatingServiceClient interface {
+	// Records a rating for a currently public series or episode. Cross-tenant,
+	// unpublished, and missing targets are all surfaced as NotFound, matching
+	// FollowService, so a rating cannot be used to probe for hidden content.
+	RateContent(context.Context, *connect.Request[v1.RateContentRequest]) (*connect.Response[v1.RateContentResponse], error)
+}
+
+// NewRatingServiceClient constructs a client for the publira.v1.RatingService service. By default,
+// it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and
+// sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC()
+// or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewRatingServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RatingServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	ratingServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("RatingService").Methods()
+	return &ratingServiceClient{
+		rateContent: connect.NewClient[v1.RateContentRequest, v1.RateContentResponse](
+			httpClient,
+			baseURL+RatingServiceRateContentProcedure,
+			connect.WithSchema(ratingServiceMethods.ByName("RateContent")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// ratingServiceClient implements RatingServiceClient.
+type ratingServiceClient struct {
+	rateContent *connect.Client[v1.RateContentRequest, v1.RateContentResponse]
+}
+
+// RateContent calls publira.v1.RatingService.RateContent.
+func (c *ratingServiceClient) RateContent(ctx context.Context, req *connect.Request[v1.RateContentRequest]) (*connect.Response[v1.RateContentResponse], error) {
+	return c.rateContent.CallUnary(ctx, req)
+}
+
+// RatingServiceHandler is an implementation of the publira.v1.RatingService service.
+type RatingServiceHandler interface {
+	// Records a rating for a currently public series or episode. Cross-tenant,
+	// unpublished, and missing targets are all surfaced as NotFound, matching
+	// FollowService, so a rating cannot be used to probe for hidden content.
+	RateContent(context.Context, *connect.Request[v1.RateContentRequest]) (*connect.Response[v1.RateContentResponse], error)
+}
+
+// NewRatingServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewRatingServiceHandler(svc RatingServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	ratingServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("RatingService").Methods()
+	ratingServiceRateContentHandler := connect.NewUnaryHandler(
+		RatingServiceRateContentProcedure,
+		svc.RateContent,
+		connect.WithSchema(ratingServiceMethods.ByName("RateContent")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/publira.v1.RatingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case RatingServiceRateContentProcedure:
+			ratingServiceRateContentHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedRatingServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedRatingServiceHandler struct{}
+
+func (UnimplementedRatingServiceHandler) RateContent(context.Context, *connect.Request[v1.RateContentRequest]) (*connect.Response[v1.RateContentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.RatingService.RateContent is not implemented"))
 }
 
 // PurchaseServiceClient is a client for the publira.v1.PurchaseService service.

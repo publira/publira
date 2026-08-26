@@ -316,6 +316,23 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 | Max-Age | 180 日（生イベントの保持期間より長く、放置された識別子が残り続けない長さ） |
 | その他 | `HttpOnly` / `Secure` / `SameSite=Lax` |
 
+## 評価イベント（rating）
+
+`RatingService.RateContent` は、ログイン中の読者が付けた 1〜5 の評価を `content_events` に記録します。閲覧イベントと違い読者が明示的に行う操作なので、失敗は握り潰さずエラーとして返します。
+
+| 項目 | 値 |
+| --- | --- |
+| イベント種別 | `rating` |
+| actor | `user_id`（ログイン必須。匿名評価は受け付けない） |
+| 対象 | シリーズ評価は `series_id` のみ、エピソード評価は `series_id` + `episode_id` |
+| `series_id` | クライアント入力ではなく `series` / `episodes` から解決する |
+| スコア | `rating_score` 1〜5。範囲外と未設定の 0 は `invalid_argument`（DB 側にも CHECK 制約がある） |
+| 追記のみ | 評価し直しても既存行は更新も削除もせず、新しい行を追加する |
+
+評価を取り消す RPC はありません。「どの評価が有効か」は書き込み時ではなく読み出し時に決める設計で、`ListLatestContentRatingsByEntity`（`DISTINCT ON (actor_key)`）が actor ごとの最新の 1 件を返します。
+
+日次集計（`content_daily_stats` の `rating_count` / `rating_sum`）はその日に発生した評価だけを数える**フロー指標**であり、その時点でアイテムが保持している評価の平均（ストック）ではありません。評価し直した読者はどちらの日にも計上され、評価を変えなかった読者は初日以降どの日にも計上されません。ストックの平均が要るときは上記の `DISTINCT ON` を使います。
+
 ## API サーバ分離
 
 - 公開 API サーバー: `server/cmd/api-server`

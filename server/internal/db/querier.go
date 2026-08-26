@@ -154,7 +154,10 @@ type Querier interface {
 	GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error)
 	// テナントの公開中ページをslugで取得する
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
-	GetPublishedSeriesByPublicIDForFollow(ctx context.Context, arg GetPublishedSeriesByPublicIDForFollowParams) (uuid.UUID, error)
+	// Resolves a currently public series to its internal ID and nothing else.
+	// Shared by every member-facing RPC that acts on a series (follow, rating), so
+	// they all treat a foreign, unpublished, or missing series the same way.
+	GetPublishedSeriesIDByPublicID(ctx context.Context, arg GetPublishedSeriesIDByPublicIDParams) (uuid.UUID, error)
 	GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, arg GetPurchasableEpisodeByPublicIDForTenantParams) (GetPurchasableEpisodeByPublicIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
@@ -205,6 +208,8 @@ type Querier interface {
 	//     -> idx_content_events_episode_view_debounce
 	//   InsertProjectedSourceEvent
 	//     -> idx_content_events_source_unique
+	//   ListLatestContentRatingsByEntity
+	//     -> idx_content_events_tenant_series_occurred_at
 	InsertContentEvent(ctx context.Context, arg InsertContentEventParams) (ContentEvent, error)
 	// Fixed 30-minute epoch bucket. Same actor + episode + bucket is a no-op.
 	// :one returns no rows on conflict (same as CreateNotification).
@@ -228,6 +233,17 @@ type Querier interface {
 	InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error
 	// Idempotent projection from a SoT row (purchases.id, access_tickets.id).
 	InsertProjectedSourceEvent(ctx context.Context, arg InsertProjectedSourceEventParams) (ContentEvent, error)
+	// Ratings are append-only, like every other content_events row: a member who
+	// changes their score inserts another event instead of updating the previous
+	// one, so the history stays reconstructable and nothing has to be deleted.
+	// Which score "counts" is therefore a read-side decision, not a write-side one
+	// (see ListLatestContentRatingsByEntity). There is deliberately no debounce
+	// bucket here: a rating is an explicit act, not a page load.
+	//
+	// episode_id NULL rates the series itself; set, it rates that episode, and
+	// series_id must still be the episode's own series. Both are resolved by the
+	// server from the catalog row, never taken from client input.
+	InsertRatingEvent(ctx context.Context, arg InsertRatingEventParams) (ContentEvent, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
 	// Admin ListAccessTickets は (created_at, id) の降順で表示する。
 	// 次ページは降順、前ページは昇順のクエリで idx_access_tickets_tenant_created_at
@@ -321,6 +337,16 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
+	// The latest rating each actor currently stands by for one entity: the stock
+	// view of an append-only log. `content_daily_stats.rating_count` /
+	// `rating_sum` (#593) are the *flow* of a single day and cannot answer this,
+	// because a member who rated 1 on Monday and 5 on Tuesday contributes to both
+	// days. A stock average has to come from this DISTINCT ON, over the full
+	// retained history, until a materialised current-rating table exists.
+	//
+	// The tie-break runs past occurred_at because two events from one actor can
+	// share a timestamp; id is UUIDv7, so the later insert wins.
+	ListLatestContentRatingsByEntity(ctx context.Context, arg ListLatestContentRatingsByEntityParams) ([]ListLatestContentRatingsByEntityRow, error)
 	ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error)
 	ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error)
 	ListNotificationsForUserAsc(ctx context.Context, arg ListNotificationsForUserAscParams) ([]ListNotificationsForUserAscRow, error)
@@ -558,7 +584,12 @@ type Querier interface {
 	// ユーザーのステータスをID指定で更新
 	UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error)
 	// Daily stats are full-day replacements (#593). Upsert keeps a single row per
-	// (tenant, date, entity). rating_* are that day's flow, not a stock average.
+	// (tenant, date, entity). rating_count / rating_sum are that day's flow — the
+	// rating events that occurred on stat_date — and not a stock average: a member
+	// who re-rates is counted on both days, and a member who never re-rates is
+	// counted on neither day after the first. Summing rating_sum / rating_count
+	// across a date range therefore averages ratings *given* in that range, not
+	// the ratings an item currently holds (ListLatestContentRatingsByEntity).
 	UpsertContentDailyStats(ctx context.Context, arg UpsertContentDailyStatsParams) (ContentDailyStat, error)
 	UpsertContentRankingSnapshot(ctx context.Context, arg UpsertContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
@@ -584,7 +615,7 @@ type Querier interface {
 	// Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or
 	// otherwise non-public episode is indistinguishable from an unfollowed one.
 	UserFollowsPublishedEpisode(ctx context.Context, arg UserFollowsPublishedEpisodeParams) (bool, error)
-	// Matches GetPublishedSeriesByPublicIDForFollow, so an unpublished series is
+	// Matches GetPublishedSeriesIDByPublicID, so an unpublished series is
 	// indistinguishable from an unfollowed one.
 	UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error)
 	// True when the user may view paid body content for the episode via purchase or active access ticket.

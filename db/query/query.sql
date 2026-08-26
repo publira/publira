@@ -1869,6 +1869,18 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     )
 ORDER BY s.created_at ASC, s.id ASC
 LIMIT sqlc.arg('limit');
+-- Resolves a currently public series to its internal ID and nothing else.
+-- Shared by every member-facing RPC that acts on a series (follow, rating), so
+-- they all treat a foreign, unpublished, or missing series the same way.
+-- name: GetPublishedSeriesIDByPublicID :one
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.public_id = sqlc.arg('public_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+LIMIT 1;
 -- name: GetSeriesByPublicIDForTenant :one
 SELECT s.id,
     s.public_id,
