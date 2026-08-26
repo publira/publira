@@ -19,10 +19,6 @@
       "types": "./dist/cached-read.d.mts",
       "default": "./dist/cached-read.mjs"
     },
-    "./catalog": {
-      "types": "./dist/catalog.d.mts",
-      "default": "./dist/catalog.mjs"
-    },
     "./cn": {
       "types": "./dist/cn.d.mts",
       "default": "./dist/cn.mjs"
@@ -38,10 +34,6 @@
     "./health": {
       "types": "./dist/health.d.mts",
       "default": "./dist/health.mjs"
-    },
-    "./i18n": {
-      "types": "./dist/i18n.d.mts",
-      "default": "./dist/i18n.mjs"
     },
     "./static-param-placeholder": {
       "types": "./dist/static-param-placeholder.d.mts",
@@ -74,6 +66,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@publira/i18n": "workspace:*",
     "clsx": "2.1.1",
     "tailwind-merge": "3.6.0"
   },

@@ -1,6 +1,6 @@
+import type { Locale } from "@publira/i18n";
 import { getTenantDomainCandidates } from "@publira/utils";
 import { isHealthProbePath } from "@publira/utils/health";
-import type { Locale } from "@publira/utils/i18n";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

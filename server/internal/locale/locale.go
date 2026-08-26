@@ -6,6 +6,8 @@ import (
 	"errors"
 	"slices"
 	"strings"
+
+	localegen "github.com/publira/publira/server/internal/locale/gen"
 )
 
 // Default mirrors the tenants.default_locale and platform_config.default_locale
@@ -14,9 +16,8 @@ import (
 // row cannot be read.
 const Default = "ja"
 
-// Supported is the first-cut UI locale list and must match LOCALES in
-// packages/utils/src/i18n.ts. Adding a locale means updating both.
-var Supported = []string{"ja", "en"}
+// Supported is generated from locales/index.json.
+var Supported = localegen.Supported
 
 // ErrInvalid is returned when a value is not a supported UI locale code.
 var ErrInvalid = errors.New("default_locale must be a supported locale")

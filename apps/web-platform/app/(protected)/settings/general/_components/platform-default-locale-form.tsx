@@ -1,3 +1,5 @@
+import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import {
   Card,
   CardContent,
@@ -14,8 +16,6 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Select } from "@publira/ui-components/select";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { getMessage, LOCALES } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 import { Suspense } from "react";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
@@ -34,8 +34,8 @@ export const PlatformDefaultLocaleForm = async ({
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
   const hasLoadError = Boolean(loadErrorMessage);
-  const items = LOCALES.map((value) => ({
-    label: getMessage(messages, `locale.${value}`),
+  const items = getLocales().map((value) => ({
+    label: getLocaleLabel(value),
     value,
   }));
 

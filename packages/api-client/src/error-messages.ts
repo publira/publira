@@ -1,5 +1,5 @@
-import { sharedRpcErrorMessage } from "@publira/utils/catalog";
-import type { Locale } from "@publira/utils/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedRpcErrorMessage } from "@publira/i18n/catalog";
 
 import type { RpcErrorDisposition } from "./errors.js";
 import { rpcErrorDisposition } from "./errors.js";

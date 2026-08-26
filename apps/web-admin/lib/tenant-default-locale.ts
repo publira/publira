@@ -1,7 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, parseLocale } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
+import { DEFAULT_LOCALE, parseLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { cacheTag } from "next/cache";
 
 import {

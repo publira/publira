@@ -1,5 +1,5 @@
+import { parseLocale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
-import { parseLocale } from "@publira/utils/i18n";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 

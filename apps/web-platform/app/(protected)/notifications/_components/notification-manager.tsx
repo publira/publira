@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
   Card,
@@ -18,7 +19,6 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
-import { getMessage } from "@publira/utils/i18n";
 import Link from "next/link";
 import { Suspense } from "react";
 

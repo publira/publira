@@ -1,4 +1,4 @@
-import type { Locale } from "@publira/utils/i18n";
+import type { Locale } from "@publira/i18n";
 import { render, toPlainText } from "react-email";
 
 import { resolveEmail } from "./registry";

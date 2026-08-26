@@ -1,7 +1,7 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import { SectionError } from "@publira/ui-components/section-error";
-import { getMessage } from "@publira/utils/i18n";
 import {
   parseRouteParams,
   routeParamString,

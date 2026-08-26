@@ -17,7 +17,7 @@
  * by a fallback rather than reported — so those stay constants.
  */
 
-import { getMessage } from "@publira/utils/i18n";
+import { getMessage } from "@publira/i18n";
 import { searchParamString } from "@publira/utils/search-params";
 import { z } from "zod";
 

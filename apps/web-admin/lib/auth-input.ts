@@ -11,10 +11,12 @@
  * open-redirect rule.
  */
 
+import { getMessage } from "@publira/i18n";
 import { searchParamString } from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { sanitizeRedirectPath } from "./admin-auth-shared";
+import type { AdminMessages } from "./locale";
 import { isTenantIdFormat } from "./tenant-id-format";
 
 /** Paths in `next` can carry a query string; 255 would clip real ones. */
@@ -60,19 +62,23 @@ export const authTokenSearchParamSchema = searchParamString({
   maxLength: 64,
 }).transform((value) => (AUTH_TOKEN_PATTERN.test(value) ? value : ""));
 
-export const authTokenFormSchema = z
-  .string()
-  .trim()
-  .refine((value) => AUTH_TOKEN_PATTERN.test(value), {
-    error: "確認リンクが無効です。",
-  });
+export const authTokenFormSchema = (messages: AdminMessages) =>
+  z
+    .string()
+    .trim()
+    .refine((value) => AUTH_TOKEN_PATTERN.test(value), {
+      error: getMessage(messages, "admin.auth.fields.invalid_token"),
+    });
 
-export const inviteTokenFormSchema = z
-  .string({ error: "招待トークンが見つかりません。" })
-  .trim()
-  .refine((value) => AUTH_TOKEN_PATTERN.test(value), {
-    error: "招待トークンが見つかりません。",
-  });
+export const inviteTokenFormSchema = (messages: AdminMessages) =>
+  z
+    .string({
+      error: getMessage(messages, "admin.auth.accept_invite.invalid_token"),
+    })
+    .trim()
+    .refine((value) => AUTH_TOKEN_PATTERN.test(value), {
+      error: getMessage(messages, "admin.auth.accept_invite.invalid_token"),
+    });
 
 /**
  * Email shown on a login / reset screen. Not an input we act on as a
@@ -83,19 +89,28 @@ export const emailSearchParamSchema = searchParamString({
   maxLength: 255,
 }).transform((value) => (z.email().safeParse(value).success ? value : ""));
 
-export const tenantIdFormSchema = z
-  .string({ error: "テナント ID が見つかりません。" })
-  .trim()
-  .min(1, "テナント ID が見つかりません。")
-  .refine(isTenantIdFormat, { error: "テナント ID が見つかりません。" });
+export const tenantIdFormSchema = (messages: AdminMessages) => {
+  const missing = getMessage(messages, "admin.auth.fields.tenant_missing");
 
-export const emailFormSchema = z
-  .string({ error: "メールアドレスを入力してください。" })
-  .trim()
-  .min(1, "メールアドレスを入力してください。")
-  .pipe(z.email("メールアドレスの形式が正しくありません。"));
+  return z
+    .string({ error: missing })
+    .trim()
+    .min(1, missing)
+    .refine(isTenantIdFormat, { error: missing });
+};
 
-export const passwordFormSchema = z
-  .string({ error: "パスワードを入力してください。" })
-  .min(1, "パスワードを入力してください。")
-  .max(1024);
+export const emailFormSchema = (messages: AdminMessages) => {
+  const required = getMessage(messages, "admin.auth.fields.email_required");
+
+  return z
+    .string({ error: required })
+    .trim()
+    .min(1, required)
+    .pipe(z.email(getMessage(messages, "admin.auth.fields.email_invalid")));
+};
+
+export const passwordFormSchema = (messages: AdminMessages) => {
+  const required = getMessage(messages, "admin.auth.fields.password_required");
+
+  return z.string({ error: required }).min(1, required).max(1024);
+};

@@ -1,9 +1,19 @@
 package locale
 
 import (
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
+	"slices"
 	"testing"
 )
+
+type localeIndex struct {
+	Locales []struct {
+		Code string `json:"code"`
+	} `json:"locales"`
+}
 
 func TestResolve(t *testing.T) {
 	platformDefault := func(value string) func() string {
@@ -120,5 +130,25 @@ func TestSupportedMatchesNormalize(t *testing.T) {
 		if got != code {
 			t.Fatalf("Normalize(%q) = %q, want %q", code, got, code)
 		}
+	}
+}
+
+func TestGeneratedLocalesMatchIndex(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "locales", "index.json"))
+	if err != nil {
+		t.Fatalf("read locale index: %v", err)
+	}
+
+	var index localeIndex
+	if err := json.Unmarshal(raw, &index); err != nil {
+		t.Fatalf("decode locale index: %v", err)
+	}
+
+	want := make([]string, 0, len(index.Locales))
+	for _, locale := range index.Locales {
+		want = append(want, locale.Code)
+	}
+	if !slices.Equal(Supported, want) {
+		t.Fatalf("Supported = %q, want %q from locales/index.json", Supported, want)
 	}
 }

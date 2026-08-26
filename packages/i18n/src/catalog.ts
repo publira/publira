@@ -1,5 +1,5 @@
 /**
- * Synchronous lookup into the repo-root message catalog.
+ * Synchronous lookup into the repo-root locale catalog.
  *
  * `rpcErrorMessage` and the form helpers run inside `catch` / `safeParse` and
  * must stay sync, so both locales are imported statically. Per-route UI
@@ -7,17 +7,12 @@
  * chunk.
  */
 
-import en from "../../../locales/en.json" with { type: "json" };
-import ja from "../../../locales/ja.json" with { type: "json" };
+import { CATALOGS } from "./gen/locale-catalogs";
+import type { LocaleMessages } from "./gen/locale-catalogs";
 import { getMessage, parseLocale } from "./i18n";
 import type { Locale, MessageKey } from "./i18n";
 
-export type SharedMessages = typeof ja;
-
-const CATALOGS = {
-  en,
-  ja,
-} as const satisfies Record<Locale, SharedMessages>;
+export type SharedMessages = LocaleMessages;
 
 const RPC_MESSAGE_KEYS = {
   conflict: "errors.rpc.conflict",

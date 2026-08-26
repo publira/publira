@@ -1,7 +1,7 @@
+import { getMessage } from "@publira/i18n";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { getMessage } from "@publira/utils/i18n";
 import { Suspense } from "react";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";

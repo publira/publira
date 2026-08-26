@@ -1,5 +1,7 @@
 "use client";
 
+import { isLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -8,8 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { isLocale } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 import { useCallback } from "react";
 
 import { LOCALE_FIELD_NAME } from "#lib/locale-shared";

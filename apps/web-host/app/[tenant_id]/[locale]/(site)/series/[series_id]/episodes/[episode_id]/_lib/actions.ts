@@ -5,8 +5,8 @@ import {
   isRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { parseLocale } from "@publira/i18n";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { parseLocale } from "@publira/utils/i18n";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 

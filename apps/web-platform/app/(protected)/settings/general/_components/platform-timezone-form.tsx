@@ -1,5 +1,6 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -18,7 +19,6 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { listSupportedTimeZones } from "@publira/utils";
-import { getMessage } from "@publira/utils/i18n";
 import { useActionState, useMemo, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";

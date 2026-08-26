@@ -1,16 +1,23 @@
+import { getMessage } from "@publira/i18n";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { getTenantAdminInvitationState } from "#lib/admin-auth";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { AcceptInviteForm } from "./_components/accept-invite-form";
 import { parseAcceptInviteSearchParams } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "管理者招待の承諾",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.auth.accept_invite.title") };
 };
 
 interface AcceptInvitePageProps {
@@ -21,19 +28,22 @@ interface AcceptInvitePageProps {
 }
 
 const AcceptInviteFormContent = async ({ token }: { token: string }) => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const messages = await loadAdminMessages(locale);
   const invitation = await getTenantAdminInvitationState(tenantId, token);
 
   if (!invitation) {
     return (
       <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <FormMessage variant="destructive">招待が見つかりません。</FormMessage>
+        <FormMessage variant="destructive">
+          {getMessage(messages, "admin.auth.accept_invite.not_found")}
+        </FormMessage>
         <div className="text-center text-sm">
           <Link
             className="font-medium text-primary hover:underline"
             href="/login"
           >
-            ログイン画面へ
+            {getMessage(messages, "admin.auth.confirm_email.to_login")}
           </Link>
         </div>
       </div>
@@ -41,22 +51,27 @@ const AcceptInviteFormContent = async ({ token }: { token: string }) => {
   }
 
   if (invitation.status !== "pending") {
-    let statusMessage = "この招待は期限切れです。";
-    if (invitation.status === "accepted") {
-      statusMessage = "この招待はすでに承諾済みです。";
-    } else if (invitation.status === "canceled") {
-      statusMessage = "この招待は取り消されています。";
+    let statusMessage:
+      | "admin.auth.accept_invite.accepted"
+      | "admin.auth.accept_invite.canceled"
+      | "admin.auth.accept_invite.expired" = "admin.auth.accept_invite.expired";
+    if (invitation.status === "canceled") {
+      statusMessage = "admin.auth.accept_invite.canceled";
+    } else if (invitation.status === "accepted") {
+      statusMessage = "admin.auth.accept_invite.accepted";
     }
 
     return (
       <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <FormMessage variant="destructive">{statusMessage}</FormMessage>
+        <FormMessage variant="destructive">
+          {getMessage(messages, statusMessage)}
+        </FormMessage>
         <div className="text-center text-sm">
           <Link
             className="font-medium text-primary hover:underline"
             href="/login"
           >
-            ログイン画面へ
+            {getMessage(messages, "admin.auth.confirm_email.to_login")}
           </Link>
         </div>
       </div>
@@ -66,12 +81,15 @@ const AcceptInviteFormContent = async ({ token }: { token: string }) => {
   return (
     <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
       <p className="text-sm text-muted-foreground">
-        {invitation.email} をテナント管理者として招待しています。
+        {getMessage(messages, "admin.auth.accept_invite.email_invited", {
+          email: invitation.email,
+        })}
       </p>
 
       <AcceptInviteForm
         accountExists={invitation.accountExists}
         email={invitation.email}
+        tenantId={tenantId}
         token={token}
       />
     </div>
@@ -87,14 +105,18 @@ const AcceptInvitePageContent = async ({
     return (
       <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
         <FormMessage variant="destructive">
-          招待トークンが見つかりません。
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="admin.auth.accept_invite.invalid_token" />
+          </Suspense>
         </FormMessage>
         <div className="text-center text-sm">
           <Link
             className="font-medium text-primary hover:underline"
             href="/login"
           >
-            ログイン画面へ
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="admin.auth.confirm_email.to_login" />
+            </Suspense>
           </Link>
         </div>
       </div>
@@ -104,17 +126,21 @@ const AcceptInvitePageContent = async ({
   return <AcceptInviteFormContent token={token} />;
 };
 
-const AcceptInviteFallback = () => (
-  <div className="h-40 animate-pulse rounded bg-muted/70" />
-);
+const AcceptInviteFallback = () => <Skeleton className="h-40 w-full" />;
 
 const AcceptInvitePage = ({ searchParams }: AcceptInvitePageProps) => (
   <main className="flex min-h-dvh items-center justify-center px-4 py-10">
     <div className="w-full max-w-md space-y-6">
       <div className="text-center">
-        <h1 className="font-serif text-2xl font-semibold">管理者招待の承諾</h1>
+        <h1 className="font-serif text-2xl font-semibold">
+          <Suspense fallback={<SkeletonLine className="mx-auto h-7 w-48" />}>
+            <Message message="admin.auth.accept_invite.title" />
+          </Suspense>
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          招待を承諾すると、このテナントの管理画面にアクセスできます。
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="admin.auth.accept_invite.description" />
+          </Suspense>
         </p>
       </div>
 

@@ -15,8 +15,8 @@ import {
   isLocale,
   LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
-} from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
+} from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { cookies } from "next/headers";
 
 import { getPlatformDisplayLocale } from "./platform-settings";

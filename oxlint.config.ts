@@ -82,7 +82,7 @@ export default defineConfig({
        * the module under test, evaluated in a fresh context against a
        * `document` stub.
        */
-      files: ["packages/utils/src/i18n.test.ts"],
+      files: ["packages/i18n/src/i18n.test.ts"],
       rules: {
         "sonarjs/code-eval": "off",
       },
@@ -98,7 +98,7 @@ export default defineConfig({
        * Next.js documents for cookie-driven `<html>` attributes.
        *
        * The injected source is `LOCALE_LANG_SCRIPT`, a constant built from
-       * `LOCALES` and `LOCALE_COOKIE_NAME` in `@publira/utils/i18n`. No
+       * `getLocales` and `LOCALE_COOKIE_NAME` in `@publira/i18n`. No
        * request-derived value reaches it, and the script writes an attribute
        * rather than markup. See AGENTS.md "UI ロケール" (#867, #868).
        *
@@ -115,7 +115,7 @@ export default defineConfig({
     {
       /**
        * The locale Action writes a UI preference, not privileged state: it
-       * stores one of `LOCALES` in `publira_locale`, and every read parses that
+       * stores one value from `getLocales()` in `publira_locale`, and every read parses that
        * cookie again (`parseLocaleCookie`), so a forged or hand-edited value
        * resolves to `ja` rather than reaching application code. Requiring a
        * session would tie a display setting to sign-in without protecting

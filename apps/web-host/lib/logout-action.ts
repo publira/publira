@@ -1,6 +1,6 @@
 "use server";
 
-import type { Locale } from "@publira/utils/i18n";
+import type { Locale } from "@publira/i18n";
 import { redirect } from "next/navigation";
 
 import { resolveAccessToken as getSession } from "./api-client";

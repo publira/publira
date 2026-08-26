@@ -1,0 +1,14 @@
+{
+  "locales": [
+    {
+      "code": "ja",
+      "intl": "ja-JP",
+      "label": "日本語"
+    },
+    {
+      "code": "en",
+      "intl": "en-US",
+      "label": "English"
+    }
+  ]
+}

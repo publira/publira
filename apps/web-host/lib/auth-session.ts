@@ -1,4 +1,4 @@
-import type { Locale } from "@publira/utils/i18n";
+import type { Locale } from "@publira/i18n";
 import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";

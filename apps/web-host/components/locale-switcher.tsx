@@ -1,7 +1,7 @@
 "use client";
 
-import { LOCALES } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
+import { getLocales } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -48,7 +48,7 @@ export const LocaleSwitcher = () => {
 
   return (
     <nav aria-label="表示言語" className="flex items-center gap-1 text-xs">
-      {LOCALES.map((locale) => {
+      {getLocales().map((locale) => {
         const current = locale === currentLocale;
 
         return (

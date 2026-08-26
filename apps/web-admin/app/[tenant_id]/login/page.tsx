@@ -1,18 +1,25 @@
+import { getMessage } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { loginAction } from "./_lib/actions";
 import { parseLoginSearchParams } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "ログイン",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.auth.login.title") };
 };
 
 interface LoginPageProps {
@@ -29,9 +36,9 @@ interface LoginPageProps {
 
 const LoginPageFallback = () => (
   <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-    <div className="h-11 animate-pulse rounded bg-muted/70" />
-    <div className="h-11 animate-pulse rounded bg-muted/70" />
-    <div className="h-10 animate-pulse rounded bg-muted" />
+    <Skeleton className="h-11 w-full" />
+    <Skeleton className="h-11 w-full" />
+    <Skeleton className="h-10 w-full" />
   </div>
 );
 
@@ -59,11 +66,16 @@ const LoginPageContent = async ({
         <input name="next" type="hidden" value={nextPath} />
 
         <Field>
-          <FieldLabel required>メールアドレス</FieldLabel>
+          <FieldLabel htmlFor="email" required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="admin.auth.fields.email_label" />
+            </Suspense>
+          </FieldLabel>
           <FieldContent>
             <Input
               autoComplete="email"
               defaultValue={defaultEmail}
+              id="email"
               name="email"
               placeholder="admin@example.com"
               required
@@ -73,10 +85,15 @@ const LoginPageContent = async ({
         </Field>
 
         <Field>
-          <FieldLabel required>パスワード</FieldLabel>
+          <FieldLabel htmlFor="password" required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.auth.fields.password_label" />
+            </Suspense>
+          </FieldLabel>
           <FieldContent>
             <Input
               autoComplete="current-password"
+              id="password"
               name="password"
               placeholder="••••••••"
               required
@@ -87,19 +104,25 @@ const LoginPageContent = async ({
 
         {invitedDone ? (
           <FormMessage variant="success">
-            招待の承諾が完了しました。ログインしてください。
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message message="admin.auth.login.invited_done" />
+            </Suspense>
           </FormMessage>
         ) : null}
 
         {passwordResetDone ? (
           <FormMessage variant="success">
-            パスワードを再設定しました。新しいパスワードでログインしてください。
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message message="admin.auth.login.reset_done" />
+            </Suspense>
           </FormMessage>
         ) : null}
 
         {sessionRevoked ? (
           <FormMessage variant="destructive">
-            セッションの有効期限が切れました。もう一度ログインしてください。
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message message="admin.auth.login.session_revoked" />
+            </Suspense>
           </FormMessage>
         ) : null}
 
@@ -112,12 +135,16 @@ const LoginPageContent = async ({
             className="font-medium text-primary hover:underline"
             href={forgotPasswordHref}
           >
-            パスワードを忘れた場合
+            <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+              <Message message="admin.auth.login.forgot_password" />
+            </Suspense>
           </Link>
         </div>
 
         <Button className="mt-2 w-full" type="submit">
-          ログイン
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="admin.auth.login.submit" />
+          </Suspense>
         </Button>
       </form>
     </div>
@@ -129,7 +156,11 @@ const LoginPage = (props: LoginPageProps) => (
     <div className="w-full max-w-sm">
       <div className="mb-8 text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <p className="mt-2 text-sm text-muted-foreground">管理画面ログイン</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.auth.login.eyebrow" />
+          </Suspense>
+        </p>
       </div>
 
       <Suspense fallback={<LoginPageFallback />}>

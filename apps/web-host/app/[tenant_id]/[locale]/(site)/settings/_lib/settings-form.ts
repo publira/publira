@@ -1,5 +1,5 @@
+import type { Locale } from "@publira/i18n";
 import { toFormDataInput } from "@publira/utils/form-data";
-import type { Locale } from "@publira/utils/i18n";
 import { z } from "zod";
 
 import { passwordFormSchema, tenantIdFormSchema } from "#lib/auth-input";

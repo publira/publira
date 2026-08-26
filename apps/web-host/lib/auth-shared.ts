@@ -1,5 +1,5 @@
 import { isUnauthenticatedRpcError } from "@publira/api-client/errors";
-import type { Locale } from "@publira/utils/i18n";
+import type { Locale } from "@publira/i18n";
 import {
   decryptSessionPayload,
   isSessionExpired,

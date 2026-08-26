@@ -1,5 +1,6 @@
-import { getMessage, loadMessages } from "@publira/utils/i18n";
-import type { Locale, MessageKey, MessageValues } from "@publira/utils/i18n";
+import { getMessage } from "@publira/i18n";
+import type { Locale, MessageKey, MessageValues } from "@publira/i18n";
+import { loadLocaleMessages } from "@publira/i18n/messages";
 
 // Type-only JSON imports cannot take import attributes (TS2857).
 import type jaCatalog from "../../../locales/ja.json";
@@ -9,15 +10,11 @@ export type Messages = typeof jaCatalog;
 export type EmailMessageKey = MessageKey<Messages>;
 
 /**
- * Load one locale from the repo-root catalog. Specifiers stay static so a
- * bundler can split them; adding a locale is a new importer here plus
- * `locales/<code>.json` (see `locales/README.md`).
+ * Load one locale from the repo-root catalog. The generated registry keeps
+ * static import specifiers in one place (see `locales/README.md`).
  */
 export const loadEmailMessages = (locale: Locale | string): Promise<Messages> =>
-  loadMessages<Messages>(locale, {
-    en: () => import("../../../locales/en.json", { with: { type: "json" } }),
-    ja: () => import("../../../locales/ja.json", { with: { type: "json" } }),
-  });
+  loadLocaleMessages(locale) as Promise<Messages>;
 
 export const emailMessage = (
   messages: Messages,

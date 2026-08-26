@@ -1,5 +1,6 @@
 "use server";
 
+import { getMessage } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
@@ -7,13 +8,14 @@ import { z } from "zod";
 
 import { requestAdminPasswordReset } from "#lib/admin-auth";
 import { emailFormSchema, tenantIdFormSchema } from "#lib/auth-input";
+import { getLocale, loadAdminMessages } from "#lib/locale";
+import type { AdminMessages } from "#lib/locale";
 
-const TENANT_MISSING_MESSAGE = "テナント識別子が見つかりませんでした。";
-
-const forgotPasswordFormSchema = z.object({
-  email: emailFormSchema,
-  tenantId: tenantIdFormSchema,
-});
+const forgotPasswordFormSchema = (messages: AdminMessages) =>
+  z.object({
+    email: emailFormSchema(messages),
+    tenantId: tenantIdFormSchema(messages),
+  });
 
 const buildForgotPasswordPath = ({
   email,
@@ -43,26 +45,30 @@ const buildForgotPasswordPath = ({
 export const requestPasswordResetAction = async (
   formData: FormData
 ): Promise<void> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
   const input = toFormDataInput(formData, {
     email: "value",
     tenantId: { kind: "value", name: "tenant_id" },
   });
-  const parsed = forgotPasswordFormSchema.safeParse(input);
+  const parsed = forgotPasswordFormSchema(messages).safeParse(input);
   if (!parsed.success) {
-    const tenantIdResult = tenantIdFormSchema.safeParse(input.tenantId);
-    const emailResult = emailFormSchema.safeParse(input.email);
+    const tenantIdResult = tenantIdFormSchema(messages).safeParse(
+      input.tenantId
+    );
+    const emailResult = emailFormSchema(messages).safeParse(input.email);
     redirect(
       buildForgotPasswordPath({
         email: emailResult.success ? emailResult.data : undefined,
         error: tenantIdResult.success
           ? toFormErrorMessage(parsed.error)
-          : TENANT_MISSING_MESSAGE,
+          : getMessage(messages, "admin.auth.errors.tenant_missing"),
       })
     );
   }
 
   const { email, tenantId } = parsed.data;
-  const result = await requestAdminPasswordReset(tenantId, email);
+  const result = await requestAdminPasswordReset(tenantId, email, locale);
   if (!result.ok) {
     redirect(
       buildForgotPasswordPath({

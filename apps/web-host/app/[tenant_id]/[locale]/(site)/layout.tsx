@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import {
   SiteLayout,
   SiteLayoutActions,
@@ -10,7 +11,6 @@ import {
   getAuthActions,
 } from "@publira/layouts";
 import type { LayoutLinkItem } from "@publira/layouts";
-import type { Locale } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";

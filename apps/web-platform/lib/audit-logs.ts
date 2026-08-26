@@ -1,8 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { getMessage } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 
 import {
   apiClient,

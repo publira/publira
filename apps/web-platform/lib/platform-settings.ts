@@ -3,10 +3,10 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage, parseLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { DEFAULT_LOCALE, getMessage, parseLocale } from "@publira/utils/i18n";
-import type { Locale } from "@publira/utils/i18n";
 import { cacheTag } from "next/cache";
 
 import {

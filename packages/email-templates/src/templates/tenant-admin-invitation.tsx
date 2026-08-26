@@ -1,5 +1,5 @@
+import type { Locale } from "@publira/i18n";
 import { formatDateTime, parseInstant } from "@publira/utils";
-import type { Locale } from "@publira/utils/i18n";
 import type { CSSProperties } from "react";
 import { Link, Text } from "react-email";
 import { z } from "zod";
