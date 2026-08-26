@@ -430,7 +430,7 @@ The public site keeps the locale in the path, not in a cookie ([#869](https://gi
 
 The route tree is `app/[tenant_id]/[locale]/...`, and `proxy.ts` rewrites a public `/{locale}{path}` onto it after resolving the tenant from the Host. Three rules follow from that shape:
 
-- **A path with no locale redirects to `/{DEFAULT_LOCALE}{path}`, temporarily.** Bookmarks predate the prefix. The redirect is 307 rather than 308 so a browser does not cache a decision that `Accept-Language` negotiation would later have to override
+- **A path with no locale redirects to the tenant's default locale, temporarily.** Bookmarks predate the prefix. `GetTenantByDomain` returns `default_locale` alongside the tenant id precisely so the proxy can pick that redirect in the round trip it already makes — `DEFAULT_LOCALE` is the fallback for a value this build does not serve, never the redirect target. The redirect is 307 rather than 308 so a browser caches neither a change to that setting nor a decision `Accept-Language` negotiation would later have to override
 - **`/theme.css` and the Route Handlers stay outside the locale tree.** They answer machines, and a Route Handler cannot read `next/root-params` anyway, so a locale segment there would be a value nothing could use. The exemption lives in `lib/locale-path.ts`
 - **The locale is stripped before a path is classified.** `buildTenantRewritePathname` decides "published page or app route" on the locale-less remainder, so a tenant page whose slug happens to be `ja` still resolves, and a locale code can never collide with a reserved segment
 

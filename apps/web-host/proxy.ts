@@ -1,6 +1,5 @@
 import { getTenantDomainCandidates } from "@publira/utils";
 import { isHealthProbePath } from "@publira/utils/health";
-import { DEFAULT_LOCALE } from "@publira/utils/i18n";
 import type { Locale } from "@publira/utils/i18n";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -18,9 +17,10 @@ import {
   withLocalePrefix,
 } from "./lib/locale-path";
 import { buildTenantRewritePathname } from "./lib/published-page-path";
-import { createTenantIdResolver } from "./lib/tenant-resolution";
+import { createTenantResolver } from "./lib/tenant-resolution";
+import type { ResolvedTenant } from "./lib/tenant-resolution";
 
-const resolveTenantId = createTenantIdResolver(apiClient);
+const resolveTenantByDomain = createTenantResolver(apiClient);
 
 // `/notifications` is the personal inbox. `/settings/notifications` is the
 // email-preference screen and stays under `/settings`.
@@ -58,36 +58,42 @@ const serviceUnavailableResponse = () =>
   });
 
 /**
- * Send a URL from before the locale prefix existed to the default locale.
+ * Send a URL from before the locale prefix existed to the tenant's own default
+ * locale — the setting `GetTenantByDomain` returns alongside the tenant id, so
+ * this costs no extra round trip.
  *
  * Temporary on purpose: a permanent redirect would be cached by the browser,
- * and the day this site negotiates a locale from `Accept-Language` a reader
- * would stay pinned to whatever they were first sent to.
+ * and neither a change to that setting nor the day this site negotiates a
+ * locale from `Accept-Language` would reach a reader already pinned to
+ * whatever they were first sent to.
  */
-const redirectToDefaultLocale = (request: NextRequest): NextResponse => {
+const redirectToTenantLocale = (
+  request: NextRequest,
+  locale: Locale
+): NextResponse => {
   const url = request.nextUrl.clone();
-  url.pathname = withLocalePrefix(DEFAULT_LOCALE, request.nextUrl.pathname);
+  url.pathname = withLocalePrefix(locale, request.nextUrl.pathname);
   return NextResponse.redirect(url);
 };
 
 /** The tenant this host resolves to, or the response that says why not. */
 const resolveTenant = async (
   request: NextRequest
-): Promise<{ tenantId: string } | { response: NextResponse }> => {
-  let tenantId: string | null;
+): Promise<ResolvedTenant | { response: NextResponse }> => {
+  let tenant: ResolvedTenant | null;
   try {
-    tenantId = await resolveTenantId(
+    tenant = await resolveTenantByDomain(
       getTenantDomainCandidates(request.headers)
     );
   } catch {
     return { response: serviceUnavailableResponse() };
   }
 
-  if (!tenantId) {
+  if (!tenant) {
     return { response: new NextResponse("Not Found", { status: 404 }) };
   }
 
-  return { tenantId };
+  return tenant;
 };
 
 const rewriteTo = (request: NextRequest, pathname: string): NextResponse => {
@@ -118,8 +124,14 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const { locale, pathname: publicPath } = splitLocalePathname(pathname);
 
   // `/privacy`, `/series/SR01` — a bookmark from before the locale prefix.
+  // Which language it lands in is the tenant's decision, so the Host has to be
+  // resolved before the redirect can be written.
   if (!locale) {
-    return redirectToDefaultLocale(request);
+    const tenant = await resolveTenant(request);
+    if ("response" in tenant) {
+      return tenant.response;
+    }
+    return redirectToTenantLocale(request, tenant.defaultLocale);
   }
 
   const sessionCookie = request.cookies.get(PUBLIC_SESSION_COOKIE_NAME)?.value;

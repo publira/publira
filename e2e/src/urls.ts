@@ -17,9 +17,10 @@ const envUrl = (name: string, fallback: string): string => {
 };
 
 /**
- * Default UI locale of the public site. `proxy.ts` redirects a locale-less URL
- * to this prefix, so specs address `/ja/...` directly rather than exercising
- * the compatibility redirect on every navigation.
+ * Default locale of the seed tenant (`db/seeds/dev/001_tenant_users.sql` leaves
+ * the column at its default). `proxy.ts` redirects a locale-less URL to the
+ * tenant's own setting, so specs address `/ja/...` directly rather than
+ * exercising the compatibility redirect on every navigation.
  */
 export const WEB_HOST_LOCALE = "ja";
 
