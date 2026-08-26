@@ -3,7 +3,7 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
-import type { PlatformApiClient } from "@publira/api-client/platform/client";
+import type { EndUser, Tenant } from "@publira/api-client/platform/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
@@ -65,22 +65,13 @@ const genericErrorMessage =
 const normalizePublicId = (publicId: string): string => publicId.trim();
 
 /**
- * The generated `EndUser` message. `publira.platform.v1` has no `types`
- * subpath, so the message is named through the client method that returns it
- * (`apps/AGENTS.md`).
- */
-type EndUserMessage = Awaited<
-  ReturnType<PlatformApiClient["users"]["listEndUsers"]>
->["users"][number];
-
-/**
  * The generated `EndUser` fields {@link mapEndUser} reads. Naming them against
  * the message type is what makes a proto rename fail here — a restated
  * structural type keeps compiling, and the user row then shows no tenant at all
  * with nothing pointing at the cause.
  */
 type RawEndUser = Pick<
-  EndUserMessage,
+  EndUser,
   | "createdAt"
   | "email"
   | "name"
@@ -131,16 +122,8 @@ const platformTenantFilterSearchLimit = 20;
 // that length may be an exact id, so the picker also tries GetTenant.
 const publicIdLength = 12;
 
-/**
- * The generated `Tenant` fields {@link toTenantFilterOption} reads, derived the
- * same way as {@link EndUserMessage}.
- */
-type RawTenantFilterOption = Pick<
-  Awaited<
-    ReturnType<PlatformApiClient["tenants"]["listTenants"]>
-  >["tenants"][number],
-  "name" | "publicId"
->;
+/** The generated `Tenant` fields {@link toTenantFilterOption} reads. */
+type RawTenantFilterOption = Pick<Tenant, "name" | "publicId">;
 
 const toTenantFilterOption = (
   tenant: RawTenantFilterOption

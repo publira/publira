@@ -83,6 +83,10 @@
       "types": "./dist/platform/client.d.mts",
       "default": "./dist/platform/client.mjs"
     },
+    "./platform/types": {
+      "types": "./dist/platform/types.d.mts",
+      "default": "./dist/platform/types.mjs"
+    },
     "./email/renderer": {
       "types": "./dist/email/renderer.d.mts",
       "default": "./dist/email/renderer.mjs"

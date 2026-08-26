@@ -3,7 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import type { PlatformApiClient } from "@publira/api-client/platform/client";
+import type { PlatformEmailSettings } from "@publira/api-client/platform/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
@@ -88,24 +88,13 @@ const parseErrorMessage = (error: unknown): string => {
 };
 
 /**
- * The generated `PlatformEmailSettings` message. `publira.platform.v1` has no
- * `types` subpath, so the message is named through the client method that
- * returns it (`apps/AGENTS.md`).
- */
-type PlatformEmailSettingsMessage = NonNullable<
-  Awaited<
-    ReturnType<PlatformApiClient["emailSettings"]["getPlatformEmailSettings"]>
-  >["settings"]
->;
-
-/**
  * The generated `PlatformEmailSettings` fields {@link toPlatformSmtpSettings}
  * reads. Naming them against the message type is what makes a proto rename fail
  * here — a restated structural type keeps compiling, and the SMTP form then
  * opens with an empty host and the default port as if nothing had been saved.
  */
 type RawPlatformEmailSettings = Pick<
-  PlatformEmailSettingsMessage,
+  PlatformEmailSettings,
   | "encryption"
   | "fromAddress"
   | "hasPassword"

@@ -3,7 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
-import type { PlatformApiClient } from "@publira/api-client/platform/client";
+import type { PlatformNotification } from "@publira/api-client/platform/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
@@ -63,22 +63,13 @@ const throwIfUnexpected = (unexpected: boolean, message: string): void => {
 };
 
 /**
- * The generated `PlatformNotification` message. `publira.platform.v1` has no
- * `types` subpath, so the message is named through the client method that
- * returns it (`apps/AGENTS.md`).
- */
-type PlatformNotificationMessage = Awaited<
-  ReturnType<PlatformApiClient["notification"]["listNotifications"]>
->["notifications"][number];
-
-/**
  * The generated `PlatformNotification` fields {@link mapNotification} reads.
  * Naming them against the message type is what makes a proto rename fail here —
  * a restated structural type is a second copy of the message that goes on
  * compiling once the two drift.
  */
 type RawPlatformNotification = Pick<
-  PlatformNotificationMessage,
+  PlatformNotification,
   "createdAt" | "id" | "isRead" | "notificationType" | "payload"
 >;
 

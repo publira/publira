@@ -1,5 +1,6 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import type { PlatformApiClient } from "@publira/api-client/platform/client";
+import type { PlatformOperator } from "@publira/api-client/platform/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPlatformOperator, listPlatformOperators } from "./operators";
@@ -8,11 +9,10 @@ type GetOperatorMethod = PlatformApiClient["operators"]["getOperator"];
 type GetOperatorResponse = Awaited<ReturnType<GetOperatorMethod>>;
 type ListOperatorsMethod = PlatformApiClient["operators"]["listOperators"];
 type ListOperatorsResponse = Awaited<ReturnType<ListOperatorsMethod>>;
-type ListOperatorsResponseOperator = ListOperatorsResponse["operators"][number];
 
 const createOperator = (
-  overrides: Partial<Omit<ListOperatorsResponseOperator, "$typeName">> = {}
-): ListOperatorsResponseOperator => ({
+  overrides: Partial<Omit<PlatformOperator, "$typeName">> = {}
+): PlatformOperator => ({
   $typeName: "publira.platform.v1.PlatformOperator",
   createdAt: "2026-08-01T00:00:00Z",
   email: "operator@example.com",
@@ -29,7 +29,7 @@ const createListOperatorsResponse = ({
   previousToken = "",
 }: {
   nextToken?: string;
-  operators?: ListOperatorsResponseOperator[];
+  operators?: PlatformOperator[];
   previousToken?: string;
 }): ListOperatorsResponse => ({
   $typeName: "publira.platform.v1.ListOperatorsResponse",
@@ -39,7 +39,7 @@ const createListOperatorsResponse = ({
 });
 
 const createGetOperatorResponse = (
-  operator?: ListOperatorsResponseOperator
+  operator?: PlatformOperator
 ): GetOperatorResponse => ({
   $typeName: "publira.platform.v1.GetOperatorResponse",
   operator,

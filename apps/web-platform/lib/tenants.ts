@@ -4,7 +4,10 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
-import type { PlatformApiClient } from "@publira/api-client/platform/client";
+import type {
+  Tenant,
+  TenantAdminInvitation,
+} from "@publira/api-client/platform/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
@@ -191,22 +194,13 @@ export const listPlatformTenants = async (
 };
 
 /**
- * The generated `Tenant` message. `publira.platform.v1` has no `types` subpath,
- * so the message is named through the client method that returns it
- * (`apps/AGENTS.md`).
- */
-type TenantMessage = Awaited<
-  ReturnType<PlatformApiClient["tenants"]["listTenants"]>
->["tenants"][number];
-
-/**
  * The generated `Tenant` fields {@link mapTenant} reads. Naming them against
  * the message type is what makes a proto rename fail here — a restated
  * structural type keeps compiling, and the detail page then renders a tenant
  * whose domain column is blank with nothing pointing at the cause.
  */
 type RawTenant = Pick<
-  TenantMessage,
+  Tenant,
   "adminDomain" | "createdAt" | "domain" | "name" | "publicId" | "status"
 >;
 
@@ -491,11 +485,6 @@ export type UpdateTenantAdminInvitationResult =
   | { ok: true; invitation?: PlatformTenantAdminInvitation }
   | { ok: false; message: string };
 
-/** The generated `TenantAdminInvitation` message (see {@link TenantMessage}). */
-type TenantAdminInvitationMessage = Awaited<
-  ReturnType<PlatformApiClient["tenants"]["listTenantAdminInvitations"]>
->["invitations"][number];
-
 /**
  * The generated `TenantAdminInvitation` fields {@link mapInvitation} reads.
  * Naming them against the message type is what makes a proto rename fail here —
@@ -503,7 +492,7 @@ type TenantAdminInvitationMessage = Awaited<
  * compiling once the two drift.
  */
 type RawTenantAdminInvitation = Pick<
-  TenantAdminInvitationMessage,
+  TenantAdminInvitation,
   | "acceptedAt"
   | "canceledAt"
   | "createdAt"
