@@ -692,6 +692,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
 			AddRow(seriesImageID, "portrait", "md", "image/webp", int64(3072), int32(768), int32(1024)))
+	expectSeriesViewEventInsert(mock, tenantID, seriesID)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
@@ -844,6 +845,7 @@ func TestCatalogListPublishedSeriesDatabaseErrorIsHidden(t *testing.T) {
 
 func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 	normalEpisodeID := uuid.Must(uuid.NewV7())
+	normalSeriesID := uuid.Must(uuid.NewV7())
 
 	tests := []struct {
 		episodeID uuid.UUID
@@ -857,31 +859,31 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 			episodeID: normalEpisodeID,
 			name:      "normal-paid-locked",
 			publicID:  "EPISODE001",
-			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}).
-				AddRow(normalEpisodeID, "EPISODE001", "Episode Title", int32(1), int32(100), int32(24), "published", nil, time.Now().UTC(), "SERIES001", "Series Title"),
+			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}).
+				AddRow(normalEpisodeID, "EPISODE001", "Episode Title", int32(1), normalSeriesID, int32(100), int32(24), "published", nil, time.Now().UTC(), "SERIES001", "Series Title"),
 		},
 		{
 			name:     "unpublished",
 			publicID: "EPISODE_DRAFT",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}),
 			wantCode: connect.CodeNotFound,
 		},
 		{
 			name:     "scheduled-boundary-not-reached",
 			publicID: "EPISODE_SCHEDULED",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}),
 			wantCode: connect.CodeNotFound,
 		},
 		{
 			name:     "cross-tenant",
 			publicID: "EPISODE_OTHER_TENANT",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}),
 			wantCode: connect.CodeNotFound,
 		},
 		{
 			name:     "not-found",
 			publicID: "EPISODE_MISSING",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}),
 			wantCode: connect.CodeNotFound,
 		},
 	}
@@ -897,6 +899,9 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
+			if tc.wantCode == 0 {
+				expectEpisodeViewEventInsert(mock, tenantID, normalSeriesID, tc.episodeID)
+			}
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
@@ -1029,14 +1034,15 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			testServer, mock := newTestPublicServer(t)
 			tenantID := uuid.Must(uuid.NewV7())
 			episodeID := uuid.Must(uuid.NewV7())
+			seriesID := uuid.Must(uuid.NewV7())
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now()
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 				WithArgs(tenantID, "EPISODE001").
-				WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}).
-					AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), tc.price, int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title"))
+				WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}).
+					AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, tc.price, int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title"))
 
 			if tc.authed {
 				// authenticateAccessToken looks up tenant again via tenantByContext
@@ -1056,6 +1062,8 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}).
 						AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, int32(1), now, "image/png", int64(1024), int32(1200), int32(1800)))
 			}
+
+			expectEpisodeViewEventInsert(mock, tenantID, seriesID, episodeID)
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			var req *connect.Request[publirav1.GetEpisodeDetailRequest]
