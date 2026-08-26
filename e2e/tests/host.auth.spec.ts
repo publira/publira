@@ -93,7 +93,7 @@ test.describe("web-host auth", () => {
     );
     await fillLoginForm(page, SEED_MEMBER);
 
-    await expectSameOriginPath(page, WEB_HOST_BASE_URL, "/");
+    await expectSameOriginPath(page, WEB_HOST_BASE_URL, hostPath("/"));
   });
 
   test("ログイン済みで /login を開くと My Page へ送る", async ({ page }) => {

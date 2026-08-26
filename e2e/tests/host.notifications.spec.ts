@@ -17,7 +17,7 @@ test.describe("web-host notification bell", () => {
 
     const bell = page.getByRole("link", { name: "通知、未読はありません" });
     await expect(bell).toBeVisible();
-    await expect(bell).toHaveAttribute("href", "/notifications");
+    await expect(bell).toHaveAttribute("href", hostPath("/notifications"));
 
     await expect(page).toHaveURL(/\/notifications\/?$/u);
     await expect(
