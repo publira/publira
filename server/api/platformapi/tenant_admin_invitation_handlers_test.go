@@ -3,9 +3,11 @@ package platformapi
 import (
 	"context"
 	"database/sql"
-	"errors"
+	"encoding/json"
+	"log/slog"
 	"regexp"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,10 +17,9 @@ import (
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
-	"github.com/publira/publira/server/internal/emailrenderer"
-	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
-	internalsmtp "github.com/publira/publira/server/internal/smtp"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -232,127 +233,48 @@ func TestListTenantAdminInvitationsRejectsInvalidToken(t *testing.T) {
 	}
 }
 
-type tenantInvitationRendererStub struct {
-	request emailrenderer.Request
-	err     error
-}
+func TestCreateTenantAdminInvitationCommitsOutboxEventWithoutSMTP(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenantID := seedTenant(t, pg, "OUTBOXAPI001", "outbox-api.example.com", "Outbox API Tenant")
+	queries := dbmodels.New(pg.DB)
+	server := &platformServer{queries: queries, db: pg.DB, logger: slog.Default()}
 
-func (s *tenantInvitationRendererStub) Render(_ context.Context, request emailrenderer.Request) (emailrenderer.Email, error) {
-	s.request = request
-	if s.err != nil {
-		return emailrenderer.Email{}, s.err
+	response, err := server.CreateTenantAdminInvitation(context.Background(), connect.NewRequest(&publirasplatformv1.CreateTenantAdminInvitationRequest{
+		TenantPublicId: "OUTBOXAPI001",
+		Email:          "admin@example.com",
+	}))
+	if err != nil {
+		t.Fatalf("CreateTenantAdminInvitation: %v", err)
 	}
-	return emailrenderer.Email{Subject: "招待", HTML: "<p>招待</p>", Text: "招待"}, nil
-}
-
-type tenantInvitationMailerStub struct {
-	email internalsmtp.RenderedEmail
-}
-
-func (*tenantInvitationMailerStub) SendEmail(context.Context, emailsettings.SMTPSettings, string, string, string) error {
-	return nil
-}
-
-func (s *tenantInvitationMailerStub) SendRenderedEmail(_ context.Context, _ emailsettings.SMTPSettings, _ string, email internalsmtp.RenderedEmail) error {
-	s.email = email
-	return nil
-}
-
-func TestSendTenantAdminInvitationEmailRendersAndSendsHTML(t *testing.T) {
-	tests := []struct {
-		name string
-		// tenantLocale is the tenants.default_locale value the invited tenant
-		// row carries; a blank one sends the resolver to the platform default.
-		tenantLocale   string
-		expectPlatform func(mock sqlmock.Sqlmock, now time.Time)
-		wantLocale     string
-	}{
-		{name: "japanese tenant keeps ja", tenantLocale: "ja", wantLocale: "ja"},
-		{name: "english tenant renders in en", tenantLocale: "en", wantLocale: "en"},
-		{
-			name: "blank tenant locale falls back to the platform default",
-			expectPlatform: func(mock sqlmock.Sqlmock, now time.Time) {
-				expectPlatformConfigLookup(mock, "Asia/Tokyo", "en", now)
-			},
-			wantLocale: "en",
-		},
-		{
-			name: "unreadable platform config still sends, in ja",
-			expectPlatform: func(mock sqlmock.Sqlmock, _ time.Time) {
-				mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
-					WillReturnError(errors.New("platform config is unavailable"))
-			},
-			wantLocale: "ja",
-		},
+	if response.Msg.Invitation == nil {
+		t.Fatal("invitation is nil")
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			server, mock := newOperatorHandlerTestServer(t)
-			tenantID := uuid.Must(uuid.NewV7())
-			now := time.Now().UTC().Truncate(time.Microsecond)
-			encryptor := newPasswordResetEncryptor(t)
-			encrypted, err := encryptor.EncryptString("smtp-password")
-			if err != nil {
-				t.Fatalf("EncryptString: %v", err)
-			}
-			mock.ExpectQuery(regexp.QuoteMeta("-- name: GetTenantSMTPConfigByTenantID :one\n")).
-				WithArgs(tenantID).
-				WillReturnRows(sqlmock.NewRows([]string{"tenant_id", "smtp_override_enabled", "host", "port", "username", "password_encrypted", "encryption", "from_name", "from_address", "reply_to", "created_at", "updated_at"}).
-					AddRow(tenantID, true, "smtp.example.com", 587, "mailer", encrypted, "starttls", "Publira", "no-reply@example.com", nil, now, now))
-			if test.expectPlatform != nil {
-				test.expectPlatform(mock, now)
-			}
-			renderer := &tenantInvitationRendererStub{}
-			mailer := &tenantInvitationMailerStub{}
-			server.encryptor = encryptor
-			server.renderer = renderer
-			server.mailer = mailer
-
-			invitation := dbmodels.TenantAdminInvitation{
-				Email:     "admin@example.com",
-				ExpiresAt: now.Add(24 * time.Hour),
-			}
-			tenant := dbmodels.Tenant{
-				ID:            tenantID,
-				Name:          "Example Press",
-				AdminDomain:   sql.NullString{String: "admin.example.com", Valid: true},
-				Timezone:      "America/New_York",
-				DefaultLocale: test.tenantLocale,
-			}
-			if err := server.sendTenantAdminInvitationEmail(context.Background(), tenant, invitation, "token"); err != nil {
-				t.Fatalf("sendTenantAdminInvitationEmail: %v", err)
-			}
-
-			if renderer.request.Template != "tenant_admin_invitation" || renderer.request.Locale != test.wantLocale || renderer.request.TimeZone != "America/New_York" {
-				t.Fatalf("render request = %+v, want locale %q", renderer.request, test.wantLocale)
-			}
-			if got := renderer.request.Data["invite_url"]; got != "https://admin.example.com/accept-invite?token=token" {
-				t.Fatalf("invite_url = %q", got)
-			}
-			if got := renderer.request.Data["expires_at"]; got != invitation.ExpiresAt.Format(time.RFC3339Nano) {
-				t.Fatalf("expires_at = %q", got)
-			}
-			if mailer.email != (internalsmtp.RenderedEmail{Subject: "招待", HTML: "<p>招待</p>", Text: "招待"}) {
-				t.Fatalf("sent email = %+v", mailer.email)
-			}
-			assertOperatorHandlerExpectations(t, mock)
-		})
+	invitationID, err := uuid.Parse(response.Msg.Invitation.Id)
+	if err != nil {
+		t.Fatalf("parse invitation id: %v", err)
 	}
-}
-
-func TestRenderTenantAdminInvitationEmailMakesRendererFailureInternal(t *testing.T) {
-	server := &platformServer{renderer: &tenantInvitationRendererStub{err: errors.New("renderer unavailable")}}
-	_, err := server.renderTenantAdminInvitationEmail(context.Background(), dbmodels.Tenant{
-		Name:          "Example Press",
-		AdminDomain:   sql.NullString{String: "admin.example.com", Valid: true},
-		Timezone:      "Asia/Tokyo",
-		DefaultLocale: "ja",
-	}, dbmodels.TenantAdminInvitation{ExpiresAt: time.Now().Add(time.Hour)}, "token")
-	if connect.CodeOf(err) != connect.CodeInternal {
-		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	var eventType, idempotencyKey string
+	var payload []byte
+	if err := pg.DB.QueryRowContext(context.Background(), `
+		SELECT event_type, payload, idempotency_key
+		FROM outbox_events
+		WHERE tenant_id = $1
+	`, tenantID).Scan(&eventType, &payload, &idempotencyKey); err != nil {
+		t.Fatalf("load outbox event: %v", err)
 	}
-	if err.Error() != "internal: failed to render tenant admin invitation email" {
-		t.Fatalf("error = %q", err)
+	if eventType != outbox.EventTypeTenantAdminInvitationEmail {
+		t.Fatalf("event type = %q, want %q", eventType, outbox.EventTypeTenantAdminInvitationEmail)
+	}
+	var body outbox.TenantAdminInvitationPayload
+	if err := json.Unmarshal(payload, &body); err != nil {
+		t.Fatalf("decode outbox payload: %v", err)
+	}
+	if body.TenantID != tenantID.String() || body.InvitationID != invitationID.String() || body.Token == "" {
+		t.Fatalf("outbox payload = %+v, want tenant and invitation IDs plus token", body)
+	}
+	if !strings.HasPrefix(idempotencyKey, "tenant_admin_invitation_email:"+invitationID.String()+":") {
+		t.Fatalf("idempotency key = %q", idempotencyKey)
 	}
 }

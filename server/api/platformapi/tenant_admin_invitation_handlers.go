@@ -5,9 +5,10 @@ import (
 	crand "crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/mail"
-	"net/url"
 	"strings"
 	"time"
 
@@ -18,13 +19,9 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
-	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
-	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
-	"github.com/publira/publira/server/internal/platformconfig"
-	internalsmtp "github.com/publira/publira/server/internal/smtp"
-	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 const tenantAdminInvitationTTL = 24 * time.Hour
@@ -71,32 +68,6 @@ func generateInvitationToken() (string, error) {
 	return hex.EncodeToString(raw), nil
 }
 
-func tenantEmailSettingsFromConfig(config dbmodels.TenantSmtpConfig, password string) emailsettings.SMTPSettings {
-	settings := emailsettings.SMTPSettings{Password: password}
-	if config.Host.Valid {
-		settings.Host = config.Host.String
-	}
-	if config.Port.Valid {
-		settings.Port = config.Port.Int32
-	}
-	if config.Username.Valid {
-		settings.Username = config.Username.String
-	}
-	if config.Encryption.Valid {
-		settings.Encryption = config.Encryption.String
-	}
-	if config.FromName.Valid {
-		settings.FromName = config.FromName.String
-	}
-	if config.FromAddress.Valid {
-		settings.FromAddress = config.FromAddress.String
-	}
-	if config.ReplyTo.Valid {
-		settings.ReplyTo = config.ReplyTo.String
-	}
-	return settings
-}
-
 func platformEmailSettingsFromConfig(config dbmodels.PlatformSmtpConfig, password string) emailsettings.SMTPSettings {
 	settings := emailsettings.SMTPSettings{
 		Host:        config.Host,
@@ -112,116 +83,6 @@ func platformEmailSettingsFromConfig(config dbmodels.PlatformSmtpConfig, passwor
 	return settings
 }
 
-func (s *platformServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID uuid.UUID) (emailsettings.SMTPSettings, error) {
-	tenantConfig, err := s.queriesFor(ctx).GetTenantSMTPConfigByTenantID(ctx, tenantID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return emailsettings.SMTPSettings{}, s.internalDBError(ctx, "failed to get tenant smtp config", err, "tenant_id", tenantID.String())
-	}
-	if err == nil && tenantConfig.SmtpOverrideEnabled {
-		password, decryptErr := emailsettings.DecryptPassword(tenantConfig.PasswordEncrypted.String, s.encryptor)
-		if decryptErr != nil {
-			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("tenant smtp settings are not configured"))
-		}
-		settings := tenantEmailSettingsFromConfig(tenantConfig, password)
-		if validateErr := emailsettings.Validate(settings, true); validateErr != nil {
-			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, validateErr)
-		}
-		return settings, nil
-	}
-
-	platformConfig, err := s.queriesFor(ctx).GetPlatformSMTPConfig(ctx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
-		}
-		return emailsettings.SMTPSettings{}, s.internalDBError(ctx, "failed to get platform smtp config", err)
-	}
-	password, decryptErr := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, s.encryptor)
-	if decryptErr != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
-	}
-	settings := platformEmailSettingsFromConfig(platformConfig, password)
-	if validateErr := emailsettings.Validate(settings, true); validateErr != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, validateErr)
-	}
-	return settings, nil
-}
-
-func tenantAdminInvitationURL(tenant dbmodels.Tenant, token string) (string, error) {
-	domain := strings.TrimSpace(tenant.Domain)
-	if tenant.AdminDomain.Valid && strings.TrimSpace(tenant.AdminDomain.String) != "" {
-		domain = strings.TrimSpace(tenant.AdminDomain.String)
-	} else if domain != "" {
-		domain = "admin." + domain
-	}
-	domain = strings.TrimPrefix(domain, "https://")
-	domain = strings.TrimPrefix(domain, "http://")
-	domain = strings.TrimSuffix(domain, "/")
-	if domain == "" {
-		return "", errors.New("tenant admin domain is not configured")
-	}
-	return "https://" + domain + "/accept-invite?token=" + url.QueryEscape(token), nil
-}
-
-func (s *platformServer) renderTenantAdminInvitationEmail(ctx context.Context, tenant dbmodels.Tenant, invitation dbmodels.TenantAdminInvitation, token string) (emailrenderer.Email, error) {
-	if s.renderer == nil {
-		return emailrenderer.Email{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("email renderer is not configured"))
-	}
-	inviteURL, err := tenantAdminInvitationURL(tenant, token)
-	if err != nil {
-		return emailrenderer.Email{}, connect.NewError(connect.CodeFailedPrecondition, err)
-	}
-	tenantName := strings.TrimSpace(tenant.Name)
-	if tenantName == "" {
-		tenantName = "Publira"
-	}
-	queries := s.queriesFor(ctx)
-	timeZone := tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries))
-	rendered, err := s.renderer.Render(ctx, emailrenderer.Request{
-		Template: "tenant_admin_invitation",
-		Locale:   locale.Resolve(tenant.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, queries)),
-		Data: map[string]any{
-			"expires_at":  invitation.ExpiresAt.UTC().Format(time.RFC3339Nano),
-			"invite_url":  inviteURL,
-			"tenant_name": tenantName,
-		},
-		TimeZone: timeZone,
-	})
-	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return emailrenderer.Email{}, err
-		}
-		return emailrenderer.Email{}, connect.NewError(connect.CodeInternal, errors.New("failed to render tenant admin invitation email"))
-	}
-	return rendered, nil
-}
-
-func (s *platformServer) sendTenantAdminInvitationEmail(ctx context.Context, tenant dbmodels.Tenant, invitation dbmodels.TenantAdminInvitation, token string) error {
-	if s.mailer == nil {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
-	}
-	htmlMailer, ok := s.mailer.(internalsmtp.RenderedSender)
-	if !ok {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender does not support html email"))
-	}
-	settings, err := s.resolveSMTPSettingsForTenant(ctx, tenant.ID)
-	if err != nil {
-		return err
-	}
-	rendered, err := s.renderTenantAdminInvitationEmail(ctx, tenant, invitation, token)
-	if err != nil {
-		return err
-	}
-	if err := htmlMailer.SendRenderedEmail(ctx, settings, invitation.Email, internalsmtp.RenderedEmail{
-		Subject: rendered.Subject,
-		HTML:    rendered.HTML,
-		Text:    rendered.Text,
-	}); err != nil {
-		return connect.NewError(connect.CodeInternal, err)
-	}
-	return nil
-}
-
 func ensureTenantAdminRole(ctx context.Context, txq *dbmodels.Queries, tenantID, userID uuid.UUID) error {
 	if err := txq.DeleteTenantUserRolesByUserID(ctx, userID); err != nil {
 		return err
@@ -232,6 +93,29 @@ func ensureTenantAdminRole(ctx context.Context, txq *dbmodels.Queries, tenantID,
 		UserID:   userID,
 		Role:     auth.RoleTenantAdmin,
 	})
+	return err
+}
+
+func enqueueTenantAdminInvitationEmail(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, invitation dbmodels.TenantAdminInvitation, token string) error {
+	payload, err := json.Marshal(outbox.TenantAdminInvitationPayload{
+		TenantID:     tenantID.String(),
+		InvitationID: invitation.ID.String(),
+		Token:        token,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal tenant admin invitation email event: %w", err)
+	}
+	_, err = queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      outbox.EventTypeTenantAdminInvitationEmail,
+		Payload:        payload,
+		IdempotencyKey: fmt.Sprintf("tenant_admin_invitation_email:%s:%s", invitation.ID, auth.HashToken(token)),
+		AvailableAt:    time.Now().UTC(),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
 	return err
 }
 
@@ -394,13 +278,17 @@ func (s *platformServer) CreateTenantAdminInvitation(
 	}
 	expiresAt := time.Now().Add(tenantAdminInvitationTTL)
 
-	existing, err := s.queriesFor(ctx).GetTenantAdminInvitationByTenantAndEmail(ctx, dbmodels.GetTenantAdminInvitationByTenantAndEmailParams{
-		TenantID: tenant.ID,
-		Email:    email,
-	})
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin tenant admin invitation transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	existing, err := txq.GetTenantAdminInvitationByTenantAndEmail(ctx, dbmodels.GetTenantAdminInvitationByTenantAndEmailParams{TenantID: tenant.ID, Email: email})
 	var invitation dbmodels.TenantAdminInvitation
 	if err == nil {
-		invitation, err = s.queriesFor(ctx).UpdateTenantAdminInvitationForResend(ctx, dbmodels.UpdateTenantAdminInvitationForResendParams{
+		invitation, err = txq.UpdateTenantAdminInvitationForResend(ctx, dbmodels.UpdateTenantAdminInvitationForResendParams{
 			TenantID:  tenant.ID,
 			Email:     existing.Email,
 			TokenHash: auth.HashToken(token),
@@ -414,7 +302,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 		if newIDErr != nil {
 			return nil, connect.NewError(connect.CodeInternal, newIDErr)
 		}
-		invitation, err = s.queriesFor(ctx).CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
+		invitation, err = txq.CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
 			ID:        invitationID,
 			TenantID:  tenant.ID,
 			Email:     email,
@@ -427,9 +315,11 @@ func (s *platformServer) CreateTenantAdminInvitation(
 	} else {
 		return nil, s.internalDBError(ctx, "failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String())
 	}
-
-	if err := s.sendTenantAdminInvitationEmail(ctx, tenant, invitation, token); err != nil {
-		return nil, err
+	if err := enqueueTenantAdminInvitationEmail(ctx, txq, tenant.ID, invitation, token); err != nil {
+		return nil, s.internalDBError(ctx, "failed to enqueue tenant admin invitation email", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
 	}
 
 	if actor, ok := platformActorFromContext(ctx); ok {
@@ -492,7 +382,13 @@ func (s *platformServer) ResendTenantAdminInvitation(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	updated, err := s.queriesFor(ctx).UpdateTenantAdminInvitationForResend(ctx, dbmodels.UpdateTenantAdminInvitationForResendParams{
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin resend tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+	updated, err := txq.UpdateTenantAdminInvitationForResend(ctx, dbmodels.UpdateTenantAdminInvitationForResendParams{
 		TenantID:  tenant.ID,
 		Email:     invitation.Email,
 		TokenHash: auth.HashToken(token),
@@ -502,8 +398,11 @@ func (s *platformServer) ResendTenantAdminInvitation(
 		return nil, s.internalDBError(ctx, "failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
 	}
 
-	if err := s.sendTenantAdminInvitationEmail(ctx, tenant, updated, token); err != nil {
-		return nil, err
+	if err := enqueueTenantAdminInvitationEmail(ctx, txq, tenant.ID, updated, token); err != nil {
+		return nil, s.internalDBError(ctx, "failed to enqueue tenant admin invitation email", err, "tenant_id", tenant.ID.String(), "invitation_id", updated.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit resend tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", updated.ID.String())
 	}
 
 	if actor, ok := platformActorFromContext(ctx); ok {

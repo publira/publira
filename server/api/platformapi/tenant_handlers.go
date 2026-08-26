@@ -215,11 +215,7 @@ func (s *platformServer) CreateTenant(
 	defer tx.Rollback() //nolint:errcheck
 
 	txq := dbmodels.New(tx)
-	type pendingTenantAdminInvite struct {
-		invitation dbmodels.TenantAdminInvitation
-		token      string
-	}
-	pendingInvites := make([]pendingTenantAdminInvite, 0, len(initialAdminEmails))
+	pendingInvitationEmails := make([]string, 0, len(initialAdminEmails))
 
 	tenantID, err := uuid.NewV7()
 	if err != nil {
@@ -277,7 +273,10 @@ func (s *platformServer) CreateTenant(
 			if createInvitationErr != nil {
 				return nil, s.internalDBError(ctx, "failed to create tenant admin invitation", createInvitationErr, "tenant_id", tenant.ID.String())
 			}
-			pendingInvites = append(pendingInvites, pendingTenantAdminInvite{invitation: invitation, token: token})
+			if err := enqueueTenantAdminInvitationEmail(ctx, txq, tenant.ID, invitation, token); err != nil {
+				return nil, s.internalDBError(ctx, "failed to enqueue tenant admin invitation email", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
+			}
+			pendingInvitationEmails = append(pendingInvitationEmails, invitation.Email)
 			continue
 		}
 
@@ -307,17 +306,14 @@ func (s *platformServer) CreateTenant(
 		return nil, s.internalDBError(ctx, "failed to commit create tenant", err, "tenant_id", tenant.ID.String())
 	}
 
-	for _, invite := range pendingInvites {
-		if err := s.sendTenantAdminInvitationEmail(ctx, tenant, invite.invitation, invite.token); err != nil {
-			return nil, err
-		}
+	for _, email := range pendingInvitationEmails {
 		if actor, ok := platformActorFromContext(ctx); ok {
 			s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
 				ActorPlatformUserID: actor.UserID,
 				ActorRole:           actor.Role,
 				Action:              "tenant_admin_invited",
 				TargetType:          "tenant_admin_invitation",
-				TargetID:            invite.invitation.Email,
+				TargetID:            email,
 				Outcome:             auditlog.OutcomeSuccess,
 				ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 			})

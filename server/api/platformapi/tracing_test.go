@@ -37,7 +37,7 @@ func TestConnectHandlerContinuesTheCallersTrace(t *testing.T) {
 
 	// NewHandler builds the interceptor, so it has to run after the
 	// globals above are in place.
-	ts := httptest.NewServer(NewHandler(nil, nil, slog.Default(), nil, nil, nil, testutil.TokenManager()))
+	ts := httptest.NewServer(NewHandler(nil, nil, slog.Default(), nil, nil, testutil.TokenManager()))
 	t.Cleanup(ts.Close)
 
 	const procedure = "/publira.platform.v1.PlatformTenantService/ListTenants"
