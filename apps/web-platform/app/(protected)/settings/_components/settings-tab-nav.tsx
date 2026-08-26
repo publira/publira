@@ -1,23 +1,30 @@
 import { LinkButton } from "@publira/ui-components/button";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 interface SettingsTabNavProps {
   current: "email" | "general";
+  emailLabel: ReactNode;
+  generalLabel: ReactNode;
 }
 
-export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
+export const SettingsTabNav = ({
+  current,
+  emailLabel,
+  generalLabel,
+}: SettingsTabNavProps) => (
   <div className="flex flex-wrap gap-2">
     <LinkButton
       render={<Link href="/settings/general" />}
       variant={current === "general" ? "default" : "outline"}
     >
-      一般
+      {generalLabel}
     </LinkButton>
     <LinkButton
       render={<Link href="/settings/email" />}
       variant={current === "email" ? "default" : "outline"}
     >
-      メール設定
+      {emailLabel}
     </LinkButton>
   </div>
 );

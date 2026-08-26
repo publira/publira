@@ -3,7 +3,7 @@
 import { cn } from "@publira/utils";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
-type DivProps = ComponentPropsWithoutRef<"div">;
+type DivProps = Omit<ComponentPropsWithoutRef<"div">, "title">;
 
 export type SectionErrorProps = DivProps & {
   /** Recovery affordance — a 再試行 button from an error boundary, a link out. */
@@ -20,6 +20,8 @@ export type SectionErrorProps = DivProps & {
    * digest is the only handle a reader can quote to match the server log.
    */
   digest?: string;
+  /** Prefix shown before `digest`. Defaults to the Japanese console copy. */
+  digestLabel?: ReactNode;
   title: ReactNode;
 };
 
@@ -44,6 +46,7 @@ export const SectionError = ({
   className,
   description,
   digest,
+  digestLabel = "エラー ID:",
   title,
   ...props
 }: SectionErrorProps) => (
@@ -64,7 +67,7 @@ export const SectionError = ({
     {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
     {digest ? (
       <p className="text-xs text-muted-foreground">
-        エラー ID: <code className="font-mono">{digest}</code>
+        {digestLabel} <code className="font-mono">{digest}</code>
       </p>
     ) : null}
   </div>

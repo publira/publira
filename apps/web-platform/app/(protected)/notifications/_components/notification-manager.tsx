@@ -8,6 +8,7 @@ import {
 } from "@publira/ui-components/card";
 import { EmptyState } from "@publira/ui-components/empty-state";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -17,10 +18,16 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
 import Link from "next/link";
+import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 
+import { defaultNotificationsPageSize } from "../_lib/search-params";
 import type { NotificationItem } from "../notification-types";
 import {
   MarkAllNotificationsAsReadButton,
@@ -31,7 +38,6 @@ interface NotificationManagerProps {
   listErrorMessage?: string;
   nextHref?: string;
   notifications: NotificationItem[];
-  pageSize: number;
   previousHref?: string;
   timeZone: string;
   unreadCount: number;
@@ -55,14 +61,18 @@ const NotificationTitle = ({ item }: { item: NotificationItem }) => {
   return <span className="font-medium">{item.title}</span>;
 };
 
-const NotificationListBody = ({
+const renderNotificationListBody = ({
   hasPageLinks,
   listErrorMessage,
+  markReadAriaLabel,
+  messages,
   notifications,
   timeZone,
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
+  markReadAriaLabel: (title: string) => string;
+  messages: PlatformMessages;
   notifications: NotificationItem[];
   timeZone: string;
 }) => {
@@ -70,7 +80,11 @@ const NotificationListBody = ({
     return (
       <SectionError
         description={listErrorMessage}
-        title="通知一覧を表示できませんでした"
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="platform.notifications.list_failed" />
+          </Suspense>
+        }
       />
     );
   }
@@ -78,13 +92,19 @@ const NotificationListBody = ({
   if (notifications.length === 0) {
     return hasPageLinks ? (
       <EmptyState
-        description="表示中に他の操作で削除された可能性があります。前後のページへ移動してください。"
-        title="このページに表示できる通知はありません。"
+        description={getMessage(
+          messages,
+          "platform.notifications.empty_page_description"
+        )}
+        title={getMessage(messages, "platform.notifications.empty_page_title")}
       />
     ) : (
       <EmptyState
-        description="予約公開の失敗など、運営者向けの業務イベントが起きると、ここに自分宛の通知が届きます。"
-        title="通知はまだありません。"
+        description={getMessage(
+          messages,
+          "platform.notifications.empty_description"
+        )}
+        title={getMessage(messages, "platform.notifications.empty_title")}
       />
     );
   }
@@ -93,11 +113,27 @@ const NotificationListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-24">状態</TableHead>
-          <TableHead className="w-44">日時</TableHead>
-          <TableHead>内容</TableHead>
+          <TableHead className="w-24">
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="platform.notifications.columns.status" />
+            </Suspense>
+          </TableHead>
+          <TableHead className="w-44">
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="platform.notifications.columns.at" />
+            </Suspense>
+          </TableHead>
+          <TableHead>
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="platform.notifications.columns.content" />
+            </Suspense>
+          </TableHead>
           <TableHead className="w-36">
-            <span className="sr-only">操作</span>
+            <span className="sr-only">
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="platform.notifications.columns.action" />
+              </Suspense>
+            </span>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -106,9 +142,17 @@ const NotificationListBody = ({
           <TableRow key={item.id}>
             <TableCell>
               {item.isRead ? (
-                <StatusChip status="muted">既読</StatusChip>
+                <StatusChip status="muted">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                    <Message message="platform.notifications.read" />
+                  </Suspense>
+                </StatusChip>
               ) : (
-                <StatusChip status="info">未読</StatusChip>
+                <StatusChip status="info">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                    <Message message="platform.notifications.unread" />
+                  </Suspense>
+                </StatusChip>
               )}
             </TableCell>
             <TableCell>
@@ -125,9 +169,13 @@ const NotificationListBody = ({
             <TableCell>
               {item.isRead ? null : (
                 <MarkNotificationAsReadButton
-                  label={item.title}
+                  ariaLabel={markReadAriaLabel(item.title)}
                   notificationId={item.id}
-                />
+                >
+                  <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                    <Message message="platform.notifications.mark_read" />
+                  </Suspense>
+                </MarkNotificationAsReadButton>
               )}
             </TableCell>
           </TableRow>
@@ -137,15 +185,16 @@ const NotificationListBody = ({
   );
 };
 
-export const NotificationManager = ({
+export const NotificationManager = async ({
   listErrorMessage,
   nextHref,
   notifications,
-  pageSize,
   previousHref,
   timeZone,
   unreadCount,
 }: NotificationManagerProps) => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
   const hasPageLinks = Boolean(previousHref || nextHref);
   const showPagination =
     !listErrorMessage && (notifications.length > 0 || hasPageLinks);
@@ -156,33 +205,66 @@ export const NotificationManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>通知一覧</CardTitle>
+          <CardTitle>
+            <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+              <Message message="platform.notifications.card_title" />
+            </Suspense>
+          </CardTitle>
           <CardDescription>
-            自分宛の業務イベントです。テナント詳細へ遷移できます。
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="platform.notifications.card_description" />
+            </Suspense>
           </CardDescription>
         </div>
         {hasUnread && !listErrorMessage ? (
-          <MarkAllNotificationsAsReadButton />
+          <MarkAllNotificationsAsReadButton>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.notifications.mark_all_read" />
+            </Suspense>
+          </MarkAllNotificationsAsReadButton>
         ) : null}
       </CardHeader>
 
       <CardContent className="grid gap-4">
-        <NotificationListBody
-          hasPageLinks={hasPageLinks}
-          listErrorMessage={listErrorMessage}
-          notifications={notifications}
-          timeZone={timeZone}
-        />
+        {renderNotificationListBody({
+          hasPageLinks,
+          listErrorMessage,
+          markReadAriaLabel: (title) =>
+            getMessage(messages, "platform.notifications.mark_read_aria", {
+              title,
+            }),
+          messages,
+          notifications,
+          timeZone,
+        })}
 
         {showPagination ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              {`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                <Message
+                  message="platform.notifications.per_page"
+                  values={{ count: defaultNotificationsPageSize }}
+                />
+              </Suspense>
             </p>
             <PaginationControls
-              ariaLabel="通知一覧のページ送り"
+              ariaLabel={getMessage(
+                messages,
+                "platform.notifications.pagination_aria"
+              )}
               nextHref={nextHref}
+              nextLabel={
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="platform.common.next" />
+                </Suspense>
+              }
               previousHref={previousHref}
+              previousLabel={
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="platform.common.previous" />
+                </Suspense>
+              }
             />
           </div>
         ) : null}

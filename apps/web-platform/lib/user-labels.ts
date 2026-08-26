@@ -1,20 +1,21 @@
+import { getMessage } from "@publira/utils/i18n";
+
+import type { PlatformMessageKey, PlatformMessages } from "./locale";
+
 export type EndUserStatusTone = "destructive" | "info" | "success";
 
-export const getEndUserStatusLabel = (status: string): string => {
-  switch (status) {
-    case "active": {
-      return "有効";
-    }
-    case "inactive": {
-      return "無効";
-    }
-    case "suspended": {
-      return "停止中";
-    }
-    default: {
-      return status;
-    }
-  }
+const accountStatusKeys = {
+  active: "platform.common.account_status.active",
+  inactive: "platform.common.account_status.inactive",
+  suspended: "platform.common.account_status.suspended",
+} as const satisfies Record<string, PlatformMessageKey>;
+
+export const getEndUserStatusLabel = (
+  status: string,
+  messages: PlatformMessages
+): string => {
+  const key = accountStatusKeys[status];
+  return key ? getMessage(messages, key) : status;
 };
 
 export const getEndUserStatusTone = (status: string): EndUserStatusTone => {

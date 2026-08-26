@@ -3,6 +3,7 @@
 import { LinkButton } from "@publira/ui-components/button";
 import Link from "next/link";
 
+import { ClientMessage } from "#components/client-message";
 import { ErrorScreen } from "#components/error-screen";
 
 /**
@@ -47,13 +48,17 @@ const ConsoleError = ({
   <ErrorScreen
     actions={
       <LinkButton render={<Link href="/" />} variant="outline">
-        ダッシュボードへ戻る
+        <ClientMessage message="platform.common.back_to_dashboard" />
       </LinkButton>
     }
-    description="時間をおいて再試行してください。繰り返す場合は、エラー ID を添えて管理者に連絡してください。"
+    description={
+      <ClientMessage message="platform.errors.console_description" />
+    }
     digest={error.digest}
+    digestLabel={<ClientMessage message="platform.common.error_id" />}
     retry={retry}
-    title="画面を表示できませんでした"
+    retryLabel={<ClientMessage message="platform.common.retry" />}
+    title={<ClientMessage message="platform.errors.console_title" />}
   />
 );
 

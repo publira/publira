@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -17,10 +18,12 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -39,27 +42,38 @@ import type {
   PlatformDashboardRecentEvent,
   PlatformDashboardSummary,
 } from "#lib/dashboard";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 
-export const metadata: Metadata = {
-  title: "ダッシュボード",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.dashboard.title") };
 };
 
 const recentEventsLimit = 6;
 
-const getRecentEventLabel = (event: PlatformDashboardRecentEvent): string => {
+const getRecentEventLabel = (
+  event: PlatformDashboardRecentEvent,
+  messages: PlatformMessages
+): string => {
   switch (event.eventType) {
     case "tenant_created": {
-      return "テナント作成";
+      return getMessage(messages, "platform.dashboard.events.tenant_created");
     }
     case "operator_role_granted": {
-      return "オペレーター権限付与";
+      return getMessage(
+        messages,
+        "platform.dashboard.events.operator_role_granted"
+      );
     }
     case "end_user_created": {
-      return "エンドユーザー作成";
+      return getMessage(messages, "platform.dashboard.events.end_user_created");
     }
     default: {
-      return getAuditActionLabel(event.action);
+      return getAuditActionLabel(event.action, messages);
     }
   }
 };
@@ -117,34 +131,45 @@ const buildTargetHref = (
   }
 };
 
-const getStatCards = (summary: PlatformDashboardSummary | null) =>
+const getStatCards = (
+  summary: PlatformDashboardSummary | null,
+  messages: PlatformMessages
+) =>
   [
     {
       detail: summary
-        ? `稼働中 ${summary.activeTenants} / 停止中 ${summary.suspendedTenants}`
-        : "全テナントの最新状況を表示します",
-      label: "総テナント数",
+        ? getMessage(messages, "platform.dashboard.stats.total_detail", {
+            active: summary.activeTenants,
+            suspended: summary.suspendedTenants,
+          })
+        : getMessage(messages, "platform.dashboard.stats.total_detail_empty"),
+      label: getMessage(messages, "platform.dashboard.stats.total_label"),
       value: summary ? String(summary.totalTenants) : "-",
     },
     {
       detail: summary
-        ? `全体の ${summary.totalTenants} 件中`
-        : "現在稼働しているテナント数です",
-      label: "稼働中テナント",
+        ? getMessage(messages, "platform.dashboard.stats.active_detail", {
+            count: summary.totalTenants,
+          })
+        : getMessage(messages, "platform.dashboard.stats.active_detail_empty"),
+      label: getMessage(messages, "platform.dashboard.stats.active_label"),
       value: summary ? String(summary.activeTenants) : "-",
     },
     {
       detail: summary
-        ? `再開・原因確認が必要な件数`
-        : "停止中のテナント数を表示します",
-      label: "停止中テナント",
+        ? getMessage(messages, "platform.dashboard.stats.suspended_detail")
+        : getMessage(
+            messages,
+            "platform.dashboard.stats.suspended_detail_empty"
+          ),
+      label: getMessage(messages, "platform.dashboard.stats.suspended_label"),
       value: summary ? String(summary.suspendedTenants) : "-",
     },
     {
       detail: summary
-        ? "招待未完了 / inactive 扱いのユーザー"
-        : "確認待ちのユーザー数を表示します",
-      label: "保留ユーザー",
+        ? getMessage(messages, "platform.dashboard.stats.pending_detail")
+        : getMessage(messages, "platform.dashboard.stats.pending_detail_empty"),
+      label: getMessage(messages, "platform.dashboard.stats.pending_label"),
       value: summary ? String(summary.pendingEndUsers) : "-",
     },
   ] as const;
@@ -196,22 +221,24 @@ const DashboardSkeleton = () => (
 const DashboardContent = async () => {
   // Timestamps follow the platform default time zone, not the host's or the
   // browser's, so every operator reads the same wall clock (#850).
-  const [result, timeZone] = await Promise.all([
-    getPlatformDashboardSummary({ recentEventsLimit }),
+  const locale = await getPlatformLocale();
+  const [messages, result, timeZone] = await Promise.all([
+    loadPlatformMessages(locale),
+    getPlatformDashboardSummary({ locale, recentEventsLimit }),
     getPlatformDisplayTimeZone(),
   ]);
 
   await redirectToLoginIfSessionRejected(result);
 
   const summary = result.ok ? result.summary : null;
-  const stats = getStatCards(summary);
+  const stats = getStatCards(summary, messages);
 
   return (
     <>
       {result.ok ? null : (
         <SectionError
           description={result.message}
-          title="ダッシュボードを表示できませんでした"
+          title={getMessage(messages, "platform.dashboard.load_failed")}
         />
       )}
 
@@ -233,13 +260,19 @@ const DashboardContent = async () => {
         <Card>
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="grid gap-1">
-              <CardTitle>直近の横断イベント</CardTitle>
+              <CardTitle>
+                {getMessage(messages, "platform.dashboard.events_title")}
+              </CardTitle>
               <CardDescription>
-                テナント発行、権限付与、ユーザー生成をまとめて把握し、必要に応じて詳細画面へ遷移します。
+                {getMessage(messages, "platform.dashboard.events_description")}
               </CardDescription>
             </div>
             <StatusChip status={summary ? "info" : "warning"}>
-              {summary ? `更新 ${summary.recentEvents.length} 件` : "未取得"}
+              {summary
+                ? getMessage(messages, "platform.dashboard.updated_count", {
+                    count: summary.recentEvents.length,
+                  })
+                : getMessage(messages, "platform.dashboard.not_fetched")}
             </StatusChip>
           </CardHeader>
 
@@ -247,10 +280,18 @@ const DashboardContent = async () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>イベント</TableHead>
-                  <TableHead>対象</TableHead>
-                  <TableHead className="w-52">実行者</TableHead>
-                  <TableHead className="w-52">時刻</TableHead>
+                  <TableHead>
+                    {getMessage(messages, "platform.dashboard.columns.event")}
+                  </TableHead>
+                  <TableHead>
+                    {getMessage(messages, "platform.dashboard.columns.target")}
+                  </TableHead>
+                  <TableHead className="w-52">
+                    {getMessage(messages, "platform.dashboard.columns.actor")}
+                  </TableHead>
+                  <TableHead className="w-52">
+                    {getMessage(messages, "platform.dashboard.columns.at")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -258,8 +299,14 @@ const DashboardContent = async () => {
                   <TableRow>
                     <TableCell className="text-muted-foreground" colSpan={4}>
                       {summary
-                        ? "直近イベントはまだありません。"
-                        : "イベント取得後にここへ表示されます。"}
+                        ? getMessage(
+                            messages,
+                            "platform.dashboard.empty_events"
+                          )
+                        : getMessage(
+                            messages,
+                            "platform.dashboard.empty_events_pending"
+                          )}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -273,7 +320,7 @@ const DashboardContent = async () => {
                         <TableCell>
                           <div className="grid gap-1">
                             <p className="font-medium">
-                              {getRecentEventLabel(event)}
+                              {getRecentEventLabel(event, messages)}
                             </p>
                             <p>
                               <StatusChip
@@ -300,6 +347,7 @@ const DashboardContent = async () => {
                         <TableCell>
                           {formatDateTime(event.at, {
                             fallback: "-",
+                            locale,
                             timeZone,
                           })}
                         </TableCell>
@@ -314,9 +362,14 @@ const DashboardContent = async () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>次アクション</CardTitle>
+            <CardTitle>
+              {getMessage(messages, "platform.dashboard.next_actions_title")}
+            </CardTitle>
             <CardDescription>
-              状況確認のあとに利用頻度の高い画面へすぐ移動できます。
+              {getMessage(
+                messages,
+                "platform.dashboard.next_actions_description"
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 text-sm text-muted-foreground">
@@ -324,25 +377,25 @@ const DashboardContent = async () => {
               className="rounded-md border border-border/80 px-3 py-3 font-medium text-foreground transition hover:border-primary/40 hover:bg-accent"
               href="/tenants"
             >
-              テナント一覧を開く
+              {getMessage(messages, "platform.dashboard.open_tenants")}
             </Link>
             <Link
               className="rounded-md border border-border/80 px-3 py-3 font-medium text-foreground transition hover:border-primary/40 hover:bg-accent"
               href="/audit-logs"
             >
-              監査ログを確認する
+              {getMessage(messages, "platform.dashboard.open_audit")}
             </Link>
             <Link
               className="rounded-md border border-border/80 px-3 py-3 font-medium text-foreground transition hover:border-primary/40 hover:bg-accent"
               href="/operators"
             >
-              オペレーター管理へ
+              {getMessage(messages, "platform.dashboard.open_operators")}
             </Link>
             <Link
               className="rounded-md border border-border/80 px-3 py-3 font-medium text-foreground transition hover:border-primary/40 hover:bg-accent"
               href="/tenants/new"
             >
-              新規テナントを作成する
+              {getMessage(messages, "platform.dashboard.open_tenants_new")}
             </Link>
           </CardContent>
         </Card>
@@ -356,22 +409,53 @@ const Page = () => (
     <PlatformPageHeader>
       <PlatformPageHeading>
         <PlatformPageEyebrow>Platform Dashboard</PlatformPageEyebrow>
-        <PlatformPageTitle>横断オペレーションの基準点</PlatformPageTitle>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
+            <Message message="platform.dashboard.heading" />
+          </Suspense>
+        </PlatformPageTitle>
         <PlatformPageDescription>
-          プラットフォーム全体のテナント状態、保留件数、直近イベントを最初に確認するためのダッシュボードです。
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.dashboard.page_description" />
+          </Suspense>
         </PlatformPageDescription>
       </PlatformPageHeading>
       <PlatformPageActions>
         <LinkButton render={<Link href="/audit-logs" />} variant="outline">
-          監査ログを見る
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="platform.dashboard.view_audit" />
+          </Suspense>
         </LinkButton>
         <LinkButton render={<Link href="/tenants" />}>
-          テナント一覧へ
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="platform.dashboard.view_tenants" />
+          </Suspense>
         </LinkButton>
       </PlatformPageActions>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <SectionErrorBoundary title="ダッシュボードを表示できませんでした">
+      <SectionErrorBoundary
+        description={
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.common.retry_later" />
+          </Suspense>
+        }
+        digestLabel={
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="platform.common.error_id" />
+          </Suspense>
+        }
+        retryLabel={
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="platform.common.retry" />
+          </Suspense>
+        }
+        title={
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <Message message="platform.dashboard.load_failed" />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardContent />
         </Suspense>

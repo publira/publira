@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 
 import { Button } from "../button/button";
 import type { ButtonProps } from "../button/button";
@@ -28,6 +29,40 @@ export interface ActionFormRenderProps {
   isPending: boolean;
   state: FormActionState;
 }
+
+export interface ActionFormSubmitProps {
+  children: ReactNode;
+  className?: string;
+  disabled?: boolean;
+  variant?: ButtonProps["variant"];
+}
+
+/**
+ * Submit control for Server Component form content.
+ *
+ * Keeping the label in `children` lets a server-rendered `<Message />` sit at
+ * the point where it is displayed, while `useFormStatus` still disables the
+ * control during its Server Action.
+ */
+export const ActionFormSubmit = ({
+  children,
+  className,
+  disabled,
+  variant,
+}: ActionFormSubmitProps) => {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button
+      className={className}
+      disabled={disabled || pending}
+      type="submit"
+      variant={variant}
+    >
+      {children}
+    </Button>
+  );
+};
 
 /**
  * `useActionState` をカプセル化したフォームコンポーネント。

@@ -1,13 +1,17 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { Button } from "../button/button";
 import { SectionError } from "./section-error";
 
 export interface SectionErrorFallbackProps {
   /** What the reader can do about it. */
-  description?: string;
+  description?: ReactNode;
+  digestLabel?: ReactNode;
+  retryLabel?: ReactNode;
   /** Names the section that is missing: 「おすすめ作品を表示できませんでした」. */
-  title: string;
+  title: ReactNode;
 }
 
 /**
@@ -72,6 +76,8 @@ const errorDigest = (error: unknown): string | undefined => {
 export const sectionErrorFallback = (
   {
     description = "時間をおいて再試行してください。",
+    digestLabel,
+    retryLabel = "再試行",
     title,
   }: SectionErrorFallbackProps,
   { error, retry }: SectionErrorInfo
@@ -79,11 +85,12 @@ export const sectionErrorFallback = (
   <SectionError
     actions={
       <Button onClick={() => retry()} size="sm" variant="outline">
-        再試行
+        {retryLabel}
       </Button>
     }
     description={description}
     digest={errorDigest(error)}
+    digestLabel={digestLabel}
     title={title}
   />
 );

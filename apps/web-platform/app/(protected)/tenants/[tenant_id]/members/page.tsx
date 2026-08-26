@@ -1,6 +1,7 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import { SectionError } from "@publira/ui-components/section-error";
+import { getMessage } from "@publira/utils/i18n";
 import {
   parseRouteParams,
   routeParamString,
@@ -11,6 +12,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -22,6 +24,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import {
   getPlatformTenant,
@@ -45,10 +48,6 @@ import {
   parseMemberInvitationFilters,
 } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "テナントメンバー管理",
-};
-
 const invitationPageSize = 20;
 
 type TenantMembersPageProps = PageProps<"/tenants/[tenant_id]/members">;
@@ -56,6 +55,30 @@ type TenantMembersPageProps = PageProps<"/tenants/[tenant_id]/members">;
 const tenantMembersParamsSchema = z.object({
   tenant_id: routeParamString(),
 });
+
+export const generateMetadata = async ({
+  params,
+}: TenantMembersPageProps): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+  const parsedParams = parseRouteParams(
+    tenantMembersParamsSchema,
+    await params
+  );
+  if (!parsedParams) {
+    return { title: getMessage(messages, "platform.tenants.members_heading") };
+  }
+
+  const tenantResult = await getPlatformTenant(parsedParams.tenant_id, locale);
+  const name =
+    tenantResult.ok && tenantResult.tenant ? tenantResult.tenant.name : "";
+
+  return {
+    title: name
+      ? getMessage(messages, "platform.tenants.members_title", { name })
+      : getMessage(messages, "platform.tenants.members_heading"),
+  };
+};
 
 const TenantMembersSkeleton = () => (
   <PlatformPageContent>
@@ -86,11 +109,17 @@ const TenantMembersLoadError = ({ message }: { message: string }) => (
   <SectionError
     actions={
       <LinkButton render={<Link href="/tenants" />} variant="outline">
-        一覧へ戻る
+        <Suspense fallback="…">
+          <Message message="platform.common.back_to_list" />
+        </Suspense>
       </LinkButton>
     }
     description={message}
-    title="メンバー管理を表示できませんでした"
+    title={
+      <Suspense fallback="…">
+        <Message message="platform.tenants.members_load_failed" />
+      </Suspense>
+    }
   />
 );
 
@@ -107,16 +136,20 @@ const TenantMembersContent = async ({
   }
   const { tenant_id: tenantId } = parsedParams;
   const pageFilters = parseMemberInvitationFilters(await searchParams);
+  const locale = await getPlatformLocale();
 
-  const [tenantResult, membersResult, invitationsResult, timeZone] =
+  const [messages, tenantResult, membersResult, invitationsResult, timeZone] =
     await Promise.all([
-      getPlatformTenant(tenantId),
+      loadPlatformMessages(locale),
+      getPlatformTenant(tenantId, locale),
       listPlatformTenantMembers({
+        locale,
         tenantId,
         token: pageFilters.membersToken || undefined,
       }),
       listPlatformTenantAdminInvitations({
         limit: invitationPageSize,
+        locale,
         tenantId,
         token: pageFilters.token || undefined,
       }),
@@ -170,14 +203,18 @@ const TenantMembersContent = async ({
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
-          <PlatformPageTitle>{`メンバー管理: ${tenant.name}`}</PlatformPageTitle>
+          <PlatformPageTitle>
+            {getMessage(messages, "platform.tenants.members_title", {
+              name: tenant.name,
+            })}
+          </PlatformPageTitle>
           <PlatformPageDescription>
-            テナントメンバーの追加、ロール変更、削除を行います。
+            {getMessage(messages, "platform.tenants.members_description")}
           </PlatformPageDescription>
         </PlatformPageHeading>
         <PlatformPageActions>
           <LinkButton render={<Link href="/tenants" />} variant="outline">
-            一覧へ戻る
+            {getMessage(messages, "platform.common.back_to_list")}
           </LinkButton>
         </PlatformPageActions>
       </PlatformPageHeader>
@@ -195,6 +232,7 @@ const TenantMembersContent = async ({
             invitations={invitationsResult.invitations}
             invitationsNextHref={nextHref}
             invitationsPreviousHref={previousHref}
+            locale={locale}
             members={membersResult.members}
             membersErrorMessage={
               membersResult.ok ? undefined : membersResult.message

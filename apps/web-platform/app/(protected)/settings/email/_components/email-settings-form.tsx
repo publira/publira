@@ -28,6 +28,7 @@ import { Select } from "@publira/ui-components/select";
 import type { ChangeEvent } from "react";
 import { useActionState, useCallback, useId, useState } from "react";
 
+import { ClientMessage } from "#components/client-message";
 import {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
@@ -44,8 +45,11 @@ import type {
 const encryptionOptions = [
   { label: "TLS", value: "tls" },
   { label: "STARTTLS", value: "starttls" },
-  { label: "なし", value: "none" },
-] as const;
+  {
+    label: <ClientMessage message="platform.settings.encryption_none" />,
+    value: "none",
+  },
+];
 
 interface EmailSettingsFormProps {
   initialSettings: PlatformSmtpSettings;
@@ -111,10 +115,11 @@ export const EmailSettingsForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>メール設定</CardTitle>
+        <CardTitle>
+          <ClientMessage message="platform.settings.smtp_card_title" />
+        </CardTitle>
         <CardDescription>
-          プラットフォーム既定の SMTP
-          を管理します。接続テストは保存と分離して実行できます。
+          <ClientMessage message="platform.settings.smtp_card_description" />
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -125,7 +130,7 @@ export const EmailSettingsForm = ({
         >
           <Field>
             <FieldLabel htmlFor="host" required>
-              ホスト
+              <ClientMessage message="platform.settings.host" />
             </FieldLabel>
             <FieldContent>
               <Input
@@ -141,7 +146,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="port" required>
-              ポート
+              <ClientMessage message="platform.settings.port" />
             </FieldLabel>
             <FieldContent>
               <Input
@@ -158,7 +163,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="username" required>
-              ユーザー名
+              <ClientMessage message="platform.settings.username" />
             </FieldLabel>
             <FieldContent>
               <Input
@@ -173,7 +178,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="password" required={isPasswordEditing}>
-              パスワード
+              <ClientMessage message="platform.settings.password" />
             </FieldLabel>
             <FieldContent>
               {hasStoredPassword && !isPasswordEditing ? (
@@ -190,7 +195,7 @@ export const EmailSettingsForm = ({
                     type="button"
                     variant="outline"
                   >
-                    変更する
+                    <ClientMessage message="platform.settings.password_change" />
                   </Button>
                 </div>
               ) : (
@@ -209,7 +214,7 @@ export const EmailSettingsForm = ({
                       type="button"
                       variant="outline"
                     >
-                      変更を取り消す
+                      <ClientMessage message="platform.settings.password_undo" />
                     </Button>
                   ) : null}
                 </div>
@@ -229,7 +234,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="encryption" required>
-              暗号化方式
+              <ClientMessage message="platform.settings.smtp_encryption" />
             </FieldLabel>
             <FieldContent>
               <Select
@@ -244,7 +249,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="from_address" required>
-              送信者メールアドレス
+              <ClientMessage message="platform.settings.from_address" />
             </FieldLabel>
             <FieldContent>
               <Input
@@ -260,7 +265,7 @@ export const EmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor="reply_to">
-              返信先メールアドレス（任意）
+              <ClientMessage message="platform.settings.reply_to" />
             </FieldLabel>
             <FieldContent>
               <Input
@@ -288,7 +293,7 @@ export const EmailSettingsForm = ({
               <DialogTrigger
                 render={
                   <Button type="button" variant="outline">
-                    接続テスト
+                    <ClientMessage message="platform.settings.smtp_test" />
                   </Button>
                 }
               />
@@ -297,9 +302,11 @@ export const EmailSettingsForm = ({
                 <DialogViewport>
                   <DialogPopup>
                     <DialogHeader>
-                      <DialogTitle>SMTP 接続テスト</DialogTitle>
+                      <DialogTitle>
+                        <ClientMessage message="platform.settings.smtp_test_title" />
+                      </DialogTitle>
                       <DialogDescription>
-                        現在のフォーム入力値でテストメールを送信します。
+                        <ClientMessage message="platform.settings.smtp_test_description" />
                       </DialogDescription>
                     </DialogHeader>
 
@@ -310,7 +317,7 @@ export const EmailSettingsForm = ({
                           onChange={handleSendToSelfChange}
                           type="checkbox"
                         />
-                        自分に送信する
+                        <ClientMessage message="platform.settings.smtp_test_self" />
                       </label>
                       <input
                         form={formId}
@@ -326,7 +333,7 @@ export const EmailSettingsForm = ({
                       {sendToSelf ? null : (
                         <Field>
                           <FieldLabel htmlFor="recipient_email" required>
-                            送信先メールアドレス
+                            <ClientMessage message="platform.settings.smtp_test_custom" />
                           </FieldLabel>
                           <FieldContent>
                             <Input
@@ -354,7 +361,7 @@ export const EmailSettingsForm = ({
                       <DialogClose
                         render={
                           <Button type="button" variant="outline">
-                            閉じる
+                            <ClientMessage message="platform.settings.smtp_test_close" />
                           </Button>
                         }
                       />
@@ -365,7 +372,7 @@ export const EmailSettingsForm = ({
                         type="submit"
                         variant="outline"
                       >
-                        {isTesting ? "送信中..." : "テストを実行"}
+                        <ClientMessage message="platform.settings.smtp_test_submit" />
                       </Button>
                     </DialogFooter>
                   </DialogPopup>
@@ -374,7 +381,7 @@ export const EmailSettingsForm = ({
             </Dialog>
 
             <Button disabled={isSaving} type="submit">
-              {isSaving ? "保存中..." : "保存"}
+              <ClientMessage message="platform.common.save" />
             </Button>
           </div>
         </form>

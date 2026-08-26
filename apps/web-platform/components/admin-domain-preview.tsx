@@ -1,56 +1,59 @@
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
+import { Suspense } from "react";
 
-interface AdminDomainPreviewProps {
-  adminDomain?: string;
-  className?: string;
-  domain?: string;
-  showCurrentDomain?: boolean;
-}
+import { Message } from "./message";
 
 export const AdminDomainPreview = ({
   adminDomain = "",
   className,
   domain = "",
   showCurrentDomain = false,
-}: AdminDomainPreviewProps) => {
+}: {
+  adminDomain?: string;
+  className?: string;
+  domain?: string;
+  showCurrentDomain?: boolean;
+}) => {
   const trimmedAdminDomain = adminDomain.trim();
   const trimmedDomain = domain.trim();
 
   if (trimmedAdminDomain) {
     return (
       <p className={cn("text-sm text-muted-foreground", className)}>
-        管理画面ドメインとして
-        <span className="mx-1 rounded bg-muted px-1.5 py-0.5 font-medium text-foreground">
-          {trimmedAdminDomain}
-        </span>
-        を使用します。
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message
+            message="platform.tenants.admin_domain_preview_set"
+            values={{ domain: trimmedAdminDomain }}
+          />
+        </Suspense>
       </p>
     );
   }
 
+  const prefixedDomain = `admin.${trimmedDomain || "example.com"}`;
+
   if (showCurrentDomain && trimmedDomain) {
     return (
       <p className={cn("text-sm text-muted-foreground", className)}>
-        管理画面ドメインの設定がない場合は
-        <span className="mx-1 inline-flex gap-x-1 rounded border border-border bg-muted px-1 py-0.5 align-middle leading-none">
-          <span className="font-semibold text-foreground">admin.</span>
-          <span className="text-foreground/65">{trimmedDomain}</span>
-        </span>
-        が使われます。
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message
+            message="platform.tenants.admin_domain_preview_current"
+            values={{ domain: prefixedDomain }}
+          />
+        </Suspense>
       </p>
     );
   }
 
   return (
     <p className={cn("text-sm text-muted-foreground", className)}>
-      管理画面ドメインの設定がない場合は、公開ページのドメインの先頭に
-      <span className="mx-1 inline-flex rounded border border-border bg-muted px-1 py-0.5 align-middle leading-none">
-        <span className="font-semibold text-foreground">admin.</span>
-        <span className="text-foreground/65">
-          {trimmedDomain || "example.com"}
-        </span>
-      </span>
-      を付けたドメインが管理画面に使われます。
+      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+        <Message
+          message="platform.tenants.admin_domain_preview_prefix"
+          values={{ domain: prefixedDomain }}
+        />
+      </Suspense>
     </p>
   );
 };

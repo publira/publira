@@ -10,7 +10,9 @@ import {
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
 import {
   parseRouteParams,
   routeParamString,
@@ -22,6 +24,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { AdminDomainPreview } from "#components/admin-domain-preview";
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -34,6 +37,7 @@ import {
 } from "#components/platform-page";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { getPlatformTenant } from "#lib/tenants";
@@ -47,10 +51,6 @@ import {
   updateTenantNameAction,
 } from "./_lib/actions";
 
-export const metadata: Metadata = {
-  title: "テナント詳細",
-};
-
 interface TenantDetailPageProps {
   params: Promise<{
     tenant_id: string;
@@ -60,6 +60,27 @@ interface TenantDetailPageProps {
 const tenantDetailParamsSchema = z.object({
   tenant_id: routeParamString(),
 });
+
+export const generateMetadata = async ({
+  params,
+}: TenantDetailPageProps): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+  const parsedParams = parseRouteParams(tenantDetailParamsSchema, await params);
+  if (!parsedParams) {
+    return { title: getMessage(messages, "platform.tenants.heading") };
+  }
+
+  const tenantResult = await getPlatformTenant(parsedParams.tenant_id, locale);
+  const name =
+    tenantResult.ok && tenantResult.tenant ? tenantResult.tenant.name : "";
+
+  return {
+    title: name
+      ? getMessage(messages, "platform.tenants.detail_title", { name })
+      : getMessage(messages, "platform.tenants.heading"),
+  };
+};
 
 const TenantDetailSkeleton = () => (
   <PlatformPageContent>
@@ -102,11 +123,17 @@ const TenantLoadError = ({ message }: { message: string }) => (
   <SectionError
     actions={
       <LinkButton render={<Link href="/tenants" />} variant="outline">
-        一覧へ戻る
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="platform.common.back_to_list" />
+        </Suspense>
       </LinkButton>
     }
     description={message}
-    title="テナントを表示できませんでした"
+    title={
+      <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+        <Message message="platform.tenants.load_one_failed" />
+      </Suspense>
+    }
   />
 );
 
@@ -118,9 +145,11 @@ const TenantDetailContent = async ({
     notFound();
   }
   const { tenant_id: tenantId } = parsedParams;
+  const locale = await getPlatformLocale();
 
-  const [tenantResult, timeZone] = await Promise.all([
-    getPlatformTenant(tenantId),
+  const [messages, tenantResult, timeZone] = await Promise.all([
+    loadPlatformMessages(locale),
+    getPlatformTenant(tenantId, locale),
     getPlatformDisplayTimeZone(),
   ]);
 
@@ -136,22 +165,28 @@ const TenantDetailContent = async ({
   if (!tenant) {
     notFound();
   }
-  const tenantStatusLabel = getTenantStatusLabel(tenant.status);
+  const tenantStatusLabel = getTenantStatusLabel(tenant.status, messages);
   const tenantStatusTone = getTenantStatusTone(tenant.status);
+  const saveLabel = getMessage(messages, "platform.common.save");
+  const savingLabel = getMessage(messages, "platform.common.saving");
 
   return (
     <>
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
-          <PlatformPageTitle>{`テナント詳細: ${tenant.name}`}</PlatformPageTitle>
+          <PlatformPageTitle>
+            {getMessage(messages, "platform.tenants.detail_title", {
+              name: tenant.name,
+            })}
+          </PlatformPageTitle>
           <PlatformPageDescription>
-            テナントの基本情報とドメイン設定を管理します。
+            {getMessage(messages, "platform.tenants.detail_description")}
           </PlatformPageDescription>
         </PlatformPageHeading>
         <PlatformPageActions>
           <LinkButton render={<Link href="/tenants" />} variant="outline">
-            一覧へ戻る
+            {getMessage(messages, "platform.common.back_to_list")}
           </LinkButton>
           <LinkButton
             render={
@@ -161,18 +196,20 @@ const TenantDetailContent = async ({
             }
             variant="outline"
           >
-            監査ログを確認
+            {getMessage(messages, "platform.tenants.update_audit")}
           </LinkButton>
           {tenant.status === "suspended" ? (
             <form action={resumeTenantAction}>
               <input name="tenant_id" type="hidden" value={tenant.publicId} />
-              <Button type="submit">再開する</Button>
+              <Button type="submit">
+                {getMessage(messages, "platform.tenants.resume")}
+              </Button>
             </form>
           ) : (
             <form action={suspendTenantAction}>
               <input name="tenant_id" type="hidden" value={tenant.publicId} />
               <Button type="submit" variant="destructive">
-                停止する
+                {getMessage(messages, "platform.tenants.suspend")}
               </Button>
             </form>
           )}
@@ -185,13 +222,19 @@ const TenantDetailContent = async ({
           <div className="grid gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>基本情報</CardTitle>
+                <CardTitle>
+                  {getMessage(messages, "platform.tenants.basic_title")}
+                </CardTitle>
                 <CardDescription>
-                  テナントの表示名と現在の状態を管理します。
+                  {getMessage(messages, "platform.tenants.basic_description")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
-                <TenantUpdateForm action={updateTenantNameAction}>
+                <TenantUpdateForm
+                  action={updateTenantNameAction}
+                  pendingLabel={savingLabel}
+                  submitLabel={saveLabel}
+                >
                   <input
                     name="tenant_id"
                     type="hidden"
@@ -204,7 +247,9 @@ const TenantDetailContent = async ({
                   />
                   <div className="grid gap-4">
                     <Field>
-                      <FieldLabel required>テナント名</FieldLabel>
+                      <FieldLabel required>
+                        {getMessage(messages, "platform.tenants.name")}
+                      </FieldLabel>
                       <Input
                         key={tenant.name}
                         defaultValue={tenant.name}
@@ -214,16 +259,24 @@ const TenantDetailContent = async ({
                       />
                     </Field>
                     <Field>
-                      <FieldLabel>作成日時</FieldLabel>
+                      <FieldLabel>
+                        {getMessage(messages, "platform.common.created_at")}
+                      </FieldLabel>
                       <p className="text-sm">
                         {formatDateTime(tenant.createdAt, {
-                          fallback: "未設定",
+                          fallback: getMessage(
+                            messages,
+                            "platform.common.unset"
+                          ),
+                          locale,
                           timeZone,
                         })}
                       </p>
                     </Field>
                     <Field>
-                      <FieldLabel>ステータス</FieldLabel>
+                      <FieldLabel>
+                        {getMessage(messages, "platform.common.status")}
+                      </FieldLabel>
                       <p>
                         <Badge tone={tenantStatusTone}>
                           {tenantStatusLabel}
@@ -237,14 +290,26 @@ const TenantDetailContent = async ({
 
             <Card>
               <CardHeader>
-                <CardTitle>ドメイン設定</CardTitle>
+                <CardTitle>
+                  {getMessage(
+                    messages,
+                    "platform.tenants.domain_settings_title"
+                  )}
+                </CardTitle>
                 <CardDescription>
-                  テナントのドメイン設定を確認します。
+                  {getMessage(
+                    messages,
+                    "platform.tenants.domain_settings_description"
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
-                <TenantDomainCautions mode="update" />
-                <TenantUpdateForm action={updateTenantDomainAction}>
+                <TenantDomainCautions showUpdateCaution />
+                <TenantUpdateForm
+                  action={updateTenantDomainAction}
+                  pendingLabel={savingLabel}
+                  submitLabel={saveLabel}
+                >
                   <input
                     name="tenant_id"
                     type="hidden"
@@ -257,7 +322,9 @@ const TenantDetailContent = async ({
                   />
                   <div className="grid gap-4">
                     <Field>
-                      <FieldLabel required>ドメイン</FieldLabel>
+                      <FieldLabel required>
+                        {getMessage(messages, "platform.tenants.domain")}
+                      </FieldLabel>
                       <Input
                         key={tenant.domain}
                         defaultValue={tenant.domain}
@@ -269,7 +336,9 @@ const TenantDetailContent = async ({
                       />
                     </Field>
                     <Field>
-                      <FieldLabel>管理画面ドメイン</FieldLabel>
+                      <FieldLabel>
+                        {getMessage(messages, "platform.tenants.admin_domain")}
+                      </FieldLabel>
                       <Input
                         key={tenant.adminDomain}
                         defaultValue={tenant.adminDomain}

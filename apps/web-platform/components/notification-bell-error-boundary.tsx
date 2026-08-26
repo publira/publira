@@ -1,8 +1,13 @@
 "use client";
 
 import { catchError } from "next/error";
+import { Suspense } from "react";
 
-import { NotificationBell } from "./notification-bell";
+import { ClientMessage } from "./client-message";
+import {
+  NotificationBell,
+  NotificationBellSkeleton,
+} from "./notification-bell";
 
 /**
  * Header chrome: an unexpected unread-count failure must not take down the
@@ -11,7 +16,12 @@ import { NotificationBell } from "./notification-bell";
  * empty bell; this boundary only catches the throw path.
  */
 const notificationBellErrorFallback = () => (
-  <NotificationBell unreadCount={0} />
+  <Suspense fallback={<NotificationBellSkeleton />}>
+    <NotificationBell
+      ariaLabel={<ClientMessage message="platform.shell.notifications_none" />}
+      unreadCount={0}
+    />
+  </Suspense>
 );
 
 export const NotificationBellErrorBoundary = catchError(

@@ -1,5 +1,9 @@
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageContent,
@@ -9,12 +13,15 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
-import { requestPlatformEmailChangeAction } from "../_lib/actions";
 import { EmailChangeForm } from "./_components/email-change-form";
 
-export const metadata: Metadata = {
-  title: "アカウント設定",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.settings.account_title") };
 };
 
 const PlatformAccountSettingsPage = () => (
@@ -22,14 +29,20 @@ const PlatformAccountSettingsPage = () => (
     <PlatformPageHeader>
       <PlatformPageHeading>
         <PlatformPageEyebrow>Platform Settings</PlatformPageEyebrow>
-        <PlatformPageTitle>アカウント設定</PlatformPageTitle>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
+            <Message message="platform.settings.account_heading" />
+          </Suspense>
+        </PlatformPageTitle>
         <PlatformPageDescription>
-          ログイン中のオペレーターアカウントの情報を管理します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="platform.settings.account_description" />
+          </Suspense>
         </PlatformPageDescription>
       </PlatformPageHeading>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <EmailChangeForm action={requestPlatformEmailChangeAction} />
+      <EmailChangeForm />
     </PlatformPageContent>
   </PlatformPage>
 );

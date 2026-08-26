@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import type { NavSection } from "../navigation";
 import { ConsoleLayoutClient } from "./console-layout-client";
 import { ConsoleUserMenu } from "./console-user-menu";
+import type { ConsoleUserMenuCopy } from "./console-user-menu";
 
 export interface ConsoleLayoutProps {
   children: ReactNode;
@@ -112,13 +113,16 @@ export const ConsoleHeaderUser = ({
   accountHref,
   currentUser,
   logoutAction,
+  roleLabel,
+  userMenuCopy,
 }: ConsoleHeaderUserProps) => (
   <ConsoleUserMenu
     accountHref={accountHref}
+    copy={userMenuCopy}
     logoutAction={logoutAction}
     name={currentUser.name}
     publicId={currentUser.publicId}
-    roleLabel={toRoleLabel(currentUser.role)}
+    roleLabel={roleLabel ?? toRoleLabel(currentUser.role)}
   />
 );
 
@@ -182,7 +186,15 @@ export const ConsoleSidebar = ({
     <nav className="mt-6 flex-1 overflow-y-auto">
       <div className="grid gap-5">
         {navigation.map((section) => (
-          <div className="grid gap-2" key={section.title}>
+          <div
+            className="grid gap-2"
+            key={
+              section.id ??
+              (typeof section.title === "string"
+                ? section.title
+                : section.items[0]?.href)
+            }
+          >
             <p className="px-2 text-xs font-medium tracking-[0.22em] text-muted-foreground uppercase">
               {section.title}
             </p>
@@ -225,8 +237,8 @@ export interface ConsoleCurrentUser {
 
 export interface ConsoleHeaderProps {
   brandMark?: ReactNode;
-  eyebrow: string;
-  contextLabel: string;
+  eyebrow: ReactNode;
+  contextLabel: ReactNode;
   children?: ReactNode;
 }
 
@@ -234,6 +246,8 @@ export interface ConsoleHeaderUserProps {
   accountHref: string;
   currentUser: ConsoleCurrentUser;
   logoutAction: (formData: FormData) => void | Promise<void>;
+  roleLabel?: string;
+  userMenuCopy?: ConsoleUserMenuCopy;
 }
 
 export interface ConsoleSidebarProps {

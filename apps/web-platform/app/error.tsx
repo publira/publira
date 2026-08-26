@@ -1,5 +1,6 @@
 "use client";
 
+import { ClientMessage } from "#components/client-message";
 import { ErrorScreen } from "#components/error-screen";
 
 /**
@@ -31,10 +32,12 @@ const RootError = ({
   // landmark, so this boundary owns the `<main>` element itself.
   <main>
     <ErrorScreen
-      description="Platform Console の読み込みに失敗しました。時間をおいて再試行してください。"
+      description={<ClientMessage message="platform.errors.root_description" />}
       digest={error.digest}
+      digestLabel={<ClientMessage message="platform.common.error_id" />}
       retry={retry}
-      title="Platform Console を表示できませんでした"
+      retryLabel={<ClientMessage message="platform.common.retry" />}
+      title={<ClientMessage message="platform.errors.root_title" />}
     />
   </main>
 );

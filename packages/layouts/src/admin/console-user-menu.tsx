@@ -4,9 +4,25 @@ import { Menu } from "@base-ui/react/menu";
 import { LogoutIcon, SettingsIcon, UserIcon } from "@publira/icons";
 import { StatusChip } from "@publira/ui-components/badge";
 import Link from "next/link";
+import type { ReactNode } from "react";
+
+export interface ConsoleUserMenuCopy {
+  accountMenuAriaLabel: string;
+  accountSettings: ReactNode;
+  logout: ReactNode;
+  logoutAriaLabel: string;
+}
+
+const defaultCopy: ConsoleUserMenuCopy = {
+  accountMenuAriaLabel: "{name}のアカウントメニュー",
+  accountSettings: "アカウント設定",
+  logout: "ログアウト",
+  logoutAriaLabel: "ログアウト",
+};
 
 export interface ConsoleUserMenuProps {
   accountHref: string;
+  copy?: Partial<ConsoleUserMenuCopy>;
   logoutAction: (formData: FormData) => void | Promise<void>;
   name: string;
   publicId: string;
@@ -24,17 +40,23 @@ const toInitial = (name: string): string | null => {
 
 export const ConsoleUserMenu = ({
   accountHref,
+  copy,
   logoutAction,
   name,
   publicId,
   roleLabel,
 }: ConsoleUserMenuProps) => {
   const initial = toInitial(name);
+  const resolvedCopy = { ...defaultCopy, ...copy };
+  const accountMenuAriaLabel = resolvedCopy.accountMenuAriaLabel.replaceAll(
+    "{name}",
+    name
+  );
 
   return (
     <Menu.Root>
       <Menu.Trigger
-        aria-label={`${name}のアカウントメニュー`}
+        aria-label={accountMenuAriaLabel}
         className="inline-flex size-9 items-center justify-center rounded-full border border-border/70 bg-card text-sm font-medium text-foreground transition-colors hover:border-border hover:bg-muted data-popup-open:bg-muted"
       >
         {initial ?? (
@@ -70,7 +92,7 @@ export const ConsoleUserMenu = ({
                 aria-hidden="true"
                 className="size-4 text-muted-foreground"
               />
-              アカウント設定
+              {resolvedCopy.accountSettings}
             </Menu.LinkItem>
 
             <form action={logoutAction}>
@@ -80,13 +102,18 @@ export const ConsoleUserMenu = ({
                 className={itemClassName}
                 closeOnClick={false}
                 nativeButton
-                render={<button aria-label="ログアウト" type="submit" />}
+                render={
+                  <button
+                    aria-label={resolvedCopy.logoutAriaLabel}
+                    type="submit"
+                  />
+                }
               >
                 <LogoutIcon
                   aria-hidden="true"
                   className="size-4 text-muted-foreground"
                 />
-                ログアウト
+                {resolvedCopy.logout}
               </Menu.Item>
             </form>
           </Menu.Popup>

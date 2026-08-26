@@ -135,7 +135,7 @@ describe("listPlatformTenants", () => {
       })
     );
 
-    await expect(listPlatformTenants({})).resolves.toEqual({
+    await expect(listPlatformTenants({ locale: "ja" })).resolves.toEqual({
       nextToken: "next-page",
       ok: true,
       previousToken: "",
@@ -169,6 +169,7 @@ describe("listPlatformTenants", () => {
     await expect(
       listPlatformTenants({
         limit: 50,
+        locale: "ja",
         name: "テスト",
         status: "active",
         token: "current-page",
@@ -195,7 +196,7 @@ describe("listPlatformTenants", () => {
   it("sessionId を解決できない場合は API を呼ばずエラーを返す", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
-    await expect(listPlatformTenants({})).resolves.toEqual({
+    await expect(listPlatformTenants({ locale: "ja" })).resolves.toEqual({
       message: "セッションが無効です。再ログインしてください。",
       nextToken: "",
       ok: false,
@@ -207,12 +208,25 @@ describe("listPlatformTenants", () => {
     expect(mockListTenants).not.toHaveBeenCalled();
   });
 
+  it("locale=en では英語のセッションエラーを返す", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(listPlatformTenants({ locale: "en" })).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+      requiresSignIn: true,
+      tenants: [],
+    });
+  });
+
   it("到達不能エラーは共通文言で返す", async () => {
     mockListTenants.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(listPlatformTenants({})).resolves.toEqual({
+    await expect(listPlatformTenants({ locale: "ja" })).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       nextToken: "",
@@ -228,7 +242,7 @@ describe("listPlatformTenants", () => {
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(listPlatformTenants({})).rejects.toThrow("boom");
+    await expect(listPlatformTenants({ locale: "ja" })).rejects.toThrow("boom");
   });
 });
 
@@ -242,6 +256,7 @@ describe("createPlatformTenant", () => {
       createPlatformTenant({
         domain: "example.com",
         initialAdminEmails: ["owner@example.com", ""],
+        locale: "ja",
         name: "新規テナント",
       })
     ).resolves.toEqual({ ok: true, publicId: "TENANT000001" });
@@ -267,6 +282,7 @@ describe("createPlatformTenant", () => {
     await expect(
       createPlatformTenant({
         domain: "example.com",
+        locale: "ja",
         name: "n",
       })
     ).resolves.toEqual({
@@ -285,6 +301,7 @@ describe("createPlatformTenant", () => {
     await expect(
       createPlatformTenant({
         domain: "example.com",
+        locale: "ja",
         name: "n",
       })
     ).resolves.toEqual({
@@ -301,6 +318,7 @@ describe("createPlatformTenant", () => {
     await expect(
       createPlatformTenant({
         domain: "example.com",
+        locale: "ja",
         name: "n",
       })
     ).resolves.toEqual({
@@ -322,10 +340,33 @@ describe("createPlatformTenant", () => {
     await expect(
       createPlatformTenant({
         domain: "example.com",
+        locale: "ja",
         name: "n",
       })
     ).resolves.toEqual({
       message: "ドメインが既に使用されています。",
+      ok: false,
+    });
+  });
+
+  it("locale=en では英語のドメイン重複メッセージを返す", async () => {
+    mockCreateTenant.mockRejectedValueOnce(
+      new ConnectError("duplicate key", Code.AlreadyExists, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "domain" }] },
+        },
+      ])
+    );
+
+    await expect(
+      createPlatformTenant({
+        domain: "example.com",
+        locale: "en",
+        name: "n",
+      })
+    ).resolves.toEqual({
+      message: "This domain is already in use.",
       ok: false,
     });
   });
@@ -343,6 +384,7 @@ describe("createPlatformTenant", () => {
     await expect(
       createPlatformTenant({
         domain: "example.com",
+        locale: "ja",
         name: "n",
       })
     ).resolves.toEqual({
@@ -359,6 +401,7 @@ describe("createPlatformTenant", () => {
     await expect(
       createPlatformTenant({
         domain: "example.com",
+        locale: "ja",
         name: "n",
       })
     ).resolves.toEqual({
@@ -375,6 +418,7 @@ describe("createPlatformTenant", () => {
     await expect(
       createPlatformTenant({
         domain: "example.com",
+        locale: "ja",
         name: "n",
       })
     ).resolves.toEqual({
@@ -395,7 +439,7 @@ describe("createPlatformTenant", () => {
       },
     });
 
-    await expect(getPlatformTenant("tenant_seifuu")).resolves.toEqual({
+    await expect(getPlatformTenant("tenant_seifuu", "ja")).resolves.toEqual({
       ok: true,
       tenant: {
         adminDomain: "admin.example.com",
@@ -418,7 +462,7 @@ describe("createPlatformTenant", () => {
       new ConnectError("tenant not found", Code.NotFound)
     );
 
-    await expect(getPlatformTenant("tenant_missing")).resolves.toEqual({
+    await expect(getPlatformTenant("tenant_missing", "ja")).resolves.toEqual({
       ok: true,
       tenant: null,
     });
@@ -431,7 +475,7 @@ describe("createPlatformTenant", () => {
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(getPlatformTenant("tenant_seifuu")).resolves.toEqual({
+    await expect(getPlatformTenant("tenant_seifuu", "ja")).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
@@ -444,7 +488,9 @@ describe("createPlatformTenant", () => {
       new ConnectError("invalid token", Code.Unauthenticated)
     );
 
-    await expect(getPlatformTenant("tenant_seifuu")).resolves.toMatchObject({
+    await expect(
+      getPlatformTenant("tenant_seifuu", "ja")
+    ).resolves.toMatchObject({
       ok: false,
       requiresSignIn: true,
     });
@@ -465,7 +511,7 @@ describe("createPlatformTenant", () => {
     });
 
     await expect(
-      listPlatformTenantMembers({ tenantId: "tenant_seifuu" })
+      listPlatformTenantMembers({ locale: "ja", tenantId: "tenant_seifuu" })
     ).resolves.toEqual({
       members: [
         {
@@ -511,6 +557,7 @@ describe("createPlatformTenant", () => {
     await expect(
       addPlatformTenantMember({
         email: "member@example.com",
+        locale: "ja",
         role: "tenant_admin",
         tenantId: "tenant_seifuu",
       })
@@ -532,6 +579,7 @@ describe("createPlatformTenant", () => {
     await expect(
       addPlatformTenantMember({
         email: "Member@Example.COM",
+        locale: "ja",
         role: "tenant_admin",
         tenantId: "tenant_seifuu",
       })
@@ -555,6 +603,7 @@ describe("createPlatformTenant", () => {
     await expect(
       addPlatformTenantMember({
         email: "member@example.com",
+        locale: "ja",
         role: "tenant_admin",
         tenantId: "tenant_seifuu",
       })
@@ -584,7 +633,10 @@ describe("tenant admin invitations", () => {
     });
 
     await expect(
-      listPlatformTenantAdminInvitations({ tenantId: "tenant_seifuu" })
+      listPlatformTenantAdminInvitations({
+        locale: "ja",
+        tenantId: "tenant_seifuu",
+      })
     ).resolves.toEqual({
       invitations: [
         {
@@ -622,6 +674,7 @@ describe("tenant admin invitations", () => {
     await expect(
       listPlatformTenantAdminInvitations({
         limit: 50,
+        locale: "ja",
         tenantId: "tenant_seifuu",
         token: "current-page",
       })
@@ -646,7 +699,10 @@ describe("tenant admin invitations", () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(
-      listPlatformTenantAdminInvitations({ tenantId: "tenant_seifuu" })
+      listPlatformTenantAdminInvitations({
+        locale: "ja",
+        tenantId: "tenant_seifuu",
+      })
     ).resolves.toEqual({
       invitations: [],
       message: "セッションが無効です。再ログインしてください。",
@@ -665,7 +721,10 @@ describe("tenant admin invitations", () => {
     );
 
     await expect(
-      listPlatformTenantAdminInvitations({ tenantId: "tenant_seifuu" })
+      listPlatformTenantAdminInvitations({
+        locale: "ja",
+        tenantId: "tenant_seifuu",
+      })
     ).resolves.toEqual({
       invitations: [],
       message:
@@ -683,7 +742,10 @@ describe("tenant admin invitations", () => {
     );
 
     await expect(
-      listPlatformTenantAdminInvitations({ tenantId: "tenant_seifuu" })
+      listPlatformTenantAdminInvitations({
+        locale: "ja",
+        tenantId: "tenant_seifuu",
+      })
     ).rejects.toThrow("boom");
   });
 
@@ -702,7 +764,11 @@ describe("tenant admin invitations", () => {
     });
 
     await expect(
-      createPlatformTenantAdminInvitation("tenant_seifuu", "admin@example.com")
+      createPlatformTenantAdminInvitation(
+        "tenant_seifuu",
+        "admin@example.com",
+        "ja"
+      )
     ).resolves.toEqual({
       invitation: {
         acceptedAt: "",
@@ -732,7 +798,7 @@ describe("tenant admin invitations", () => {
     });
 
     await expect(
-      resendPlatformTenantAdminInvitation("tenant_seifuu", "inv_001")
+      resendPlatformTenantAdminInvitation("tenant_seifuu", "inv_001", "ja")
     ).resolves.toEqual({
       invitation: {
         acceptedAt: "",
@@ -761,7 +827,7 @@ describe("tenant admin invitations", () => {
     });
 
     await expect(
-      cancelPlatformTenantAdminInvitation("tenant_seifuu", "inv_001")
+      cancelPlatformTenantAdminInvitation("tenant_seifuu", "inv_001", "ja")
     ).resolves.toEqual({
       invitation: {
         acceptedAt: "",

@@ -77,33 +77,6 @@ const LoginPage = ({ searchParams }: PageProps<"/login">) => (
 
       <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
         <LoginForm
-          copy={{
-            emailLabel: (
-              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                <Message message="platform.auth.fields.email_label" />
-              </Suspense>
-            ),
-            forgotPassword: (
-              <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-                <Message message="platform.auth.login.forgot_password" />
-              </Suspense>
-            ),
-            passwordLabel: (
-              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="platform.auth.fields.password_label" />
-              </Suspense>
-            ),
-            pendingLabel: (
-              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="platform.auth.login.pending" />
-              </Suspense>
-            ),
-            submitLabel: (
-              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <Message message="platform.auth.login.submit" />
-              </Suspense>
-            ),
-          }}
           flash={
             <Suspense fallback={null}>
               <LoginFlash searchParams={searchParams} />

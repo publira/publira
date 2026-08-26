@@ -53,7 +53,7 @@ describe("getPlatformEmailSettings", () => {
       },
     });
 
-    await expect(getPlatformEmailSettings()).resolves.toEqual({
+    await expect(getPlatformEmailSettings("ja")).resolves.toEqual({
       ok: true,
       settings: {
         encryption: "starttls",
@@ -70,13 +70,23 @@ describe("getPlatformEmailSettings", () => {
   it("sessionId が空のとき API を呼ばず失敗を返す", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
-    await expect(getPlatformEmailSettings()).resolves.toEqual({
+    await expect(getPlatformEmailSettings("ja")).resolves.toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
       requiresSignIn: true,
     });
 
     expect(mockGetPlatformEmailSettings).not.toHaveBeenCalled();
+  });
+
+  it("locale=en では英語のセッションエラーを返す", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(getPlatformEmailSettings("en")).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
+      requiresSignIn: true,
+    });
   });
 });
 
@@ -98,6 +108,7 @@ describe("updatePlatformEmailSettings", () => {
       encryption: "tls",
       fromAddress: "noreply@example.com",
       host: "smtp.example.com",
+      locale: "ja",
       password: "secret",
       passwordUpdateMode: SECRET_UPDATE_MODE_REPLACE,
       port: 465,
@@ -145,6 +156,7 @@ describe("sendPlatformSmtpTestEmail", () => {
         encryption: "starttls",
         fromAddress: "noreply@example.com",
         host: "smtp.example.com",
+        locale: "ja",
         password: "",
         passwordUpdateMode: 1,
         port: 587,

@@ -1,5 +1,9 @@
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
 
 interface TenantSectionNavProps {
   current: "detail" | "members";
@@ -15,13 +19,17 @@ export const TenantSectionNav = ({
       render={<Link href={`/tenants/${tenantId}`} />}
       variant={current === "detail" ? "default" : "outline"}
     >
-      基本情報
+      <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+        <Message message="platform.tenants.section_basic" />
+      </Suspense>
     </LinkButton>
     <LinkButton
       render={<Link href={`/tenants/${tenantId}/members`} />}
       variant={current === "members" ? "default" : "outline"}
     >
-      メンバー管理
+      <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+        <Message message="platform.tenants.members_nav" />
+      </Suspense>
     </LinkButton>
   </div>
 );

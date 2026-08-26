@@ -13,18 +13,19 @@
 
 import {
   isLocale,
-  loadMessages,
   LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
 } from "@publira/utils/i18n";
 import type { Locale } from "@publira/utils/i18n";
 import { cookies } from "next/headers";
 
-import type ja from "../../../locales/ja.json";
 import { getPlatformDisplayLocale } from "./platform-settings";
 
-/** `ja.json` is the source of truth for the key set (`locales/README.md`). */
-export type PlatformMessages = typeof ja;
+export {
+  loadPlatformMessages,
+  type PlatformMessageKey,
+  type PlatformMessages,
+} from "./messages";
 
 /**
  * Options the locale cookie is written with, from the Server Action in
@@ -71,17 +72,3 @@ export const getPlatformLocale = async (): Promise<Locale> => {
 
   return getPlatformDisplayLocale();
 };
-
-/**
- * The message catalog for `locale`.
- *
- * One static `import()` per locale, never a template-string path, so the
- * bundler keeps the locale that was not asked for out of the chunk.
- */
-export const loadPlatformMessages = (
-  locale: Locale
-): Promise<PlatformMessages> =>
-  loadMessages<PlatformMessages>(locale, {
-    en: () => import("../../../locales/en.json", { with: { type: "json" } }),
-    ja: () => import("../../../locales/ja.json", { with: { type: "json" } }),
-  });

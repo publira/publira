@@ -1,16 +1,18 @@
-import type { ComponentType, SVGProps } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 export interface NavItem {
   href: string;
-  label: string;
-  description: string;
+  label: ReactNode;
+  description: ReactNode;
   icon: IconComponent;
 }
 
 export interface NavSection {
-  title: string;
+  /** Stable list key when `title` is not a string. */
+  id?: string;
+  title: ReactNode;
   items: NavItem[];
 }
 

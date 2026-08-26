@@ -10,6 +10,7 @@ interface DangerConfirmButtonProps<T> {
   actionCreator: (arg: T) => Promise<void>;
   actionText: string;
   actionVariant?: NonNullable<ButtonProps["variant"]>;
+  cancelText?: string;
   description?: string;
   title: string;
   triggerLabel: string;
@@ -21,6 +22,7 @@ export const DangerConfirmButton = ({
   actionCreator,
   actionText,
   actionVariant = "destructive",
+  cancelText,
   description,
   title,
   triggerLabel,
@@ -38,6 +40,7 @@ export const DangerConfirmButton = ({
     <ConfirmDialog
       actionText={actionText}
       actionVariant={actionVariant}
+      cancelText={cancelText}
       description={description}
       onAction={handleAction}
       title={title}

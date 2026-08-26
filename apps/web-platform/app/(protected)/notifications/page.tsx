@@ -1,6 +1,9 @@
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageContent,
@@ -12,18 +15,21 @@ import {
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 
 import { NotificationManager } from "./_components/notification-manager";
 import {
   buildNotificationsPath,
-  defaultNotificationsPageSize,
   parseNotificationsSearchParams,
 } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "通知",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.notifications.title") };
 };
 
 type NotificationsPageProps = PageProps<"/notifications">;
@@ -48,7 +54,6 @@ const NotificationManagerData = async ({
     countUnreadNotifications(),
     getPlatformDisplayTimeZone(),
   ]);
-
   await redirectToLoginIfSessionRejected(listResult, unreadResult);
 
   return (
@@ -60,7 +65,6 @@ const NotificationManagerData = async ({
           : undefined
       }
       notifications={listResult.notifications}
-      pageSize={defaultNotificationsPageSize}
       previousHref={
         listResult.previousToken
           ? buildNotificationsPath({ token: listResult.previousToken })
@@ -76,15 +80,31 @@ const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
-        <PlatformPageEyebrow>Platform Operations</PlatformPageEyebrow>
-        <PlatformPageTitle>通知</PlatformPageTitle>
+        <PlatformPageEyebrow>
+          <Suspense fallback={<SkeletonLine className="h-3 w-36" />}>
+            <Message message="platform.shell.eyebrow" />
+          </Suspense>
+        </PlatformPageEyebrow>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-24" />}>
+            <Message message="platform.notifications.heading" />
+          </Suspense>
+        </PlatformPageTitle>
         <PlatformPageDescription>
-          自分宛の業務イベントを確認し、既読にできます。
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="platform.notifications.page_description" />
+          </Suspense>
         </PlatformPageDescription>
       </PlatformPageHeading>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <SectionErrorBoundary title="通知一覧を表示できませんでした">
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="platform.notifications.list_failed" />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<NotificationManagerSkeleton />}>
           <NotificationManagerData searchParams={searchParams} />
         </Suspense>

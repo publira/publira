@@ -18,7 +18,10 @@ export type {
   ConsoleSidebarProps,
 } from "./console-layout";
 export { ConsoleUserMenu } from "./console-user-menu";
-export type { ConsoleUserMenuProps } from "./console-user-menu";
+export type {
+  ConsoleUserMenuCopy,
+  ConsoleUserMenuProps,
+} from "./console-user-menu";
 
 export {
   ConsolePage,

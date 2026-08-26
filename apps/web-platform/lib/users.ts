@@ -5,6 +5,8 @@ import {
 } from "@publira/api-client/errors";
 import type { EndUser, Tenant } from "@publira/api-client/platform/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 
 import {
   apiClient,
@@ -15,6 +17,7 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
+import { loadPlatformMessages } from "./locale";
 
 export interface PlatformEndUserSummary {
   createdAt: string;
@@ -36,6 +39,7 @@ export interface ListPlatformEndUsersInput {
   createdAfter?: string;
   createdBefore?: string;
   limit?: number;
+  locale: Locale;
   publicIds?: string[];
   status?: string;
   tenantId?: string;
@@ -58,9 +62,6 @@ export type ListPlatformEndUsersResult =
       requiresSignIn: boolean;
       users: PlatformEndUserSummary[];
     };
-
-const genericErrorMessage =
-  "処理に失敗しました。時間をおいて再試行してください。";
 
 const normalizePublicId = (publicId: string): string => publicId.trim();
 
@@ -109,12 +110,6 @@ const normalizePublicIds = (input: ListPlatformEndUsersInput): string[] => [
   ),
 ];
 
-const listErrorMessage =
-  "ユーザー一覧の取得に失敗しました。時間をおいて再試行してください。";
-
-const tenantFilterSearchErrorMessage =
-  "テナント候補の取得に失敗しました。時間をおいて再試行してください。";
-
 // One page of ListTenants. The picker searches instead of walking every tenant.
 const platformTenantFilterSearchLimit = 20;
 
@@ -157,8 +152,9 @@ export const listPlatformEndUsers = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(input.locale);
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -193,8 +189,13 @@ export const listPlatformEndUsers = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(input.locale);
     return {
-      message: rpcErrorMessage(error, listErrorMessage),
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "platform.users.list_failed"),
+        { locale: input.locale }
+      ),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -220,7 +221,8 @@ export type SearchPlatformTenantFilterOptionsResult =
     };
 
 export const searchPlatformTenantFilterOptions = async (
-  query: string
+  query: string,
+  locale: Locale
 ): Promise<SearchPlatformTenantFilterOptionsResult> => {
   "use cache: private";
 
@@ -232,9 +234,10 @@ export const searchPlatformTenantFilterOptions = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(locale);
     return {
       hasMore: false,
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       tenants: [],
@@ -290,9 +293,14 @@ export const searchPlatformTenantFilterOptions = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(locale);
     return {
       hasMore: false,
-      message: rpcErrorMessage(error, tenantFilterSearchErrorMessage),
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "platform.users.tenant_candidates_failed"),
+        { locale }
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       tenants: [],
@@ -310,7 +318,8 @@ export type GetPlatformEndUserResult =
     };
 
 export const getPlatformEndUser = async (
-  publicId: string
+  publicId: string,
+  locale: Locale
 ): Promise<GetPlatformEndUserResult> => {
   "use cache: private";
 
@@ -322,8 +331,9 @@ export const getPlatformEndUser = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(locale);
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -344,10 +354,12 @@ export const getPlatformEndUser = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(locale);
     return {
       message: rpcErrorMessage(
         error,
-        "ユーザー情報の取得に失敗しました。時間をおいて再試行してください。"
+        getMessage(messages, "platform.users.get_failed"),
+        { locale }
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
@@ -408,17 +420,22 @@ export const unsuspendPlatformEndUser = async (
 };
 
 export const deletePlatformEndUser = async (
-  publicId: string
+  publicId: string,
+  locale: Locale
 ): Promise<{ ok: true } | { ok: false; message: string }> => {
+  const messages = await loadPlatformMessages(locale);
   const normalizedPublicId = normalizePublicId(publicId);
   if (!normalizedPublicId) {
-    return { message: "ユーザーIDが不正です。", ok: false };
+    return {
+      message: getMessage(messages, "platform.users.invalid_id"),
+      ok: false,
+    };
   }
 
   const sid = await resolveAccessToken();
   if (!sid) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -432,6 +449,13 @@ export const deletePlatformEndUser = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    return { message: genericErrorMessage, ok: false };
+    return {
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "platform.common.generic_failed"),
+        { locale }
+      ),
+      ok: false,
+    };
   }
 };

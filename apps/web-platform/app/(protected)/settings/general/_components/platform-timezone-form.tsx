@@ -18,7 +18,10 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { listSupportedTimeZones } from "@publira/utils";
+import { getMessage } from "@publira/utils/i18n";
 import { useActionState, useMemo, useState } from "react";
+
+import { ClientMessage, useClientMessages } from "#components/client-message";
 
 import type { PlatformDefaultTimezoneActionState } from "../../_lib/actions";
 
@@ -38,6 +41,7 @@ export const PlatformTimezoneForm = ({
 }: PlatformTimezoneFormProps) => {
   const [state, formAction, isPending] = useActionState(action, null);
   const [timezone, setTimezone] = useState(initialTimezone);
+  const messages = useClientMessages();
 
   // A failed read hands the form `DEFAULT_TIME_ZONE` as a stand-in, not the
   // stored value, so saving from that state would overwrite the real default
@@ -59,9 +63,11 @@ export const PlatformTimezoneForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>既定タイムゾーン</CardTitle>
+        <CardTitle>
+          <ClientMessage message="platform.settings.default_timezone_title" />
+        </CardTitle>
         <CardDescription>
-          新規に作成するテナントの初期タイムゾーンであり、このプラットフォーム管理画面が日時を表示・集計するときの基準にもなります。
+          <ClientMessage message="platform.settings.default_timezone_description" />
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -69,21 +75,27 @@ export const PlatformTimezoneForm = ({
           <input name="default_timezone" type="hidden" value={timezone} />
 
           <Field>
-            <FieldLabel htmlFor="default_timezone">既定タイムゾーン</FieldLabel>
+            <FieldLabel htmlFor="default_timezone">
+              <ClientMessage message="platform.settings.default_timezone_label" />
+            </FieldLabel>
             <FieldContent>
               <Combobox
                 disabled={hasLoadError}
-                emptyMessage="一致するタイムゾーンが見つかりません。"
+                emptyMessage={getMessage(
+                  messages,
+                  "platform.settings.default_timezone_empty"
+                )}
                 id="default_timezone"
                 items={items}
                 onValueChange={setTimezone}
-                placeholder="例: Asia/Tokyo"
+                placeholder={getMessage(
+                  messages,
+                  "platform.settings.default_timezone_placeholder"
+                )}
                 value={timezone}
               />
               <FieldDescription>
-                IANA タイムゾーン名（例:
-                Asia/Tokyo）で保存されます。地域名や都市名を入力して絞り込めます。
-                変更しても作成済みテナントのタイムゾーンは変わりません。各テナントのタイムゾーンはテナント管理画面から変更します。
+                <ClientMessage message="platform.settings.default_timezone_help" />
               </FieldDescription>
             </FieldContent>
           </Field>
@@ -91,7 +103,7 @@ export const PlatformTimezoneForm = ({
           {loadErrorMessage ? (
             <FormMessage variant="destructive">
               {loadErrorMessage}
-              保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。
+              <ClientMessage message="platform.settings.default_timezone_reload" />
             </FormMessage>
           ) : null}
 
@@ -103,7 +115,7 @@ export const PlatformTimezoneForm = ({
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={hasLoadError || isPending} type="submit">
-              {isPending ? "保存中..." : "既定タイムゾーンを保存"}
+              <ClientMessage message="platform.settings.default_timezone_save" />
             </Button>
           </div>
         </form>

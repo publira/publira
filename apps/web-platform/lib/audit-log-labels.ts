@@ -1,33 +1,48 @@
-const auditActionLabelMap = {
-  operator_created: "オペレーターを作成",
-  operator_deleted: "オペレーターを削除",
-  operator_resumed: "オペレーターを再開",
-  operator_suspended: "オペレーターを停止",
-  operator_updated: "オペレーターを更新",
-  platform_email_settings_updated: "SMTP設定を更新",
-  platform_settings_updated: "プラットフォーム設定を更新",
-  platform_smtp_test_email_sent: "SMTP 接続テストメールを送信",
-  tenant_created: "テナントを作成",
-  tenant_info_updated: "テナント情報を更新",
-  tenant_resumed: "テナントを再開",
-  tenant_suspended: "テナントを停止",
-  user_activated: "ユーザーを有効化",
-  user_deleted: "ユーザーを削除",
-  user_suspended: "ユーザーを停止",
-} as const;
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 
-export const auditActionOptions = Object.entries(auditActionLabelMap)
-  .map(([value, label]) => ({ label, value }))
-  .toSorted((left, right) => left.label.localeCompare(right.label, "ja"));
+import type { PlatformMessageKey, PlatformMessages } from "./locale";
 
-export const getAuditActionLabel = (action: string): string => {
+const auditActionKeys = {
+  operator_created: "platform.audit.actions.operator_created",
+  operator_deleted: "platform.audit.actions.operator_deleted",
+  operator_resumed: "platform.audit.actions.operator_resumed",
+  operator_suspended: "platform.audit.actions.operator_suspended",
+  operator_updated: "platform.audit.actions.operator_updated",
+  platform_email_settings_updated:
+    "platform.audit.actions.platform_email_settings_updated",
+  platform_settings_updated: "platform.audit.actions.platform_settings_updated",
+  platform_smtp_test_email_sent:
+    "platform.audit.actions.platform_smtp_test_email_sent",
+  tenant_created: "platform.audit.actions.tenant_created",
+  tenant_info_updated: "platform.audit.actions.tenant_info_updated",
+  tenant_resumed: "platform.audit.actions.tenant_resumed",
+  tenant_suspended: "platform.audit.actions.tenant_suspended",
+  user_activated: "platform.audit.actions.user_activated",
+  user_deleted: "platform.audit.actions.user_deleted",
+  user_suspended: "platform.audit.actions.user_suspended",
+} as const satisfies Record<string, PlatformMessageKey>;
+
+export const getAuditActionOptions = (
+  messages: PlatformMessages,
+  locale: Locale
+): { label: string; value: string }[] =>
+  Object.entries(auditActionKeys)
+    .map(([value, key]) => ({
+      label: getMessage(messages, key),
+      value,
+    }))
+    .toSorted((left, right) => left.label.localeCompare(right.label, locale));
+
+export const getAuditActionLabel = (
+  action: string,
+  messages: PlatformMessages
+): string => {
   const normalized = action.trim();
   if (!normalized) {
-    return "未設定";
+    return getMessage(messages, "platform.audit.unset");
   }
 
-  return (
-    auditActionLabelMap[normalized as keyof typeof auditActionLabelMap] ??
-    normalized
-  );
+  const key = auditActionKeys[normalized as keyof typeof auditActionKeys];
+  return key ? getMessage(messages, key) : normalized;
 };

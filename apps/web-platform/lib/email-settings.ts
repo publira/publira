@@ -5,6 +5,8 @@ import {
 } from "@publira/api-client/errors";
 import type { PlatformEmailSettings } from "@publira/api-client/platform/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 
 import {
   apiClient,
@@ -16,6 +18,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
+import { loadPlatformMessages } from "./locale";
+import type { PlatformMessages } from "./locale";
 
 export {
   SECRET_UPDATE_MODE_REPLACE,
@@ -29,6 +33,7 @@ export interface UpdatePlatformSmtpSettingsInput {
   encryption: string;
   fromAddress: string;
   host: string;
+  locale: Locale;
   password: string;
   passwordUpdateMode: number;
   port: number;
@@ -40,6 +45,7 @@ export interface SendPlatformSmtpTestInput {
   encryption: string;
   fromAddress: string;
   host: string;
+  locale: Locale;
   password: string;
   passwordUpdateMode: number;
   port: number;
@@ -66,11 +72,6 @@ export type PlatformSmtpTestResult =
   | { ok: true; recipientEmail: string }
   | { message: string; ok: false };
 
-const genericErrorMessage =
-  "処理に失敗しました。時間をおいて再試行してください。";
-
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
-
 /**
  * SMTP failures carry the detail an operator needs to fix the settings ("dial
  * tcp: connection refused", "from_address is required"), so validation and
@@ -78,12 +79,23 @@ const sessionErrorMessage = "セッションが無効です。再ログインし
  * the shared copy — a raw `[internal]` message is not something to show. Same
  * rule as `apps/web-admin/lib/email-settings.ts`.
  */
-const parseErrorMessage = (error: unknown): string => {
+const parseErrorMessage = (
+  error: unknown,
+  messages: PlatformMessages,
+  locale: Locale
+): string => {
+  const genericErrorMessage = getMessage(
+    messages,
+    "platform.common.generic_failed"
+  );
   const serverMessage =
     rpcErrorRawMessage(error)?.trim() || genericErrorMessage;
   return rpcErrorMessage(error, genericErrorMessage, {
-    "invalid-argument": serverMessage,
-    precondition: serverMessage,
+    locale,
+    overrides: {
+      "invalid-argument": serverMessage,
+      precondition: serverMessage,
+    },
   });
 };
 
@@ -116,42 +128,55 @@ const toPlatformSmtpSettings = (
   username: settings?.username ?? "",
 });
 
-export const getPlatformEmailSettings =
-  async (): Promise<PlatformSmtpSettingsResult> => {
-    "use cache: private";
+export const getPlatformEmailSettings = async (
+  locale: Locale
+): Promise<PlatformSmtpSettingsResult> => {
+  "use cache: private";
 
-    const sessionId = await resolveAccessToken();
-    if (!sessionId) {
-      dropFailedCacheEntry();
-      return { message: sessionErrorMessage, ok: false, requiresSignIn: true };
-    }
+  const sessionId = await resolveAccessToken();
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(locale);
+    return {
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
 
-    try {
-      const response = await apiClient.emailSettings.getPlatformEmailSettings(
-        {},
-        buildSessionHeaders(sessionId)
-      );
-      return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
-    } catch (error) {
-      rethrowUnclassifiedRpcError(error);
-      // A failed read must not be cached: the client router would replay it after
-      // the API recovers, and a cached `requiresSignIn` would bounce the operator
-      // back to /login even once they have signed in again.
-      dropFailedCacheEntry();
-      return {
-        message: parseErrorMessage(error),
-        ok: false,
-        requiresSignIn: isUnauthenticatedError(error),
-      };
-    }
-  };
+  try {
+    const response = await apiClient.emailSettings.getPlatformEmailSettings(
+      {},
+      buildSessionHeaders(sessionId)
+    );
+    return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(locale);
+    return {
+      message: parseErrorMessage(error, messages, locale),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
 
 export const updatePlatformEmailSettings = async (
   input: UpdatePlatformSmtpSettingsInput
 ): Promise<PlatformSmtpSettingsResult> => {
-  const sessionId = await resolveAccessToken();
+  const [messages, sessionId] = await Promise.all([
+    loadPlatformMessages(input.locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return {
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      ok: false,
+    };
   }
 
   try {
@@ -173,16 +198,25 @@ export const updatePlatformEmailSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    return { message: parseErrorMessage(error), ok: false };
+    return {
+      message: parseErrorMessage(error, messages, input.locale),
+      ok: false,
+    };
   }
 };
 
 export const sendPlatformSmtpTestEmail = async (
   input: SendPlatformSmtpTestInput
 ): Promise<PlatformSmtpTestResult> => {
-  const sessionId = await resolveAccessToken();
+  const [messages, sessionId] = await Promise.all([
+    loadPlatformMessages(input.locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return {
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      ok: false,
+    };
   }
 
   try {
@@ -206,6 +240,9 @@ export const sendPlatformSmtpTestEmail = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    return { message: parseErrorMessage(error), ok: false };
+    return {
+      message: parseErrorMessage(error, messages, input.locale),
+      ok: false,
+    };
   }
 };

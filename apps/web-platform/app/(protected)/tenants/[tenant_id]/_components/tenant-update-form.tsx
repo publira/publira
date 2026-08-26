@@ -10,18 +10,22 @@ interface TenantUpdateFormProps {
     formData: FormData
   ) => Promise<FormActionState>;
   children: ReactNode;
+  pendingLabel: ReactNode;
+  submitLabel: ReactNode;
 }
 
 export const TenantUpdateForm = ({
   action,
   children,
+  pendingLabel,
+  submitLabel,
 }: TenantUpdateFormProps) => (
   <ActionForm
     action={action}
-    pendingLabel="保存中..."
+    pendingLabel={pendingLabel}
     showSuccess
     submitClassName="mt-4 ml-auto block"
-    submitLabel="保存"
+    submitLabel={submitLabel}
     submitVariant="outline"
   >
     {children}

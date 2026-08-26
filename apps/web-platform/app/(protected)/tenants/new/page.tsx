@@ -5,8 +5,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageContent,
@@ -16,11 +20,15 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
 import { CreateTenantForm } from "./_components/create-tenant-form";
 
-export const metadata: Metadata = {
-  title: "テナント作成",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.tenants.create_title") };
 };
 
 const TenantNewPage = () => (
@@ -28,19 +36,30 @@ const TenantNewPage = () => (
     <PlatformPageHeader>
       <PlatformPageHeading>
         <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
-        <PlatformPageTitle>テナント作成</PlatformPageTitle>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
+            <Message message="platform.tenants.create_heading" />
+          </Suspense>
+        </PlatformPageTitle>
         <PlatformPageDescription>
-          テナント名とドメインを必須に、必要なら既存ユーザーを初期管理者として紐づけて作成します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.tenants.create_description" />
+          </Suspense>
         </PlatformPageDescription>
       </PlatformPageHeading>
     </PlatformPageHeader>
     <PlatformPageContent>
       <Card>
         <CardHeader>
-          <CardTitle>新規テナント情報</CardTitle>
+          <CardTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+              <Message message="platform.tenants.create_form_title" />
+            </Suspense>
+          </CardTitle>
           <CardDescription>
-            public_id
-            はサーバー側で自動採番されます。初期管理者メールは任意です。
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message message="platform.tenants.create_form_description" />
+            </Suspense>
           </CardDescription>
         </CardHeader>
         <CardContent>

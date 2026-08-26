@@ -17,7 +17,9 @@ import {
 interface ErrorScreenProps {
   /** Extra navigation shown next to the retry button. */
   actions?: ReactNode;
-  description: string;
+  description: ReactNode;
+  digestLabel?: ReactNode;
+  retryLabel?: ReactNode;
   /**
    * `error.digest` from the boundary. Server Component errors are stripped of
    * their message before they reach the client, so the digest is the only
@@ -25,7 +27,7 @@ interface ErrorScreenProps {
    */
   digest?: string;
   retry: () => void;
-  title: string;
+  title: ReactNode;
 }
 
 /**
@@ -44,7 +46,9 @@ export const ErrorScreen = ({
   actions,
   description,
   digest,
+  digestLabel,
   retry,
+  retryLabel,
   title,
 }: ErrorScreenProps) => (
   <PlatformPage>
@@ -55,14 +59,14 @@ export const ErrorScreen = ({
         <PlatformPageDescription>{description}</PlatformPageDescription>
       </PlatformPageHeading>
       <PlatformPageActions>
-        <Button onClick={() => retry()}>再試行</Button>
+        <Button onClick={() => retry()}>{retryLabel}</Button>
         {actions}
       </PlatformPageActions>
     </PlatformPageHeader>
     {digest ? (
       <PlatformPageContent>
         <p className="text-xs text-muted-foreground">
-          エラー ID: <code className="font-mono">{digest}</code>
+          {digestLabel} <code className="font-mono">{digest}</code>
         </p>
       </PlatformPageContent>
     ) : null}

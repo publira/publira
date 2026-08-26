@@ -6,9 +6,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -19,11 +23,15 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
 import { CreateOperatorForm } from "./_components/create-operator-form";
 
-export const metadata: Metadata = {
-  title: "オペレーターを追加",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.operators.add_title") };
 };
 
 const OperatorNewPage = () => (
@@ -31,27 +39,43 @@ const OperatorNewPage = () => (
     <PlatformPageHeader>
       <PlatformPageHeading>
         <PlatformPageEyebrow>Platform Governance</PlatformPageEyebrow>
-        <PlatformPageTitle>オペレーターを追加</PlatformPageTitle>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-44" />}>
+            <Message message="platform.operators.add_title" />
+          </Suspense>
+        </PlatformPageTitle>
         <PlatformPageDescription>
-          名前・メールアドレス・ロールを入力してプラットフォームオペレーターを追加します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+            <Message message="platform.operators.add_description" />
+          </Suspense>
         </PlatformPageDescription>
       </PlatformPageHeading>
       <PlatformPageActions>
         <LinkButton render={<Link href="/operators" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="platform.common.back_to_list" />
+          </Suspense>
         </LinkButton>
       </PlatformPageActions>
     </PlatformPageHeader>
     <PlatformPageContent>
       <Card>
         <CardHeader>
-          <CardTitle>オペレーター情報</CardTitle>
+          <CardTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-36" />}>
+              <Message message="platform.operators.form_title" />
+            </Suspense>
+          </CardTitle>
           <CardDescription>
-            ロールはスーパー管理者 / オペレーター / 監査担当から選択します。
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="platform.operators.form_description" />
+            </Suspense>
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <CreateOperatorForm />
+          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+            <CreateOperatorForm />
+          </Suspense>
         </CardContent>
       </Card>
     </PlatformPageContent>

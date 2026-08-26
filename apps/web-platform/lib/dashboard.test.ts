@@ -55,7 +55,7 @@ describe("getPlatformDashboardSummary", () => {
     });
 
     await expect(
-      getPlatformDashboardSummary({ recentEventsLimit: 6 })
+      getPlatformDashboardSummary({ locale: "ja", recentEventsLimit: 6 })
     ).resolves.toEqual({
       ok: true,
       summary: {
@@ -90,7 +90,7 @@ describe("getPlatformDashboardSummary", () => {
       totalTenants: 0,
     });
 
-    await getPlatformDashboardSummary({ recentEventsLimit: 999 });
+    await getPlatformDashboardSummary({ locale: "ja", recentEventsLimit: 999 });
 
     expect(mockGetDashboardSummary).toHaveBeenCalledWith(
       { recentEventsLimit: 50 },
@@ -101,7 +101,9 @@ describe("getPlatformDashboardSummary", () => {
   it("sessionId を解決できない場合は API を呼ばずエラーを返す", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
-    await expect(getPlatformDashboardSummary()).resolves.toEqual({
+    await expect(
+      getPlatformDashboardSummary({ locale: "ja" })
+    ).resolves.toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
       requiresSignIn: true,
@@ -110,12 +112,26 @@ describe("getPlatformDashboardSummary", () => {
     expect(mockGetDashboardSummary).not.toHaveBeenCalled();
   });
 
+  it("locale=en では英語のセッションエラーを返す", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(
+      getPlatformDashboardSummary({ locale: "en" })
+    ).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
+      requiresSignIn: true,
+    });
+  });
+
   it("到達不能エラーは共通文言で返す", async () => {
     mockGetDashboardSummary.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(getPlatformDashboardSummary()).resolves.toEqual({
+    await expect(
+      getPlatformDashboardSummary({ locale: "ja" })
+    ).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
@@ -128,6 +144,8 @@ describe("getPlatformDashboardSummary", () => {
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(getPlatformDashboardSummary()).rejects.toThrow("boom");
+    await expect(getPlatformDashboardSummary({ locale: "ja" })).rejects.toThrow(
+      "boom"
+    );
   });
 });

@@ -3,6 +3,7 @@
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { getMessage } from "@publira/utils/i18n";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -13,15 +14,18 @@ import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import type { PlatformMessages } from "#lib/locale";
 import { createPlatformOperator } from "#lib/operators";
 
-const createOperatorFormSchema = (messages: PlatformMessages) =>
-  z.object({
+const createOperatorFormSchema = (messages: PlatformMessages) => {
+  const requiredAll = getMessage(messages, "platform.operators.required_all");
+
+  return z.object({
     email: emailFormSchema(messages),
-    name: requiredTrimmedString("名前・メール・ロールはすべて必須です。"),
+    name: requiredTrimmedString(requiredAll),
     role: z.enum(
       ["platform_auditor", "platform_operator", "platform_super_admin"],
-      { error: "名前・メール・ロールはすべて必須です。" }
+      { error: requiredAll }
     ),
   });
+};
 
 export const createOperatorAction = async (
   _prevState: FormActionState,
@@ -45,7 +49,7 @@ export const createOperatorAction = async (
   }
 
   const result = await withPlatformSessionReauth(() =>
-    createPlatformOperator(parsed.data)
+    createPlatformOperator({ ...parsed.data, locale })
   );
 
   if (!result.ok) {

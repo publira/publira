@@ -1,6 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { getMessage } from "@publira/utils/i18n";
+import type { Locale } from "@publira/utils/i18n";
 
 import {
   apiClient,
@@ -8,6 +10,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { isUnauthenticatedError } from "./auth-shared";
+import { loadPlatformMessages } from "./locale";
 
 export interface PlatformAuditLogSummary {
   action: string;
@@ -29,6 +32,7 @@ export interface ListPlatformAuditLogsInput {
   action?: string;
   actorUserPublicId?: string;
   limit?: number;
+  locale: Locale;
   tenantId?: string;
   token?: string;
 }
@@ -58,9 +62,10 @@ export const listPlatformAuditLogs = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(input.locale);
     return {
       auditLogs: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -111,11 +116,13 @@ export const listPlatformAuditLogs = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
+    const messages = await loadPlatformMessages(input.locale);
     return {
       auditLogs: [],
       message: rpcErrorMessage(
         error,
-        "監査ログの取得に失敗しました。時間をおいて再試行してください。"
+        getMessage(messages, "platform.audit.list_failed"),
+        { locale: input.locale }
       ),
       nextToken: "",
       ok: false,

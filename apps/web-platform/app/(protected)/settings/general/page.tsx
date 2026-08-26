@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { getMessage, LOCALES } from "@publira/utils/i18n";
 import type { Locale } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageContent,
@@ -20,19 +21,27 @@ import { setPlatformLocaleAction } from "#lib/locale-action";
 import { getPlatformSettings } from "#lib/platform-settings";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
-import {
-  updatePlatformDefaultLocaleAction,
-  updatePlatformDefaultTimezoneAction,
-} from "../_lib/actions";
+import { updatePlatformDefaultTimezoneAction } from "../_lib/actions";
 import { LocaleForm } from "./_components/locale-form";
 import type { LocaleFormOption } from "./_components/locale-form";
 import { PlatformDefaultLocaleForm } from "./_components/platform-default-locale-form";
-import type { PlatformDefaultLocaleFormOption } from "./_components/platform-default-locale-form";
 import { PlatformTimezoneForm } from "./_components/platform-timezone-form";
 
-export const metadata: Metadata = {
-  title: "設定 - 一般",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.settings.general_title") };
 };
+
+const tabLabel = (
+  message: "platform.settings.email_tab" | "platform.settings.general_tab",
+  fallbackClassName: string
+) => (
+  <Suspense fallback={<SkeletonLine className={fallbackClassName} />}>
+    <Message message={message} />
+  </Suspense>
+);
 
 const LocaleSectionSkeleton = () => (
   <Card>
@@ -72,7 +81,7 @@ const LocaleSection = async () => {
   );
 };
 
-const DefaultLocaleSectionSkeleton = () => (
+const SettingsFormCardSkeleton = () => (
   <Card>
     <CardHeader>
       <Skeleton className="h-6 w-32" />
@@ -96,69 +105,103 @@ interface DefaultLocaleSectionProps {
  * reason {@link LocaleSection} does. The stored value comes from the settings
  * read the screen already does, so the card adds no round trip of its own.
  */
-const DefaultLocaleSection = async ({
+const DefaultLocaleSection = ({
   initialDefaultLocale,
   loadErrorMessage,
-}: DefaultLocaleSectionProps) => {
+}: DefaultLocaleSectionProps) => (
+  <PlatformDefaultLocaleForm
+    initialDefaultLocale={initialDefaultLocale}
+    loadErrorMessage={loadErrorMessage}
+  />
+);
+
+interface TimezoneSectionProps {
+  initialTimezone: string;
+  loadErrorMessage?: string;
+}
+
+const TimezoneSection = ({
+  initialTimezone,
+  loadErrorMessage,
+}: TimezoneSectionProps) => (
+  <PlatformTimezoneForm
+    action={updatePlatformDefaultTimezoneAction}
+    initialTimezone={initialTimezone}
+    loadErrorMessage={loadErrorMessage}
+  />
+);
+
+const GeneralSettingsContent = async () => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
-
-  const options: PlatformDefaultLocaleFormOption[] = LOCALES.map((value) => ({
-    label: getMessage(messages, `locale.${value}`),
-    locale: value,
-  }));
-
-  return (
-    <PlatformDefaultLocaleForm
-      action={updatePlatformDefaultLocaleAction}
-      initialDefaultLocale={initialDefaultLocale}
-      loadErrorMessage={loadErrorMessage}
-      options={options}
-    />
-  );
-};
-
-const PlatformGeneralSettingsPage = async () => {
-  const settingsResult = await getPlatformSettings();
+  const settingsResult = await getPlatformSettings(locale);
 
   await redirectToLoginIfSessionRejected(settingsResult);
 
   return (
-    <PlatformPage>
-      <PlatformPageHeader>
-        <PlatformPageHeading>
-          <PlatformPageEyebrow>Platform Settings</PlatformPageEyebrow>
-          <PlatformPageTitle>設定</PlatformPageTitle>
-          <PlatformPageDescription>
-            プラットフォーム全体に適用される既定値を管理します。
-          </PlatformPageDescription>
-        </PlatformPageHeading>
-      </PlatformPageHeader>
-      <PlatformPageContent>
-        <div className="grid gap-6">
-          <SettingsTabNav current="general" />
-          <Suspense fallback={<LocaleSectionSkeleton />}>
-            <LocaleSection />
-          </Suspense>
-          <Suspense fallback={<DefaultLocaleSectionSkeleton />}>
-            <DefaultLocaleSection
-              initialDefaultLocale={settingsResult.defaultLocale}
-              loadErrorMessage={
-                settingsResult.ok ? undefined : settingsResult.message
-              }
-            />
-          </Suspense>
-          <PlatformTimezoneForm
-            action={updatePlatformDefaultTimezoneAction}
-            initialTimezone={settingsResult.defaultTimezone}
-            loadErrorMessage={
-              settingsResult.ok ? undefined : settingsResult.message
-            }
-          />
-        </div>
-      </PlatformPageContent>
-    </PlatformPage>
+    <div className="grid gap-6">
+      <SettingsTabNav
+        current="general"
+        emailLabel={tabLabel("platform.settings.email_tab", "h-4 w-20")}
+        generalLabel={tabLabel("platform.settings.general_tab", "h-4 w-8")}
+      />
+      <Suspense fallback={<LocaleSectionSkeleton />}>
+        <LocaleSection />
+      </Suspense>
+      <Suspense fallback={<SettingsFormCardSkeleton />}>
+        <DefaultLocaleSection
+          initialDefaultLocale={settingsResult.defaultLocale}
+          loadErrorMessage={
+            settingsResult.ok ? undefined : settingsResult.message
+          }
+        />
+      </Suspense>
+      <Suspense fallback={<SettingsFormCardSkeleton />}>
+        <TimezoneSection
+          initialTimezone={settingsResult.defaultTimezone}
+          loadErrorMessage={
+            settingsResult.ok ? undefined : settingsResult.message
+          }
+        />
+      </Suspense>
+    </div>
   );
 };
+
+const GeneralSettingsContentSkeleton = () => (
+  <div className="grid gap-6">
+    <div className="flex flex-wrap gap-2">
+      <Skeleton className="h-9 w-16" />
+      <Skeleton className="h-9 w-24" />
+    </div>
+    <LocaleSectionSkeleton />
+    <SettingsFormCardSkeleton />
+    <SettingsFormCardSkeleton />
+  </div>
+);
+
+const PlatformGeneralSettingsPage = () => (
+  <PlatformPage>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageEyebrow>Platform Settings</PlatformPageEyebrow>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-16" />}>
+            <Message message="platform.settings.general_heading" />
+          </Suspense>
+        </PlatformPageTitle>
+        <PlatformPageDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="platform.settings.general_page_description" />
+          </Suspense>
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+    </PlatformPageHeader>
+    <PlatformPageContent>
+      <Suspense fallback={<GeneralSettingsContentSkeleton />}>
+        <GeneralSettingsContent />
+      </Suspense>
+    </PlatformPageContent>
+  </PlatformPage>
+);
 
 export default PlatformGeneralSettingsPage;

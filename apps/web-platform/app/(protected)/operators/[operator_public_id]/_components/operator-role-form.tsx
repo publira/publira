@@ -1,77 +1,66 @@
-"use client";
-
-import { ActionForm } from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Select } from "@publira/ui-components/select";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { getMessage } from "@publira/utils/i18n";
+import { Suspense } from "react";
 
-const ROLE_OPTIONS = [
-  { label: "スーパー管理者", value: "platform_super_admin" },
-  { label: "オペレーター", value: "platform_operator" },
-  { label: "監査担当", value: "platform_auditor" },
-] as const;
+import { ActionForm, ActionFormSubmit } from "#components/action-form";
+import { Message } from "#components/message";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getOperatorRoleSelectItems } from "#lib/operator-labels";
 
-interface OperatorRoleFormProps {
-  action: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
-  currentRole: string;
-  disabled?: boolean;
-  operatorPublicId: string;
-}
+import { updateOperatorRoleAction } from "../_lib/actions";
 
-export const OperatorRoleForm = ({
-  action,
+export const OperatorRoleForm = async ({
   currentRole,
   disabled,
   operatorPublicId,
-}: OperatorRoleFormProps) => (
-  <ActionForm action={action}>
-    {({ isPending, state }) => (
-      <>
-        <input
-          name="operator_public_id"
-          type="hidden"
-          value={operatorPublicId}
-        />
-        <div className="grid gap-4">
-          <Field>
-            <FieldLabel htmlFor="operator_role" required={!disabled}>
-              ロール
-            </FieldLabel>
-            <FieldContent>
+}: {
+  currentRole: string;
+  disabled?: boolean;
+  operatorPublicId: string;
+}) => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return (
+    <ActionForm action={updateOperatorRoleAction}>
+      <input name="operator_public_id" type="hidden" value={operatorPublicId} />
+      <div className="grid gap-4">
+        <Field>
+          <FieldLabel htmlFor="operator_role" required={!disabled}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="platform.common.role" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Suspense fallback={<Skeleton className="h-10 w-full" />}>
               <Select
                 defaultValue={currentRole}
                 disabled={disabled}
                 id="operator_role"
-                items={ROLE_OPTIONS}
+                items={getOperatorRoleSelectItems(messages)}
                 key={currentRole}
                 name="operator_role"
-                placeholder="選択してください"
+                placeholder={getMessage(
+                  messages,
+                  "platform.common.select_placeholder"
+                )}
                 required={!disabled}
               />
-            </FieldContent>
-          </Field>
+            </Suspense>
+          </FieldContent>
+        </Field>
+      </div>
+      {disabled ? null : (
+        <div className="mt-4 flex justify-end">
+          <ActionFormSubmit variant="outline">
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="platform.common.save" />
+            </Suspense>
+          </ActionFormSubmit>
         </div>
-        {state ? (
-          <FormMessage
-            className="mt-3"
-            variant={state.ok ? "success" : "destructive"}
-          >
-            {state.message}
-          </FormMessage>
-        ) : null}
-        {disabled ? null : (
-          <div className="mt-4 flex justify-end">
-            <Button disabled={isPending} type="submit" variant="outline">
-              {isPending ? "保存中..." : "保存"}
-            </Button>
-          </div>
-        )}
-      </>
-    )}
-  </ActionForm>
-);
+      )}
+    </ActionForm>
+  );
+};
