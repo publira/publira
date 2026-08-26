@@ -62,12 +62,18 @@ type Handler struct {
 	cache           ImageCache
 	proxy           http.Handler
 	maxConverted    int
+	encryptImages   bool
 	// previewForTenantStaff is set on admin-image-server. It accepts
 	// AudienceAdminMedia query tokens and serves an episode image when the
 	// named user holds a tenant staff role, ignoring publish state and price.
 	// Public image-server leaves it false, so those tokens never unlock a body
 	// there.
 	previewForTenantStaff bool
+}
+
+type imageCredential struct {
+	claims   *auth.AccessTokenClaims
+	rawToken string
 }
 
 func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager) (*Server, error) {
@@ -93,6 +99,7 @@ func newHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFacto
 		tokens:                tokens,
 		cache:                 newImageCacheFromEnv(logger),
 		maxConverted:          defaultMaxConvertedBytes,
+		encryptImages:         imageEncryptionEnabled(),
 		previewForTenantStaff: previewForTenantStaff,
 	}
 	origin, proxy, err := startOriginAndProxy(h)
@@ -141,9 +148,10 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 	objectKey := ""
 	contentTypeFromDB := ""
 	cacheControl := "public, max-age=3600"
+	var cipher *imageCipher
 
-	if claims, ok := h.episodeImageClaims(r, tenant.ID); ok {
-		access, err := h.grantedEpisodeImage(ctx, tenantQueries, tenant.ID, mediaID, claims)
+	if credential, ok := h.episodeImageCredential(r, tenant.ID); ok {
+		access, err := h.grantedEpisodeImage(ctx, tenantQueries, tenant.ID, mediaID, credential.claims)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				http.Error(w, "image not found", http.StatusNotFound)
@@ -157,6 +165,9 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			objectKey = access.ObjectKey
 			contentTypeFromDB = access.ContentType
 			cacheControl = "private, max-age=60"
+			if h.encryptImages {
+				cipher = &imageCipher{rawToken: credential.rawToken, subject: credential.claims.Subject}
+			}
 		}
 	}
 
@@ -203,15 +214,15 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 		contentTypeFromDB = publicAccess.ContentType
 	}
 
-	h.serveConverted(w, r, objectKey, contentTypeFromDB, cacheControl)
+	h.serveConverted(w, r, objectKey, contentTypeFromDB, cacheControl, cipher)
 }
 
-// episodeImageClaims resolves whatever credential the request carries into the
-// user it speaks for. API clients send Authorization: Bearer, but a browser
+// episodeImageCredential resolves whatever credential the request carries into
+// the user it speaks for. API clients send Authorization: Bearer, but a browser
 // <img> cannot set a header, so an entitled reader's URL carries an
 // AudienceMedia token in the query instead. Both only name a user: the grant
 // itself is still read from the database by grantedEpisodeImage.
-func (h *Handler) episodeImageClaims(r *http.Request, tenantID uuid.UUID) (*auth.AccessTokenClaims, bool) {
+func (h *Handler) episodeImageCredential(r *http.Request, tenantID uuid.UUID) (*imageCredential, bool) {
 	if h.tokens == nil {
 		return nil, false
 	}
@@ -242,7 +253,7 @@ func (h *Handler) episodeImageClaims(r *http.Request, tenantID uuid.UUID) (*auth
 			return nil, false
 		}
 	}
-	return claims, true
+	return &imageCredential{claims: claims, rawToken: rawToken}, true
 }
 
 // grantedEpisodeImage evaluates a verified credential against one image. A nil
@@ -288,7 +299,7 @@ func (h *Handler) grantedEpisodeImage(
 }
 
 // adminEpisodeImageClaims is the admin-image-server counterpart of
-// episodeImageClaims. Only AudienceAdminMedia on the query is accepted: an
+// episodeImageCredential. Only AudienceAdminMedia on the query is accepted: an
 // admin access token in the URL would be a session, and a reader media token
 // is evaluated on the public path instead.
 func (h *Handler) adminEpisodeImageClaims(r *http.Request, tenantID uuid.UUID) (*auth.AccessTokenClaims, bool) {
@@ -427,7 +438,7 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600")
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
 // handleGetTenantImage serves a tenant branding image — the logo or the
@@ -488,7 +499,7 @@ func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600")
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
 func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
@@ -549,7 +560,7 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600")
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
 func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
@@ -610,7 +621,7 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600")
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
 func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (dbmodels.Tenant, error) {

@@ -130,8 +130,23 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 `image-server` / `admin-image-server` は権限確認のあと [Manael](https://github.com/manaelproxy/manael) で JPEG/PNG/GIF を WebP または AVIF に変換し、`w` / `h` / `fit` / `q` で縮小します。変換結果は中間キャッシュに置き、同じ `Accept` とクエリなら S3 と変換を再実行しません。
 
+購入・チケットで解放されたエピソード本文は、`PUBLIRA_IMAGE_ENCRYPTION=enabled` のとき、キャッシュ済みの変換済み平文をそのまま返さず、応答直前に短命 JWT と `sub` に結び付けて暗号化します。既定は無効です。#357 の復号実装を配備してから明示的に有効化することで、先行デプロイで既存ビューアを壊しません。暗号化時のレスポンスは `Content-Type: application/octet-stream` で、次のヘッダが復号契約です。公開画像と、`<img>` を使う管理プレビューは従来どおりの画像レスポンスです。
+
+| Header | Value / meaning |
+| --- | --- |
+| `X-Publira-Image-Encryption` | `xor-hmac-sha256-v1` |
+| `X-Publira-Image-Content-Type` | 復号後の MIME type (`image/webp` / `image/avif` 等) |
+| `X-Publira-Image-Key-Id` | 変換済み rendition の不透明な識別子 |
+
+`xor-hmac-sha256-v1` は、JWT 文字列を HMAC キーとして `"publira:image:xor-hmac-sha256:v1\\0" + sub + "\\0" + key-id` を HMAC-SHA-256 し、その出力を HMAC キーにします。8 byte big-endian のブロック番号を HMAC-SHA-256 した 32 byte ストリームを本文へ XOR します。これは抽出耐性を上げる配信層であり DRM ではありません。クライアントは URL の `t`（または送信した Bearer JWT）、JWT の `sub`、上記ヘッダで同じ処理を行います。詳細な fetch・復号・Canvas 描画は #357 が担当します。
+
 - `PUBLIRA_REDIS_URL`: 変換キャッシュの Redis。未設定 / `disabled` / `off` / `false` のときはプロセス内メモリのみ
 - `PUBLIRA_IMAGE_CACHE_TTL`: 変換キャッシュの TTL（Go duration または秒。既定 `1h`）
+- `PUBLIRA_IMAGE_ENCRYPTION`: `enabled` / `true` / `on` / `1` のとき、認可済みエピソード本文を `xor-hmac-sha256-v1` で暗号化（既定は無効）
+
+### 負荷・キャッシュ確認
+
+レスポンスの `X-Publira-Image-Cache: miss|hit` を、同一画像・同一 `Accept`・同一変換パラメータで確認します。最初の `miss` だけが S3 読み出しと Manael 変換を行い、以後の `hit` は Redis（設定時）またはプロセス内キャッシュの平文 rendition に対する暗号化だけを行います。暗号化を有効にした検証では、異なる JWT で本文が異なるバイト列になること、各レスポンスを復号すると同じ rendition になること、`hit` 中にオリジン読み出しが増えないことを合わせて測定してください。
 
 ビルドには libvips が必要です。詳細は [cmd/image-server/README.md](cmd/image-server/README.md)。
 
