@@ -250,6 +250,8 @@ type InsertContentEventParams struct {
 //	  -> idx_content_events_episode_view_debounce
 //	InsertProjectedSourceEvent
 //	  -> idx_content_events_source_unique
+//	ListLatestContentRatingsByEntity
+//	  -> idx_content_events_tenant_series_occurred_at
 func (q *Queries) InsertContentEvent(ctx context.Context, arg InsertContentEventParams) (ContentEvent, error) {
 	row := q.db.QueryRowContext(ctx, insertContentEvent,
 		arg.ID,
@@ -513,6 +515,80 @@ func (q *Queries) InsertProjectedSourceEvent(ctx context.Context, arg InsertProj
 	return i, err
 }
 
+const insertRatingEvent = `-- name: InsertRatingEvent :one
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    rating_score,
+    occurred_at
+) VALUES (
+    $1,
+    $2,
+    'rating',
+    $3::uuid,
+    $4::uuid,
+    $5,
+    $6::smallint,
+    $7
+)
+RETURNING id, tenant_id, event_type, user_id, anonymous_id, actor_key, series_id, episode_id, debounce_bucket, rating_score, source_table, source_id, payload, occurred_at, created_at
+`
+
+type InsertRatingEventParams struct {
+	ID          uuid.UUID     `json:"id"`
+	TenantID    uuid.UUID     `json:"tenant_id"`
+	UserID      uuid.UUID     `json:"user_id"`
+	SeriesID    uuid.UUID     `json:"series_id"`
+	EpisodeID   uuid.NullUUID `json:"episode_id"`
+	RatingScore int16         `json:"rating_score"`
+	OccurredAt  time.Time     `json:"occurred_at"`
+}
+
+// Ratings are append-only, like every other content_events row: a member who
+// changes their score inserts another event instead of updating the previous
+// one, so the history stays reconstructable and nothing has to be deleted.
+// Which score "counts" is therefore a read-side decision, not a write-side one
+// (see ListLatestContentRatingsByEntity). There is deliberately no debounce
+// bucket here: a rating is an explicit act, not a page load.
+//
+// episode_id NULL rates the series itself; set, it rates that episode, and
+// series_id must still be the episode's own series. Both are resolved by the
+// server from the catalog row, never taken from client input.
+func (q *Queries) InsertRatingEvent(ctx context.Context, arg InsertRatingEventParams) (ContentEvent, error) {
+	row := q.db.QueryRowContext(ctx, insertRatingEvent,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.SeriesID,
+		arg.EpisodeID,
+		arg.RatingScore,
+		arg.OccurredAt,
+	)
+	var i ContentEvent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EventType,
+		&i.UserID,
+		&i.AnonymousID,
+		&i.ActorKey,
+		&i.SeriesID,
+		&i.EpisodeID,
+		&i.DebounceBucket,
+		&i.RatingScore,
+		&i.SourceTable,
+		&i.SourceID,
+		&i.Payload,
+		&i.OccurredAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listContentDailyStatsByTenantDate = `-- name: ListContentDailyStatsByTenantDate :many
 SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, purchase_count, rating_count, rating_sum, favorite_count, updated_at
 FROM content_daily_stats
@@ -670,6 +746,62 @@ func (q *Queries) ListContentEventsByTenantTypeOccurredAt(ctx context.Context, a
 	return items, nil
 }
 
+const listLatestContentRatingsByEntity = `-- name: ListLatestContentRatingsByEntity :many
+SELECT DISTINCT ON (actor_key) actor_key,
+    rating_score,
+    occurred_at
+FROM content_events
+WHERE tenant_id = $1
+    AND event_type = 'rating'
+    AND series_id = $2::uuid
+    AND episode_id IS NOT DISTINCT FROM $3::uuid
+ORDER BY actor_key, occurred_at DESC, id DESC
+`
+
+type ListLatestContentRatingsByEntityParams struct {
+	TenantID  uuid.UUID     `json:"tenant_id"`
+	SeriesID  uuid.UUID     `json:"series_id"`
+	EpisodeID uuid.NullUUID `json:"episode_id"`
+}
+
+type ListLatestContentRatingsByEntityRow struct {
+	ActorKey    uuid.NullUUID `json:"actor_key"`
+	RatingScore sql.NullInt16 `json:"rating_score"`
+	OccurredAt  time.Time     `json:"occurred_at"`
+}
+
+// The latest rating each actor currently stands by for one entity: the stock
+// view of an append-only log. `content_daily_stats.rating_count` /
+// `rating_sum` (#593) are the *flow* of a single day and cannot answer this,
+// because a member who rated 1 on Monday and 5 on Tuesday contributes to both
+// days. A stock average has to come from this DISTINCT ON, over the full
+// retained history, until a materialised current-rating table exists.
+//
+// The tie-break runs past occurred_at because two events from one actor can
+// share a timestamp; id is UUIDv7, so the later insert wins.
+func (q *Queries) ListLatestContentRatingsByEntity(ctx context.Context, arg ListLatestContentRatingsByEntityParams) ([]ListLatestContentRatingsByEntityRow, error) {
+	rows, err := q.db.QueryContext(ctx, listLatestContentRatingsByEntity, arg.TenantID, arg.SeriesID, arg.EpisodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLatestContentRatingsByEntityRow
+	for rows.Next() {
+		var i ListLatestContentRatingsByEntityRow
+		if err := rows.Scan(&i.ActorKey, &i.RatingScore, &i.OccurredAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertContentDailyStats = `-- name: UpsertContentDailyStats :one
 INSERT INTO content_daily_stats (
     id,
@@ -722,7 +854,12 @@ type UpsertContentDailyStatsParams struct {
 }
 
 // Daily stats are full-day replacements (#593). Upsert keeps a single row per
-// (tenant, date, entity). rating_* are that day's flow, not a stock average.
+// (tenant, date, entity). rating_count / rating_sum are that day's flow — the
+// rating events that occurred on stat_date — and not a stock average: a member
+// who re-rates is counted on both days, and a member who never re-rates is
+// counted on neither day after the first. Summing rating_sum / rating_count
+// across a date range therefore averages ratings *given* in that range, not
+// the ratings an item currently holds (ListLatestContentRatingsByEntity).
 func (q *Queries) UpsertContentDailyStats(ctx context.Context, arg UpsertContentDailyStatsParams) (ContentDailyStat, error) {
 	row := q.db.QueryRowContext(ctx, upsertContentDailyStats,
 		arg.ID,

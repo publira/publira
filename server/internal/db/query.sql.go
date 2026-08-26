@@ -2780,6 +2780,32 @@ func (q *Queries) GetPublishedLabelByPublicID(ctx context.Context, arg GetPublis
 	return i, err
 }
 
+const getPublishedSeriesIDByPublicID = `-- name: GetPublishedSeriesIDByPublicID :one
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+LIMIT 1
+`
+
+type GetPublishedSeriesIDByPublicIDParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+// Resolves a currently public series to its internal ID and nothing else.
+// Shared by every member-facing RPC that acts on a series (follow, rating), so
+// they all treat a foreign, unpublished, or missing series the same way.
+func (q *Queries) GetPublishedSeriesIDByPublicID(ctx context.Context, arg GetPublishedSeriesIDByPublicIDParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getPublishedSeriesIDByPublicID, arg.TenantID, arg.PublicID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getPurchasableEpisodeByPublicIDForTenant = `-- name: GetPurchasableEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,

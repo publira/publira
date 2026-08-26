@@ -71,7 +71,7 @@ func (s *apiServer) resolveFollowTarget(
 		}
 		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow author target", err, "tenant_id", tenantID.String())
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES:
-		row, err := queries.GetPublishedSeriesByPublicIDForFollow(ctx, dbmodels.GetPublishedSeriesByPublicIDForFollowParams{
+		row, err := queries.GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
 			TenantID: tenantID,
 			PublicID: strings.TrimSpace(target.PublicId),
 		})
@@ -85,12 +85,6 @@ func (s *apiServer) resolveFollowTarget(
 	default:
 		return resolvedFollowTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target type is invalid"))
 	}
-}
-
-func noStoreFollowResponse[T any](msg *T) *connect.Response[T] {
-	response := connect.NewResponse(msg)
-	response.Header().Set("Cache-Control", "private, no-store")
-	return response
 }
 
 func (s *apiServer) scopeFollowUser(ctx context.Context, userID uuid.UUID) error {
@@ -154,7 +148,7 @@ func (s *apiServer) GetMyFollowStatus(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get follow status", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	return noStoreFollowResponse(&publirav1.GetMyFollowStatusResponse{IsFollowing: following}), nil
+	return noStorePrivateResponse(&publirav1.GetMyFollowStatusResponse{IsFollowing: following}), nil
 }
 
 func (s *apiServer) Follow(
@@ -187,7 +181,7 @@ func (s *apiServer) Follow(
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to follow target", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	return noStoreFollowResponse(&publirav1.FollowResponse{IsFollowing: true}), nil
+	return noStorePrivateResponse(&publirav1.FollowResponse{IsFollowing: true}), nil
 }
 
 func (s *apiServer) Unfollow(
@@ -218,7 +212,7 @@ func (s *apiServer) Unfollow(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to unfollow target", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	return noStoreFollowResponse(&publirav1.UnfollowResponse{IsFollowing: false}), nil
+	return noStorePrivateResponse(&publirav1.UnfollowResponse{IsFollowing: false}), nil
 }
 
 type followCursorKeys struct {
@@ -476,5 +470,5 @@ func (s *apiServer) ListMyFollows(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeFollowRecoveryToken(pagination.Forward, keys)
 	}
-	return noStoreFollowResponse(res), nil
+	return noStorePrivateResponse(res), nil
 }

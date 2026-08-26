@@ -98,6 +98,10 @@ func (e *publicDBEnv) followClient() publirav1connect.FollowServiceClient {
 	return publirav1connect.NewFollowServiceClient(e.Server.Client(), e.Server.URL)
 }
 
+func (e *publicDBEnv) ratingClient() publirav1connect.RatingServiceClient {
+	return publirav1connect.NewRatingServiceClient(e.Server.Client(), e.Server.URL)
+}
+
 func (e *publicDBEnv) authClient() publirav1connect.AuthServiceClient {
 	return publirav1connect.NewAuthServiceClient(e.Server.Client(), e.Server.URL)
 }

@@ -16,6 +16,8 @@
 --     -> idx_content_events_episode_view_debounce
 --   InsertProjectedSourceEvent
 --     -> idx_content_events_source_unique
+--   ListLatestContentRatingsByEntity
+--     -> idx_content_events_tenant_series_occurred_at
 
 -- name: InsertContentEvent :one
 INSERT INTO content_events (
@@ -137,6 +139,58 @@ WHERE source_id IS NOT NULL
 DO NOTHING
 RETURNING *;
 
+-- Ratings are append-only, like every other content_events row: a member who
+-- changes their score inserts another event instead of updating the previous
+-- one, so the history stays reconstructable and nothing has to be deleted.
+-- Which score "counts" is therefore a read-side decision, not a write-side one
+-- (see ListLatestContentRatingsByEntity). There is deliberately no debounce
+-- bucket here: a rating is an explicit act, not a page load.
+--
+-- episode_id NULL rates the series itself; set, it rates that episode, and
+-- series_id must still be the episode's own series. Both are resolved by the
+-- server from the catalog row, never taken from client input.
+-- name: InsertRatingEvent :one
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    rating_score,
+    occurred_at
+) VALUES (
+    sqlc.arg('id'),
+    sqlc.arg('tenant_id'),
+    'rating',
+    sqlc.arg('user_id')::uuid,
+    sqlc.arg('series_id')::uuid,
+    sqlc.narg('episode_id'),
+    sqlc.arg('rating_score')::smallint,
+    sqlc.arg('occurred_at')
+)
+RETURNING *;
+
+-- The latest rating each actor currently stands by for one entity: the stock
+-- view of an append-only log. `content_daily_stats.rating_count` /
+-- `rating_sum` (#593) are the *flow* of a single day and cannot answer this,
+-- because a member who rated 1 on Monday and 5 on Tuesday contributes to both
+-- days. A stock average has to come from this DISTINCT ON, over the full
+-- retained history, until a materialised current-rating table exists.
+--
+-- The tie-break runs past occurred_at because two events from one actor can
+-- share a timestamp; id is UUIDv7, so the later insert wins.
+-- name: ListLatestContentRatingsByEntity :many
+SELECT DISTINCT ON (actor_key) actor_key,
+    rating_score,
+    occurred_at
+FROM content_events
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND event_type = 'rating'
+    AND series_id = sqlc.arg('series_id')::uuid
+    AND episode_id IS NOT DISTINCT FROM sqlc.narg('episode_id')::uuid
+ORDER BY actor_key, occurred_at DESC, id DESC;
+
 -- name: GetContentEventByID :one
 SELECT *
 FROM content_events
@@ -160,7 +214,12 @@ ORDER BY occurred_at DESC
 LIMIT sqlc.arg('limit');
 
 -- Daily stats are full-day replacements (#593). Upsert keeps a single row per
--- (tenant, date, entity). rating_* are that day's flow, not a stock average.
+-- (tenant, date, entity). rating_count / rating_sum are that day's flow — the
+-- rating events that occurred on stat_date — and not a stock average: a member
+-- who re-rates is counted on both days, and a member who never re-rates is
+-- counted on neither day after the first. Summing rating_sum / rating_count
+-- across a date range therefore averages ratings *given* in that range, not
+-- the ratings an item currently holds (ListLatestContentRatingsByEntity).
 -- name: UpsertContentDailyStats :one
 INSERT INTO content_daily_stats (
     id,

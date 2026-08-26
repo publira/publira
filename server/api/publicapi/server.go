@@ -63,6 +63,15 @@ func (s *apiServer) internalDBError(ctx context.Context, msg string, err error, 
 	return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 }
 
+// noStorePrivateResponse marks a response that depends on who is asking, so a
+// shared cache never serves one member's state to another. The member-scoped
+// public RPCs (follow, rating) return through here.
+func noStorePrivateResponse[T any](msg *T) *connect.Response[T] {
+	response := connect.NewResponse(msg)
+	response.Header().Set("Cache-Control", "private, no-store")
+	return response
+}
+
 func tenantIDFromContext(ctx *publirattypesv1.TenantContext) (uuid.UUID, error) {
 	return rpcmiddleware.ResolveTenantID(ctx, nil)
 }
@@ -138,6 +147,8 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	mux.Handle(purchasePath, purchaseHandler)
 	followPath, followHandler := publirav1connect.NewFollowServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(followPath, followHandler)
+	ratingPath, ratingHandler := publirav1connect.NewRatingServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
+	mux.Handle(ratingPath, ratingHandler)
 	pagesPath, pagesHandler := publirav1connect.NewPublicPagesServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(pagesPath, pagesHandler)
 	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))

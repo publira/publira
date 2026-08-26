@@ -9,6 +9,7 @@ import {
   CatalogService,
   FollowService,
   PurchaseService,
+  RatingService,
 } from "../gen/publira/v1/catalog_pb.js";
 import { DomainService } from "../gen/publira/v1/domain_pb.js";
 import { NotificationService } from "../gen/publira/v1/notification_pb.js";
@@ -32,6 +33,7 @@ export interface PublicApiClient {
   notification: Client<typeof NotificationService>;
   pages: Client<typeof PublicPagesService>;
   purchase: Client<typeof PurchaseService>;
+  rating: Client<typeof RatingService>;
   tenant: Client<typeof TenantService>;
   domain: Client<typeof DomainService>;
 }
@@ -75,6 +77,7 @@ export const createPublicApiClient = (
     notification: createClient(NotificationService, transportInstance),
     pages: createClient(PublicPagesService, transportInstance),
     purchase: createClient(PurchaseService, transportInstance),
+    rating: createClient(RatingService, transportInstance),
     tenant: createClient(TenantService, transportInstance),
   };
 };

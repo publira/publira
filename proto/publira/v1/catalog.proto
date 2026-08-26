@@ -324,6 +324,44 @@ service FollowService {
   rpc ListMyFollows(ListMyFollowsRequest) returns (ListMyFollowsResponse) {}
 }
 
+// Kinds of public catalog targets a member can rate.
+enum RatingTargetType {
+  RATING_TARGET_TYPE_UNSPECIFIED = 0;
+  RATING_TARGET_TYPE_SERIES = 1;
+  RATING_TARGET_TYPE_EPISODE = 2;
+}
+
+// A public catalog target. The public ID is interpreted according to type.
+message RatingTarget {
+  RatingTargetType type = 1;
+  string public_id = 2;
+}
+
+// Records one rating by the authenticated member. Ratings are append-only: a
+// member who changes their mind sends this again and the earlier score is kept
+// as history, so aggregation decides for itself which one counts (the latest
+// per actor). There is no RPC to remove a rating.
+message RateContentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  RatingTarget target = 2;
+  // 1 to 5 inclusive. Anything else, including the unset 0, is
+  // invalid_argument; the same range is a CHECK constraint on the stored row.
+  int32 score = 3;
+}
+
+message RateContentResponse {
+  // The score that was recorded, echoed back from the stored row.
+  int32 score = 1;
+  string rated_at = 2;
+}
+
+service RatingService {
+  // Records a rating for a currently public series or episode. Cross-tenant,
+  // unpublished, and missing targets are all surfaced as NotFound, matching
+  // FollowService, so a rating cannot be used to probe for hidden content.
+  rpc RateContent(RateContentRequest) returns (RateContentResponse) {}
+}
+
 // A one-time paid-episode checkout. Purchases are created only by the Stripe
 // webhook after a successful payment, never by the browser's return URL.
 message StartEpisodeCheckoutRequest {
