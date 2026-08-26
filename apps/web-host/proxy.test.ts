@@ -221,6 +221,36 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
+  it("既定 locale が en のテナントではトップも /en へ送る", async () => {
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "en",
+      tenantId: TENANT_ID,
+    });
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/"));
+
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/en"
+    );
+  });
+
+  // locale を名指しした URL は読者の選択なので、既定ロケールで引き戻さない。
+  it("既定 locale が en でも /ja の URL はそのまま配信する", async () => {
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "en",
+      tenantId: TENANT_ID,
+    });
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/ja/series"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/series`
+    );
+  });
+
   it("theme.css と Route Handler は locale を挟まない", async () => {
     const { proxy } = await import("./proxy");
 
