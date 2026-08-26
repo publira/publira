@@ -7,6 +7,7 @@ import {
 import { EpisodeAccess } from "@publira/api-client/public/catalog";
 import type {
   EpisodeImage,
+  Series,
   SeriesEyeCatchVariant,
 } from "@publira/api-client/public/types";
 import { cachedReadFailure } from "@publira/utils/cached-read";
@@ -89,20 +90,24 @@ export interface SeriesListItem {
   creatorNames: string[];
 }
 
-const toSeriesListItem = (s: {
-  creators?: {
-    iconImageUrl?: string;
-    name?: string;
-    profileText?: string;
-    publicId?: string;
-  }[];
-  eyeCatchImageUpdatedAt?: string;
-  eyeCatchImageVariants?: Parameters<typeof toEyeCatchImageVariants>[0];
-  label?: { name?: string; publicId?: string };
-  publicId: string;
-  synopsis: string;
-  title: string;
-}): SeriesListItem => ({
+/**
+ * The generated `Series` fields {@link toSeriesListItem} reads. Naming them
+ * against the message type is what makes a proto rename fail here — a restated
+ * structural type keeps compiling, and a storefront card then loses its label
+ * and its creator names with nothing pointing at the cause.
+ */
+type RawSeriesListItem = Pick<
+  Series,
+  | "creators"
+  | "eyeCatchImageUpdatedAt"
+  | "eyeCatchImageVariants"
+  | "label"
+  | "publicId"
+  | "synopsis"
+  | "title"
+>;
+
+const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem => ({
   creatorNames: (s.creators ?? []).flatMap((c) => {
     const name = (c.name ?? "").trim();
     return name.length > 0 ? [name] : [];

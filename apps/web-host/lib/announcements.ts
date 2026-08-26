@@ -5,6 +5,7 @@ import {
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import type { AnnouncementItem } from "@publira/api-client/public/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { z } from "zod";
 
@@ -46,14 +47,20 @@ const mapErrorToMessage = (error: unknown): string =>
     "invalid-argument": "セッションが無効です。再ログインしてください。",
   });
 
-const mapAnnouncementItem = (item: {
-  body: string;
-  createdAt: string;
-  id: string;
-  isRead: boolean;
-  linkUrl: string;
-  title: string;
-}): MemberAnnouncementItem => ({
+/**
+ * The generated `AnnouncementItem` fields {@link mapAnnouncementItem} reads.
+ * Naming them against the message type is what makes a proto rename fail here —
+ * a restated structural type keeps compiling, and the inbox then renders a row
+ * with an empty title and body with nothing pointing at the cause.
+ */
+type RawAnnouncementItem = Pick<
+  AnnouncementItem,
+  "body" | "createdAt" | "id" | "isRead" | "linkUrl" | "title"
+>;
+
+const mapAnnouncementItem = (
+  item: RawAnnouncementItem
+): MemberAnnouncementItem => ({
   body: item.body,
   createdAt: item.createdAt,
   id: item.id,

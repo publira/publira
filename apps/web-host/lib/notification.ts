@@ -6,6 +6,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
+import type { NotificationItem as NotificationItemMessage } from "@publira/api-client/public/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import type {
@@ -69,13 +70,19 @@ const throwIfUnexpected = (unexpected: boolean, message: string): void => {
   }
 };
 
-const mapNotification = (item: {
-  createdAt: string;
-  id: string;
-  isRead: boolean;
-  notificationType: string;
-  payload: string;
-}): NotificationItem => {
+/**
+ * The generated `NotificationItem` fields {@link mapNotification} reads. Naming
+ * them against the message type is what makes a proto rename fail here — a
+ * restated structural type keeps compiling, and the inbox then renders rows
+ * whose copy falls back to the unknown-type wording with nothing pointing at
+ * the cause.
+ */
+type RawNotification = Pick<
+  NotificationItemMessage,
+  "createdAt" | "id" | "isRead" | "notificationType" | "payload"
+>;
+
+const mapNotification = (item: RawNotification): NotificationItem => {
   const display = notificationDisplay(
     item.notificationType,
     parseNotificationPayload(item.payload)
