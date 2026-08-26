@@ -292,6 +292,30 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 
 トークンは管理者を名乗るだけで、`admin-image-server` がテナント所属と管理ロール（`tenant_admin` / `tenant_editor` / `tenant_auditor`）を都度参照して判定します。公開状態と価格は見ません。
 
+## 閲覧イベント（soft PV）と匿名 actor
+
+`GetEpisodeDetail` / `GetSeriesDetail` が成功したとき、`content_events` に閲覧イベントを記録します。Phase 1 の soft PV であり、「詳細 RPC が成功した」ことだけを表します（本文を実際に読んだかどうかを見る hard PV は後続）。記録は本処理から切り離されていて、失敗しても RPC は成功します。
+
+| 項目 | 値 |
+| --- | --- |
+| イベント種別 | `episode_view`（エピソード詳細） / `series_view`（シリーズ詳細） |
+| actor | ログイン中は `user_id`、それ以外は `publira_aid` Cookie の `anonymous_id`（`content_events.actor_key` が `COALESCE` で 1 本化する） |
+| デバウンス | 固定 epoch 30 分バケツ（`floor(unix / 1800)`）+ 部分 UNIQUE インデックスへの `ON CONFLICT DO NOTHING`。スライディング窓ではない |
+| `series_id` | クライアント入力ではなく `episodes` から解決する |
+| prefetch | `Sec-Purpose` / `Purpose` / `X-Purpose` / `X-Moz` / `Next-Router-Prefetch` が投機的リクエストを示す場合は記録しない |
+| payload | `{"pv_kind":"soft"}` のみ。IP / User-Agent / email などの個人情報は保存しない |
+
+### `publira_aid` Cookie
+
+未ログインの読者を数えるためだけの Cookie です。値はサーバが採番した UUIDv7 で、他の情報は含みません。Cookie が無い場合や値が UUID として読めない場合は新しく採番し、レスポンスの `Set-Cookie` で返します。
+
+| 属性 | 値 |
+| --- | --- |
+| 名前 | `publira_aid` |
+| Path | `/` |
+| Max-Age | 180 日（生イベントの保持期間より長く、放置された識別子が残り続けない長さ） |
+| その他 | `HttpOnly` / `Secure` / `SameSite=Lax` |
+
 ## API サーバ分離
 
 - 公開 API サーバー: `server/cmd/api-server`

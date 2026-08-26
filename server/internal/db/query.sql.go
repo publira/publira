@@ -2666,6 +2666,7 @@ SELECT e.id,
     e.public_id,
     e.title,
     e.order_index,
+    e.series_id,
     el.price,
     el.reading_period_hours,
     el.status,
@@ -2697,6 +2698,7 @@ type GetPublishedEpisodeByPublicIDForTenantRow struct {
 	PublicID           string        `json:"public_id"`
 	Title              string        `json:"title"`
 	OrderIndex         int32         `json:"order_index"`
+	SeriesID           uuid.UUID     `json:"series_id"`
 	Price              int32         `json:"price"`
 	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
 	Status             string        `json:"status"`
@@ -2714,6 +2716,7 @@ func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, ar
 		&i.PublicID,
 		&i.Title,
 		&i.OrderIndex,
+		&i.SeriesID,
 		&i.Price,
 		&i.ReadingPeriodHours,
 		&i.Status,
