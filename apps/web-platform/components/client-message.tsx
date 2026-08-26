@@ -8,8 +8,8 @@ import {
 import type { MessageValues } from "@publira/utils/i18n";
 import { use } from "react";
 
-import { loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessageKey } from "#lib/locale";
+import { loadPlatformMessages } from "#lib/messages";
+import type { PlatformMessageKey } from "#lib/messages";
 
 const readDocumentLocale = (): string => {
   if (typeof document === "undefined") {
