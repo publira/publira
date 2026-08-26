@@ -3,6 +3,7 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import type { EndUser, Tenant } from "@publira/api-client/platform/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
@@ -63,15 +64,24 @@ const genericErrorMessage =
 
 const normalizePublicId = (publicId: string): string => publicId.trim();
 
-const mapEndUser = (user: {
-  createdAt: string;
-  email: string;
-  name: string;
-  publicId: string;
-  status: string;
-  tenantIds: string[];
-  tenantName?: string;
-}): PlatformEndUserSummary => {
+/**
+ * The generated `EndUser` fields {@link mapEndUser} reads. Naming them against
+ * the message type is what makes a proto rename fail here — a restated
+ * structural type keeps compiling, and the user row then shows no tenant at all
+ * with nothing pointing at the cause.
+ */
+type RawEndUser = Pick<
+  EndUser,
+  | "createdAt"
+  | "email"
+  | "name"
+  | "publicId"
+  | "status"
+  | "tenantIds"
+  | "tenantName"
+>;
+
+const mapEndUser = (user: RawEndUser): PlatformEndUserSummary => {
   const tenantIds = user.tenantIds ?? [];
   const tenantName = user.tenantName?.trim() ?? "";
 
@@ -112,16 +122,18 @@ const platformTenantFilterSearchLimit = 20;
 // that length may be an exact id, so the picker also tries GetTenant.
 const publicIdLength = 12;
 
-const toTenantFilterOption = (tenant: {
-  name: string;
-  publicId: string;
-}): PlatformTenantFilterOption => ({
+/** The generated `Tenant` fields {@link toTenantFilterOption} reads. */
+type RawTenantFilterOption = Pick<Tenant, "name" | "publicId">;
+
+const toTenantFilterOption = (
+  tenant: RawTenantFilterOption
+): PlatformTenantFilterOption => ({
   name: tenant.name,
   publicId: tenant.publicId,
 });
 
 const mergeTenantFilterOptions = (
-  tenants: readonly { name: string; publicId: string }[]
+  tenants: readonly RawTenantFilterOption[]
 ): PlatformTenantFilterOption[] => {
   const options: PlatformTenantFilterOption[] = [];
   const seen = new Set<string>();

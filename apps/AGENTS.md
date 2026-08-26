@@ -118,9 +118,11 @@ The generated messages come from `@publira/api-client`:
 | What the mapper reads | Where the type comes from |
 | --- | --- |
 | A generated entity — shared `publira.types.v1` messages (`Series`, `Label`, `Creator`, `Episode`, `EpisodeImage`, `SeriesEyeCatchVariant`, `TenantImageVariant`, `TenantTheme`, `Page`, `User`) and the admin.v1 entities re-exported beside them (`AdminAccessTicket`, `AdminAnnouncement`, `AdminAuditLog`, `AdminNotification`, `AdminTenantUser`, `TenantEmailSettings`, `TenantPaymentSettings`) | `@publira/api-client/admin/types` (`web-admin`). Host-facing `publira.types.v1` messages also come from `@publira/api-client/public/types` (`web-host`). Import from the subpath that matches the API the app calls |
-| A platform service's own message, which has no `types` subpath — every `publira.platform.v1` message | Derive it from the client method: `Awaited<ReturnType<PlatformApiClient["tenants"]["listTenants"]>>["tenants"][number]` |
+| A platform service's own message — the `publira.platform.v1` entities (`Tenant`, `TenantMember`, `TenantAdminInvitation`, `EndUser`, `PlatformOperator`, `PlatformNotification`, `PlatformAuditLog`, `PlatformEmailSettings`, `PlatformSettings`, `DashboardRecentEvent`) | `@publira/api-client/platform/types` (`web-platform`) |
 
 The reason is not brevity. A restated input type is looser than the response it describes — every field written optional — and nothing attaches it to the proto. Rename or remove a field and that type still compiles, so the mapper's `?? ""` / `?? 0` quietly stands in for a field that no longer exists. For the image variants that is invisible: the empty `label` / `url` fails the mapper's own emptiness check, every variant is dropped, and the screen renders its no-image placeholder with nothing pointing at the cause (#1072). Named against the message, the same rename fails at the mapper during `pnpm preflight` — `TS2344` on the `Pick` key list, or `TS2339` on the property the body reads.
+
+Take the message from the `types` subpath by name. A subpath that does not exist yet is a missing re-export, not a reason to reach for `Awaited<ReturnType<PlatformApiClient["tenants"]["listTenants"]>>["tenants"][number]`: add the entity to `packages/api-client/src/<api>/types.ts` (plus the `exports` entry and the `tsdown` entry) and import it. Request and response wrappers stay on the per-service modules.
 
 `Pick` rather than the message type itself, for two reasons. The generated messages carry `$typeName`, so a bare `Series` parameter makes every caller and every test fixture build a whole message. And the key list is the declaration of what this mapper actually depends on: a field the mapper stops reading leaves the list, and the dependency shrinks with it.
 
@@ -152,6 +154,16 @@ const toEyeCatchImageVariants = (
 ): EyeCatchImageVariant[] | undefined => {
   /* ... */
 };
+
+// NG: the message dug out of a client method's return type. It is the same
+// type, reached through a function signature instead of the name the proto
+// owns — and it hides that the `types` subpath is missing an entity
+type RawTenant = Pick<
+  Awaited<
+    ReturnType<PlatformApiClient["tenants"]["listTenants"]>
+  >["tenants"][number],
+  "domain" | "name" | "publicId"
+>;
 ```
 
 ### OK (preferred)
@@ -184,7 +196,7 @@ const toEyeCatchImageVariants = (
 };
 ```
 
-Good in-repo examples: [`web-host` `catalog.ts`](web-host/lib/catalog.ts) (`RawEyeCatchImageVariant`, `RawEpisodeImage`), [`web-admin` `series.ts`](web-admin/lib/series.ts) (`RawSeries`), and [`web-platform` `tenants.test.ts`](web-platform/lib/tenants.test.ts) for the client-method derivation.
+Good in-repo examples: [`web-host` `catalog.ts`](web-host/lib/catalog.ts) (`RawEyeCatchImageVariant`, `RawEpisodeImage`), [`web-admin` `series.ts`](web-admin/lib/series.ts) (`RawSeries`), and [`web-platform` `tenants.ts`](web-platform/lib/tenants.ts) (`RawTenant`, `RawTenantAdminInvitation`).
 
 ### What stays in the mapper
 

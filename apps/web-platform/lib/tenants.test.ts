@@ -1,6 +1,7 @@
 import { BadRequestSchema } from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import type { PlatformApiClient } from "@publira/api-client/platform/client";
+import type { Tenant } from "@publira/api-client/platform/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -19,7 +20,6 @@ import {
 
 type ListTenantsMethod = PlatformApiClient["tenants"]["listTenants"];
 type ListTenantsResponse = Awaited<ReturnType<ListTenantsMethod>>;
-type ListTenantsResponseTenant = ListTenantsResponse["tenants"][number];
 
 const createListTenantsResponse = ({
   nextToken = "",
@@ -28,7 +28,7 @@ const createListTenantsResponse = ({
 }: {
   nextToken?: string;
   previousToken?: string;
-  tenants?: (Omit<ListTenantsResponseTenant, "$typeName" | "timezone"> & {
+  tenants?: (Omit<Tenant, "$typeName" | "timezone"> & {
     timezone?: string;
   })[];
 }): ListTenantsResponse => ({

@@ -23,6 +23,7 @@ export default defineConfig({
     "src/admin/types.ts",
     "src/email/renderer.ts",
     "src/platform/client.ts",
+    "src/platform/types.ts",
   ],
   format: "esm",
 });

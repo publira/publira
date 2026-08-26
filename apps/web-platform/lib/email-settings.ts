@@ -3,6 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
+import type { PlatformEmailSettings } from "@publira/api-client/platform/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
@@ -86,15 +87,26 @@ const parseErrorMessage = (error: unknown): string => {
   });
 };
 
-const toPlatformSmtpSettings = (settings?: {
-  encryption?: string;
-  fromAddress?: string;
-  hasPassword?: boolean;
-  host?: string;
-  port?: number;
-  replyTo?: string;
-  username?: string;
-}): PlatformSmtpSettings => ({
+/**
+ * The generated `PlatformEmailSettings` fields {@link toPlatformSmtpSettings}
+ * reads. Naming them against the message type is what makes a proto rename fail
+ * here — a restated structural type keeps compiling, and the SMTP form then
+ * opens with an empty host and the default port as if nothing had been saved.
+ */
+type RawPlatformEmailSettings = Pick<
+  PlatformEmailSettings,
+  | "encryption"
+  | "fromAddress"
+  | "hasPassword"
+  | "host"
+  | "port"
+  | "replyTo"
+  | "username"
+>;
+
+const toPlatformSmtpSettings = (
+  settings?: RawPlatformEmailSettings
+): PlatformSmtpSettings => ({
   encryption: settings?.encryption ?? "",
   fromAddress: settings?.fromAddress ?? "",
   hasPassword: Boolean(settings?.hasPassword),
