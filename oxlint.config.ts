@@ -46,6 +46,8 @@ export default defineConfig({
       files: [
         // Sets cookie `expires`, typed `Date` by the Next.js cookie API.
         "packages/web-session/src/index.ts",
+        // Exercises the cookie `expires` boundary above.
+        "packages/web-session/src/index.test.ts",
         // Cache entry TTL / revalidation timestamps are epoch millis.
         "packages/next-cache-handlers/src/use-cache-handler.ts",
         "packages/next-cache-handlers/src/incremental-cache-handler.ts",

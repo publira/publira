@@ -3,16 +3,16 @@
 import { getMessage } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { encryptSessionPayload, resolveAuthSecret } from "@publira/web-session";
+import {
+  encryptSessionPayload,
+  resolveAuthSecret,
+  sessionCookieOptions,
+} from "@publira/web-session";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import {
-  ADMIN_SESSION_COOKIE_NAME,
-  loginAdmin,
-  sessionCookieOptions,
-} from "#lib/admin-auth";
+import { ADMIN_SESSION_COOKIE_NAME, loginAdmin } from "#lib/admin-auth";
 import {
   emailFormSchema,
   nextPathFormSchema,
@@ -81,8 +81,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     );
     const cookieStore = await cookies();
     cookieStore.set({
-      ...sessionCookieOptions,
-      expires: result.expiresAt,
+      ...sessionCookieOptions(result.expiresAt),
       name: ADMIN_SESSION_COOKIE_NAME,
       value: sealed,
     });
