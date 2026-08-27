@@ -23,8 +23,8 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { sectionErrorCopy } from "#components/section-error-copy";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { parseEditTab } from "#lib/edit-tab-search-params";
@@ -222,7 +222,26 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
           <EditSeriesTabs params={params} searchParams={searchParams} />
         </Suspense>
         <SectionErrorBoundary
-          {...sectionErrorCopy("admin.series.detail_error")}
+          description={
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.common.retry_later" />
+            </Suspense>
+          }
+          digestLabel={
+            <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+              <Message message="admin.common.error_id" />
+            </Suspense>
+          }
+          retryLabel={
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="admin.common.retry" />
+            </Suspense>
+          }
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.series.detail_error" />
+            </Suspense>
+          }
         >
           <Suspense fallback={<EditSeriesFormSkeleton />}>
             <EditSeriesFormData params={params} searchParams={searchParams} />

@@ -20,7 +20,7 @@
 - 画面に文言を出すのは `components/message.tsx` の `<Message>`。呼び出し側が 1 文字列ずつ `<Suspense>` で包み、fallback に `Skeleton` を置く。ロケールとカタログの待ちがこのコンポーネントの中に閉じるので、ナビやページ枠の骨格は静的シェルのまま残る。テナント id はルートセグメントから読むため、Cookie 未設定の操作者にもテナント既定言語で表示される
 - `aria-label` や `alt` のように属性へ入る文言はノードとしてストリームできない。`components/admin-brand-logo.tsx` や `components/notification-bell.tsx` のように値を組み立てる側でカタログを解決し、その 1 つのコントロールだけを自前の `<Suspense>` の後ろで待たせる
 - `error.tsx` は Client Component なので `<Message>` を使えない。`components/client-message.tsx` の `<ClientMessage>` が `document.cookie` から Cookie を読む。admin API に届かない境界なので、Cookie 未設定のときはテナント既定言語ではなく `ja` になる。`<Message>` と同じく呼び出し側で `<Suspense>` に包むこと。エラー境界の上にはもう境界が無いので、フォールバックの無いまま suspend するとエラー画面自体が流せずレスポンスが途中で切れる
-- 文言を受け取る props はカタログのキーではなく `ReactNode` を取る。`ErrorScreen` も `SectionErrorBoundary` も自分ではカタログを引かず、どの文字列がどの `<Suspense>` の後ろで待つかは渡す側のコードに現れる。`SectionErrorBoundary` には `components/section-error-copy.tsx` の `sectionErrorCopy(<キー>)` を spread する。4 つの文言のうち画面ごとに違うのは見出しだけだが、`@publira/ui-components` の既定は日本語なので残り 3 つも渡さないと英語表示の画面に日本語が出る
+- 文言を受け取る props はカタログのキーではなく `ReactNode` を取る。`ErrorScreen` も `SectionErrorBoundary` も自分ではカタログを引かず、どの文字列がどの `<Suspense>` の後ろで待つかは渡す側のコードに現れる。`<Suspense>` と `<Message>` を組み立てて返すだけのヘルパーは挟まず、呼び出し側に直接書く。`SectionErrorBoundary` は 4 文言すべてを受け取る。画面ごとに違うのは見出しだけだが、`@publira/ui-components` の既定は日本語なので残り 3 つも渡さないと英語表示の画面に日本語が出る
 - 個人の切替は `/settings` の「表示言語」カード。Server Action `setAdminLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
 - `<html lang>` は `[tenant_id]/layout.tsx` の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定
 

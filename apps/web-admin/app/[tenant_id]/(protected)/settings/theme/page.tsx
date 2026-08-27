@@ -1,4 +1,5 @@
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -12,8 +13,8 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { sectionErrorCopy } from "#components/section-error-copy";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeSettings } from "#lib/theme-settings";
@@ -101,7 +102,26 @@ const SettingsThemePage = () => (
       <div className="grid gap-6">
         <SettingsTabNav current="theme" />
         <SectionErrorBoundary
-          {...sectionErrorCopy("admin.settings.theme_error")}
+          description={
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.common.retry_later" />
+            </Suspense>
+          }
+          digestLabel={
+            <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+              <Message message="admin.common.error_id" />
+            </Suspense>
+          }
+          retryLabel={
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="admin.common.retry" />
+            </Suspense>
+          }
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.settings.theme_error" />
+            </Suspense>
+          }
         >
           <Suspense fallback={<SettingsThemeFormsSkeleton />}>
             <SettingsThemeForms />

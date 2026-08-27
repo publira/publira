@@ -18,12 +18,6 @@ const PageControl = ({ href, label }: { href?: string; label: ReactNode }) =>
     </Button>
   );
 
-const pageLabel = (message: "admin.common.next" | "admin.common.previous") => (
-  <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
-    <Message message={message} />
-  </Suspense>
-);
-
 export const PaginationControls = ({
   ariaLabel,
   nextHref,
@@ -34,9 +28,20 @@ export const PaginationControls = ({
   <nav aria-label={ariaLabel} className="flex justify-end gap-2">
     <PageControl
       href={previousHref}
-      label={pageLabel("admin.common.previous")}
+      label={
+        <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
+          <Message message="admin.common.previous" />
+        </Suspense>
+      }
     />
-    <PageControl href={nextHref} label={pageLabel("admin.common.next")} />
+    <PageControl
+      href={nextHref}
+      label={
+        <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
+          <Message message="admin.common.next" />
+        </Suspense>
+      }
+    />
   </nav>
 );
 

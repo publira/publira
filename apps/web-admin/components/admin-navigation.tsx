@@ -4,82 +4,152 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "./message";
-import type { AdminMessageKey } from "./message";
-
-const navText = (message: AdminMessageKey, skeletonClassName: string) => (
-  <Suspense fallback={<SkeletonLine className={skeletonClassName} />}>
-    <Message message={message} />
-  </Suspense>
-);
 
 export const navigation: NavSection[] = [
   {
     id: "operations",
     items: [
       {
-        description: navText("admin.nav.dashboard_description", "h-3 w-40"),
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
+            <Message message="admin.nav.dashboard_description" />
+          </Suspense>
+        ),
         href: "/",
         icon: DashboardIcon,
-        label: navText("admin.nav.dashboard_label", "h-4 w-24"),
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="admin.nav.dashboard_label" />
+          </Suspense>
+        ),
       },
       {
-        description: navText("admin.nav.labels_description", "h-3 w-32"),
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-32" />}>
+            <Message message="admin.nav.labels_description" />
+          </Suspense>
+        ),
         href: "/labels",
         icon: CollectionIcon,
-        label: navText("admin.nav.labels_label", "h-4 w-16"),
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="admin.nav.labels_label" />
+          </Suspense>
+        ),
       },
       {
-        description: navText("admin.nav.creators_description", "h-3 w-32"),
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-32" />}>
+            <Message message="admin.nav.creators_description" />
+          </Suspense>
+        ),
         href: "/creators",
         icon: CollectionIcon,
-        label: navText("admin.nav.creators_label", "h-4 w-12"),
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="admin.nav.creators_label" />
+          </Suspense>
+        ),
       },
       {
-        description: navText("admin.nav.series_description", "h-3 w-40"),
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
+            <Message message="admin.nav.series_description" />
+          </Suspense>
+        ),
         href: "/series",
         icon: CollectionIcon,
-        label: navText("admin.nav.series_label", "h-4 w-20"),
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="admin.nav.series_label" />
+          </Suspense>
+        ),
       },
       {
-        description: navText("admin.nav.pages_description", "h-3 w-44"),
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-44" />}>
+            <Message message="admin.nav.pages_description" />
+          </Suspense>
+        ),
         href: "/pages",
         icon: CollectionIcon,
-        label: navText("admin.nav.pages_label", "h-4 w-16"),
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="admin.nav.pages_label" />
+          </Suspense>
+        ),
       },
       {
-        description: navText("admin.nav.announcements_description", "h-3 w-40"),
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
+            <Message message="admin.nav.announcements_description" />
+          </Suspense>
+        ),
         href: "/announcements",
         icon: CollectionIcon,
-        label: navText("admin.nav.announcements_label", "h-4 w-20"),
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="admin.nav.announcements_label" />
+          </Suspense>
+        ),
       },
       {
-        description: navText(
-          "admin.nav.access_tickets_description",
-          "h-3 w-44"
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-44" />}>
+            <Message message="admin.nav.access_tickets_description" />
+          </Suspense>
         ),
         href: "/access-tickets",
         icon: CollectionIcon,
-        label: navText("admin.nav.access_tickets_label", "h-4 w-28"),
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="admin.nav.access_tickets_label" />
+          </Suspense>
+        ),
       },
     ],
-    title: navText("admin.nav.operations", "h-3 w-12"),
+    title: (
+      <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
+        <Message message="admin.nav.operations" />
+      </Suspense>
+    ),
   },
   {
     id: "administration",
     items: [
       {
-        description: navText("admin.nav.audit_description", "h-3 w-36"),
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-36" />}>
+            <Message message="admin.nav.audit_description" />
+          </Suspense>
+        ),
         href: "/audit-logs",
         icon: CollectionIcon,
-        label: navText("admin.nav.audit_label", "h-4 w-16"),
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="admin.nav.audit_label" />
+          </Suspense>
+        ),
       },
       {
-        description: navText("admin.nav.settings_description", "h-3 w-44"),
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-44" />}>
+            <Message message="admin.nav.settings_description" />
+          </Suspense>
+        ),
         href: "/settings",
         icon: SettingsIcon,
-        label: navText("admin.nav.settings_label", "h-4 w-12"),
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="admin.nav.settings_label" />
+          </Suspense>
+        ),
       },
     ],
-    title: navText("admin.nav.administration", "h-3 w-12"),
+    title: (
+      <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
+        <Message message="admin.nav.administration" />
+      </Suspense>
+    ),
   },
 ];

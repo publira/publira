@@ -9,8 +9,9 @@ import { catchError } from "next/error";
  * while the re-run is in flight. The fallback body and the rationale for this
  * split live in `@publira/ui-components/section-error`.
  *
- * The four strings it shows are nodes the page passes in; spread
- * `sectionErrorCopy()` onto it rather than writing them out at each boundary.
+ * The four strings it shows are nodes the page passes in — the section's own
+ * title plus the three `@publira/ui-components` would otherwise default to
+ * Japanese, which would read as Japanese on an English page.
  *
  * This is the component-level counterpart of `(protected)/error.tsx`: a failure
  * that makes the whole page meaningless still belongs to that one. What reaches
