@@ -12,7 +12,7 @@
 | `ja.json` | 正本。キーと入れ子の形はここが基準 |
 | `en.json` | `ja.json` と同じキー。訳だけが違う |
 
-葉は必ず文字列です。補間は `{name}` のみです（ICU / 複数形は使いません）。
+葉は必ず文字列です。
 
 ```json
 {
@@ -23,6 +23,46 @@
 ```
 
 キー `"errors.validation"` は入れ子 `errors.validation` を指します。トップレベルに同じ名前の文字列キーがあるときは、そちらの完全一致が勝ります。
+
+## メッセージ構文
+
+葉は Unicode MessageFormat 2.0（[UTS #35 Part 9](https://www.unicode.org/reports/tr35/tr35-messageFormat.html) 48.2、Stable）の **simple message** です。ベンダー独自の書式ではなく Unicode の標準なので、Go と Flutter が同じカタログを読むときも同じ定義を参照できます。
+
+書けるのは本文のテキスト、エスケープ、変数参照の 3 つだけです。
+
+| 書きたいもの | 書き方 | 文言 | JSON に書くとき |
+| --- | --- | --- | --- |
+| 値の差し込み | `{$name}` | `通知、未読{$count}件` | `"通知、未読{$count}件"` |
+| 波括弧そのもの | `\{` / `\}` | `検索構文は \{query\} です` | `"検索構文は \\{query\\} です"` |
+| バックスラッシュそのもの | `\\` | `C:\\Users` | `"C:\\\\Users"` |
+
+右の 2 列が違うのは、JSON 文字列でもバックスラッシュがエスケープ文字だからです。MF2 のエスケープ 1 つにつき、ファイルにはバックスラッシュを 2 つ書きます。
+
+変数名は MF2 の `name` の規則に従います（`{$series_title}` のように ASCII の識別子で書くのが慣習です）。名前は `getMessage` に渡す `Record` のキーになります。
+
+値が渡らなかった変数は、MF2 の fallback である `{$name}` のまま出力されます。文の残りは失われません。日時と数値の整形は `@publira/utils` の `formatDateTime` / `formatDate` が表示タイムゾーンを受け取って行い、整形済みの文字列を `{$name}` に渡します。
+
+### 実装
+
+構文の解析と整形は npm の [`messageformat` v4](https://www.npmjs.com/package/messageformat) に任せています。MessageFormat Working Group のメンバーが書いている実装で、LDML 48（2025-10）時点の仕様に追従し、TC39 の `Intl.MessageFormat` プロポーザルのポリフィルとしても使えます。`@publira/i18n` が持っているのは、その上に載せたこのカタログ固有の方針だけです。
+
+- 値は文字列にしてから渡します。`getMessage` はロケールを受け取らないので、`:number` のようなロケール依存の整形をここで行うとホストのロケールが混入します。数値と日時は `@publira/utils` が整形済みの文字列にしてから差し込みます
+- bidi isolation は無効です。整形結果には文言どおりの文字だけが残ります。ja / en はどちらも LTR で、これらの文字列はメール件名や `<title>` にもなるため、U+2068 / U+2069 が見えないまま運ばれるのを避けています。有効化するのは最初の RTL ロケールを足すときです
+
+### 使わないもの
+
+選択（`.match`）、関数（`:number` / `:datetime`）、マークアップ、宣言（`.input` / `.local`）は使いません。`pnpm locales:check` がこれらを含む葉を拒否します。
+
+- 関数を使わないのは、MF2 がテナントの表示タイムゾーンを知らないからです（root `AGENTS.md` の「Date and time」）。整形は `@publira/utils` 側に残します
+- 選択は第一段階では入れません。複数形が実際に必要になった時点で、別の Issue で解禁します
+
+そのため、先頭が `.` で始まる文言は書けません（MF2 では複合メッセージの宣言と区別できないため）。読点や記号で始めるか、文頭に別の語を置いてください。
+
+なお、旧来の `{name}` は MF2 では**リテラル式**として構文的に妥当で、`name` という文字列に整形されてしまいます。エラーにならないので、`pnpm locales:check` が変数参照でない式として拒否します。
+
+### 検査
+
+`pnpm locales:check` が全ロケールの全葉を `messageformat` でパース・検証し、妥当でない葉と、上の「使わないもの」に触れた葉をキー付きで報告します。
 
 ## 読み方
 
@@ -73,7 +113,8 @@ raw, err := files.ReadFile(locale + ".json")
 
 1. `ja.json` にキーを足す
 2. 同じキーを `en.json` にも足す（訳が未定なら英語でも、空文字にはしない）
-3. `pnpm --filter @publira/i18n typecheck` が通ることを確認する（`ExactCatalog` の検査が `packages/i18n` のテストから掛かる）
+3. `pnpm locales:check` が通ることを確認する（葉が simple message として妥当か検査される）
+4. `pnpm --filter @publira/i18n typecheck` が通ることを確認する（`ExactCatalog` の検査が `packages/i18n` のテストから掛かる）
 
 ## ロケールを増やすとき
 

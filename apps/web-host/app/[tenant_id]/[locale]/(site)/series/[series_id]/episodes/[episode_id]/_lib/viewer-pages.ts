@@ -25,7 +25,7 @@ const positiveOrUndefined = (value: number): number | undefined =>
 export const toViewerPages = (
   episodeTitle: string,
   images: EpisodeImageItem[],
-  /** Titles one page, e.g. `{title}, page {page}`, from the caller's catalog. */
+  /** Titles one page, e.g. `{$title}, page {$page}`, from the caller's catalog. */
   formatPageTitle: (values: { page: number; title: string }) => string
 ): ViewerPage[] =>
   images.map((image, index) => ({

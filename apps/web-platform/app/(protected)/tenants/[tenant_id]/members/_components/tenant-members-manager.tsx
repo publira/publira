@@ -1,6 +1,6 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
+import { formatMessage, getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
@@ -357,14 +357,6 @@ const useTenantMembersLabels = () => {
   return labels;
 };
 
-const interpolateRoleUpdateDescription = (
-  template: string,
-  member: PlatformTenantMemberSummary
-): string =>
-  template
-    .replaceAll("{name}", member.name)
-    .replaceAll("{email}", member.email);
-
 interface TenantMemberRowProps {
   locale: Locale;
   member: PlatformTenantMemberSummary;
@@ -500,10 +492,10 @@ const TenantMemberRoleDialog = ({
                   {copy.changeRoleSubmit}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground">
-                  {interpolateRoleUpdateDescription(
-                    copy.roleUpdateDescription,
-                    member
-                  )}
+                  {formatMessage(copy.roleUpdateDescription, {
+                    email: member.email,
+                    name: member.name,
+                  })}
                 </DialogDescription>
               </DialogHeader>
 

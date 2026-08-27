@@ -7,6 +7,11 @@ import {
 } from "node:fs";
 import path from "node:path";
 
+// The package is not built when this runs, so the checker comes from source.
+// Node strips the types and resolves `messageformat` from the package the file
+// lives in.
+import { simpleMessageSyntaxError } from "../packages/i18n/src/mf2.ts";
+
 const root = path.resolve(import.meta.dirname, "..");
 const indexPath = path.resolve(root, "locales/index.json");
 const newline = "\n";
@@ -14,6 +19,45 @@ const check = process.argv.at(2) === "--check";
 
 const fail = (message: string): never => {
   throw new Error(`Invalid locales/index.json: ${message}`);
+};
+
+/**
+ * Every leaf is a MessageFormat 2 simple message. `@publira/i18n` formats them
+ * at render time, so a leaf `messageformat` rejects — or one that reaches for
+ * a feature the catalog does not use — would only fail once the screen that
+ * shows it renders.
+ */
+const checkCatalog = (code: string) => {
+  const catalogPath = `locales/${code}.json`;
+  const catalog: unknown = JSON.parse(
+    readFileSync(path.resolve(root, catalogPath), "utf-8")
+  );
+  const problems: string[] = [];
+
+  const walk = (node: unknown, key: string) => {
+    if (typeof node === "string") {
+      const problem = simpleMessageSyntaxError(node);
+      if (problem) {
+        problems.push(`  ${key}: ${problem}`);
+      }
+      return;
+    }
+
+    if (typeof node !== "object" || node === null || Array.isArray(node)) {
+      problems.push(`  ${key}: leaves must be strings`);
+      return;
+    }
+
+    for (const [name, child] of Object.entries(node)) {
+      walk(child, key ? `${key}.${name}` : name);
+    }
+  };
+
+  walk(catalog, "");
+
+  if (problems.length > 0) {
+    throw new Error(`Invalid ${catalogPath}:\n${problems.join("\n")}`);
+  }
 };
 
 const index: unknown = JSON.parse(readFileSync(indexPath, "utf-8"));
@@ -59,6 +103,7 @@ for (const locale of locales) {
   if (!existsSync(path.resolve(root, `locales/${locale.code}.json`))) {
     fail(`catalog locales/${locale.code}.json does not exist`);
   }
+  checkCatalog(locale.code);
 }
 
 const source = "ja";
