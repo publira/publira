@@ -43,10 +43,18 @@ const decodeBase64Url = (value: string): Uint8Array | null => {
     return null;
   }
 
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+
+  if (typeof Uint8Array.fromBase64 === "function") {
+    try {
+      return Uint8Array.fromBase64(padded);
+    } catch {
+      return null;
+    }
+  }
+
   try {
-    const binary = atob(
-      normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=")
-    );
+    const binary = atob(padded);
     return Uint8Array.from(
       binary,
       (character) => character.codePointAt(0) ?? 0
