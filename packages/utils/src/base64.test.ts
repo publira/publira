@@ -12,7 +12,7 @@ describe("decodeBase64Url", () => {
     expect(new TextDecoder().decode(value)).toBe('{"sub":"reader-public-id"}');
   });
 
-  it.each(["a", "abcde", "abc===", "abc+_"])(
+  it.each(["a", "abcde", "abc===", "abc+/", "abc+_"])(
     "不正な Base64URL を null にする: %s",
     (value) => {
       expect(decodeBase64Url(value)).toBeNull();
