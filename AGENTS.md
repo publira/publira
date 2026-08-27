@@ -48,257 +48,42 @@ Skills owned by this repository live under `skills/*`; `.agents/skills/*` and `.
 
 | Skill | Purpose |
 | --- | --- |
+| `skills/coding-standards` | Full text of the coding standards this file only states as norms (environment variables, TypeScript on Node.js, React Effects, date and time, Next.js cache) |
 | `skills/create-pr` | Open a pull request following this repository's branch, staging, verification, and template rules |
 | `skills/dev-env-profile` | Prepare or verify the isolated local development profile before worktree development |
 | `skills/organize-github-issues` | Create and normalize GitHub Issues with consistent types, fields, labels, and hierarchy |
 
+`CLAUDE.md` imports this file with `@AGENTS.md`, so every line here is loaded in every session. A coding standard therefore keeps only its norm and its enforcement here; its decision flow, tables, and NG/OK examples belong to the `coding-standards` skill (#668). Do not link to a skill's files from here — a skill reaches the agent through its own `name` and `description`, and a path in this file only makes the same content get read twice.
+
 ## Environment variables: `PUBLIRA_*`
 
-Every environment variable that **only this repository's own code reads** is named `PUBLIRA_*`. A variable keeps its outside name only when the software that consumes the value looks that name up itself.
+Every environment variable that **only this repository's own code reads** is named `PUBLIRA_*`. A variable keeps its outside name only when the software that consumes the value looks that name up itself — the AWS SDK, `NODE_ENV`, `PORT`. That test, who performs the lookup, is the whole rule: `S3_*`, `AUTH_SECRET`, `REDIS_URL`, and the cache-related `NEXT_*` names are all ours, so all of them carry the prefix.
 
-That test — who performs the lookup — is the whole rule. It is not about whether a name is conventional, and not about whether the value belongs to a third party.
-
-| Category | Naming | Examples |
-| --- | --- | --- |
-| Only this repository's code reads it | `PUBLIRA_*` | `PUBLIRA_DB_URL`, `PUBLIRA_PUBLIC_API_ADDR`, `PUBLIRA_S3_BUCKET`, `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP` |
-| An external SDK / framework / runtime reads it out of the environment itself | keep the name that software documents | `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (AWS SDK, `aws` CLI), `NODE_ENV`, `PORT`, `HOST` / `HOSTNAME`, `CI`, `NEXT_PHASE`, `NEXT_PRIVATE_*`, `__NEXT_*` |
-| Test-harness knobs rather than application config | out of scope for this rule | `E2E_*`, `BOOTSTRAP_*`, `ROUTING_*` |
-
-### Names that look like exceptions and are not
-
-- **`S3_*`** were never AWS SDK variables — `server/config/runtime.go` reads them — so they are `PUBLIRA_S3_BUCKET`, `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, and so on. Only the `AWS_*` credentials and region in the table above are looked up by the SDK and the `aws` CLI.
-- **`AUTH_SECRET` is not an Auth.js variable.** This repository does not use Auth.js / NextAuth; the only reader is `resolveAuthSecret()` in `packages/web-session`, which encrypts the session JWE with `jose`. Hence `PUBLIRA_AUTH_SECRET`.
-- **`NEXT_*` is not a blanket exception.** Next.js itself reads `NEXT_PHASE`, `NEXT_PRIVATE_DEBUG_CACHE`, and `__NEXT_DEV_SERVER`. The cache and revalidation variables belong to our own implementation (`@publira/next-cache-handlers`, the `/api/revalidate` Route Handler), where the `NEXT_` prefix only made them look like framework settings — hence `PUBLIRA_CACHE_APP`, `PUBLIRA_CACHE_KEY_PREFIX`, and `PUBLIRA_REVALIDATE_TOKEN`.
-- **A de-facto generic name is not a vendor name.** Nothing but `@publira/next-cache-handlers` reads `REDIS_URL` and `REDIS_CACHE_TIMEOUT_MS`; the `redis` client is handed the connection string and the timeout explicitly. They are therefore `PUBLIRA_REDIS_URL` and `PUBLIRA_REDIS_CACHE_TIMEOUT_MS`, the same category as `PUBLIRA_DB_URL`.
-
-### Adding a variable
-
-`turbo.json`'s `dev` task declares `"passThroughEnv": ["PUBLIRA_*"]`, and turbo defaults to strict env mode. A conforming name reaches the dev servers with no further edit; a non-conforming one needs a hand-written exception in `turbo.json`, `.devcontainer/compose.yaml`, `e2e/scripts/*`, `e2e/bootstrap/scripts/*`, and CI — and wherever that exception is missed, the variable silently does nothing while everything still starts.
-
-- **Do not add an entry to `passThroughEnv`** to make a non-`PUBLIRA_*` name reach an app. Rename the variable.
-- Add the variable to the owning README (`server/README.md`, `server/cmd/*/README.md`, `apps/*/README.md`, `packages/*/README.md`) in the same change.
-- The current inventory is `git grep -o 'os\.Getenv("[A-Z0-9_]*")' -- server` and `git grep -oE 'process\.env\.[A-Z0-9_]+' -- apps packages`.
+Nothing fails on a wrong name. `turbo.json` passes `PUBLIRA_*` through and turbo runs in strict env mode, so a non-conforming variable silently does nothing while every service still starts. Do not add a `passThroughEnv` exception — rename the variable.
 
 ## TypeScript executed directly by Node.js
 
-For TypeScript that Node.js can execute by stripping types, use Node.js directly. The default development command is `node --watch path/to/entry.ts`; do not add `tsx` merely by convention or to omit relative import extensions. Type stripping and `node --watch` do not type-check; use `pnpm preflight` to verify types.
+TypeScript that Node.js can execute by stripping types runs on Node.js directly (`node --watch path/to/entry.ts`). Do not add `tsx` by convention or to omit relative import extensions; keep such code inside erasable syntax, with `.ts` extensions on relative imports and `import type` for type-only bindings.
 
-Use this policy only for code executed directly by Node.js, not for existing build, test, or framework toolchains. Node.js ignores `tsconfig.json` at runtime, so direct execution must not depend on TypeScript-only transforms or resolution settings such as `paths` or `moduleResolution`. Node.js still resolves `package.json` `imports` and `exports` at runtime.
-
-The directly executed code must stay within Node.js's erasable TypeScript syntax:
-
-- Relative ESM imports, including dynamic `import()` expressions, include their `.ts` extension: `import { run } from "./run.ts"`; `await import("./run.ts")`.
-- Type-only bindings use `import type` (and `export type` when re-exporting).
-- Do not use syntax that needs transformation, including `enum`, parameter properties, runtime namespaces, JSX, or decorators. Prefer JavaScript equivalents such as objects/unions, explicit fields assigned in a constructor, modules, and functions.
-
-Consider `tsx` or another runtime only when a concrete requirement cannot be met by Node.js type stripping. State that requirement with the dependency—for example, non-erasable TypeScript syntax that must be transformed, JSX/other source transforms, or required resolution/configuration behavior that Node.js does not provide. Keep the runtime scoped to that need.
+Nothing fails on a violation at author time — type stripping and `node --watch` do not type-check, so verify with `pnpm preflight`.
 
 ## React: Effects and useEffectEvent
 
-Official docs: [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect) / [Separating Events from Effects](https://react.dev/learn/separating-events-from-effects) / [`useEffectEvent`](https://react.dev/reference/react/useEffectEvent)
+User actions belong in event handlers, values derivable from props and state are computed during render, edit state is dropped by remounting with a changed `key`, and `useEffect` is reserved for syncing with an external system — with `useEffectEvent` called only from inside an Effect. Never leave a props→state Effect behind an `oxlint-disable`.
 
-Reference skill (vendored; do not edit): `vercel-react-best-practices` derived-state / event-handler rules. Detailed OK/NG below is authoritative for this repo.
-
-oxlint (ultracite preset) enforces this via `react/react-compiler` and `react-hooks/rules-of-hooks`.
-
-### Decision flow
-
-1. **Is a user action the trigger?** (click / submit / drop / change)  
-   → Put logic in an **event handler**. Do not recreate the action with `useState` + `useEffect`.  
-   → Use `useCallback` or a plain function. **Do not use `useEffectEvent`.**
-2. **Can it be derived from props / state only?**  
-   → Compute during render. **Do not copy into state with `setXxx`.**
-3. **Do you want to reset edit state when props change?** (switching to another entity, etc.)  
-   → **Remount with a changed `key` on the parent** (child uses `useState(initial)` only).  
-   → **Do not `setState` in `useEffect`.**  
-   → Also avoid bare `if (prop !== prev) setXxx(...)` during render in general (full reset → `key`; partial → own an ID or express as derived state first).
-4. **Do you need to sync with an external system?** (DOM / subscriptions / timers / URL ↔ UI, etc.)  
-   → **Legitimate `useEffect`**. Keep the dependency array accurate.  
-   → Use **`useEffectEvent` only** for the parts that must read latest props/state without re-subscribing.
-
-### NG (do not)
-
-```tsx
-// NG: copy props into state via Effect
-useEffect(() => {
-  setName(initialName);
-}, [initialName]);
-
-// NG: same via bare setXxx during render (better than Effect, still not the goal)
-const [prev, setPrev] = useState(initialName);
-if (initialName !== prev) {
-  setPrev(initialName);
-  setName(initialName); // full form reset → use key
-}
-
-// NG: express user action as state + Effect
-useEffect(() => {
-  if (submitted) {
-    save();
-  }
-}, [submitted]);
-
-// NG: pass useEffectEvent to onClick / onDrop / render props
-const onClose = useEffectEvent(() => setOpen(false));
-return <Sidebar onClose={onClose} />;
-
-// NG: wrap setState in useEffectEvent only to silence lint
-const sync = useEffectEvent(() => setName(initialName));
-useEffect(() => {
-  sync();
-}, [initialName]);
-```
-
-### OK (preferred)
-
-```tsx
-// OK: user actions in handlers
-const onClose = useCallback(() => setOpen(false), []);
-return <Sidebar onClose={onClose} />;
-
-// OK: derived values during render (no setXxx)
-const fullName = `${firstName} ${lastName}`;
-const selection = items.find((i) => i.id === selectedId) ?? null;
-
-// OK: drop edit state when entity switches — remount with key
-function EditPage({ recordId, record }: Props) {
-  return <EditForm key={recordId} initialName={record.name} />;
-}
-function EditForm({ initialName }: { initialName: string }) {
-  const [name, setName] = useState(initialName);
-  return <input value={name} onChange={(e) => setName(e.target.value)} />;
-}
-
-// OK: legitimate Effect + Effect Event (read latest values without re-subscribing)
-const onFlash = useEffectEvent(() => {
-  add({ title, type: "success" });
-});
-useEffect(() => {
-  if (searchParams.get(keyName) !== "1") {
-    return;
-  }
-  onFlash();
-}, [searchParams, keyName]);
-```
-
-Good in-repo example: `apps/web-admin/components/flash-toast.tsx` (`useEffectEvent` called only from inside Effects).
-
-### Forbidden
-
-- Do not leave props→state Effects with `oxlint-disable` just to silence lint.
-- Render-time `prev*` + bare `setXxx` is an **intermediate form**, not the end state. The end state is a `key` remount or an Action-side `redirect`.
+oxlint (ultracite preset) covers part of this through `react/react-compiler` and `react-hooks/rules-of-hooks`, but no rule detects a props→state Effect; that gap is [#456](https://github.com/publira/publira/issues/456). Read the `coding-standards` skill before writing or reviewing an Effect.
 
 ## Date and time: `Temporal`, not `Date`
 
-Frontend and shared-package code must not use `Date` directly. Use `Temporal` (polyfilled via `temporal-polyfill/global`) and the helpers in `@publira/utils`.
+Frontend and shared-package code must not use `Date` directly: use `Temporal` (polyfilled via `temporal-polyfill/global`) and the helpers in `@publira/utils`, and make the time zone an explicit decision at every conversion. Never re-add a fixed `+09:00`.
 
-oxlint enforces this with `no-restricted-globals` (`Date`) in `oxlint.config.ts`; `pnpm check` fails on a violation.
-
-The reason is not style. `new Date("2030-01-01T10:00")` reads a zone-less string in **the host's** zone, so the same submitted value means a different instant on a developer's laptop, in a container running UTC, and in a user's browser. `getTime()` comparisons and `` `${date}T00:00:00.000Z` `` concatenation then bake that ambiguity in silently. Splitting wall clock (`PlainDateTime` / `PlainDate`) from absolute time (`Instant`) makes the interpretation explicit at the type level.
-
-### What to use
-
-| Need | Use |
-| --- | --- |
-| Parse an API timestamp (`timestamptz` / RFC3339) | `parseInstant(value)` → `Temporal.Instant \| null` |
-| Compare / sort timestamps | `Temporal.Instant.compare(a, b)` |
-| "Is it in the past?" | `Temporal.Instant.compare(at, Temporal.Now.instant())` |
-| Display date + time | `formatDateTime(value, { timeZone, fallback })` |
-| Display date only | `formatDate(value, { timeZone, fallback })` |
-| Absolute → `datetime-local` initial value | `toDateTimeLocalValue(value, timeZone)` |
-| `datetime-local` → absolute | `fromDateTimeLocalValue(value, timeZone)` |
-| Form value that may be either shape | `toInstantIsoString(value, timeZone)` |
-| Date-only filter boundary (`YYYY-MM-DD`) | `startOfDayIsoString` / `endOfDayIsoString` |
-
-The zone must always be a decision, never an accident:
-
-- **Conversion helpers** (`toInstantIsoString`, `fromDateTimeLocalValue`, `toDateTimeLocalValue`, `startOfDayIsoString`, `endOfDayIsoString`) take `timeZone` as a **required parameter** — the signature forces the choice.
-- **Display helpers** (`formatDateTime`, `formatDate`) default to `DEFAULT_TIME_ZONE` only as a last-resort stand-in. Tenant-facing dates pass the resolved zone from `getTenantDisplayTimeZone` (web-admin [#566](https://github.com/publira/publira/issues/566), web-host [#567](https://github.com/publira/publira/issues/567)). Omitting `timeZone` on a tenant-facing call site is a bug.
-- `DEFAULT_TIME_ZONE` remains the fallback when the tenant read is unavailable, so the wall clock never depends on the host zone. Pass it explicitly and say in a comment which zone it stands in for ("unavailable tenant read", "non-tenant context").
-
-Never re-add a fixed `+09:00`.
-
-### NG (do not)
-
-```ts
-// NG: host-zone interpretation of a zone-less value
-const iso = new Date(formData.get("publish_at")).toISOString();
-
-// NG: hand-built offset / day boundary
-const publishedAt = `${wallClock}+09:00`;
-const createdTo = `${date}T23:59:59.999Z`;
-
-// NG: getTime() / Date.parse() ordering
-items.toSorted((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-
-// NG: UTC day by string surgery
-const day = episode.publishedAt.slice(0, 10);
-
-// NG: one-off formatter that drifts from the shared TZ policy
-new Date(value).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-```
-
-### OK (preferred)
-
-```ts
-import {
-  formatDateTime,
-  parseInstant,
-  toInstantIsoString,
-} from "@publira/utils";
-
-const timeZone = await getTenantDisplayTimeZone(tenantId);
-
-// OK: wall clock resolved against the tenant's zone
-const iso = toInstantIsoString(raw, timeZone);
-
-// OK: "is it in the past?" without leaving Temporal
-const at = parseInstant(iso);
-if (at && Temporal.Instant.compare(at, Temporal.Now.instant()) <= 0) {
-  return { message: "未来の日時を指定してください。", ok: false };
-}
-
-// OK: absolute-time ordering (parseInstant returns null, so decide where
-// unparseable values go instead of letting them collapse to the epoch)
-items.toSorted((a, b) => {
-  const left = parseInstant(a.at);
-  const right = parseInstant(b.at);
-  if (!(left || right)) {
-    return 0;
-  }
-  if (!left) {
-    return 1;
-  }
-  if (!right) {
-    return -1;
-  }
-  return Temporal.Instant.compare(right, left);
-});
-
-// OK: shared formatter with the resolved tenant zone
-formatDateTime(value, { fallback: "-", timeZone });
-```
-
-### The `Date` boundary
-
-Some external APIs only accept a `Date` — cookie `expires`, the Next.js cache handler's TTLs. Those modules are listed in the `oxlint.config.ts` override and keep using `Date`.
-
-- Convert at the boundary only; do not let a `Date` travel back into business logic.
-- Adding a path to that override is a deliberate decision, and the entry needs a comment naming the API that forces it. "Temporal was inconvenient" is not a reason.
-- Do not silence the rule with an inline `oxlint-disable`.
-
-Helper implementations and the polyfill wiring: `packages/utils/README.md`, [#573](https://github.com/publira/publira/issues/573) / [#564](https://github.com/publira/publira/issues/564) / [#575](https://github.com/publira/publira/issues/575).
+Enforced by oxlint `no-restricted-globals` (`Date`) in `oxlint.config.ts`; `pnpm check` fails on a violation.
 
 ## Next.js cache: `cacheHandler` vs `cacheHandlers`
 
-Shared store for self-host is **Redis** (package `@publira/next-cache-handlers`).
+Wire **both**, backed by Redis (`@publira/next-cache-handlers`): `cacheHandlers` (plural) is the backend for `"use cache"`, and `cacheHandler` (singular) covers ISR, Route Handlers, `fetch` / `unstable_cache`, and `next/image`. With only one, the other path stays local in multi-instance deploys.
 
-| Setting | Use |
-| --- | --- |
-| **`cacheHandlers` (plural)** | Backend for `"use cache"` / `"use cache: remote"` |
-| **`cacheHandler` (singular)** | ISR, Route Handlers, `fetch` / `unstable_cache`, and **`next/image` optimized images** where `/_next/image` is in use (requires `images.customCacheHandler: true`) |
-
-Wire **both**. With only one, the other path stays local in multi-instance deploys. Details: `packages/next-cache-handlers/README.md`.
+No lint covers this — it is per-app configuration in `next.config.ts`.
 
 ## API contracts (proto)
 

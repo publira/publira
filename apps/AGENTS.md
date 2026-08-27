@@ -4,7 +4,7 @@ Shared conventions for Next.js apps under `apps/` (`web-admin`, `web-host`, `web
 
 ## React Effects / useEffectEvent
 
-OK and NG rules: repository root [AGENTS.md](../AGENTS.md) (React: Effects and useEffectEvent).
+Norm and enforcement: repository root [AGENTS.md](../AGENTS.md) (React: Effects and useEffectEvent). Decision flow and OK/NG rules: the `coding-standards` skill.
 
 ## Untrusted input: validate with zod at the boundary
 
@@ -87,7 +87,7 @@ All apps wire shared Redis cache via `@publira/next-cache-handlers` in `next.con
 - **`cacheHandler` (singular)**: ISR / Route Handler / `fetch` / `unstable_cache` / optimized images
 - **`cacheHandlers` (plural)**: `"use cache"` / `"use cache: remote"`
 
-Keep **both** enabled. Details and env (`PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP`): root [AGENTS.md](../AGENTS.md) and `packages/next-cache-handlers/README.md`.
+Keep **both** enabled. Details and env (`PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP`): `packages/next-cache-handlers/README.md`.
 
 ## RPC errors: classify by `Code`, never by message text
 
@@ -507,7 +507,7 @@ Barrel vs subpath is existing drift, not a rule — follow whatever the surround
 
 - **Missing icon** → wrap it in `packages/icons` (component, `exports` subpath, `tsdown` entry, `index.ts` re-export, test). Steps: `packages/icons/README.md`.
 - **Sizing** → lucide is always `viewBox="0 0 24 24"` at `strokeWidth={2}`. Pick a `size-*` / `h-* w-*` class that suits the layout and leave the rest at lucide's defaults. Do not carry dimensions or stroke widths over from markup you are deleting.
-- **A genuine non-icon SVG** (decorative artwork, a chart, a generated image) is a real exception. Add its path to the grep step's exclusions in `.github/workflows/ci.yml`, with a comment saying why — the same way the `Date` boundary is handled in root [AGENTS.md](../AGENTS.md).
+- **A genuine non-icon SVG** (decorative artwork, a chart, a generated image) is a real exception. Add its path to the grep step's exclusions in `.github/workflows/ci.yml`, with a comment saying why — the same way the `Date` boundary exemptions are handled in `oxlint.config.ts`.
 
 ## Global unmatched 404 (`global-not-found.tsx`)
 
