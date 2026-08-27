@@ -365,13 +365,14 @@ The UI renders in `ja` or `en`, defaulting to `ja`; every unknown value falls ba
 
 | Layer | Where it lives |
 | --- | --- |
-| Locale parsing, catalog loading, `{name}` interpolation | `@publira/i18n` (`parseLocale` / `parseLocaleCookie` / `loadMessages` / `getMessage`) |
+| Locale parsing, catalog loading, `{$name}` interpolation | `@publira/i18n` (`parseLocale` / `parseLocaleCookie` / `loadMessages` / `getMessage`) |
 | The messages themselves | The repo-root `locales/{locale}.json`, shared with Go and Flutter |
 | Where the locale is resolved from | The `publira_locale` cookie in `web-platform` / `web-admin`; the URL's `locale` segment in `web-host` |
 | What a missing cookie falls through to | The platform default locale in `web-platform` ([#1047](https://github.com/publira/publira/issues/1047)), the tenant default locale in `web-admin` ([#1046](https://github.com/publira/publira/issues/1046)). `ja` only when neither can be read |
 
 The shared layer never reads request state: `cookies()` and `next/root-params` stay in the app.
 
+- **A message is a MessageFormat 2 simple message.** Interpolation is `{$name}`, a literal brace is `\{` / `\}`, and a literal backslash is `\\` — the Unicode standard's syntax ([UTS #35 Part 9](https://www.unicode.org/reports/tr35/tr35-messageFormat.html)), not a house format. Selection (`.match`), functions (`:number` / `:datetime`), markup, and declarations are rejected by `pnpm locales:check`, so a plural that only works for one language has to be a separate key for now. Dates and numbers are formatted by `@publira/utils` with the resolved time zone and passed in already rendered. Full rules: `locales/README.md`
 - **`cookies()` inside `<Suspense>` only.** Under Cache Components a locale read above a boundary costs that route its static shell. Keep the read in the app's `lib/locale.ts` (`getPlatformLocale()` / `getLocale()`), and call it from a component that sits inside a boundary
 - **Never read the locale inside `"use cache"`.** Pass it in as an argument so it becomes part of the cache key
 - **Waiting on a message means `Suspense` + `Skeleton`.** The static shell is locale-independent

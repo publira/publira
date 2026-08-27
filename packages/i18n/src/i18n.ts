@@ -16,9 +16,12 @@ import {
   getLocales,
 } from "./gen/locale-registry";
 import type { Locale } from "./gen/locale-registry";
+import { formatSimpleMessage } from "./mf2";
+import type { MessageValues } from "./mf2";
 
 export { getLocales } from "./gen/locale-registry";
 export type { Locale } from "./gen/locale-registry";
+export type { MessageValues } from "./mf2";
 
 /** Fallback when the value is missing or not in {@link getLocales}. */
 export const DEFAULT_LOCALE: Locale = "ja";
@@ -58,11 +61,6 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 export const LOCALE_LANG_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${LOCALE_COOKIE_NAME}=([^;]*)/);if(!m){return}var l=decodeURIComponent(m[1]).trim();if(${JSON.stringify(getLocales())}.indexOf(l)<0){return}document.documentElement.lang=l}catch(e){}})()`;
 
 const LOCALE_SET: ReadonlySet<string> = new Set(getLocales());
-
-/** Named `{placeholder}` only — no ICU, no plurals. */
-const PLACEHOLDER_RE = /\{[A-Za-z_][A-Za-z0-9_]*\}/gu;
-
-export type MessageValues = Record<string, number | string>;
 
 /**
  * Nested catalog. Leaves are the message strings. A dotted key such as
@@ -208,27 +206,35 @@ const lookupMessage = (
 };
 
 /**
- * Substitute `{name}` placeholders in an already-resolved message.
+ * Format an already-resolved message as a MessageFormat 2 simple message:
+ * `{$name}` placeholders are substituted from `values`, and `\\`, `\{`, `\}`
+ * become the characters they escape.
  *
  * {@link getMessage} is the normal entry point. This one is for the rare
  * caller that holds a template rather than a catalog — a Client Component
  * handed one resolved string whose numbers are only known in the browser —
- * so the substitution rules stay in one place instead of being re-implemented
- * against the same `{name}` shape.
+ * so the syntax stays in one place instead of being re-implemented against
+ * the same shape.
+ *
+ * A message that is not a well-formed simple message throws outside
+ * production, the way an unknown key does. In production the source is
+ * returned: the spec lets the formatting context supply the fallback string
+ * for a message it could not parse, and a stale client should not take the
+ * page down.
  */
 export const formatMessage = (
   template: string,
   values?: MessageValues
 ): string => {
-  if (!values) {
-    return template;
-  }
+  try {
+    return formatSimpleMessage(template, values);
+  } catch (error) {
+    if (process.env.NODE_ENV === "production") {
+      return template;
+    }
 
-  return template.replaceAll(PLACEHOLDER_RE, (match) => {
-    const name = match.slice(1, -1);
-    const value = values[name];
-    return value === undefined ? match : String(value);
-  });
+    throw error;
+  }
 };
 
 const missingMessage = (key: string): string => {
@@ -240,7 +246,7 @@ const missingMessage = (key: string): string => {
 };
 
 /**
- * Return the string for `key`, with `{name}` replaced from `values`.
+ * Return the string for `key`, with `{$name}` replaced from `values`.
  *
  * Unknown keys throw outside production so a typo fails the request in
  * development. In production the key itself is returned, so a stale client

@@ -12,7 +12,7 @@
 | `ja.json` | 正本。キーと入れ子の形はここが基準 |
 | `en.json` | `ja.json` と同じキー。訳だけが違う |
 
-葉は必ず文字列です。補間は `{name}` のみです（ICU / 複数形は使いません）。
+葉は必ず文字列です。
 
 ```json
 {
@@ -23,6 +23,34 @@
 ```
 
 キー `"errors.validation"` は入れ子 `errors.validation` を指します。トップレベルに同じ名前の文字列キーがあるときは、そちらの完全一致が勝ります。
+
+## メッセージ構文
+
+葉は Unicode MessageFormat 2.0（[UTS #35 Part 9](https://www.unicode.org/reports/tr35/tr35-messageFormat.html) 48.2、Stable）の **simple message** です。ベンダー独自の書式ではなく Unicode の標準なので、Go と Flutter が同じカタログを読むときも同じ定義を参照できます。
+
+書けるのは本文のテキスト、エスケープ、変数参照の 3 つだけです。
+
+| 書きたいもの | 書き方 | 文言 | JSON に書くとき |
+| --- | --- | --- | --- |
+| 値の差し込み | `{$name}` | `通知、未読{$count}件` | `"通知、未読{$count}件"` |
+| 波括弧そのもの | `\{` / `\}` | `検索構文は \{query\} です` | `"検索構文は \\{query\\} です"` |
+| バックスラッシュそのもの | `\\` | `C:\\Users` | `"C:\\\\Users"` |
+
+右の 2 列が違うのは、JSON 文字列でもバックスラッシュがエスケープ文字だからです。MF2 のエスケープ 1 つにつき、ファイルにはバックスラッシュを 2 つ書きます。
+
+変数名は `[A-Za-z_][A-Za-z0-9_]*` です。MF2 の `name` はもっと広い範囲を認めますが、名前は `getMessage` に渡す `Record` のキーであり、Go と Flutter も同じ名前を走査するので、カタログ側で ASCII に絞っています。
+
+値が渡らなかった変数は、MF2 の fallback である `{$name}` のまま出力されます。文の残りは失われません。日時と数値の整形は `@publira/utils` の `formatDateTime` / `formatDate` が表示タイムゾーンを受け取って行い、整形済みの文字列を `{$name}` に渡します。
+
+### 使わないもの
+
+選択（`.match`）と関数（`:number` / `:datetime`）、マークアップ、宣言（`.input` / `.local`）、引用パターン（`{{…}}`）は使いません。`@publira/i18n` はこれらを構文エラーとして拒否します。MF2 の実装は JavaScript 以外にはまだ薄く、Dart には存在しないため、3 つの読み手が手書きで揃えられる大きさに構文を保っています。
+
+そのため、先頭が `.` で始まる文言は書けません（MF2 では複合メッセージの宣言と区別できないため）。読点や記号で始めるか、文頭に別の語を置いてください。
+
+### 検査
+
+`pnpm locales:check` が全ロケールの全葉をパースし、simple message として妥当でない葉をキー付きで報告します。
 
 ## 読み方
 
@@ -73,7 +101,8 @@ raw, err := files.ReadFile(locale + ".json")
 
 1. `ja.json` にキーを足す
 2. 同じキーを `en.json` にも足す（訳が未定なら英語でも、空文字にはしない）
-3. `pnpm --filter @publira/i18n typecheck` が通ることを確認する（`ExactCatalog` の検査が `packages/i18n` のテストから掛かる）
+3. `pnpm locales:check` が通ることを確認する（葉が simple message として妥当か検査される）
+4. `pnpm --filter @publira/i18n typecheck` が通ることを確認する（`ExactCatalog` の検査が `packages/i18n` のテストから掛かる）
 
 ## ロケールを増やすとき
 

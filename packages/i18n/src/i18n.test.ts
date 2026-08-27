@@ -23,14 +23,14 @@ import {
 import type { ExactCatalog, Locale, MessageTree } from "./i18n";
 
 const fixture = {
-  greeting: "こんにちは、{name}さん",
+  greeting: "こんにちは、{$name}さん",
   nav: {
     home: "ホーム",
   },
 } as const;
 
 const enFixture = {
-  greeting: "Hello, {name}",
+  greeting: "Hello, {$name}",
   nav: {
     home: "Home",
   },
@@ -218,23 +218,40 @@ describe("loadMessages", () => {
 });
 
 describe("formatMessage", () => {
-  it("substitutes {name} placeholders in a template", () => {
+  it("substitutes {$name} placeholders in a template", () => {
     expect(
-      formatMessage("{first} / {total}ページ", { first: 3, total: 12 })
+      formatMessage("{$first} / {$total}ページ", { first: 3, total: 12 })
     ).toBe("3 / 12ページ");
   });
 
-  it("leaves a placeholder in place when the value is missing", () => {
-    expect(formatMessage("{first} / {total}", { first: 3 })).toBe(
-      "3 / {total}"
+  it("unescapes the reserved characters", () => {
+    expect(formatMessage("\\{ {$count} \\}", { count: 2 })).toBe("{ 2 }");
+    expect(formatMessage("100\\\\200")).toBe("100\\200");
+  });
+
+  it("falls back to the variable reference when the value is missing", () => {
+    expect(formatMessage("{$first} / {$total}", { first: 3 })).toBe(
+      "3 / {$total}"
     );
-    expect(formatMessage("{first} / {total}")).toBe("{first} / {total}");
+    expect(formatMessage("{$first} / {$total}")).toBe("{$first} / {$total}");
+  });
+
+  it("throws on a message that is not a simple message", () => {
+    expect(() => formatMessage("{count}")).toThrow(
+      "Invalid MessageFormat 2 simple message"
+    );
+  });
+
+  it("returns the source for an unparseable message in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    expect(formatMessage("{count}")).toBe("{count}");
+    vi.unstubAllEnvs();
   });
 });
 
 describe("getMessage", () => {
   it("returns the string for a top-level key", () => {
-    expect(getMessage(fixture, "greeting")).toBe("こんにちは、{name}さん");
+    expect(getMessage(fixture, "greeting")).toBe("こんにちは、{$name}さん");
   });
 
   it("walks dotted keys into nested objects", () => {
@@ -249,7 +266,7 @@ describe("getMessage", () => {
     expect(getMessage(catalog, "nav.home")).toBe("フラット");
   });
 
-  it("interpolates {name} placeholders only", () => {
+  it("interpolates {$name} placeholders only", () => {
     expect(getMessage(fixture, "greeting", { name: "山田" })).toBe(
       "こんにちは、山田さん"
     );
@@ -258,9 +275,9 @@ describe("getMessage", () => {
     );
   });
 
-  it("leaves a placeholder in place when the value is missing", () => {
-    expect(getMessage(fixture, "greeting", {})).toBe("こんにちは、{name}さん");
-    expect(getMessage(fixture, "greeting")).toBe("こんにちは、{name}さん");
+  it("falls back to the variable reference when the value is missing", () => {
+    expect(getMessage(fixture, "greeting", {})).toBe("こんにちは、{$name}さん");
+    expect(getMessage(fixture, "greeting")).toBe("こんにちは、{$name}さん");
   });
 
   it("reads the shared root catalogs by dotted key", () => {
