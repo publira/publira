@@ -107,11 +107,6 @@ const EpisodeContent = async (
         className="border-b border-border/70"
       >
         <SectionErrorBoundary
-          description={
-            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <Message message="host.errors.page_description" />
-            </Suspense>
-          }
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="host.episode.body_error" />

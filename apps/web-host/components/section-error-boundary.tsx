@@ -8,8 +8,6 @@ import { SectionErrorCatch } from "./section-error-catch";
 
 interface SectionErrorBoundaryProps {
   children: ReactNode;
-  /** What the reader can do about it, when the section says it better. */
-  description?: ReactNode;
   /** Names the section that is missing: 「おすすめ作品を表示できませんでした」. */
   title: ReactNode;
 }
@@ -19,10 +17,11 @@ interface SectionErrorBoundaryProps {
  * `<Suspense>` with it, so `retry()` puts that section's own skeleton back
  * while the re-run is in flight.
  *
- * `title` and `description` are nodes the section passes in, because they name
- * what that section was showing. The retry button and the digest label say the
- * same thing at every boundary — they belong to the frame, not to the section —
- * so this component resolves them from the catalog itself.
+ * `title` is the one node the section passes in, because it names what that
+ * section was showing. What the reader can do about it, the retry button, and
+ * the digest label say the same thing at every boundary — they belong to the
+ * frame, not to the section — so this component resolves them from the catalog
+ * itself.
  *
  * This is the component-level counterpart of `(site)/error.tsx`: a failure that
  * makes the whole route meaningless still belongs to that one. Pages used to
@@ -35,11 +34,14 @@ interface SectionErrorBoundaryProps {
  */
 export const SectionErrorBoundary = ({
   children,
-  description,
   title,
 }: SectionErrorBoundaryProps) => (
   <SectionErrorCatch
-    description={description}
+    description={
+      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+        <Message message="host.errors.page_description" />
+      </Suspense>
+    }
     digestLabel={
       <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
         <Message message="host.common.error_id" />

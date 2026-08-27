@@ -118,11 +118,6 @@ const SeriesDetailContent = async (
             <div className="mb-2 flex flex-wrap items-start justify-between gap-4">
               <h1 className="font-serif text-4xl font-bold">{series.title}</h1>
               <SectionErrorBoundary
-                description={
-                  <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-                    <Message message="host.errors.page_description" />
-                  </Suspense>
-                }
                 title={
                   <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                     <Message message="host.follow.control_error" />

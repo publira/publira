@@ -322,11 +322,6 @@ const AuthorDetailContent = async ({
                 {author.name}
               </h1>
               <SectionErrorBoundary
-                description={
-                  <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-                    <Message message="host.errors.page_description" />
-                  </Suspense>
-                }
                 title={
                   <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                     <Message message="host.follow.control_error" />

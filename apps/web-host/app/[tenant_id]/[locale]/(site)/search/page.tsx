@@ -268,11 +268,6 @@ const SearchPage = ({ searchParams }: SearchPageProps) => (
     </div>
 
     <SectionErrorBoundary
-      description={
-        <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-          <Message message="host.errors.page_description" />
-        </Suspense>
-      }
       title={
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
           <Message message="host.search.error" />

@@ -568,11 +568,6 @@ const Page = () => (
         </LocaleLink>
       </div>
       <SectionErrorBoundary
-        description={
-          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="host.errors.page_description" />
-          </Suspense>
-        }
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message={SECTION_TITLES.recommended} />
@@ -592,11 +587,6 @@ const Page = () => (
         </Suspense>
       </h2>
       <SectionErrorBoundary
-        description={
-          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="host.errors.page_description" />
-          </Suspense>
-        }
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message={SECTION_TITLES.newEpisodes} />
@@ -619,11 +609,6 @@ const Page = () => (
         </Suspense>
       </h2>
       <SectionErrorBoundary
-        description={
-          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="host.errors.page_description" />
-          </Suspense>
-        }
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message={SECTION_TITLES.updated} />
@@ -653,11 +638,6 @@ const Page = () => (
         </LocaleLink>
       </div>
       <SectionErrorBoundary
-        description={
-          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="host.errors.page_description" />
-          </Suspense>
-        }
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message={SECTION_TITLES.labels} />
@@ -687,11 +667,6 @@ const Page = () => (
         </LocaleLink>
       </div>
       <SectionErrorBoundary
-        description={
-          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="host.errors.page_description" />
-          </Suspense>
-        }
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message={SECTION_TITLES.authors} />
