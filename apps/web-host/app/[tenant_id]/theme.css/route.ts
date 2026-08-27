@@ -2,10 +2,10 @@ import { isPlaceholderStaticParam } from "@publira/utils/static-param-placeholde
 import { toPubliraThemeCssText } from "@publira/utils/theme-css-variables";
 import type { NextRequest } from "next/server";
 
-import { getTenantSiteInfo } from "#lib/tenant";
+import { getTenantTheme } from "#lib/tenant";
 import { isTenantIdFormat } from "#lib/tenant-id-format";
 
-/** Browser / edge short cache; Next `"use cache"` + site tag handles invalidation. */
+/** Browser / edge short cache; Next `"use cache"` + theme tag handles invalidation. */
 const CACHE_CONTROL =
   "public, max-age=30, s-maxage=30, stale-while-revalidate=60";
 
@@ -33,6 +33,6 @@ export const GET = async (
     return cssResponse(toPubliraThemeCssText(null));
   }
 
-  const info = await getTenantSiteInfo(tenantId.trim());
-  return cssResponse(toPubliraThemeCssText(info?.theme ?? null));
+  const theme = await getTenantTheme(tenantId.trim());
+  return cssResponse(toPubliraThemeCssText(theme));
 };

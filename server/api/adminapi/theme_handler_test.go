@@ -331,6 +331,19 @@ func TestGetTenantThemeDatabaseErrorIsHidden(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestThemeRevalidateTags(t *testing.T) {
+	if tags := themeRevalidateTags(" tenant-id "); len(tags) != 1 || tags[0] != "tenant:tenant-id:theme" {
+		t.Fatalf("themeRevalidateTags() = %v, want [tenant:tenant-id:theme]", tags)
+	}
+}
+
+func TestThemeBrandingRevalidateTags(t *testing.T) {
+	tags := themeBrandingRevalidateTags(" tenant-id ")
+	if len(tags) != 2 || tags[0] != "tenant:tenant-id:theme" || tags[1] != "tenant:tenant-id:site" {
+		t.Fatalf("themeBrandingRevalidateTags() = %v, want [tenant:tenant-id:theme tenant:tenant-id:site]", tags)
+	}
+}
+
 func TestUpsertTenantThemeValidatesColorCode(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()

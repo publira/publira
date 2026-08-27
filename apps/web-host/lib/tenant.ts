@@ -9,7 +9,7 @@ import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";
 
 import { apiClient } from "./api-client";
-import { applyCacheTag, tenantSiteTag } from "./cache-tags";
+import { applyCacheTag, tenantSiteTag, tenantThemeTag } from "./cache-tags";
 import { loadHostMessages } from "./messages";
 
 /**
@@ -46,7 +46,6 @@ export interface TenantSiteInfo {
   publicId: string;
   siteDescription?: string;
   siteTagline?: string;
-  theme: TenantThemeColors;
   /** IANA zone every tenant-facing wall clock on the public site is rendered in. */
   timeZone: string;
 }
@@ -158,7 +157,6 @@ export const getTenantSiteInfo = async (
       publicId,
       siteDescription: trimmed(response.siteDescription),
       siteTagline: trimmed(response.siteTagline),
-      theme: resolveTenantThemeColors(response.theme),
       // The server resolves the zone before answering (`tenanttz.Resolve`), so
       // the fallback only covers a response shape that predates the field.
       timeZone: nonEmpty(response.timezone) ?? DEFAULT_TIME_ZONE,
@@ -168,6 +166,43 @@ export const getTenantSiteInfo = async (
       // Not "no such tenant" but "we could not ask". Same `null` for the reader,
       // and the entry is dropped so the chrome recovers on the next request.
       console.warn("[web-host] getTenantSiteInfo failed", error);
+      dropFailedCacheEntry();
+    }
+    return null;
+  }
+};
+
+/**
+ * Reads only the colors used by `GET /theme.css`. It has its own cache entry
+ * and tag, rather than sharing site chrome's entry, so an admin theme save can
+ * invalidate this stylesheet's source without relying on `tenant:<id>:site`.
+ */
+export const getTenantTheme = async (
+  tenantId: string
+): Promise<TenantThemeColors | null> => {
+  "use cache";
+  cacheLife({ stale: 30 });
+
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId) {
+    return null;
+  }
+
+  applyCacheTag(tenantThemeTag(normalizedTenantId));
+
+  try {
+    const response = await apiClient.tenant.getTenant({
+      tenant: { tenantId: normalizedTenantId },
+    });
+    if (!trimmed(response.tenantPublicId)) {
+      return null;
+    }
+    return resolveTenantThemeColors(response.theme);
+  } catch (error) {
+    if (!isExpectedNullableRpcError(error)) {
+      // A cached fill must return a value. Drop the failed entry so the next
+      // stylesheet request can recover as soon as the public API does.
+      console.warn("[web-host] getTenantTheme failed", error);
       dropFailedCacheEntry();
     }
     return null;

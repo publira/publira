@@ -20,6 +20,14 @@ export const tenantLabelsTag = (tenantId: string) =>
 export const tenantSiteTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:site`;
 
+/**
+ * The dynamic `/theme.css` Route Handler consumes this tag through
+ * `getTenantTheme()`. Keep it distinct from site chrome, so a theme save has
+ * an explicit, auditable invalidation target.
+ */
+export const tenantThemeTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:theme`;
+
 export const tenantPagesTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:pages`;
 

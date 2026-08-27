@@ -5,6 +5,7 @@ import {
   getTenantDefaultLocale,
   getTenantDisplayTimeZone,
   getTenantSiteInfo,
+  getTenantTheme,
 } from "./tenant";
 
 const { mockCacheLife, mockCacheTag, mockGetTenant } = vi.hoisted(() => ({
@@ -53,7 +54,25 @@ const brandingVariant = (url: string) => ({
 
 describe("tenant", () => {
   beforeEach(() => {
+    mockCacheLife.mockReset();
+    mockCacheTag.mockReset();
     mockGetTenant.mockReset();
+  });
+
+  it("theme.css 用のテーマ読取に専用タグを付ける", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      theme: { primaryColor: "#112233" },
+    });
+
+    await expect(getTenantTheme(" TENANT_001 ")).resolves.toMatchObject({
+      primaryColor: "#112233",
+    });
+
+    expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT_001:theme");
+    expect(mockGetTenant).toHaveBeenCalledWith({
+      tenant: { tenantId: "TENANT_001" },
+    });
   });
 
   it("公開 API のタイムゾーンをサイト情報に載せる", async () => {

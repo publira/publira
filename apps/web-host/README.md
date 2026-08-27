@@ -50,6 +50,12 @@ pnpm dev
 
 公開時の `revalidateTag`（`/api/revalidate`）は Redis 上のタグ時刻と整合します。
 
+### テーマ CSS の更新確認
+
+`/theme.css` は `tenant:{id}:theme` を持つ専用の `"use cache"` 読取です。テーマ保存時に admin API がこのタグを再検証するため、公開サイトのテーマ更新が site chrome のキャッシュタグに依存しません。アイコン／ロゴを更新した場合は、テーマタグと `tenant:{id}:site` の両方を再検証します。
+
+手動確認は、テーマの色を保存後に公開ドメインの `GET /theme.css` を確認します。既存のブラウザ／共有キャッシュは `Cache-Control` の短い TTL（`max-age=30`, `s-maxage=30`, `stale-while-revalidate=60`）までは旧レスポンスを返せるため、DevTools のキャッシュ無効化を使うか TTL の経過後に再読み込みしてください。レスポンス内の `--publira-color-primary` などが保存した色へ変わることを確認します。失敗した再検証は admin API の `failed to request next revalidate after theme upsert` ログに tenant ID・ドメイン・タグとともに記録されます。
+
 ### 画像配信 (`next/image`)
 
 `next.config.ts` の `images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` で、`next/image` が image-server の Manael 変換を直接使います。`/images/...` を読むときだけ要求幅を `w` として渡し、WebP / AVIF はブラウザの `Accept` で決まります。`blob:` の一時プレビューなど image-server を経由しない `<Image>` は `unoptimized` のままにしてください。ローダーの実装と仕様は [`packages/utils/README.md`](../../packages/utils/README.md) にあります。

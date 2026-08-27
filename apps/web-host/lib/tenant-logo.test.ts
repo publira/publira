@@ -1,4 +1,3 @@
-import { DEFAULT_TENANT_THEME_COLORS } from "@publira/utils/theme-css-variables";
 import { describe, expect, it } from "vitest";
 
 import type { TenantImageVariant, TenantSiteInfo } from "./tenant";
@@ -10,7 +9,6 @@ const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   domain: "example.test",
   name: "テナント",
   publicId: "TENANT_PUBLIC",
-  theme: DEFAULT_TENANT_THEME_COLORS,
   timeZone: "Asia/Tokyo",
   ...overrides,
 });
