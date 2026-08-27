@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { withAdminSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   reorderEpisodeImages,
   updateEpisodePublishSchedule,
@@ -111,6 +112,7 @@ export const updateEpisodeScheduleAction = async (
   _prevState: EpisodeEditActionState,
   formData: FormData
 ): Promise<EpisodeEditActionState> => {
+  await assertSameOrigin();
   const parsed = scheduleFormSchema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
@@ -150,6 +152,7 @@ export const uploadEpisodePagesAction = async (
   _prevState: EpisodeEditActionState,
   formData: FormData
 ): Promise<EpisodeEditActionState> => {
+  await assertSameOrigin();
   const parsed = uploadPagesFormSchema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
@@ -240,6 +243,7 @@ export const uploadEpisodePagesAction = async (
 export const reorderEpisodeImagesAction = async (formData: FormData) => {
   "use server";
 
+  await assertSameOrigin();
   const parsed = reorderImagesSchema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAssertSameOrigin,
   mockGetAccessToken,
   mockGetTenantDisplayTimeZone,
   mockRedirect,
@@ -8,6 +9,7 @@ const {
   mockUpdateEpisodePublishSchedule,
   mockUploadEpisodePages,
 } = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
@@ -19,6 +21,8 @@ const {
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
 }));
+
+vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/session", () => ({
   getAccessToken: mockGetAccessToken,

@@ -12,6 +12,7 @@ import {
   redirectToLoginIfSessionRejected,
   withAdminSessionReauth,
 } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { listAllEpisodes } from "#lib/episode";
 import {
   optionalTrimmedString,
@@ -79,6 +80,7 @@ export const issueAccessTicketAction = async (
   _prevState: IssueAccessTicketActionState,
   formData: FormData
 ): Promise<IssueAccessTicketActionState> => {
+  await assertSameOrigin();
   const parsed = issueTicketSchema.safeParse(
     toFormDataInput(formData, {
       episodePublicId: { kind: "value", name: "episode_public_id" },
@@ -132,6 +134,7 @@ export const listEpisodeOptionsAction = async (
   tenantId: string,
   seriesPublicId: string
 ): Promise<ListTicketEpisodeOptionsResult> => {
+  // This Server Action only reads episode options; #600 applies to mutations.
   const parsed = listEpisodeOptionsSchema.safeParse({
     seriesPublicId,
     tenantId,
@@ -170,6 +173,7 @@ export const revokeAccessTicketAction = async (
   _prevState: RevokeAccessTicketActionState,
   formData: FormData
 ): Promise<RevokeAccessTicketActionState> => {
+  await assertSameOrigin();
   const input = toFormDataInput(formData, {
     publicId: { kind: "value", name: "public_id" },
     tenantId: { kind: "value", name: "tenant_id" },

@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import { requestAdminEmailChange } from "#lib/admin-auth";
 import { withAdminSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   sendTenantSmtpTestEmail,
   updateTenantEmailSettings,
@@ -303,6 +304,7 @@ export const updateSiteSettingsAction = async (
   _prevState: SiteSettingsActionState,
   formData: FormData
 ): Promise<SiteSettingsActionState> => {
+  await assertSameOrigin();
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const copyrightText = String(formData.get("copyright_text") ?? "");
   const siteDescription = String(formData.get("site_description") ?? "");
@@ -341,6 +343,7 @@ export const updateTenantThemeSettingsAction = async (
   _prevState: ThemeSettingsActionState,
   formData: FormData
 ): Promise<ThemeSettingsActionState> => {
+  await assertSameOrigin();
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   if (!tenantId) {
     return {
@@ -390,6 +393,7 @@ export const updateTenantIconAction = async (
   _prevState: TenantIconActionState,
   formData: FormData
 ): Promise<TenantIconActionState> => {
+  await assertSameOrigin();
   const parsed = tenantIconSchema.safeParse(
     toFormDataInput(formData, {
       icon: { kind: "file", name: "icon" },
@@ -444,6 +448,7 @@ export const updateTenantLogoAction = async (
   _prevState: TenantLogoActionState,
   formData: FormData
 ): Promise<TenantLogoActionState> => {
+  await assertSameOrigin();
   const parsed = tenantLogoSchema.safeParse(
     toFormDataInput(formData, {
       intent: { kind: "value", name: "intent" },
@@ -498,6 +503,7 @@ export const updateTenantTimezoneAction = async (
   _prevState: TenantTimezoneActionState,
   formData: FormData
 ): Promise<TenantTimezoneActionState> => {
+  await assertSameOrigin();
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   if (!tenantId) {
     return {
@@ -546,6 +552,7 @@ export const updateTenantDefaultLocaleAction = async (
   _prevState: TenantDefaultLocaleActionState,
   formData: FormData
 ): Promise<TenantDefaultLocaleActionState> => {
+  await assertSameOrigin();
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   if (!tenantId) {
     return {
@@ -648,6 +655,7 @@ export const updateTenantPaymentSettingsAction = async (
   _prevState: TenantPaymentSettingsFormState,
   formData: FormData
 ): Promise<TenantPaymentSettingsFormState> => {
+  await assertSameOrigin();
   const parsed = tenantPaymentSettingsSchema.safeParse(
     toFormDataInput(formData, tenantPaymentSettingsFormFields)
   );
@@ -692,6 +700,7 @@ export const updateTenantEmailSettingsAction = async (
   _prevState: TenantEmailSettingsFormState,
   formData: FormData
 ): Promise<TenantEmailSettingsFormState> => {
+  await assertSameOrigin();
   const input = parseTenantSmtpFormData(formData);
 
   if (!input.tenantId) {
@@ -722,6 +731,7 @@ export const sendTenantSmtpTestEmailAction = async (
   _prevState: TenantSmtpTestFormState,
   formData: FormData
 ): Promise<TenantSmtpTestFormState> => {
+  await assertSameOrigin();
   const input = parseTenantSmtpFormData(formData);
 
   if (!input.tenantId) {
@@ -752,6 +762,7 @@ export const requestEmailChangeAction = async (
   _prevState: EmailChangeActionState,
   formData: FormData
 ): Promise<EmailChangeActionState> => {
+  await assertSameOrigin();
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const currentEmail = String(formData.get("current_email") ?? "").trim();
   const newEmail = String(formData.get("new_email") ?? "").trim();
