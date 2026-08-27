@@ -220,7 +220,7 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditSeriesTabs params={params} searchParams={searchParams} />
         </Suspense>
-        <SectionErrorBoundary title="シリーズを表示できませんでした">
+        <SectionErrorBoundary title="admin.series.detail_error">
           <Suspense fallback={<EditSeriesFormSkeleton />}>
             <EditSeriesFormData params={params} searchParams={searchParams} />
           </Suspense>

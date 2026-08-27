@@ -105,7 +105,7 @@ const SettingsEmailPage = () => (
     <AdminPageContent>
       <div className="grid gap-6">
         <SettingsTabNav current="email" />
-        <SectionErrorBoundary title="メール設定を表示できませんでした">
+        <SectionErrorBoundary title="admin.settings.email_error">
           <Suspense fallback={<SettingsEmailFormSkeleton />}>
             <SettingsEmailForm />
           </Suspense>

@@ -40,10 +40,10 @@ const TenantError = ({
   // boundary owns the `<main>` element itself.
   <main>
     <ErrorScreen
-      description="管理コンソールの読み込みに失敗しました。時間をおいて再試行してください。"
+      description="admin.errors.root_description"
       digest={error.digest}
       retry={retry}
-      title="管理コンソールを表示できませんでした"
+      title="admin.errors.root_title"
     />
   </main>
 );

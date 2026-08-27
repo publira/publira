@@ -99,7 +99,7 @@ const SettingsThemePage = () => (
     <AdminPageContent>
       <div className="grid gap-6">
         <SettingsTabNav current="theme" />
-        <SectionErrorBoundary title="テーマを表示できませんでした">
+        <SectionErrorBoundary title="admin.settings.theme_error">
           <Suspense fallback={<SettingsThemeFormsSkeleton />}>
             <SettingsThemeForms />
           </Suspense>

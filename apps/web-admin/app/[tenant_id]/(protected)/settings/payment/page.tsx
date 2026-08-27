@@ -106,7 +106,7 @@ const SettingsPaymentPage = () => (
     <AdminPageContent>
       <div className="grid gap-6">
         <SettingsTabNav current="payment" />
-        <SectionErrorBoundary title="決済設定を表示できませんでした">
+        <SectionErrorBoundary title="admin.settings.payment_error">
           <Suspense fallback={<SettingsPaymentFormSkeleton />}>
             <SettingsPaymentForm />
           </Suspense>

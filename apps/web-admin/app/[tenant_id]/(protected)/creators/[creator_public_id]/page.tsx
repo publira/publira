@@ -120,7 +120,7 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
     </AdminPageHeader>
     <AdminPageContent>
       <FlashToast title="著者を作成しました。" />
-      <SectionErrorBoundary title="著者を表示できませんでした">
+      <SectionErrorBoundary title="admin.creators.detail_error">
         <Suspense fallback={<EditCreatorFormSkeleton />}>
           <EditCreatorFormData params={params} />
         </Suspense>

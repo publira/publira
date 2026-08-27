@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { DEFAULT_LOCALE, getMessage, LOCALE_LANG_SCRIPT } from "@publira/i18n";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -8,7 +8,7 @@ import { tenant_id } from "next/root-params";
 import type { ReactNode } from "react";
 
 import { tenantIdFormSchema } from "#lib/auth-input";
-import { loadAdminMessages } from "#lib/locale";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantName } from "#lib/public-api";
 
 import "../globals.css";
@@ -19,21 +19,29 @@ export const generateStaticParams = () =>
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await tenant_id();
   if (typeof tenantId !== "string") {
-    return { title: "管理画面" };
+    const messages = await loadAdminMessages(DEFAULT_LOCALE);
+
+    return { title: getMessage(messages, "admin.shell.title") };
   }
   guardPlaceholder(tenantId);
 
-  const messages = await loadAdminMessages(DEFAULT_LOCALE);
+  // The title is copy, so it follows the cookie like every other string. It
+  // costs the shell nothing: metadata is resolved in its own pass and streamed
+  // into the document, so this read stays out of the route's static shell.
+  const locale = await getLocale(tenantId);
+  const messages = await loadAdminMessages(locale);
   const parsed = tenantIdFormSchema(messages).safeParse(tenantId);
   if (!parsed.success) {
-    return { title: "管理画面" };
+    return { title: getMessage(messages, "admin.shell.title") };
   }
 
   // `getTenantName` degrades to `null` when the public API is unavailable, so
   // an outage leaves the console titled 「管理画面」 instead of failing every
   // route (#672).
   const tenantName = await getTenantName(parsed.data);
-  const base = tenantName ? `${tenantName} 管理画面` : "管理画面";
+  const base = tenantName
+    ? getMessage(messages, "admin.shell.tenant_title", { name: tenantName })
+    : getMessage(messages, "admin.shell.title");
 
   return {
     title: {

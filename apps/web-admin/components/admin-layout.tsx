@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import {
   ConsoleHeader,
   ConsoleHeaderUser,
@@ -8,23 +9,26 @@ import {
   ConsoleSidebar,
 } from "@publira/layouts/admin";
 import { StatusChip } from "@publira/ui-components/badge";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { getAdminCurrentUser } from "../lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
+import { getLocale, loadAdminMessages } from "../lib/locale";
 import { logoutAction } from "../lib/logout-action";
-import { countUnreadNotifications } from "../lib/notification";
+import { getTenantRoleLabel } from "../lib/role-labels";
 import { tenantBrandingVariant } from "../lib/tenant-branding-image";
 import type { TenantBrandingImage } from "../lib/tenant-branding-image";
 import { getTenantId } from "../lib/tenant-id";
+import { AdminBrandLogo } from "./admin-brand-logo";
 import { navigation } from "./admin-navigation";
+import { Message } from "./message";
 import {
   NotificationBell,
   NotificationBellSkeleton,
 } from "./notification-bell";
-import { TenantBrandLogo } from "./tenant-brand-logo";
 
 export interface AdminLayoutCurrentUser {
   name: string;
@@ -54,20 +58,23 @@ export const AdminUser = async ({
     redirect("/login");
   }
 
+  const locale = await getLocale(tenantId);
+  const messages = await loadAdminMessages(locale);
+
   return (
     <ConsoleHeaderUser
       accountHref="/settings/account"
       currentUser={result.user}
       logoutAction={logout}
+      roleLabel={getTenantRoleLabel(result.user.role, messages)}
+      userMenuCopy={{
+        accountMenuAriaLabel: getMessage(messages, "admin.shell.account_menu"),
+        accountSettings: getMessage(messages, "admin.shell.account_settings"),
+        logout: getMessage(messages, "admin.shell.logout"),
+        logoutAriaLabel: getMessage(messages, "admin.shell.logout"),
+      }}
     />
   );
-};
-
-export const AdminNotificationBell = async () => {
-  const tenantId = await getTenantId();
-  const unread = await countUnreadNotifications(tenantId);
-
-  return <NotificationBell unreadCount={unread.unreadCount} />;
 };
 
 export const AdminLayout = ({
@@ -80,18 +87,21 @@ export const AdminLayout = ({
   tenant: AdminLayoutTenant;
 }) => {
   const logoVariant = tenantBrandingVariant(logo);
-  const logoAlt = `${tenant.name}のロゴ`;
   const headerBrand = logoVariant ? (
-    <TenantBrandLogo alt={logoAlt} priority variant={logoVariant} />
+    <Suspense fallback={<Skeleton className="h-8 w-[9rem]" />}>
+      <AdminBrandLogo priority tenantName={tenant.name} variant={logoVariant} />
+    </Suspense>
   ) : null;
   // ConsoleSidebar falls back to "Publira" when brandMark is omitted. Tenant
   // chrome always supplies its own mark so the platform name never appears.
   const sidebarBrand = logoVariant ? (
-    <TenantBrandLogo
-      alt={logoAlt}
-      className="h-9 max-w-[11rem]"
-      variant={logoVariant}
-    />
+    <Suspense fallback={<Skeleton className="h-9 w-[11rem]" />}>
+      <AdminBrandLogo
+        className="h-9 max-w-[11rem]"
+        tenantName={tenant.name}
+        variant={logoVariant}
+      />
+    </Suspense>
   ) : (
     <p className="font-serif text-xl font-semibold tracking-tight text-foreground">
       {tenant.name}
@@ -105,10 +115,19 @@ export const AdminLayout = ({
           <div className="grid gap-1">
             <p className="text-sm font-medium text-foreground">{tenant.name}</p>
             <p className="text-xs leading-5 text-muted-foreground">
-              ドメイン: {tenant.domain || "-"}
+              <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
+                <Message
+                  message="admin.shell.domain"
+                  values={{ domain: tenant.domain || "-" }}
+                />
+              </Suspense>
             </p>
           </div>
-          <StatusChip status="success">Online</StatusChip>
+          <StatusChip status="success">
+            <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
+              <Message message="admin.shell.status_online" />
+            </Suspense>
+          </StatusChip>
         </div>
       </ConsoleSidebar>
 
@@ -116,10 +135,14 @@ export const AdminLayout = ({
         <ConsoleHeader
           brandMark={headerBrand}
           contextLabel={tenant.name}
-          eyebrow="現在の運用先"
+          eyebrow={
+            <Suspense fallback={<SkeletonLine className="h-3 w-28" />}>
+              <Message message="admin.shell.eyebrow" />
+            </Suspense>
+          }
         >
           <Suspense fallback={<NotificationBellSkeleton />}>
-            <AdminNotificationBell />
+            <NotificationBell />
           </Suspense>
           <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
             <AdminUser

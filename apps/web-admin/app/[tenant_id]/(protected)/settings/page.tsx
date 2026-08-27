@@ -191,7 +191,7 @@ const SettingsPage = () => (
         <Suspense fallback={<LocaleSectionSkeleton />}>
           <LocaleSection />
         </Suspense>
-        <SectionErrorBoundary title="設定を表示できませんでした">
+        <SectionErrorBoundary title="admin.settings.section_error">
           <Suspense fallback={<SettingsFormsSkeleton />}>
             <SettingsForms />
           </Suspense>

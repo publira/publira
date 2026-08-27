@@ -1,5 +1,7 @@
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import {
   AdminPage,
@@ -10,6 +12,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 
 /**
  * 404 for everything under the signed-in console. `getTenantId()` and the
@@ -58,15 +61,22 @@ const NotFound = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>404 Not Found</AdminPageEyebrow>
-        <AdminPageTitle>ページが見つかりません</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-56" />}>
+            <Message message="admin.not_found.title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          お探しの項目は削除されたか、URL
-          が変更された可能性があります。一覧から選び直してください。
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="admin.not_found.description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/" />} variant="outline">
-          ダッシュボードへ戻る
+          <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+            <Message message="admin.common.back_to_dashboard" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

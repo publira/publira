@@ -13,11 +13,14 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { ClientMessage } from "#components/client-message";
+import type { AdminMessageKey } from "#lib/messages";
 
 interface ErrorScreenProps {
   /** Extra navigation shown next to the retry button. */
   actions?: ReactNode;
-  description: string;
+  /** Catalog key, not a string: the wording is a function of the locale. */
+  description: AdminMessageKey;
   /**
    * `error.digest` from the boundary. Server Component errors are stripped of
    * their message before they reach the client, so the digest is the only
@@ -25,7 +28,7 @@ interface ErrorScreenProps {
    */
   digest?: string;
   retry: () => void;
-  title: string;
+  title: AdminMessageKey;
 }
 
 /**
@@ -35,6 +38,11 @@ interface ErrorScreenProps {
  * It reuses the console page scaffold so the error screen keeps the same
  * heading rhythm as every other console page; the scaffold components are
  * plain markup and hold no server-only code.
+ *
+ * Each boundary names its own failure, so `title` and `description` come from
+ * the caller — as catalog keys, so this screen still resolves every string it
+ * shows. The retry button and the digest prefix are the same everywhere and
+ * are not part of that contract.
  *
  * Retry is wired to `retry()` rather than `reset()`: `reset()` only clears the
  * error state, while `retry()` re-fetches and re-renders the boundary's
@@ -51,18 +59,25 @@ export const ErrorScreen = ({
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Error</AdminPageEyebrow>
-        <AdminPageTitle>{title}</AdminPageTitle>
-        <AdminPageDescription>{description}</AdminPageDescription>
+        <AdminPageTitle>
+          <ClientMessage message={title} />
+        </AdminPageTitle>
+        <AdminPageDescription>
+          <ClientMessage message={description} />
+        </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
-        <Button onClick={() => retry()}>再試行</Button>
+        <Button onClick={() => retry()}>
+          <ClientMessage message="admin.common.retry" />
+        </Button>
         {actions}
       </AdminPageActions>
     </AdminPageHeader>
     {digest ? (
       <AdminPageContent>
         <p className="text-xs text-muted-foreground">
-          エラー ID: <code className="font-mono">{digest}</code>
+          <ClientMessage message="admin.common.error_id" />{" "}
+          <code className="font-mono">{digest}</code>
         </p>
       </AdminPageContent>
     ) : null}

@@ -37,6 +37,9 @@
     "label": "表示言語"
   },
   "admin": {
+    "audit": {
+      "section_error": "監査ログを表示できませんでした"
+    },
     "auth": {
       "accept_invite": {
         "account_exists": "既存アカウントとして承諾します。承諾後はこのメールアドレスでログインできます。",
@@ -123,6 +126,91 @@
         "submit": "ログイン",
         "title": "ログイン"
       }
+    },
+    "common": {
+      "back_to_dashboard": "ダッシュボードへ戻る",
+      "error_id": "エラー ID:",
+      "next": "次へ",
+      "page_empty_description": "表示中に他の操作で削除された可能性があります。前後のページへ移動してください。",
+      "page_empty_title": "このページに表示できる{item}はありません。",
+      "previous": "前へ",
+      "retry": "再試行",
+      "retry_later": "時間をおいて再試行してください。",
+      "roles": {
+        "tenant_admin": "テナント管理者",
+        "tenant_auditor": "監査担当",
+        "tenant_editor": "編集担当",
+        "tenant_member": "メンバー",
+        "tenant_owner": "オーナー",
+        "unset": "権限未設定"
+      }
+    },
+    "creators": {
+      "detail_error": "著者を表示できませんでした"
+    },
+    "dashboard": {
+      "section_error": "ダッシュボードを表示できませんでした"
+    },
+    "errors": {
+      "console_description": "時間をおいて再試行してください。繰り返す場合は、エラー ID を添えて管理者に連絡してください。",
+      "console_title": "画面を表示できませんでした",
+      "root_description": "管理コンソールの読み込みに失敗しました。時間をおいて再試行してください。",
+      "root_title": "管理コンソールを表示できませんでした"
+    },
+    "labels": {
+      "detail_error": "レーベルを表示できませんでした"
+    },
+    "nav": {
+      "access_tickets_description": "限定閲覧チケットの発行と失効",
+      "access_tickets_label": "アクセスチケット",
+      "administration": "管理",
+      "announcements_description": "お知らせ作成と配信の管理",
+      "announcements_label": "お知らせ",
+      "audit_description": "操作履歴の確認と追跡",
+      "audit_label": "監査ログ",
+      "creators_description": "著者情報の管理",
+      "creators_label": "著者",
+      "dashboard_description": "公開準備と編集状況の概況",
+      "dashboard_label": "ダッシュボード",
+      "labels_description": "レーベル情報の管理",
+      "labels_label": "レーベル",
+      "operations": "運用",
+      "pages_description": "個別ページの作成・編集・公開管理",
+      "pages_label": "ページ",
+      "series_description": "作品の基本情報と公開設定",
+      "series_label": "シリーズ",
+      "settings_description": "ブランドと運用ルールの管理",
+      "settings_label": "設定"
+    },
+    "not_found": {
+      "description": "お探しの項目は削除されたか、URL が変更された可能性があります。一覧から選び直してください。",
+      "metadata_description": "お探しの項目は削除されたか、URL が変更された可能性があります。",
+      "title": "ページが見つかりません"
+    },
+    "pages": {
+      "detail_error": "ページを表示できませんでした"
+    },
+    "series": {
+      "detail_error": "シリーズを表示できませんでした"
+    },
+    "settings": {
+      "email_error": "メール設定を表示できませんでした",
+      "payment_error": "決済設定を表示できませんでした",
+      "section_error": "設定を表示できませんでした",
+      "theme_error": "テーマを表示できませんでした"
+    },
+    "shell": {
+      "account_menu": "{name}のアカウントメニュー",
+      "account_settings": "アカウント設定",
+      "domain": "ドメイン: {domain}",
+      "eyebrow": "現在の運用先",
+      "logo_alt": "{name}のロゴ",
+      "logout": "ログアウト",
+      "notifications_none": "通知、未読はありません",
+      "notifications_unread": "通知、未読{count}件",
+      "status_online": "Online",
+      "tenant_title": "{name} 管理画面",
+      "title": "管理画面"
     }
   },
   "host": {

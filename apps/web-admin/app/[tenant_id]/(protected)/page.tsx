@@ -185,7 +185,7 @@ const DashboardPage = () => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <SectionErrorBoundary title="ダッシュボードを表示できませんでした">
+      <SectionErrorBoundary title="admin.dashboard.section_error">
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardContent />
         </Suspense>

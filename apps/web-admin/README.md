@@ -13,9 +13,13 @@
 
 - UI ロケールは Cookie `publira_locale`（`Path=/`、`SameSite=Lax`、`Max-Age` 1 年、`httpOnly` なし）に保存する。URL には出さない。ホストが同じならテナントをまたいでも同じ Cookie を使う
 - 解決順は Cookie → テナント既定言語 → `ja`。対応していない Cookie 値は未設定と同じ扱いでテナント既定言語に落ちる。未認証画面（ログインなど）は admin API を呼べないので Cookie か `ja` のまま
-- 読み取りは `lib/locale.ts` の `getLocale(tenantId?)`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す。Server Actions は `cookies()` を直接読む。テナント既定言語へのフォールバックは `tenantId` を渡したときだけ行い、ログイン画面などは引数無しで `ja` に落ちる
+- 読み取りは `lib/locale.ts` の `getLocale(tenantId?)`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す。`next/root-params` を使えない Server Actions は `cookies()` を直接読むので `tenantId` を渡せない。テナント既定言語へのフォールバックは `tenantId` を渡したときだけ行い、渡してもセッションが無ければ `ja` に落ちる
 - テナント既定言語は `/settings` の「既定言語」カード。`lib/tenant-default-locale.ts` が `"use cache: private"` で読み、保存時に `updateTag` する
 - メッセージはリポジトリルートの [`locales/*.json`](../../locales/README.md) を `loadAdminMessages(locale)` が動的 `import()` する
+- 画面に文言を出すのは `components/message.tsx` の `<Message>`。呼び出し側が 1 文字列ずつ `<Suspense>` で包み、fallback に `Skeleton` を置く。ロケールとカタログの待ちがこのコンポーネントの中に閉じるので、ナビやページ枠の骨格は静的シェルのまま残る。テナント id はルートセグメントから読むため、Cookie 未設定の操作者にもテナント既定言語で表示される
+- `aria-label` や `alt` のように属性へ入る文言はノードとしてストリームできない。`components/admin-brand-logo.tsx` や `components/notification-bell.tsx` のように値を組み立てる側でカタログを解決し、その 1 つのコントロールだけを自前の `<Suspense>` の後ろで待たせる
+- `error.tsx` は Client Component なので `<Message>` を使えない。`components/client-message.tsx` の `<ClientMessage>` が `document.cookie` から Cookie を読む。admin API に届かない境界なので、Cookie 未設定のときはテナント既定言語ではなく `ja` になる
+- 共通のエラー枠（`components/error-screen.tsx`、`components/section-error-boundary.tsx`）は文言そのものではなくカタログのキーを受け取る。境界ごとに違うのは見出しだけで、再試行ボタンとエラー ID は枠の側が解決する
 - 個人の切替は `/settings` の「表示言語」カード。Server Action `setAdminLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
 - `<html lang>` は `[tenant_id]/layout.tsx` の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定
 

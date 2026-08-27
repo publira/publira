@@ -191,7 +191,7 @@ const EditLabelPage = ({ params, searchParams }: EditLabelPageProps) => (
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditLabelTabNav params={params} searchParams={searchParams} />
         </Suspense>
-        <SectionErrorBoundary title="レーベルを表示できませんでした">
+        <SectionErrorBoundary title="admin.labels.detail_error">
           <Suspense fallback={<EditLabelFormSkeleton />}>
             <EditLabelFormData params={params} searchParams={searchParams} />
           </Suspense>

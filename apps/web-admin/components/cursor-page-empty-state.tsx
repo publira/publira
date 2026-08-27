@@ -1,14 +1,16 @@
 import { EmptyState } from "@publira/ui-components/empty-state";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
+
+import { Message } from "#components/message";
 
 interface CursorPageEmptyStateProps {
   actions?: ReactNode;
   description: ReactNode;
   hasPageLinks: boolean;
   itemLabel: string;
-  // `EmptyState` inherits the `title` attribute of a `div`, so this stays a
-  // plain string rather than the `ReactNode` the other slots take.
-  title: string;
+  title: ReactNode;
 }
 
 /**
@@ -30,8 +32,19 @@ export const CursorPageEmptyState = ({
 }: CursorPageEmptyStateProps) =>
   hasPageLinks ? (
     <EmptyState
-      description="表示中に他の操作で削除された可能性があります。前後のページへ移動してください。"
-      title={`このページに表示できる${itemLabel}はありません。`}
+      description={
+        <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+          <Message message="admin.common.page_empty_description" />
+        </Suspense>
+      }
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message
+            message="admin.common.page_empty_title"
+            values={{ item: itemLabel }}
+          />
+        </Suspense>
+      }
     />
   ) : (
     <EmptyState actions={actions} description={description} title={title} />

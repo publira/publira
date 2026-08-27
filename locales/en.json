@@ -37,6 +37,9 @@
     "label": "Display language"
   },
   "admin": {
+    "audit": {
+      "section_error": "Could not display the audit log"
+    },
     "auth": {
       "accept_invite": {
         "account_exists": "Accept as an existing account. You can sign in with this email address after accepting.",
@@ -123,6 +126,91 @@
         "submit": "Sign in",
         "title": "Sign in"
       }
+    },
+    "common": {
+      "back_to_dashboard": "Back to dashboard",
+      "error_id": "Error ID:",
+      "next": "Next",
+      "page_empty_description": "They may have been deleted while you were looking at this page. Move to the pages around it.",
+      "page_empty_title": "No {item} to show on this page.",
+      "previous": "Previous",
+      "retry": "Retry",
+      "retry_later": "Please try again later.",
+      "roles": {
+        "tenant_admin": "Tenant admin",
+        "tenant_auditor": "Auditor",
+        "tenant_editor": "Editor",
+        "tenant_member": "Member",
+        "tenant_owner": "Owner",
+        "unset": "No role"
+      }
+    },
+    "creators": {
+      "detail_error": "Could not display the author"
+    },
+    "dashboard": {
+      "section_error": "Could not display the dashboard"
+    },
+    "errors": {
+      "console_description": "Please try again later. If it keeps happening, contact an administrator with the error ID.",
+      "console_title": "Could not display this page",
+      "root_description": "Failed to load the admin console. Please try again later.",
+      "root_title": "Could not display the admin console"
+    },
+    "labels": {
+      "detail_error": "Could not display the label"
+    },
+    "nav": {
+      "access_tickets_description": "Issue and revoke limited-access tickets",
+      "access_tickets_label": "Access tickets",
+      "administration": "Administration",
+      "announcements_description": "Write announcements and manage delivery",
+      "announcements_label": "Announcements",
+      "audit_description": "Review and trace operation history",
+      "audit_label": "Audit logs",
+      "creators_description": "Manage author profiles",
+      "creators_label": "Authors",
+      "dashboard_description": "Publishing readiness and editing status",
+      "dashboard_label": "Dashboard",
+      "labels_description": "Manage label information",
+      "labels_label": "Labels",
+      "operations": "Operations",
+      "pages_description": "Create, edit, and publish standalone pages",
+      "pages_label": "Pages",
+      "series_description": "Series details and publishing settings",
+      "series_label": "Series",
+      "settings_description": "Manage branding and operating rules",
+      "settings_label": "Settings"
+    },
+    "not_found": {
+      "description": "This item may have been deleted, or the URL may have changed. Choose it from a list instead.",
+      "metadata_description": "This item may have been deleted, or the URL may have changed.",
+      "title": "Page not found"
+    },
+    "pages": {
+      "detail_error": "Could not display the page"
+    },
+    "series": {
+      "detail_error": "Could not display the series"
+    },
+    "settings": {
+      "email_error": "Could not display the email settings",
+      "payment_error": "Could not display the payment settings",
+      "section_error": "Could not display the settings",
+      "theme_error": "Could not display the theme"
+    },
+    "shell": {
+      "account_menu": "Account menu for {name}",
+      "account_settings": "Account settings",
+      "domain": "Domain: {domain}",
+      "eyebrow": "Current tenant",
+      "logo_alt": "{name} logo",
+      "logout": "Sign out",
+      "notifications_none": "Notifications, none unread",
+      "notifications_unread": "Notifications, {count} unread",
+      "status_online": "Online",
+      "tenant_title": "{name} Admin console",
+      "title": "Admin console"
     }
   },
   "host": {

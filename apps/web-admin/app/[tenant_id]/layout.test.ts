@@ -19,6 +19,15 @@ vi.mock("next/navigation", () => ({
   notFound: mockNotFound,
 }));
 
+vi.mock("#lib/locale", async () => {
+  const { default: ja } = await import("../../../../locales/ja.json");
+
+  return {
+    getLocale: () => Promise.resolve("ja"),
+    loadAdminMessages: () => Promise.resolve(ja),
+  };
+});
+
 vi.mock("#lib/public-api", () => ({
   getTenantName: mockGetTenantName,
 }));

@@ -155,7 +155,7 @@ const EditPagePage = ({ params }: EditPagePageProps) => (
         title="指定バージョンからロールバックしました。"
       />
 
-      <SectionErrorBoundary title="ページを表示できませんでした">
+      <SectionErrorBoundary title="admin.pages.detail_error">
         <Suspense fallback={<PageWorkspaceSkeleton />}>
           <PageWorkspaceData params={params} />
         </Suspense>

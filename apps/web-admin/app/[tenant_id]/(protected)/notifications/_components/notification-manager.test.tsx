@@ -1,11 +1,19 @@
 // @vitest-environment jsdom
 
+import { getMessage } from "@publira/i18n";
+import type { MessageValues } from "@publira/i18n";
 import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import ja from "../../../../../../../locales/ja.json";
 import type { NotificationItem } from "../notification-types";
 import { NotificationManager } from "./notification-manager";
+
+vi.mock("#components/message", () => ({
+  Message: ({ message, values }: { message: string; values?: MessageValues }) =>
+    getMessage(ja, message, values),
+}));
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: React.ComponentProps<"a">) => (

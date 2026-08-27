@@ -304,7 +304,7 @@ const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <SectionErrorBoundary title="監査ログを表示できませんでした">
+      <SectionErrorBoundary title="admin.audit.section_error">
         <Suspense fallback={<AuditLogsSkeleton />}>
           <AuditLogsContent searchParams={searchParams} />
         </Suspense>
