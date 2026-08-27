@@ -10,6 +10,7 @@ import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { getLocale } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { getTenantId } from "#lib/tenant-id";
@@ -26,6 +27,7 @@ const SETTINGS_RETURN_TO = "/settings";
 const deleteAccountAction = async (formData: FormData): Promise<void> => {
   "use server";
 
+  await assertSameOrigin();
   const parsed = parseDeleteAccountForm(formData);
   if (!parsed.success) {
     redirect(

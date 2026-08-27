@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { returnToFormSchema, tenantIdFormSchema } from "./auth-input";
 import { requirePublicSession, withPublicSessionReauth } from "./auth-session";
+import { assertSameOrigin } from "./csrf";
 import {
   followTarget,
   followTargetKinds,
@@ -37,6 +38,7 @@ export const toggleFollowAction = async (
   _prevState: FollowActionState,
   formData: FormData
 ): Promise<FollowActionState> => {
+  await assertSameOrigin();
   const parsed = followFormSchema.safeParse(
     toFormDataInput(formData, {
       intent: "value",

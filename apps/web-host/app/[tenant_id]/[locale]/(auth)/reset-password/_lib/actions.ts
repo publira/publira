@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { requestPublicPasswordReset } from "#lib/auth";
 import { emailFormSchema, tenantIdFormSchema } from "#lib/auth-input";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   RESET_PASSWORD_REQUESTED_EMAIL_COOKIE,
   setEmailFlashCookie,
@@ -25,6 +26,7 @@ export const requestPasswordResetAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const parsed = requestPasswordResetFormSchema.safeParse(
     toFormDataInput(formData, {
       email: "value",

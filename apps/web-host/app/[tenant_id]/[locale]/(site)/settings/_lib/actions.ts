@@ -12,6 +12,7 @@ import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 
 import { buildSettingsPath } from "./settings-form";
@@ -31,6 +32,7 @@ const updateProfileFormSchema = z.object({
 export const updateProfileAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const parsed = updateProfileFormSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",

@@ -27,6 +27,9 @@ export const POST = async (
   request: NextRequest,
   { params }: RouteContext<"/[tenant_id]/api/revalidate">
 ) => {
+  // #600's Origin check protects cookie-authenticated mutations. This machine
+  // endpoint has no cookie session; its explicit revalidation token is its
+  // request authentication and CSRF therefore does not apply.
   const token = process.env.PUBLIRA_REVALIDATE_TOKEN?.trim();
   if (!token) {
     return NextResponse.json(

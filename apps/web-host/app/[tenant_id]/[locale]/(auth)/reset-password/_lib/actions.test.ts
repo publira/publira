@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAssertSameOrigin,
   mockRedirect,
   mockRequestPublicPasswordReset,
   mockSetEmailFlashCookie,
 } = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
   mockRedirect: vi.fn(),
   mockRequestPublicPasswordReset: vi.fn(),
   mockSetEmailFlashCookie: vi.fn(),
@@ -17,6 +19,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("#lib/auth", () => ({
   requestPublicPasswordReset: mockRequestPublicPasswordReset,
 }));
+
+vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/email-flash-cookie", () => ({
   RESET_PASSWORD_REQUESTED_EMAIL_COOKIE:

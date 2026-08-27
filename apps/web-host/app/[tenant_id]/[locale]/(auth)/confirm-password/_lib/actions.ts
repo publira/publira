@@ -13,6 +13,7 @@ import {
   passwordFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
+import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
 
@@ -55,6 +56,7 @@ const buildLoginPathWithResetResult = (locale: Locale): string => {
 export const confirmPasswordAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const input = toFormDataInput(formData, {
     confirmPassword: "value",
     locale: "value",
