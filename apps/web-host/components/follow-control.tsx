@@ -1,9 +1,10 @@
+import { getMessage } from "@publira/i18n";
 import { SectionError } from "@publira/ui-components/section-error";
 
 import { buildLoginPath } from "#lib/auth-shared";
 import type { FollowTargetKind } from "#lib/follow";
 import { getMyFollowStatus } from "#lib/follow";
-import { getLocale } from "#lib/locale";
+import { getLocale, loadHostMessages } from "#lib/locale";
 
 import { FollowButton, FollowLoginLink } from "./follow-button";
 
@@ -25,9 +26,10 @@ export const FollowControl = async ({
   targetName: string;
   tenantId: string;
 }) => {
-  const [locale, result] = await Promise.all([
-    getLocale(),
-    getMyFollowStatus(tenantId, targetKind, publicId),
+  const locale = await getLocale();
+  const [result, messages] = await Promise.all([
+    getMyFollowStatus(tenantId, targetKind, publicId, locale),
+    loadHostMessages(locale),
   ]);
 
   if (!result.ok) {
@@ -35,7 +37,7 @@ export const FollowControl = async ({
       <SectionError
         className="max-w-sm"
         description={result.message}
-        title="フォロー状態を表示できませんでした"
+        title={getMessage(messages, "host.follow.status_error")}
       />
     );
   }
@@ -43,19 +45,32 @@ export const FollowControl = async ({
   if (!result.signedIn) {
     return (
       <FollowLoginLink
+        ariaLabel={getMessage(messages, "host.follow.login_aria", {
+          name: targetName,
+        })}
         href={buildLoginPath(locale, returnTo)}
-        targetName={targetName}
+        label={getMessage(messages, "host.follow.follow")}
       />
     );
   }
 
   return (
     <FollowButton
+      copy={{
+        follow: getMessage(messages, "host.follow.follow"),
+        followAriaLabel: getMessage(messages, "host.follow.follow_aria", {
+          name: targetName,
+        }),
+        pending: getMessage(messages, "host.follow.pending"),
+        unfollow: getMessage(messages, "host.follow.unfollow"),
+        unfollowAriaLabel: getMessage(messages, "host.follow.unfollow_aria", {
+          name: targetName,
+        }),
+      }}
       isFollowing={result.isFollowing}
       publicId={publicId}
       returnTo={returnTo}
       targetKind={targetKind}
-      targetName={targetName}
       tenantId={tenantId}
     />
   );

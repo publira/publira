@@ -1,14 +1,22 @@
+import { getMessage } from "@publira/i18n";
 import { CollectionIcon } from "@publira/icons";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { CatalogSearchForm } from "#components/catalog-search-form";
+import {
+  CatalogSearchForm,
+  CatalogSearchFormSkeleton,
+} from "#components/catalog-search-form";
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { searchPublishedSeries } from "#lib/catalog";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
@@ -17,7 +25,6 @@ import {
 } from "./_lib/search-params";
 
 const SEARCH_PAGE_SIZE = 20;
-const SECTION_TITLE = "検索結果を表示できませんでした";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -27,17 +34,19 @@ type SearchPageProps = PageProps<"/[tenant_id]/[locale]/search">;
 export const generateMetadata = async ({
   searchParams,
 }: SearchPageProps): Promise<Metadata> => {
-  const resolvedSearchParams = await searchParams;
+  const [resolvedSearchParams, locale] = await Promise.all([
+    searchParams,
+    getLocale(),
+  ]);
   const { query } = parseSearchPageSearchParams(resolvedSearchParams);
+  const messages = await loadHostMessages(locale);
 
   if (!query) {
-    return {
-      title: "検索",
-    };
+    return { title: getMessage(messages, "host.search.title") };
   }
 
   return {
-    title: `「${query}」の検索結果`,
+    title: getMessage(messages, "host.search.results_title", { query }),
   };
 };
 
@@ -56,7 +65,7 @@ const SearchListSkeleton = () => (
   </div>
 );
 
-const SearchPagination = ({
+const SearchPagination = async ({
   nextToken,
   previousToken,
   query,
@@ -64,62 +73,79 @@ const SearchPagination = ({
   nextToken: string;
   previousToken: string;
   query: string;
-}) => (
-  <nav
-    aria-label="検索結果ページング"
-    className="mt-8 flex items-center justify-center gap-6"
-  >
-    {previousToken ? (
-      <LocaleLink
-        href={searchPageHref(query, previousToken)}
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        前のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">前のページ</span>
-    )}
+}) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
 
-    {nextToken ? (
-      <LocaleLink
-        href={searchPageHref(query, nextToken)}
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        次のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">次のページ</span>
-    )}
-  </nav>
-);
+  return (
+    <nav
+      aria-label={getMessage(messages, "host.search.pagination_aria")}
+      className="mt-8 flex items-center justify-center gap-6"
+    >
+      {previousToken ? (
+        <LocaleLink
+          href={searchPageHref(query, previousToken)}
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          {getMessage(messages, "host.common.previous_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.previous_page")}
+        </span>
+      )}
+
+      {nextToken ? (
+        <LocaleLink
+          href={searchPageHref(query, nextToken)}
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          {getMessage(messages, "host.common.next_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.next_page")}
+        </span>
+      )}
+    </nav>
+  );
+};
 
 const SearchResultsData = async ({
   searchParams,
 }: {
   searchParams: SearchPageProps["searchParams"];
 }) => {
-  const [resolvedSearchParams, tenantId] = await Promise.all([
+  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
     searchParams,
     getTenantId(),
+    getLocale(),
   ]);
   const { query, token } = parseSearchPageSearchParams(resolvedSearchParams);
+  const messages = await loadHostMessages(locale);
 
   if (!query) {
     return (
       <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-        キーワードを入力して公開中のシリーズを検索できます。
+        {getMessage(messages, "host.search.prompt")}
       </p>
     );
   }
 
   const result = await searchPublishedSeries(tenantId, {
     limit: SEARCH_PAGE_SIZE,
+    locale,
     query,
     token,
   });
 
   if (!result.ok) {
-    return <SectionError description={result.message} title={SECTION_TITLE} />;
+    return (
+      <SectionError
+        description={result.message}
+        title={getMessage(messages, "host.search.error")}
+      />
+    );
   }
 
   const { nextToken, previousToken, series } = result.value;
@@ -128,7 +154,7 @@ const SearchResultsData = async ({
     if (!token) {
       return (
         <div className="py-20 text-center text-muted-foreground">
-          「{query}」に一致するシリーズはありません。
+          {getMessage(messages, "host.search.no_results", { query })}
         </div>
       );
     }
@@ -136,7 +162,7 @@ const SearchResultsData = async ({
     return (
       <div className="py-20 text-center">
         <p className="mb-4 text-muted-foreground">
-          このページに表示できるシリーズがありません。
+          {getMessage(messages, "host.series.page_empty")}
         </p>
         {previousToken || nextToken ? (
           <SearchPagination
@@ -149,7 +175,7 @@ const SearchResultsData = async ({
             href={searchPageHref(query, "")}
             className="text-sm text-primary underline-offset-4 hover:underline"
           >
-            検索結果の先頭へ
+            {getMessage(messages, "host.search.first_page")}
           </LocaleLink>
         )}
       </div>
@@ -225,22 +251,24 @@ const SearchFormFromParams = async ({
 
 const SearchPage = ({ searchParams }: SearchPageProps) => (
   <main className="mx-auto max-w-6xl px-6 py-12">
-    <h1 className="mb-2 font-serif text-4xl font-bold">検索</h1>
+    <h1 className="mb-2 font-serif text-4xl font-bold">
+      <Suspense fallback={<SkeletonLine className="h-9 w-32" />}>
+        <Message message="host.search.title" />
+      </Suspense>
+    </h1>
     <p className="mb-6 text-muted-foreground">
-      公開中シリーズのタイトルとあらすじから探せます
+      <Suspense fallback={<SkeletonLine className="h-5 w-80" />}>
+        <Message message="host.search.description" />
+      </Suspense>
     </p>
 
     <div className="mb-8 max-w-xl">
-      <Suspense
-        fallback={
-          <div className="h-9 w-full max-w-64 animate-pulse rounded-md bg-muted" />
-        }
-      >
+      <Suspense fallback={<CatalogSearchFormSkeleton />}>
         <SearchFormFromParams searchParams={searchParams} />
       </Suspense>
     </div>
 
-    <SectionErrorBoundary title={SECTION_TITLE}>
+    <SectionErrorBoundary {...sectionErrorCopy("host.search.error")}>
       <Suspense fallback={<SearchListSkeleton />}>
         <SearchResultsData searchParams={searchParams} />
       </Suspense>

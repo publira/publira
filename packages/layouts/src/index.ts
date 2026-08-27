@@ -1,5 +1,4 @@
 export {
-  defaultSiteLayoutNavItems,
   SiteLayout,
   SiteLayoutBrand,
   SiteLayoutBrandSkeleton,
@@ -18,3 +17,4 @@ export { isCurrentPath } from "./navigation";
 export type { NavItem, NavSection } from "./navigation";
 
 export { getAuthActions } from "./auth-actions";
+export type { AuthActionLabels } from "./auth-actions";

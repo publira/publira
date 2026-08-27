@@ -1,3 +1,4 @@
+import { getMessage, toIntlLocale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE, formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -11,7 +12,9 @@ import { z } from "zod";
 import { LocaleLink } from "#components/locale-link";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { getEpisodeDetail, isPublicEpisodeBody } from "#lib/catalog";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -52,10 +55,11 @@ const EpisodeSkeleton = () => (
 const EpisodeContent = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]/episodes/[episode_id]">
 ) => {
-  const [rawParams, tenantId, searchParams] = await Promise.all([
+  const [rawParams, tenantId, searchParams, locale] = await Promise.all([
     props.params,
     getTenantId(),
     props.searchParams,
+    getLocale(),
   ]);
   const parsedParams = parseRouteParams(episodeDetailParamsSchema, rawParams);
   if (!parsedParams) {
@@ -68,9 +72,10 @@ const EpisodeContent = async (
   // `null`, and the public site must not tell those apart. A failed read is a
   // value as well: a `"use cache"` fill that throws fails the whole request,
   // so nothing downstream would get to render (#672).
-  const [result, tenant] = await Promise.all([
-    getEpisodeDetail(tenantId, series_id, episode_id),
+  const [result, tenant, messages] = await Promise.all([
+    getEpisodeDetail(tenantId, series_id, episode_id, locale),
     getTenantSiteInfo(tenantId),
+    loadHostMessages(locale),
   ]);
 
   if (!result.ok) {
@@ -86,7 +91,10 @@ const EpisodeContent = async (
   // unavailable tenant read, never the host machine's local zone.
   const timeZone = tenant?.timeZone ?? DEFAULT_TIME_ZONE;
   const priceLabel =
-    episode.price > 0 ? `¥${episode.price.toLocaleString("ja-JP")}` : "無料";
+    episode.price > 0
+      ? `¥${episode.price.toLocaleString(toIntlLocale(locale))}`
+      : getMessage(messages, "host.common.free");
+  const unsetLabel = getMessage(messages, "host.common.unset");
 
   return (
     <main>
@@ -94,10 +102,10 @@ const EpisodeContent = async (
           want after finishing, so it sits below the pages rather than above
           them. */}
       <section
-        aria-label="エピソード本文"
+        aria-label={getMessage(messages, "host.episode.body_label")}
         className="border-b border-border/70"
       >
-        <SectionErrorBoundary title="本文を表示できませんでした">
+        <SectionErrorBoundary {...sectionErrorCopy("host.episode.body_error")}>
           <Suspense fallback={<EpisodeBodySkeleton />}>
             <EpisodeBody
               access={access}
@@ -120,12 +128,12 @@ const EpisodeContent = async (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
         {purchaseSearchParams.checkout === "success" ? (
           <output className="mb-6 block rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
-            決済を確認しています。購入が反映されると本文を表示します。
+            {getMessage(messages, "host.episode.checkout_success")}
           </output>
         ) : null}
         {purchaseSearchParams.checkout === "cancelled" ? (
           <output className="mb-6 block rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
-            購入手続きをキャンセルしました。料金は発生していません。
+            {getMessage(messages, "host.episode.checkout_cancelled")}
           </output>
         ) : null}
         {purchaseSearchParams.checkout === "error" ? (
@@ -133,7 +141,7 @@ const EpisodeContent = async (
             className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
             role="alert"
           >
-            購入手続きを開始できませんでした。時間をおいて再試行してください。
+            {getMessage(messages, "host.episode.checkout_error")}
           </p>
         ) : null}
 
@@ -142,14 +150,14 @@ const EpisodeContent = async (
             className="underline-offset-4 hover:underline"
             href="/series"
           >
-            シリーズ一覧
+            {getMessage(messages, "host.series.list_title")}
           </LocaleLink>
           <span>／</span>
           <LocaleLink
             className="underline-offset-4 hover:underline"
             href={`/series/${series.publicId}`}
           >
-            シリーズ詳細
+            {getMessage(messages, "host.episode.series_detail")}
           </LocaleLink>
         </nav>
 
@@ -170,10 +178,12 @@ const EpisodeContent = async (
                   {priceLabel}
                 </span>
                 <span>
-                  公開{" "}
-                  {formatDateTime(episode.publishedAt, {
-                    fallback: "未設定",
-                    timeZone,
+                  {getMessage(messages, "host.episode.published", {
+                    date: formatDateTime(episode.publishedAt, {
+                      fallback: unsetLabel,
+                      locale,
+                      timeZone,
+                    }),
                   })}
                 </span>
               </div>
@@ -181,7 +191,9 @@ const EpisodeContent = async (
                 {episode.title}
               </h1>
               <p className="text-sm text-muted-foreground sm:text-base">
-                シリーズ「{series.title}」のエピソードです。
+                {getMessage(messages, "host.episode.series_note", {
+                  title: series.title,
+                })}
               </p>
             </header>
           </article>
@@ -198,7 +210,7 @@ const EpisodeContent = async (
                 href={`/series/${series.publicId}`}
                 className="text-sm font-medium text-accent underline-offset-4 hover:underline"
               >
-                シリーズ詳細へ
+                {getMessage(messages, "host.episode.to_series_detail")}
               </LocaleLink>
             </section>
 
@@ -208,7 +220,9 @@ const EpisodeContent = async (
               </p>
               <dl className="space-y-4 text-sm">
                 <div className="flex items-start justify-between gap-4">
-                  <dt className="text-muted-foreground">価格</dt>
+                  <dt className="text-muted-foreground">
+                    {getMessage(messages, "host.episode.price")}
+                  </dt>
                   <dd
                     className={
                       episode.price > 0
@@ -220,34 +234,55 @@ const EpisodeContent = async (
                   </dd>
                 </div>
                 <div className="flex items-start justify-between gap-4">
-                  <dt className="text-muted-foreground">公開日</dt>
+                  <dt className="text-muted-foreground">
+                    {getMessage(messages, "host.episode.published_on")}
+                  </dt>
                   <dd className="text-right font-medium">
                     {formatDateTime(episode.publishedAt, {
-                      fallback: "未設定",
+                      fallback: unsetLabel,
+                      locale,
                       timeZone,
                     })}
                   </dd>
                 </div>
                 <div className="flex items-start justify-between gap-4">
-                  <dt className="text-muted-foreground">閲覧期限</dt>
+                  <dt className="text-muted-foreground">
+                    {getMessage(messages, "host.episode.reading_period")}
+                  </dt>
                   <dd className="text-right font-medium">
                     {episode.readingPeriodHours > 0
-                      ? `${episode.readingPeriodHours}時間`
-                      : "制限なし"}
+                      ? getMessage(
+                          messages,
+                          "host.episode.reading_period_hours",
+                          { hours: episode.readingPeriodHours }
+                        )
+                      : getMessage(
+                          messages,
+                          "host.episode.reading_period_unlimited"
+                        )}
                   </dd>
                 </div>
                 {isPublicEpisodeBody(access) ? (
                   <div className="flex items-start justify-between gap-4">
-                    <dt className="text-muted-foreground">本文枚数</dt>
-                    <dd className="font-medium">{images.length}枚</dd>
+                    <dt className="text-muted-foreground">
+                      {getMessage(messages, "host.episode.page_count")}
+                    </dt>
+                    <dd className="font-medium">
+                      {getMessage(messages, "host.episode.page_count_value", {
+                        count: images.length,
+                      })}
+                    </dd>
                   </div>
                 ) : null}
                 {episode.scheduledAt && (
                   <div className="flex items-start justify-between gap-4">
-                    <dt className="text-muted-foreground">公開予定</dt>
+                    <dt className="text-muted-foreground">
+                      {getMessage(messages, "host.episode.scheduled_at")}
+                    </dt>
                     <dd className="text-right font-medium">
                       {formatDateTime(episode.scheduledAt, {
-                        fallback: "未設定",
+                        fallback: unsetLabel,
+                        locale,
                         timeZone,
                       })}
                     </dd>

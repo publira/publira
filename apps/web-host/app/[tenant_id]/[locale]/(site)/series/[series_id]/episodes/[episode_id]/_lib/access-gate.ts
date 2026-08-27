@@ -1,3 +1,5 @@
+import type { HostMessageKey } from "#lib/locale";
+
 export const episodeLoginHref = (
   seriesPublicId: string,
   episodePublicId: string
@@ -6,23 +8,28 @@ export const episodeLoginHref = (
   return `/login?returnTo=${encodeURIComponent(returnTo)}`;
 };
 
+/**
+ * Which pair of catalog keys the gate shows. Keys rather than strings: the
+ * branch is decided on the server, and the copy is still resolved through the
+ * catalog at the point it is displayed.
+ */
 export const episodeAccessGateCopy = (
   signedIn: boolean,
   acceptsPayments: boolean
-): { description: string; title: string } => {
+): { description: HostMessageKey; title: HostMessageKey } => {
   if (signedIn) {
     return {
       description: acceptsPayments
-        ? "閲覧権限がありません。チケットの有効期限が切れているか、まだ付与されていません。購入済みの場合は、別のアカウントでログインしていないか確認してください。"
-        : "現在このサイトでは購入手続きを利用できません。チケットの有効期限が切れているか、まだ付与されていないかを確認してください。",
-      title: "このエピソードは閲覧できません",
+        ? "host.episode.gate.signed_in_payable_description"
+        : "host.episode.gate.signed_in_unpayable_description",
+      title: "host.episode.gate.signed_in_title",
     };
   }
 
   return {
     description: acceptsPayments
-      ? "本文を読むには、ログインしたうえで購入するか、管理者からチケットを付与してもらう必要があります。"
-      : "本文を読むには、ログインして管理者からチケットを付与してもらう必要があります。現在このサイトでは購入手続きを利用できません。",
-    title: "このエピソードは有料です",
+      ? "host.episode.gate.guest_payable_description"
+      : "host.episode.gate.guest_unpayable_description",
+    title: "host.episode.gate.guest_title",
   };
 };

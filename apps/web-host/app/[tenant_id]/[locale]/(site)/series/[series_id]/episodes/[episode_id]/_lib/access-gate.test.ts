@@ -3,29 +3,29 @@ import { describe, expect, it } from "vitest";
 import { episodeAccessGateCopy, episodeLoginHref } from "./access-gate";
 
 describe("episodeAccessGateCopy", () => {
-  it("未ログインは購入とチケット付与を案内する", () => {
-    const copy = episodeAccessGateCopy(false, true);
-
-    expect(copy.title).toBe("このエピソードは有料です");
-    expect(copy.description).toContain("ログイン");
-    expect(copy.description).toContain("購入");
-    expect(copy.description).toContain("チケット");
+  it("未ログインは購入とチケット付与を案内するキーを選ぶ", () => {
+    expect(episodeAccessGateCopy(false, true)).toEqual({
+      description: "host.episode.gate.guest_payable_description",
+      title: "host.episode.gate.guest_title",
+    });
   });
 
-  it("ログイン済みは失効と未付与を案内する", () => {
-    const copy = episodeAccessGateCopy(true, true);
-
-    expect(copy.title).toBe("このエピソードは閲覧できません");
-    expect(copy.description).toContain("有効期限");
-    expect(copy.description).toContain("付与");
+  it("ログイン済みは失効と未付与を案内するキーを選ぶ", () => {
+    expect(episodeAccessGateCopy(true, true)).toEqual({
+      description: "host.episode.gate.signed_in_payable_description",
+      title: "host.episode.gate.signed_in_title",
+    });
   });
 
-  it("決済不可時は購入を案内せずチケット付与に留める", () => {
-    const copy = episodeAccessGateCopy(false, false);
-
-    expect(copy.description).not.toContain("購入する");
-    expect(copy.description).toContain("チケット");
-    expect(copy.description).toContain("購入手続きを利用できません");
+  it("決済不可時は購入を案内しないキーを選ぶ", () => {
+    expect(episodeAccessGateCopy(false, false)).toEqual({
+      description: "host.episode.gate.guest_unpayable_description",
+      title: "host.episode.gate.guest_title",
+    });
+    expect(episodeAccessGateCopy(true, false)).toEqual({
+      description: "host.episode.gate.signed_in_unpayable_description",
+      title: "host.episode.gate.signed_in_title",
+    });
   });
 });
 

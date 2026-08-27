@@ -121,6 +121,7 @@ describe("catalog-top section loaders", () => {
     });
 
     const result = await getCatalogTopRecommendedSeries("TENANT_001", {
+      locale: "ja",
       maxRecommended: 1,
       seriesLimit: 10,
     });
@@ -146,6 +147,7 @@ describe("catalog-top section loaders", () => {
 
     const result = await getCatalogTopNewEpisodes("TENANT_001", {
       detailFetchLimit: 4,
+      locale: "ja",
       maxNewEpisodes: 4,
       seriesLimit: 10,
     });
@@ -173,6 +175,7 @@ describe("catalog-top section loaders", () => {
 
     const result = await getCatalogTopUpdatedSeries("TENANT_001", {
       detailFetchLimit: 4,
+      locale: "ja",
       maxUpdatedSeries: 4,
       seriesLimit: 10,
     });
@@ -212,7 +215,10 @@ describe("catalog-top section loaders", () => {
     });
 
     await expect(
-      getCatalogTopFeaturedAuthors("TENANT_001", { maxAuthors: 6 })
+      getCatalogTopFeaturedAuthors("TENANT_001", {
+        locale: "ja",
+        maxAuthors: 6,
+      })
     ).resolves.toEqual({
       ok: true,
       value: [
@@ -222,9 +228,10 @@ describe("catalog-top section loaders", () => {
     });
     expect(mockListPublishedAuthors).toHaveBeenCalledWith("TENANT_001", {
       limit: 6,
+      locale: "ja",
     });
     await expect(
-      getCatalogTopFeaturedLabels("TENANT_001", { maxLabels: 6 })
+      getCatalogTopFeaturedLabels("TENANT_001", { locale: "ja", maxLabels: 6 })
     ).resolves.toEqual({
       ok: true,
       value: [
@@ -250,14 +257,20 @@ describe("catalog-top section loaders", () => {
     });
 
     await expect(
-      getCatalogTopRecommendedSeries("TENANT_001", { maxRecommended: 6 })
+      getCatalogTopRecommendedSeries("TENANT_001", {
+        locale: "ja",
+        maxRecommended: 6,
+      })
     ).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
     });
     await expect(
-      getCatalogTopNewEpisodes("TENANT_001", { maxNewEpisodes: 6 })
+      getCatalogTopNewEpisodes("TENANT_001", {
+        locale: "ja",
+        maxNewEpisodes: 6,
+      })
     ).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
@@ -277,7 +290,10 @@ describe("catalog-top section loaders", () => {
     });
 
     await expect(
-      getCatalogTopUpdatedSeries("TENANT_001", { maxUpdatedSeries: 6 })
+      getCatalogTopUpdatedSeries("TENANT_001", {
+        locale: "ja",
+        maxUpdatedSeries: 6,
+      })
     ).resolves.toEqual({
       message:
         "シリーズを取得できませんでした。時間をおいて再試行してください。",
@@ -344,10 +360,11 @@ describe("catalog-top section loaders", () => {
 
     const options = {
       detailFetchLimit: 10,
+      locale: "ja",
       maxNewEpisodes: 10,
       maxUpdatedSeries: 10,
       seriesLimit: 10,
-    };
+    } as const;
 
     await expect(
       getCatalogTopNewEpisodes("TENANT_001", options)

@@ -1,13 +1,18 @@
+import { getMessage } from "@publira/i18n";
 import { ImageIcon } from "@publira/icons";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { listPublishedLabels } from "#lib/catalog";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -17,13 +22,15 @@ import {
 } from "./_lib/search-params";
 
 const LABELS_PAGE_SIZE = 24;
-const SECTION_TITLE = "レーベル一覧を表示できませんでした";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const metadata: Metadata = {
-  title: "レーベル一覧",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return { title: getMessage(messages, "host.labels.list_title") };
 };
 
 const LabelsListSkeleton = () => (
@@ -42,63 +49,94 @@ const LabelsListSkeleton = () => (
   </div>
 );
 
-const TenantSiteLabel = async () => {
-  const tenantId = await getTenantId();
-  return getTenantSiteLabel(tenantId);
+/**
+ * The tenant's name sits inside the sentence, and the two locales put it in
+ * different places, so the whole line resolves at once rather than streaming
+ * the name into a fixed frame.
+ */
+const LabelsListDescription = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [siteLabel, messages] = await Promise.all([
+    getTenantSiteLabel(tenantId, locale),
+    loadHostMessages(locale),
+  ]);
+
+  return getMessage(messages, "host.labels.list_description", {
+    site: siteLabel,
+  });
 };
 
-const LabelsPagination = ({
+const LabelsPagination = async ({
   nextToken,
   previousToken,
 }: {
   nextToken: string;
   previousToken: string;
-}) => (
-  <nav
-    aria-label="レーベル一覧ページング"
-    className="mt-8 flex items-center justify-center gap-6"
-  >
-    {previousToken ? (
-      <LocaleLink
-        className="text-sm text-primary underline-offset-4 hover:underline"
-        href={labelsListHref(previousToken)}
-      >
-        前のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">前のページ</span>
-    )}
+}) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
 
-    {nextToken ? (
-      <LocaleLink
-        className="text-sm text-primary underline-offset-4 hover:underline"
-        href={labelsListHref(nextToken)}
-      >
-        次のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">次のページ</span>
-    )}
-  </nav>
-);
+  return (
+    <nav
+      aria-label={getMessage(messages, "host.labels.pagination_aria")}
+      className="mt-8 flex items-center justify-center gap-6"
+    >
+      {previousToken ? (
+        <LocaleLink
+          className="text-sm text-primary underline-offset-4 hover:underline"
+          href={labelsListHref(previousToken)}
+        >
+          {getMessage(messages, "host.common.previous_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.previous_page")}
+        </span>
+      )}
+
+      {nextToken ? (
+        <LocaleLink
+          className="text-sm text-primary underline-offset-4 hover:underline"
+          href={labelsListHref(nextToken)}
+        >
+          {getMessage(messages, "host.common.next_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.next_page")}
+        </span>
+      )}
+    </nav>
+  );
+};
 
 const LabelsListData = async ({
   searchParams,
 }: {
   searchParams: PageProps<"/[tenant_id]/[locale]/labels">["searchParams"];
 }) => {
-  const [resolvedSearchParams, tenantId] = await Promise.all([
+  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
     searchParams,
     getTenantId(),
+    getLocale(),
   ]);
   const { token } = parseLabelsListSearchParams(resolvedSearchParams);
-  const result = await listPublishedLabels(tenantId, {
-    limit: LABELS_PAGE_SIZE,
-    token,
-  });
+  const [result, messages] = await Promise.all([
+    listPublishedLabels(tenantId, {
+      limit: LABELS_PAGE_SIZE,
+      locale,
+      token,
+    }),
+    loadHostMessages(locale),
+  ]);
 
   if (!result.ok) {
-    return <SectionError description={result.message} title={SECTION_TITLE} />;
+    return (
+      <SectionError
+        description={result.message}
+        title={getMessage(messages, "host.labels.list_error")}
+      />
+    );
   }
 
   const { labels, nextToken, previousToken } = result.value;
@@ -107,7 +145,7 @@ const LabelsListData = async ({
     if (!token) {
       return (
         <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-          レーベルはまだ登録されていません。
+          {getMessage(messages, "host.labels.list_empty")}
         </p>
       );
     }
@@ -118,7 +156,7 @@ const LabelsListData = async ({
     return (
       <div className="py-20 text-center">
         <p className="mb-4 text-muted-foreground">
-          このページに表示できるレーベルがありません。
+          {getMessage(messages, "host.labels.page_empty")}
         </p>
         {previousToken || nextToken ? (
           <LabelsPagination
@@ -130,7 +168,7 @@ const LabelsListData = async ({
             className="text-sm text-primary underline-offset-4 hover:underline"
             href={labelsListHref("")}
           >
-            レーベル一覧の先頭へ
+            {getMessage(messages, "host.labels.first_page")}
           </LocaleLink>
         )}
       </div>
@@ -176,22 +214,18 @@ const LabelsPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/labels">) => (
   <main className="mx-auto max-w-6xl px-6 py-12">
-    <h1 className="mb-2 font-serif text-4xl font-bold">レーベル一覧</h1>
-    <p className="mb-8 text-muted-foreground">
-      <Suspense
-        fallback={
-          <span
-            aria-hidden
-            className="inline-block h-4 w-16 animate-pulse rounded bg-muted align-middle"
-          />
-        }
-      >
-        <TenantSiteLabel />
+    <h1 className="mb-2 font-serif text-4xl font-bold">
+      <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
+        <Message message="host.labels.list_title" />
       </Suspense>
-      のレーベルをご紹介します
+    </h1>
+    <p className="mb-8 text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-5 w-80" />}>
+        <LabelsListDescription />
+      </Suspense>
     </p>
 
-    <SectionErrorBoundary title={SECTION_TITLE}>
+    <SectionErrorBoundary {...sectionErrorCopy("host.labels.list_error")}>
       <Suspense fallback={<LabelsListSkeleton />}>
         <LabelsListData searchParams={searchParams} />
       </Suspense>

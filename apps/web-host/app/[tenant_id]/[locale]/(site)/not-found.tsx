@@ -1,4 +1,8 @@
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 
 /**
  * 404 for everything under the tenant site. `getTenantId()` /
@@ -25,23 +29,31 @@ const NotFound = () => (
       404 Not Found
     </p>
     <h1 className="mt-4 font-serif text-4xl font-bold">
-      ページが見つかりません
+      <Suspense fallback={<SkeletonLine className="h-9 w-72" />}>
+        <Message message="host.errors.not_found_title" />
+      </Suspense>
     </h1>
     <p className="mt-4 text-muted-foreground">
-      お探しのページは削除されたか、URL が変更された可能性があります。
+      <Suspense fallback={<SkeletonLine className="h-5 w-full max-w-md" />}>
+        <Message message="host.errors.not_found_description" />
+      </Suspense>
     </p>
     <div className="mt-8 flex flex-wrap justify-center gap-3">
       <LocaleLink
         className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition hover:opacity-90"
         href="/"
       >
-        トップへ戻る
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.back_to_top" />
+        </Suspense>
       </LocaleLink>
       <LocaleLink
         className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
         href="/series"
       >
-        シリーズ一覧へ
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.top.to_series" />
+        </Suspense>
       </LocaleLink>
     </div>
   </div>

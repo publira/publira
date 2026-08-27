@@ -1,13 +1,18 @@
+import { getMessage } from "@publira/i18n";
 import { UserIcon } from "@publira/icons";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { listPublishedAuthors } from "#lib/authors";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -17,13 +22,15 @@ import {
 } from "./_lib/search-params";
 
 const AUTHORS_PAGE_SIZE = 12;
-const SECTION_TITLE = "著者一覧を表示できませんでした";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const metadata: Metadata = {
-  title: "著者一覧",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return { title: getMessage(messages, "host.authors.list_title") };
 };
 
 const AuthorsListSkeleton = () => (
@@ -41,64 +48,95 @@ const AuthorsListSkeleton = () => (
   </div>
 );
 
-const TenantSiteLabel = async () => {
-  const tenantId = await getTenantId();
-  return getTenantSiteLabel(tenantId);
+/**
+ * The tenant's name sits inside the sentence, and the two locales put it in
+ * different places, so the whole line resolves at once rather than streaming
+ * the name into a fixed frame.
+ */
+const AuthorsListDescription = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [siteLabel, messages] = await Promise.all([
+    getTenantSiteLabel(tenantId, locale),
+    loadHostMessages(locale),
+  ]);
+
+  return getMessage(messages, "host.authors.list_description", {
+    site: siteLabel,
+  });
 };
 
-const AuthorsPagination = ({
+const AuthorsPagination = async ({
   nextToken,
   previousToken,
 }: {
   nextToken: string;
   previousToken: string;
-}) => (
-  <nav
-    aria-label="著者一覧ページング"
-    className="mt-8 flex items-center justify-center gap-6"
-  >
-    {previousToken ? (
-      <LocaleLink
-        href={authorsListHref(previousToken)}
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        前のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">前のページ</span>
-    )}
+}) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
 
-    {nextToken ? (
-      <LocaleLink
-        href={authorsListHref(nextToken)}
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        次のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">次のページ</span>
-    )}
-  </nav>
-);
+  return (
+    <nav
+      aria-label={getMessage(messages, "host.authors.pagination_aria")}
+      className="mt-8 flex items-center justify-center gap-6"
+    >
+      {previousToken ? (
+        <LocaleLink
+          href={authorsListHref(previousToken)}
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          {getMessage(messages, "host.common.previous_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.previous_page")}
+        </span>
+      )}
+
+      {nextToken ? (
+        <LocaleLink
+          href={authorsListHref(nextToken)}
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          {getMessage(messages, "host.common.next_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.next_page")}
+        </span>
+      )}
+    </nav>
+  );
+};
 
 const AuthorsListData = async ({
   searchParams,
 }: {
   searchParams: PageProps<"/[tenant_id]/[locale]/authors">["searchParams"];
 }) => {
-  const [resolvedSearchParams, tenantId] = await Promise.all([
+  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
     searchParams,
     getTenantId(),
+    getLocale(),
   ]);
   const { token } = parseAuthorsListSearchParams(resolvedSearchParams);
 
-  const result = await listPublishedAuthors(tenantId, {
-    limit: AUTHORS_PAGE_SIZE,
-    token,
-  });
+  const [result, messages] = await Promise.all([
+    listPublishedAuthors(tenantId, {
+      limit: AUTHORS_PAGE_SIZE,
+      locale,
+      token,
+    }),
+    loadHostMessages(locale),
+  ]);
 
   if (!result.ok) {
-    return <SectionError description={result.message} title={SECTION_TITLE} />;
+    return (
+      <SectionError
+        description={result.message}
+        title={getMessage(messages, "host.authors.list_error")}
+      />
+    );
   }
 
   const { authors, nextToken, previousToken } = result.value;
@@ -108,10 +146,10 @@ const AuthorsListData = async ({
       return (
         <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-6 py-20 text-center">
           <h2 className="mb-2 font-serif text-2xl font-semibold">
-            まだ著者がいません
+            {getMessage(messages, "host.authors.list_empty_title")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            公開中のシリーズに著者が設定されると、ここに表示されます。
+            {getMessage(messages, "host.authors.list_empty_description")}
           </p>
         </div>
       );
@@ -123,7 +161,7 @@ const AuthorsListData = async ({
     return (
       <div className="py-20 text-center">
         <p className="mb-4 text-muted-foreground">
-          このページに表示できる著者がいません。
+          {getMessage(messages, "host.authors.page_empty")}
         </p>
         {previousToken || nextToken ? (
           <AuthorsPagination
@@ -135,7 +173,7 @@ const AuthorsListData = async ({
             href={authorsListHref("")}
             className="text-sm text-primary underline-offset-4 hover:underline"
           >
-            著者一覧の先頭へ
+            {getMessage(messages, "host.authors.first_page")}
           </LocaleLink>
         )}
       </div>
@@ -154,7 +192,9 @@ const AuthorsListData = async ({
             {author.iconImageUrl ? (
               <div className="mb-4 h-12 w-12 overflow-hidden rounded-full border border-border/60 bg-muted/20">
                 <Image
-                  alt={`${author.name} のアイコン`}
+                  alt={getMessage(messages, "host.authors.icon_alt", {
+                    name: author.name,
+                  })}
                   className="h-full w-full object-cover"
                   decoding="async"
                   height={48}
@@ -171,7 +211,9 @@ const AuthorsListData = async ({
               {author.name}
             </h2>
             <p className="text-sm text-muted-foreground">
-              公開中シリーズ {author.seriesCount} 件
+              {getMessage(messages, "host.common.series_count", {
+                count: author.seriesCount,
+              })}
             </p>
           </LocaleLink>
         ))}
@@ -186,22 +228,18 @@ const AuthorsPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/authors">) => (
   <main className="mx-auto max-w-6xl px-6 py-12">
-    <h1 className="mb-2 font-serif text-4xl font-bold">著者一覧</h1>
-    <p className="mb-8 text-muted-foreground">
-      <Suspense
-        fallback={
-          <span
-            aria-hidden
-            className="inline-block h-4 w-16 animate-pulse rounded bg-muted align-middle"
-          />
-        }
-      >
-        <TenantSiteLabel />
+    <h1 className="mb-2 font-serif text-4xl font-bold">
+      <Suspense fallback={<SkeletonLine className="h-9 w-48" />}>
+        <Message message="host.authors.list_title" />
       </Suspense>
-      に登録されている著者をご紹介します
+    </h1>
+    <p className="mb-8 text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-5 w-80" />}>
+        <AuthorsListDescription />
+      </Suspense>
     </p>
 
-    <SectionErrorBoundary title={SECTION_TITLE}>
+    <SectionErrorBoundary {...sectionErrorCopy("host.authors.list_error")}>
       <Suspense fallback={<AuthorsListSkeleton />}>
         <AuthorsListData searchParams={searchParams} />
       </Suspense>

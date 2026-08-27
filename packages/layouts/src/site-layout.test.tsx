@@ -40,14 +40,21 @@ afterEach(() => {
 });
 
 describe("SiteLayout components", () => {
-  it("SiteLayoutNav はデフォルトナビを next/link で表示する", () => {
-    render(<SiteLayoutNav />);
+  it("SiteLayoutNav は渡されたナビを next/link で表示する", () => {
+    render(
+      <SiteLayoutNav
+        items={[
+          { href: "/authors", label: "著者" },
+          { href: "/series", label: "シリーズ" },
+        ]}
+      />
+    );
 
-    const authors = screen.getByRole("link", { name: "Authors" });
+    const authors = screen.getByRole("link", { name: "著者" });
     expect(authors.getAttribute("href")).toBe("/authors");
     expect(authors.dataset.nextLink).toBe("true");
 
-    const series = screen.getByRole("link", { name: "Series" });
+    const series = screen.getByRole("link", { name: "シリーズ" });
     expect(series.getAttribute("href")).toBe("/series");
     expect(series.dataset.nextLink).toBe("true");
   });
@@ -123,16 +130,17 @@ describe("SiteLayoutActions", () => {
   it("通常のアクションは next/link で描画する", () => {
     render(
       <SiteLayoutActions
-        primaryAction={{ href: "/signup", label: "Start" }}
-        secondaryAction={{ href: "/login", label: "Sign in" }}
+        logoutLabel="ログアウト"
+        primaryAction={{ href: "/signup", label: "はじめる" }}
+        secondaryAction={{ href: "/login", label: "ログイン" }}
       />
     );
 
-    const start = screen.getByRole("link", { name: "Start" });
+    const start = screen.getByRole("link", { name: "はじめる" });
     expect(start.getAttribute("href")).toBe("/signup");
     expect(start.dataset.nextLink).toBe("true");
 
-    const signIn = screen.getByRole("link", { name: "Sign in" });
+    const signIn = screen.getByRole("link", { name: "ログイン" });
     expect(signIn.getAttribute("href")).toBe("/login");
     expect(signIn.dataset.nextLink).toBe("true");
   });
@@ -142,32 +150,39 @@ describe("SiteLayoutActions", () => {
     render(
       <SiteLayoutActions
         logoutAction={logoutAction}
-        primaryAction={{ href: "/my", label: "My Page" }}
+        logoutLabel="ログアウト"
+        primaryAction={{ href: "/my", label: "マイページ" }}
       />
     );
 
-    const logout = screen.getByRole("button", { name: "Logout" });
+    const logout = screen.getByRole("button", { name: "ログアウト" });
     expect(logout.getAttribute("type")).toBe("submit");
     expect(logout.closest("form")).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Logout" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "ログアウト" })).toBeNull();
 
-    expect(screen.getByRole("link", { name: "My Page" }).dataset.nextLink).toBe(
-      "true"
-    );
+    expect(
+      screen.getByRole("link", { name: "マイページ" }).dataset.nextLink
+    ).toBe("true");
   });
 });
 
 describe("getAuthActions", () => {
-  it("未ログインでは Sign in / Start のリンクを返す", () => {
-    expect(getAuthActions(false)).toEqual({
-      primaryAction: { href: "/signup", label: "Start" },
-      secondaryAction: { href: "/login", label: "Sign in" },
+  const labels = {
+    login: "ログイン",
+    myPage: "マイページ",
+    signup: "はじめる",
+  };
+
+  it("未ログインでは渡されたログイン / 登録ラベルのリンクを返す", () => {
+    expect(getAuthActions(false, labels)).toEqual({
+      primaryAction: { href: "/signup", label: "はじめる" },
+      secondaryAction: { href: "/login", label: "ログイン" },
     });
   });
 
-  it("ログイン済みでは My Page のみ返し、ログアウトはリンクにしない", () => {
-    expect(getAuthActions(true)).toEqual({
-      primaryAction: { href: "/my", label: "My Page" },
+  it("ログイン済みではマイページのみ返し、ログアウトはリンクにしない", () => {
+    expect(getAuthActions(true, labels)).toEqual({
+      primaryAction: { href: "/my", label: "マイページ" },
     });
   });
 });

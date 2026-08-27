@@ -1,5 +1,7 @@
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
+  getAuthActions,
   SiteLayout,
   SiteLayoutActions,
   SiteLayoutBrand,
@@ -8,7 +10,6 @@ import {
   SiteLayoutHeaderActions,
   SiteLayoutMain,
   SiteLayoutNav,
-  getAuthActions,
 } from "@publira/layouts";
 import type { LayoutLinkItem } from "@publira/layouts";
 import type { Metadata } from "next";
@@ -16,7 +17,10 @@ import { cookies } from "next/headers";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { CatalogSearchForm } from "#components/catalog-search-form";
+import {
+  CatalogSearchForm,
+  CatalogSearchFormSkeleton,
+} from "#components/catalog-search-form";
 import {
   LocaleSwitcher,
   LocaleSwitcherSkeleton,
@@ -28,12 +32,13 @@ import {
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
-import { getLocale } from "#lib/locale";
+import { getLocale, loadHostMessages } from "#lib/locale";
+import type { HostMessageKey, HostMessages } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { logoutAction } from "#lib/logout-action";
 import { countUnreadNotifications } from "#lib/notification";
 import { listPublishedPageLinks } from "#lib/pages";
-import { getTenantSiteInfo } from "#lib/tenant";
+import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { resolveTenantLogoVariant } from "#lib/tenant-logo";
 
@@ -41,14 +46,23 @@ import { resolveTenantLogoVariant } from "#lib/tenant-logo";
  * Bare hrefs, prefixed with the request's locale before they reach
  * `@publira/layouts` — that package is shared with the two consoles, which keep
  * their locale in a cookie, so it renders plain `next/link`s and cannot add the
- * prefix itself.
+ * prefix itself. The labels are resolved here for the same reason.
  */
-const siteNavItems: LayoutLinkItem[] = [
-  { href: "/authors", label: "Authors" },
-  { href: "/labels", label: "Labels" },
-  { href: "/series", label: "Series" },
-  { href: "/search", label: "Search" },
+const siteNavItems: { href: string; label: HostMessageKey }[] = [
+  { href: "/authors", label: "host.nav.authors" },
+  { href: "/labels", label: "host.nav.labels" },
+  { href: "/series", label: "host.nav.series" },
+  { href: "/search", label: "host.nav.search" },
 ];
+
+const toNavLinkItems = (
+  locale: Locale,
+  messages: HostMessages
+): LayoutLinkItem[] =>
+  siteNavItems.map((item) => ({
+    href: withLocalePrefix(locale, item.href),
+    label: getMessage(messages, item.label),
+  }));
 
 const toLocaleLinkItems = (
   locale: Locale,
@@ -60,10 +74,24 @@ const toLocaleLinkItems = (
   }));
 
 const HostNotificationBell = async () => {
-  const tenantId = await getTenantId();
-  const unread = await countUnreadNotifications(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [unread, messages] = await Promise.all([
+    countUnreadNotifications(tenantId),
+    loadHostMessages(locale),
+  ]);
 
-  return <NotificationBell unreadCount={unread.unreadCount} />;
+  return (
+    <NotificationBell
+      label={
+        unread.unreadCount > 0
+          ? getMessage(messages, "host.nav.notifications_unread", {
+              count: unread.unreadCount,
+            })
+          : getMessage(messages, "host.nav.notifications_none")
+      }
+      unreadCount={unread.unreadCount}
+    />
+  );
 };
 
 const getHeaderActionsContent = async () => {
@@ -72,15 +100,22 @@ const getHeaderActionsContent = async () => {
     getTenantId(),
     getLocale(),
   ]);
+  const messages = await loadHostMessages(locale);
   const hasSession = Boolean(
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
   );
-  const actions = getAuthActions(hasSession);
+  const actions = getAuthActions(hasSession, {
+    login: getMessage(messages, "host.nav.login"),
+    myPage: getMessage(messages, "host.nav.my_page"),
+    signup: getMessage(messages, "host.nav.signup"),
+  });
 
   return (
     <div className="flex items-center gap-2">
       {hasSession ? (
-        <NotificationBellErrorBoundary>
+        <NotificationBellErrorBoundary
+          label={getMessage(messages, "host.nav.notifications_none")}
+        >
           <Suspense fallback={<NotificationBellSkeleton />}>
             <HostNotificationBell />
           </Suspense>
@@ -90,6 +125,7 @@ const getHeaderActionsContent = async () => {
         logoutAction={
           hasSession ? logoutAction.bind(null, tenantId, locale) : undefined
         }
+        logoutLabel={getMessage(messages, "host.nav.logout")}
         primaryAction={{
           ...actions.primaryAction,
           href: withLocalePrefix(locale, actions.primaryAction.href),
@@ -105,8 +141,6 @@ const getHeaderActionsContent = async () => {
   );
 };
 
-const buildSiteTitleBase = (siteLabel: string): string => siteLabel;
-
 const resolveTenantInfo = async () => {
   const tenantId = await getTenantId();
   return getTenantSiteInfo(tenantId);
@@ -116,22 +150,30 @@ const getAppLabel = async (
   tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
 ): Promise<string | undefined> => {
   const tenantInfo = await tenantInfoPromise;
-  return tenantInfo?.siteLabel?.trim() || undefined;
+  return tenantInfo?.name.trim() || undefined;
 };
 
 const getBrandMark = async (
   tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
 ): Promise<ReactNode | undefined> => {
-  const tenantInfo = await tenantInfoPromise;
+  const [tenantInfo, tenantId, locale] = await Promise.all([
+    tenantInfoPromise,
+    getTenantId(),
+    getLocale(),
+  ]);
   const variant = resolveTenantLogoVariant(tenantInfo);
   if (!variant) {
     return undefined;
   }
 
-  const siteLabel = tenantInfo?.siteLabel?.trim() || "サイト";
+  const [siteLabel, messages] = await Promise.all([
+    getTenantSiteLabel(tenantId, locale),
+    loadHostMessages(locale),
+  ]);
+
   return (
     <TenantBrandLogo
-      alt={`${siteLabel}のロゴ`}
+      alt={getMessage(messages, "host.nav.logo_alt", { name: siteLabel })}
       fallbackLabel={siteLabel}
       priority
       variant={variant}
@@ -159,26 +201,48 @@ const getFooterPageLinks = async (): Promise<LayoutLinkItem[]> => {
   return toLocaleLinkItems(locale, links);
 };
 
-export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
+const getFooterLinksLabel = async (): Promise<string> => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+  return getMessage(messages, "host.nav.footer_links");
+};
 
-  const info = await getTenantSiteInfo(tenantId);
-  const siteLabel = info?.siteLabel ?? "サイト";
+export const generateMetadata = async (): Promise<Metadata> => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
+  const [info, siteLabel] = await Promise.all([
+    getTenantSiteInfo(tenantId),
+    getTenantSiteLabel(tenantId, locale),
+  ]);
   const siteDescription = info?.siteDescription?.trim() || undefined;
-  const base = buildSiteTitleBase(siteLabel);
 
   return {
     description: siteDescription,
     openGraph: {
       description: siteDescription,
-      title: base,
+      title: siteLabel,
     },
     title: {
-      default: base,
-      template: `%s | ${base}`,
+      default: siteLabel,
+      template: `%s | ${siteLabel}`,
     },
   };
 };
+
+const SiteNav = async () => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return <SiteLayoutNav items={toNavLinkItems(locale, messages)} />;
+};
+
+/** Same footprint as the rendered nav, so the header does not shift. */
+const SiteNavSkeleton = () => (
+  <div
+    aria-hidden="true"
+    className="hidden h-5 w-64 animate-pulse rounded bg-muted md:block"
+  />
+);
 
 const TenantLayout = async ({
   children,
@@ -195,9 +259,13 @@ const TenantLayout = async ({
           href={withLocalePrefix(locale, "/")}
           label={getAppLabel(tenantInfoPromise)}
         />
-        <SiteLayoutNav items={toLocaleLinkItems(locale, siteNavItems)} />
+        <Suspense fallback={<SiteNavSkeleton />}>
+          <SiteNav />
+        </Suspense>
         <div className="flex max-w-40 min-w-0 flex-1 justify-end sm:max-w-64">
-          <CatalogSearchForm id="catalog-search-header" />
+          <Suspense fallback={<CatalogSearchFormSkeleton />}>
+            <CatalogSearchForm id="catalog-search-header" />
+          </Suspense>
         </div>
         <Suspense fallback={<LocaleSwitcherSkeleton />}>
           <LocaleSwitcher />
@@ -209,6 +277,7 @@ const TenantLayout = async ({
         copyrightText={getCopyrightText(tenantInfoPromise)}
         footerNote={getFooterNote(tenantInfoPromise)}
         links={getFooterPageLinks()}
+        linksLabel={getFooterLinksLabel()}
       />
     </SiteLayout>
   );

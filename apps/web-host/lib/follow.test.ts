@@ -66,7 +66,12 @@ describe("getMyFollowStatus", () => {
   it("ゲストは RPC を呼ばず未ログインとして返す", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
-    const result = await getMyFollowStatus(tenantId, "series", "SERIES01");
+    const result = await getMyFollowStatus(
+      tenantId,
+      "series",
+      "SERIES01",
+      "ja"
+    );
 
     expect(result).toEqual({
       isFollowing: false,
@@ -79,7 +84,12 @@ describe("getMyFollowStatus", () => {
   it("会員のフォロー状態を返す", async () => {
     mockGetMyFollowStatus.mockResolvedValueOnce({ isFollowing: true });
 
-    const result = await getMyFollowStatus(tenantId, "author", "AUTHOR01");
+    const result = await getMyFollowStatus(
+      tenantId,
+      "author",
+      "AUTHOR01",
+      "ja"
+    );
 
     expect(mockGetMyFollowStatus).toHaveBeenCalledWith(
       {
@@ -100,7 +110,12 @@ describe("getMyFollowStatus", () => {
       new ConnectError("expired", Code.Unauthenticated)
     );
 
-    const result = await getMyFollowStatus(tenantId, "series", "SERIES01");
+    const result = await getMyFollowStatus(
+      tenantId,
+      "series",
+      "SERIES01",
+      "ja"
+    );
 
     expect(result).toEqual({
       isFollowing: false,
@@ -114,7 +129,12 @@ describe("getMyFollowStatus", () => {
       new ConnectError("missing", Code.NotFound)
     );
 
-    const result = await getMyFollowStatus(tenantId, "series", "MISSING01");
+    const result = await getMyFollowStatus(
+      tenantId,
+      "series",
+      "MISSING01",
+      "ja"
+    );
 
     expect(result).toEqual({
       message: "対象が見つかりません。",
@@ -134,6 +154,7 @@ describe("followTarget / unfollowTarget", () => {
 
     await expect(
       followTarget({
+        locale: "ja",
         publicId: "SERIES01",
         targetKind: "series",
         tenantId,
@@ -153,6 +174,7 @@ describe("followTarget / unfollowTarget", () => {
 
     await expect(
       unfollowTarget({
+        locale: "ja",
         publicId: "AUTHOR01",
         targetKind: "author",
         tenantId,
@@ -167,6 +189,7 @@ describe("followTarget / unfollowTarget", () => {
 
     await expect(
       followTarget({
+        locale: "ja",
         publicId: "SERIES01",
         targetKind: "series",
         tenantId,

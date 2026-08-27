@@ -12,9 +12,15 @@ export const NotificationBellSkeleton = () => (
   </span>
 );
 
-export const NotificationBell = ({ unreadCount }: { unreadCount: number }) => {
+export const NotificationBell = ({
+  label,
+  unreadCount,
+}: {
+  /** `aria-label` of the bell, already resolved by the caller. */
+  label: string;
+  unreadCount: number;
+}) => {
   const count = Math.max(0, unreadCount);
-  const label = count > 0 ? `通知、未読${count}件` : "通知、未読はありません";
 
   return (
     <LocaleLink

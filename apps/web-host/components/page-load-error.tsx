@@ -5,6 +5,8 @@ import { SectionError } from "@publira/ui-components/section-error";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
+import { ClientMessage } from "#components/client-message";
+
 /**
  * Failure body for a route whose **whole** content is one read — the detail
  * routes, where an `ok: false` leaves nothing to show around it.
@@ -31,11 +33,11 @@ export const PageLoadError = ({ description }: { description: string }) => {
       <SectionError
         actions={
           <Button onClick={onRetry} size="sm" variant="outline">
-            再試行
+            <ClientMessage message="host.common.retry" />
           </Button>
         }
         description={description}
-        title="ページを表示できませんでした"
+        title={<ClientMessage message="host.errors.page_title" />}
       />
     </div>
   );

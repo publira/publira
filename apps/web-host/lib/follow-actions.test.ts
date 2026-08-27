@@ -67,10 +67,11 @@ describe("toggleFollowAction", () => {
 
     expect(result).toEqual({
       isFollowing: true,
-      message: "フォローしました。",
+      message: "You are now following this.",
       ok: true,
     });
     expect(mockFollowTarget).toHaveBeenCalledWith({
+      locale: "en",
       publicId: "SERIES01",
       targetKind: "series",
       tenantId,
@@ -104,6 +105,7 @@ describe("toggleFollowAction", () => {
       ok: true,
     });
     expect(mockUnfollowTarget).toHaveBeenCalledWith({
+      locale: "ja",
       publicId: "AUTHOR01",
       targetKind: "author",
       tenantId,

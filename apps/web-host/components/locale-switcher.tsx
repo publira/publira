@@ -1,12 +1,13 @@
 "use client";
 
-import { getLocales } from "@publira/i18n";
+import { getLocales, getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { toBarePathname, withLocalePrefix } from "#lib/locale-path";
 
+import { useHostMessages } from "./client-message";
 import { useLocale } from "./locale-provider";
 
 /**
@@ -44,10 +45,14 @@ export const LocaleSwitcherSkeleton = () => (
 
 export const LocaleSwitcher = () => {
   const currentLocale = useLocale();
+  const messages = useHostMessages();
   const barePathname = toBarePathname(usePathname());
 
   return (
-    <nav aria-label="表示言語" className="flex items-center gap-1 text-xs">
+    <nav
+      aria-label={getMessage(messages, "host.nav.locale_switcher")}
+      className="flex items-center gap-1 text-xs"
+    >
       {getLocales().map((locale) => {
         const current = locale === currentLocale;
 

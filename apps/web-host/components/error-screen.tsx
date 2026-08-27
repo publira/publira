@@ -6,7 +6,9 @@ import type { ReactNode } from "react";
 interface ErrorScreenProps {
   /** Extra navigation shown next to the retry button. */
   actions?: ReactNode;
-  description: string;
+  description: ReactNode;
+  digestLabel: ReactNode;
+  retryLabel: ReactNode;
   /**
    * `error.digest` from the boundary. Server Component errors are stripped of
    * their message before they reach the client, so the digest is the only
@@ -14,7 +16,7 @@ interface ErrorScreenProps {
    */
   digest?: string;
   retry: () => void;
-  title: string;
+  title: ReactNode;
 }
 
 /**
@@ -29,19 +31,21 @@ export const ErrorScreen = ({
   actions,
   description,
   digest,
+  digestLabel,
   retry,
+  retryLabel,
   title,
 }: ErrorScreenProps) => (
   <div className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
     <h1 className="font-serif text-3xl font-bold">{title}</h1>
     <p className="mt-4 text-muted-foreground">{description}</p>
     <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-      <Button onClick={() => retry()}>再試行</Button>
+      <Button onClick={() => retry()}>{retryLabel}</Button>
       {actions}
     </div>
     {digest ? (
       <p className="mt-8 text-xs text-muted-foreground">
-        エラー ID: <code className="font-mono">{digest}</code>
+        {digestLabel} <code className="font-mono">{digest}</code>
       </p>
     ) : null}
   </div>

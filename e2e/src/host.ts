@@ -26,6 +26,6 @@ export const signInAsSeedMember = async (
 };
 
 export const signOutHost = async (page: Page): Promise<void> => {
-  await page.getByRole("button", { name: "Logout" }).click();
+  await page.getByRole("button", { name: "ログアウト" }).click();
   await page.waitForURL((url) => url.pathname.endsWith("/login"));
 };

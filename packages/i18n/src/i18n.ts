@@ -207,7 +207,19 @@ const lookupMessage = (
   return typeof current === "string" ? current : undefined;
 };
 
-const interpolate = (template: string, values?: MessageValues): string => {
+/**
+ * Substitute `{name}` placeholders in an already-resolved message.
+ *
+ * {@link getMessage} is the normal entry point. This one is for the rare
+ * caller that holds a template rather than a catalog — a Client Component
+ * handed one resolved string whose numbers are only known in the browser —
+ * so the substitution rules stay in one place instead of being re-implemented
+ * against the same `{name}` shape.
+ */
+export const formatMessage = (
+  template: string,
+  values?: MessageValues
+): string => {
   if (!values) {
     return template;
   }
@@ -248,5 +260,5 @@ export const getMessage = <TCatalog extends MessageTree>(
     return missingMessage(key);
   }
 
-  return interpolate(message, values);
+  return formatMessage(message, values);
 };

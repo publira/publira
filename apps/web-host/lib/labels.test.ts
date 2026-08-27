@@ -37,6 +37,7 @@ describe("getPublishedLabelDetail", () => {
 
     const result = await getPublishedLabelDetail(" TENANT_1 ", " LABEL_A ", {
       limit: 12,
+      locale: "ja",
       token: "",
     });
 
@@ -77,7 +78,9 @@ describe("getPublishedLabelDetail", () => {
       ],
     });
 
-    const result = await getPublishedLabelDetail("TENANT_1", "LABEL_A");
+    const result = await getPublishedLabelDetail("TENANT_1", "LABEL_A", {
+      locale: "ja",
+    });
 
     expect(result.ok && result.value?.series).toEqual([
       { publicId: "SERIES_1", title: "シリーズ1" },
@@ -97,7 +100,7 @@ describe("getPublishedLabelDetail", () => {
     });
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "LABEL_A")
+      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "ja" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -110,7 +113,7 @@ describe("getPublishedLabelDetail", () => {
     });
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "LABEL_A")
+      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "ja" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -120,7 +123,7 @@ describe("getPublishedLabelDetail", () => {
     );
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "UNKNOWN_LABEL")
+      getPublishedLabelDetail("TENANT_1", "UNKNOWN_LABEL", { locale: "ja" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -130,7 +133,7 @@ describe("getPublishedLabelDetail", () => {
     mockGetPublishedLabelDetail.mockRejectedValueOnce(rehydrated);
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "LABEL_A")
+      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "ja" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -140,7 +143,7 @@ describe("getPublishedLabelDetail", () => {
     );
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "LABEL_A")
+      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "ja" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -150,7 +153,7 @@ describe("getPublishedLabelDetail", () => {
     );
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "LABEL_A")
+      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "ja" })
     ).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",

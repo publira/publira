@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { ImageIcon } from "@publira/icons";
 import {
   createPlaceholderStaticParams,
@@ -12,6 +14,7 @@ import { LocaleLink } from "#components/locale-link";
 import { PageLoadError } from "#components/page-load-error";
 import { getPublishedLabelDetail } from "#lib/labels";
 import type { PublishedLabelDetail } from "#lib/labels";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -34,10 +37,12 @@ type LabelDetailPageProps =
 const loadPublishedLabelDetail = (
   tenantId: string,
   labelId: string,
+  locale: Locale,
   token: string
 ) =>
   getPublishedLabelDetail(tenantId, labelId, {
     limit: LABEL_SERIES_PAGE_SIZE,
+    locale,
     token,
   });
 
@@ -48,20 +53,20 @@ export const generateMetadata = async ({
   params,
   searchParams,
 }: LabelDetailPageProps): Promise<Metadata> => {
-  const [{ label_id }, tenantId, resolvedSearchParams] = await Promise.all([
-    params,
-    getTenantId(),
-    searchParams,
-  ]);
+  const [{ label_id }, tenantId, resolvedSearchParams, locale] =
+    await Promise.all([params, getTenantId(), searchParams, getLocale()]);
 
   guardPlaceholders({ label_id });
 
   const labelId = parseLabelDetailParams({ label_id });
   const { token } = parseLabelDetailSearchParams(resolvedSearchParams);
 
-  const result = labelId
-    ? await loadPublishedLabelDetail(tenantId, labelId, token)
-    : { ok: true as const, value: null };
+  const [result, messages] = await Promise.all([
+    labelId
+      ? loadPublishedLabelDetail(tenantId, labelId, locale, token)
+      : { ok: true as const, value: null },
+    loadHostMessages(locale),
+  ]);
 
   // An unavailable label reads as "not found" for the `<title>` alone; the
   // page body below says what actually happened.
@@ -69,12 +74,15 @@ export const generateMetadata = async ({
 
   if (!label) {
     return {
-      title: "レーベルが見つかりません",
+      title: getMessage(messages, "host.labels.not_found_title"),
     };
   }
 
   return {
-    description: `${label.name} の公開中シリーズ ${label.seriesCount} 件`,
+    description: getMessage(messages, "host.labels.detail_description", {
+      count: label.seriesCount,
+      name: label.name,
+    }),
     title: label.name,
   };
 };
@@ -99,7 +107,7 @@ const LabelDetailSkeleton = () => (
   </div>
 );
 
-const LabelSeriesPagination = ({
+const LabelSeriesPagination = async ({
   labelId,
   nextToken,
   previousToken,
@@ -107,47 +115,59 @@ const LabelSeriesPagination = ({
   labelId: string;
   nextToken: string;
   previousToken: string;
-}) => (
-  <nav
-    aria-label="所属シリーズページング"
-    className="mt-8 flex items-center justify-center gap-6"
-  >
-    {previousToken ? (
-      <LocaleLink
-        href={labelDetailHref(labelId, previousToken)}
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        前のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">前のページ</span>
-    )}
+}) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
 
-    {nextToken ? (
-      <LocaleLink
-        href={labelDetailHref(labelId, nextToken)}
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        次のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">次のページ</span>
-    )}
-  </nav>
-);
+  return (
+    <nav
+      aria-label={getMessage(messages, "host.labels.series_pagination_aria")}
+      className="mt-8 flex items-center justify-center gap-6"
+    >
+      {previousToken ? (
+        <LocaleLink
+          href={labelDetailHref(labelId, previousToken)}
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          {getMessage(messages, "host.common.previous_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.previous_page")}
+        </span>
+      )}
 
-const LabelRelatedSeries = ({
+      {nextToken ? (
+        <LocaleLink
+          href={labelDetailHref(labelId, nextToken)}
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          {getMessage(messages, "host.common.next_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.next_page")}
+        </span>
+      )}
+    </nav>
+  );
+};
+
+const LabelRelatedSeries = async ({
   label,
   token,
 }: {
   label: PublishedLabelDetail;
   token: string;
 }) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
   if (label.series.length === 0) {
     if (!token) {
       return (
         <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-6 text-sm text-muted-foreground">
-          まだ公開中シリーズはありません。
+          {getMessage(messages, "host.labels.series_empty")}
         </div>
       );
     }
@@ -155,7 +175,7 @@ const LabelRelatedSeries = ({
     return (
       <div className="py-10 text-center">
         <p className="mb-4 text-sm text-muted-foreground">
-          このページに表示できるシリーズがありません。
+          {getMessage(messages, "host.series.page_empty")}
         </p>
         {label.previousToken || label.nextToken ? (
           <LabelSeriesPagination
@@ -168,7 +188,7 @@ const LabelRelatedSeries = ({
             href={labelDetailHref(label.id, "")}
             className="text-sm text-primary underline-offset-4 hover:underline"
           >
-            所属シリーズの先頭へ
+            {getMessage(messages, "host.labels.series_first_page")}
           </LocaleLink>
         )}
       </div>
@@ -186,7 +206,7 @@ const LabelRelatedSeries = ({
             >
               <p className="font-medium text-foreground">{series.title}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                シリーズ詳細を見る
+                {getMessage(messages, "host.common.view_series_detail")}
               </p>
             </LocaleLink>
           </li>
@@ -205,11 +225,8 @@ const LabelDetailContent = async ({
   params,
   searchParams,
 }: LabelDetailPageProps) => {
-  const [{ label_id }, tenantId, resolvedSearchParams] = await Promise.all([
-    params,
-    getTenantId(),
-    searchParams,
-  ]);
+  const [{ label_id }, tenantId, resolvedSearchParams, locale] =
+    await Promise.all([params, getTenantId(), searchParams, getLocale()]);
 
   guardPlaceholders({ label_id });
 
@@ -223,9 +240,10 @@ const LabelDetailContent = async ({
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
   // to render anything (#672).
-  const [siteLabel, result] = await Promise.all([
-    getTenantSiteLabel(tenantId),
-    loadPublishedLabelDetail(tenantId, labelId, token),
+  const [siteLabel, result, messages] = await Promise.all([
+    getTenantSiteLabel(tenantId, locale),
+    loadPublishedLabelDetail(tenantId, labelId, locale, token),
+    loadHostMessages(locale),
   ]);
 
   if (!result.ok) {
@@ -263,16 +281,20 @@ const LabelDetailContent = async ({
             {label.name}
           </h1>
           <p className="text-sm text-muted-foreground">
-            公開中シリーズ {label.seriesCount} 件
+            {getMessage(messages, "host.common.series_count", {
+              count: label.seriesCount,
+            })}
           </p>
         </div>
       </section>
 
       <section>
         <div className="mb-5">
-          <h2 className="font-serif text-2xl font-semibold">所属シリーズ</h2>
+          <h2 className="font-serif text-2xl font-semibold">
+            {getMessage(messages, "host.labels.series_heading")}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            このレーベルに属する公開中シリーズ一覧です。
+            {getMessage(messages, "host.labels.series_description")}
           </p>
         </div>
 
@@ -284,7 +306,7 @@ const LabelDetailContent = async ({
           href="/labels"
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
-          レーベル一覧へ戻る
+          {getMessage(messages, "host.labels.back_to_list")}
         </LocaleLink>
       </div>
     </main>

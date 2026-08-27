@@ -1,5 +1,6 @@
 "use client";
 
+import { ClientMessage } from "#components/client-message";
 import { ErrorScreen } from "#components/error-screen";
 import { LocaleLink } from "#components/locale-link";
 
@@ -44,13 +45,15 @@ const SiteError = ({
         className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
         href="/"
       >
-        トップへ戻る
+        <ClientMessage message="host.common.back_to_top" />
       </LocaleLink>
     }
-    description="時間をおいて再試行してください。繰り返す場合はしばらく経ってからアクセスしてください。"
+    description={<ClientMessage message="host.errors.page_description" />}
     digest={error.digest}
+    digestLabel={<ClientMessage message="host.common.error_id" />}
     retry={retry}
-    title="ページを表示できませんでした"
+    retryLabel={<ClientMessage message="host.common.retry" />}
+    title={<ClientMessage message="host.errors.page_title" />}
   />
 );
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { ClientMessage } from "#components/client-message";
 import { ErrorScreen } from "#components/error-screen";
 
 /**
@@ -33,10 +34,12 @@ const TenantError = ({
   // boundary owns the `<main>` element itself.
   <main>
     <ErrorScreen
-      description="サイトの読み込みに失敗しました。時間をおいて再試行してください。"
+      description={<ClientMessage message="host.errors.site_description" />}
       digest={error.digest}
+      digestLabel={<ClientMessage message="host.common.error_id" />}
       retry={retry}
-      title="サイトを表示できませんでした"
+      retryLabel={<ClientMessage message="host.common.retry" />}
+      title={<ClientMessage message="host.errors.site_title" />}
     />
   </main>
 );

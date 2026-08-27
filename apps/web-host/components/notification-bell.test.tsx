@@ -20,7 +20,7 @@ afterEach(() => {
 
 describe("NotificationBell", () => {
   it("0 件なら件数を出さない", () => {
-    render(<NotificationBell unreadCount={0} />);
+    render(<NotificationBell label="通知、未読はありません" unreadCount={0} />);
 
     const link = screen.getByRole("link", { name: "通知、未読はありません" });
     expect(link.getAttribute("href")).toBe("/ja/notifications");
@@ -28,14 +28,14 @@ describe("NotificationBell", () => {
   });
 
   it("未読があれば件数を出す", () => {
-    render(<NotificationBell unreadCount={3} />);
+    render(<NotificationBell label="通知、未読3件" unreadCount={3} />);
 
     expect(screen.getByRole("link", { name: "通知、未読3件" })).toBeDefined();
     expect(screen.getByText("3")).toBeDefined();
   });
 
   it("99 件を超えたら 99+ と出す", () => {
-    render(<NotificationBell unreadCount={120} />);
+    render(<NotificationBell label="通知、未読120件" unreadCount={120} />);
 
     expect(screen.getByRole("link", { name: "通知、未読120件" })).toBeDefined();
     expect(screen.getByText("99+")).toBeDefined();

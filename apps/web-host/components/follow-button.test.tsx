@@ -24,6 +24,14 @@ vi.mock("#lib/follow-actions", () => ({
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
+const copy = (targetName: string) => ({
+  follow: "フォローする",
+  followAriaLabel: `「${targetName}」をフォローする`,
+  pending: "更新中…",
+  unfollow: "フォローを解除",
+  unfollowAriaLabel: `「${targetName}」のフォローを解除する`,
+});
+
 afterEach(() => {
   cleanup();
 });
@@ -32,8 +40,9 @@ describe("FollowLoginLink", () => {
   it("現在の詳細ページへ戻る returnTo 付きでログインへ誘導する", () => {
     render(
       <FollowLoginLink
+        ariaLabel="ログインして「公開シリーズ」をフォローする"
         href="/login?returnTo=%2Fseries%2FSERIES01"
-        targetName="公開シリーズ"
+        label="フォローする"
       />
     );
 
@@ -50,11 +59,11 @@ describe("FollowButton", () => {
   it("未フォローならフォロー操作を出す", () => {
     render(
       <FollowButton
+        copy={copy("公開シリーズ")}
         isFollowing={false}
         publicId="SERIES01"
         returnTo="/series/SERIES01"
         targetKind="series"
-        targetName="公開シリーズ"
         tenantId={tenantId}
       />
     );
@@ -68,11 +77,11 @@ describe("FollowButton", () => {
   it("フォロー中なら解除操作を出す", () => {
     render(
       <FollowButton
+        copy={copy("公開著者")}
         isFollowing
         publicId="AUTHOR01"
         returnTo="/authors/AUTHOR01"
         targetKind="author"
-        targetName="公開著者"
         tenantId={tenantId}
       />
     );
