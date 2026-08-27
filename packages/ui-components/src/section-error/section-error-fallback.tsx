@@ -54,7 +54,7 @@ const errorDigest = (error: unknown): string | undefined => {
  * import { sectionErrorFallback } from "@publira/ui-components/section-error";
  * import { catchError } from "next/error";
  *
- * export const SectionErrorBoundary = catchError(sectionErrorFallback);
+ * export const SectionErrorCatch = catchError(sectionErrorFallback);
  * ```
  *
  * The `catchError` call stays in each app because this package is built with
