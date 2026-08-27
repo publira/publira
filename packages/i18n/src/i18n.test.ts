@@ -7,6 +7,7 @@ import localeIndex from "../../../locales/index.json" with { type: "json" };
 import jaCatalog from "../../../locales/ja.json" with { type: "json" };
 import {
   DEFAULT_LOCALE,
+  formatMessage,
   getLocales,
   getMessage,
   getLocaleLabel,
@@ -213,6 +214,21 @@ describe("loadMessages", () => {
 
     expect(loaded).toEqual(catalogWithDefault);
     expect(getMessage(loaded, "default.greeting")).toBe("既定");
+  });
+});
+
+describe("formatMessage", () => {
+  it("substitutes {name} placeholders in a template", () => {
+    expect(
+      formatMessage("{first} / {total}ページ", { first: 3, total: 12 })
+    ).toBe("3 / 12ページ");
+  });
+
+  it("leaves a placeholder in place when the value is missing", () => {
+    expect(formatMessage("{first} / {total}", { first: 3 })).toBe(
+      "3 / {total}"
+    );
+    expect(formatMessage("{first} / {total}")).toBe("{first} / {total}");
   });
 });
 

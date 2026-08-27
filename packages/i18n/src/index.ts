@@ -1,5 +1,6 @@
 export {
   DEFAULT_LOCALE,
+  formatMessage,
   getLocales,
   getLocaleLabel,
   getMessage,
