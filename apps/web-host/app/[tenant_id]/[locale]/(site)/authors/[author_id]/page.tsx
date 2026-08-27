@@ -1,5 +1,6 @@
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -14,9 +15,9 @@ import { z } from "zod";
 import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { sectionErrorCopy } from "#components/section-error-copy";
 import { getPublishedAuthorDetail } from "#lib/authors";
 import type { PublishedAuthorDetail } from "#lib/authors";
 import { getLocale, loadHostMessages } from "#lib/locale";
@@ -321,7 +322,11 @@ const AuthorDetailContent = async ({
                 {author.name}
               </h1>
               <SectionErrorBoundary
-                {...sectionErrorCopy("host.follow.control_error")}
+                title={
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="host.follow.control_error" />
+                  </Suspense>
+                }
               >
                 <Suspense fallback={<FollowControlSkeleton />}>
                   <FollowControl

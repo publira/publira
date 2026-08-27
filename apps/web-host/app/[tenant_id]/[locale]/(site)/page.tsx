@@ -11,7 +11,6 @@ import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { sectionErrorCopy } from "#components/section-error-copy";
 import {
   getCatalogTopFeaturedAuthors,
   getCatalogTopFeaturedLabels,
@@ -568,7 +567,13 @@ const Page = () => (
           </Suspense>
         </LocaleLink>
       </div>
-      <SectionErrorBoundary {...sectionErrorCopy(SECTION_TITLES.recommended)}>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message={SECTION_TITLES.recommended} />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<CardGridSkeleton />}>
           <RecommendedSeriesSection />
         </Suspense>
@@ -581,7 +586,13 @@ const Page = () => (
           <Message message="host.top.new_episodes_heading" />
         </Suspense>
       </h2>
-      <SectionErrorBoundary {...sectionErrorCopy(SECTION_TITLES.newEpisodes)}>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message={SECTION_TITLES.newEpisodes} />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<ListSkeleton />}>
           <NewEpisodesSection />
         </Suspense>
@@ -597,7 +608,13 @@ const Page = () => (
           <Message message="host.top.updated_heading" />
         </Suspense>
       </h2>
-      <SectionErrorBoundary {...sectionErrorCopy(SECTION_TITLES.updated)}>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message={SECTION_TITLES.updated} />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<CardGridSkeleton />}>
           <UpdatedSeriesSection />
         </Suspense>
@@ -620,7 +637,13 @@ const Page = () => (
           </Suspense>
         </LocaleLink>
       </div>
-      <SectionErrorBoundary {...sectionErrorCopy(SECTION_TITLES.labels)}>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message={SECTION_TITLES.labels} />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<CardGridSkeleton />}>
           <FeaturedLabelsSection />
         </Suspense>
@@ -643,7 +666,13 @@ const Page = () => (
           </Suspense>
         </LocaleLink>
       </div>
-      <SectionErrorBoundary {...sectionErrorCopy(SECTION_TITLES.authors)}>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message={SECTION_TITLES.authors} />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<CardGridSkeleton />}>
           <FeaturedAuthorsSection />
         </Suspense>

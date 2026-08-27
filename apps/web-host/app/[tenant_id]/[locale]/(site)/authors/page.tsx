@@ -10,7 +10,6 @@ import { Suspense } from "react";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { sectionErrorCopy } from "#components/section-error-copy";
 import { listPublishedAuthors } from "#lib/authors";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteLabel } from "#lib/tenant";
@@ -239,7 +238,13 @@ const AuthorsPage = ({
       </Suspense>
     </p>
 
-    <SectionErrorBoundary {...sectionErrorCopy("host.authors.list_error")}>
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="host.authors.list_error" />
+        </Suspense>
+      }
+    >
       <Suspense fallback={<AuthorsListSkeleton />}>
         <AuthorsListData searchParams={searchParams} />
       </Suspense>

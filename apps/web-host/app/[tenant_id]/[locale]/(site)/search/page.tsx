@@ -14,7 +14,6 @@ import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { sectionErrorCopy } from "#components/section-error-copy";
 import { searchPublishedSeries } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
@@ -268,7 +267,13 @@ const SearchPage = ({ searchParams }: SearchPageProps) => (
       </Suspense>
     </div>
 
-    <SectionErrorBoundary {...sectionErrorCopy("host.search.error")}>
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="host.search.error" />
+        </Suspense>
+      }
+    >
       <Suspense fallback={<SearchListSkeleton />}>
         <SearchResultsData searchParams={searchParams} />
       </Suspense>
