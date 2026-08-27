@@ -402,7 +402,7 @@ func (s *adminServer) CreateSeries(
 		})
 	}
 	if publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC()) && s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, seriesRevalidateTags(tenant.ID.String(), base.PublicID)); err != nil {
+		if err := s.reval.RevalidateTags(ctx, seriesRevalidateTags(tenant.ID.String(), base.PublicID)); err != nil {
 			s.logger.Warn("failed to request next revalidate after series create", "tenant_public_id", tenant.PublicID, "series_public_id", base.PublicID, "error", err)
 		}
 	}
@@ -547,7 +547,7 @@ func (s *adminServer) UpdateSeries(
 	}
 	if s.reval != nil {
 		if current.IsPublished || (publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC())) {
-			if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, seriesRevalidateTags(tenant.ID.String(), current.PublicID)); err != nil {
+			if err := s.reval.RevalidateTags(ctx, seriesRevalidateTags(tenant.ID.String(), current.PublicID)); err != nil {
 				s.logger.Warn("failed to request next revalidate after series update", "tenant_public_id", tenant.PublicID, "series_public_id", current.PublicID, "error", err)
 			}
 		}

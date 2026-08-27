@@ -8,7 +8,7 @@ Playwright E2E（[`../README.md`](../README.md)）はアプリポートへ直結
 
 ## なぜ必要か
 
-Traefik の振り分けは `.devcontainer/compose.yaml` の `app` labels だけが正である。priority・HostRegexp・`/api` の strip-prefix・`/api/revalidate` の除外・`/images` の admin 分岐は、ラベルを 1 行変えただけで壊れる。その退行は `pnpm preflight` でも Playwright でも bootstrap でも見えない。
+Traefik の振り分けは `.devcontainer/compose.yaml` の `app` labels だけが正である。priority・HostRegexp・`/api` の strip-prefix・`/api/v1/revalidate` の除外・`/images` の admin 分岐は、ラベルを 1 行変えただけで壊れる。その退行は `pnpm preflight` でも Playwright でも bootstrap でも見えない。
 
 本チェックは **同じ compose ファイル** を専用 project 名で起動し、`app` のプロセスだけをポート応答用の echo サーバーに差し替える。ラベルはそのままなので、compose 上のルール変更がそのままテストに現れる。
 
@@ -58,9 +58,9 @@ echo サーバーは受けたリクエストを `{"backend","port","path","host"
 | Host + port | `Host: admin.localhost:3080` `/` | `web-admin`（Traefik は hostname だけ見る） |
 | `/api` strip | `GET /api/readyz` | `api` (`:8000`) path `/readyz` |
 | `/api` on admin / platform | `Host: admin.localhost` `/api/readyz` | `api` path `/readyz`（priority 105 > host 100） |
-| revalidate 除外 | `POST /api/revalidate` | `web-host` path `/api/revalidate`（strip しない） |
-| revalidate on admin | `Host: admin.localhost` `POST /api/revalidate` | `web-admin`（admin-api が叩く Next.js） |
-| revalidate の prefix | `GET /api/revalidate/extra` | `api` path `/revalidate/extra`（完全一致だけ除外） |
+| revalidate 除外 | `POST /api/v1/revalidate` | `web-host` path `/api/v1/revalidate`（strip しない） |
+| revalidate on admin | `Host: admin.localhost` `POST /api/v1/revalidate` | `web-admin`（admin-api が叩く Next.js） |
+| revalidate の prefix | `GET /api/v1/revalidate/extra` | `api` path `/v1/revalidate/extra`（完全一致だけ除外） |
 | `/images` | `GET /images/cover` | `image-server` (`:8200`) |
 | `/images` on platform | `Host: platform.localhost` `/images/cover` | `image-server`（priority 110 > 100） |
 | `/images` on admin | `Host: admin.localhost` `/images/cover` | `admin-image-server` (`:8201`, priority 130） |

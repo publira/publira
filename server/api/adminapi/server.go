@@ -189,8 +189,10 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		logger = slog.Default()
 	}
 	revalidateToken := strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN"))
-	revalidator := revalidate.NewClient(revalidateToken, logger)
-	if revalidator == nil {
+	revalidator, revalidateErr := revalidate.NewClient(revalidateToken, logger)
+	if revalidateErr != nil {
+		logger.Warn("next revalidate is disabled", "reason", revalidateErr.Error())
+	} else if revalidator == nil {
 		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
 	}
 	server := &adminServer{

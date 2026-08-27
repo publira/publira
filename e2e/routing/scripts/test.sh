@@ -33,11 +33,11 @@ assert_route "api strip deeper path" GET localhost /api/foo/bar api /foo/bar
 assert_route "api strip on admin host" GET admin.localhost /api/readyz api /readyz
 assert_route "api strip on platform host" GET platform.localhost /api/readyz api /readyz
 
-assert_route "revalidate stays on web-host" GET localhost /api/revalidate web-host /api/revalidate
-assert_route "revalidate trailing slash stays on web-host" GET localhost /api/revalidate/ web-host /api/revalidate/
-assert_route "revalidate POST stays on web-host" POST localhost /api/revalidate web-host /api/revalidate
-assert_route "revalidate on admin host stays on web-admin" POST admin.localhost /api/revalidate web-admin /api/revalidate
-assert_route "revalidate prefix is not excluded" GET localhost /api/revalidate/extra api /revalidate/extra
+assert_route "revalidate stays on web-host" GET localhost /api/v1/revalidate web-host /api/v1/revalidate
+assert_route "revalidate trailing slash stays on web-host" GET localhost /api/v1/revalidate/ web-host /api/v1/revalidate/
+assert_route "revalidate POST stays on web-host" POST localhost /api/v1/revalidate web-host /api/v1/revalidate
+assert_route "revalidate on admin host stays on web-admin" POST admin.localhost /api/v1/revalidate web-admin /api/v1/revalidate
+assert_route "revalidate prefix is not excluded" GET localhost /api/v1/revalidate/extra api /v1/revalidate/extra
 
 # /images is higher priority than the host routers. admin.* + /images is
 # higher still and lands on admin-image-server :8201.

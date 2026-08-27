@@ -1,3 +1,4 @@
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockResolveTenantId } = vi.hoisted(() => ({
@@ -108,4 +109,15 @@ describe("web-admin proxy", () => {
       expect(mockResolveTenantId).not.toHaveBeenCalled();
     }
   );
+
+  it("再検証パスを proxy matcher から除外する", async () => {
+    const { config } = await import("./proxy");
+
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate/" })
+    ).toBe(false);
+  });
 });

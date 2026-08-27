@@ -172,7 +172,9 @@ dev_env_write_profile() {
     printf 'PUBLIRA_PUBLIC_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
     printf 'PUBLIRA_ADMIN_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 13))"
     printf 'PUBLIRA_PLATFORM_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 15))"
-    printf 'PUBLIRA_REVALIDATE_BASE_URL=http://127.0.0.1:%s\n' "${port_base}"
+    printf 'PUBLIRA_WEB_HOST_INTERNAL_URL=http://127.0.0.1:%s\n' "${port_base}"
+    printf 'PUBLIRA_WEB_ADMIN_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 1))"
+    printf 'PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 2))"
     printf 'PUBLIRA_PLATFORM_APP_URL=http://platform.localhost:%s\n' "$((port_base + 2))"
     printf 'PUBLIRA_EMAIL_RENDERER_URL=http://127.0.0.1:%s\n' "$((port_base + 30))"
   } >"${tmp_path}"
@@ -205,7 +207,8 @@ dev_env_load_profile() {
     PUBLIRA_PLATFORM_API_PORT PUBLIRA_PLATFORM_API_GRPC_PORT PUBLIRA_IMAGE_SERVER_PORT \
     PUBLIRA_ADMIN_IMAGE_SERVER_PORT PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_OUTBOX_WORKER_PORT \
     PUBLIRA_PUBLIC_GRPC_URL PUBLIRA_ADMIN_GRPC_URL PUBLIRA_PLATFORM_GRPC_URL \
-    PUBLIRA_REVALIDATE_BASE_URL PUBLIRA_PLATFORM_APP_URL PUBLIRA_EMAIL_RENDERER_URL; do
+    PUBLIRA_WEB_HOST_INTERNAL_URL PUBLIRA_WEB_ADMIN_INTERNAL_URL PUBLIRA_WEB_PLATFORM_INTERNAL_URL \
+    PUBLIRA_PLATFORM_APP_URL PUBLIRA_EMAIL_RENDERER_URL; do
     dev_env_load_required_profile_value "${profile_path}" "${key}"
   done
 }

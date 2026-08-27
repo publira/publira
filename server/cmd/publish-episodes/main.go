@@ -66,8 +66,10 @@ func main() {
 	maxRetries := resolveMaxRetries()
 
 	revalidateToken := strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN"))
-	reval := revalidate.NewClient(revalidateToken, logger)
-	if reval == nil {
+	reval, revalidateErr := revalidate.NewClient(revalidateToken, logger)
+	if revalidateErr != nil {
+		logger.Warn("next revalidate is disabled", "reason", revalidateErr.Error())
+	} else if reval == nil {
 		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
 	}
 

@@ -1,3 +1,4 @@
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockIsSetupCompleted } = vi.hoisted(() => ({
@@ -40,5 +41,16 @@ describe("web-platform proxy", () => {
     expect(response.headers.get("set-cookie")).toBeNull();
     expect(response.headers.get("location")).toBeNull();
     expect(mockIsSetupCompleted).not.toHaveBeenCalled();
+  });
+
+  it("再検証パスを proxy matcher から除外する", async () => {
+    const { config } = await import("./proxy");
+
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate/" })
+    ).toBe(false);
   });
 });

@@ -263,7 +263,7 @@ func (s *adminServer) UpdatePage(
 			fmt.Sprintf("tenant:%s:pages", tenantID),
 			fmt.Sprintf("tenant:%s:pages:%s", tenantID, page.ID.String()),
 		}
-		if err := s.reval.RevalidateTags(ctx, tenantID, tenant.Domain, tags); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tags); err != nil {
 			s.logger.Warn("failed to request next revalidate after page update", "tenant_public_id", tenant.PublicID, "page_id", pageID, "error", err)
 		}
 	}
@@ -524,7 +524,7 @@ func (s *adminServer) PublishVersion(
 			fmt.Sprintf("tenant:%s:pages", tenantID),
 			fmt.Sprintf("tenant:%s:pages:%s", tenantID, version.PageID.String()),
 		}
-		if err := s.reval.RevalidateTags(ctx, tenantID, tenant.Domain, tags); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tags); err != nil {
 			s.logger.Warn("failed to request next revalidate after page publish", "tenant_public_id", tenant.PublicID, "page_id", pageID, "error", err)
 		}
 	}

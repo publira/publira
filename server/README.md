@@ -157,12 +157,15 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
   - 例: `https://platform.example.com`
   - 未設定時はローカル開発向けに `http://platform.localhost:3080` を使用
 
-## Next.js revalidation URL
+## Next.js 再検証の内部 URL
 
-- `PUBLIRA_REVALIDATE_BASE_URL`
-  - `publish-episodes` が Next.js の `/api/revalidate` Route Handler を呼ぶための内部ベース URL
-  - 通常の Dev Container では未設定のまま `http://traefik:3080` を使用する
-  - worktree 用プロファイルでは、そのプロファイルの web-host URL（例: `http://127.0.0.1:13100`）を設定する。これにより再検証が別 profile の web-host に届かない
+`PUBLIRA_REVALIDATE_TOKEN` を設定すると、admin-api と `publish-episodes` は各 Next.js アプリの内部 Route Handler `POST /api/v1/revalidate` へキャッシュタグを送ります。テナント ID は URL・リクエスト本文・送信時の許可判定には含めず、タグはテナントをまたいでもそのまま再検証されます。3 つの URL はすべて必須です。いずれかが未設定または不正な場合、再検証は無効になり、プロセスは理由をログへ出して通常どおり起動します。
+
+- `PUBLIRA_WEB_HOST_INTERNAL_URL`（例: `http://web-host:3000`）
+- `PUBLIRA_WEB_ADMIN_INTERNAL_URL`（例: `http://web-admin:4000`）
+- `PUBLIRA_WEB_PLATFORM_INTERNAL_URL`（例: `http://web-platform:4100`）
+
+これらは private network 内で到達する URL です。ブラウザ用の公開 URL や `PUBLIRA_WEB_HOST_URL`、Traefik を経由させません。各アプリは `PUBLIRA_CACHE_APP` ごとに Redis のキー空間を分けるため、同じタグを 3 アプリすべてへ送る必要があります。
 
 ## Email renderer
 
@@ -364,7 +367,7 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
   - 管理サービス: `AdminSeriesService`, `AdminAuthService`
   - 既定ポート: `:8001` (`PUBLIRA_ADMIN_API_ADDR` で変更可能)
   - 公開状態変更時の Next.js 再検証: `PUBLIRA_REVALIDATE_TOKEN` を設定
-  - 送信先は内部 Traefik 経由（`Host` は tenant domain を使用）
+  - 送信先は全 `web-*` の内部 URL（`PUBLIRA_WEB_*_INTERNAL_URL`）
 
 これにより、公開系と管理系を別プロセス・別経路で運用できます。
 

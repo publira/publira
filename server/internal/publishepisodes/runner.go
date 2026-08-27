@@ -358,7 +358,7 @@ func (r *Runner) publishEpisode(ctx context.Context, row dbmodels.ListEpisodesRe
 		tags := []string{
 			fmt.Sprintf("tenant:%s:series:detail", tenantID),
 		}
-		if err := r.reval.RevalidateTags(ctx, tenantID, row.TenantDomain, tags); err != nil {
+		if err := r.reval.RevalidateTags(ctx, tags); err != nil {
 			r.logger.WarnContext(ctx, "failed to revalidate after episode publish",
 				"episode_id", row.EpisodeID,
 				"tenant_id", tenantID,

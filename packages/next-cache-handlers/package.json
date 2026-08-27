@@ -19,6 +19,10 @@
     "./use-cache": {
       "types": "./dist/use-cache.d.mts",
       "default": "./dist/use-cache.mjs"
+    },
+    "./revalidate": {
+      "types": "./dist/revalidate.d.mts",
+      "default": "./dist/revalidate.mjs"
     }
   },
   "scripts": {
@@ -27,7 +31,8 @@
     "test": "vitest --run"
   },
   "dependencies": {
-    "redis": "catalog:"
+    "redis": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",

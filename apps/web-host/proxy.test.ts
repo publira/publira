@@ -1,4 +1,5 @@
 import { encryptSessionPayload } from "@publira/web-session";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import type { NextRequest } from "next/server";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -251,19 +252,32 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
-  it("theme.css と Route Handler は locale を挟まない", async () => {
+  it("theme.css と通常の Route Handler は locale を挟まない", async () => {
     const { proxy } = await import("./proxy");
 
     const theme = await proxy(request("https://shop.example.com/theme.css"));
     const route = await proxy(
-      request("https://shop.example.com/api/revalidate")
+      request("https://shop.example.com/api/v1/webhook/stripe")
     );
 
     expect(theme.headers.get("x-middleware-rewrite")).toContain(
       `/${TENANT_ID}/theme.css`
     );
     expect(route.headers.get("x-middleware-rewrite")).toContain(
-      `/${TENANT_ID}/api/revalidate`
+      `/${TENANT_ID}/api/v1/webhook/stripe`
     );
+  });
+});
+
+describe("web-host proxy internal revalidation", () => {
+  it("再検証パスを proxy matcher から除外する", async () => {
+    const { config } = await import("./proxy");
+
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate/" })
+    ).toBe(false);
   });
 });
