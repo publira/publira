@@ -573,16 +573,6 @@ const Page = () => (
             <Message message="host.errors.page_description" />
           </Suspense>
         }
-        digestLabel={
-          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-            <Message message="host.common.error_id" />
-          </Suspense>
-        }
-        retryLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="host.common.retry" />
-          </Suspense>
-        }
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message={SECTION_TITLES.recommended} />
@@ -605,16 +595,6 @@ const Page = () => (
         description={
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="host.errors.page_description" />
-          </Suspense>
-        }
-        digestLabel={
-          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-            <Message message="host.common.error_id" />
-          </Suspense>
-        }
-        retryLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="host.common.retry" />
           </Suspense>
         }
         title={
@@ -642,16 +622,6 @@ const Page = () => (
         description={
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="host.errors.page_description" />
-          </Suspense>
-        }
-        digestLabel={
-          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-            <Message message="host.common.error_id" />
-          </Suspense>
-        }
-        retryLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="host.common.retry" />
           </Suspense>
         }
         title={
@@ -688,16 +658,6 @@ const Page = () => (
             <Message message="host.errors.page_description" />
           </Suspense>
         }
-        digestLabel={
-          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-            <Message message="host.common.error_id" />
-          </Suspense>
-        }
-        retryLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="host.common.retry" />
-          </Suspense>
-        }
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message={SECTION_TITLES.labels} />
@@ -730,16 +690,6 @@ const Page = () => (
         description={
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="host.errors.page_description" />
-          </Suspense>
-        }
-        digestLabel={
-          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-            <Message message="host.common.error_id" />
-          </Suspense>
-        }
-        retryLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="host.common.retry" />
           </Suspense>
         }
         title={

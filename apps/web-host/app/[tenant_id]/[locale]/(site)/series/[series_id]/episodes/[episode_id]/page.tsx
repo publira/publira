@@ -112,16 +112,6 @@ const EpisodeContent = async (
               <Message message="host.errors.page_description" />
             </Suspense>
           }
-          digestLabel={
-            <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-              <Message message="host.common.error_id" />
-            </Suspense>
-          }
-          retryLabel={
-            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <Message message="host.common.retry" />
-            </Suspense>
-          }
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="host.episode.body_error" />
