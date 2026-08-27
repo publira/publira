@@ -5,6 +5,7 @@
 ## 提供物
 
 - `cn`: `clsx` + `tailwind-merge` を使った className 結合ヘルパー
+- `decodeBase64Url`: Base64URL をバイト列に復号するヘルパー（`Uint8Array.fromBase64` を優先し、未対応ブラウザのみ `atob` を利用）
 - `formatDateTime` / `formatDate` / `toDateTimeLocalValue` / `fromDateTimeLocalValue`: テナントタイムゾーン対応の日時・日付表示、`datetime-local` 相互変換（`Temporal` 前提）
 - `parseInstant` / `toInstantIsoString` / `startOfDayIsoString` / `endOfDayIsoString`: 絶対時刻のパース・比較、フォーム値の正規化、date-only フィルタの日境界
 - `listSupportedTimeZones` / `isValidTimeZone`: テナントタイムゾーン設定 UI 向けの IANA タイムゾーン一覧と検証

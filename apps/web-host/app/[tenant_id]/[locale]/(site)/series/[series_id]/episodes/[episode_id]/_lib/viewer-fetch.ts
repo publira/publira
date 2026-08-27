@@ -1,4 +1,5 @@
 import { definePlugin } from "@publira/comic-viewer";
+import { decodeBase64Url } from "@publira/utils";
 
 /**
  * What the viewer will accept for a page, mirroring what a browser sends for an
@@ -35,33 +36,6 @@ const concatBytes = (
   }
 
   return output;
-};
-
-const decodeBase64Url = (value: string): Uint8Array | null => {
-  const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
-  if (!/^[A-Za-z0-9+/]*={0,2}$/u.test(normalized)) {
-    return null;
-  }
-
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-
-  if (typeof Uint8Array.fromBase64 === "function") {
-    try {
-      return Uint8Array.fromBase64(padded);
-    } catch {
-      return null;
-    }
-  }
-
-  try {
-    const binary = atob(padded);
-    return Uint8Array.from(
-      binary,
-      (character) => character.codePointAt(0) ?? 0
-    );
-  } catch {
-    return null;
-  }
 };
 
 const subjectFromMediaToken = (token: string): string | null => {

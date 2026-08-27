@@ -7,6 +7,7 @@
  * from their own subpath (`@publira/utils/health`).
  */
 export { cn } from "./cn";
+export { decodeBase64Url } from "./base64";
 export {
   DEFAULT_TIME_ZONE,
   endOfDayIsoString,
