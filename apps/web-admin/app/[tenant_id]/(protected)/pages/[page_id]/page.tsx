@@ -158,21 +158,6 @@ const EditPagePage = ({ params }: EditPagePageProps) => (
       />
 
       <SectionErrorBoundary
-        description={
-          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="admin.common.retry_later" />
-          </Suspense>
-        }
-        digestLabel={
-          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-            <Message message="admin.common.error_id" />
-          </Suspense>
-        }
-        retryLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="admin.common.retry" />
-          </Suspense>
-        }
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message="admin.pages.detail_error" />
