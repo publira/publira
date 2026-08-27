@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAssertSameOrigin,
   mockDeleteCookie,
   mockLogoutPlatform,
   mockRedirect,
   mockResolveAccessToken,
   mockUpdateTag,
 } = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
   mockDeleteCookie: vi.fn(),
   mockLogoutPlatform: vi.fn(),
   mockRedirect: vi.fn(),
@@ -35,6 +37,8 @@ vi.mock("./api-client", () => ({
 vi.mock("./auth", () => ({
   logoutPlatform: mockLogoutPlatform,
 }));
+
+vi.mock("./csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 describe("logoutAction", () => {
   beforeEach(() => {

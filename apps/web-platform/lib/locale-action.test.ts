@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCookies, mockSet } = vi.hoisted(() => ({
+const { mockAssertSameOrigin, mockCookies, mockSet } = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
   mockCookies: vi.fn(),
   mockSet: vi.fn(),
 }));
@@ -8,6 +9,8 @@ const { mockCookies, mockSet } = vi.hoisted(() => ({
 vi.mock("next/headers", () => ({
   cookies: mockCookies,
 }));
+
+vi.mock("./csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();

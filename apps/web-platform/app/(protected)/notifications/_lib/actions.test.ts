@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAssertSameOrigin,
   mockMarkAllNotificationsAsRead,
   mockMarkNotificationAsRead,
   mockResolveAccessToken,
   mockUpdateTag,
 } = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
   mockMarkAllNotificationsAsRead: vi.fn(),
   mockMarkNotificationAsRead: vi.fn(),
   mockResolveAccessToken: vi.fn(),
@@ -15,6 +17,8 @@ const {
 vi.mock("next/cache", () => ({
   updateTag: mockUpdateTag,
 }));
+
+vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/api-client", () => ({
   resolveAccessToken: mockResolveAccessToken,

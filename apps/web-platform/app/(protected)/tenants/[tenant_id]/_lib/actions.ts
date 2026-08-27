@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { emailFormSchema } from "#lib/auth-input";
 import { withPlatformSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   optionalTrimmedString,
   requiredTrimmedString,
@@ -102,6 +103,7 @@ const revalidateTenantMemberPaths = (tenantId: string) => {
 export const suspendTenantAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
@@ -122,6 +124,7 @@ export const suspendTenantAction = async (
 };
 
 export const resumeTenantAction = async (formData: FormData): Promise<void> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
@@ -145,6 +148,7 @@ export const updateTenantNameAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
@@ -178,6 +182,7 @@ export const updateTenantDomainAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
@@ -213,6 +218,7 @@ export const addTenantMemberAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
@@ -247,6 +253,7 @@ export const updateTenantMemberRoleAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
@@ -286,6 +293,7 @@ export const removeTenantMemberAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
@@ -323,6 +331,7 @@ export const createTenantAdminInvitationAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
@@ -367,6 +376,7 @@ export const resendTenantAdminInvitationAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
@@ -404,6 +414,7 @@ export const cancelTenantAdminInvitationAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 

@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { authTokenFormSchema, passwordFormSchema } from "#lib/auth-input";
+import { assertSameOrigin } from "#lib/csrf";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import type { PlatformMessages } from "#lib/locale";
 import { confirmPlatformPasswordReset } from "#lib/password-reset";
@@ -73,6 +74,7 @@ const buildLoginPath = (): string =>
 export const confirmPasswordAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 

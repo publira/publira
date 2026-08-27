@@ -19,6 +19,7 @@ import {
   nextPathFormSchema,
   passwordFormSchema,
 } from "#lib/auth-input";
+import { assertSameOrigin } from "#lib/csrf";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import type { PlatformMessages } from "#lib/locale";
 
@@ -33,6 +34,7 @@ export const loginAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 

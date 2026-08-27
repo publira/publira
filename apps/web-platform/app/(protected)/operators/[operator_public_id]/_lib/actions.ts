@@ -14,6 +14,7 @@ import {
   redirectToLoginIfSessionRejected,
   withPlatformSessionReauth,
 } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { requiredTrimmedString } from "#lib/form-schemas";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import type { PlatformMessages } from "#lib/locale";
@@ -60,6 +61,7 @@ export const updateOperatorRoleAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 
@@ -117,6 +119,7 @@ export const updateOperatorRoleAction = async (
 export const suspendOperatorAction = async (
   publicId: string
 ): Promise<void> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
   const parsed = operatorPublicIdSchema(messages).safeParse(publicId);
@@ -136,6 +139,7 @@ export const suspendOperatorAction = async (
 export const unsuspendOperatorAction = async (
   publicId: string
 ): Promise<void> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
   const parsed = operatorPublicIdSchema(messages).safeParse(publicId);
@@ -155,6 +159,7 @@ export const unsuspendOperatorAction = async (
 export const deactivateOperatorAction = async (
   publicId: string
 ): Promise<void> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
   const parsed = operatorPublicIdSchema(messages).safeParse(publicId);

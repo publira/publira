@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { withPlatformSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   commaOrNewlineStringListFormSchema,
   optionalTrimmedString,
@@ -33,6 +34,7 @@ export const createTenantAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 

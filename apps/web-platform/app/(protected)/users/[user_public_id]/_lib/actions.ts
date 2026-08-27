@@ -9,6 +9,7 @@ import {
   redirectToLoginIfSessionRejected,
   withPlatformSessionReauth,
 } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { requiredTrimmedString } from "#lib/form-schemas";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { canManageEndUsers } from "#lib/roles";
@@ -50,6 +51,7 @@ const canCurrentOperatorManageEndUsers = async (): Promise<boolean> => {
 };
 
 export const suspendEndUserAction = async (publicId: string): Promise<void> => {
+  await assertSameOrigin();
   const { schema } = await userPublicIdSchema();
   const parsed = schema.safeParse(publicId);
   if (!parsed.success) {
@@ -71,6 +73,7 @@ export const suspendEndUserAction = async (publicId: string): Promise<void> => {
 export const unsuspendEndUserAction = async (
   publicId: string
 ): Promise<void> => {
+  await assertSameOrigin();
   const { schema } = await userPublicIdSchema();
   const parsed = schema.safeParse(publicId);
   if (!parsed.success) {
@@ -90,6 +93,7 @@ export const unsuspendEndUserAction = async (
 };
 
 export const deleteEndUserAction = async (publicId: string): Promise<void> => {
+  await assertSameOrigin();
   const { locale, schema } = await userPublicIdSchema();
   const parsed = schema.safeParse(publicId);
   if (!parsed.success) {
