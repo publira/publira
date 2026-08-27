@@ -6,6 +6,7 @@ import { updateTag } from "next/cache";
 import { z } from "zod";
 
 import { withAdminSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
@@ -29,6 +30,7 @@ export const markNotificationAsReadAction = async (
   _prevState: MarkNotificationActionState,
   formData: FormData
 ): Promise<MarkNotificationActionState> => {
+  await assertSameOrigin();
   const parsed = markOneSchema.safeParse(
     toFormDataInput(formData, {
       notificationId: { kind: "value", name: "notification_id" },
@@ -63,6 +65,7 @@ export const markAllNotificationsAsReadAction = async (
   _prevState: MarkNotificationActionState,
   formData: FormData
 ): Promise<MarkNotificationActionState> => {
+  await assertSameOrigin();
   const parsed = markAllSchema.safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },

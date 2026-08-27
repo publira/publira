@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { withAdminSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { createEpisode, reorderEpisodePage } from "#lib/episode";
 import {
   jsonStringArrayFormSchema,
@@ -77,6 +78,7 @@ export const createEpisodeAction = async (
   _prevState: EpisodeActionState,
   formData: FormData
 ): Promise<EpisodeActionState> => {
+  await assertSameOrigin();
   const parsed = createEpisodeSchema.safeParse(
     toFormDataInput(formData, {
       price: "value",
@@ -124,6 +126,7 @@ export const createEpisodeAction = async (
 export const reorderEpisodesAction = async (formData: FormData) => {
   "use server";
 
+  await assertSameOrigin();
   const parsed = reorderEpisodesSchema.safeParse(
     toFormDataInput(formData, {
       currentEpisodeIds: { kind: "value", name: "current_episode_public_ids" },

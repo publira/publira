@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { createAnnouncement } from "#lib/announcement";
 import { withAdminSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   optionalTrimmedString,
   requiredTrimmedString,
@@ -67,6 +68,7 @@ export const createAnnouncementAction = async (
   _prevState: CreateAnnouncementActionState,
   formData: FormData
 ): Promise<CreateAnnouncementActionState> => {
+  await assertSameOrigin();
   const parsed = announcementFormSchema.safeParse(
     toFormDataInput(formData, {
       audienceType: { kind: "value", name: "audience_type" },

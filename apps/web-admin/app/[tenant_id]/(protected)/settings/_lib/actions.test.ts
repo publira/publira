@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAssertSameOrigin,
   mockDeleteTenantIcon,
   mockDeleteTenantLogo,
   mockGetAccessToken,
@@ -11,6 +12,7 @@ const {
   mockUploadTenantIcon,
   mockUploadTenantLogo,
 } = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
   mockDeleteTenantIcon: vi.fn(),
   mockDeleteTenantLogo: vi.fn(),
   mockGetAccessToken: vi.fn(),
@@ -25,6 +27,8 @@ const {
 vi.mock("next/cache", () => ({
   updateTag: mockUpdateTag,
 }));
+
+vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/admin-auth", () => ({
   requestAdminEmailChange: vi.fn(),

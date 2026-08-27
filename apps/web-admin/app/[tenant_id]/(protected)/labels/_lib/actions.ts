@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { withAdminSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   flagOneFormSchema,
   optionalFileFormSchema,
@@ -62,6 +63,7 @@ export const createLabelAction = async (
   _prevState: LabelActionState,
   formData: FormData
 ): Promise<LabelActionState> => {
+  await assertSameOrigin();
   const parsed = labelCommonSchema.safeParse(
     toFormDataInput(formData, labelFormFields)
   );
@@ -95,6 +97,7 @@ export const updateLabelAction = async (
   _prevState: LabelActionState,
   formData: FormData
 ): Promise<LabelActionState> => {
+  await assertSameOrigin();
   const parsed = labelUpdateSchema.safeParse(
     toFormDataInput(formData, {
       ...labelFormFields,

@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { createCreator, updateCreator } from "#lib/creator";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   flagOneFormSchema,
   optionalFileFormSchema,
@@ -61,6 +62,7 @@ export const createCreatorAction = async (
   _prevState: CreatorActionState,
   formData: FormData
 ): Promise<CreatorActionState> => {
+  await assertSameOrigin();
   const parsed = creatorCommonSchema.safeParse(
     toFormDataInput(formData, creatorFormFields)
   );
@@ -94,6 +96,7 @@ export const updateCreatorAction = async (
   _prevState: CreatorActionState,
   formData: FormData
 ): Promise<CreatorActionState> => {
+  await assertSameOrigin();
   const parsed = creatorUpdateSchema.safeParse(
     toFormDataInput(formData, {
       ...creatorFormFields,

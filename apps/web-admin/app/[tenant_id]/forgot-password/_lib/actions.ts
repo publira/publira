@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { requestAdminPasswordReset } from "#lib/admin-auth";
 import { emailFormSchema, tenantIdFormSchema } from "#lib/auth-input";
+import { assertSameOrigin } from "#lib/csrf";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import type { AdminMessages } from "#lib/locale";
 
@@ -45,6 +46,7 @@ const buildForgotPasswordPath = ({
 export const requestPasswordResetAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const locale = await getLocale();
   const messages = await loadAdminMessages(locale);
   const input = toFormDataInput(formData, {

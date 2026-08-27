@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { withAdminSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   optionalTrimmedString,
   requiredTrimmedString,
@@ -76,6 +77,7 @@ export const createPageAction = async (
   _prevState: PageFormState,
   formData: FormData
 ): Promise<PageFormState> => {
+  await assertSameOrigin();
   const parsed = parsePageForm(formData);
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error), "create");
@@ -122,6 +124,7 @@ export const updatePageAction = async (
   _prevState: PageFormState,
   formData: FormData
 ): Promise<PageFormState> => {
+  await assertSameOrigin();
   const parsed = parsePageForm(formData);
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error), "update");
@@ -156,6 +159,7 @@ export const createDraftVersionAction = async (
   _prevState: PageFormState,
   formData: FormData
 ): Promise<PageFormState> => {
+  await assertSameOrigin();
   const parsed = parsePageForm(formData);
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error), "draft");
@@ -182,6 +186,7 @@ export const createDraftVersionAction = async (
 };
 
 export const publishVersionAction = async (formData: FormData) => {
+  await assertSameOrigin();
   const parsed = parsePageForm(formData);
   if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
@@ -206,6 +211,7 @@ export const publishVersionAction = async (formData: FormData) => {
 };
 
 export const rollbackVersionAction = async (formData: FormData) => {
+  await assertSameOrigin();
   const parsed = parsePageForm(formData);
   if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;

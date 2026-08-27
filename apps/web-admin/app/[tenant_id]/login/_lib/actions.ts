@@ -19,6 +19,7 @@ import {
   passwordFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
+import { assertSameOrigin } from "#lib/csrf";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import type { AdminMessages } from "#lib/locale";
 
@@ -39,6 +40,7 @@ const buildLoginErrorPath = (message: string, nextPath: string): string => {
 };
 
 export const loginAction = async (formData: FormData): Promise<void> => {
+  await assertSameOrigin();
   const locale = await getLocale();
   const messages = await loadAdminMessages(locale);
   const input = toFormDataInput(formData, {

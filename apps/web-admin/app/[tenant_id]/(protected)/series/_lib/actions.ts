@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { withAdminSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   checkboxOnFormSchema,
   flagOneFormSchema,
@@ -110,6 +111,7 @@ export const createSeriesAction = async (
   _prevState: SeriesActionState,
   formData: FormData
 ): Promise<SeriesActionState> => {
+  await assertSameOrigin();
   const parsed = seriesCommonSchema.safeParse(
     toFormDataInput(formData, seriesFormFields)
   );
@@ -156,6 +158,7 @@ export const updateSeriesAction = async (
   _prevState: SeriesActionState,
   formData: FormData
 ): Promise<SeriesActionState> => {
+  await assertSameOrigin();
   const parsed = seriesUpdateSchema.safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,
@@ -206,6 +209,7 @@ export const updateSeriesEyeCatchAction = async (
   _prevState: SeriesActionState,
   formData: FormData
 ): Promise<SeriesActionState> => {
+  await assertSameOrigin();
   const parsed = seriesEyeCatchSchema.safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,

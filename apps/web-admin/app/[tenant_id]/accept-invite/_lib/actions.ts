@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { acceptTenantAdminInvitation } from "#lib/admin-auth";
 import { inviteTokenFormSchema, tenantIdFormSchema } from "#lib/auth-input";
+import { assertSameOrigin } from "#lib/csrf";
 import { optionalTrimmedString } from "#lib/form-schemas";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import type { AdminMessages } from "#lib/locale";
@@ -66,6 +67,7 @@ export const acceptInviteAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getLocale();
   const messages = await loadAdminMessages(locale);
   const parsed = acceptInviteFormSchema(messages).safeParse(
