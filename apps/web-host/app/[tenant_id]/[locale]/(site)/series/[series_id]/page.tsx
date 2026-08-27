@@ -1,5 +1,6 @@
 import { getMessage, toIntlLocale } from "@publira/i18n";
 import { CollectionIcon } from "@publira/icons";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -13,9 +14,9 @@ import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { sectionErrorCopy } from "#components/section-error-copy";
 import { getSeriesDetail } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
@@ -117,7 +118,26 @@ const SeriesDetailContent = async (
             <div className="mb-2 flex flex-wrap items-start justify-between gap-4">
               <h1 className="font-serif text-4xl font-bold">{series.title}</h1>
               <SectionErrorBoundary
-                {...sectionErrorCopy("host.follow.control_error")}
+                description={
+                  <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                    <Message message="host.errors.page_description" />
+                  </Suspense>
+                }
+                digestLabel={
+                  <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+                    <Message message="host.common.error_id" />
+                  </Suspense>
+                }
+                retryLabel={
+                  <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                    <Message message="host.common.retry" />
+                  </Suspense>
+                }
+                title={
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="host.follow.control_error" />
+                  </Suspense>
+                }
               >
                 <Suspense fallback={<FollowControlSkeleton />}>
                   <FollowControl

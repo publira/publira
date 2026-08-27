@@ -10,7 +10,6 @@ import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { sectionErrorCopy } from "#components/section-error-copy";
 import { listPublishedSeries } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteLabel } from "#lib/tenant";
@@ -250,7 +249,28 @@ const SeriesPage = ({
       </Suspense>
     </p>
 
-    <SectionErrorBoundary {...sectionErrorCopy("host.series.list_error")}>
+    <SectionErrorBoundary
+      description={
+        <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+          <Message message="host.errors.page_description" />
+        </Suspense>
+      }
+      digestLabel={
+        <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+          <Message message="host.common.error_id" />
+        </Suspense>
+      }
+      retryLabel={
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="host.common.retry" />
+        </Suspense>
+      }
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="host.series.list_error" />
+        </Suspense>
+      }
+    >
       <Suspense fallback={<SeriesListSkeleton />}>
         <SeriesListData searchParams={searchParams} />
       </Suspense>

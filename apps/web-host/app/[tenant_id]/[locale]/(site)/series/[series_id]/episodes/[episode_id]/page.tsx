@@ -1,4 +1,5 @@
 import { getMessage, toIntlLocale } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { DEFAULT_TIME_ZONE, formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -10,9 +11,9 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { sectionErrorCopy } from "#components/section-error-copy";
 import { getEpisodeDetail, isPublicEpisodeBody } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteInfo } from "#lib/tenant";
@@ -105,7 +106,28 @@ const EpisodeContent = async (
         aria-label={getMessage(messages, "host.episode.body_label")}
         className="border-b border-border/70"
       >
-        <SectionErrorBoundary {...sectionErrorCopy("host.episode.body_error")}>
+        <SectionErrorBoundary
+          description={
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.errors.page_description" />
+            </Suspense>
+          }
+          digestLabel={
+            <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+              <Message message="host.common.error_id" />
+            </Suspense>
+          }
+          retryLabel={
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="host.common.retry" />
+            </Suspense>
+          }
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.episode.body_error" />
+            </Suspense>
+          }
+        >
           <Suspense fallback={<EpisodeBodySkeleton />}>
             <EpisodeBody
               access={access}
