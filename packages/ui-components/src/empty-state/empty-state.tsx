@@ -3,7 +3,11 @@
 import { cn } from "@publira/utils";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
-type DivProps = ComponentPropsWithoutRef<"div">;
+/**
+ * `title` is a node here, so the `<div>`'s own string `title` attribute is
+ * dropped rather than intersected with it — the same shape `SectionError` uses.
+ */
+type DivProps = Omit<ComponentPropsWithoutRef<"div">, "title">;
 
 export type EmptyStateProps = DivProps & {
   title: ReactNode;
