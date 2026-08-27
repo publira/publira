@@ -16,6 +16,7 @@ import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
 
@@ -68,6 +69,7 @@ const markAnnouncementAsReadAndNavigateFormSchema = z.object({
 export const markAnnouncementAsReadAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const parsed = markAnnouncementAsReadFormSchema.safeParse(
     toFormDataInput(formData, {
       announcementId: "value",
@@ -93,6 +95,7 @@ export const markAnnouncementAsReadAction = async (
 export const markAllAnnouncementsAsReadAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const parsed = markAllAnnouncementsAsReadFormSchema.safeParse(
     toFormDataInput(formData, { locale: "value", tenantId: "value" })
   );
@@ -114,6 +117,7 @@ export const markAllAnnouncementsAsReadAction = async (
 export const markAnnouncementAsReadAndNavigateAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const parsed = markAnnouncementAsReadAndNavigateFormSchema.safeParse(
     toFormDataInput(formData, {
       announcementId: "value",

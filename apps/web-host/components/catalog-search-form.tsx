@@ -21,6 +21,8 @@ export const CatalogSearchFormSkeleton = () => (
  * label and the placeholder are attributes, which cannot stream, and the form's
  * own action needs the locale prefix. The caller wraps this in the
  * `<Suspense>` whose fallback is {@link CatalogSearchFormSkeleton}.
+ * Its string `action` is a search GET navigation, not a state-changing Server
+ * Action, so #600's Origin policy does not apply.
  */
 export const CatalogSearchForm = async ({
   defaultQuery = "",

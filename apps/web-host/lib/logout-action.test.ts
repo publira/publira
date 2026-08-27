@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAssertSameOrigin,
   mockDeleteCookie,
   mockLogoutPublic,
   mockRedirect,
   mockResolveAccessToken,
   mockUpdateTag,
 } = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
   mockDeleteCookie: vi.fn(),
   mockLogoutPublic: vi.fn(),
   mockRedirect: vi.fn(),
@@ -35,6 +37,8 @@ vi.mock("./api-client", () => ({
 vi.mock("./auth", () => ({
   logoutPublic: mockLogoutPublic,
 }));
+
+vi.mock("./csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("./auth-shared", () => ({
   PUBLIC_SESSION_COOKIE_NAME: "publira_web_host_auth",

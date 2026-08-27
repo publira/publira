@@ -14,6 +14,7 @@ import { apiClient, buildSessionHeaders } from "#lib/api-client";
 import { tenantIdFormSchema } from "#lib/auth-input";
 import { redirectToLogin, requirePublicSession } from "#lib/auth-session";
 import { isUnauthenticatedError } from "#lib/auth-shared";
+import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
 import { getTenantSiteInfo } from "#lib/tenant";
@@ -38,6 +39,7 @@ const checkoutErrorPath = (
 export const startEpisodeCheckoutAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const parsed = checkoutFormSchema.safeParse(
     toFormDataInput(formData, {
       episodePublicId: "value",

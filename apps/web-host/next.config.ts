@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   // Prefer Redis over the default in-process memory tier.
   cacheMaxMemorySize: 0,
   experimental: {
+    // `assertSameOrigin()` terminates rejected Server Actions with Next's 403.
+    authInterrupts: true,
     // Unmatched URLs skip the [tenant_id] layout tree.
     globalNotFound: true,
     turbopackRustReactCompiler: true,

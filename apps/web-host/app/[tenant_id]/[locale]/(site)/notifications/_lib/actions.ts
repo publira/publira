@@ -10,6 +10,7 @@ import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import {
   markAllNotificationsAsRead,
@@ -36,6 +37,7 @@ export const markNotificationAsReadAction = async (
   _prevState: MarkNotificationActionState,
   formData: FormData
 ): Promise<MarkNotificationActionState> => {
+  await assertSameOrigin();
   const parsed = markOneSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -75,6 +77,7 @@ export const markAllNotificationsAsReadAction = async (
   _prevState: MarkNotificationActionState,
   formData: FormData
 ): Promise<MarkNotificationActionState> => {
+  await assertSameOrigin();
   const parsed = markAllSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",

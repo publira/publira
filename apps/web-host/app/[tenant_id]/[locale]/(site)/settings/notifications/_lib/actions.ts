@@ -13,6 +13,7 @@ import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
 
@@ -40,6 +41,7 @@ const updateNotificationSettingsFormSchema = z.object({
 export const updateNotificationSettingsAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const parsed = updateNotificationSettingsFormSchema.safeParse(
     toFormDataInput(formData, {
       emailNotificationsEnabled: "value",

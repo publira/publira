@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRedirect, mockSetEmailFlashCookie, mockSignupPublic } = vi.hoisted(
-  () => ({
-    mockRedirect: vi.fn(),
-    mockSetEmailFlashCookie: vi.fn(),
-    mockSignupPublic: vi.fn(),
-  })
-);
+const {
+  mockAssertSameOrigin,
+  mockRedirect,
+  mockSetEmailFlashCookie,
+  mockSignupPublic,
+} = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
+  mockRedirect: vi.fn(),
+  mockSetEmailFlashCookie: vi.fn(),
+  mockSignupPublic: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
@@ -15,6 +19,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("#lib/auth", () => ({
   signupPublic: mockSignupPublic,
 }));
+
+vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/email-flash-cookie", () => ({
   SIGNUP_PENDING_EMAIL_COOKIE: "publira_web_host_signup_pending_email",

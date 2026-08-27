@@ -20,6 +20,7 @@ import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
 
@@ -46,6 +47,7 @@ const requestEmailChangeFormSchema = z.object({
 export const requestEmailChangeAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const parsed = requestEmailChangeFormSchema.safeParse(
     toFormDataInput(formData, {
       currentEmail: "value",

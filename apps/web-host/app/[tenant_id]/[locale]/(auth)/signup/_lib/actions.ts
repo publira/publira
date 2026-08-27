@@ -12,6 +12,7 @@ import {
   passwordFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
+import { assertSameOrigin } from "#lib/csrf";
 import {
   setEmailFlashCookie,
   SIGNUP_PENDING_EMAIL_COOKIE,
@@ -44,6 +45,7 @@ export const signupAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const parsed = signupFormSchema.safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",

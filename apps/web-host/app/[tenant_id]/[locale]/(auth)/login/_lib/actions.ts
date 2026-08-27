@@ -18,6 +18,7 @@ import {
   tenantIdFormSchema,
 } from "#lib/auth-input";
 import { getPublicSessionCacheTag } from "#lib/auth-shared";
+import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
 
@@ -45,6 +46,7 @@ const buildLoginErrorPath = (
 };
 
 export const loginAction = async (formData: FormData): Promise<void> => {
+  await assertSameOrigin();
   const parsed = loginFormSchema.safeParse(
     toFormDataInput(formData, {
       email: "value",

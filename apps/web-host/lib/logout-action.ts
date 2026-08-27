@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { resolveAccessToken as getSession } from "./api-client";
 import { logoutPublic } from "./auth";
 import { clearPublicSessionCookie } from "./auth-session";
+import { assertSameOrigin } from "./csrf";
 import { withLocalePrefix } from "./locale-path";
 
 /**
@@ -17,6 +18,7 @@ export const logoutAction = async (
   tenantId: string,
   locale: Locale
 ): Promise<void> => {
+  await assertSameOrigin();
   const accessToken = await getSession();
 
   try {

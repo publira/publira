@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAssertSameOrigin,
   mockMarkAllNotificationsAsRead,
   mockMarkNotificationAsRead,
   mockRequirePublicSession,
   mockUpdateTag,
 } = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
   mockMarkAllNotificationsAsRead: vi.fn(),
   mockMarkNotificationAsRead: vi.fn(),
   mockRequirePublicSession: vi.fn(),
@@ -31,6 +33,8 @@ vi.mock("#lib/auth-session", () => ({
     run: () => Promise<unknown>
   ) => run(),
 }));
+
+vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
