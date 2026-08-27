@@ -10,7 +10,6 @@ const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   domain: "example.test",
   name: "テナント",
   publicId: "TENANT_PUBLIC",
-  siteLabel: "テナント",
   theme: DEFAULT_TENANT_THEME_COLORS,
   timeZone: "Asia/Tokyo",
   ...overrides,

@@ -248,7 +248,9 @@ describe("resolveFollowListItems", () => {
     });
 
     const { resolveFollowListItems } = await import("./follow-list");
-    await expect(resolveFollowListItems(tenantId, entries)).resolves.toEqual([
+    await expect(
+      resolveFollowListItems(tenantId, entries, "ja")
+    ).resolves.toEqual([
       {
         followedAt: "2026-06-02T00:00:00Z",
         href: "/series/SERIES01",
@@ -269,7 +271,7 @@ describe("resolveFollowListItems", () => {
     expect(mockGetPublishedAuthorDetail).toHaveBeenCalledWith(
       tenantId,
       "AUTHOR01",
-      { limit: 1 }
+      { limit: 1, locale: "ja" }
     );
   });
 
@@ -279,7 +281,7 @@ describe("resolveFollowListItems", () => {
     const { resolveFollowListItems } = await import("./follow-list");
     const [seriesEntry] = entries;
     await expect(
-      resolveFollowListItems(tenantId, [seriesEntry])
+      resolveFollowListItems(tenantId, [seriesEntry], "ja")
     ).resolves.toEqual([
       {
         followedAt: "2026-06-02T00:00:00Z",
@@ -301,7 +303,7 @@ describe("resolveFollowListItems", () => {
     const { resolveFollowListItems } = await import("./follow-list");
     const [, authorEntry] = entries;
     await expect(
-      resolveFollowListItems(tenantId, [authorEntry])
+      resolveFollowListItems(tenantId, [authorEntry], "ja")
     ).resolves.toEqual([
       {
         followedAt: "2026-06-01T00:00:00Z",

@@ -144,7 +144,7 @@ describe("getPublishedPage", () => {
       },
     });
 
-    const result = await getPublishedPage("tenant-uuid", "privacy");
+    const result = await getPublishedPage("tenant-uuid", "privacy", "ja");
 
     expect(mockGetPublishedPage).toHaveBeenCalledWith({
       slug: "/privacy",
@@ -169,7 +169,9 @@ describe("getPublishedPage", () => {
       new ConnectError("page not found", Code.NotFound)
     );
 
-    await expect(getPublishedPage("tenant-uuid", "missing")).resolves.toEqual({
+    await expect(
+      getPublishedPage("tenant-uuid", "missing", "ja")
+    ).resolves.toEqual({
       ok: true,
       value: null,
     });
@@ -202,7 +204,7 @@ describe("getPublishedPage", () => {
         },
       });
 
-    const result = await getPublishedPage("tenant-uuid", "privacy");
+    const result = await getPublishedPage("tenant-uuid", "privacy", "ja");
     expect(result.ok && result.value?.slug).toBe("privacy");
     expect(mockGetPublishedPage).toHaveBeenNthCalledWith(1, {
       slug: "/privacy",
@@ -220,7 +222,9 @@ describe("getPublishedPage", () => {
       version: undefined,
     });
 
-    await expect(getPublishedPage("tenant-uuid", "privacy")).resolves.toEqual({
+    await expect(
+      getPublishedPage("tenant-uuid", "privacy", "ja")
+    ).resolves.toEqual({
       ok: true,
       value: null,
     });
@@ -232,14 +236,16 @@ describe("getPublishedPage", () => {
       version: { contentMarkdown: "body", id: "ver-1", versionNumber: 1 },
     });
 
-    await expect(getPublishedPage("tenant-uuid", "privacy")).resolves.toEqual({
+    await expect(
+      getPublishedPage("tenant-uuid", "privacy", "ja")
+    ).resolves.toEqual({
       ok: true,
       value: null,
     });
   });
 
   it("ルート slug は null", async () => {
-    await expect(getPublishedPage("tenant-uuid", "/")).resolves.toEqual({
+    await expect(getPublishedPage("tenant-uuid", "/", "ja")).resolves.toEqual({
       ok: true,
       value: null,
     });
@@ -247,7 +253,7 @@ describe("getPublishedPage", () => {
   });
 
   it("空テナント ID は API を呼ばずに null", async () => {
-    await expect(getPublishedPage("  ", "privacy")).resolves.toEqual({
+    await expect(getPublishedPage("  ", "privacy", "ja")).resolves.toEqual({
       ok: true,
       value: null,
     });
@@ -264,7 +270,9 @@ describe("getPublishedPage", () => {
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(getPublishedPage("tenant-uuid", "privacy")).resolves.toEqual({
+    await expect(
+      getPublishedPage("tenant-uuid", "privacy", "ja")
+    ).resolves.toEqual({
       message:
         "ページの内容を取得できませんでした。時間をおいて再試行してください。",
       ok: false,

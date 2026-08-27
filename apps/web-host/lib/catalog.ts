@@ -1,4 +1,3 @@
-import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   Code,
   isMissingResourceRpcError,
@@ -10,7 +9,7 @@ import type {
   Series,
   SeriesEyeCatchVariant,
 } from "@publira/api-client/public/types";
-import { cachedReadFailure } from "@publira/utils/cached-read";
+import type { Locale } from "@publira/i18n";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import { cacheLife } from "next/cache";
 
@@ -23,6 +22,7 @@ import {
   tenantSeriesListTag,
   tenantSeriesTag,
 } from "./cache-tags";
+import { localizedReadFailure } from "./read-failure";
 
 export interface EyeCatchImageVariant {
   variantType: string;
@@ -244,18 +244,6 @@ export interface LabelListItem {
   eyeCatchImageVariants?: EyeCatchImageVariant[];
 }
 
-/** Wording for a catalog read that could not reach the API. */
-const SERIES_LIST_ERROR_MESSAGE =
-  "シリーズ一覧を取得できませんでした。時間をおいて再試行してください。";
-const SERIES_SEARCH_ERROR_MESSAGE =
-  "検索結果を取得できませんでした。時間をおいて再試行してください。";
-const LABEL_LIST_ERROR_MESSAGE =
-  "レーベル一覧を取得できませんでした。時間をおいて再試行してください。";
-const SERIES_DETAIL_ERROR_MESSAGE =
-  "シリーズを取得できませんでした。時間をおいて再試行してください。";
-const EPISODE_DETAIL_ERROR_MESSAGE =
-  "エピソードを取得できませんでした。時間をおいて再試行してください。";
-
 export interface SeriesListPage {
   series: SeriesListItem[];
   /** Token for the previous page. Empty on the first page. */
@@ -272,7 +260,11 @@ export interface SeriesListPage {
  */
 export const listPublishedSeries = async (
   tenantId: string,
-  { limit = 50, token = "" }: { limit?: number; token?: string } = {}
+  {
+    limit = 50,
+    locale,
+    token = "",
+  }: { limit?: number; locale: Locale; token?: string }
 ): Promise<CachedReadResult<SeriesListPage>> => {
   "use cache";
 
@@ -290,7 +282,7 @@ export const listPublishedSeries = async (
       token,
     });
   } catch (error) {
-    return cachedReadFailure(rpcErrorMessage(error, SERIES_LIST_ERROR_MESSAGE));
+    return localizedReadFailure(error, locale, "host.series.list_failed");
   }
 
   const series = (response.series ?? []).map(toSeriesListItem);
@@ -326,9 +318,10 @@ export const searchPublishedSeries = async (
   tenantId: string,
   {
     limit = 20,
+    locale,
     query,
     token = "",
-  }: { limit?: number; query: string; token?: string }
+  }: { limit?: number; locale: Locale; query: string; token?: string }
 ): Promise<CachedReadResult<SeriesListPage>> => {
   "use cache";
 
@@ -347,9 +340,7 @@ export const searchPublishedSeries = async (
       token,
     });
   } catch (error) {
-    return cachedReadFailure(
-      rpcErrorMessage(error, SERIES_SEARCH_ERROR_MESSAGE)
-    );
+    return localizedReadFailure(error, locale, "host.search.failed");
   }
 
   const series = (response.series ?? []).map(toSeriesListItem);
@@ -366,7 +357,11 @@ export const searchPublishedSeries = async (
 
 export const listPublishedLabels = async (
   tenantId: string,
-  { limit = 50, token = "" }: { limit?: number; token?: string } = {}
+  {
+    limit = 50,
+    locale,
+    token = "",
+  }: { limit?: number; locale: Locale; token?: string }
 ): Promise<CachedReadResult<LabelListPage>> => {
   "use cache";
 
@@ -383,7 +378,7 @@ export const listPublishedLabels = async (
       token,
     });
   } catch (error) {
-    return cachedReadFailure(rpcErrorMessage(error, LABEL_LIST_ERROR_MESSAGE));
+    return localizedReadFailure(error, locale, "host.labels.list_failed");
   }
 
   return {
@@ -414,7 +409,8 @@ export const listPublishedLabels = async (
  */
 export const getSeriesDetail = async (
   tenantId: string,
-  seriesPublicId: string
+  seriesPublicId: string,
+  locale: Locale
 ): Promise<
   CachedReadResult<{ series: SeriesDetail; episodes: EpisodeItem[] } | null>
 > => {
@@ -435,9 +431,7 @@ export const getSeriesDetail = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
-    return cachedReadFailure(
-      rpcErrorMessage(error, SERIES_DETAIL_ERROR_MESSAGE)
-    );
+    return localizedReadFailure(error, locale, "host.series.detail_failed");
   }
 
   const result = {
@@ -493,7 +487,8 @@ export const getSeriesDetail = async (
 export const getEpisodeDetail = async (
   tenantId: string,
   seriesPublicId: string,
-  episodePublicId: string
+  episodePublicId: string,
+  locale: Locale
 ): Promise<
   CachedReadResult<{
     access: EpisodeAccessState;
@@ -520,9 +515,7 @@ export const getEpisodeDetail = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
-    return cachedReadFailure(
-      rpcErrorMessage(error, EPISODE_DETAIL_ERROR_MESSAGE)
-    );
+    return localizedReadFailure(error, locale, "host.episode.detail_failed");
   }
 
   const series = response.series
@@ -576,6 +569,7 @@ export const getEpisodeViewer = async (
   seriesPublicId: string,
   episodePublicId: string,
   accessToken: string,
+  locale: Locale,
   checkoutSessionId = ""
 ): Promise<
   CachedReadResult<{
@@ -625,9 +619,7 @@ export const getEpisodeViewer = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
-    return cachedReadFailure(
-      rpcErrorMessage(error, EPISODE_DETAIL_ERROR_MESSAGE)
-    );
+    return localizedReadFailure(error, locale, "host.episode.detail_failed");
   }
 
   const seriesPublicIdFromResponse = response.series?.publicId ?? "";

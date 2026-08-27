@@ -18,15 +18,55 @@ import {
 import type { PageStatusProps, ViewerPage } from "@publira/comic-viewer";
 
 import "@publira/comic-viewer/core.css";
+import { formatMessage } from "@publira/i18n";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   MaximizeIcon,
   MinimizeIcon,
 } from "@publira/icons";
-import { useCallback, useRef, useSyncExternalStore } from "react";
+import {
+  createContext,
+  use,
+  useCallback,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 
 import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
+
+/**
+ * Every string this reader shows, resolved on the server and handed down as
+ * one object. The viewer's own hooks decide where each one appears, so the
+ * copy cannot travel as `ReactNode` children — `aria-label` and the page
+ * status format both need plain strings.
+ */
+export interface EpisodeComicViewerCopy {
+  enterFullscreen: string;
+  exitFullscreen: string;
+  loading: string;
+  navigation: string;
+  nextPage: string;
+  noPages: string;
+  pageError: string;
+  /** `{first}` / `{total}` — one page on screen. */
+  pageStatus: string;
+  /** `{first}` / `{last}` / `{total}` — a spread on screen. */
+  pageStatusRange: string;
+  previousPage: string;
+  progress: string;
+  reload: string;
+}
+
+const CopyContext = createContext<EpisodeComicViewerCopy | null>(null);
+
+const useCopy = (): EpisodeComicViewerCopy => {
+  const copy = use(CopyContext);
+  if (!copy) {
+    throw new Error("EpisodeComicViewer copy is missing");
+  }
+  return copy;
+};
 
 /**
  * The cover stands alone and pairing starts from the page after it, the way a
@@ -37,19 +77,21 @@ const SPREAD_START_INDEX = 1;
 
 const VIEWER_PLUGINS = [acceptNegotiatedImages];
 
-const formatPageStatus: NonNullable<PageStatusProps["format"]> = ({
-  firstPage,
-  lastPage,
-  pageCount,
-}) => {
-  if (pageCount === 0) {
-    return "ページがありません";
-  }
+const buildPageStatusFormatter =
+  (copy: EpisodeComicViewerCopy): NonNullable<PageStatusProps["format"]> =>
+  ({ firstPage, lastPage, pageCount }) => {
+    if (pageCount === 0) {
+      return copy.noPages;
+    }
 
-  return firstPage === lastPage
-    ? `${firstPage} / ${pageCount}ページ`
-    : `${firstPage}–${lastPage} / ${pageCount}ページ`;
-};
+    return firstPage === lastPage
+      ? formatMessage(copy.pageStatus, { first: firstPage, total: pageCount })
+      : formatMessage(copy.pageStatusRange, {
+          first: firstPage,
+          last: lastPage,
+          total: pageCount,
+        });
+  };
 
 const subscribeToFullscreen = (onStoreChange: () => void) => {
   document.addEventListener("fullscreenchange", onStoreChange);
@@ -73,6 +115,7 @@ const isFalseOnServer = () => false;
  * decode failed and needs the reader to ask for another attempt.
  */
 const ViewerPageTemplate = () => {
+  const copy = useCopy();
   const { retry, status } = usePageLoadState();
 
   return (
@@ -80,7 +123,7 @@ const ViewerPageTemplate = () => {
       <PageCanvas />
       {status === "loading" ? (
         <p className="absolute inset-0 flex items-center justify-center text-sm text-neutral-400">
-          読み込み中…
+          {copy.loading}
         </p>
       ) : null}
       {status === "error" ? (
@@ -88,15 +131,13 @@ const ViewerPageTemplate = () => {
           className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-950/85 px-6 text-center"
           role="alert"
         >
-          <p className="text-sm text-neutral-200">
-            このページを読み込めませんでした。
-          </p>
+          <p className="text-sm text-neutral-200">{copy.pageError}</p>
           <button
             className="rounded-full border border-neutral-500 px-4 py-1.5 text-sm font-medium text-neutral-100 transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100"
             onClick={retry}
             type="button"
           >
-            再読み込み
+            {copy.reload}
           </button>
         </div>
       ) : null}
@@ -105,6 +146,7 @@ const ViewerPageTemplate = () => {
 };
 
 const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
+  const copy = useCopy();
   const isFullscreen = useSyncExternalStore(
     subscribeToFullscreen,
     isFullscreenOpen,
@@ -124,7 +166,7 @@ const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
     /* Placed against the physical right edge rather than laid out in the
        toolbar's flow, which runs right to left with the reading direction. */
     <button
-      aria-label={isFullscreen ? "全画面表示を終了" : "全画面表示にする"}
+      aria-label={isFullscreen ? copy.exitFullscreen : copy.enterFullscreen}
       className="absolute right-3 bottom-3 grid size-9 place-items-center rounded-full bg-black/60 text-neutral-100 transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100"
       onClick={onToggle}
       type="button"
@@ -139,18 +181,19 @@ const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
 };
 
 const ViewerPageNavigation = () => {
+  const copy = useCopy();
   const { readingDirection } = useViewerContext();
 
   return (
-    <PageNavigation aria-label="ページ送り">
-      <PreviousPageButton aria-label="前のページ">
+    <PageNavigation aria-label={copy.navigation}>
+      <PreviousPageButton aria-label={copy.previousPage}>
         {readingDirection === "rtl" ? (
           <ChevronRightIcon aria-hidden="true" />
         ) : (
           <ChevronLeftIcon aria-hidden="true" />
         )}
       </PreviousPageButton>
-      <NextPageButton aria-label="次のページ">
+      <NextPageButton aria-label={copy.nextPage}>
         {readingDirection === "rtl" ? (
           <ChevronLeftIcon aria-hidden="true" />
         ) : (
@@ -167,7 +210,13 @@ const ViewerPageNavigation = () => {
  * can drag out of the page, and a later encrypted delivery can be dropped in as
  * a plugin hook without changing this layout (#356 / #357).
  */
-export const EpisodeComicViewer = ({ pages }: { pages: ViewerPage[] }) => {
+export const EpisodeComicViewer = ({
+  copy,
+  pages,
+}: {
+  copy: EpisodeComicViewerCopy;
+  pages: ViewerPage[];
+}) => {
   const shellRef = useRef<HTMLDivElement>(null);
 
   const toggleFullscreen = useCallback(async () => {
@@ -183,31 +232,37 @@ export const EpisodeComicViewer = ({ pages }: { pages: ViewerPage[] }) => {
       }
       await document.exitFullscreen();
     } catch {
-      // ブラウザが全画面表示を断ったときは、いまの表示のまま読み続ける。
+      // A browser that refuses full screen leaves the reader on the page as it
+      // is, which is the useful outcome.
     }
   }, []);
 
   return (
-    <div className="h-full w-full bg-neutral-950" ref={shellRef}>
-      <ComicViewerRoot
-        pages={pages}
-        plugins={VIEWER_PLUGINS}
-        spreadStartIndex={SPREAD_START_INDEX}
-      >
-        <Viewport>
-          <ViewerPageTemplate />
-        </Viewport>
-        <Toolbar>
-          <PageProgress aria-label="読み進み">
-            <PageProgressTrack />
-            {/* The toolbar runs rtl so the progress fills the way pages turn;
-                the Japanese status text still reads left to right. */}
-            <PageStatus className="[direction:ltr]" format={formatPageStatus} />
-          </PageProgress>
-          <FullscreenButton onToggle={toggleFullscreen} />
-        </Toolbar>
-        <ViewerPageNavigation />
-      </ComicViewerRoot>
-    </div>
+    <CopyContext value={copy}>
+      <div className="h-full w-full bg-neutral-950" ref={shellRef}>
+        <ComicViewerRoot
+          pages={pages}
+          plugins={VIEWER_PLUGINS}
+          spreadStartIndex={SPREAD_START_INDEX}
+        >
+          <Viewport>
+            <ViewerPageTemplate />
+          </Viewport>
+          <Toolbar>
+            <PageProgress aria-label={copy.progress}>
+              <PageProgressTrack />
+              {/* The toolbar runs rtl so the progress fills the way pages turn;
+                  the status text still reads left to right. */}
+              <PageStatus
+                className="[direction:ltr]"
+                format={buildPageStatusFormatter(copy)}
+              />
+            </PageProgress>
+            <FullscreenButton onToggle={toggleFullscreen} />
+          </Toolbar>
+          <ViewerPageNavigation />
+        </ComicViewerRoot>
+      </div>
+    </CopyContext>
   );
 };

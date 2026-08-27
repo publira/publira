@@ -1,9 +1,20 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EpisodeAccessGate } from "./episode-access-gate";
+
+// `<Message>` resolves the locale through `next/root-params`, which only the
+// Next.js compiler can provide. The key it was handed is what this file is
+// about, so rendering the key itself keeps the assertions readable.
+vi.mock("#components/message", () => ({
+  Message: ({ message }: { message: string }) => message,
+}));
+
+vi.mock("#components/locale-field", () => ({
+  LocaleField: () => null,
+}));
 
 afterEach(cleanup);
 
@@ -18,16 +29,24 @@ describe("EpisodeAccessGate", () => {
   it("決済設定が無効なら購入 CTA を表示しない", () => {
     render(<EpisodeAccessGate {...props} acceptsPayments={false} />);
 
-    expect(screen.queryByRole("button", { name: "購入手続きへ" })).toBeNull();
     expect(
-      screen.getByText("購入手続きを利用できません", { exact: false })
+      screen.queryByRole("button", {
+        name: "host.episode.gate.purchase",
+      })
+    ).toBeNull();
+    expect(
+      screen.getByText("host.episode.gate.signed_in_unpayable_description")
     ).toBeDefined();
-    expect(screen.getByRole("link", { name: "シリーズ詳細へ" })).toBeDefined();
+    expect(
+      screen.getByRole("link", { name: "host.episode.to_series_detail" })
+    ).toBeDefined();
   });
 
   it("決済設定が有効なら購入 CTA を表示する", () => {
     render(<EpisodeAccessGate {...props} acceptsPayments />);
 
-    expect(screen.getByRole("button", { name: "購入手続きへ" })).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: "host.episode.gate.purchase" })
+    ).toBeDefined();
   });
 });

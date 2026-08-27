@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
@@ -40,6 +41,8 @@ export interface CatalogTopFeaturedAuthor {
 
 interface CatalogTopDataOptions {
   detailFetchLimit?: number;
+  /** Part of every cache key here, because the failure copy is worded in it. */
+  locale: Locale;
   maxAuthors?: number;
   maxLabels?: number;
   maxNewEpisodes?: number;
@@ -92,11 +95,13 @@ interface SeriesDetailRow {
  */
 const loadSeriesDetailRows = async (
   tenantId: string,
+  locale: Locale,
   seriesLimit: number,
   detailFetchLimit: number
 ): Promise<CachedReadResult<SeriesDetailRow[]>> => {
   const seriesPage = await listPublishedSeries(tenantId, {
     limit: seriesLimit,
+    locale,
   });
   if (!seriesPage.ok) {
     return cachedReadFailure(seriesPage.message);
@@ -106,7 +111,7 @@ const loadSeriesDetailRows = async (
 
   const seriesDetails = await Promise.all(
     seriesForDetails.map(async (seriesItem) => ({
-      detail: await getSeriesDetail(tenantId, seriesItem.publicId),
+      detail: await getSeriesDetail(tenantId, seriesItem.publicId, locale),
       seriesItem,
     }))
   );
@@ -136,12 +141,13 @@ const loadSeriesDetailRows = async (
 
 export const getCatalogTopRecommendedSeries = async (
   tenantId: string,
-  { maxRecommended = 6, seriesLimit = 24 }: CatalogTopDataOptions = {}
+  { locale, maxRecommended = 6, seriesLimit = 24 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<SeriesListItem[]>> => {
   "use cache";
 
   const seriesPage = await listPublishedSeries(tenantId, {
     limit: seriesLimit,
+    locale,
   });
   if (!seriesPage.ok) {
     return cachedReadFailure(seriesPage.message);
@@ -154,14 +160,16 @@ export const getCatalogTopNewEpisodes = async (
   tenantId: string,
   {
     detailFetchLimit = 12,
+    locale,
     maxNewEpisodes = 6,
     seriesLimit = 24,
-  }: CatalogTopDataOptions = {}
+  }: CatalogTopDataOptions
 ): Promise<CachedReadResult<CatalogTopEpisodeItem[]>> => {
   "use cache";
 
   const detailRows = await loadSeriesDetailRows(
     tenantId,
+    locale,
     seriesLimit,
     detailFetchLimit
   );
@@ -195,14 +203,16 @@ export const getCatalogTopUpdatedSeries = async (
   tenantId: string,
   {
     detailFetchLimit = 12,
+    locale,
     maxUpdatedSeries = 6,
     seriesLimit = 24,
-  }: CatalogTopDataOptions = {}
+  }: CatalogTopDataOptions
 ): Promise<CachedReadResult<CatalogTopUpdatedSeriesItem[]>> => {
   "use cache";
 
   const detailRows = await loadSeriesDetailRows(
     tenantId,
+    locale,
     seriesLimit,
     detailFetchLimit
   );
@@ -242,11 +252,14 @@ export const getCatalogTopUpdatedSeries = async (
 
 export const getCatalogTopFeaturedLabels = async (
   tenantId: string,
-  { maxLabels = 6 }: CatalogTopDataOptions = {}
+  { locale, maxLabels = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<LabelListItem[]>> => {
   "use cache";
 
-  const labels = await listPublishedLabels(tenantId, { limit: maxLabels });
+  const labels = await listPublishedLabels(tenantId, {
+    limit: maxLabels,
+    locale,
+  });
   if (!labels.ok) {
     // Re-marking the outer entry is deliberate: the inner cache life does
     // propagate, but this scope owning its own drop keeps the guarantee local.
@@ -258,12 +271,13 @@ export const getCatalogTopFeaturedLabels = async (
 
 export const getCatalogTopFeaturedAuthors = async (
   tenantId: string,
-  { maxAuthors = 6 }: CatalogTopDataOptions = {}
+  { locale, maxAuthors = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<CatalogTopFeaturedAuthor[]>> => {
   "use cache";
 
   const authorsResult = await listPublishedAuthors(tenantId, {
     limit: maxAuthors,
+    locale,
   });
   if (!authorsResult.ok) {
     return cachedReadFailure(authorsResult.message);

@@ -1,13 +1,13 @@
-import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
-import {
-  cachedReadFailure,
-  dropFailedCacheEntry,
-} from "@publira/utils/cached-read";
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantPageTag, tenantPagesTag } from "./cache-tags";
+import { loadHostMessages } from "./messages";
+import { localizedReadFailure } from "./read-failure";
 
 export interface PublishedPage {
   id: string;
@@ -145,10 +145,6 @@ export const listPublishedPageLinks = async (
   return await listPublishedPageLinksCached(normalizedTenantId);
 };
 
-/** Shared wording for a published page that could not be fetched. */
-const PAGE_LOAD_ERROR_MESSAGE =
-  "ページの内容を取得できませんでした。時間をおいて再試行してください。";
-
 /**
  * `ok: true` with a `null` value when the page does not exist, is unpublished,
  * or belongs to another tenant — the server returns `not_found` or
@@ -162,7 +158,8 @@ const PAGE_LOAD_ERROR_MESSAGE =
  */
 export const getPublishedPage = async (
   tenantId: string,
-  slug: string | readonly string[]
+  slug: string | readonly string[],
+  locale: Locale
 ): Promise<CachedReadResult<PublishedPage | null>> => {
   // Shared public content: remote so multi-instance hosts share entries (#532).
   "use cache: remote";
@@ -201,13 +198,17 @@ export const getPublishedPage = async (
     } else if (isMissingResourceRpcError(secondary.error)) {
       return { ok: true, value: null };
     } else {
-      return cachedReadFailure(
-        rpcErrorMessage(secondary.error, PAGE_LOAD_ERROR_MESSAGE)
+      return localizedReadFailure(
+        secondary.error,
+        locale,
+        "host.pages.read_failed"
       );
     }
   } else {
-    return cachedReadFailure(
-      rpcErrorMessage(primary.error, PAGE_LOAD_ERROR_MESSAGE)
+    return localizedReadFailure(
+      primary.error,
+      locale,
+      "host.pages.read_failed"
     );
   }
 
@@ -218,6 +219,8 @@ export const getPublishedPage = async (
 
   applyCacheTag(tenantPageTag(normalizedTenantId, page.id));
 
+  const messages = await loadHostMessages(locale);
+
   return {
     ok: true,
     value: {
@@ -225,7 +228,7 @@ export const getPublishedPage = async (
       id: page.id,
       publishedAt: version.publishedAt ?? "",
       slug: page.slug ?? normalizedSlug,
-      title: page.title?.trim() || "ページ",
+      title: page.title?.trim() || getMessage(messages, "host.pages.untitled"),
       versionId: version.id ?? "",
       versionNumber: version.versionNumber ?? 0,
     },

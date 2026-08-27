@@ -1,16 +1,11 @@
-import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
 import type { PublishedAuthor } from "@publira/api-client/public/types";
-import { cachedReadFailure } from "@publira/utils/cached-read";
+import type { Locale } from "@publira/i18n";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantAuthorsTag } from "./cache-tags";
-
-const AUTHORS_LIST_ERROR_MESSAGE =
-  "著者一覧を取得できませんでした。時間をおいて再試行してください。";
-const AUTHOR_DETAIL_ERROR_MESSAGE =
-  "著者を取得できませんでした。時間をおいて再試行してください。";
+import { localizedReadFailure } from "./read-failure";
 
 export interface PublishedAuthorListItem {
   id: string;
@@ -73,7 +68,11 @@ const mapPublishedAuthor = (
  */
 export const listPublishedAuthors = async (
   tenantId: string,
-  { limit = 20, token = "" }: { limit?: number; token?: string } = {}
+  {
+    limit = 20,
+    locale,
+    token = "",
+  }: { limit?: number; locale: Locale; token?: string }
 ): Promise<CachedReadResult<PublishedAuthorListResult>> => {
   "use cache";
 
@@ -90,9 +89,7 @@ export const listPublishedAuthors = async (
       token,
     });
   } catch (error) {
-    return cachedReadFailure(
-      rpcErrorMessage(error, AUTHORS_LIST_ERROR_MESSAGE)
-    );
+    return localizedReadFailure(error, locale, "host.authors.list_failed");
   }
 
   return {
@@ -128,7 +125,11 @@ export const listPublishedAuthors = async (
 export const getPublishedAuthorDetail = async (
   tenantId: string,
   authorId: string,
-  { limit = 20, token = "" }: { limit?: number; token?: string } = {}
+  {
+    limit = 20,
+    locale,
+    token = "",
+  }: { limit?: number; locale: Locale; token?: string }
 ): Promise<CachedReadResult<PublishedAuthorDetail | null>> => {
   "use cache";
 
@@ -150,9 +151,7 @@ export const getPublishedAuthorDetail = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
-    return cachedReadFailure(
-      rpcErrorMessage(error, AUTHOR_DETAIL_ERROR_MESSAGE)
-    );
+    return localizedReadFailure(error, locale, "host.authors.detail_failed");
   }
 
   if (!response.author) {

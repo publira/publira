@@ -27,7 +27,7 @@ test.describe("web-host catalog not found", () => {
     ).toBeVisible();
     // Site chrome survives the 404: the header nav is still there.
     await expect(
-      page.getByRole("link", { exact: true, name: "Series" })
+      page.getByRole("link", { exact: true, name: "シリーズ" })
     ).toBeVisible();
     await expect(
       page.getByRole("link", { exact: true, name: "シリーズ一覧へ" })

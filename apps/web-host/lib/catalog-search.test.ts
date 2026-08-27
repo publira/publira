@@ -37,6 +37,7 @@ describe("searchPublishedSeries", () => {
 
     const result = await searchPublishedSeries(" TENANT_1 ", {
       limit: 12,
+      locale: "ja",
       query: "シリーズ",
       token: "abc",
     });
@@ -83,7 +84,7 @@ describe("searchPublishedSeries", () => {
       series: [],
     });
 
-    await searchPublishedSeries("TENANT_1", { query: "Seed" });
+    await searchPublishedSeries("TENANT_1", { locale: "ja", query: "Seed" });
 
     expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
       limit: 20,
@@ -99,7 +100,7 @@ describe("searchPublishedSeries", () => {
     );
 
     await expect(
-      searchPublishedSeries("TENANT_1", { query: "Seed" })
+      searchPublishedSeries("TENANT_1", { locale: "ja", query: "Seed" })
     ).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",

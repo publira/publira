@@ -83,7 +83,7 @@ test.describe("web-host auth", () => {
     await page.goto(hostUrl("/"));
 
     await expect(page).not.toHaveURL(/\/login/u);
-    await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "ログイン" })).toBeVisible();
     expect(await currentSession(page)).toBeUndefined();
   });
 

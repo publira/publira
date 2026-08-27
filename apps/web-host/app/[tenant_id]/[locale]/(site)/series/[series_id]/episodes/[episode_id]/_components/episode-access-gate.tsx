@@ -1,9 +1,12 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { EmptyState } from "@publira/ui-components/empty-state";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 
 import { episodeAccessGateCopy, episodeLoginHref } from "../_lib/access-gate";
 import { startEpisodeCheckoutAction } from "../_lib/actions";
@@ -34,7 +37,9 @@ export const EpisodeAccessGate = ({
           className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
           type="submit"
         >
-          購入手続きへ
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="host.episode.gate.purchase" />
+          </Suspense>
         </button>
       </form>
     );
@@ -47,7 +52,9 @@ export const EpisodeAccessGate = ({
           />
         }
       >
-        ログインして閲覧する
+        <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+          <Message message="host.episode.gate.login" />
+        </Suspense>
       </LinkButton>
     );
   }
@@ -61,12 +68,22 @@ export const EpisodeAccessGate = ({
             render={<LocaleLink href={`/series/${seriesPublicId}`} />}
             variant="outline"
           >
-            シリーズ詳細へ
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="host.episode.to_series_detail" />
+            </Suspense>
           </LinkButton>
         </div>
       }
-      description={copy.description}
-      title={copy.title}
+      description={
+        <Suspense fallback={<SkeletonLine className="h-4 w-full max-w-md" />}>
+          <Message message={copy.description} />
+        </Suspense>
+      }
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message={copy.title} />
+        </Suspense>
+      }
     />
   );
 };

@@ -5,6 +5,12 @@ import { locale } from "next/root-params";
 
 import { withLocalePrefix } from "./locale-path";
 
+export {
+  type HostMessageKey,
+  type HostMessages,
+  loadHostMessages,
+} from "./messages";
+
 /**
  * Resolve the current request's UI locale from the `[locale]` root segment.
  * Prefer this over prop-drilling `params.locale` in Server Components.

@@ -1,4 +1,8 @@
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
 import { MarkdownContent } from "#components/markdown-content";
+import { Message } from "#components/message";
 import type { PublishedPage } from "#lib/pages";
 
 export const PublishedPageContent = ({ page }: { page: PublishedPage }) => (
@@ -12,7 +16,11 @@ export const PublishedPageContent = ({ page }: { page: PublishedPage }) => (
       <MarkdownContent
         content={page.contentMarkdown}
         emptyFallback={
-          <p className="text-muted-foreground">本文はまだありません。</p>
+          <p className="text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
+              <Message message="host.pages.body_empty" />
+            </Suspense>
+          </p>
         }
       />
     </article>

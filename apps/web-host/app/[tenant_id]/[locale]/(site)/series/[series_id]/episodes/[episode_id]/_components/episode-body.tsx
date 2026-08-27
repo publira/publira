@@ -1,9 +1,11 @@
+import { getMessage } from "@publira/i18n";
 import { SectionError } from "@publira/ui-components/section-error";
 import { notFound } from "next/navigation";
 
 import { resolveAccessToken } from "#lib/api-client";
 import type { EpisodeAccessState, EpisodeImageItem } from "#lib/catalog";
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
+import { getLocale, loadHostMessages } from "#lib/locale";
 
 import { EpisodeAccessGate } from "./episode-access-gate";
 import { EpisodeBodyNotice } from "./episode-body-notice";
@@ -32,7 +34,10 @@ export const EpisodeBody = async ({
     return <EpisodeViewer episodeTitle={episodeTitle} images={images} />;
   }
 
-  const sessionId = await resolveAccessToken();
+  const [locale, sessionId] = await Promise.all([
+    getLocale(),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return (
       <EpisodeBodyNotice>
@@ -52,14 +57,16 @@ export const EpisodeBody = async ({
     seriesPublicId,
     episodePublicId,
     sessionId,
+    locale,
     checkoutSessionId
   );
   if (!viewer.ok) {
+    const messages = await loadHostMessages(locale);
     return (
       <EpisodeBodyNotice>
         <SectionError
           description={viewer.message}
-          title="本文を表示できませんでした"
+          title={getMessage(messages, "host.episode.body_error")}
         />
       </EpisodeBodyNotice>
     );

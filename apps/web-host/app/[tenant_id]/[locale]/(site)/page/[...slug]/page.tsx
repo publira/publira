@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import {
   createPlaceholderStaticParams,
   STATIC_PARAM_PLACEHOLDER,
@@ -12,6 +13,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { PageLoadError } from "#components/page-load-error";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { getPublishedPage } from "#lib/pages";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -31,9 +33,10 @@ const publishedPageParamsSchema = z.object({
 export const generateMetadata = async (
   props: PageProps<"/[tenant_id]/[locale]/page/[...slug]">
 ): Promise<Metadata> => {
-  const [rawParams, tenantId] = await Promise.all([
+  const [rawParams, tenantId, locale] = await Promise.all([
     props.params,
     getTenantId(),
+    getLocale(),
   ]);
   const parsedParams = parseRouteParams(publishedPageParamsSchema, rawParams);
   if (!parsedParams) {
@@ -41,14 +44,19 @@ export const generateMetadata = async (
   }
   const { slug } = parsedParams;
 
-  const result = await getPublishedPage(tenantId, slug);
+  const [result, messages] = await Promise.all([
+    getPublishedPage(tenantId, slug, locale),
+    loadHostMessages(locale),
+  ]);
 
   // An unavailable page reads as "not found" for the `<title>` alone; the page
   // body below says what actually happened.
   const page = result.ok ? result.value : null;
 
   return {
-    title: page ? page.title : "ページが見つかりません",
+    title: page
+      ? page.title
+      : getMessage(messages, "host.errors.not_found_title"),
   };
 };
 
@@ -66,9 +74,10 @@ const PublishedPageSkeleton = () => (
 const PublishedPageBody = async (
   props: PageProps<"/[tenant_id]/[locale]/page/[...slug]">
 ) => {
-  const [rawParams, tenantId] = await Promise.all([
+  const [rawParams, tenantId, locale] = await Promise.all([
     props.params,
     getTenantId(),
+    getLocale(),
   ]);
   const parsedParams = parseRouteParams(publishedPageParamsSchema, rawParams);
   if (!parsedParams) {
@@ -79,7 +88,7 @@ const PublishedPageBody = async (
   // Missing / unpublished / other-tenant pages all resolve to `null`. A genuine
   // fetch failure is a value as well: a `"use cache"` fill that throws fails
   // the whole request, so nothing downstream would get to render (#672).
-  const result = await getPublishedPage(tenantId, slug);
+  const result = await getPublishedPage(tenantId, slug, locale);
 
   if (!result.ok) {
     return <PageLoadError description={result.message} />;

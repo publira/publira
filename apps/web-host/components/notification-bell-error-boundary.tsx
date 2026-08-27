@@ -10,8 +10,8 @@ import { NotificationBell } from "./notification-bell";
  * is the source of truth. Classified count failures already render this same
  * empty bell; this boundary only catches the throw path.
  */
-const notificationBellErrorFallback = () => (
-  <NotificationBell unreadCount={0} />
+const notificationBellErrorFallback = ({ label }: { label: string }) => (
+  <NotificationBell label={label} unreadCount={0} />
 );
 
 export const NotificationBellErrorBoundary = catchError(

@@ -5,6 +5,7 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import type { MyFollow } from "@publira/api-client/public/types";
+import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
@@ -193,7 +194,8 @@ export const listMyFollows = async (
  */
 export const resolveFollowListItems = (
   tenantId: string,
-  follows: FollowListEntry[]
+  follows: FollowListEntry[],
+  locale: Locale
 ): Promise<FollowListItem[]> =>
   Promise.all(
     follows.map(async (follow) => {
@@ -201,7 +203,7 @@ export const resolveFollowListItems = (
         const result = await getPublishedAuthorDetail(
           tenantId,
           follow.publicId,
-          { limit: 1 }
+          { limit: 1, locale }
         );
         if (!result.ok) {
           return availableItem(follow, follow.publicId);
@@ -212,7 +214,7 @@ export const resolveFollowListItems = (
         return availableItem(follow, result.value.name);
       }
 
-      const result = await getSeriesDetail(tenantId, follow.publicId);
+      const result = await getSeriesDetail(tenantId, follow.publicId, locale);
       if (!result.ok) {
         return availableItem(follow, follow.publicId);
       }

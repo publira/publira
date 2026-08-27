@@ -84,7 +84,7 @@ test.describe("web-host site error boundary", () => {
       ).toBeVisible();
       // Site chrome survives — the failure is inside the layout, not above it.
       await expect(
-        page.getByRole("link", { exact: true, name: "Series" })
+        page.getByRole("link", { exact: true, name: "シリーズ" })
       ).toBeVisible();
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
@@ -103,7 +103,7 @@ test.describe("web-host site error boundary", () => {
     ).toBeVisible();
     await expect(page.getByText("ページを表示できませんでした")).toHaveCount(0);
     await expect(
-      page.getByRole("link", { exact: true, name: "Series" })
+      page.getByRole("link", { exact: true, name: "シリーズ" })
     ).toBeVisible();
   });
 });

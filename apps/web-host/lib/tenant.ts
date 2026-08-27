@@ -1,6 +1,6 @@
 import { isExpectedNullableRpcError } from "@publira/api-client/errors";
 import type { TenantImageVariant as TenantImageVariantMessage } from "@publira/api-client/public/types";
-import { DEFAULT_LOCALE, parseLocale } from "@publira/i18n";
+import { DEFAULT_LOCALE, getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
@@ -10,6 +10,7 @@ import { cacheLife } from "next/cache";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantSiteTag } from "./cache-tags";
+import { loadHostMessages } from "./messages";
 
 /**
  * A stored tenant branding image, carried the way the eye-catch variants are
@@ -44,7 +45,6 @@ export interface TenantSiteInfo {
   name: string;
   publicId: string;
   siteDescription?: string;
-  siteLabel: string;
   siteTagline?: string;
   theme: TenantThemeColors;
   /** IANA zone every tenant-facing wall clock on the public site is rendered in. */
@@ -97,11 +97,6 @@ const toTenantImageVariants = (
   return mapped.length > 0 ? mapped : undefined;
 };
 
-const buildTenantSiteLabel = (tenantName: string): string => {
-  const normalizedTenantName = tenantName.trim();
-  return normalizedTenantName || "サイト";
-};
-
 /**
  * `null` when the tenant does not exist, is not readable, or could not be
  * fetched at all.
@@ -111,8 +106,8 @@ const buildTenantSiteLabel = (tenantName: string): string => {
  * exists, in a layout or in `generateMetadata`. A throw there takes the whole
  * route down with a bare 500 that no boundary can reach (#672), so an
  * unavailable API degrades the chrome to its defaults instead. The failed entry
- * is dropped, so the header stops saying 「サイト」 as soon as the API answers
- * again.
+ * is dropped, so the header stops standing in for the tenant's name as soon as
+ * the API answers again.
  *
  * Callers cannot tell "no tenant" from "could not ask" — deliberately: both
  * render the same defaults, and the distinction has no reader-facing meaning.
@@ -162,7 +157,6 @@ export const getTenantSiteInfo = async (
       name,
       publicId,
       siteDescription: trimmed(response.siteDescription),
-      siteLabel: buildTenantSiteLabel(name),
       siteTagline: trimmed(response.siteTagline),
       theme: resolveTenantThemeColors(response.theme),
       // The server resolves the zone before answering (`tenanttz.Resolve`), so
@@ -180,9 +174,25 @@ export const getTenantSiteInfo = async (
   }
 };
 
-export const getTenantSiteLabel = async (tenantId: string): Promise<string> => {
+/**
+ * What the site calls itself: the tenant's own name, or the catalog's stand-in
+ * when the tenant has not set one and when the tenant read is unavailable.
+ *
+ * The stand-in is UI copy, so it cannot live inside {@link getTenantSiteInfo} —
+ * that read is cached per tenant and knows nothing about the reader's language.
+ */
+export const getTenantSiteLabel = async (
+  tenantId: string,
+  locale: Locale
+): Promise<string> => {
   const tenant = await getTenantSiteInfo(tenantId);
-  return tenant?.siteLabel ?? "サイト";
+  const name = tenant?.name.trim();
+  if (name) {
+    return name;
+  }
+
+  const messages = await loadHostMessages(locale);
+  return getMessage(messages, "host.common.site_fallback");
 };
 
 /**

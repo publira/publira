@@ -46,6 +46,7 @@ describe("listPublishedAuthors", () => {
 
     const result = await listPublishedAuthors(" TENANT_1 ", {
       limit: 12,
+      locale: "ja",
       token: "abc",
     });
 
@@ -84,7 +85,7 @@ describe("listPublishedAuthors", () => {
       previousToken: "",
     });
 
-    await listPublishedAuthors("TENANT_1");
+    await listPublishedAuthors("TENANT_1", { locale: "ja" });
 
     expect(mockListPublishedAuthors).toHaveBeenCalledWith({
       limit: 20,
@@ -100,7 +101,9 @@ describe("listPublishedAuthors", () => {
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );
 
-    await expect(listPublishedAuthors("TENANT_1")).resolves.toEqual({
+    await expect(
+      listPublishedAuthors("TENANT_1", { locale: "ja" })
+    ).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
@@ -132,6 +135,7 @@ describe("getPublishedAuthorDetail", () => {
 
     const result = await getPublishedAuthorDetail(" TENANT_1 ", " CREATOR_A ", {
       limit: 12,
+      locale: "ja",
       token: "",
     });
 
@@ -176,7 +180,9 @@ describe("getPublishedAuthorDetail", () => {
       ],
     });
 
-    const result = await getPublishedAuthorDetail("TENANT_1", "CREATOR_A");
+    const result = await getPublishedAuthorDetail("TENANT_1", "CREATOR_A", {
+      locale: "ja",
+    });
 
     expect(result.ok && result.value?.series).toEqual([
       { publicId: "SERIES_1", title: "シリーズ1" },
@@ -192,7 +198,7 @@ describe("getPublishedAuthorDetail", () => {
     });
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A")
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "ja" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -202,7 +208,7 @@ describe("getPublishedAuthorDetail", () => {
     );
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "UNKNOWN_CREATOR")
+      getPublishedAuthorDetail("TENANT_1", "UNKNOWN_CREATOR", { locale: "ja" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -214,7 +220,7 @@ describe("getPublishedAuthorDetail", () => {
     mockGetPublishedAuthorDetail.mockRejectedValueOnce(rehydrated);
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A")
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "ja" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -225,7 +231,7 @@ describe("getPublishedAuthorDetail", () => {
     );
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A")
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "ja" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -235,7 +241,7 @@ describe("getPublishedAuthorDetail", () => {
     );
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A")
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "ja" })
     ).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",

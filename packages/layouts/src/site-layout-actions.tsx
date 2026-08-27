@@ -8,11 +8,11 @@ import type { LayoutActionItem } from "./site-layout";
 
 interface SiteLayoutActionsProps {
   logoutAction?: (formData: FormData) => void | Promise<void>;
+  /** Label of the sign-out button, already resolved by the caller. */
+  logoutLabel: string;
   primaryAction: LayoutActionItem;
   secondaryAction?: LayoutActionItem;
 }
-
-const LOGOUT_LABEL = "Logout";
 
 const SiteLayoutActionButton = ({
   action,
@@ -33,13 +33,17 @@ const SiteLayoutActionButton = ({
 
 const SiteLayoutSecondaryAction = ({
   logoutAction,
+  logoutLabel,
   secondaryAction,
-}: Pick<SiteLayoutActionsProps, "logoutAction" | "secondaryAction">) => {
+}: Pick<
+  SiteLayoutActionsProps,
+  "logoutAction" | "logoutLabel" | "secondaryAction"
+>) => {
   if (logoutAction) {
     return (
       <form action={logoutAction}>
         <Button size="sm" type="submit" variant="secondary">
-          {LOGOUT_LABEL}
+          {logoutLabel}
         </Button>
       </form>
     );
@@ -56,12 +60,14 @@ const SiteLayoutSecondaryAction = ({
 
 export const SiteLayoutActions = ({
   logoutAction,
+  logoutLabel,
   primaryAction,
   secondaryAction,
 }: SiteLayoutActionsProps) => (
   <div className="flex items-center gap-2">
     <SiteLayoutSecondaryAction
       logoutAction={logoutAction}
+      logoutLabel={logoutLabel}
       secondaryAction={secondaryAction}
     />
     <SiteLayoutActionButton action={primaryAction} />

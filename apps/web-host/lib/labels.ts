@@ -1,6 +1,5 @@
-import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
-import { cachedReadFailure } from "@publira/utils/cached-read";
+import type { Locale } from "@publira/i18n";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
@@ -11,9 +10,7 @@ import {
 } from "./cache-tags";
 import { toEyeCatchImageVariants } from "./catalog";
 import type { EyeCatchImageVariant } from "./catalog";
-
-const LABEL_DETAIL_ERROR_MESSAGE =
-  "レーベルを取得できませんでした。時間をおいて再試行してください。";
+import { localizedReadFailure } from "./read-failure";
 
 export interface PublishedLabelSeriesItem {
   publicId: string;
@@ -47,7 +44,11 @@ export interface PublishedLabelDetail {
 export const getPublishedLabelDetail = async (
   tenantId: string,
   labelId: string,
-  { limit = 20, token = "" }: { limit?: number; token?: string } = {}
+  {
+    limit = 20,
+    locale,
+    token = "",
+  }: { limit?: number; locale: Locale; token?: string }
 ): Promise<CachedReadResult<PublishedLabelDetail | null>> => {
   "use cache";
 
@@ -70,9 +71,7 @@ export const getPublishedLabelDetail = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
-    return cachedReadFailure(
-      rpcErrorMessage(error, LABEL_DETAIL_ERROR_MESSAGE)
-    );
+    return localizedReadFailure(error, locale, "host.labels.detail_failed");
   }
 
   const publicId = response.label?.publicId?.trim() ?? "";

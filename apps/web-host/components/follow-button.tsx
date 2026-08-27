@@ -11,6 +11,19 @@ import { toggleFollowAction } from "#lib/follow-actions";
 
 import { LocaleField } from "./locale-field";
 
+/**
+ * The control's copy, resolved on the server. Every string here lands in a
+ * button label or an `aria-label`, neither of which can take a node, so this
+ * arrives as plain strings rather than as `ReactNode`.
+ */
+export interface FollowButtonCopy {
+  follow: string;
+  followAriaLabel: string;
+  pending: string;
+  unfollow: string;
+  unfollowAriaLabel: string;
+}
+
 const followButtonClassName = "shrink-0";
 
 export const FollowControlSkeleton = () => (
@@ -21,36 +34,38 @@ export const FollowControlSkeleton = () => (
 );
 
 export const FollowLoginLink = ({
+  ariaLabel,
   href,
-  targetName,
+  label,
 }: {
+  ariaLabel: string;
   href: string;
-  targetName: string;
+  label: string;
 }) => (
   <LinkButton
-    aria-label={`ログインして「${targetName}」をフォローする`}
+    aria-label={ariaLabel}
     className={followButtonClassName}
     render={<Link href={href} />}
     size="sm"
     variant="outline"
   >
-    フォローする
+    {label}
   </LinkButton>
 );
 
 export const FollowButton = ({
+  copy,
   isFollowing,
   publicId,
   returnTo,
   targetKind,
-  targetName,
   tenantId,
 }: {
+  copy: FollowButtonCopy;
   isFollowing: boolean;
   publicId: string;
   returnTo: string;
   targetKind: FollowTargetKind;
-  targetName: string;
   tenantId: string;
 }) => {
   const [state, formAction, isPending] = useActionState(
@@ -59,14 +74,12 @@ export const FollowButton = ({
   );
   const following = state?.ok ? state.isFollowing : isFollowing;
   const intent = following ? "unfollow" : "follow";
-  const label = following
-    ? `「${targetName}」のフォローを解除する`
-    : `「${targetName}」をフォローする`;
-  let buttonLabel = "フォローする";
+  const label = following ? copy.unfollowAriaLabel : copy.followAriaLabel;
+  let buttonLabel = copy.follow;
   if (isPending) {
-    buttonLabel = "更新中…";
+    buttonLabel = copy.pending;
   } else if (following) {
-    buttonLabel = "フォローを解除";
+    buttonLabel = copy.unfollow;
   }
 
   return (

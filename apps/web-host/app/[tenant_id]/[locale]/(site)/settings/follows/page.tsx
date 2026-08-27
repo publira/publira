@@ -50,7 +50,7 @@ const FollowListData = async ({
   }
 
   const items = listResult.ok
-    ? await resolveFollowListItems(tenantId, listResult.follows)
+    ? await resolveFollowListItems(tenantId, listResult.follows, locale)
     : [];
 
   return (

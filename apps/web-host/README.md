@@ -21,6 +21,15 @@ pnpm dev
 - ヘッダの言語切替はパスのロケールだけを差し替えるリンクです。クエリ文字列は引き継ぎません
 - サーバー側でテナントの既定ロケールが要るときは `lib/tenant.ts` の `getTenantDefaultLocale()` を使います。`getTenantSiteInfo()` の `defaultLocale` を返すだけの入口で、テナントを読めなければ `ja` になります。`proxy.ts` はここを通りません（レンダリング前で `"use cache"` を読めないため、`GetTenantByDomain` の応答から直接取ります）
 
+### 画面文言
+
+ユーザー向けの文言はリポジトリルートの `locales/{locale}.json` の `host.*` から出します。`lib/messages.ts` の `loadHostMessages(locale)` がカタログを読み、Server Component は `<Message message="host.…" />` を `<Suspense>` + `Skeleton` で包んで 1 文字列ずつ解決します。`aria-label` や `placeholder` のように文字列でなければならない箇所と `generateMetadata` の `title` だけ `getMessage()` を直接呼びます。
+
+- `"use cache"` の中でロケールを読みません。`lib/catalog.ts` などの読み取りは `locale` を引数で受け取り、失敗時の文言をキャッシュキーに含めます
+- Client Component にはカタログではなく解決済みの文字列（`copy` プロップ）かノードを渡します。`error.tsx` だけは `components/client-message.tsx` の `<ClientMessage>` でブラウザ側から引きます
+- テナントが書いた作品タイトル・あらすじ・本文・個別ページの中身は翻訳しません。ロケールを変えても原文のまま出ます
+- テナント名が未設定のときの代替表記は `lib/tenant.ts` の `getTenantSiteLabel(tenantId, locale)` が返します
+
 ### セッション Cookie (JWE)
 
 必須の環境変数:

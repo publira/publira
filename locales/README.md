@@ -38,6 +38,8 @@
 | `locale`     | 表示言語の切替 UI（`web-platform` / `web-admin` 共通）    |
 | `email`      | Go サーバーと `@publira/email-templates` が描画するメール |
 | `platform`   | `web-platform`（プラットフォームコンソール）の画面文言    |
+| `admin`      | `web-admin`（テナント管理コンソール）の画面文言           |
+| `host`       | `web-host`（テナント公開サイト）の画面文言                |
 
 アプリ名前空間の中は画面（またはひとまとまりの領域）ごとに区切り、複数の画面が同じ文言を使うときだけ、その領域の共通セクション（`platform.auth.fields` など）に上げます。
 

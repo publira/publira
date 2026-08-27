@@ -87,7 +87,12 @@ describe("catalog.getEpisodeDetail", () => {
       },
     });
 
-    const result = await getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001");
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "ja"
+    );
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
       publicId: "EP_001",
@@ -115,7 +120,7 @@ describe("catalog.getEpisodeDetail", () => {
     });
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -139,7 +144,7 @@ describe("catalog.getEpisodeDetail", () => {
     });
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -149,7 +154,7 @@ describe("catalog.getEpisodeDetail", () => {
     );
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -161,7 +166,7 @@ describe("catalog.getEpisodeDetail", () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(rehydrated);
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -172,7 +177,7 @@ describe("catalog.getEpisodeDetail", () => {
     );
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -196,7 +201,8 @@ describe("catalog.getEpisodeDetail", () => {
     const result = await getEpisodeDetail(
       " TENANT_001 ",
       " SERIES_001 ",
-      " EP_001 "
+      " EP_001 ",
+      "ja"
     );
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
@@ -214,7 +220,7 @@ describe("catalog.getEpisodeDetail", () => {
     );
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
     ).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
@@ -230,7 +236,7 @@ describe("catalog.getEpisodeViewer", () => {
 
   it("セッションが無いときは RPC せず locked を返す", async () => {
     await expect(
-      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "")
+      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "", "ja")
     ).resolves.toEqual({
       ok: true,
       value: { access: "locked", images: [] },
@@ -269,7 +275,8 @@ describe("catalog.getEpisodeViewer", () => {
       "TENANT_001",
       "SERIES_001",
       "EP_010",
-      "session-token"
+      "session-token",
+      "ja"
     );
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith(
@@ -316,7 +323,13 @@ describe("catalog.getEpisodeViewer", () => {
     });
 
     await expect(
-      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "session-token")
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "ja"
+      )
     ).resolves.toEqual({
       ok: true,
       value: { access: "locked", images: [] },
@@ -329,7 +342,13 @@ describe("catalog.getEpisodeViewer", () => {
     );
 
     await expect(
-      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "session-token")
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "ja"
+      )
     ).resolves.toEqual({
       ok: true,
       value: { access: "locked", images: [] },
@@ -342,7 +361,13 @@ describe("catalog.getEpisodeViewer", () => {
     );
 
     await expect(
-      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "session-token")
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "ja"
+      )
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -364,7 +389,13 @@ describe("catalog.getEpisodeViewer", () => {
     });
 
     await expect(
-      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "session-token")
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "ja"
+      )
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -374,7 +405,13 @@ describe("catalog.getEpisodeViewer", () => {
     );
 
     await expect(
-      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "session-token")
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "ja"
+      )
     ).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",

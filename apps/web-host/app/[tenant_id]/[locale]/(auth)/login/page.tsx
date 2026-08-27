@@ -169,7 +169,7 @@ const LoginPageContent = async ({
   const tenantId = await getTenantId();
 
   const info = await getTenantSiteInfo(tenantId);
-  const siteLabel = info?.siteLabel ?? "サイト";
+  const siteLabel = info?.name.trim() || "サイト";
   const siteTagline = info?.siteTagline?.trim();
 
   return (

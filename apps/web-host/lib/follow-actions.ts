@@ -1,6 +1,7 @@
 "use server";
 
-import { VALIDATION_ERROR_MESSAGE } from "@publira/utils/field-errors";
+import { getMessage } from "@publira/i18n";
+import { validationErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
@@ -13,7 +14,8 @@ import {
   followsCacheTag,
   unfollowTarget,
 } from "./follow";
-import { localeFormSchema } from "./locale-form";
+import { LOCALE_FIELD_NAME, localeFormSchema } from "./locale-form";
+import { loadHostMessages } from "./messages";
 
 export type FollowActionState =
   | { isFollowing: boolean; message: string; ok: true }
@@ -46,8 +48,12 @@ export const toggleFollowAction = async (
     })
   );
   if (!parsed.success) {
+    // The locale field parses on its own — it falls back rather than failing —
+    // so the rejection can still be worded in the reader's language.
     return {
-      message: VALIDATION_ERROR_MESSAGE,
+      message: validationErrorMessage(
+        localeFormSchema.parse(formData.get(LOCALE_FIELD_NAME))
+      ),
       ok: false,
     };
   }
@@ -57,8 +63,8 @@ export const toggleFollowAction = async (
   await requirePublicSession(locale, returnTo);
   const result = await withPublicSessionReauth(locale, returnTo, () =>
     intent === "follow"
-      ? followTarget({ publicId, targetKind, tenantId })
-      : unfollowTarget({ publicId, targetKind, tenantId })
+      ? followTarget({ locale, publicId, targetKind, tenantId })
+      : unfollowTarget({ locale, publicId, targetKind, tenantId })
   );
   if (!result.ok) {
     return {
@@ -68,10 +74,13 @@ export const toggleFollowAction = async (
   }
 
   updateTag(followsCacheTag(tenantId));
+  const messages = await loadHostMessages(locale);
   return {
     isFollowing: result.isFollowing,
-    message:
-      intent === "follow" ? "フォローしました。" : "フォローを解除しました。",
+    message: getMessage(
+      messages,
+      intent === "follow" ? "host.follow.followed" : "host.follow.unfollowed"
+    ),
     ok: true,
   };
 };

@@ -86,7 +86,7 @@ test.describe("web-host public API outage", () => {
       page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { exact: true, name: "Series" })
+      page.getByRole("link", { exact: true, name: "シリーズ" })
     ).toBeVisible();
 
     try {
@@ -96,7 +96,7 @@ test.describe("web-host public API outage", () => {
 
       expect(response?.status(), await page.content()).toBe(200);
       await expect(
-        page.getByRole("link", { exact: true, name: "Series" })
+        page.getByRole("link", { exact: true, name: "シリーズ" })
       ).toBeVisible();
       // `getByRole("alert")` also matches Next.js's route announcer, so assert
       // the failure display by its own copy and its retry affordance.

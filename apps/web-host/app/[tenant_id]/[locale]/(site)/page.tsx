@@ -1,5 +1,7 @@
+import { getMessage } from "@publira/i18n";
 import { CollectionIcon, ImageIcon } from "@publira/icons";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -7,7 +9,9 @@ import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import {
   getCatalogTopFeaturedAuthors,
   getCatalogTopFeaturedLabels,
@@ -19,6 +23,8 @@ import type {
   CatalogTopEpisodeItem,
   CatalogTopUpdatedSeriesItem,
 } from "#lib/catalog-top";
+import { getLocale, loadHostMessages } from "#lib/locale";
+import type { HostMessageKey } from "#lib/locale";
 import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -78,39 +84,69 @@ const resolveUpdatedSeriesLinkIds = (
  * the read reported a failure or something threw unexpectedly.
  */
 const SECTION_TITLES = {
-  authors: "注目の著者を表示できませんでした",
-  labels: "注目のレーベルを表示できませんでした",
-  newEpisodes: "新着エピソードを表示できませんでした",
-  recommended: "おすすめ作品を表示できませんでした",
-  updated: "更新作品を表示できませんでした",
-} as const;
+  authors: "host.top.featured_authors_error",
+  labels: "host.top.featured_labels_error",
+  newEpisodes: "host.top.new_episodes_error",
+  recommended: "host.top.recommended_error",
+  updated: "host.top.updated_error",
+} as const satisfies Record<string, HostMessageKey>;
+
+/** The failure body a section renders from its own `ok: false` result. */
+const SectionReadError = ({
+  description,
+  title,
+}: {
+  description: string;
+  title: HostMessageKey;
+}) => (
+  <SectionError
+    description={description}
+    title={
+      <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+        <Message message={title} />
+      </Suspense>
+    }
+  />
+);
+
+/** The empty state a section renders when the read succeeded with no rows. */
+const SectionEmpty = ({ message }: { message: HostMessageKey }) => (
+  <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+    <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+      <Message message={message} />
+    </Suspense>
+  </p>
+);
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const siteLabel = await getTenantSiteLabel(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [siteLabel, messages] = await Promise.all([
+    getTenantSiteLabel(tenantId, locale),
+    loadHostMessages(locale),
+  ]);
 
   // This page shares a route segment with `(site)/layout.tsx`, so Next.js does
   // not apply that layout's `title.template`. Compose the full tab title here.
   return {
     title: {
-      absolute: `トップ | ${siteLabel}`,
+      absolute: `${getMessage(messages, "host.top.metadata_title")} | ${siteLabel}`,
     },
   };
 };
 
 /**
  * The one suspended piece on this page with no `SectionErrorBoundary` around
- * it, on purpose: `getTenantSiteLabel` degrades to 「サイト」 rather than
- * failing, the same way the header brand and the `<title>` do, because it is
- * resolved before any shell exists (#672). There is nothing here for a boundary
- * to catch.
+ * it, on purpose: `getTenantSiteLabel` degrades to the catalog's stand-in
+ * rather than failing, the same way the header brand and the `<title>` do,
+ * because it is resolved before any shell exists (#672). There is nothing here
+ * for a boundary to catch.
  */
 const CatalogTopSiteLabel = async () => {
-  const tenantId = await getTenantId();
-  const siteLabel = await getTenantSiteLabel(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const siteLabel = await getTenantSiteLabel(tenantId, locale);
 
   return (
     <p className="text-sm tracking-[0.14em] text-muted-foreground uppercase">
@@ -148,13 +184,13 @@ const ListSkeleton = ({ count = 4 }: { count?: number }) => (
 );
 
 const RecommendedSeriesSection = async () => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const result = await getCatalogTopRecommendedSeries(tenantId);
+  const result = await getCatalogTopRecommendedSeries(tenantId, { locale });
 
   if (!result.ok) {
     return (
-      <SectionError
+      <SectionReadError
         description={result.message}
         title={SECTION_TITLES.recommended}
       />
@@ -164,11 +200,7 @@ const RecommendedSeriesSection = async () => {
   const recommendedSeries = result.value;
 
   if (recommendedSeries.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-        公開中のシリーズはまだありません。
-      </p>
-    );
+    return <SectionEmpty message="host.top.recommended_empty" />;
   }
 
   return (
@@ -216,16 +248,16 @@ const RecommendedSeriesSection = async () => {
 };
 
 const NewEpisodesSection = async () => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [result, timeZone] = await Promise.all([
-    getCatalogTopNewEpisodes(tenantId),
+    getCatalogTopNewEpisodes(tenantId, { locale }),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
   if (!result.ok) {
     return (
-      <SectionError
+      <SectionReadError
         description={result.message}
         title={SECTION_TITLES.newEpisodes}
       />
@@ -235,11 +267,7 @@ const NewEpisodesSection = async () => {
   const newEpisodes = result.value;
 
   if (newEpisodes.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-        新着エピソードはまだありません。
-      </p>
-    );
+    return <SectionEmpty message="host.top.new_episodes_empty" />;
   }
 
   return (
@@ -265,7 +293,11 @@ const NewEpisodesSection = async () => {
                 </p>
               </div>
               <span className="text-xs text-muted-foreground">
-                {formatDate(episode.publishedAt, { fallback: "", timeZone })}
+                {formatDate(episode.publishedAt, {
+                  fallback: "",
+                  locale,
+                  timeZone,
+                })}
               </span>
             </LocaleLink>
           </li>
@@ -276,16 +308,17 @@ const NewEpisodesSection = async () => {
 };
 
 const UpdatedSeriesSection = async () => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const [result, timeZone] = await Promise.all([
-    getCatalogTopUpdatedSeries(tenantId),
+  const [result, timeZone, messages] = await Promise.all([
+    getCatalogTopUpdatedSeries(tenantId, { locale }),
     getTenantDisplayTimeZone(tenantId),
+    loadHostMessages(locale),
   ]);
 
   if (!result.ok) {
     return (
-      <SectionError
+      <SectionReadError
         description={result.message}
         title={SECTION_TITLES.updated}
       />
@@ -295,11 +328,7 @@ const UpdatedSeriesSection = async () => {
   const updatedSeries = result.value;
 
   if (updatedSeries.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-        更新作品はまだありません。
-      </p>
-    );
+    return <SectionEmpty message="host.top.updated_empty" />;
   }
 
   return (
@@ -346,7 +375,9 @@ const UpdatedSeriesSection = async () => {
                   {item.creatorNames.join("、")}
                 </p>
               )}
-              <p className="mb-2 text-xs text-muted-foreground">最新更新</p>
+              <p className="mb-2 text-xs text-muted-foreground">
+                {getMessage(messages, "host.top.latest_update")}
+              </p>
               <LocaleLink
                 className="font-medium text-accent underline-offset-4 hover:underline"
                 href={`/series/${ids.seriesId}/episodes/${ids.latestEpisodeId}`}
@@ -354,10 +385,12 @@ const UpdatedSeriesSection = async () => {
                 {item.latestEpisodeTitle}
               </LocaleLink>
               <p className="mt-2 text-xs text-muted-foreground">
-                公開日{" "}
-                {formatDate(item.latestPublishedAt, {
-                  fallback: "未設定",
-                  timeZone,
+                {getMessage(messages, "host.top.published_on", {
+                  date: formatDate(item.latestPublishedAt, {
+                    fallback: getMessage(messages, "host.common.unset"),
+                    locale,
+                    timeZone,
+                  }),
                 })}
               </p>
             </div>
@@ -369,13 +402,13 @@ const UpdatedSeriesSection = async () => {
 };
 
 const FeaturedLabelsSection = async () => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const result = await getCatalogTopFeaturedLabels(tenantId);
+  const result = await getCatalogTopFeaturedLabels(tenantId, { locale });
 
   if (!result.ok) {
     return (
-      <SectionError
+      <SectionReadError
         description={result.message}
         title={SECTION_TITLES.labels}
       />
@@ -385,11 +418,7 @@ const FeaturedLabelsSection = async () => {
   const featuredLabels = result.value;
 
   if (featuredLabels.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-        公開中シリーズに紐づくレーベルはまだありません。
-      </p>
-    );
+    return <SectionEmpty message="host.top.featured_labels_empty" />;
   }
 
   return (
@@ -425,13 +454,16 @@ const FeaturedLabelsSection = async () => {
 };
 
 const FeaturedAuthorsSection = async () => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const result = await getCatalogTopFeaturedAuthors(tenantId);
+  const [result, messages] = await Promise.all([
+    getCatalogTopFeaturedAuthors(tenantId, { locale }),
+    loadHostMessages(locale),
+  ]);
 
   if (!result.ok) {
     return (
-      <SectionError
+      <SectionReadError
         description={result.message}
         title={SECTION_TITLES.authors}
       />
@@ -441,11 +473,7 @@ const FeaturedAuthorsSection = async () => {
   const featuredAuthors = result.value;
 
   if (featuredAuthors.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-        公開中シリーズに紐づく著者はまだいません。
-      </p>
-    );
+    return <SectionEmpty message="host.top.featured_authors_empty" />;
   }
 
   return (
@@ -460,7 +488,9 @@ const FeaturedAuthorsSection = async () => {
             {author.name}
           </p>
           <p className="text-sm text-muted-foreground">
-            公開中シリーズ {author.seriesCount} 件
+            {getMessage(messages, "host.common.series_count", {
+              count: author.seriesCount,
+            })}
           </p>
         </LocaleLink>
       ))}
@@ -481,28 +511,40 @@ const Page = () => (
       >
         <CatalogTopSiteLabel />
       </Suspense>
-      <h1 className="font-serif text-4xl font-bold">カタログトップ</h1>
+      <h1 className="font-serif text-4xl font-bold">
+        <Suspense fallback={<SkeletonLine className="h-9 w-64" />}>
+          <Message message="host.top.title" />
+        </Suspense>
+      </h1>
       <p className="max-w-3xl text-muted-foreground">
-        おすすめ、新着、更新作品から気になる作品を見つけてください。
+        <Suspense fallback={<SkeletonLine className="h-5 w-full max-w-lg" />}>
+          <Message message="host.top.description" />
+        </Suspense>
       </p>
       <div className="flex flex-wrap gap-3">
         <LocaleLink
           className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition hover:opacity-90"
           href="/series"
         >
-          シリーズ一覧へ
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.top.to_series" />
+          </Suspense>
         </LocaleLink>
         <LocaleLink
           className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition hover:opacity-90"
           href="/labels"
         >
-          レーベル一覧へ
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.top.to_labels" />
+          </Suspense>
         </LocaleLink>
         <LocaleLink
           className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
           href="/authors"
         >
-          著者一覧へ
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.top.to_authors" />
+          </Suspense>
         </LocaleLink>
       </div>
     </header>
@@ -513,16 +555,20 @@ const Page = () => (
           id="recommended-works"
           className="font-serif text-2xl font-semibold"
         >
-          おすすめ作品
+          <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+            <Message message="host.top.recommended_heading" />
+          </Suspense>
         </h2>
         <LocaleLink
           className="text-sm font-medium text-accent underline-offset-4 hover:underline"
           href="/series"
         >
-          すべて見る
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="host.top.view_all" />
+          </Suspense>
         </LocaleLink>
       </div>
-      <SectionErrorBoundary title={SECTION_TITLES.recommended}>
+      <SectionErrorBoundary {...sectionErrorCopy(SECTION_TITLES.recommended)}>
         <Suspense fallback={<CardGridSkeleton />}>
           <RecommendedSeriesSection />
         </Suspense>
@@ -531,9 +577,11 @@ const Page = () => (
 
     <section aria-labelledby="new-episodes" className="mb-12">
       <h2 id="new-episodes" className="mb-4 font-serif text-2xl font-semibold">
-        新着エピソード
+        <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+          <Message message="host.top.new_episodes_heading" />
+        </Suspense>
       </h2>
-      <SectionErrorBoundary title={SECTION_TITLES.newEpisodes}>
+      <SectionErrorBoundary {...sectionErrorCopy(SECTION_TITLES.newEpisodes)}>
         <Suspense fallback={<ListSkeleton />}>
           <NewEpisodesSection />
         </Suspense>
@@ -545,9 +593,11 @@ const Page = () => (
         id="updated-series"
         className="mb-4 font-serif text-2xl font-semibold"
       >
-        更新作品
+        <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
+          <Message message="host.top.updated_heading" />
+        </Suspense>
       </h2>
-      <SectionErrorBoundary title={SECTION_TITLES.updated}>
+      <SectionErrorBoundary {...sectionErrorCopy(SECTION_TITLES.updated)}>
         <Suspense fallback={<CardGridSkeleton />}>
           <UpdatedSeriesSection />
         </Suspense>
@@ -557,16 +607,20 @@ const Page = () => (
     <section aria-labelledby="featured-labels" className="mb-12">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id="featured-labels" className="font-serif text-2xl font-semibold">
-          注目のレーベル
+          <Suspense fallback={<SkeletonLine className="h-7 w-44" />}>
+            <Message message="host.top.featured_labels_heading" />
+          </Suspense>
         </h2>
         <LocaleLink
           className="text-sm font-medium text-accent underline-offset-4 hover:underline"
           href="/labels"
         >
-          レーベル一覧へ
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.top.to_labels" />
+          </Suspense>
         </LocaleLink>
       </div>
-      <SectionErrorBoundary title={SECTION_TITLES.labels}>
+      <SectionErrorBoundary {...sectionErrorCopy(SECTION_TITLES.labels)}>
         <Suspense fallback={<CardGridSkeleton />}>
           <FeaturedLabelsSection />
         </Suspense>
@@ -576,16 +630,20 @@ const Page = () => (
     <section aria-labelledby="featured-authors">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id="featured-authors" className="font-serif text-2xl font-semibold">
-          注目の著者
+          <Suspense fallback={<SkeletonLine className="h-7 w-36" />}>
+            <Message message="host.top.featured_authors_heading" />
+          </Suspense>
         </h2>
         <LocaleLink
           className="text-sm font-medium text-accent underline-offset-4 hover:underline"
           href="/authors"
         >
-          著者一覧へ
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.top.to_authors" />
+          </Suspense>
         </LocaleLink>
       </div>
-      <SectionErrorBoundary title={SECTION_TITLES.authors}>
+      <SectionErrorBoundary {...sectionErrorCopy(SECTION_TITLES.authors)}>
         <Suspense fallback={<CardGridSkeleton />}>
           <FeaturedAuthorsSection />
         </Suspense>

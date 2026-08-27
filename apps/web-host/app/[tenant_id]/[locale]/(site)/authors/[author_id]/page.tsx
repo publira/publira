@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -14,8 +16,10 @@ import { FollowControl } from "#components/follow-control";
 import { LocaleLink } from "#components/locale-link";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { getPublishedAuthorDetail } from "#lib/authors";
 import type { PublishedAuthorDetail } from "#lib/authors";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -41,10 +45,12 @@ const authorDetailParamsSchema = z.object({
 const loadPublishedAuthorDetail = (
   tenantId: string,
   authorId: string,
+  locale: Locale,
   token: string
 ) =>
   getPublishedAuthorDetail(tenantId, authorId, {
     limit: AUTHOR_SERIES_PAGE_SIZE,
+    locale,
     token,
   });
 
@@ -72,11 +78,9 @@ export const generateMetadata = async ({
   params,
   searchParams,
 }: AuthorDetailPageProps): Promise<Metadata> => {
-  const [rawParams, tenantId, resolvedSearchParams] = await Promise.all([
-    params,
-    getTenantId(),
-    searchParams,
-  ]);
+  const [rawParams, tenantId, resolvedSearchParams, locale] = await Promise.all(
+    [params, getTenantId(), searchParams, getLocale()]
+  );
   const parsedParams = parseRouteParams(authorDetailParamsSchema, rawParams);
   if (!parsedParams) {
     notFound();
@@ -85,7 +89,10 @@ export const generateMetadata = async ({
 
   const { token } = parseAuthorDetailSearchParams(resolvedSearchParams);
 
-  const result = await loadPublishedAuthorDetail(tenantId, author_id, token);
+  const [result, messages] = await Promise.all([
+    loadPublishedAuthorDetail(tenantId, author_id, locale, token),
+    loadHostMessages(locale),
+  ]);
 
   // An unavailable author reads as "not found" for the `<title>` alone; the
   // page body below says what actually happened.
@@ -93,14 +100,17 @@ export const generateMetadata = async ({
 
   if (!author) {
     return {
-      title: "著者が見つかりません",
+      title: getMessage(messages, "host.authors.not_found_title"),
     };
   }
 
   return {
     description:
       author.profileText ||
-      `${author.name} が関わっている公開中シリーズ ${author.seriesCount} 件`,
+      getMessage(messages, "host.authors.detail_description", {
+        count: author.seriesCount,
+        name: author.name,
+      }),
     title: author.name,
   };
 };
@@ -128,7 +138,7 @@ const AuthorDetailSkeleton = () => (
   </div>
 );
 
-const AuthorSeriesPagination = ({
+const AuthorSeriesPagination = async ({
   authorId,
   nextToken,
   previousToken,
@@ -136,47 +146,59 @@ const AuthorSeriesPagination = ({
   authorId: string;
   nextToken: string;
   previousToken: string;
-}) => (
-  <nav
-    aria-label="関連シリーズページング"
-    className="mt-8 flex items-center justify-center gap-6"
-  >
-    {previousToken ? (
-      <LocaleLink
-        href={authorDetailHref(authorId, previousToken)}
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        前のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">前のページ</span>
-    )}
+}) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
 
-    {nextToken ? (
-      <LocaleLink
-        href={authorDetailHref(authorId, nextToken)}
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        次のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">次のページ</span>
-    )}
-  </nav>
-);
+  return (
+    <nav
+      aria-label={getMessage(messages, "host.authors.series_pagination_aria")}
+      className="mt-8 flex items-center justify-center gap-6"
+    >
+      {previousToken ? (
+        <LocaleLink
+          href={authorDetailHref(authorId, previousToken)}
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          {getMessage(messages, "host.common.previous_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.previous_page")}
+        </span>
+      )}
 
-const AuthorRelatedSeries = ({
+      {nextToken ? (
+        <LocaleLink
+          href={authorDetailHref(authorId, nextToken)}
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          {getMessage(messages, "host.common.next_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.next_page")}
+        </span>
+      )}
+    </nav>
+  );
+};
+
+const AuthorRelatedSeries = async ({
   author,
   token,
 }: {
   author: PublishedAuthorDetail;
   token: string;
 }) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
   if (author.series.length === 0) {
     if (!token) {
       return (
         <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-6 text-sm text-muted-foreground">
-          まだ公開中シリーズはありません。
+          {getMessage(messages, "host.authors.series_empty")}
         </div>
       );
     }
@@ -184,7 +206,7 @@ const AuthorRelatedSeries = ({
     return (
       <div className="py-10 text-center">
         <p className="mb-4 text-sm text-muted-foreground">
-          このページに表示できるシリーズがありません。
+          {getMessage(messages, "host.series.page_empty")}
         </p>
         {author.previousToken || author.nextToken ? (
           <AuthorSeriesPagination
@@ -197,7 +219,7 @@ const AuthorRelatedSeries = ({
             href={authorDetailHref(author.id, "")}
             className="text-sm text-primary underline-offset-4 hover:underline"
           >
-            関連シリーズの先頭へ
+            {getMessage(messages, "host.authors.series_first_page")}
           </LocaleLink>
         )}
       </div>
@@ -215,7 +237,7 @@ const AuthorRelatedSeries = ({
             >
               <p className="font-medium text-foreground">{series.title}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                シリーズ詳細を見る
+                {getMessage(messages, "host.common.view_series_detail")}
               </p>
             </LocaleLink>
           </li>
@@ -234,11 +256,9 @@ const AuthorDetailContent = async ({
   params,
   searchParams,
 }: AuthorDetailPageProps) => {
-  const [rawParams, tenantId, resolvedSearchParams] = await Promise.all([
-    params,
-    getTenantId(),
-    searchParams,
-  ]);
+  const [rawParams, tenantId, resolvedSearchParams, locale] = await Promise.all(
+    [params, getTenantId(), searchParams, getLocale()]
+  );
   const parsedParams = parseRouteParams(authorDetailParamsSchema, rawParams);
   if (!parsedParams) {
     notFound();
@@ -250,9 +270,10 @@ const AuthorDetailContent = async ({
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
   // to render anything (#672).
-  const [siteLabel, result] = await Promise.all([
-    getTenantSiteLabel(tenantId),
-    loadPublishedAuthorDetail(tenantId, author_id, token),
+  const [siteLabel, result, messages] = await Promise.all([
+    getTenantSiteLabel(tenantId, locale),
+    loadPublishedAuthorDetail(tenantId, author_id, locale, token),
+    loadHostMessages(locale),
   ]);
 
   if (!result.ok) {
@@ -275,7 +296,9 @@ const AuthorDetailContent = async ({
           {author.iconImageUrl ? (
             <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border border-border/60 bg-muted/20">
               <Image
-                alt={`${author.name} のアイコン`}
+                alt={getMessage(messages, "host.authors.icon_alt", {
+                  name: author.name,
+                })}
                 className="h-full w-full object-cover"
                 decoding="async"
                 height={96}
@@ -297,7 +320,9 @@ const AuthorDetailContent = async ({
               <h1 className="font-serif text-4xl font-bold text-foreground">
                 {author.name}
               </h1>
-              <SectionErrorBoundary title="フォロー操作を表示できませんでした">
+              <SectionErrorBoundary
+                {...sectionErrorCopy("host.follow.control_error")}
+              >
                 <Suspense fallback={<FollowControlSkeleton />}>
                   <FollowControl
                     publicId={author.id}
@@ -310,12 +335,14 @@ const AuthorDetailContent = async ({
               </SectionErrorBoundary>
             </div>
             <p className="text-sm text-muted-foreground">
-              公開中シリーズ {author.seriesCount} 件
+              {getMessage(messages, "host.common.series_count", {
+                count: author.seriesCount,
+              })}
             </p>
 
             <div className="mt-6 rounded-2xl bg-muted/30 p-5">
               <h2 className="mb-3 text-sm font-semibold text-foreground">
-                プロフィール
+                {getMessage(messages, "host.authors.profile")}
               </h2>
               {hasProfileText ? (
                 <p className="text-sm leading-7 whitespace-pre-wrap text-muted-foreground">
@@ -323,7 +350,7 @@ const AuthorDetailContent = async ({
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  プロフィールはまだ公開されていません。
+                  {getMessage(messages, "host.authors.profile_empty")}
                 </p>
               )}
             </div>
@@ -334,9 +361,11 @@ const AuthorDetailContent = async ({
       <section>
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <h2 className="font-serif text-2xl font-semibold">関連シリーズ</h2>
+            <h2 className="font-serif text-2xl font-semibold">
+              {getMessage(messages, "host.authors.series_heading")}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              この著者が関わっている公開中シリーズ一覧です。
+              {getMessage(messages, "host.authors.series_description")}
             </p>
           </div>
         </div>
@@ -349,7 +378,7 @@ const AuthorDetailContent = async ({
           href="/authors"
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
-          著者一覧へ戻る
+          {getMessage(messages, "host.authors.back_to_list")}
         </LocaleLink>
       </div>
     </main>

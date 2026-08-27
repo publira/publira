@@ -1,3 +1,4 @@
+import { getMessage, toIntlLocale } from "@publira/i18n";
 import { CollectionIcon } from "@publira/icons";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -14,7 +15,9 @@ import { FollowControl } from "#components/follow-control";
 import { LocaleLink } from "#components/locale-link";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { getSeriesDetail } from "#lib/catalog";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 export const generateStaticParams = () =>
@@ -48,9 +51,10 @@ const SeriesDetailSkeleton = () => (
 const SeriesDetailContent = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]">
 ) => {
-  const [rawParams, tenantId] = await Promise.all([
+  const [rawParams, tenantId, locale] = await Promise.all([
     props.params,
     getTenantId(),
+    getLocale(),
   ]);
   const parsedParams = parseRouteParams(seriesDetailParamsSchema, rawParams);
   if (!parsedParams) {
@@ -62,7 +66,10 @@ const SeriesDetailContent = async (
   // public site must not tell those apart. A failed read is a value as well:
   // a `"use cache"` fill that throws fails the whole request, so neither this
   // page nor any boundary would get to render anything (#672).
-  const result = await getSeriesDetail(tenantId, series_id);
+  const [result, messages] = await Promise.all([
+    getSeriesDetail(tenantId, series_id, locale),
+    loadHostMessages(locale),
+  ]);
 
   if (!result.ok) {
     return <PageLoadError description={result.message} />;
@@ -81,7 +88,7 @@ const SeriesDetailContent = async (
           href="/series"
           className="text-sm text-muted-foreground underline-offset-4 hover:underline"
         >
-          ← シリーズ一覧に戻る
+          {getMessage(messages, "host.series.back_to_list")}
         </LocaleLink>
       </nav>
 
@@ -109,7 +116,9 @@ const SeriesDetailContent = async (
           <div className="mb-8">
             <div className="mb-2 flex flex-wrap items-start justify-between gap-4">
               <h1 className="font-serif text-4xl font-bold">{series.title}</h1>
-              <SectionErrorBoundary title="フォロー操作を表示できませんでした">
+              <SectionErrorBoundary
+                {...sectionErrorCopy("host.follow.control_error")}
+              >
                 <Suspense fallback={<FollowControlSkeleton />}>
                   <FollowControl
                     publicId={series.publicId}
@@ -151,11 +160,11 @@ const SeriesDetailContent = async (
 
       <section>
         <h2 className="mb-4 font-serif text-2xl font-semibold">
-          エピソード一覧
+          {getMessage(messages, "host.series.episodes_heading")}
         </h2>
         {episodes.length === 0 ? (
           <p className="py-10 text-center text-muted-foreground">
-            エピソードはまだ公開されていません。
+            {getMessage(messages, "host.series.episodes_empty")}
           </p>
         ) : (
           <ol className="grid gap-3">
@@ -173,11 +182,11 @@ const SeriesDetailContent = async (
                   </span>
                   {ep.price > 0 ? (
                     <span className="rounded-full bg-warning/15 px-2.5 py-0.5 text-sm font-medium text-warning">
-                      ¥{ep.price.toLocaleString("ja-JP")}
+                      ¥{ep.price.toLocaleString(toIntlLocale(locale))}
                     </span>
                   ) : (
                     <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-sm font-medium text-success">
-                      無料
+                      {getMessage(messages, "host.common.free")}
                     </span>
                   )}
                 </LocaleLink>

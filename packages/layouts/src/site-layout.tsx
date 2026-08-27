@@ -12,11 +12,6 @@ export interface LayoutActionItem extends LayoutLinkItem {
   className?: string;
 }
 
-export const defaultSiteLayoutNavItems: LayoutLinkItem[] = [
-  { href: "/authors", label: "Authors" },
-  { href: "/series", label: "Series" },
-];
-
 const normalizeLayoutText = (
   value: string | undefined | null
 ): string | undefined => {
@@ -117,13 +112,19 @@ const SiteLayoutFooterContentInner = async ({
   copyrightText,
   footerNote,
   links,
+  linksLabel,
 }: {
   copyrightText?: string | Promise<string | undefined>;
   footerNote?: string | Promise<string | undefined>;
   links?: LayoutLinkItem[] | Promise<LayoutLinkItem[] | undefined>;
+  linksLabel: string | Promise<string>;
 }) => {
-  const [resolvedFooterNote, resolvedCopyrightText, resolvedLinks] =
-    await Promise.all([footerNote, copyrightText, links]);
+  const [
+    resolvedFooterNote,
+    resolvedCopyrightText,
+    resolvedLinks,
+    resolvedLinksLabel,
+  ] = await Promise.all([footerNote, copyrightText, links, linksLabel]);
 
   const normalizedFooterNote = normalizeLayoutText(resolvedFooterNote);
   const normalizedCopyrightText = normalizeLayoutText(resolvedCopyrightText);
@@ -142,7 +143,7 @@ const SiteLayoutFooterContentInner = async ({
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-6 text-sm text-muted-foreground">
         {normalizedLinks.length > 0 ? (
           <nav
-            aria-label="フッターリンク"
+            aria-label={resolvedLinksLabel}
             className="flex flex-wrap items-center gap-x-4 gap-y-2"
           >
             {normalizedLinks.map((item) => (
@@ -205,11 +206,7 @@ export const SiteLayoutBrand = ({
   </Suspense>
 );
 
-export const SiteLayoutNav = ({
-  items = defaultSiteLayoutNavItems,
-}: {
-  items?: LayoutLinkItem[];
-}) => (
+export const SiteLayoutNav = ({ items }: { items: LayoutLinkItem[] }) => (
   <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
     {items.map((item) => (
       <Link
@@ -248,16 +245,20 @@ export const SiteLayoutFooter = ({
   copyrightText,
   footerNote,
   links,
+  linksLabel,
 }: {
   copyrightText?: string | Promise<string | undefined>;
   footerNote?: string | Promise<string | undefined>;
   links?: LayoutLinkItem[] | Promise<LayoutLinkItem[] | undefined>;
+  /** `aria-label` of the footer link list, already resolved by the caller. */
+  linksLabel: string | Promise<string>;
 }) => (
   <Suspense fallback={<SiteLayoutFooterSkeleton />}>
     <SiteLayoutFooterContentInner
       copyrightText={copyrightText}
       footerNote={footerNote}
       links={links}
+      linksLabel={linksLabel}
     />
   </Suspense>
 );
