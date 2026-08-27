@@ -5,12 +5,14 @@ import { redirect } from "next/navigation";
 import { resolveAccessToken as getSession } from "./api-client";
 import { logoutPlatform } from "./auth";
 import { clearPlatformSessionCookie } from "./auth-session";
+import { assertSameOrigin } from "./csrf";
 
 /**
  * Revoke the upstream session, drop the local cookie, and send the user to
  * `/login`.
  */
 export const logoutAction = async (): Promise<void> => {
+  await assertSameOrigin();
   const accessToken = await getSession();
 
   try {

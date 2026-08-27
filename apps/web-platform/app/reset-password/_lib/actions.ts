@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { emailFormSchema } from "#lib/auth-input";
+import { assertSameOrigin } from "#lib/csrf";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import type { PlatformMessages } from "#lib/locale";
 import { requestPlatformPasswordReset } from "#lib/password-reset";
@@ -20,6 +21,7 @@ export const requestPasswordResetAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
+  await assertSameOrigin();
   const locale = await getPlatformLocale();
   const messages = await loadPlatformMessages(locale);
 

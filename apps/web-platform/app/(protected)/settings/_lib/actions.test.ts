@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAssertSameOrigin,
   mockGetPlatformLocale,
   mockResolveAccessToken,
   mockUpdatePlatformDefaultLocale,
   mockUpdatePlatformDefaultTimezone,
   mockUpdateTag,
 } = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
   mockResolveAccessToken: vi.fn(),
   mockUpdatePlatformDefaultLocale: vi.fn(),
@@ -18,6 +20,8 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
   updateTag: mockUpdateTag,
 }));
+
+vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/api-client", () => ({
   resolveAccessToken: mockResolveAccessToken,

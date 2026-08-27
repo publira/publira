@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   },
   cacheMaxMemorySize: 0,
   experimental: {
+    // `assertSameOrigin()` terminates rejected Server Actions with Next's 403.
+    authInterrupts: true,
     // Unmatched URLs skip normal layout rendering.
     globalNotFound: true,
     turbopackRustReactCompiler: true,

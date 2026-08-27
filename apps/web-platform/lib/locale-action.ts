@@ -5,6 +5,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { cookies } from "next/headers";
 import { z } from "zod";
 
+import { assertSameOrigin } from "./csrf";
 import { platformLocaleCookieOptions } from "./locale";
 import { LOCALE_FIELD_NAME } from "./locale-shared";
 
@@ -28,6 +29,7 @@ const localeFormSchema = z.object({
 export const setPlatformLocaleAction = async (
   formData: FormData
 ): Promise<void> => {
+  await assertSameOrigin();
   const parsed = localeFormSchema.safeParse(
     toFormDataInput(formData, {
       locale: { kind: "value", name: LOCALE_FIELD_NAME },

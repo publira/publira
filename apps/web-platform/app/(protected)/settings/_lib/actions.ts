@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import { emailFormSchema, passwordFormSchema } from "#lib/auth-input";
 import { withPlatformSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
 import { requestPlatformEmailChange } from "#lib/email-change";
 import {
   sendPlatformSmtpTestEmail,
@@ -162,6 +163,7 @@ export const updatePlatformEmailSettingsAction = async (
   _prevState: PlatformEmailSettingsFormState,
   formData: FormData
 ): Promise<PlatformEmailSettingsFormState> => {
+  await assertSameOrigin();
   const { locale, messages } = await loadActionCatalog();
 
   const parsed = smtpFormSchema(messages).safeParse(
@@ -201,6 +203,7 @@ export const updatePlatformDefaultTimezoneAction = async (
   _prevState: PlatformDefaultTimezoneActionState,
   formData: FormData
 ): Promise<PlatformDefaultTimezoneActionState> => {
+  await assertSameOrigin();
   const { locale, messages } = await loadActionCatalog();
 
   const parsed = platformDefaultTimezoneSchema(messages).safeParse(
@@ -236,6 +239,7 @@ export const updatePlatformDefaultLocaleAction = async (
   _prevState: PlatformDefaultLocaleActionState,
   formData: FormData
 ): Promise<PlatformDefaultLocaleActionState> => {
+  await assertSameOrigin();
   const { locale, messages } = await loadActionCatalog();
 
   const parsed = platformDefaultLocaleSchema(messages).safeParse(
@@ -271,6 +275,7 @@ export const sendPlatformSmtpTestEmailAction = async (
   _prevState: PlatformSmtpTestFormState,
   formData: FormData
 ): Promise<PlatformSmtpTestFormState> => {
+  await assertSameOrigin();
   const { locale, messages } = await loadActionCatalog();
 
   const parsed = smtpFormSchema(messages).safeParse(
@@ -313,6 +318,7 @@ export const requestPlatformEmailChangeAction = async (
   _prevState: PlatformEmailChangeActionState,
   formData: FormData
 ): Promise<PlatformEmailChangeActionState> => {
+  await assertSameOrigin();
   const { locale, messages } = await loadActionCatalog();
 
   const parsed = emailChangeFormSchema(messages).safeParse(
