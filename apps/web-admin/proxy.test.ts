@@ -1,3 +1,4 @@
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockResolveTenantId } = vi.hoisted(() => ({
@@ -109,15 +110,17 @@ describe("web-admin proxy", () => {
     }
   );
 
-  it("再検証パスは Host のテナント解決なしで通す", async () => {
-    const { NextRequest } = await import("next/server");
-    const { proxy } = await import("./proxy");
+  it("再検証パスを proxy matcher から除外する", async () => {
+    const { config } = await import("./proxy");
 
-    const response = await proxy(
-      new NextRequest("https://admin.example.com/api/revalidate")
-    );
-
-    expect(response.status).toBe(200);
-    expect(mockResolveTenantId).not.toHaveBeenCalled();
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate/" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate-other" })
+    ).toBe(true);
   });
 });

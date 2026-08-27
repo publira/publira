@@ -1,3 +1,4 @@
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockIsSetupCompleted } = vi.hoisted(() => ({
@@ -42,15 +43,17 @@ describe("web-platform proxy", () => {
     expect(mockIsSetupCompleted).not.toHaveBeenCalled();
   });
 
-  it("再検証パスはセットアップ確認なしで通す", async () => {
-    const { NextRequest } = await import("next/server");
-    const { proxy } = await import("./proxy");
+  it("再検証パスを proxy matcher から除外する", async () => {
+    const { config } = await import("./proxy");
 
-    const response = await proxy(
-      new NextRequest("https://platform.example.com/api/revalidate")
-    );
-
-    expect(response.status).toBe(200);
-    expect(mockIsSetupCompleted).not.toHaveBeenCalled();
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate/" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate-other" })
+    ).toBe(true);
   });
 });

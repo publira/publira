@@ -31,8 +31,6 @@ const MEMBER_PATH_PREFIXES = [
   "/settings",
 ] as const;
 const GUEST_ONLY_PATHS = new Set(["/login", "/signup"]);
-const isRevalidatePath = (pathname: string): boolean =>
-  pathname === "/api/revalidate";
 
 const isMemberPath = (pathname: string): boolean =>
   MEMBER_PATH_PREFIXES.some(
@@ -107,9 +105,8 @@ const rewriteTo = (request: NextRequest, pathname: string): NextResponse => {
 export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const { pathname } = request.nextUrl;
 
-  // Probes and internal cache invalidation must not depend on tenant resolution
-  // or backend availability.
-  if (isHealthProbePath(pathname) || isRevalidatePath(pathname)) {
+  // Probes must not depend on tenant resolution or backend availability.
+  if (isHealthProbePath(pathname)) {
     return NextResponse.next();
   }
 
@@ -175,5 +172,5 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
 };
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api/revalidate(?:/|$)|_next/static|_next/image|favicon.ico).*)"],
 };

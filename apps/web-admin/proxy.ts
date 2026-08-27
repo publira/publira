@@ -23,8 +23,6 @@ const PUBLIC_PATHS = new Set([
   "/readyz",
   "/theme.css",
 ]);
-const isRevalidatePath = (pathname: string): boolean =>
-  pathname === "/api/revalidate";
 
 const serviceUnavailableResponse = () =>
   new NextResponse("Service Unavailable", {
@@ -35,9 +33,8 @@ const serviceUnavailableResponse = () =>
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
-  // Probes and internal cache invalidation must not depend on tenant resolution
-  // or backend availability.
-  if (isHealthProbePath(pathname) || isRevalidatePath(pathname)) {
+  // Probes must not depend on tenant resolution or backend availability.
+  if (isHealthProbePath(pathname)) {
     return NextResponse.next();
   }
 
@@ -100,5 +97,5 @@ export const proxy = async (request: NextRequest) => {
 };
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api/revalidate(?:/|$)|_next/static|_next/image|favicon.ico).*)"],
 };

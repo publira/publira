@@ -1,4 +1,5 @@
 import { encryptSessionPayload } from "@publira/web-session";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import type { NextRequest } from "next/server";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -269,18 +270,17 @@ describe("web-host proxy locale routing", () => {
 });
 
 describe("web-host proxy internal revalidation", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  it("再検証パスを proxy matcher から除外する", async () => {
+    const { config } = await import("./proxy");
 
-  it("再検証パスは Host のテナント解決なしで通す", async () => {
-    const { proxy } = await import("./proxy");
-
-    const response = await proxy(
-      request("https://shop.example.com/api/revalidate")
-    );
-
-    expect(response.status).toBe(200);
-    expect(mockResolveTenant).not.toHaveBeenCalled();
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate/" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate-other" })
+    ).toBe(true);
   });
 });
