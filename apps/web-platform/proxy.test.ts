@@ -41,4 +41,16 @@ describe("web-platform proxy", () => {
     expect(response.headers.get("location")).toBeNull();
     expect(mockIsSetupCompleted).not.toHaveBeenCalled();
   });
+
+  it("再検証パスはセットアップ確認なしで通す", async () => {
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://platform.example.com/api/revalidate")
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockIsSetupCompleted).not.toHaveBeenCalled();
+  });
 });

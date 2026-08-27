@@ -785,7 +785,7 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 		})
 	}
 	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
+		if err := s.reval.RevalidateTags(ctx, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
 			s.logger.Warn("failed to request next revalidate after episode schedule update", "tenant_public_id", tenant.PublicID, "episode_public_id", req.Msg.EpisodePublicId, "error", err)
 		}
 	}

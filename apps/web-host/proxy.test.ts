@@ -251,19 +251,36 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
-  it("theme.css と Route Handler は locale を挟まない", async () => {
+  it("theme.css と通常の Route Handler は locale を挟まない", async () => {
     const { proxy } = await import("./proxy");
 
     const theme = await proxy(request("https://shop.example.com/theme.css"));
     const route = await proxy(
-      request("https://shop.example.com/api/revalidate")
+      request("https://shop.example.com/api/v1/webhook/stripe")
     );
 
     expect(theme.headers.get("x-middleware-rewrite")).toContain(
       `/${TENANT_ID}/theme.css`
     );
     expect(route.headers.get("x-middleware-rewrite")).toContain(
-      `/${TENANT_ID}/api/revalidate`
+      `/${TENANT_ID}/api/v1/webhook/stripe`
     );
+  });
+});
+
+describe("web-host proxy internal revalidation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("再検証パスは Host のテナント解決なしで通す", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/api/revalidate")
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockResolveTenant).not.toHaveBeenCalled();
   });
 });

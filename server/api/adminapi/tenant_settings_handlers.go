@@ -71,7 +71,7 @@ func (s *adminServer) UpdateTenantTimezone(
 	}
 
 	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tenantTimezoneRevalidateTags(tenant.ID.String())); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tenantTimezoneRevalidateTags(tenant.ID.String())); err != nil {
 			s.logger.Warn("failed to request next revalidate after tenant timezone update", "tenant_public_id", tenant.PublicID, "error", err)
 		}
 	}
@@ -130,7 +130,7 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 	}
 
 	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tenantDefaultLocaleRevalidateTags(tenant.ID.String())); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tenantDefaultLocaleRevalidateTags(tenant.ID.String())); err != nil {
 			s.logger.Warn("failed to request next revalidate after tenant default locale update", "tenant_public_id", tenant.PublicID, "error", err)
 		}
 	}

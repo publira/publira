@@ -22,12 +22,15 @@ const PUBLIC_PATHS = new Set([
   "/reset-password/requested",
   "/setup",
 ]);
+const isRevalidatePath = (pathname: string): boolean =>
+  pathname === "/api/revalidate";
 
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
-  // Probes must not depend on setup state or backend availability.
-  if (isHealthProbePath(pathname)) {
+  // Probes and internal cache invalidation must not depend on setup state or
+  // backend availability.
+  if (isHealthProbePath(pathname) || isRevalidatePath(pathname)) {
     return NextResponse.next();
   }
 

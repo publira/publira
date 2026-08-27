@@ -32,6 +32,10 @@ cd apps/web-admin
 pnpm dev
 ```
 
+### 内部キャッシュ再検証
+
+`POST /api/revalidate` は Go サーバー専用の再検証入口です。`PUBLIRA_REVALIDATE_TOKEN` を `X-Revalidate-Token` ヘッダーで照合し、受け取ったタグをテナント ID による制限なしに `revalidateTag(tag, "max")` します。このパスは `proxy.ts` の Host によるテナント解決とセッション認証を bypass します。宛先は private network の `PUBLIRA_WEB_ADMIN_INTERNAL_URL` です。
+
 ### セッション Cookie (JWE)
 
 必須の環境変数:

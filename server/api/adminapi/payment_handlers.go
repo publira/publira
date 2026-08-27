@@ -103,7 +103,7 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 		return nil, s.internalDBError(ctx, "failed to upsert tenant payment settings", err, "tenant_id", tenant.ID.String())
 	}
 	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tenantPaymentRevalidateTags(tenant.ID.String())); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tenantPaymentRevalidateTags(tenant.ID.String())); err != nil {
 			s.logger.Warn("failed to request next revalidate after tenant payment settings update", "tenant_public_id", tenant.PublicID, "error", err)
 		}
 	}

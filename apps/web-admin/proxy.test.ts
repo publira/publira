@@ -108,4 +108,16 @@ describe("web-admin proxy", () => {
       expect(mockResolveTenantId).not.toHaveBeenCalled();
     }
   );
+
+  it("再検証パスは Host のテナント解決なしで通す", async () => {
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://admin.example.com/api/revalidate")
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockResolveTenantId).not.toHaveBeenCalled();
+  });
 });

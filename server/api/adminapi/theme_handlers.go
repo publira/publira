@@ -206,7 +206,7 @@ func (s *adminServer) UpsertTenantTheme(
 
 	if s.reval != nil {
 		tags := themeRevalidateTags(tenant.ID.String())
-		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tags); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tags); err != nil {
 			s.logger.Warn("failed to request next revalidate after theme upsert",
 				"tenant_id", tenant.ID.String(),
 				"tenant_public_id", tenant.PublicID,
@@ -382,7 +382,7 @@ func (s *adminServer) applyTenantBrandingImage(ctx context.Context, tenant dbmod
 
 	if s.reval != nil {
 		tags := themeBrandingRevalidateTags(tenant.ID.String())
-		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tags); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tags); err != nil {
 			s.logger.Warn("failed to request next revalidate after tenant "+image.name+" change",
 				"tenant_id", tenant.ID.String(),
 				"tenant_public_id", tenant.PublicID,

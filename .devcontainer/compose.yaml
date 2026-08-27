@@ -62,6 +62,13 @@ services:
       PUBLIRA_AUTH_SECRET: publira-dev-only-insecure-web-session-secret
       # Shared Next.js server cache (cacheHandler / cacheHandlers)
       PUBLIRA_REDIS_URL: redis://redis:6379
+      # The Go APIs call every web app directly for cache-tag revalidation.
+      # These are private loopback endpoints inside the shared app container;
+      # public browser URLs and Traefik are deliberately not part of this path.
+      PUBLIRA_REVALIDATE_TOKEN: publira-dev-only-revalidate-token
+      PUBLIRA_WEB_HOST_INTERNAL_URL: http://127.0.0.1:3000
+      PUBLIRA_WEB_ADMIN_INTERNAL_URL: http://127.0.0.1:4000
+      PUBLIRA_WEB_PLATFORM_INTERNAL_URL: http://127.0.0.1:4100
       # S3 / RustFS local object storage
       PUBLIRA_S3_BUCKET: publira
       PUBLIRA_S3_ENDPOINT: http://rustfs:9000
