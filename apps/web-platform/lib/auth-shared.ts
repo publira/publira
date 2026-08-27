@@ -4,8 +4,11 @@ import {
   isSessionExpired,
   resolveAuthSecret,
 } from "@publira/web-session";
+import { profileCookieName } from "@publira/web-session/cookie-name";
 
-export const PLATFORM_SESSION_COOKIE_NAME = "publira_web_platform_auth";
+export const PLATFORM_SESSION_COOKIE_NAME = profileCookieName(
+  "publira_web_platform_auth"
+);
 
 /** Tag the cached cookie read carries, so clearing the cookie invalidates it. */
 export const PLATFORM_SESSION_CACHE_TAG = "platform-session-cookie";

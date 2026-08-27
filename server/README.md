@@ -157,6 +157,13 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
   - 例: `https://platform.example.com`
   - 未設定時はローカル開発向けに `http://platform.localhost:3080` を使用
 
+## Next.js revalidation URL
+
+- `PUBLIRA_REVALIDATE_BASE_URL`
+  - `publish-episodes` が Next.js の `/api/revalidate` Route Handler を呼ぶための内部ベース URL
+  - 通常の Dev Container では未設定のまま `http://traefik:3080` を使用する
+  - worktree 用プロファイルでは、そのプロファイルの web-host URL（例: `http://127.0.0.1:13100`）を設定する。これにより再検証が別 profile の web-host に届かない
+
 ## Email renderer
 
 - `PUBLIRA_EMAIL_RENDERER_URL`

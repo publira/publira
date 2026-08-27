@@ -46,8 +46,16 @@ BEGIN
 END
 $$;
 
--- Grant database access for all app users.
-GRANT CONNECT ON DATABASE publira TO publira_platform, publira_admin, publira_public;
+-- Grant database access for all app users. `current_database()` keeps a
+-- worktree profile's isolated `publira_<profile>` database self-contained.
+DO $$
+BEGIN
+    EXECUTE format(
+        'GRANT CONNECT ON DATABASE %I TO publira_platform, publira_admin, publira_public',
+        current_database()
+    );
+END
+$$;
 GRANT USAGE ON SCHEMA public TO publira_platform, publira_admin, publira_public;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO publira_platform, publira_admin, publira_public;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO publira_platform, publira_admin, publira_public;

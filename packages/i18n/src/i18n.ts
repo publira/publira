@@ -10,6 +10,8 @@
  * catalog for {@link Locale}.
  */
 
+import { profileCookieName } from "@publira/web-session/cookie-name";
+
 import {
   getIntlLocale,
   getLocaleLabel as getLocaleLabelForSupportedLocale,
@@ -27,7 +29,7 @@ export type { MessageValues } from "./mf2";
 export const DEFAULT_LOCALE: Locale = "ja";
 
 /** Cookie that stores the UI locale for apps that do not put lang in the URL. */
-export const LOCALE_COOKIE_NAME = "publira_locale";
+export const LOCALE_COOKIE_NAME = profileCookieName("publira_locale");
 
 /**
  * A year, in seconds. The locale is a preference rather than session state, so

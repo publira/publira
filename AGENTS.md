@@ -49,6 +49,7 @@ Skills owned by this repository live under `skills/*`; `.agents/skills/*` and `.
 | Skill | Purpose |
 | --- | --- |
 | `skills/create-pr` | Open a pull request following this repository's branch, staging, verification, and template rules |
+| `skills/dev-env-profile` | Prepare or verify the isolated local development profile before worktree development |
 | `skills/organize-github-issues` | Create and normalize GitHub Issues with consistent types, fields, labels, and hierarchy |
 
 ## Environment variables: `PUBLIRA_*`

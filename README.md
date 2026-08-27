@@ -66,6 +66,40 @@ task setup
 
 Dev Container では `migrate` CLI (golang-migrate) と `wait4x`（E2E / bootstrap の HTTP readiness 待ち）を同梱しています。DB 変更は `db/migrations/` に `.up.sql` / `.down.sql` で追加してください。
 
+## worktree ごとの開発環境プロファイル
+
+複数の worktree を並行利用するときは、共有の既定開発環境を使わず、worktree ごとにプロファイルを選びます。プロファイルは PostgreSQL database、Valkey logical database、RustFS bucket、全サービスのポート、Cookie 名、認証／再検証 secret をまとめて分離します。既定の `task setup` / `task dev` は従来どおり共有環境を使います。
+
+```bash
+# 新しい worktree で一度だけ（識別子は小文字英数字と -）
+task dev-env:create NAME=issue-1178
+
+# database migration/seed と専用 bucket の作成。再実行しても安全です。
+task dev-env:init
+
+# API、image server、worker、email-renderer、3 つの Next.js app をまとめて起動
+task dev-env:start
+
+# 表示した URL、ログ、割り当て済み DB/Redis/bucket を確認
+task dev-env:show
+
+# 終了時。データは保持します。
+task dev-env:stop
+```
+
+単独アプリを起動する場合も、同じ環境変数を先に読み込みます。各 Next.js app の `pnpm dev` は `PORT` を尊重するため、手で既定ポートの衝突を解消する必要はありません。
+
+```bash
+eval "$(task --silent dev-env:env)"
+pnpm --dir apps/web-host dev
+```
+
+`task dev-env:list` は全プロファイルと選択中 worktree を表示します。破棄は `task dev-env:destroy NAME=<name>` です。対象がどの worktree からも選択されておらず停止済みであることを確認し、名前の再入力後にその profile の database、Redis DB、bucket だけを削除します。共有開発環境、E2E、他 profile は操作しません。
+
+プロファイルの秘密情報と実行ログは既定で `~/.publira/dev-env` に保存されます。保存場所は `PUBLIRA_DEV_ENV_HOME`、PostgreSQL の管理接続は `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` で必要な場合だけ上書きできます。どちらも開発環境スクリプトだけが読む変数です。
+
+コーディングエージェントは [`skills/dev-env-profile`](skills/dev-env-profile/SKILL.md) を開発開始時に使用します。
+
 ## ローカル DB 初期化
 
 ```bash

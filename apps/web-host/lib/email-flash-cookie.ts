@@ -1,3 +1,4 @@
+import { profileCookieName } from "@publira/web-session/cookie-name";
 import { cookies } from "next/headers";
 import { z } from "zod";
 
@@ -8,10 +9,12 @@ import { z } from "zod";
  * The destination page can only read the cookie: Server Components cannot
  * delete it. `maxAge` is the consume window. Attributes follow #600.
  */
-export const RESET_PASSWORD_REQUESTED_EMAIL_COOKIE =
-  "publira_web_host_reset_password_email";
-export const SIGNUP_PENDING_EMAIL_COOKIE =
-  "publira_web_host_signup_pending_email";
+export const RESET_PASSWORD_REQUESTED_EMAIL_COOKIE = profileCookieName(
+  "publira_web_host_reset_password_email"
+);
+export const SIGNUP_PENDING_EMAIL_COOKIE = profileCookieName(
+  "publira_web_host_signup_pending_email"
+);
 
 export type EmailFlashCookieName =
   | typeof RESET_PASSWORD_REQUESTED_EMAIL_COOKIE

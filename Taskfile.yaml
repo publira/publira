@@ -31,6 +31,62 @@ tasks:
       - task: storage:init
       - task: dev-all
 
+  dev-env:create:
+    desc: Create and select an isolated local development profile (NAME=<identifier>)
+    cmds:
+      - bash scripts/dev-env.sh create {{.NAME | q}}
+    requires:
+      vars: [NAME]
+
+  dev-env:destroy:
+    desc: Destroy an unselected, stopped isolated local development profile (NAME=<identifier>)
+    cmds:
+      - bash scripts/dev-env.sh destroy {{.NAME | q}}
+    requires:
+      vars: [NAME]
+
+  dev-env:env:
+    desc: Print shell exports for the selected isolated local development profile
+    cmds:
+      - bash scripts/dev-env.sh env
+
+  dev-env:init:
+    desc: Create database, migrate/seed, and initialize storage for the selected profile
+    cmds:
+      - bash scripts/dev-env.sh init
+
+  dev-env:list:
+    desc: List isolated local development profiles
+    cmds:
+      - bash scripts/dev-env.sh list
+
+  dev-env:select:
+    desc: Select an isolated local development profile for this worktree (NAME=<identifier>)
+    cmds:
+      - bash scripts/dev-env.sh select {{.NAME | q}}
+    requires:
+      vars: [NAME]
+
+  dev-env:show:
+    desc: Show the selected isolated local development profile (without secrets)
+    cmds:
+      - bash scripts/dev-env.sh show
+
+  dev-env:start:
+    desc: Start every process in the selected isolated local development profile
+    cmds:
+      - bash scripts/dev-env.sh start
+
+  dev-env:stop:
+    desc: Stop processes started by the selected isolated local development profile
+    cmds:
+      - bash scripts/dev-env.sh stop
+
+  dev-env:test:
+    desc: Verify isolated local development profile derivation
+    cmds:
+      - bash scripts/dev-env/lib_test.sh
+
   e2e:
     desc: Run Playwright E2E (build stack, sample suite, always tear down)
     cmds:
