@@ -19,7 +19,7 @@ export default function Example() {
 
 ## sectionErrorFallback
 
-`next/error` の `catchError` に渡すフォールバックです。再試行ボタンと `error.digest` を含む `SectionError` を描画します。`catchError` の呼び出しは各アプリの `components/section-error-boundary.tsx` に置きます（このパッケージのビルドは `"use client"` を落とすため、バウンダリをここから export すると server graph で評価されてしまいます）。
+`next/error` の `catchError` に渡すフォールバックです。再試行ボタンと `error.digest` を含む `SectionError` を描画します。`catchError` の呼び出しは各アプリの `components/` に置きます（このパッケージのビルドは `"use client"` を落とすため、バウンダリをここから export すると server graph で評価されてしまいます）。バウンダリが自分でカタログから文言を解決するアプリ（`web-admin` / `web-host`）では、`components/section-error-boundary.tsx` が文言を解決する Server Component になり、`catchError` の呼び出しだけが `components/section-error-catch.tsx` に分かれます。
 
 ```tsx
 "use client";
