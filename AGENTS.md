@@ -48,12 +48,12 @@ Skills owned by this repository live under `skills/*`; `.agents/skills/*` and `.
 
 | Skill | Purpose |
 | --- | --- |
-| `skills/coding-standards` | Full text of the coding standards this file only summarizes (environment variables, TypeScript on Node.js, React Effects, date and time, Next.js cache) |
+| `skills/coding-standards` | Full text of the coding standards this file only states as norms (environment variables, TypeScript on Node.js, React Effects, date and time, Next.js cache) |
 | `skills/create-pr` | Open a pull request following this repository's branch, staging, verification, and template rules |
 | `skills/dev-env-profile` | Prepare or verify the isolated local development profile before worktree development |
 | `skills/organize-github-issues` | Create and normalize GitHub Issues with consistent types, fields, labels, and hierarchy |
 
-`CLAUDE.md` imports this file with `@AGENTS.md`, so every line here is loaded in every session. A coding standard therefore keeps only its norm, its enforcement, and a link here; the decision flow, the tables, and the NG/OK examples live in `skills/coding-standards` and are read when the work touches them (#668). When a standard has no lint rule or CI check behind it, say so in its summary and tell the reader to open the reference — that sentence is the only thing standing in for the missing check.
+`CLAUDE.md` imports this file with `@AGENTS.md`, so every line here is loaded in every session. A coding standard therefore keeps only its norm and its enforcement here; its decision flow, tables, and NG/OK examples belong to the `coding-standards` skill (#668). Do not link to a skill's files from here — a skill reaches the agent through its own `name` and `description`, and a path in this file only makes the same content get read twice.
 
 ## Environment variables: `PUBLIRA_*`
 
@@ -61,21 +61,17 @@ Every environment variable that **only this repository's own code reads** is nam
 
 Nothing fails on a wrong name. `turbo.json` passes `PUBLIRA_*` through and turbo runs in strict env mode, so a non-conforming variable silently does nothing while every service still starts. Do not add a `passThroughEnv` exception — rename the variable.
 
-Full text — the category table, the names that look like exceptions and are not, and what to update when adding a variable: [`skills/coding-standards`](skills/coding-standards/SKILL.md) → [`references/env-vars.md`](skills/coding-standards/references/env-vars.md).
-
 ## TypeScript executed directly by Node.js
 
 TypeScript that Node.js can execute by stripping types runs on Node.js directly (`node --watch path/to/entry.ts`). Do not add `tsx` by convention or to omit relative import extensions; keep such code inside erasable syntax, with `.ts` extensions on relative imports and `import type` for type-only bindings.
 
 Nothing fails on a violation at author time — type stripping and `node --watch` do not type-check, so verify with `pnpm preflight`.
 
-Full text — the erasable-syntax rules and what justifies adding a runtime: [`skills/coding-standards`](skills/coding-standards/SKILL.md) → [`references/typescript-on-node.md`](skills/coding-standards/references/typescript-on-node.md).
-
 ## React: Effects and useEffectEvent
 
 User actions belong in event handlers, values derivable from props and state are computed during render, edit state is dropped by remounting with a changed `key`, and `useEffect` is reserved for syncing with an external system — with `useEffectEvent` called only from inside an Effect. Never leave a props→state Effect behind an `oxlint-disable`.
 
-oxlint (ultracite preset) covers part of this through `react/react-compiler` and `react-hooks/rules-of-hooks`, but no rule detects a props→state Effect; that gap is [#456](https://github.com/publira/publira/issues/456). **Read the full text before writing or reviewing an Effect** — the decision flow, the NG/OK examples, and the intermediate forms that are not the end state: [`skills/coding-standards`](skills/coding-standards/SKILL.md) → [`references/react-effects.md`](skills/coding-standards/references/react-effects.md).
+oxlint (ultracite preset) covers part of this through `react/react-compiler` and `react-hooks/rules-of-hooks`, but no rule detects a props→state Effect; that gap is [#456](https://github.com/publira/publira/issues/456). Read the `coding-standards` skill before writing or reviewing an Effect.
 
 ## Date and time: `Temporal`, not `Date`
 
@@ -83,15 +79,11 @@ Frontend and shared-package code must not use `Date` directly: use `Temporal` (p
 
 Enforced by oxlint `no-restricted-globals` (`Date`) in `oxlint.config.ts`; `pnpm check` fails on a violation.
 
-Full text — the helper table, NG/OK examples, the tenant time-zone rule, and the `Date` boundary override: [`skills/coding-standards`](skills/coding-standards/SKILL.md) → [`references/date-and-time.md`](skills/coding-standards/references/date-and-time.md).
-
 ## Next.js cache: `cacheHandler` vs `cacheHandlers`
 
 Wire **both**, backed by Redis (`@publira/next-cache-handlers`): `cacheHandlers` (plural) is the backend for `"use cache"`, and `cacheHandler` (singular) covers ISR, Route Handlers, `fetch` / `unstable_cache`, and `next/image`. With only one, the other path stays local in multi-instance deploys.
 
 No lint covers this — it is per-app configuration in `next.config.ts`.
-
-Full text — which setting covers what, and the `images.customCacheHandler` requirement: [`skills/coding-standards`](skills/coding-standards/SKILL.md) → [`references/nextjs-cache.md`](skills/coding-standards/references/nextjs-cache.md).
 
 ## API contracts (proto)
 

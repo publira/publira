@@ -5,7 +5,7 @@ description: Full text of the publira coding standards that the always-loaded ro
 
 # Coding Standards
 
-The root `AGENTS.md` carries every standard's norm, its enforcement, and a link; this file carries the decision flows, tables, and NG/OK examples that would otherwise cost context in every session. Where this skill and an `AGENTS.md` disagree, `AGENTS.md` wins.
+The root `AGENTS.md` carries every standard's norm and its enforcement; this file carries the decision flows, tables, and NG/OK examples that would otherwise cost context in every session. Where this skill and an `AGENTS.md` disagree, `AGENTS.md` wins.
 
 Only two of these standards fail a machine check on violation. For the other three, reading the reference is the check — open it before writing the code, not after review asks for a rewrite.
 
@@ -23,4 +23,4 @@ Only two of these standards fail a machine check on violation. For the other thr
 
 This skill is owned by this repository. `skills/coding-standards` is the canonical copy; `.agents/skills/coding-standards` and `.claude/skills/coding-standards` are relative symlinks to it. Edit the canonical copy, never a path under `.agents/skills/*` — entries listed in `skills-lock.json` are vendored and overwritten by `npx skills`.
 
-When a standard moves here, `AGENTS.md` keeps its norm in one or two sentences, names its enforcement (including "none"), and links to the reference. Nothing may exist only here: a reader who never opens this skill must still know the standard exists and where its detail is.
+When a standard moves here, `AGENTS.md` keeps its norm in one or two sentences and names its enforcement, including "none" — but no link. This skill reaches an agent through the `name` and `description` above; a path in `AGENTS.md` would only make the same text get read a second time, through `skills/` as well as through `.claude/skills/`. Keeping the norm in `AGENTS.md` is what guarantees a session that never loads this skill still knows the standard exists.
