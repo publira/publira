@@ -25,6 +25,9 @@
     "test": "vitest --run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "messageformat": "4.0.0"
+  },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
     "@types/node": "catalog:",

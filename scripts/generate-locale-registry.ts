@@ -8,7 +8,8 @@ import {
 import path from "node:path";
 
 // The package is not built when this runs, so the checker comes from source.
-// `mf2.ts` imports nothing, so Node runs it by stripping types.
+// Node strips the types and resolves `messageformat` from the package the file
+// lives in.
 import { simpleMessageSyntaxError } from "../packages/i18n/src/mf2.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -21,8 +22,9 @@ const fail = (message: string): never => {
 };
 
 /**
- * Every leaf is a MessageFormat 2 simple message. `@publira/i18n` formats
- * them, so a leaf the parser rejects would only fail once the screen that
+ * Every leaf is a MessageFormat 2 simple message. `@publira/i18n` formats them
+ * at render time, so a leaf `messageformat` rejects — or one that reaches for
+ * a feature the catalog does not use — would only fail once the screen that
  * shows it renders.
  */
 const checkCatalog = (code: string) => {

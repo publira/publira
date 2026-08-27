@@ -236,15 +236,13 @@ describe("formatMessage", () => {
     expect(formatMessage("{$first} / {$total}")).toBe("{$first} / {$total}");
   });
 
-  it("throws on a message that is not a simple message", () => {
-    expect(() => formatMessage("{count}")).toThrow(
-      "Invalid MessageFormat 2 simple message"
-    );
+  it("throws on a message that is not well-formed MF2", () => {
+    expect(() => formatMessage("未読 } 件")).toThrow("parse-error");
   });
 
   it("returns the source for an unparseable message in production", () => {
     vi.stubEnv("NODE_ENV", "production");
-    expect(formatMessage("{count}")).toBe("{count}");
+    expect(formatMessage("未読 } 件")).toBe("未読 } 件");
     vi.unstubAllEnvs();
   });
 });

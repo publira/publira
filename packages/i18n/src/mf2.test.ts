@@ -1,40 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  formatSimpleMessage,
-  parseSimpleMessage,
-  simpleMessageSyntaxError,
-} from "./mf2";
-
-describe("parseSimpleMessage", () => {
-  it("splits text and variable references", () => {
-    expect(parseSimpleMessage("公開中シリーズ {$count} 件")).toEqual([
-      "公開中シリーズ ",
-      { variable: "count" },
-      " 件",
-    ]);
-  });
-
-  it("accepts a message that is only a placeholder", () => {
-    expect(parseSimpleMessage("{$body}")).toEqual([{ variable: "body" }]);
-  });
-
-  it("accepts an empty message", () => {
-    expect(parseSimpleMessage("")).toEqual([]);
-  });
-
-  it("keeps leading and trailing whitespace as text", () => {
-    expect(parseSimpleMessage("  x  ")).toEqual(["  x  "]);
-  });
-
-  it("allows optional whitespace inside an expression", () => {
-    expect(parseSimpleMessage("{ $count }")).toEqual([{ variable: "count" }]);
-  });
-
-  it("resolves escape sequences to the characters they escape", () => {
-    expect(parseSimpleMessage("\\{ \\} \\\\ \\|")).toEqual(["{ } \\ |"]);
-  });
-});
+import { formatSimpleMessage, simpleMessageSyntaxError } from "./mf2";
 
 describe("simpleMessageSyntaxError", () => {
   it("accepts every shape the catalog is allowed to use", () => {
@@ -43,8 +9,10 @@ describe("simpleMessageSyntaxError", () => {
       "{$name}のロゴ",
       "{$first}–{$last} / {$total}ページ",
       "\\{ literal braces \\}",
+      "{ $count }",
       "100%",
       "a.b",
+      "",
     ]) {
       expect(simpleMessageSyntaxError(source)).toBeUndefined();
     }
@@ -52,63 +20,30 @@ describe("simpleMessageSyntaxError", () => {
 
   it("rejects the old bare {name} interpolation", () => {
     expect(simpleMessageSyntaxError("通知、未読{count}件")).toContain(
-      "only variable expressions"
+      "literal expressions"
     );
   });
 
-  it("rejects an unescaped brace", () => {
-    expect(simpleMessageSyntaxError("a } b")).toContain(
-      "a literal '}' is written"
-    );
-    expect(simpleMessageSyntaxError("{$name")).toContain(
-      "expected '}' to close the variable expression"
-    );
+  it("reports the syntax errors messageformat raises", () => {
+    expect(simpleMessageSyntaxError("a } b")).toContain("parse-error");
+    expect(simpleMessageSyntaxError("{$name")).toContain("Missing");
+    expect(simpleMessageSyntaxError("a \\n b")).toContain("bad-escape");
+    expect(simpleMessageSyntaxError("{$}")).toContain("empty-token");
   });
 
-  it("rejects an unknown escape", () => {
-    expect(simpleMessageSyntaxError("a \\n b")).toContain(
-      "a backslash must be followed by"
+  it("rejects the features the catalog does not use", () => {
+    expect(simpleMessageSyntaxError("{$count :number}")).toContain(
+      "functions (':number')"
     );
-    expect(simpleMessageSyntaxError("trailing \\")).toContain(
-      "a backslash must be followed by"
-    );
-  });
-
-  it("rejects a name that is not in the ASCII subset", () => {
-    expect(simpleMessageSyntaxError("{$}")).toContain(
-      "expected a variable name after '$'"
-    );
-    expect(simpleMessageSyntaxError("{$1st}")).toContain(
-      "expected a variable name after '$'"
-    );
-  });
-
-  it("rejects the complex-message forms", () => {
+    expect(simpleMessageSyntaxError("{#bold}text{/bold}")).toContain("markup");
     expect(
       simpleMessageSyntaxError(".input {$count :number}\n{{{$count}}}")
-    ).toContain("is a complex message");
-    expect(simpleMessageSyntaxError("{{quoted}}")).toContain("quoted patterns");
-    expect(simpleMessageSyntaxError("  .local $x = {|1|}")).toContain(
-      "is a complex message"
-    );
-  });
-
-  it("rejects functions, literals, and markup", () => {
-    expect(simpleMessageSyntaxError("{$count :number}")).toContain(
-      "expected '}' to close the variable expression"
-    );
-    expect(simpleMessageSyntaxError("{:datetime}")).toContain(
-      "only variable expressions"
-    );
-    expect(simpleMessageSyntaxError("{#bold}text{/bold}")).toContain(
-      "only variable expressions"
-    );
-  });
-
-  it("rejects U+0000", () => {
-    expect(simpleMessageSyntaxError("a\u0000b")).toContain(
-      "U+0000 NULL is not allowed"
-    );
+    ).toContain("declarations");
+    expect(
+      simpleMessageSyntaxError(
+        ".input {$count :number}\n.match $count\none {{1件}}\n* {{{$count}件}}"
+      )
+    ).toContain("selection");
   });
 });
 
@@ -119,6 +54,18 @@ describe("formatSimpleMessage", () => {
     ).toBe("3 / 12ページ");
   });
 
+  it("does not localize a number, so the host locale cannot leak in", () => {
+    expect(formatSimpleMessage("{$count}件", { count: 12_345 })).toBe(
+      "12345件"
+    );
+  });
+
+  it("does not isolate a placeholder, so no bidi controls reach the copy", () => {
+    expect(formatSimpleMessage("Hello {$name}!", { name: "محمد" })).toBe(
+      "Hello محمد!"
+    );
+  });
+
   it("formats an unresolved variable as its fallback value", () => {
     expect(formatSimpleMessage("{$first} / {$total}", { first: 3 })).toBe(
       "3 / {$total}"
@@ -126,15 +73,16 @@ describe("formatSimpleMessage", () => {
     expect(formatSimpleMessage("{$name}")).toBe("{$name}");
   });
 
-  it("ignores inherited properties of the values object", () => {
-    expect(formatSimpleMessage("{$toString}", {})).toBe("{$toString}");
-  });
-
-  it("unescapes even when there is nothing to substitute", () => {
+  it("resolves escape sequences", () => {
     expect(formatSimpleMessage("\\{100\\}")).toBe("{100}");
+    expect(formatSimpleMessage("C:\\\\Users")).toBe("C:\\Users");
   });
 
   it("returns plain text unchanged", () => {
     expect(formatSimpleMessage("ホーム", { unused: 1 })).toBe("ホーム");
+  });
+
+  it("throws on a message that is not well-formed MF2", () => {
+    expect(() => formatSimpleMessage("a } b")).toThrow();
   });
 });

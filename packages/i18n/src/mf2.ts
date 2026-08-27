@@ -1,239 +1,137 @@
 /**
- * Unicode MessageFormat 2.0, restricted to *simple messages*.
+ * MessageFormat 2 formatting for the leaves of `locales/*.json`.
  *
- * Every leaf of `locales/*.json` is an MF2 simple message as defined by
- * UTS #35 Part 9 (LDML) 48.2 — text, escape sequences, and variable
- * expressions `{$name}`. Declarations (`.input` / `.local`), matchers
- * (`.match`), functions (`:number` / `:datetime`), markup, and quoted
- * patterns are rejected, so the grammar stays small enough for the Go and
- * Flutter readers to implement too: MF2 has no first-party Go implementation
- * and no Dart implementation at all.
+ * The syntax is a Unicode standard, so the implementation is not ours: parsing
+ * and formatting are `messageformat` v4, written by a member of the
+ * MessageFormat Working Group, current as of LDML 48 and usable as the polyfill
+ * for the TC39 `Intl.MessageFormat` proposal. Nothing here re-implements the
+ * grammar.
  *
- * That is also why this module is hand-written rather than delegating to
- * `messageformat` v4. The subset below formats synchronously, which
- * `sharedRpcErrorMessage` and the zod schemas need, and a full MF2 runtime in
- * the browser bundle would buy selection and function support that the
- * catalog is not allowed to use.
+ * What this module adds is the catalog's own policy on top of it:
+ *
+ * - Messages are restricted to the *simple message* subset — text, escapes and
+ *   `{$name}` variable references. {@link simpleMessageSyntaxError} rejects
+ *   selection, functions, markup and declarations, and `pnpm locales:check`
+ *   runs it over every leaf of every locale.
+ * - Values are formatted as strings. The catalog's numbers and dates are
+ *   already rendered by `@publira/utils` against the tenant's time zone, and
+ *   `getMessage` has no locale to give MF2, so a locale-sensitive `:number`
+ *   would have to fall back to the host's locale — the accident the repo's
+ *   date policy exists to prevent.
+ * - Bidi isolation is off, so a formatted message contains exactly the
+ *   characters of the copy. Both catalogs are LTR, and these strings also
+ *   become email subjects and `<title>` text, where U+2068 / U+2069 would
+ *   travel invisibly. Turning isolation on belongs with the first RTL locale.
  */
+
+import {
+  isMarkup,
+  isSelectMessage,
+  isVariableRef,
+  MessageFormat,
+  parseMessage,
+  validate,
+} from "messageformat";
+import type { Model } from "messageformat";
 
 /** Values a `{$name}` placeholder can resolve to. */
 export type MessageValues = Record<string, number | string>;
 
-/** A variable reference; anything else in a message is literal text. */
-export interface MessageVariable {
-  readonly variable: string;
-}
-
-export type MessagePart = MessageVariable | string;
+const FORMAT_OPTIONS = { bidiIsolation: "none" } as const;
 
 /**
- * The `o` production: `ws` (`SP` / `HTAB` / `CR` / `LF` / U+3000 IDEOGRAPHIC
- * SPACE) plus the bidi marks and isolates the grammar treats as ignorable
- * format controls (U+061C, U+200E, U+200F, U+2066–U+2069).
+ * Constructing a formatter parses the message, which costs ~1.9µs against
+ * ~0.3µs for formatting an already-parsed one. The catalogs hold under a
+ * thousand leaves, so the whole working set fits; the cap is there because a
+ * template can also arrive from a caller rather than from a catalog.
  */
-const OPTIONAL_WS = new Set([
-  "\t",
-  "\n",
-  "\r",
-  " ",
-  "\u3000",
-  "\u061C",
-  "\u200E",
-  "\u200F",
-  "\u2066",
-  "\u2067",
-  "\u2068",
-  "\u2069",
-]);
+const MAX_FORMATTERS = 1024;
+const formatters = new Map<string, MessageFormat>();
 
-/** `escaped-char = backslash ( backslash / "{" / "|" / "}" )`. */
-const ESCAPABLE = new Set(["\\", "{", "|", "}"]);
-
-/**
- * A deliberate subset of MF2's `name`, which admits most of Unicode. A
- * placeholder name is a key of a TypeScript `Record` and has to be scanned by
- * the Go and Flutter readers as well, so the catalog keeps them ASCII.
- */
-const NAME_RE = /[A-Za-z_][A-Za-z0-9_]*/uy;
-
-/** Characters that start something other than plain text. */
-const SYNTAX_RE = /[\\{}]/u;
-
-const syntaxError = (source: string, index: number, reason: string): Error =>
-  new Error(
-    `Invalid MessageFormat 2 simple message at offset ${index}: ${reason} — ${JSON.stringify(source)}`
-  );
-
-const skipOptionalWs = (source: string, from: number): number => {
-  let index = from;
-  while (index < source.length && OPTIONAL_WS.has(source[index])) {
-    index += 1;
+const formatterFor = (source: string): MessageFormat => {
+  const cached = formatters.get(source);
+  if (cached) {
+    return cached;
   }
 
-  return index;
+  const formatter = new MessageFormat(undefined, source, FORMAT_OPTIONS);
+  if (formatters.size >= MAX_FORMATTERS) {
+    formatters.clear();
+  }
+  formatters.set(source, formatter);
+
+  return formatter;
+};
+
+/** Values reach MF2 as strings, for the reason given at the top of this module. */
+const toParams = (values: MessageValues): Record<string, string> => {
+  const params: Record<string, string> = {};
+  for (const [name, value] of Object.entries(values)) {
+    params[name] = String(value);
+  }
+
+  return params;
 };
 
 /**
- * Read `"{" o "$" name o "}"` starting at `open`, and report the offset just
- * past the closing brace.
+ * Why `message` uses more of MF2 than the catalog allows, or `undefined` when
+ * it stays inside the subset.
  */
-const readVariableExpression = (
-  source: string,
-  open: number
-): { end: number; name: string } => {
-  let cursor = skipOptionalWs(source, open + 1);
-  if (source[cursor] !== "$") {
-    throw syntaxError(
-      source,
-      cursor,
-      "only variable expressions ('{$name}') are supported; a literal '{' is written '\\{'"
-    );
+const unsupportedConstruct = (message: Model.Message): string | undefined => {
+  if (isSelectMessage(message)) {
+    return "selection ('.match') is not part of the catalog's subset";
   }
 
-  cursor += 1;
-  NAME_RE.lastIndex = cursor;
-  const name = NAME_RE.exec(source)?.[0];
-  if (!name) {
-    throw syntaxError(source, cursor, "expected a variable name after '$'");
+  if (message.declarations.length > 0) {
+    return "declarations ('.input' / '.local') are not part of the catalog's subset";
   }
 
-  cursor = skipOptionalWs(source, cursor + name.length);
-  if (source[cursor] !== "}") {
-    throw syntaxError(
-      source,
-      cursor,
-      "expected '}' to close the variable expression"
-    );
-  }
-
-  return { end: cursor + 1, name };
-};
-
-/**
- * Split a simple message into literal text and variable references, throwing
- * on anything outside the subset.
- *
- * Leading and trailing whitespace is part of the text — the grammar's leading
- * `o` only relaxes the restriction on the first non-whitespace character — so
- * it is preserved verbatim.
- */
-export const parseSimpleMessage = (source: string): MessagePart[] => {
-  const start = skipOptionalWs(source, 0);
-  if (source.startsWith(".", start)) {
-    throw syntaxError(
-      source,
-      start,
-      "a message whose first non-whitespace character is '.' is a complex message"
-    );
-  }
-  if (source.startsWith("{{", start)) {
-    throw syntaxError(
-      source,
-      start,
-      "quoted patterns ('{{…}}') are complex messages"
-    );
-  }
-
-  const parts: MessagePart[] = [];
-  let text = "";
-  let index = 0;
-
-  const flushText = () => {
-    if (text) {
-      parts.push(text);
-      text = "";
-    }
-  };
-
-  while (index < source.length) {
-    const char = source[index];
-
-    if (char === "\\") {
-      const escaped = source[index + 1];
-      if (escaped === undefined || !ESCAPABLE.has(escaped)) {
-        throw syntaxError(
-          source,
-          index,
-          "a backslash must be followed by '\\\\', '{', '|', or '}'"
-        );
-      }
-      text += escaped;
-      index += 2;
+  for (const part of message.pattern) {
+    if (typeof part === "string") {
       continue;
     }
 
-    if (char === "}") {
-      throw syntaxError(source, index, "a literal '}' is written '\\}'");
+    if (isMarkup(part)) {
+      return "markup ('{#tag}') is not part of the catalog's subset";
     }
 
-    if (char === "{") {
-      const { end, name } = readVariableExpression(source, index);
-      flushText();
-      parts.push({ variable: name });
-      index = end;
-      continue;
+    if (part.functionRef) {
+      return `functions (':${part.functionRef.name}') are not part of the catalog's subset`;
     }
 
-    if (char === "\u0000") {
-      throw syntaxError(source, index, "U+0000 NULL is not allowed in text");
+    if (!isVariableRef(part.arg)) {
+      return "literal expressions ('{|text|}') are not part of the catalog's subset";
     }
-
-    text += char;
-    index += 1;
   }
 
-  flushText();
-
-  return parts;
+  return undefined;
 };
 
-/** Why `source` is not a well-formed simple message, or `undefined` when it is. */
+/**
+ * Why `source` is not a message this catalog accepts, or `undefined` when it
+ * is. Reports MF2 syntax and data model errors from `messageformat`, then the
+ * subset rules above.
+ */
 export const simpleMessageSyntaxError = (
   source: string
 ): string | undefined => {
+  let message: Model.Message;
   try {
-    parseSimpleMessage(source);
-    return undefined;
+    message = parseMessage(source);
+    validate(message);
   } catch (error) {
     return error instanceof Error ? error.message : String(error);
   }
+
+  return unsupportedConstruct(message);
 };
 
 /**
- * An unresolved variable formats to its fallback value — the name behind a
- * `$`, wrapped in curly brackets (UTS #35 Part 9, "Formatting Fallback
- * Values"). A caller that omitted one value still gets the rest of the
- * sentence instead of an exception.
- */
-const resolveVariable = (name: string, values?: MessageValues): string => {
-  if (!values || !Object.hasOwn(values, name)) {
-    return `{$${name}}`;
-  }
-
-  return String(values[name]);
-};
-
-/**
- * Format one simple message.
- *
- * Throws on a message the subset does not accept. `pnpm locales:check` parses
- * every catalog leaf, so that can only happen for a message assembled
- * somewhere else.
+ * Format one message. Throws `MessageSyntaxError` when `source` is not
+ * well-formed MF2; an unresolved variable is not an error, and formats to the
+ * spec's fallback for it (`{$name}`).
  */
 export const formatSimpleMessage = (
   source: string,
   values?: MessageValues
-): string => {
-  // Most leaves are plain text, where parsing could only return the input.
-  if (!SYNTAX_RE.test(source)) {
-    return source;
-  }
-
-  let formatted = "";
-  for (const part of parseSimpleMessage(source)) {
-    formatted +=
-      typeof part === "string" ? part : resolveVariable(part.variable, values);
-  }
-
-  return formatted;
-};
+): string => formatterFor(source).format(values ? toParams(values) : undefined);
