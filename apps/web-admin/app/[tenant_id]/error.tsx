@@ -1,5 +1,9 @@
 "use client";
 
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
+import { ClientMessage } from "#components/client-message";
 import { ErrorScreen } from "#components/error-screen";
 
 /**
@@ -40,10 +44,28 @@ const TenantError = ({
   // boundary owns the `<main>` element itself.
   <main>
     <ErrorScreen
-      description="管理コンソールの読み込みに失敗しました。時間をおいて再試行してください。"
+      description={
+        <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+          <ClientMessage message="admin.errors.root_description" />
+        </Suspense>
+      }
       digest={error.digest}
+      digestLabel={
+        <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+          <ClientMessage message="admin.common.error_id" />
+        </Suspense>
+      }
       retry={retry}
-      title="管理コンソールを表示できませんでした"
+      retryLabel={
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <ClientMessage message="admin.common.retry" />
+        </Suspense>
+      }
+      title={
+        <Suspense fallback={<SkeletonLine className="h-8 w-80" />}>
+          <ClientMessage message="admin.errors.root_title" />
+        </Suspense>
+      }
     />
   </main>
 );

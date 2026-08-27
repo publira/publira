@@ -21,20 +21,18 @@ import {
   LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
 } from "@publira/i18n";
-import type { Locale, MessageKey } from "@publira/i18n";
-import { loadLocaleMessages } from "@publira/i18n/messages";
+import type { Locale } from "@publira/i18n";
 import { cookies } from "next/headers";
 
-import type ja from "../../../locales/ja.json";
 import { getAccessToken } from "./session";
 import { getTenantDisplayLocale } from "./tenant-default-locale";
 import { isTenantIdFormat } from "./tenant-id-format";
 
-/** `ja.json` is the source of truth for the key set (`locales/README.md`). */
-export type AdminMessages = typeof ja;
-
-/** Dotted key of any string in the catalog, checked at the call site. */
-export type AdminMessageKey = MessageKey<AdminMessages>;
+export {
+  type AdminMessageKey,
+  type AdminMessages,
+  loadAdminMessages,
+} from "./messages";
 
 /**
  * Options the locale cookie is written with, from the Server Action in
@@ -105,12 +103,3 @@ export const getLocale = async (tenantId?: string): Promise<Locale> => {
 
   return resolveTenantFallbackLocale(tenantId);
 };
-
-/**
- * The message catalog for `locale`.
- *
- * Generated static `import()` specifiers keep the locale that was not asked
- * for out of the chunk.
- */
-export const loadAdminMessages = (locale: Locale): Promise<AdminMessages> =>
-  loadLocaleMessages(locale) as Promise<AdminMessages>;

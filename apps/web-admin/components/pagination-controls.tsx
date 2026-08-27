@@ -1,9 +1,13 @@
 import { Button, LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
+import type { ReactNode } from "react";
 
+import { Message } from "#components/message";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 
-const PageControl = ({ href, label }: { href?: string; label: string }) =>
+const PageControl = ({ href, label }: { href?: string; label: ReactNode }) =>
   href ? (
     <LinkButton render={<Link href={href} />} size="sm" variant="outline">
       {label}
@@ -22,8 +26,22 @@ export const PaginationControls = ({
   ariaLabel: string;
 }) => (
   <nav aria-label={ariaLabel} className="flex justify-end gap-2">
-    <PageControl href={previousHref} label="前へ" />
-    <PageControl href={nextHref} label="次へ" />
+    <PageControl
+      href={previousHref}
+      label={
+        <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
+          <Message message="admin.common.previous" />
+        </Suspense>
+      }
+    />
+    <PageControl
+      href={nextHref}
+      label={
+        <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
+          <Message message="admin.common.next" />
+        </Suspense>
+      }
+    />
   </nav>
 );
 
@@ -43,7 +61,7 @@ export const PaginationFooter = ({
   previousHref,
 }: CursorPageHrefs & {
   ariaLabel: string;
-  description: string;
+  description: ReactNode;
 }) => (
   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <p className="text-sm text-muted-foreground">{description}</p>

@@ -19,6 +19,15 @@ vi.mock("next/navigation", () => ({
   notFound: mockNotFound,
 }));
 
+vi.mock("#lib/locale", async () => {
+  const { sharedCatalog } = await import("@publira/i18n/catalog");
+
+  return {
+    getLocale: () => Promise.resolve("ja"),
+    loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
+  };
+});
+
 vi.mock("#lib/public-api", () => ({
   getTenantName: mockGetTenantName,
 }));

@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 
+import { getMessage } from "@publira/i18n";
+import type { MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -47,6 +50,20 @@ vi.mock("@publira/layouts/admin", () => ({
   ),
 }));
 
+// 代替テキストの解決は `admin-brand-logo.test.tsx` が見る。ここではロゴが
+// ヘッダとサイドバーの両方に置かれることだけを確かめたい。
+vi.mock("./admin-brand-logo", () => ({
+  AdminBrandLogo: ({ tenantName }: { tenantName: string }) => (
+    // oxlint-disable-next-line next/no-img-element -- stub for the real logo
+    <img alt={`${tenantName}のロゴ`} src="/images/tenants/logo-1" />
+  ),
+}));
+
+vi.mock("./message", () => ({
+  Message: ({ message, values }: { message: string; values?: MessageValues }) =>
+    getMessage(sharedCatalog("ja"), message, values),
+}));
+
 vi.mock("../lib/admin-auth", () => ({
   getAdminCurrentUser: vi.fn(),
 }));
@@ -55,12 +72,13 @@ vi.mock("../lib/auth-session", () => ({
   redirectToLoginIfSessionRejected: vi.fn(),
 }));
 
-vi.mock("../lib/logout-action", () => ({
-  logoutAction: vi.fn(),
+vi.mock("../lib/locale", () => ({
+  getLocale: () => Promise.resolve("ja"),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
 }));
 
-vi.mock("../lib/notification", () => ({
-  countUnreadNotifications: vi.fn(),
+vi.mock("../lib/logout-action", () => ({
+  logoutAction: vi.fn(),
 }));
 
 vi.mock("../lib/tenant-id", () => ({

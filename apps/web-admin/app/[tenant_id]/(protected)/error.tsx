@@ -1,8 +1,11 @@
 "use client";
 
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
 
+import { ClientMessage } from "#components/client-message";
 import { ErrorScreen } from "#components/error-screen";
 
 /**
@@ -51,13 +54,33 @@ const ConsoleError = ({
   <ErrorScreen
     actions={
       <LinkButton render={<Link href="/" />} variant="outline">
-        ダッシュボードへ戻る
+        <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+          <ClientMessage message="admin.common.back_to_dashboard" />
+        </Suspense>
       </LinkButton>
     }
-    description="時間をおいて再試行してください。繰り返す場合は、エラー ID を添えて管理者に連絡してください。"
+    description={
+      <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+        <ClientMessage message="admin.errors.console_description" />
+      </Suspense>
+    }
     digest={error.digest}
+    digestLabel={
+      <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+        <ClientMessage message="admin.common.error_id" />
+      </Suspense>
+    }
     retry={retry}
-    title="画面を表示できませんでした"
+    retryLabel={
+      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+        <ClientMessage message="admin.common.retry" />
+      </Suspense>
+    }
+    title={
+      <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
+        <ClientMessage message="admin.errors.console_title" />
+      </Suspense>
+    }
   />
 );
 

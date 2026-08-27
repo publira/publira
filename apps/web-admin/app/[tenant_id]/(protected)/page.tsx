@@ -8,6 +8,7 @@ import {
 } from "@publira/ui-components/card";
 import { EmptyState } from "@publira/ui-components/empty-state";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -29,6 +30,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getDashboard } from "#lib/dashboard";
@@ -185,7 +187,28 @@ const DashboardPage = () => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <SectionErrorBoundary title="ダッシュボードを表示できませんでした">
+      <SectionErrorBoundary
+        description={
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.common.retry_later" />
+          </Suspense>
+        }
+        digestLabel={
+          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+            <Message message="admin.common.error_id" />
+          </Suspense>
+        }
+        retryLabel={
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="admin.common.retry" />
+          </Suspense>
+        }
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.dashboard.section_error" />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardContent />
         </Suspense>

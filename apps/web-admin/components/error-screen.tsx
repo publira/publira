@@ -17,7 +17,8 @@ import {
 interface ErrorScreenProps {
   /** Extra navigation shown next to the retry button. */
   actions?: ReactNode;
-  description: string;
+  description: ReactNode;
+  digestLabel: ReactNode;
   /**
    * `error.digest` from the boundary. Server Component errors are stripped of
    * their message before they reach the client, so the digest is the only
@@ -25,7 +26,8 @@ interface ErrorScreenProps {
    */
   digest?: string;
   retry: () => void;
-  title: string;
+  retryLabel: ReactNode;
+  title: ReactNode;
 }
 
 /**
@@ -36,6 +38,10 @@ interface ErrorScreenProps {
  * heading rhythm as every other console page; the scaffold components are
  * plain markup and hold no server-only code.
  *
+ * Every string is a node the boundary passes in. This screen resolves no copy
+ * of its own, so the `<Suspense>` each string waits behind is written where the
+ * string is chosen and is visible there.
+ *
  * Retry is wired to `retry()` rather than `reset()`: `reset()` only clears the
  * error state, while `retry()` re-fetches and re-renders the boundary's
  * children, which is what an operator means by 再試行.
@@ -44,7 +50,9 @@ export const ErrorScreen = ({
   actions,
   description,
   digest,
+  digestLabel,
   retry,
+  retryLabel,
   title,
 }: ErrorScreenProps) => (
   <AdminPage>
@@ -55,14 +63,14 @@ export const ErrorScreen = ({
         <AdminPageDescription>{description}</AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
-        <Button onClick={() => retry()}>再試行</Button>
+        <Button onClick={() => retry()}>{retryLabel}</Button>
         {actions}
       </AdminPageActions>
     </AdminPageHeader>
     {digest ? (
       <AdminPageContent>
         <p className="text-xs text-muted-foreground">
-          エラー ID: <code className="font-mono">{digest}</code>
+          {digestLabel} <code className="font-mono">{digest}</code>
         </p>
       </AdminPageContent>
     ) : null}

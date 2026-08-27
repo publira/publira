@@ -9,9 +9,14 @@ import { catchError } from "next/error";
  * while the re-run is in flight. The fallback body and the rationale for this
  * split live in `@publira/ui-components/section-error`.
  *
- * This is the component-level counterpart of `(protected)/error.tsx`, and it
- * takes the same throws that one does: the lib layer classifies what it can
- * (`ok: false` with a message the screen renders through `SectionError`) and
+ * The four strings it shows are nodes the page passes in — the section's own
+ * title plus the three `@publira/ui-components` would otherwise default to
+ * Japanese, which would read as Japanese on an English page.
+ *
+ * This is the component-level counterpart of `(protected)/error.tsx`: a failure
+ * that makes the whole page meaningless still belongs to that one. What reaches
+ * either is decided by the same rule as everywhere else in the console — a
+ * `catch` may degrade a read it can classify, and
  * `rethrowUnclassifiedRpcError()` re-throws the rest. The difference is reach —
  * an operator loses one card here instead of the whole console page.
  */

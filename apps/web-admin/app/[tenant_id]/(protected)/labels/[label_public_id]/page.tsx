@@ -23,6 +23,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { parseEditTab } from "#lib/edit-tab-search-params";
@@ -191,7 +192,28 @@ const EditLabelPage = ({ params, searchParams }: EditLabelPageProps) => (
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditLabelTabNav params={params} searchParams={searchParams} />
         </Suspense>
-        <SectionErrorBoundary title="レーベルを表示できませんでした">
+        <SectionErrorBoundary
+          description={
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.common.retry_later" />
+            </Suspense>
+          }
+          digestLabel={
+            <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+              <Message message="admin.common.error_id" />
+            </Suspense>
+          }
+          retryLabel={
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="admin.common.retry" />
+            </Suspense>
+          }
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.labels.detail_error" />
+            </Suspense>
+          }
+        >
           <Suspense fallback={<EditLabelFormSkeleton />}>
             <EditLabelFormData params={params} searchParams={searchParams} />
           </Suspense>

@@ -1,7 +1,7 @@
 import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import { SectionError } from "@publira/ui-components/section-error";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -15,6 +15,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
@@ -191,7 +192,28 @@ const SettingsPage = () => (
         <Suspense fallback={<LocaleSectionSkeleton />}>
           <LocaleSection />
         </Suspense>
-        <SectionErrorBoundary title="設定を表示できませんでした">
+        <SectionErrorBoundary
+          description={
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.common.retry_later" />
+            </Suspense>
+          }
+          digestLabel={
+            <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+              <Message message="admin.common.error_id" />
+            </Suspense>
+          }
+          retryLabel={
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="admin.common.retry" />
+            </Suspense>
+          }
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.settings.section_error" />
+            </Suspense>
+          }
+        >
           <Suspense fallback={<SettingsFormsSkeleton />}>
             <SettingsForms />
           </Suspense>
