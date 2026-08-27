@@ -159,6 +159,17 @@ func (s *adminServer) tenantTheme(ctx context.Context, tenantID uuid.UUID) (*pub
 func themeRevalidateTags(tenantID string) []string {
 	normalizedTenantID := strings.TrimSpace(tenantID)
 	return []string{
+		fmt.Sprintf("tenant:%s:theme", normalizedTenantID),
+	}
+}
+
+// themeBrandingRevalidateTags includes site chrome as well as the stylesheet:
+// an icon or logo update changes both the theme response and metadata/header
+// that read getTenantSiteInfo.
+func themeBrandingRevalidateTags(tenantID string) []string {
+	normalizedTenantID := strings.TrimSpace(tenantID)
+	return []string{
+		fmt.Sprintf("tenant:%s:theme", normalizedTenantID),
 		fmt.Sprintf("tenant:%s:site", normalizedTenantID),
 	}
 }
@@ -194,8 +205,15 @@ func (s *adminServer) UpsertTenantTheme(
 	}
 
 	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, themeRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after theme upsert", "tenant_public_id", tenant.PublicID, "error", err)
+		tags := themeRevalidateTags(tenant.ID.String())
+		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tags); err != nil {
+			s.logger.Warn("failed to request next revalidate after theme upsert",
+				"tenant_id", tenant.ID.String(),
+				"tenant_public_id", tenant.PublicID,
+				"tenant_domain", tenant.Domain,
+				"revalidate_tags", tags,
+				"error", err,
+			)
 		}
 	}
 
@@ -363,8 +381,15 @@ func (s *adminServer) applyTenantBrandingImage(ctx context.Context, tenant dbmod
 	}
 
 	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, themeRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after tenant "+image.name+" change", "tenant_public_id", tenant.PublicID, "error", err)
+		tags := themeBrandingRevalidateTags(tenant.ID.String())
+		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tags); err != nil {
+			s.logger.Warn("failed to request next revalidate after tenant "+image.name+" change",
+				"tenant_id", tenant.ID.String(),
+				"tenant_public_id", tenant.PublicID,
+				"tenant_domain", tenant.Domain,
+				"revalidate_tags", tags,
+				"error", err,
+			)
 		}
 	}
 

@@ -28,7 +28,9 @@ type requestPayload struct {
 }
 
 const (
-	internalRevalidateBaseURL = "http://traefik"
+	// The Dev Container's internal `web` entrypoint listens on :3080. Revalidation
+	// must use that entrypoint so Traefik can route by the tenant Host header.
+	internalRevalidateBaseURL = "http://traefik:3080"
 	revalidatePath            = "/api/revalidate"
 )
 
