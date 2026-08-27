@@ -111,6 +111,14 @@ export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
   }
   const list = quoted.join(", ");
   runSql(`
+    BEGIN;
+    -- An insert into content_events takes a KEY SHARE lock for its series FK.
+    -- Locking the parent first waits for an in-flight insert, then keeps later
+    -- inserts out until the series and every event that references it are gone.
+    SELECT s.id
+    FROM series s
+    WHERE s.public_id IN (${list})
+    FOR UPDATE;
     DELETE FROM content_events ce
     USING series s
     WHERE ce.series_id = s.id
@@ -121,6 +129,7 @@ export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
       AND s.public_id IN (${list});
     DELETE FROM series
     WHERE public_id IN (${list});
+    COMMIT;
   `);
 };
 
@@ -149,6 +158,18 @@ export const deleteTenantsByPublicIds = (
   }
   const list = quoted.join(", ");
   runSql(`
+    BEGIN;
+    -- Lock the tenant before its series. This blocks new series and
+    -- content_events rows from referencing the fixture while it is removed.
+    SELECT t.id
+    FROM tenants t
+    WHERE t.public_id IN (${list})
+    FOR UPDATE;
+    SELECT s.id
+    FROM series s
+    JOIN tenants t ON t.id = s.tenant_id
+    WHERE t.public_id IN (${list})
+    FOR UPDATE OF s;
     DELETE FROM content_events ce
     USING tenants t
     WHERE ce.tenant_id = t.id
@@ -164,5 +185,6 @@ export const deleteTenantsByPublicIds = (
       AND t.public_id IN (${list});
     DELETE FROM tenants
     WHERE public_id IN (${list});
+    COMMIT;
   `);
 };
