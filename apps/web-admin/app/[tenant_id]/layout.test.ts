@@ -20,11 +20,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("#lib/locale", async () => {
-  const { default: ja } = await import("../../../../locales/ja.json");
+  const { sharedCatalog } = await import("@publira/i18n/catalog");
 
   return {
     getLocale: () => Promise.resolve("ja"),
-    loadAdminMessages: () => Promise.resolve(ja),
+    loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
   };
 });
 

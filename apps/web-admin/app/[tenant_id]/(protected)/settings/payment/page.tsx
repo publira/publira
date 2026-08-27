@@ -12,6 +12,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
@@ -106,7 +107,9 @@ const SettingsPaymentPage = () => (
     <AdminPageContent>
       <div className="grid gap-6">
         <SettingsTabNav current="payment" />
-        <SectionErrorBoundary title="admin.settings.payment_error">
+        <SectionErrorBoundary
+          {...sectionErrorCopy("admin.settings.payment_error")}
+        >
           <Suspense fallback={<SettingsPaymentFormSkeleton />}>
             <SettingsPaymentForm />
           </Suspense>

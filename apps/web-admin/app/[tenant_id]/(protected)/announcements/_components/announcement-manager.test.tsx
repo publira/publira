@@ -2,17 +2,17 @@
 
 import { getMessage } from "@publira/i18n";
 import type { MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import ja from "../../../../../../../locales/ja.json";
 import type { AnnouncementItem } from "../announcement-types";
 import { AnnouncementManager } from "./announcement-manager";
 
 vi.mock("#components/message", () => ({
   Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(ja, message, values),
+    getMessage(sharedCatalog("ja"), message, values),
 }));
 
 vi.mock("next/link", () => ({

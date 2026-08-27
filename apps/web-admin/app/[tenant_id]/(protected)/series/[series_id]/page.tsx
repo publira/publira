@@ -24,6 +24,7 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { parseEditTab } from "#lib/edit-tab-search-params";
@@ -220,7 +221,9 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditSeriesTabs params={params} searchParams={searchParams} />
         </Suspense>
-        <SectionErrorBoundary title="admin.series.detail_error">
+        <SectionErrorBoundary
+          {...sectionErrorCopy("admin.series.detail_error")}
+        >
           <Suspense fallback={<EditSeriesFormSkeleton />}>
             <EditSeriesFormData params={params} searchParams={searchParams} />
           </Suspense>

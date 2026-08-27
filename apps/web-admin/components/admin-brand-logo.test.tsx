@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import ja from "../../../locales/ja.json";
 import { AdminBrandLogo } from "./admin-brand-logo";
 
 vi.mock("#lib/locale", () => ({
   getLocale: () => Promise.resolve("ja"),
-  loadAdminMessages: () => Promise.resolve(ja),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
 }));
 
 vi.mock("#lib/tenant-id", () => ({

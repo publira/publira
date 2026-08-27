@@ -13,14 +13,12 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
-import type { AdminMessageKey } from "#lib/messages";
 
 interface ErrorScreenProps {
   /** Extra navigation shown next to the retry button. */
   actions?: ReactNode;
-  /** Catalog key, not a string: the wording is a function of the locale. */
-  description: AdminMessageKey;
+  description: ReactNode;
+  digestLabel: ReactNode;
   /**
    * `error.digest` from the boundary. Server Component errors are stripped of
    * their message before they reach the client, so the digest is the only
@@ -28,7 +26,8 @@ interface ErrorScreenProps {
    */
   digest?: string;
   retry: () => void;
-  title: AdminMessageKey;
+  retryLabel: ReactNode;
+  title: ReactNode;
 }
 
 /**
@@ -39,10 +38,9 @@ interface ErrorScreenProps {
  * heading rhythm as every other console page; the scaffold components are
  * plain markup and hold no server-only code.
  *
- * Each boundary names its own failure, so `title` and `description` come from
- * the caller — as catalog keys, so this screen still resolves every string it
- * shows. The retry button and the digest prefix are the same everywhere and
- * are not part of that contract.
+ * Every string is a node the boundary passes in. This screen resolves no copy
+ * of its own, so the `<Suspense>` each string waits behind is written where the
+ * string is chosen and is visible there.
  *
  * Retry is wired to `retry()` rather than `reset()`: `reset()` only clears the
  * error state, while `retry()` re-fetches and re-renders the boundary's
@@ -52,32 +50,27 @@ export const ErrorScreen = ({
   actions,
   description,
   digest,
+  digestLabel,
   retry,
+  retryLabel,
   title,
 }: ErrorScreenProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Error</AdminPageEyebrow>
-        <AdminPageTitle>
-          <ClientMessage message={title} />
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <ClientMessage message={description} />
-        </AdminPageDescription>
+        <AdminPageTitle>{title}</AdminPageTitle>
+        <AdminPageDescription>{description}</AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
-        <Button onClick={() => retry()}>
-          <ClientMessage message="admin.common.retry" />
-        </Button>
+        <Button onClick={() => retry()}>{retryLabel}</Button>
         {actions}
       </AdminPageActions>
     </AdminPageHeader>
     {digest ? (
       <AdminPageContent>
         <p className="text-xs text-muted-foreground">
-          <ClientMessage message="admin.common.error_id" />{" "}
-          <code className="font-mono">{digest}</code>
+          {digestLabel} <code className="font-mono">{digest}</code>
         </p>
       </AdminPageContent>
     ) : null}

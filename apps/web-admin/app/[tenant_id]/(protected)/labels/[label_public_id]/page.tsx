@@ -24,6 +24,7 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { getLabel } from "#lib/label";
@@ -191,7 +192,9 @@ const EditLabelPage = ({ params, searchParams }: EditLabelPageProps) => (
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditLabelTabNav params={params} searchParams={searchParams} />
         </Suspense>
-        <SectionErrorBoundary title="admin.labels.detail_error">
+        <SectionErrorBoundary
+          {...sectionErrorCopy("admin.labels.detail_error")}
+        >
           <Suspense fallback={<EditLabelFormSkeleton />}>
             <EditLabelFormData params={params} searchParams={searchParams} />
           </Suspense>

@@ -12,6 +12,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantEmailSettings } from "#lib/email-settings";
@@ -105,7 +106,9 @@ const SettingsEmailPage = () => (
     <AdminPageContent>
       <div className="grid gap-6">
         <SettingsTabNav current="email" />
-        <SectionErrorBoundary title="admin.settings.email_error">
+        <SectionErrorBoundary
+          {...sectionErrorCopy("admin.settings.email_error")}
+        >
           <Suspense fallback={<SettingsEmailFormSkeleton />}>
             <SettingsEmailForm />
           </Suspense>

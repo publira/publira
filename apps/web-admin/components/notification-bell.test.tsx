@@ -1,17 +1,17 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import ja from "../../../locales/ja.json";
 import { NotificationBell } from "./notification-bell";
 
 const countUnreadNotifications = vi.fn();
 
 vi.mock("#lib/locale", () => ({
   getLocale: () => Promise.resolve("ja"),
-  loadAdminMessages: () => Promise.resolve(ja),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
 }));
 
 vi.mock("#lib/notification", () => ({

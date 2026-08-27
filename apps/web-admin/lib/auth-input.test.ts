@@ -1,7 +1,6 @@
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { describe, expect, it } from "vitest";
 
-import en from "../../../locales/en.json" with { type: "json" };
-import ja from "../../../locales/ja.json" with { type: "json" };
 import {
   authTokenFormSchema,
   authTokenSearchParamSchema,
@@ -18,8 +17,8 @@ import type { AdminMessages } from "./locale";
 
 const VALID_TOKEN = "a".repeat(64);
 const VALID_TENANT_ID = "01234567-89ab-cdef-0123-456789abcdef";
-const JA: AdminMessages = ja;
-const EN: AdminMessages = en;
+const JA: AdminMessages = sharedCatalog("ja");
+const EN: AdminMessages = sharedCatalog("en");
 
 describe("nextPathSearchParamSchema", () => {
   it("keeps a same-origin path", () => {

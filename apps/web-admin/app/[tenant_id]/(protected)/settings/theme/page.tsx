@@ -13,6 +13,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeSettings } from "#lib/theme-settings";
@@ -99,7 +100,9 @@ const SettingsThemePage = () => (
     <AdminPageContent>
       <div className="grid gap-6">
         <SettingsTabNav current="theme" />
-        <SectionErrorBoundary title="admin.settings.theme_error">
+        <SectionErrorBoundary
+          {...sectionErrorCopy("admin.settings.theme_error")}
+        >
           <Suspense fallback={<SettingsThemeFormsSkeleton />}>
             <SettingsThemeForms />
           </Suspense>

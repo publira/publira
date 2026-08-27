@@ -2,11 +2,11 @@
 
 import { getMessage } from "@publira/i18n";
 import type { MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import ja from "../../../locales/ja.json";
 import { AdminLayout } from "./admin-layout";
 
 vi.mock("@publira/layouts/admin", () => ({
@@ -61,7 +61,7 @@ vi.mock("./admin-brand-logo", () => ({
 
 vi.mock("./message", () => ({
   Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(ja, message, values),
+    getMessage(sharedCatalog("ja"), message, values),
 }));
 
 vi.mock("../lib/admin-auth", () => ({
@@ -74,7 +74,7 @@ vi.mock("../lib/auth-session", () => ({
 
 vi.mock("../lib/locale", () => ({
   getLocale: () => Promise.resolve("ja"),
-  loadAdminMessages: () => Promise.resolve(ja),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
 }));
 
 vi.mock("../lib/logout-action", () => ({

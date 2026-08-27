@@ -1,8 +1,6 @@
-import { getMessage } from "@publira/i18n";
+import { sharedMessage } from "@publira/i18n/catalog";
 import type { Metadata } from "next";
 import Link from "next/link";
-
-import ja from "../../../locales/ja.json";
 
 import "./globals.css";
 
@@ -25,8 +23,8 @@ import "./globals.css";
  * attribute at `en` would only mislabel the Japanese text below.
  */
 export const metadata: Metadata = {
-  description: getMessage(ja, "admin.not_found.metadata_description"),
-  title: getMessage(ja, "admin.not_found.title"),
+  description: sharedMessage("admin.not_found.metadata_description"),
+  title: sharedMessage("admin.not_found.title"),
 };
 
 const GlobalNotFound = () => (
@@ -37,17 +35,17 @@ const GlobalNotFound = () => (
           404 Not Found
         </p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">
-          {getMessage(ja, "admin.not_found.title")}
+          {sharedMessage("admin.not_found.title")}
         </h1>
         <p className="mt-4 text-muted-foreground">
-          {getMessage(ja, "admin.not_found.description")}
+          {sharedMessage("admin.not_found.description")}
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
             className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground transition hover:bg-muted"
             href="/"
           >
-            {getMessage(ja, "admin.common.back_to_dashboard")}
+            {sharedMessage("admin.common.back_to_dashboard")}
           </Link>
         </div>
       </main>

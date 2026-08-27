@@ -16,6 +16,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale, loadAdminMessages } from "#lib/locale";
@@ -191,7 +192,9 @@ const SettingsPage = () => (
         <Suspense fallback={<LocaleSectionSkeleton />}>
           <LocaleSection />
         </Suspense>
-        <SectionErrorBoundary title="admin.settings.section_error">
+        <SectionErrorBoundary
+          {...sectionErrorCopy("admin.settings.section_error")}
+        >
           <Suspense fallback={<SettingsFormsSkeleton />}>
             <SettingsForms />
           </Suspense>

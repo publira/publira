@@ -30,6 +30,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getDashboard } from "#lib/dashboard";
 import { getTenantId } from "#lib/tenant-id";
@@ -185,7 +186,9 @@ const DashboardPage = () => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <SectionErrorBoundary title="admin.dashboard.section_error">
+      <SectionErrorBoundary
+        {...sectionErrorCopy("admin.dashboard.section_error")}
+      >
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardContent />
         </Suspense>

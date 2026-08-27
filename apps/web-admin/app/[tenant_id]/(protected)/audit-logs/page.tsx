@@ -32,6 +32,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { buildQueryString } from "#lib/query-string";
@@ -304,7 +305,7 @@ const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <SectionErrorBoundary title="admin.audit.section_error">
+      <SectionErrorBoundary {...sectionErrorCopy("admin.audit.section_error")}>
         <Suspense fallback={<AuditLogsSkeleton />}>
           <AuditLogsContent searchParams={searchParams} />
         </Suspense>

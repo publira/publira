@@ -23,6 +23,7 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPage, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
@@ -155,7 +156,7 @@ const EditPagePage = ({ params }: EditPagePageProps) => (
         title="指定バージョンからロールバックしました。"
       />
 
-      <SectionErrorBoundary title="admin.pages.detail_error">
+      <SectionErrorBoundary {...sectionErrorCopy("admin.pages.detail_error")}>
         <Suspense fallback={<PageWorkspaceSkeleton />}>
           <PageWorkspaceData params={params} />
         </Suspense>

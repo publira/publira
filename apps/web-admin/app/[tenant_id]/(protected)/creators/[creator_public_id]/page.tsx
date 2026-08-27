@@ -23,6 +23,7 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { sectionErrorCopy } from "#components/section-error-copy";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getCreator } from "#lib/creator";
 import { getTenantId } from "#lib/tenant-id";
@@ -120,7 +121,9 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
     </AdminPageHeader>
     <AdminPageContent>
       <FlashToast title="著者を作成しました。" />
-      <SectionErrorBoundary title="admin.creators.detail_error">
+      <SectionErrorBoundary
+        {...sectionErrorCopy("admin.creators.detail_error")}
+      >
         <Suspense fallback={<EditCreatorFormSkeleton />}>
           <EditCreatorFormData params={params} />
         </Suspense>
