@@ -435,21 +435,6 @@ const Page = () => (
     </PlatformPageHeader>
     <PlatformPageContent>
       <SectionErrorBoundary
-        description={
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="platform.common.retry_later" />
-          </Suspense>
-        }
-        digestLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-            <Message message="platform.common.error_id" />
-          </Suspense>
-        }
-        retryLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="platform.common.retry" />
-          </Suspense>
-        }
         title={
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
             <Message message="platform.dashboard.load_failed" />

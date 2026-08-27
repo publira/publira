@@ -19,7 +19,7 @@ export default function Example() {
 
 ## sectionErrorFallback
 
-`next/error` の `catchError` に渡すフォールバックです。再試行ボタンと `error.digest` を含む `SectionError` を描画します。`catchError` の呼び出しは各アプリの `components/` に置きます（このパッケージのビルドは `"use client"` を落とすため、バウンダリをここから export すると server graph で評価されてしまいます）。バウンダリが自分でカタログから文言を解決するアプリ（`web-admin` / `web-host`）では、`components/section-error-boundary.tsx` が文言を解決する Server Component になり、`catchError` の呼び出しだけが `components/section-error-catch.tsx` に分かれます。
+`next/error` の `catchError` に渡すフォールバックです。再試行ボタンと `error.digest` を含む `SectionError` を描画します。`catchError` の呼び出しは各アプリの `components/section-error-catch.tsx` に置きます（このパッケージのビルドは `"use client"` を落とすため、バウンダリをここから export すると server graph で評価されてしまいます）。アプリが使うのはそれを包む `components/section-error-boundary.tsx` で、こちらは Server Component として対処の案内・再試行ボタン・エラー ID のラベルを自分でカタログから解決します。
 
 ```tsx
 "use client";
@@ -27,7 +27,7 @@ export default function Example() {
 import { sectionErrorFallback } from "@publira/ui-components/section-error";
 import { catchError } from "next/error";
 
-export const SectionErrorBoundary = catchError(sectionErrorFallback);
+export const SectionErrorCatch = catchError(sectionErrorFallback);
 ```
 
 使う側は `<Suspense>` の外側に置きます。再試行中にそのセクションのスケルトンが戻ります。

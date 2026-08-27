@@ -44,6 +44,7 @@
 - `getMessage` を直に使うのは、ノードにできない値だけ（`generateMetadata` の `title` と Server Action 側）
 - ユーザーに見えるメッセージを持つ zod スキーマは、モジュール定数ではなくカタログを受け取る関数にする（`lib/auth-input.ts` の `emailFormSchema(messages)`）。文言はリクエストのロケールで決まるので、Server Action か Suspense の内側でしか解決できない
 - `Suspense` の fallback は静的シェルの一部なのでロケールに追従できない。fallback に文章を書かず、その文字列に合わせたサイズの `Skeleton` を出す
+- 文言を props にするのは呼び出し側を名指しする文言だけ。`SectionErrorBoundary` が受け取るのはセクション名を含む `title` の 1 つで、対処の案内・再試行ボタン・エラー ID のラベルはどの境界でも同じ文言＝セクションではなくフレームの持ち物なので `components/section-error-boundary.tsx` が自分でカタログから解決する（`@publira/ui-components` の既定は日本語なので、解決しないままだと英語表示の画面に日本語が出る）。`<Message>` が async な Server Component である以上そこはサーバーコンポーネントになるため、`catchError` の呼び出しだけを `components/section-error-catch.tsx`（`"use client"`）に分けてある。`ErrorScreen` は 4 文言すべてを受け取る（呼び出しは `app/error.tsx` と `(protected)/error.tsx` で、どちらも重複していない）
 - 切替は `/settings/general` の「表示言語」カード。Server Action `setPlatformLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
 - プラットフォーム既定言語は同じ画面の「既定言語」カード（`lib/platform-settings.ts` の `getPlatformSettings` / `updatePlatformDefaultLocale`）。新規テナントの初期言語でもある。保存すると Server Action が `platform:settings` タグを `updateTag` するので、同じセッションの Cookie なし表示にも即反映される
 - `<html lang>` はルート layout の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定
