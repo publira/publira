@@ -9,7 +9,7 @@ vi.mock("next/cache", () => ({ revalidateTag }));
 const revalidateToken = "test-revalidate-token";
 
 const request = (body: unknown, token = revalidateToken) =>
-  new Request("https://web-host.example/api/revalidate", {
+  new Request("https://web-host.example/api/v1/revalidate", {
     body: JSON.stringify(body),
     headers: { "x-revalidate-token": token },
     method: "POST",

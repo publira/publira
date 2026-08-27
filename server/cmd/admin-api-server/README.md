@@ -40,6 +40,6 @@ cd server && make build
 
 トレースの属性・span 命名・サンプリング・`OTEL_*` の一覧は [server/README.md](../../README.md#分散トレーシング-opentelemetry) にあります。
 
-`PUBLIRA_REVALIDATE_TOKEN` と 3 つの `PUBLIRA_WEB_*_INTERNAL_URL` が設定されている場合のみ、公開状態更新時に全 Next.js アプリへ再検証リクエストを送信します。各宛先の固定パスは `/api/revalidate` で、タグはテナント ID による制限なしにそのまま送信します。再検証は tenant domain の `Host` / `X-Forwarded-Host` に依存せず、リバースプロキシを経由しません。不足または不正な URL がある場合は再検証を無効化し、理由をログへ記録します。
+`PUBLIRA_REVALIDATE_TOKEN` と 3 つの `PUBLIRA_WEB_*_INTERNAL_URL` が設定されている場合のみ、公開状態更新時に全 Next.js アプリへ再検証リクエストを送信します。各宛先の固定パスは `/api/v1/revalidate` で、タグはテナント ID による制限なしにそのまま送信します。再検証は tenant domain の `Host` / `X-Forwarded-Host` に依存せず、リバースプロキシを経由しません。不足または不正な URL がある場合は再検証を無効化し、理由をログへ記録します。
 
 `PUBLIRA_WEB_HOST_URL` は Stripe Checkout がブラウザへ返すための公開 URL であり、この内部 URL 群とは別です。

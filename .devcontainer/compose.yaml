@@ -101,7 +101,7 @@ services:
       # api-server on /api -> app:8000 (strip /api before forwarding).
       # Priority 105 beats admin/platform hosts (100) so /api is host-agnostic;
       # /images (110) and admin /images (130) stay above it.
-      - "traefik.http.routers.api.rule=PathRegexp(`^/api(/.*)?$`) && !PathRegexp(`^/api/revalidate/?$`)"
+      - "traefik.http.routers.api.rule=PathRegexp(`^/api(/.*)?$`) && !PathRegexp(`^/api/v1/revalidate/?$`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.routers.api.priority=105"
       - "traefik.http.routers.api.middlewares=api-strip"

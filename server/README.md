@@ -159,7 +159,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 ## Next.js 再検証の内部 URL
 
-`PUBLIRA_REVALIDATE_TOKEN` を設定すると、admin-api と `publish-episodes` は各 Next.js アプリの内部 Route Handler `POST /api/revalidate` へキャッシュタグを送ります。テナント ID は URL・リクエスト本文・送信時の許可判定には含めず、タグはテナントをまたいでもそのまま再検証されます。3 つの URL はすべて必須です。いずれかが未設定または不正な場合、再検証は無効になり、プロセスは理由をログへ出して通常どおり起動します。
+`PUBLIRA_REVALIDATE_TOKEN` を設定すると、admin-api と `publish-episodes` は各 Next.js アプリの内部 Route Handler `POST /api/v1/revalidate` へキャッシュタグを送ります。テナント ID は URL・リクエスト本文・送信時の許可判定には含めず、タグはテナントをまたいでもそのまま再検証されます。3 つの URL はすべて必須です。いずれかが未設定または不正な場合、再検証は無効になり、プロセスは理由をログへ出して通常どおり起動します。
 
 - `PUBLIRA_WEB_HOST_INTERNAL_URL`（例: `http://web-host:3000`）
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL`（例: `http://web-admin:4000`）

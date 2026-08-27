@@ -48,7 +48,7 @@ pnpm dev
 - `PUBLIRA_REDIS_URL`（Dev Container では `redis://redis:6379`）
 - `PUBLIRA_CACHE_APP=web-host`（推奨。キー空間分離）
 
-公開時の `revalidateTag`（内部専用の `POST /api/revalidate`）は Redis 上のタグ時刻と整合します。`PUBLIRA_REVALIDATE_TOKEN` が共有トークンを認証し、このパスは `proxy.ts` による Host ベースのテナント解決を通りません。タグはテナント ID による制限なしにそのまま再検証され、Go サーバーは `PUBLIRA_WEB_HOST_INTERNAL_URL` でこのアプリへ直接到達します。
+公開時の `revalidateTag`（内部専用の `POST /api/v1/revalidate`）は Redis 上のタグ時刻と整合します。`PUBLIRA_REVALIDATE_TOKEN` が共有トークンを認証し、このパスは `proxy.ts` による Host ベースのテナント解決を通りません。タグはテナント ID による制限なしにそのまま再検証され、Go サーバーは `PUBLIRA_WEB_HOST_INTERNAL_URL` でこのアプリへ直接到達します。
 
 ### テーマ CSS の更新確認
 

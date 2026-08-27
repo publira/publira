@@ -36,7 +36,7 @@ type requestPayload struct {
 }
 
 const (
-	revalidatePath = "/api/revalidate"
+	revalidatePath = "/api/v1/revalidate"
 
 	webHostInternalURLEnv     = "PUBLIRA_WEB_HOST_INTERNAL_URL"
 	webAdminInternalURLEnv    = "PUBLIRA_WEB_ADMIN_INTERNAL_URL"

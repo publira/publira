@@ -44,7 +44,7 @@ func TestBuildEndpointUsesInternalRevalidatePath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildEndpoint() error = %v", err)
 	}
-	if endpoint != "http://web-host:3000/internal/api/revalidate" {
+	if endpoint != "http://web-host:3000/internal/api/v1/revalidate" {
 		t.Fatalf("endpoint = %q, want direct revalidate endpoint", endpoint)
 	}
 }
@@ -60,7 +60,7 @@ func TestRevalidateTagsPostsToEveryWebAppWithoutTenantHeaders(t *testing.T) {
 			if r.Method != http.MethodPost {
 				t.Errorf("%s method = %s, want POST", name, r.Method)
 			}
-			if r.URL.Path != "/api/revalidate" {
+			if r.URL.Path != "/api/v1/revalidate" {
 				t.Errorf("%s path = %q, want direct revalidate endpoint", name, r.URL.Path)
 			}
 			if got := r.Header.Get("X-Forwarded-Host"); got != "" {

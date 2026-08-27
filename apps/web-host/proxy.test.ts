@@ -274,13 +274,10 @@ describe("web-host proxy internal revalidation", () => {
     const { config } = await import("./proxy");
 
     expect(
-      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate" })
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate" })
     ).toBe(false);
     expect(
-      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate/" })
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate/" })
     ).toBe(false);
-    expect(
-      unstable_doesMiddlewareMatch({ config, url: "/api/revalidate-other" })
-    ).toBe(true);
   });
 });

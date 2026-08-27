@@ -66,7 +66,7 @@ describe("toBarePathname", () => {
 describe("isLocaleExemptPathname", () => {
   it("ロケールの外で処理するパスだけを真とする", () => {
     expect(isLocaleExemptPathname("/theme.css")).toBe(true);
-    expect(isLocaleExemptPathname("/api/revalidate")).toBe(true);
+    expect(isLocaleExemptPathname("/api/v1/revalidate")).toBe(true);
     expect(isLocaleExemptPathname("/ja/series")).toBe(false);
     expect(isLocaleExemptPathname("/")).toBe(false);
   });

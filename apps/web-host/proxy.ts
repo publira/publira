@@ -172,5 +172,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
 };
 
 export const config = {
-  matcher: ["/((?!api/revalidate(?:/|$)|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!api/v1/revalidate(?:/|$)|_next/static|_next/image|favicon.ico).*)",
+  ],
 };
