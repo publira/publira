@@ -15,7 +15,7 @@
   },
   "scripts": {
     "build": "next build",
-    "dev": "PUBLIRA_CACHE_APP=web-host next dev --port 3000",
+    "dev": "PUBLIRA_CACHE_APP=web-host next dev --port ${PORT:-3000}",
     "start": "PUBLIRA_CACHE_APP=web-host next start",
     "test": "vitest --run",
     "typecheck": "tsc --noEmit",

@@ -23,3 +23,5 @@ cd apps/web-admin    && pnpm dev
 cd apps/web-platform && pnpm dev
 cd apps/email-renderer && pnpm dev
 ```
+
+worktree 用プロファイルでは、通常コマンドの前に `eval "$(task --silent dev-env:env)"` を実行します。`web-host`、`web-admin`、`web-platform` の `pnpm dev` は `PORT` を受け取るため、プロファイルが割り当てたポートで待ち受けます。

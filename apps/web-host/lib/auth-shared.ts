@@ -5,10 +5,13 @@ import {
   isSessionExpired,
   resolveAuthSecret,
 } from "@publira/web-session";
+import { profileCookieName } from "@publira/web-session/cookie-name";
 
 import { splitLocalePathname, withLocalePrefix } from "./locale-path";
 
-export const PUBLIC_SESSION_COOKIE_NAME = "publira_web_host_auth";
+export const PUBLIC_SESSION_COOKIE_NAME = profileCookieName(
+  "publira_web_host_auth"
+);
 
 const PUBLIC_SESSION_CACHE_TAG_PREFIX = "public-session-cookie";
 

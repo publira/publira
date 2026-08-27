@@ -26,6 +26,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@publira/web-session": "workspace:*",
     "messageformat": "4.0.0"
   },
   "devDependencies": {

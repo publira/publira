@@ -508,6 +508,9 @@ importers:
 
   packages/i18n:
     dependencies:
+      '@publira/web-session':
+        specifier: workspace:*
+        version: link:../web-session
       messageformat:
         specifier: 4.0.0
         version: 4.0.0

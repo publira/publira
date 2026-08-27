@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 )
 
 type Client struct {
+	baseURL    string
 	token      string
 	httpClient *http.Client
 	logger     *slog.Logger
@@ -43,7 +45,8 @@ func NewClient(token string, logger *slog.Logger) *Client {
 		logger = slog.Default()
 	}
 	return &Client{
-		token: normalizedToken,
+		baseURL: revalidateBaseURL(),
+		token:   normalizedToken,
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 			// Carries the trace context of the request that triggered
@@ -75,11 +78,18 @@ func (c *Client) RevalidateTags(ctx context.Context, tenantID, tenantDomain stri
 		return nil
 	}
 
-	endpoint, err := buildEndpoint(internalRevalidateBaseURL, revalidatePath)
+	endpoint, err := buildEndpoint(c.baseURL, revalidatePath)
 	if err != nil {
 		return err
 	}
 	return c.sendRequest(ctx, endpoint, normalizedTenantID, normalizedTenantDomain, normalizedTags)
+}
+
+func revalidateBaseURL() string {
+	if configured := strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_BASE_URL")); configured != "" {
+		return configured
+	}
+	return internalRevalidateBaseURL
 }
 
 func buildEndpoint(baseURL, reqPath string) (string, error) {
