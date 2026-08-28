@@ -4,6 +4,7 @@ package auditlog
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -173,18 +174,27 @@ type AsyncConfig struct {
 // RLS connection after its handler has returned. Passing nil keeps direct
 // querier writes, which is useful for synchronous test doubles.
 type AsyncRecorder struct {
-	queries   Querier
-	tenantDB  *sql.DB
-	logger    *slog.Logger
-	config    AsyncConfig
-	queue     chan queuedEntry
-	closeOnce sync.Once
-	workers   sync.WaitGroup
+	queries  Querier
+	tenantDB *sql.DB
+	logger   *slog.Logger
+	config   AsyncConfig
+	queue    chan queuedEntry
+	metrics  *Metrics
+
+	enqueueMu   sync.RWMutex
+	queueClosed bool
+	closeOnce   sync.Once
+	abortOnce   sync.Once
+	abort       context.CancelFunc
+	abortCtx    context.Context
+	workers     sync.WaitGroup
+	done        chan struct{}
 }
 
 type queuedEntry struct {
 	ctx      context.Context
 	action   string
+	kind     string
 	platform *dbmodels.InsertPlatformAuditLogParams
 	tenant   *dbmodels.InsertAuditLogParams
 }
@@ -202,12 +212,17 @@ func NewAsyncWithConfig(queries Querier, tenantDB *sql.DB, logger *slog.Logger, 
 		logger = slog.Default()
 	}
 	config = normalizeAsyncConfig(config)
+	abortCtx, abort := context.WithCancel(context.Background())
 	r := &AsyncRecorder{
 		queries:  queries,
 		tenantDB: tenantDB,
 		logger:   logger,
 		config:   config,
 		queue:    make(chan queuedEntry, config.QueueSize),
+		metrics:  newMetrics(),
+		abort:    abort,
+		abortCtx: abortCtx,
+		done:     make(chan struct{}),
 	}
 	r.workers.Add(1)
 	go r.run()
@@ -230,13 +245,52 @@ func normalizeAsyncConfig(config AsyncConfig) AsyncConfig {
 	return config
 }
 
-// Close stops accepting entries and waits for queued writes to complete. It is
-// intended for tests today; graceful process shutdown and time-bounded flush
-// are handled by the operational shutdown work.
+// Metrics returns the recorder's in-process counters. The same values are
+// exported through OpenTelemetry when a MeterProvider is configured.
+func (r *AsyncRecorder) Metrics() *Metrics {
+	return r.metrics
+}
+
+// Close stops accepting entries and waits for queued writes to complete.
+// Production processes should call Shutdown so their shutdown deadline is
+// respected. Close remains useful for tests and callers with no deadline.
 func (r *AsyncRecorder) Close() {
+	_ = r.Shutdown(context.Background())
+}
+
+// Shutdown stops accepting entries and flushes queued writes before ctx
+// expires. When the deadline is exceeded, the in-flight write is cancelled
+// and queued entries are dropped so callers can continue shutting down.
+func (r *AsyncRecorder) Shutdown(ctx context.Context) error {
+	r.closeQueue()
+	logger := r.logger.With("queue_depth", r.metrics.QueueDepth.Load())
+	logger.Info("auditlog: draining queued entries")
+
+	select {
+	case <-r.done:
+		logger.Info("auditlog: queue drained",
+			"persisted", r.metrics.Persisted.Load(),
+			"failed", r.metrics.Failed.Load(),
+			"dropped", r.metrics.Dropped.Load(),
+		)
+		return nil
+	case <-ctx.Done():
+		r.abortOnce.Do(r.abort)
+		logger.Warn("auditlog: shutdown drain timed out; cancelling pending writes",
+			"queue_depth", r.metrics.QueueDepth.Load(),
+			"in_flight", r.metrics.InFlight.Load(),
+			"error", ctx.Err(),
+		)
+		return fmt.Errorf("auditlog: drain: %w", ctx.Err())
+	}
+}
+
+func (r *AsyncRecorder) closeQueue() {
 	r.closeOnce.Do(func() {
+		r.enqueueMu.Lock()
+		r.queueClosed = true
 		close(r.queue)
-		r.workers.Wait()
+		r.enqueueMu.Unlock()
 	})
 }
 
@@ -261,6 +315,7 @@ func (r *AsyncRecorder) RecordPlatform(ctx context.Context, e PlatformEntry) {
 	r.enqueue(queuedEntry{
 		ctx:    ctx,
 		action: e.Action,
+		kind:   "platform",
 		platform: &dbmodels.InsertPlatformAuditLogParams{
 			ID:                  id,
 			ActorPlatformUserID: e.ActorPlatformUserID,
@@ -297,6 +352,7 @@ func (r *AsyncRecorder) RecordTenant(ctx context.Context, e TenantEntry) {
 	r.enqueue(queuedEntry{
 		ctx:    ctx,
 		action: e.Action,
+		kind:   "tenant",
 		tenant: &dbmodels.InsertAuditLogParams{
 			ID:          id,
 			TenantID:    e.TenantID,
@@ -313,33 +369,73 @@ func (r *AsyncRecorder) RecordTenant(ctx context.Context, e TenantEntry) {
 }
 
 func (r *AsyncRecorder) enqueue(entry queuedEntry) {
+	r.enqueueMu.RLock()
+	defer r.enqueueMu.RUnlock()
+	if r.queueClosed {
+		r.metrics.recordDropped(entry.kind, "shutdown")
+		r.logger.WarnContext(entry.ctx, "auditlog: recorder is shutting down; dropping entry", "action", entry.action, "entry_type", entry.kind)
+		return
+	}
+
+	r.metrics.QueueDepth.Add(1)
 	select {
 	case r.queue <- entry:
+		r.metrics.recordEnqueued(entry.kind)
 	default:
-		r.logger.ErrorContext(entry.ctx, "auditlog: queue is full; dropping entry", "action", entry.action)
+		r.metrics.QueueDepth.Add(-1)
+		r.metrics.recordDropped(entry.kind, "queue_full")
+		r.logger.ErrorContext(entry.ctx, "auditlog: queue is full; dropping entry", "action", entry.action, "entry_type", entry.kind)
 	}
 }
 
 func (r *AsyncRecorder) run() {
 	defer r.workers.Done()
+	defer close(r.done)
 	for entry := range r.queue {
+		r.metrics.QueueDepth.Add(-1)
+		select {
+		case <-r.abortCtx.Done():
+			r.metrics.recordDropped(entry.kind, "shutdown")
+			continue
+		default:
+		}
+
+		r.metrics.InFlight.Add(1)
 		r.persist(entry)
+		r.metrics.InFlight.Add(-1)
 	}
 }
 
 func (r *AsyncRecorder) persist(entry queuedEntry) {
 	for attempt := 1; attempt <= r.config.MaxAttempts; attempt++ {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(entry.ctx), r.config.WriteTimeout)
+		stopCancel := context.AfterFunc(r.abortCtx, cancel)
 		err := r.write(ctx, entry)
+		stopCancel()
 		cancel()
 		if err == nil {
+			r.metrics.recordPersisted(entry.kind)
 			return
 		}
+		if r.abortCtx.Err() != nil {
+			r.metrics.recordDropped(entry.kind, "shutdown")
+			return
+		}
+		r.metrics.recordFailed(entry.kind)
 		if attempt == r.config.MaxAttempts {
-			r.logger.ErrorContext(entry.ctx, "auditlog: failed to persist; dropping entry", "error", err, "action", entry.action, "attempts", attempt)
+			r.metrics.recordDropped(entry.kind, "retry_exhausted")
+			r.logger.ErrorContext(entry.ctx, "auditlog: failed to persist; dropping entry", "error", err, "action", entry.action, "entry_type", entry.kind, "attempts", attempt)
 			return
 		}
-		time.Sleep(r.config.RetryDelay)
+		r.logger.WarnContext(entry.ctx, "auditlog: failed to persist; retrying", "error", err, "action", entry.action, "entry_type", entry.kind, "attempt", attempt, "retry_delay", r.config.RetryDelay)
+		timer := time.NewTimer(r.config.RetryDelay)
+		select {
+		case <-timer.C:
+		case <-r.abortCtx.Done():
+			timer.Stop()
+			r.metrics.recordDropped(entry.kind, "shutdown")
+			return
+		}
 	}
 }
 
