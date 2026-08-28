@@ -20,9 +20,9 @@ describe("TenantDocumentTitle", () => {
     expect(document.title).toBe("Publira");
   });
 
-  it("siteLabel が空白ならフォールバック名を使う", () => {
+  it("siteLabel が空白ならページタイトルのみを設定する", () => {
     render(<TenantDocumentTitle pageTitle="ログイン" siteLabel="  " />);
 
-    expect(document.title).toBe("ログイン | サイト");
+    expect(document.title).toBe("ログイン");
   });
 });

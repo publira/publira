@@ -1,6 +1,6 @@
 "use server";
 
-import { parseLocale } from "@publira/i18n";
+import { getMessage, parseLocale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
@@ -14,26 +14,36 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
+import { loadHostMessages } from "#lib/messages";
+import type { HostMessages } from "#lib/messages";
 
 import { buildSettingsPath } from "./settings-form";
 
 const SETTINGS_RETURN_TO = "/settings";
 
-const updateProfileFormSchema = z.object({
-  locale: localeFormSchema,
-  name: z
-    .string({ error: "表示名を入力してください。" })
-    .trim()
-    .min(1, "表示名を入力してください。")
-    .max(100, "表示名は100文字以内で入力してください。"),
-  tenantId: tenantIdFormSchema,
-});
+const updateProfileFormSchema = (messages: HostMessages) => {
+  const nameRequired = getMessage(messages, "host.settings.name_required");
+
+  return z.object({
+    locale: localeFormSchema,
+    name: z
+      .string({ error: nameRequired })
+      .trim()
+      .min(1, nameRequired)
+      .max(100, getMessage(messages, "host.settings.name_too_long")),
+    tenantId: tenantIdFormSchema(messages),
+  });
+};
 
 export const updateProfileAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
-  const parsed = updateProfileFormSchema.safeParse(
+  // The locale field falls back rather than failing, so a rejected submission
+  // is still worded in the reader's language.
+  const submittedLocale = parseLocale(formData.get("locale"));
+  const messages = await loadHostMessages(submittedLocale);
+  const parsed = updateProfileFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       locale: "value",
       name: "value",
@@ -43,9 +53,9 @@ export const updateProfileAction = async (
   if (!parsed.success) {
     redirect(
       buildSettingsPath(
-        parseLocale(formData.get("locale")),
+        submittedLocale,
         "error",
-        toFormErrorMessage(parsed.error)
+        toFormErrorMessage(parsed.error, { locale: submittedLocale })
       )
     );
   }
@@ -62,12 +72,16 @@ export const updateProfileAction = async (
       buildSettingsPath(
         locale,
         "error",
-        "プロフィールの更新に失敗しました。時間をおいて再度お試しください。"
+        getMessage(messages, "host.settings.profile_update_failed")
       )
     );
   }
 
   redirect(
-    buildSettingsPath(locale, "success", "プロフィールを更新しました。")
+    buildSettingsPath(
+      locale,
+      "success",
+      getMessage(messages, "host.settings.profile_updated")
+    )
   );
 };

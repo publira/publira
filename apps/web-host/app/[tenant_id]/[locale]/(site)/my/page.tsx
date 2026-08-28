@@ -1,13 +1,17 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
-import type { MeInfo } from "#lib/auth";
+import { Message } from "#components/message";
+import type { MeInfo, NotificationSettings } from "#lib/auth";
 import { getMe, getNotificationSettings } from "#lib/auth";
 import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
-import { getLocale } from "#lib/locale";
+import { getLocale, loadHostMessages } from "#lib/locale";
+import type { HostMessageKey } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 const MY_RETURN_TO = "/my";
@@ -25,62 +29,95 @@ const EmptyState = ({
   </div>
 );
 
-const ProfileSection = ({ me }: { me: MeInfo }) => (
+const ProfileSection = async ({ me }: { me: MeInfo }) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return (
+    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+      <h2 className="mb-4 text-lg font-semibold">
+        {getMessage(messages, "host.my.profile_heading")}
+      </h2>
+      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+        <div className="rounded-lg border border-border/60 p-3">
+          <dt className="text-muted-foreground">
+            {getMessage(messages, "host.my.profile_name")}
+          </dt>
+          <dd className="mt-1 font-medium">
+            {me?.name ?? getMessage(messages, "host.common.unset")}
+          </dd>
+        </div>
+        <div className="rounded-lg border border-border/60 p-3">
+          <dt className="text-muted-foreground">
+            {getMessage(messages, "host.my.profile_user_id")}
+          </dt>
+          <dd className="mt-1 font-medium">{me?.publicId ?? "-"}</dd>
+        </div>
+      </dl>
+      <div className="mt-4 flex justify-end">
+        <LocaleLink
+          className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+          href="/settings"
+        >
+          {getMessage(messages, "host.my.to_settings_page")}
+        </LocaleLink>
+      </div>
+    </section>
+  );
+};
+
+const SectionSkeleton = ({ bodyClassName }: { bodyClassName: string }) => (
   <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-    <h2 className="mb-4 text-lg font-semibold">プロフィール</h2>
-    <dl className="grid gap-3 text-sm sm:grid-cols-2">
-      <div className="rounded-lg border border-border/60 p-3">
-        <dt className="text-muted-foreground">表示名</dt>
-        <dd className="mt-1 font-medium">{me?.name ?? "未設定"}</dd>
-      </div>
-      <div className="rounded-lg border border-border/60 p-3">
-        <dt className="text-muted-foreground">ユーザーID</dt>
-        <dd className="mt-1 font-medium">{me?.publicId ?? "-"}</dd>
-      </div>
-    </dl>
-    <div className="mt-4 flex justify-end">
-      <LocaleLink
-        className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
-        href="/settings"
-      >
-        設定ページへ
-      </LocaleLink>
-    </div>
+    <SkeletonLine className="mb-4 h-6 w-32" />
+    <div className={bodyClassName} />
   </section>
 );
 
 const ProfileSectionFallback = () => (
-  <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-    <h2 className="mb-4 text-lg font-semibold">プロフィール</h2>
-    <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
-  </section>
+  <SectionSkeleton bodyClassName="h-24 w-full animate-pulse rounded-md bg-muted" />
 );
+
+/** The subscription state picks a key, so the copy still comes from the catalog. */
+const notificationStatusKey = (
+  settings: NotificationSettings | null
+): HostMessageKey => {
+  if (settings === null) {
+    return "host.my.email_notifications_unknown";
+  }
+  return settings.emailNotificationsEnabled === false
+    ? "host.my.email_notifications_off"
+    : "host.my.email_notifications_on";
+};
 
 const SubscriptionSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const notificationSettings = await withPublicSessionReauth(
-    locale,
-    MY_RETURN_TO,
-    () => getNotificationSettings(tenantId)
-  );
-  let notificationStatusText = "購読中";
-  if (notificationSettings === null) {
-    notificationStatusText = "確認できません";
-  } else if (notificationSettings.emailNotificationsEnabled === false) {
-    notificationStatusText = "停止中";
-  }
+  const [notificationSettings, messages] = await Promise.all([
+    withPublicSessionReauth(locale, MY_RETURN_TO, () =>
+      getNotificationSettings(tenantId)
+    ),
+    loadHostMessages(locale),
+  ]);
 
   return (
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold">購読情報</h2>
+      <h2 className="mb-4 text-lg font-semibold">
+        {getMessage(messages, "host.my.subscription_heading")}
+      </h2>
       <div className="rounded-lg border border-border/60 p-3 text-sm">
-        <p className="text-muted-foreground">メール通知の購読設定</p>
-        <p className="mt-1 font-medium">{notificationStatusText}</p>
+        <p className="text-muted-foreground">
+          {getMessage(messages, "host.my.email_notifications_label")}
+        </p>
+        <p className="mt-1 font-medium">
+          {getMessage(messages, notificationStatusKey(notificationSettings))}
+        </p>
       </div>
       <div className="mt-4">
         <EmptyState
-          description="現在表示できる購読コンテンツ情報はありません。"
-          title="購読中のコンテンツがありません"
+          description={getMessage(
+            messages,
+            "host.my.subscription_empty_description"
+          )}
+          title={getMessage(messages, "host.my.subscription_empty_title")}
         />
       </div>
     </section>
@@ -88,19 +125,17 @@ const SubscriptionSection = async () => {
 };
 
 const SubscriptionSectionFallback = () => (
-  <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-    <h2 className="mb-4 text-lg font-semibold">購読情報</h2>
-    <div className="h-20 w-full animate-pulse rounded-md bg-muted" />
-  </section>
+  <SectionSkeleton bodyClassName="h-20 w-full animate-pulse rounded-md bg-muted" />
 );
 
 const MyContent = async () => {
   const locale = await getLocale();
   await requirePublicSession(locale, MY_RETURN_TO);
   const tenantId = await getTenantId();
-  const me = await withPublicSessionReauth(locale, MY_RETURN_TO, () =>
-    getMe(tenantId)
-  );
+  const [me, messages] = await Promise.all([
+    withPublicSessionReauth(locale, MY_RETURN_TO, () => getMe(tenantId)),
+    loadHostMessages(locale),
+  ]);
 
   return (
     <>
@@ -109,16 +144,18 @@ const MyContent = async () => {
           <ProfileSection me={me} />
         ) : (
           <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold">プロフィール</h2>
+            <h2 className="mb-3 text-lg font-semibold">
+              {getMessage(messages, "host.my.profile_heading")}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              セッションを確認できませんでした。再ログインしてください。
+              {getMessage(messages, "host.my.session_expired")}
             </p>
             <div className="mt-4">
               <LocaleLink
                 className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
                 href="/login?returnTo=%2Fmy"
               >
-                ログインへ
+                {getMessage(messages, "host.my.to_login")}
               </LocaleLink>
             </div>
           </section>
@@ -132,10 +169,15 @@ const MyContent = async () => {
       ) : null}
 
       <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold">読書履歴</h2>
+        <h2 className="mb-4 text-lg font-semibold">
+          {getMessage(messages, "host.my.history_heading")}
+        </h2>
         <EmptyState
-          description="作品を読むと、最近の履歴がここに表示されます。"
-          title="まだ読書履歴がありません"
+          description={getMessage(
+            messages,
+            "host.my.history_empty_description"
+          )}
+          title={getMessage(messages, "host.my.history_empty_title")}
         />
       </section>
     </>
@@ -146,10 +188,7 @@ const MyContentFallback = () => (
   <>
     <ProfileSectionFallback />
     <SubscriptionSectionFallback />
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold">読書履歴</h2>
-      <div className="h-20 w-full animate-pulse rounded-md bg-muted" />
-    </section>
+    <SectionSkeleton bodyClassName="h-20 w-full animate-pulse rounded-md bg-muted" />
   </>
 );
 
@@ -158,9 +197,15 @@ const MyPage = () => (
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">マイページ</h1>
+          <h1 className="text-xl font-semibold">
+            <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+              <Message message="host.my.title" />
+            </Suspense>
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            登録情報と利用状況を確認できます。
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message message="host.my.description" />
+            </Suspense>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -168,13 +213,17 @@ const MyPage = () => (
             className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
             href="/my/library"
           >
-            購入済み一覧
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="host.my.to_library" />
+            </Suspense>
           </LocaleLink>
           <LocaleLink
             className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             href="/settings"
           >
-            設定を開く
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="host.my.to_settings" />
+            </Suspense>
           </LocaleLink>
         </div>
       </div>

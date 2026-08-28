@@ -64,7 +64,9 @@ describe("web-host announcements", () => {
       previousToken: "",
     });
 
-    await expect(listMyAnnouncements("TENANT001")).resolves.toEqual({
+    await expect(
+      listMyAnnouncements("TENANT001", undefined, { locale: "ja" })
+    ).resolves.toEqual({
       announcements: [
         {
           body: "本文",
@@ -85,7 +87,7 @@ describe("web-host announcements", () => {
     const { listMyAnnouncements } = await importAnnouncements();
     mockListAnnouncements.mockResolvedValueOnce({ announcements: [] });
 
-    await listMyAnnouncements("TENANT001");
+    await listMyAnnouncements("TENANT001", undefined, { locale: "ja" });
 
     expect(mockListAnnouncements).toHaveBeenCalledWith(
       { limit: 20, tenant: { tenantId: "TENANT001" }, token: "" },
@@ -99,6 +101,7 @@ describe("web-host announcements", () => {
 
     await listMyAnnouncements("TENANT001", "sid_001", {
       limit: 5,
+      locale: "ja",
       token: "djF8Zg",
     });
 
@@ -113,7 +116,9 @@ describe("web-host announcements", () => {
     const error = new ConnectError("boom", Code.Internal);
     mockListAnnouncements.mockRejectedValueOnce(error);
 
-    await expect(listMyAnnouncements("TENANT001")).rejects.toBe(error);
+    await expect(
+      listMyAnnouncements("TENANT001", undefined, { locale: "ja" })
+    ).rejects.toBe(error);
   });
 
   it("getMyAnnouncement: 認可済み 1 件を返す", async () => {

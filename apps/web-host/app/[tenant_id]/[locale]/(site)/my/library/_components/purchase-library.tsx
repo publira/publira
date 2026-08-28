@@ -1,7 +1,9 @@
+import { getMessage, toIntlLocale } from "@publira/i18n";
 import { SectionError } from "@publira/ui-components/section-error";
 import { formatDateTime } from "@publira/utils";
 
 import { LocaleLink } from "#components/locale-link";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import type { PurchaseItem } from "#lib/purchases";
 
 import { purchasesListHref } from "../_lib/search-params";
@@ -14,51 +16,67 @@ interface PurchaseLibraryProps {
   timeZone: string;
 }
 
-const PurchasePagination = ({
+/**
+ * Resolves the catalog itself rather than taking it as a prop: every caller
+ * already sits inside the section's own boundary, and the `aria-label` cannot
+ * stream in any case.
+ */
+const PurchasePagination = async ({
   nextToken,
   previousToken,
 }: {
   nextToken: string;
   previousToken: string;
-}) => (
-  <nav
-    aria-label="購入履歴のページング"
-    className="mt-6 flex items-center justify-center gap-6"
-  >
-    {previousToken ? (
-      <LocaleLink
-        className="text-sm text-primary underline-offset-4 hover:underline"
-        href={purchasesListHref(previousToken)}
-      >
-        前のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">前のページ</span>
-    )}
-    {nextToken ? (
-      <LocaleLink
-        className="text-sm text-primary underline-offset-4 hover:underline"
-        href={purchasesListHref(nextToken)}
-      >
-        次のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">次のページ</span>
-    )}
-  </nav>
-);
+}) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
 
-const PurchaseCard = ({
+  return (
+    <nav
+      aria-label={getMessage(messages, "host.library.pagination_aria")}
+      className="mt-6 flex items-center justify-center gap-6"
+    >
+      {previousToken ? (
+        <LocaleLink
+          className="text-sm text-primary underline-offset-4 hover:underline"
+          href={purchasesListHref(previousToken)}
+        >
+          {getMessage(messages, "host.common.previous_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.previous_page")}
+        </span>
+      )}
+      {nextToken ? (
+        <LocaleLink
+          className="text-sm text-primary underline-offset-4 hover:underline"
+          href={purchasesListHref(nextToken)}
+        >
+          {getMessage(messages, "host.common.next_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.next_page")}
+        </span>
+      )}
+    </nav>
+  );
+};
+
+const PurchaseCard = async ({
   purchase,
   timeZone,
 }: {
   purchase: PurchaseItem;
   timeZone: string;
 }) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
   const href = `/series/${purchase.series.publicId}/episodes/${purchase.episode.publicId}`;
   const expiryLabel = purchase.expiresAt
-    ? formatDateTime(purchase.expiresAt, { fallback: "-", timeZone })
-    : "期限なし";
+    ? formatDateTime(purchase.expiresAt, { fallback: "-", locale, timeZone })
+    : getMessage(messages, "host.library.no_expiry");
 
   return (
     <article className="rounded-xl border border-border/70 bg-background p-4">
@@ -80,24 +98,31 @@ const PurchaseCard = ({
               : "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
           }
         >
-          {purchase.isActive ? "閲覧可能" : "期限切れ"}
+          {getMessage(
+            messages,
+            purchase.isActive ? "host.library.readable" : "host.library.expired"
+          )}
         </span>
       </div>
       <dl className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
         <div>
-          <dt>購入日</dt>
+          <dt>{getMessage(messages, "host.library.purchased_at")}</dt>
           <dd className="mt-1 text-foreground">
-            {formatDateTime(purchase.purchasedAt, { fallback: "-", timeZone })}
+            {formatDateTime(purchase.purchasedAt, {
+              fallback: "-",
+              locale,
+              timeZone,
+            })}
           </dd>
         </div>
         <div>
-          <dt>購入価格</dt>
+          <dt>{getMessage(messages, "host.library.price")}</dt>
           <dd className="mt-1 text-foreground">
-            ¥{purchase.priceAtPurchase.toLocaleString("ja-JP")}
+            ¥{purchase.priceAtPurchase.toLocaleString(toIntlLocale(locale))}
           </dd>
         </div>
         <div>
-          <dt>有効期限</dt>
+          <dt>{getMessage(messages, "host.library.expires_at")}</dt>
           <dd className="mt-1 text-foreground">{expiryLabel}</dd>
         </div>
       </dl>
@@ -106,20 +131,22 @@ const PurchaseCard = ({
           className="text-sm text-primary underline-offset-4 hover:underline"
           href={href}
         >
-          エピソードを開く
+          {getMessage(messages, "host.library.open_episode")}
         </LocaleLink>
       </div>
     </article>
   );
 };
 
-export const PurchaseLibrary = ({
+export const PurchaseLibrary = async ({
   listErrorMessage,
   nextToken,
   previousToken,
   purchases,
   timeZone,
 }: PurchaseLibraryProps) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
   const activePurchases = purchases.filter((purchase) => purchase.isActive);
   const expiredPurchases = purchases.filter((purchase) => !purchase.isActive);
 
@@ -128,31 +155,33 @@ export const PurchaseLibrary = ({
       {listErrorMessage ? (
         <SectionError
           description={listErrorMessage}
-          title="購入済み一覧を表示できませんでした"
+          title={getMessage(messages, "host.library.list_error")}
         />
       ) : null}
       {!listErrorMessage && purchases.length === 0 ? (
         <section className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-6">
           <h2 className="text-lg font-semibold">
-            購入済みのエピソードはありません
+            {getMessage(messages, "host.library.empty_title")}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            購入したエピソードは、ここからいつでも開けます。
+            {getMessage(messages, "host.library.empty_description")}
           </p>
           <LocaleLink
             className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
             href="/series"
           >
-            シリーズを探す
+            {getMessage(messages, "host.common.find_series")}
           </LocaleLink>
         </section>
       ) : null}
       {activePurchases.length > 0 ? (
         <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold">本棚</h2>
+            <h2 className="text-lg font-semibold">
+              {getMessage(messages, "host.library.shelf_heading")}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              現在閲覧できる購入済みエピソードです。
+              {getMessage(messages, "host.library.shelf_description")}
             </p>
           </div>
           <div className="grid gap-3">
@@ -169,9 +198,11 @@ export const PurchaseLibrary = ({
       {expiredPurchases.length > 0 ? (
         <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold">購入履歴</h2>
+            <h2 className="text-lg font-semibold">
+              {getMessage(messages, "host.library.history_heading")}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              有効期限が終了した購入です。エピソードの詳細を確認できます。
+              {getMessage(messages, "host.library.history_description")}
             </p>
           </div>
           <div className="grid gap-3">

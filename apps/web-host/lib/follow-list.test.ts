@@ -67,6 +67,7 @@ describe("listMyFollows", () => {
     const { listMyFollows } = await import("./follow-list");
     const result = await listMyFollows(tenantId, {
       limit: 20,
+      locale: "ja",
       token: "current-page",
     });
 
@@ -90,7 +91,7 @@ describe("listMyFollows", () => {
     mockListMyFollows.mockResolvedValue({ follows: [] });
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId);
+    const result = await listMyFollows(tenantId, { locale: "ja" });
 
     expect(mockListMyFollows).toHaveBeenCalledWith(
       {
@@ -116,7 +117,7 @@ describe("listMyFollows", () => {
     });
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId);
+    const result = await listMyFollows(tenantId, { locale: "ja" });
 
     expect(result.ok).toBe(true);
     expect(result.follows).toEqual([
@@ -146,7 +147,7 @@ describe("listMyFollows", () => {
     });
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId);
+    const result = await listMyFollows(tenantId, { locale: "ja" });
 
     expect(result.follows).toEqual([
       {
@@ -161,7 +162,7 @@ describe("listMyFollows", () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId);
+    const result = await listMyFollows(tenantId, { locale: "ja" });
 
     expect(result).toEqual({
       follows: [],
@@ -180,7 +181,7 @@ describe("listMyFollows", () => {
     );
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId);
+    const result = await listMyFollows(tenantId, { locale: "ja" });
 
     expect(result).toMatchObject({
       ok: false,
@@ -194,7 +195,7 @@ describe("listMyFollows", () => {
     );
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId);
+    const result = await listMyFollows(tenantId, { locale: "ja" });
 
     expect(result).toEqual({
       follows: [],
@@ -212,7 +213,7 @@ describe("listMyFollows", () => {
     );
 
     const { listMyFollows } = await import("./follow-list");
-    await expect(listMyFollows(tenantId)).rejects.toThrow(
+    await expect(listMyFollows(tenantId, { locale: "ja" })).rejects.toThrow(
       "フォロー一覧を取得できませんでした。時間をおいて再試行してください。"
     );
   });

@@ -1,6 +1,6 @@
 "use server";
 
-import { parseLocale } from "@publira/i18n";
+import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { sessionCookieOptions } from "@publira/web-session";
@@ -21,17 +21,17 @@ import { getPublicSessionCacheTag } from "#lib/auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
+import { loadHostMessages } from "#lib/messages";
+import type { HostMessages } from "#lib/messages";
 
-const LOGIN_FAILED_MESSAGE =
-  "メールアドレスまたはパスワードが正しくありません。";
-
-const loginFormSchema = z.object({
-  email: emailFormSchema,
-  locale: localeFormSchema,
-  password: passwordFormSchema,
-  returnTo: returnToFormSchema,
-  tenantId: tenantIdFormSchema,
-});
+const loginFormSchema = (messages: HostMessages) =>
+  z.object({
+    email: emailFormSchema(messages),
+    locale: localeFormSchema,
+    password: passwordFormSchema(messages),
+    returnTo: returnToFormSchema,
+    tenantId: tenantIdFormSchema(messages),
+  });
 
 const buildLoginErrorPath = (
   locale: Locale,
@@ -47,7 +47,12 @@ const buildLoginErrorPath = (
 
 export const loginAction = async (formData: FormData): Promise<void> => {
   await assertSameOrigin();
-  const parsed = loginFormSchema.safeParse(
+  // The locale field falls back rather than failing, so the rejection below can
+  // be worded in the reader's language even when the rest of the form is not.
+  const submittedLocale = parseLocale(formData.get("locale"));
+  const messages = await loadHostMessages(submittedLocale);
+  const loginFailed = getMessage(messages, "host.auth.errors.login_failed");
+  const parsed = loginFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       email: "value",
       locale: "value",
@@ -60,13 +65,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     const returnToPath = returnToFormSchema.parse(
       toFormDataInput(formData, { returnTo: "value" }).returnTo
     );
-    redirect(
-      buildLoginErrorPath(
-        parseLocale(formData.get("locale")),
-        LOGIN_FAILED_MESSAGE,
-        returnToPath
-      )
-    );
+    redirect(buildLoginErrorPath(submittedLocale, loginFailed, returnToPath));
   }
 
   const {
@@ -79,7 +78,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
 
   const result = await loginPublic(email, password, tenantId);
   if (!result) {
-    redirect(buildLoginErrorPath(locale, LOGIN_FAILED_MESSAGE, returnToPath));
+    redirect(buildLoginErrorPath(locale, loginFailed, returnToPath));
   }
 
   const sealed = await sealSessionCookieValue({

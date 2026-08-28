@@ -9,12 +9,18 @@
  * `returnTo` is sanitized here (not after a successful parse) so every
  * consumer — login query, login form, error-redirect builder — shares one
  * open-redirect rule.
+ *
+ * A schema whose rejection reaches the reader is a function of the catalog
+ * rather than a module constant: the wording depends on the request's locale,
+ * which only a Server Action or a suspended section can resolve.
  */
 
+import { getMessage } from "@publira/i18n";
 import { searchParamString } from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { sanitizeRedirectPath } from "./auth-shared";
+import type { HostMessages } from "./messages";
 import { isTenantIdFormat } from "./tenant-id-format";
 
 /** Paths in `returnTo` can carry a query string; 255 would clip real ones. */
@@ -59,25 +65,46 @@ export const authTokenSearchParamSchema = searchParamString({
   maxLength: 64,
 }).transform((value) => (AUTH_TOKEN_PATTERN.test(value) ? value : ""));
 
-export const authTokenFormSchema = z
-  .string()
-  .trim()
-  .refine((value) => AUTH_TOKEN_PATTERN.test(value), {
-    error: "確認リンクが無効です。",
-  });
+/**
+ * The tenant id as a shape check, with no reader-facing wording.
+ *
+ * `tenant_id` is written by `proxy.ts` and carried in a hidden field, so a
+ * rejected value means the request never came through the site. Callers that
+ * answer such a request without showing a message — a Route Handler, an Action
+ * that returns early or words the whole rejection itself — use this one and
+ * stay free of the catalog.
+ */
+export const tenantIdSchema = z.string().trim().refine(isTenantIdFormat);
 
-export const tenantIdFormSchema = z
-  .string({ error: "テナント ID が見つかりません。" })
-  .trim()
-  .refine(isTenantIdFormat, { error: "テナント ID が見つかりません。" });
+export const authTokenFormSchema = (messages: HostMessages) =>
+  z
+    .string()
+    .trim()
+    .refine((value) => AUTH_TOKEN_PATTERN.test(value), {
+      error: getMessage(messages, "host.auth.fields.invalid_token"),
+    });
 
-export const emailFormSchema = z
-  .string({ error: "メールアドレスを入力してください。" })
-  .trim()
-  .min(1, "メールアドレスを入力してください。")
-  .pipe(z.email("メールアドレスの形式が正しくありません。"));
+export const tenantIdFormSchema = (messages: HostMessages) => {
+  const missing = getMessage(messages, "host.auth.fields.tenant_missing");
 
-export const passwordFormSchema = z
-  .string({ error: "パスワードを入力してください。" })
-  .min(1, "パスワードを入力してください。")
-  .max(1024);
+  return z
+    .string({ error: missing })
+    .trim()
+    .refine(isTenantIdFormat, { error: missing });
+};
+
+export const emailFormSchema = (messages: HostMessages) => {
+  const required = getMessage(messages, "host.auth.fields.email_required");
+
+  return z
+    .string({ error: required })
+    .trim()
+    .min(1, required)
+    .pipe(z.email(getMessage(messages, "host.auth.fields.email_invalid")));
+};
+
+export const passwordFormSchema = (messages: HostMessages) => {
+  const required = getMessage(messages, "host.auth.fields.password_required");
+
+  return z.string({ error: required }).min(1, required).max(1024);
+};

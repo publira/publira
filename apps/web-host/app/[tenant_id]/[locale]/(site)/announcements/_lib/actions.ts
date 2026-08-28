@@ -11,7 +11,7 @@ import {
   markAllAnnouncementsAsRead,
   markAnnouncementAsRead,
 } from "#lib/announcements";
-import { tenantIdFormSchema } from "#lib/auth-input";
+import { tenantIdSchema } from "#lib/auth-input";
 import {
   requirePublicSession,
   withPublicSessionReauth,
@@ -52,18 +52,18 @@ const toSafeAnnouncementLinkUrl = (value: string): string | null => {
 const markAnnouncementAsReadFormSchema = z.object({
   announcementId: announcementIdFormSchema,
   locale: localeFormSchema,
-  tenantId: tenantIdFormSchema,
+  tenantId: tenantIdSchema,
 });
 
 const markAllAnnouncementsAsReadFormSchema = z.object({
   locale: localeFormSchema,
-  tenantId: tenantIdFormSchema,
+  tenantId: tenantIdSchema,
 });
 
 const markAnnouncementAsReadAndNavigateFormSchema = z.object({
   announcementId: announcementIdFormSchema,
   locale: localeFormSchema,
-  tenantId: tenantIdFormSchema,
+  tenantId: tenantIdSchema,
 });
 
 export const markAnnouncementAsReadAction = async (

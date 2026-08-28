@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -5,29 +7,35 @@ import { Suspense } from "react";
 import { LocaleLink } from "#components/locale-link";
 import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { verifyPublicEmail } from "#lib/auth";
-import { getTenantSiteInfo } from "#lib/tenant";
+import { getLocale, loadHostMessages } from "#lib/locale";
+import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { parseVerifySearchParams } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "メール確認",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return { title: getMessage(messages, "host.auth.verify.title") };
 };
 
 const VerificationResult = async ({ token }: { token: string }) => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const messages = await loadHostMessages(locale);
+
   if (!token) {
     return (
       <>
         <section className="space-y-3 text-sm leading-6">
-          <p>確認リンクが無効です。</p>
+          <p>{getMessage(messages, "host.auth.fields.invalid_token")}</p>
         </section>
         <div className="text-center text-sm">
           <LocaleLink
             href="/signup"
             className="font-medium text-primary hover:underline"
           >
-            新規登録へ戻る
+            {getMessage(messages, "host.auth.verify.to_signup")}
           </LocaleLink>
         </div>
       </>
@@ -35,21 +43,28 @@ const VerificationResult = async ({ token }: { token: string }) => {
   }
 
   const verified = await verifyPublicEmail(token, tenantId);
-  const message = verified
-    ? "メールアドレスの確認が完了しました。ログインしてください。"
-    : "確認に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。";
 
   return (
     <>
       <section className="space-y-3 text-sm leading-6">
-        <p>{message}</p>
+        <p>
+          {getMessage(
+            messages,
+            verified ? "host.auth.verify.verified" : "host.auth.verify.failed"
+          )}
+        </p>
       </section>
       <div className="text-center text-sm">
         <LocaleLink
           href={verified ? "/login" : "/signup"}
           className="font-medium text-primary hover:underline"
         >
-          {verified ? "ログイン画面へ" : "新規登録へ戻る"}
+          {getMessage(
+            messages,
+            verified
+              ? "host.auth.verify.to_login"
+              : "host.auth.verify.to_signup"
+          )}
         </LocaleLink>
       </div>
     </>
@@ -58,19 +73,15 @@ const VerificationResult = async ({ token }: { token: string }) => {
 
 const VerificationFallback = () => (
   <>
-    <header className="text-center">
-      <h1 className="font-serif text-2xl font-semibold">サイト</h1>
+    <header className="flex justify-center">
+      <Skeleton className="h-8 w-40" />
     </header>
-    <section className="space-y-3 text-sm leading-6">
-      <p>確認処理を実行しています...</p>
+    <section className="space-y-3">
+      <SkeletonLine className="h-4 w-full" />
+      <SkeletonLine className="h-4 w-3/4" />
     </section>
-    <div className="text-center text-sm">
-      <LocaleLink
-        href="/signup"
-        className="font-medium text-primary hover:underline"
-      >
-        新規登録へ戻る
-      </LocaleLink>
+    <div className="flex justify-center">
+      <SkeletonLine className="h-4 w-28" />
     </div>
   </>
 );
@@ -83,10 +94,12 @@ const VerifyPageContent = async ({
 }) => {
   await connection();
 
-  const tenantId = await getTenantId();
-
-  const info = await getTenantSiteInfo(tenantId);
-  const siteLabel = info?.name.trim() || "サイト";
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [info, siteLabel, messages] = await Promise.all([
+    getTenantSiteInfo(tenantId),
+    getTenantSiteLabel(tenantId, locale),
+    loadHostMessages(locale),
+  ]);
   const siteTagline = info?.siteTagline?.trim();
 
   const { token } = parseVerifySearchParams(await searchParams);
@@ -94,7 +107,10 @@ const VerifyPageContent = async ({
   return (
     <>
       <header className="text-center">
-        <TenantDocumentTitle pageTitle="メール確認" siteLabel={siteLabel} />
+        <TenantDocumentTitle
+          pageTitle={getMessage(messages, "host.auth.verify.title")}
+          siteLabel={siteLabel}
+        />
         <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
         {siteTagline ? (
           <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>

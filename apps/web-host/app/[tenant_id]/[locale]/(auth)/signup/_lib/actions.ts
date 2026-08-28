@@ -1,5 +1,6 @@
 "use server";
 
+import { getMessage, parseLocale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -19,34 +20,50 @@ import {
 } from "#lib/email-flash-cookie";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
+import { loadHostMessages } from "#lib/messages";
+import type { HostMessages } from "#lib/messages";
 
-const signupFormSchema = z
-  .object({
-    confirmPassword: z
-      .string({ error: "パスワード確認を入力してください。" })
-      .min(1, "パスワード確認を入力してください。")
-      .max(1024, "パスワード確認は1024文字以内で入力してください。"),
-    email: emailFormSchema,
-    locale: localeFormSchema,
-    name: z
-      .string({ error: "表示名を入力してください。" })
-      .trim()
-      .min(1, "表示名を入力してください。")
-      .max(100, "表示名は100文字以内で入力してください。"),
-    password: passwordFormSchema,
-    tenantId: tenantIdFormSchema,
-  })
-  .refine((value) => value.password === value.confirmPassword, {
-    error: "パスワード確認が一致しません。",
-    path: ["confirmPassword"],
-  });
+const signupFormSchema = (messages: HostMessages) => {
+  const confirmRequired = getMessage(
+    messages,
+    "host.auth.errors.password_confirm_required"
+  );
+  const nameRequired = getMessage(messages, "host.auth.errors.name_required");
+
+  return z
+    .object({
+      confirmPassword: z
+        .string({ error: confirmRequired })
+        .min(1, confirmRequired)
+        .max(
+          1024,
+          getMessage(messages, "host.auth.errors.password_confirm_too_long")
+        ),
+      email: emailFormSchema(messages),
+      locale: localeFormSchema,
+      name: z
+        .string({ error: nameRequired })
+        .trim()
+        .min(1, nameRequired)
+        .max(100, getMessage(messages, "host.auth.errors.name_too_long")),
+      password: passwordFormSchema(messages),
+      tenantId: tenantIdFormSchema(messages),
+    })
+    .refine((value) => value.password === value.confirmPassword, {
+      error: getMessage(messages, "host.auth.errors.password_mismatch"),
+      path: ["confirmPassword"],
+    });
+};
 
 export const signupAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
   await assertSameOrigin();
-  const parsed = signupFormSchema.safeParse(
+  // The locale field falls back rather than failing, so a rejected submission
+  // is still worded in the reader's language.
+  const messages = await loadHostMessages(parseLocale(formData.get("locale")));
+  const parsed = signupFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
       email: "value",
@@ -67,7 +84,7 @@ export const signupAction = async (
   const result = await signupPublic(name, email, password, tenantId);
   if (!result) {
     return {
-      message: "新規登録に失敗しました。入力内容をご確認ください。",
+      message: getMessage(messages, "host.auth.errors.signup_failed"),
       ok: false,
     };
   }

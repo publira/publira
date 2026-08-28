@@ -6,6 +6,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SettingsTabs } from "./settings-tabs";
 
+const labels = {
+  basic: "基本設定",
+  follows: "フォロー",
+  notifications: "通知",
+  security: "セキュリティ",
+};
+
 const mockUsePathname = vi.hoisted(() => vi.fn(() => "/ja/settings"));
 
 vi.mock("next/navigation", () => ({
@@ -35,7 +42,7 @@ afterEach(() => {
 describe("SettingsTabs", () => {
   it("フォロー一覧へのナビを出す", () => {
     mockUsePathname.mockReturnValue("/ja/settings");
-    render(<SettingsTabs />);
+    render(<SettingsTabs labels={labels} />);
 
     expect(
       screen.getByRole("link", { name: "フォロー" }).getAttribute("href")
@@ -44,7 +51,7 @@ describe("SettingsTabs", () => {
 
   it("フォロー一覧ではフォロータブだけを選択中にする", () => {
     mockUsePathname.mockReturnValue("/ja/settings/follows");
-    render(<SettingsTabs />);
+    render(<SettingsTabs labels={labels} />);
 
     const follows = screen.getByRole("link", { name: "フォロー" });
     const basic = screen.getByRole("link", { name: "基本設定" });
@@ -58,7 +65,7 @@ describe("SettingsTabs", () => {
     mockUsePathname.mockReturnValue(
       "/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/ja/settings/follows"
     );
-    render(<SettingsTabs />);
+    render(<SettingsTabs labels={labels} />);
 
     const follows = screen.getByRole("link", { name: "フォロー" });
     const basic = screen.getByRole("link", { name: "基本設定" });

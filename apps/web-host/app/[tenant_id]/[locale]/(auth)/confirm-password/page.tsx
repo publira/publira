@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -10,14 +11,18 @@ import { Suspense } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { TenantDocumentTitle } from "#components/tenant-document-title";
-import { getTenantSiteInfo } from "#lib/tenant";
+import { getLocale, loadHostMessages } from "#lib/locale";
+import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { confirmPasswordAction } from "./_lib/actions";
 import { parseConfirmPasswordSearchParams } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "新しいパスワード設定",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return { title: getMessage(messages, "host.auth.confirm_password.title") };
 };
 
 /**
@@ -46,6 +51,11 @@ const ConfirmPasswordFormSkeleton = () => (
   </>
 );
 
+/**
+ * The form already waits on `searchParams` — the token decides whether it is
+ * rendered at all — so it resolves the catalog itself instead of giving each
+ * label its own boundary.
+ */
 const ConfirmPasswordForm = async ({
   token,
   errorMessage,
@@ -53,19 +63,24 @@ const ConfirmPasswordForm = async ({
   token: string;
   errorMessage?: string;
 }) => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const messages = await loadHostMessages(locale);
+
   if (!token) {
     return (
       <>
         <section className="space-y-3 text-sm leading-6">
-          <p>確認リンクが無効です。</p>
+          <p>{getMessage(messages, "host.auth.fields.invalid_token")}</p>
         </section>
         <div className="text-center text-sm">
           <LocaleLink
             href="/reset-password"
             className="font-medium text-primary hover:underline"
           >
-            パスワード再設定へ戻る
+            {getMessage(
+              messages,
+              "host.auth.confirm_password.to_reset_password"
+            )}
           </LocaleLink>
         </div>
       </>
@@ -82,7 +97,10 @@ const ConfirmPasswordForm = async ({
 
           <Field>
             <FieldLabel htmlFor="newPassword" required>
-              新しいパスワード
+              {getMessage(
+                messages,
+                "host.auth.confirm_password.password_label"
+              )}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -98,7 +116,10 @@ const ConfirmPasswordForm = async ({
 
           <Field>
             <FieldLabel htmlFor="confirmPassword" required>
-              新しいパスワード（確認）
+              {getMessage(
+                messages,
+                "host.auth.confirm_password.password_confirm_label"
+              )}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -117,7 +138,7 @@ const ConfirmPasswordForm = async ({
           ) : null}
 
           <Button className="mt-2 w-full" type="submit">
-            パスワードを再設定
+            {getMessage(messages, "host.auth.confirm_password.submit")}
           </Button>
         </form>
       </div>
@@ -127,7 +148,7 @@ const ConfirmPasswordForm = async ({
           href="/login"
           className="font-medium text-primary hover:underline"
         >
-          ログイン画面へ戻る
+          {getMessage(messages, "host.auth.fields.to_login")}
         </LocaleLink>
       </div>
     </>
@@ -151,17 +172,19 @@ const ConfirmPasswordFormContent = async ({
 const ConfirmPasswordPageContent = async ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/confirm-password">) => {
-  const tenantId = await getTenantId();
-
-  const info = await getTenantSiteInfo(tenantId);
-  const siteLabel = info?.name.trim() || "サイト";
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [info, siteLabel, messages] = await Promise.all([
+    getTenantSiteInfo(tenantId),
+    getTenantSiteLabel(tenantId, locale),
+    loadHostMessages(locale),
+  ]);
   const siteTagline = info?.siteTagline?.trim();
 
   return (
     <div className="w-full max-w-sm">
       <div className="mb-8 text-center">
         <TenantDocumentTitle
-          pageTitle="新しいパスワード設定"
+          pageTitle={getMessage(messages, "host.auth.confirm_password.title")}
           siteLabel={siteLabel}
         />
         <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
@@ -178,8 +201,8 @@ const ConfirmPasswordPageContent = async ({
 
 const ConfirmPasswordPageFallback = () => (
   <div className="w-full max-w-sm">
-    <div className="mb-8 text-center">
-      <h1 className="font-serif text-2xl font-semibold">サイト</h1>
+    <div className="mb-8 flex justify-center">
+      <Skeleton className="h-8 w-40" />
     </div>
     <ConfirmPasswordFormSkeleton />
   </div>

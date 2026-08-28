@@ -3,7 +3,9 @@
 import { useEffect } from "react";
 
 interface TenantDocumentTitleProps {
+  /** Screen name, already resolved from the catalog by the caller. */
   pageTitle: string;
+  /** Site name from `getTenantSiteLabel()`, which supplies its own stand-in. */
   siteLabel: string;
 }
 
@@ -12,12 +14,9 @@ export const TenantDocumentTitle = ({
   siteLabel,
 }: TenantDocumentTitleProps) => {
   useEffect(() => {
-    const normalizedSiteLabel = siteLabel.trim() || "サイト";
-    const normalizedPageTitle = pageTitle.trim();
-
-    document.title = normalizedPageTitle
-      ? `${normalizedPageTitle} | ${normalizedSiteLabel}`
-      : normalizedSiteLabel;
+    document.title = [pageTitle.trim(), siteLabel.trim()]
+      .filter(Boolean)
+      .join(" | ");
   }, [pageTitle, siteLabel]);
 
   return null;

@@ -5,6 +5,8 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import type { MyPurchase } from "@publira/api-client/public/types";
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
@@ -12,10 +14,18 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { loadHostMessages } from "./messages";
 
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
-const listErrorMessage =
-  "購入済み一覧を取得できませんでした。時間をおいて再試行してください。";
+/**
+ * `locale` reaches the read as an argument rather than being resolved inside
+ * the cached scope, so the failure wording belongs to the cache key instead of
+ * to whichever request filled the entry.
+ */
+const purchaseMessage = async (
+  locale: Locale,
+  key: "errors.rpc.unauthenticated" | "host.library.list_failed"
+): Promise<string> => getMessage(await loadHostMessages(locale), key);
+
 const defaultPurchasePageSize = 20;
 
 export interface PurchaseItem {
@@ -49,6 +59,8 @@ type CachedListPurchasesResult = ListPurchasesResult & {
 };
 export interface ListPurchasesInput {
   limit?: number;
+  /** UI locale the failure wording belongs to; part of the cache key. */
+  locale: Locale;
   token?: string;
 }
 
@@ -96,15 +108,19 @@ const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
 /** A private, paged list of the signed-in reader's purchases. */
 const readPurchaseList = async (
   tenantId: string,
-  input: ListPurchasesInput = {}
+  input: ListPurchasesInput
 ): Promise<CachedListPurchasesResult> => {
   "use cache: private";
 
-  const sessionId = await resolveAccessToken();
+  const { locale } = input;
+  const [messages, sessionId] = await Promise.all([
+    loadHostMessages(locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyPurchasePage,
-      message: sessionErrorMessage,
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       unexpected: false,
@@ -131,7 +147,11 @@ const readPurchaseList = async (
     dropFailedCacheEntry();
     return {
       ...emptyPurchasePage,
-      message: rpcErrorMessage(error, listErrorMessage),
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "host.library.list_failed"),
+        { locale }
+      ),
       ok: false,
       requiresSignIn: isRpcError(error, Code.Unauthenticated),
       unexpected: rpcErrorDisposition(error) === "unexpected",
@@ -141,11 +161,15 @@ const readPurchaseList = async (
 
 export const listMyPurchases = async (
   tenantId: string,
-  input: ListPurchasesInput = {}
+  input: ListPurchasesInput
 ): Promise<ListPurchasesResult> => {
   const { unexpected, ...result } = await readPurchaseList(tenantId, input);
   if (unexpected) {
-    throw new Error(result.ok ? listErrorMessage : result.message);
+    throw new Error(
+      result.ok
+        ? await purchaseMessage(input.locale, "host.library.list_failed")
+        : result.message
+    );
   }
   return result;
 };

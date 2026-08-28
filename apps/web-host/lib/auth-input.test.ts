@@ -1,3 +1,4 @@
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -9,10 +10,14 @@ import {
   returnToFormSchema,
   returnToSearchParamSchema,
   tenantIdFormSchema,
+  tenantIdSchema,
 } from "./auth-input";
+import type { HostMessages } from "./messages";
 
 const VALID_TOKEN = "a".repeat(64);
 const VALID_TENANT_ID = "01234567-89ab-cdef-0123-456789abcdef";
+const JA: HostMessages = sharedCatalog("ja");
+const EN: HostMessages = sharedCatalog("en");
 
 describe("returnToSearchParamSchema", () => {
   it("keeps a same-origin path", () => {
@@ -68,9 +73,13 @@ describe("authTokenSearchParamSchema", () => {
 
 describe("authTokenFormSchema", () => {
   it("rejects a missing or malformed token", () => {
-    expect(authTokenFormSchema.safeParse(null).success).toBe(false);
-    expect(authTokenFormSchema.safeParse("short").success).toBe(false);
-    expect(authTokenFormSchema.parse(VALID_TOKEN)).toBe(VALID_TOKEN);
+    expect(authTokenFormSchema(JA).safeParse(null).success).toBe(false);
+    expect(authTokenFormSchema(JA).safeParse("short").success).toBe(false);
+    expect(authTokenFormSchema(JA).parse(VALID_TOKEN)).toBe(VALID_TOKEN);
+
+    expect(
+      authTokenFormSchema(EN).safeParse("short").error?.issues[0]?.message
+    ).toBe("This confirmation link is not valid.");
   });
 });
 
@@ -83,27 +92,46 @@ describe("errorSearchParamSchema", () => {
   });
 });
 
+describe("tenantIdSchema", () => {
+  it("accepts a UUID tenant id and rejects other strings", () => {
+    expect(tenantIdSchema.parse(VALID_TENANT_ID)).toBe(VALID_TENANT_ID);
+    expect(tenantIdSchema.safeParse("favicon.ico").success).toBe(false);
+    expect(tenantIdSchema.safeParse("").success).toBe(false);
+  });
+});
+
 describe("tenantIdFormSchema", () => {
   it("accepts a UUID tenant id and rejects other strings", () => {
-    expect(tenantIdFormSchema.parse(VALID_TENANT_ID)).toBe(VALID_TENANT_ID);
-    expect(tenantIdFormSchema.safeParse("favicon.ico").success).toBe(false);
-    expect(tenantIdFormSchema.safeParse("").success).toBe(false);
+    expect(tenantIdFormSchema(JA).parse(VALID_TENANT_ID)).toBe(VALID_TENANT_ID);
+    expect(tenantIdFormSchema(JA).safeParse("favicon.ico").success).toBe(false);
+    expect(tenantIdFormSchema(JA).safeParse("").success).toBe(false);
+
+    expect(tenantIdFormSchema(EN).safeParse("").error?.issues[0]?.message).toBe(
+      "Tenant ID not found."
+    );
   });
 });
 
 describe("emailFormSchema", () => {
   it("trims and requires an email", () => {
-    expect(emailFormSchema.parse("  user@example.com  ")).toBe(
+    expect(emailFormSchema(JA).parse("  user@example.com  ")).toBe(
       "user@example.com"
     );
-    expect(emailFormSchema.safeParse("").success).toBe(false);
-    expect(emailFormSchema.safeParse("not-an-email").success).toBe(false);
+    expect(emailFormSchema(JA).safeParse("").success).toBe(false);
+    expect(emailFormSchema(JA).safeParse("not-an-email").success).toBe(false);
+
+    expect(emailFormSchema(EN).safeParse("").error?.issues[0]?.message).toBe(
+      "Enter your email address."
+    );
   });
 });
 
 describe("passwordFormSchema", () => {
   it("does not trim, and rejects an empty value", () => {
-    expect(passwordFormSchema.parse(" secret ")).toBe(" secret ");
-    expect(passwordFormSchema.safeParse("").success).toBe(false);
+    expect(passwordFormSchema(JA).parse(" secret ")).toBe(" secret ");
+    expect(passwordFormSchema(JA).safeParse("").success).toBe(false);
+    expect(passwordFormSchema(EN).safeParse("").error?.issues[0]?.message).toBe(
+      "Enter your password."
+    );
   });
 });

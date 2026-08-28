@@ -6,11 +6,13 @@ import { LocaleLink } from "#components/locale-link";
 import { toBarePathname } from "#lib/locale-path";
 
 const tabs = [
-  { href: "/settings", id: "basic", label: "基本設定" },
-  { href: "/settings/follows", id: "follows", label: "フォロー" },
-  { href: "/settings/notifications", id: "notifications", label: "通知" },
-  { href: "/settings/security", id: "security", label: "セキュリティ" },
-];
+  { href: "/settings", id: "basic" },
+  { href: "/settings/follows", id: "follows" },
+  { href: "/settings/notifications", id: "notifications" },
+  { href: "/settings/security", id: "security" },
+] as const;
+
+type TabId = (typeof tabs)[number]["id"];
 
 const isTabActive = (pathname: string, href: string): boolean => {
   if (href === "/settings") {
@@ -19,7 +21,11 @@ const isTabActive = (pathname: string, href: string): boolean => {
   return pathname.startsWith(href);
 };
 
-export const SettingsTabs = () => {
+/**
+ * The labels arrive resolved: the active tab is decided from the pathname, a
+ * client-only value, so the copy cannot be a server-rendered node here.
+ */
+export const SettingsTabs = ({ labels }: { labels: Record<TabId, string> }) => {
   // The tabs compare against bare `/settings*` paths, so the tenant id and the
   // locale come off first: a prerendered shell reports the rewritten pathname
   // while the browser reports the public one, and only the bare form is the
@@ -41,7 +47,7 @@ export const SettingsTabs = () => {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab.label}
+            {labels[tab.id]}
           </LocaleLink>
         );
       })}

@@ -4,21 +4,32 @@ import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
 
+import { LocaleField } from "#components/locale-field";
 import type { FollowTargetKind } from "#lib/follow";
 import type { FollowActionState } from "#lib/follow-actions";
 import { toggleFollowAction } from "#lib/follow-actions";
 
+/**
+ * Resolved strings rather than nodes: the label swaps while the Action is in
+ * flight, and the `aria-label` names the target it belongs to.
+ */
+interface UnfollowButtonCopy {
+  ariaLabel: string;
+  pending: string;
+  submit: string;
+}
+
 export const UnfollowButton = ({
+  copy,
   publicId,
   returnTo,
   targetKind,
-  targetName,
   tenantId,
 }: {
+  copy: UnfollowButtonCopy;
   publicId: string;
   returnTo: string;
   targetKind: FollowTargetKind;
-  targetName: string;
   tenantId: string;
 }) => {
   const [state, formAction, isPending] = useActionState(
@@ -29,6 +40,7 @@ export const UnfollowButton = ({
 
   return (
     <form action={formAction} className="grid justify-items-end gap-2">
+      <LocaleField />
       <input name="intent" type="hidden" value="unfollow" />
       <input name="publicId" type="hidden" value={publicId} />
       <input name="returnTo" type="hidden" value={returnTo} />
@@ -37,13 +49,13 @@ export const UnfollowButton = ({
       {removed ? null : (
         <Button
           aria-busy={isPending}
-          aria-label={`「${targetName}」のフォローを解除する`}
+          aria-label={copy.ariaLabel}
           disabled={isPending}
           size="sm"
           type="submit"
           variant="outline"
         >
-          {isPending ? "更新中…" : "フォローを解除"}
+          {isPending ? copy.pending : copy.submit}
         </Button>
       )}
       {state ? (

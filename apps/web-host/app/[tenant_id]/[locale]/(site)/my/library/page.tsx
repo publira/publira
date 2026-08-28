@@ -1,9 +1,12 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLogin } from "#lib/auth-session";
-import { getLocale } from "#lib/locale";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { listMyPurchases } from "#lib/purchases";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -15,7 +18,12 @@ import {
   purchasesListHref,
 } from "./_lib/search-params";
 
-export const metadata: Metadata = { title: "購入済み一覧" };
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return { title: getMessage(messages, "host.library.title") };
+};
 
 type PurchaseLibraryPageProps = PageProps<"/[tenant_id]/[locale]/my/library">;
 
@@ -36,7 +44,11 @@ const PurchaseLibraryData = async ({
   ]);
   const { token } = parsePurchasesSearchParams(resolvedSearchParams);
   const [result, timeZone] = await Promise.all([
-    listMyPurchases(tenantId, { limit: defaultPurchasesPageSize, token }),
+    listMyPurchases(tenantId, {
+      limit: defaultPurchasesPageSize,
+      locale,
+      token,
+    }),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -58,12 +70,24 @@ const PurchaseLibraryData = async ({
 const PurchaseLibraryPage = ({ searchParams }: PurchaseLibraryPageProps) => (
   <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-      <h1 className="text-xl font-semibold">購入済み一覧</h1>
+      <h1 className="text-xl font-semibold">
+        <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+          <Message message="host.library.title" />
+        </Suspense>
+      </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        購入したエピソードと、その閲覧期限を確認できます。
+        <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+          <Message message="host.library.description" />
+        </Suspense>
       </p>
     </section>
-    <SectionErrorBoundary title="購入済み一覧を表示できませんでした">
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="host.library.list_error" />
+        </Suspense>
+      }
+    >
       <Suspense fallback={<PurchaseLibrarySkeleton />}>
         <PurchaseLibraryData searchParams={searchParams} />
       </Suspense>

@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -5,29 +7,54 @@ import { Suspense } from "react";
 import { LocaleLink } from "#components/locale-link";
 import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { confirmPublicEmailChange } from "#lib/auth";
-import { getTenantSiteInfo } from "#lib/tenant";
+import { getLocale, loadHostMessages } from "#lib/locale";
+import type { HostMessageKey } from "#lib/locale";
+import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { parseConfirmEmailSearchParams } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "メール変更確認",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return { title: getMessage(messages, "host.auth.confirm_email.title") };
+};
+
+/**
+ * The outcome picks a key rather than a sentence, so the branch stays a
+ * decision about what happened and the copy still comes from the catalog.
+ */
+const confirmationMessageKey = (
+  result: Awaited<ReturnType<typeof confirmPublicEmailChange>>
+): HostMessageKey => {
+  if (result?.changed) {
+    return "host.auth.confirm_email.changed";
+  }
+  if (result?.confirmed) {
+    return result.pendingConfirmationFor === "current_email"
+      ? "host.auth.confirm_email.pending_current_email"
+      : "host.auth.confirm_email.pending_new_email";
+  }
+  return "host.auth.confirm_email.failed";
 };
 
 const ConfirmationResult = async ({ token }: { token: string }) => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const messages = await loadHostMessages(locale);
+
   if (!token) {
     return (
       <>
         <section className="space-y-3 text-sm leading-6">
-          <p>確認リンクが無効です。</p>
+          <p>{getMessage(messages, "host.auth.fields.invalid_token")}</p>
         </section>
         <div className="text-center text-sm">
           <LocaleLink
             href="/settings"
             className="font-medium text-primary hover:underline"
           >
-            設定へ戻る
+            {getMessage(messages, "host.auth.confirm_email.to_settings")}
           </LocaleLink>
         </div>
       </>
@@ -35,31 +62,23 @@ const ConfirmationResult = async ({ token }: { token: string }) => {
   }
 
   const result = await confirmPublicEmailChange(token, tenantId);
-  let message =
-    "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。";
-
-  if (result) {
-    if (result.changed) {
-      message = "メールアドレスの変更が完了しました。";
-    } else if (result.confirmed) {
-      message =
-        result.pendingConfirmationFor === "current_email"
-          ? "この確認は完了しました。現在のメールアドレス側の確認が完了すると変更が反映されます。"
-          : "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。";
-    }
-  }
 
   return (
     <>
       <section className="space-y-3 text-sm leading-6">
-        <p>{message}</p>
+        <p>{getMessage(messages, confirmationMessageKey(result))}</p>
       </section>
       <div className="text-center text-sm">
         <LocaleLink
           href={result?.changed ? "/my" : "/settings"}
           className="font-medium text-primary hover:underline"
         >
-          {result?.changed ? "マイページへ" : "設定へ戻る"}
+          {getMessage(
+            messages,
+            result?.changed
+              ? "host.auth.confirm_email.to_my"
+              : "host.auth.confirm_email.to_settings"
+          )}
         </LocaleLink>
       </div>
     </>
@@ -68,19 +87,15 @@ const ConfirmationResult = async ({ token }: { token: string }) => {
 
 const ConfirmationFallback = () => (
   <>
-    <header className="text-center">
-      <h1 className="font-serif text-2xl font-semibold">サイト</h1>
+    <header className="flex justify-center">
+      <Skeleton className="h-8 w-40" />
     </header>
-    <section className="space-y-3 text-sm leading-6">
-      <p>確認処理を実行しています...</p>
+    <section className="space-y-3">
+      <SkeletonLine className="h-4 w-full" />
+      <SkeletonLine className="h-4 w-3/4" />
     </section>
-    <div className="text-center text-sm">
-      <LocaleLink
-        href="/settings"
-        className="font-medium text-primary hover:underline"
-      >
-        設定へ戻る
-      </LocaleLink>
+    <div className="flex justify-center">
+      <SkeletonLine className="h-4 w-28" />
     </div>
   </>
 );
@@ -93,10 +108,12 @@ const ConfirmEmailPageContent = async ({
 }) => {
   await connection();
 
-  const tenantId = await getTenantId();
-
-  const info = await getTenantSiteInfo(tenantId);
-  const siteLabel = info?.name.trim() || "サイト";
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [info, siteLabel, messages] = await Promise.all([
+    getTenantSiteInfo(tenantId),
+    getTenantSiteLabel(tenantId, locale),
+    loadHostMessages(locale),
+  ]);
   const siteTagline = info?.siteTagline?.trim();
 
   const { token } = parseConfirmEmailSearchParams(await searchParams);
@@ -104,7 +121,10 @@ const ConfirmEmailPageContent = async ({
   return (
     <>
       <header className="text-center">
-        <TenantDocumentTitle pageTitle="メール変更確認" siteLabel={siteLabel} />
+        <TenantDocumentTitle
+          pageTitle={getMessage(messages, "host.auth.confirm_email.title")}
+          siteLabel={siteLabel}
+        />
         <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
         {siteTagline ? (
           <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>

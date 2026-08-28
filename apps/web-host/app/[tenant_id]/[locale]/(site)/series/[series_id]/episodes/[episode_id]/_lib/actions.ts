@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { apiClient, buildSessionHeaders } from "#lib/api-client";
-import { tenantIdFormSchema } from "#lib/auth-input";
+import { tenantIdSchema } from "#lib/auth-input";
 import { redirectToLogin, requirePublicSession } from "#lib/auth-session";
 import { isUnauthenticatedError } from "#lib/auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
@@ -25,7 +25,7 @@ const checkoutFormSchema = z.object({
   episodePublicId: publicIDFormSchema,
   locale: localeFormSchema,
   seriesPublicId: publicIDFormSchema,
-  tenantId: tenantIdFormSchema,
+  tenantId: tenantIdSchema,
 });
 
 const episodePath = (seriesPublicId: string, episodePublicId: string): string =>

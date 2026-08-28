@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -9,14 +10,18 @@ import { Suspense } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { TenantDocumentTitle } from "#components/tenant-document-title";
-import { getTenantSiteInfo } from "#lib/tenant";
+import { getLocale, loadHostMessages } from "#lib/locale";
+import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { loginAction } from "./_lib/actions";
 import { parseLoginSearchParams } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "ログイン",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return { title: getMessage(messages, "host.auth.login.title") };
 };
 
 /**
@@ -47,6 +52,11 @@ const LoginFormSkeleton = () => (
   </>
 );
 
+/**
+ * The form already waits on `searchParams`, so it resolves the catalog itself
+ * rather than giving each label its own boundary: nothing here can reach the
+ * static shell, and `placeholder` could not stream in any case.
+ */
 const LoginForm = async ({
   errorMessage,
   resetDone,
@@ -58,7 +68,9 @@ const LoginForm = async ({
   returnToPath: string;
   sessionRevoked?: boolean;
 }) => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const messages = await loadHostMessages(locale);
+
   return (
     <>
       <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
@@ -69,7 +81,7 @@ const LoginForm = async ({
 
           <Field>
             <FieldLabel htmlFor="email" required>
-              メールアドレス
+              {getMessage(messages, "host.auth.fields.email_label")}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -85,7 +97,7 @@ const LoginForm = async ({
 
           <Field>
             <FieldLabel htmlFor="password" required>
-              パスワード
+              {getMessage(messages, "host.auth.fields.password_label")}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -101,7 +113,7 @@ const LoginForm = async ({
 
           {sessionRevoked ? (
             <FormMessage variant="destructive">
-              セッションの有効期限が切れました。もう一度ログインしてください。
+              {getMessage(messages, "host.auth.login.session_revoked")}
             </FormMessage>
           ) : null}
 
@@ -111,12 +123,12 @@ const LoginForm = async ({
 
           {resetDone ? (
             <FormMessage variant="success">
-              パスワードを再設定しました。新しいパスワードでログインしてください。
+              {getMessage(messages, "host.auth.login.reset_done")}
             </FormMessage>
           ) : null}
 
           <Button className="mt-2 w-full" type="submit">
-            ログイン
+            {getMessage(messages, "host.auth.login.submit")}
           </Button>
         </form>
 
@@ -125,20 +137,20 @@ const LoginForm = async ({
             href="/reset-password"
             className="font-medium text-primary hover:underline"
           >
-            パスワードをお忘れですか？
+            {getMessage(messages, "host.auth.login.forgot_password")}
           </LocaleLink>
         </div>
       </div>
 
       <div className="mt-4 text-center text-sm">
         <span className="text-muted-foreground">
-          アカウントをお持ちでない方は
+          {getMessage(messages, "host.auth.login.no_account")}
         </span>{" "}
         <LocaleLink
           href="/signup"
           className="font-medium text-primary hover:underline"
         >
-          新規登録
+          {getMessage(messages, "host.auth.login.signup")}
         </LocaleLink>
       </div>
     </>
@@ -166,16 +178,21 @@ const LoginFormContent = async ({
 const LoginPageContent = async ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/login">) => {
-  const tenantId = await getTenantId();
-
-  const info = await getTenantSiteInfo(tenantId);
-  const siteLabel = info?.name.trim() || "サイト";
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [info, siteLabel, messages] = await Promise.all([
+    getTenantSiteInfo(tenantId),
+    getTenantSiteLabel(tenantId, locale),
+    loadHostMessages(locale),
+  ]);
   const siteTagline = info?.siteTagline?.trim();
 
   return (
     <div className="w-full max-w-sm">
       <div className="mb-8 text-center">
-        <TenantDocumentTitle pageTitle="ログイン" siteLabel={siteLabel} />
+        <TenantDocumentTitle
+          pageTitle={getMessage(messages, "host.auth.login.title")}
+          siteLabel={siteLabel}
+        />
         <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
         {siteTagline ? (
           <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
@@ -190,8 +207,8 @@ const LoginPageContent = async ({
 
 const LoginPageFallback = () => (
   <div className="w-full max-w-sm">
-    <div className="mb-8 text-center">
-      <h1 className="font-serif text-2xl font-semibold">サイト</h1>
+    <div className="mb-8 flex justify-center">
+      <Skeleton className="h-8 w-40" />
     </div>
     <LoginFormSkeleton />
   </div>

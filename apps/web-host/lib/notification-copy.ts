@@ -1,4 +1,7 @@
+import { getMessage } from "@publira/i18n";
 import { z } from "zod";
+
+import type { HostMessages } from "./messages";
 
 export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
 
@@ -46,19 +49,43 @@ export interface NotificationDisplay {
   title: string;
 }
 
-const quoted = (value: string): string => `「${value}」`;
-
-const episodeSubject = (payload: NotificationPayload): string => {
+/**
+ * The noun phrase the "published" sentence is built around. Quoting and the
+ * order of the two titles differ per language, so each shape is its own key
+ * rather than a string this module assembles.
+ */
+const episodeSubject = (
+  messages: HostMessages,
+  payload: NotificationPayload
+): string => {
   if (payload.episode_title && payload.series_title) {
-    return `${quoted(payload.episode_title)}（${payload.series_title}）`;
+    return getMessage(
+      messages,
+      "host.notifications.episode_published_subject_with_series",
+      {
+        episode_title: payload.episode_title,
+        series_title: payload.series_title,
+      }
+    );
   }
   if (payload.episode_title) {
-    return quoted(payload.episode_title);
+    return getMessage(
+      messages,
+      "host.notifications.episode_published_subject",
+      { episode_title: payload.episode_title }
+    );
   }
   if (payload.series_title) {
-    return `${quoted(payload.series_title)}のエピソード`;
+    return getMessage(
+      messages,
+      "host.notifications.episode_published_subject_series",
+      { series_title: payload.series_title }
+    );
   }
-  return "新しいエピソード";
+  return getMessage(
+    messages,
+    "host.notifications.episode_published_subject_unknown"
+  );
 };
 
 export const notificationHref = (
@@ -94,22 +121,27 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
  */
 export const notificationDisplay = (
   notificationType: string,
-  payload: NotificationPayload
+  payload: NotificationPayload,
+  messages: HostMessages
 ): NotificationDisplay => {
   const href = notificationHref(payload);
   const type = notificationType.trim();
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISHED) {
     return {
-      description: `${episodeSubject(payload)}が公開されました。`,
+      description: getMessage(
+        messages,
+        "host.notifications.episode_published_description",
+        { subject: episodeSubject(messages, payload) }
+      ),
       href,
-      title: "新しいエピソードが公開されました",
+      title: getMessage(messages, "host.notifications.episode_published_title"),
     };
   }
 
   return {
-    description: "内容の詳細はありません。",
+    description: getMessage(messages, "host.notifications.unknown_description"),
     href,
-    title: "通知",
+    title: getMessage(messages, "host.notifications.unknown_title"),
   };
 };

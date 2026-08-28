@@ -5,6 +5,7 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import type { MyFollow } from "@publira/api-client/public/types";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -18,12 +19,19 @@ import { applyCacheTag } from "./cache-tags";
 import { getSeriesDetail } from "./catalog";
 import { followsCacheTag, toFollowTargetKind } from "./follow";
 import type { FollowTargetKind } from "./follow";
+import { loadHostMessages } from "./messages";
 
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
-const listErrorMessage =
-  "フォロー一覧を取得できませんでした。時間をおいて再試行してください。";
+/**
+ * `locale` reaches the read as an argument rather than being resolved inside
+ * the cached scope, so the failure wording belongs to the cache key instead of
+ * to whichever request filled the entry.
+ */
+const followListMessage = async (
+  locale: Locale,
+  key: "errors.rpc.unauthenticated" | "host.settings.follows_failed"
+): Promise<string> => getMessage(await loadHostMessages(locale), key);
+
 const defaultFollowPageSize = 20;
-const unpublishedTitle = "現在公開されていません";
 
 /**
  * The generated `MyFollow` fields {@link mapMyFollow} reads. Naming them
@@ -68,6 +76,8 @@ type CachedListMyFollowsResult = ListMyFollowsResult & {
 
 export interface ListMyFollowsInput {
   limit?: number;
+  /** UI locale the failure wording belongs to; part of the cache key. */
+  locale: Locale;
   token?: string;
 }
 
@@ -111,7 +121,10 @@ const mapMyFollow = (item: RawMyFollow): FollowListEntry | null => {
 const followHref = (kind: FollowTargetKind, publicId: string): string =>
   kind === "author" ? `/authors/${publicId}` : `/series/${publicId}`;
 
-const unavailableItem = (follow: FollowListEntry): FollowListItem => ({
+const unavailableItem = (
+  follow: FollowListEntry,
+  unpublishedTitle: string
+): FollowListItem => ({
   ...follow,
   href: undefined,
   title: unpublishedTitle,
@@ -131,16 +144,20 @@ const availableItem = (
 /** A private, paged list of the signed-in member's currently public follows. */
 const readFollowList = async (
   tenantId: string,
-  input: ListMyFollowsInput = {}
+  input: ListMyFollowsInput
 ): Promise<CachedListMyFollowsResult> => {
   "use cache: private";
   applyCacheTag(followsCacheTag(tenantId));
 
-  const sessionId = await resolveAccessToken();
+  const { locale } = input;
+  const [messages, sessionId] = await Promise.all([
+    loadHostMessages(locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyFollowPage,
-      message: sessionErrorMessage,
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       unexpected: false,
@@ -170,7 +187,11 @@ const readFollowList = async (
     dropFailedCacheEntry();
     return {
       ...emptyFollowPage,
-      message: rpcErrorMessage(error, listErrorMessage),
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "host.settings.follows_failed"),
+        { locale }
+      ),
       ok: false,
       requiresSignIn: isSignInRequiredError(error),
       unexpected: isUnexpectedError(error),
@@ -180,10 +201,15 @@ const readFollowList = async (
 
 export const listMyFollows = async (
   tenantId: string,
-  input: ListMyFollowsInput = {}
+  input: ListMyFollowsInput
 ): Promise<ListMyFollowsResult> => {
   const { unexpected, ...result } = await readFollowList(tenantId, input);
-  throwIfUnexpected(unexpected, result.ok ? listErrorMessage : result.message);
+  throwIfUnexpected(
+    unexpected,
+    result.ok
+      ? await followListMessage(input.locale, "host.settings.follows_failed")
+      : result.message
+  );
   return result;
 };
 
@@ -192,12 +218,18 @@ export const listMyFollows = async (
  * reads stay on the shared public cache; a missing target is treated as
  * unpublished rather than distinguished from not-found.
  */
-export const resolveFollowListItems = (
+export const resolveFollowListItems = async (
   tenantId: string,
   follows: FollowListEntry[],
   locale: Locale
-): Promise<FollowListItem[]> =>
-  Promise.all(
+): Promise<FollowListItem[]> => {
+  const messages = await loadHostMessages(locale);
+  const unpublishedTitle = getMessage(
+    messages,
+    "host.settings.follows_unpublished_title"
+  );
+
+  return Promise.all(
     follows.map(async (follow) => {
       if (follow.targetKind === "author") {
         const result = await getPublishedAuthorDetail(
@@ -209,7 +241,7 @@ export const resolveFollowListItems = (
           return availableItem(follow, follow.publicId);
         }
         if (!result.value) {
-          return unavailableItem(follow);
+          return unavailableItem(follow, unpublishedTitle);
         }
         return availableItem(follow, result.value.name);
       }
@@ -219,8 +251,9 @@ export const resolveFollowListItems = (
         return availableItem(follow, follow.publicId);
       }
       if (!result.value) {
-        return unavailableItem(follow);
+        return unavailableItem(follow, unpublishedTitle);
       }
       return availableItem(follow, result.value.series.title);
     })
   );
+};
