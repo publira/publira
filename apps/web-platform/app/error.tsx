@@ -1,5 +1,8 @@
 "use client";
 
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
 import { ClientMessage } from "#components/client-message";
 import { ErrorScreen } from "#components/error-screen";
 
@@ -20,6 +23,19 @@ import { ErrorScreen } from "#components/error-screen";
  *
  * A failure in `app/layout.tsx` itself is above this boundary and still needs
  * `global-error.tsx` — tracked in #642.
+ *
+ * Sitting directly under the root layout is also why every string below has its
+ * own `<Suspense>`: nothing above this boundary can absorb a suspend, and
+ * `<ClientMessage>` suspends while it loads the catalog. Without a fallback to
+ * flush, React cuts the response short after the 200 is already committed and
+ * the operator gets the browser's own network-error page instead of this
+ * screen.
+ *
+ * A platform API outage does not reach this screen today: `proxy.ts` awaits
+ * `isSetupCompleted()`, which re-throws an `unavailable` RPC error, so every
+ * path outside `/setup` and the health probes answers a bare
+ * `500 Internal Server Error` from the proxy before any page renders — tracked
+ * in #1201, which also owns the e2e that measures this screen.
  */
 const RootError = ({
   error,
@@ -32,12 +48,28 @@ const RootError = ({
   // landmark, so this boundary owns the `<main>` element itself.
   <main>
     <ErrorScreen
-      description={<ClientMessage message="platform.errors.root_description" />}
+      description={
+        <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+          <ClientMessage message="platform.errors.root_description" />
+        </Suspense>
+      }
       digest={error.digest}
-      digestLabel={<ClientMessage message="platform.common.error_id" />}
+      digestLabel={
+        <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+          <ClientMessage message="platform.common.error_id" />
+        </Suspense>
+      }
       retry={retry}
-      retryLabel={<ClientMessage message="platform.common.retry" />}
-      title={<ClientMessage message="platform.errors.root_title" />}
+      retryLabel={
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <ClientMessage message="platform.common.retry" />
+        </Suspense>
+      }
+      title={
+        <Suspense fallback={<SkeletonLine className="h-8 w-96" />}>
+          <ClientMessage message="platform.errors.root_title" />
+        </Suspense>
+      }
     />
   </main>
 );
