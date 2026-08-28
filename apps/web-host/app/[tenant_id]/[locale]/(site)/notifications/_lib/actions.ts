@@ -1,17 +1,19 @@
 "use server";
 
-import { VALIDATION_ERROR_MESSAGE } from "@publira/utils/field-errors";
+import { getMessage } from "@publira/i18n";
+import { validationErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
-import { tenantIdFormSchema } from "#lib/auth-input";
+import { tenantIdSchema } from "#lib/auth-input";
 import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { localeFormSchema } from "#lib/locale-form";
+import { LOCALE_FIELD_NAME, localeFormSchema } from "#lib/locale-form";
+import { loadHostMessages } from "#lib/messages";
 import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
@@ -25,12 +27,12 @@ const NOTIFICATIONS_RETURN_TO = "/notifications";
 const markOneSchema = z.object({
   locale: localeFormSchema,
   notificationId: z.string().trim().pipe(z.uuid()),
-  tenantId: tenantIdFormSchema,
+  tenantId: tenantIdSchema,
 });
 
 const markAllSchema = z.object({
   locale: localeFormSchema,
-  tenantId: tenantIdFormSchema,
+  tenantId: tenantIdSchema,
 });
 
 export const markNotificationAsReadAction = async (
@@ -46,8 +48,12 @@ export const markNotificationAsReadAction = async (
     })
   );
   if (!parsed.success) {
+    // The locale field parses on its own — it falls back rather than failing —
+    // so the rejection can still be worded in the reader's language.
     return {
-      message: VALIDATION_ERROR_MESSAGE,
+      message: validationErrorMessage(
+        localeFormSchema.parse(formData.get(LOCALE_FIELD_NAME))
+      ),
       ok: false,
     };
   }
@@ -57,7 +63,7 @@ export const markNotificationAsReadAction = async (
   const result = await withPublicSessionReauth(
     locale,
     NOTIFICATIONS_RETURN_TO,
-    () => markNotificationAsRead(input)
+    () => markNotificationAsRead({ locale, ...input })
   );
   if (!result.ok) {
     return {
@@ -67,8 +73,9 @@ export const markNotificationAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
+  const messages = await loadHostMessages(locale);
   return {
-    message: "既読にしました。",
+    message: getMessage(messages, "host.notifications.marked_read"),
     ok: true,
   };
 };
@@ -86,7 +93,9 @@ export const markAllNotificationsAsReadAction = async (
   );
   if (!parsed.success) {
     return {
-      message: VALIDATION_ERROR_MESSAGE,
+      message: validationErrorMessage(
+        localeFormSchema.parse(formData.get(LOCALE_FIELD_NAME))
+      ),
       ok: false,
     };
   }
@@ -96,7 +105,7 @@ export const markAllNotificationsAsReadAction = async (
   const result = await withPublicSessionReauth(
     locale,
     NOTIFICATIONS_RETURN_TO,
-    () => markAllNotificationsAsRead(tenantId)
+    () => markAllNotificationsAsRead(tenantId, locale)
   );
   if (!result.ok) {
     return {
@@ -106,8 +115,9 @@ export const markAllNotificationsAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
+  const messages = await loadHostMessages(locale);
   return {
-    message: "未読をすべて既読にしました。",
+    message: getMessage(messages, "host.notifications.marked_all_read"),
     ok: true,
   };
 };

@@ -6,6 +6,8 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import type { AnnouncementItem } from "@publira/api-client/public/types";
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { z } from "zod";
 
@@ -14,8 +16,9 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
-import { tenantIdFormSchema } from "./auth-input";
+import { tenantIdSchema } from "./auth-input";
 import { applyCacheTag, tenantAnnouncementsTag } from "./cache-tags";
+import { loadHostMessages } from "./messages";
 
 export interface MemberAnnouncementItem {
   id: string;
@@ -34,18 +37,39 @@ export interface MemberAnnouncementItem {
 const isSignInRequiredError = (error: unknown): boolean =>
   isRpcError(error, Code.Unauthenticated, Code.InvalidArgument);
 
-const listErrorMessage = "お知らせの取得に失敗しました。";
-
 /**
  * Tag the cached inbox read carries, so `updateTag` in the Server Action
  * makes a mark-read visible on the next list render.
  */
 export const announcementsCacheTag = tenantAnnouncementsTag;
 
-const mapErrorToMessage = (error: unknown): string =>
-  rpcErrorMessage(error, listErrorMessage, {
-    "invalid-argument": "セッションが無効です。再ログインしてください。",
-  });
+/**
+ * `locale` reaches the read as an argument rather than being resolved inside
+ * the cached scope, so the wording a failure is stored with belongs to the
+ * cache key instead of to whichever request filled the entry.
+ *
+ * The `invalid-argument` override is why this list words its own session
+ * failure: {@link isSignInRequiredError} counts that category as a rejected
+ * session, so the shared「入力内容に誤りがあります。」would contradict the
+ * login redirect it triggers.
+ */
+const mapErrorToMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const messages = await loadHostMessages(locale);
+
+  return rpcErrorMessage(
+    error,
+    getMessage(messages, "host.announcements.list_failed"),
+    {
+      locale,
+      overrides: {
+        "invalid-argument": getMessage(messages, "errors.rpc.unauthenticated"),
+      },
+    }
+  );
+};
 
 /**
  * The generated `AnnouncementItem` fields {@link mapAnnouncementItem} reads.
@@ -81,6 +105,8 @@ const mapAnnouncementItems = (
  */
 export interface ListMyAnnouncementsOptions {
   limit?: number;
+  /** UI locale the failure wording belongs to; part of the cache key. */
+  locale: Locale;
   token?: string;
 }
 
@@ -148,7 +174,7 @@ const readAnnouncementList = async (
     return {
       ...emptyListPage,
       error,
-      message: mapErrorToMessage(error),
+      message: await mapErrorToMessage(error, options.locale),
       ok: false,
       requiresSignIn: isSignInRequiredError(error),
     };
@@ -157,8 +183,8 @@ const readAnnouncementList = async (
 
 export const listMyAnnouncements = async (
   tenantId: string,
-  sessionId?: string,
-  options: ListMyAnnouncementsOptions = {}
+  sessionId: string | undefined,
+  options: ListMyAnnouncementsOptions
 ): Promise<ListMyAnnouncementsResult> => {
   const { error, ...result } = await readAnnouncementList(
     tenantId,
@@ -173,7 +199,7 @@ export const listMyAnnouncements = async (
 
 const getMyAnnouncementInputSchema = z.object({
   announcementId: z.string().trim().pipe(z.uuid()),
-  tenantId: tenantIdFormSchema,
+  tenantId: tenantIdSchema,
 });
 
 interface CachedGetMyAnnouncementResult {

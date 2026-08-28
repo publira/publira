@@ -6,7 +6,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
-import { returnToFormSchema, tenantIdFormSchema } from "./auth-input";
+import { returnToFormSchema, tenantIdSchema } from "./auth-input";
 import { requirePublicSession, withPublicSessionReauth } from "./auth-session";
 import { assertSameOrigin } from "./csrf";
 import {
@@ -31,7 +31,7 @@ const followFormSchema = z.object({
   publicId: publicIdFormSchema,
   returnTo: returnToFormSchema,
   targetKind: z.enum(followTargetKinds),
-  tenantId: tenantIdFormSchema,
+  tenantId: tenantIdSchema,
 });
 
 export const toggleFollowAction = async (

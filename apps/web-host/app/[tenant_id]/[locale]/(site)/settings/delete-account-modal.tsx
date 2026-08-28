@@ -5,11 +5,26 @@ import { useCallback, useState } from "react";
 import { LocaleField } from "#components/locale-field";
 import { useTenantId } from "#lib/use-tenant-id";
 
+/**
+ * Resolved strings rather than nodes: the dialog is mounted from a click
+ * handler, so nothing in it can stream in from the server.
+ */
+interface DeleteAccountModalCopy {
+  cancel: string;
+  confirmDescription: string;
+  confirmTitle: string;
+  open: string;
+  passwordLabel: string;
+  submit: string;
+}
+
 interface DeleteAccountModalProps {
+  copy: DeleteAccountModalCopy;
   deleteAction: (formData: FormData) => Promise<void>;
 }
 
 export const DeleteAccountModal = ({
+  copy,
   deleteAction,
 }: DeleteAccountModalProps) => {
   const tenantId = useTenantId();
@@ -24,7 +39,7 @@ export const DeleteAccountModal = ({
         onClick={openModal}
         type="button"
       >
-        アカウントを削除
+        {copy.open}
       </button>
 
       {open ? (
@@ -38,10 +53,10 @@ export const DeleteAccountModal = ({
               className="text-lg font-semibold text-destructive"
               id="delete-account-modal-title"
             >
-              退会の確認
+              {copy.confirmTitle}
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              退会を実行するには、現在のパスワードを入力してください。
+              {copy.confirmDescription}
             </p>
 
             <form action={deleteAction} className="mt-5 space-y-4">
@@ -50,7 +65,7 @@ export const DeleteAccountModal = ({
 
               <div className="space-y-2">
                 <label htmlFor="deletePassword" className="text-sm font-medium">
-                  現在のパスワード
+                  {copy.passwordLabel}
                 </label>
                 <input
                   autoComplete="current-password"
@@ -69,13 +84,13 @@ export const DeleteAccountModal = ({
                   onClick={closeModal}
                   type="button"
                 >
-                  キャンセル
+                  {copy.cancel}
                 </button>
                 <button
                   className="inline-flex rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:opacity-90"
                   type="submit"
                 >
-                  退会する
+                  {copy.submit}
                 </button>
               </div>
             </form>

@@ -76,7 +76,7 @@ const toLocaleLinkItems = (
 const HostNotificationBell = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [unread, messages] = await Promise.all([
-    countUnreadNotifications(tenantId),
+    countUnreadNotifications(tenantId, locale),
     loadHostMessages(locale),
   ]);
 

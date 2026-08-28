@@ -68,6 +68,7 @@ describe("notification actions", () => {
 
     expect(result).toEqual({ message: "既読にしました。", ok: true });
     expect(mockMarkNotificationAsRead).toHaveBeenCalledWith({
+      locale: "ja",
       notificationId,
       tenantId,
     });
@@ -114,7 +115,7 @@ describe("notification actions", () => {
       message: "未読をすべて既読にしました。",
       ok: true,
     });
-    expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(tenantId);
+    expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(tenantId, "ja");
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
       "ja",
       "/notifications"

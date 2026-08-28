@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -23,16 +24,22 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+// `getLocale()` reads `next/root-params`, which only the Next.js compiler can
+// provide. The catalog is the real one, so the assertions stay on the copy a
+// reader actually sees.
+vi.mock("#lib/locale", () => ({
+  getLocale: () => Promise.resolve("ja"),
+  loadHostMessages: () => Promise.resolve(sharedCatalog("ja")),
+}));
+
 vi.mock("./unfollow-button", () => ({
   UnfollowButton: ({
+    copy,
     publicId,
-    targetName,
   }: {
+    copy: { ariaLabel: string };
     publicId: string;
-    targetName: string;
-  }) => (
-    <button type="button">{`「${targetName}」のフォローを解除する ${publicId}`}</button>
-  ),
+  }) => <button type="button">{`${copy.ariaLabel} ${publicId}`}</button>,
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -47,22 +54,34 @@ const follow = (overrides: Partial<FollowListItem> = {}): FollowListItem => ({
   ...overrides,
 });
 
+/**
+ * The component is an async Server Component, which the client renderer cannot
+ * mount on its own: awaiting it here hands `render` the element tree it
+ * produced.
+ */
+const renderList = async (
+  props: Partial<ComponentProps<typeof FollowList>> = {}
+) => {
+  render(
+    await FollowList({
+      items: [],
+      nextToken: "",
+      previousToken: "",
+      tenantId,
+      timeZone: "Asia/Tokyo",
+      token: "",
+      ...props,
+    })
+  );
+};
+
 afterEach(() => {
   cleanup();
 });
 
 describe("FollowList", () => {
-  it("最初のページが空なら未フォローとして案内する", () => {
-    render(
-      <FollowList
-        items={[]}
-        nextToken=""
-        previousToken=""
-        tenantId={tenantId}
-        timeZone="Asia/Tokyo"
-        token=""
-      />
-    );
+  it("最初のページが空なら未フォローとして案内する", async () => {
+    await renderList();
 
     expect(
       screen.getByText("フォロー中の作品・著者はありません。")
@@ -76,17 +95,8 @@ describe("FollowList", () => {
     ).toBe("/ja/series");
   });
 
-  it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
-    render(
-      <FollowList
-        items={[]}
-        nextToken=""
-        previousToken="previous"
-        tenantId={tenantId}
-        timeZone="Asia/Tokyo"
-        token="current"
-      />
-    );
+  it("ページ送りの先が空でも一覧全体が空だとは案内しない", async () => {
+    await renderList({ previousToken: "previous", token: "current" });
 
     expect(
       screen.getByText("このページに表示できるフォローはありません。")
@@ -97,26 +107,21 @@ describe("FollowList", () => {
     );
   });
 
-  it("作品と著者の公開ページへのリンクと解除操作を描画する", () => {
-    render(
-      <FollowList
-        items={[
-          follow(),
-          follow({
-            followedAt: "2026-05-31T00:00:00Z",
-            href: "/authors/AUTHOR01",
-            publicId: "AUTHOR01",
-            targetKind: "author",
-            title: "公開著者",
-          }),
-        ]}
-        nextToken="next"
-        previousToken="previous"
-        tenantId={tenantId}
-        timeZone="Asia/Tokyo"
-        token=""
-      />
-    );
+  it("作品と著者の公開ページへのリンクと解除操作を描画する", async () => {
+    await renderList({
+      items: [
+        follow(),
+        follow({
+          followedAt: "2026-05-31T00:00:00Z",
+          href: "/authors/AUTHOR01",
+          publicId: "AUTHOR01",
+          targetKind: "author",
+          title: "公開著者",
+        }),
+      ],
+      nextToken: "next",
+      previousToken: "previous",
+    });
 
     const seriesLink = screen.getByRole("link", { name: "公開シリーズ" });
     expect(seriesLink.getAttribute("href")).toBe("/ja/series/SERIES01");
@@ -136,23 +141,16 @@ describe("FollowList", () => {
     ).toBe("/ja/settings/follows?token=next");
   });
 
-  it("非公開になった対象はリンクも解除も出さない", () => {
-    render(
-      <FollowList
-        items={[
-          follow({
-            href: undefined,
-            title: "現在公開されていません",
-            unavailable: true,
-          }),
-        ]}
-        nextToken=""
-        previousToken=""
-        tenantId={tenantId}
-        timeZone="Asia/Tokyo"
-        token=""
-      />
-    );
+  it("非公開になった対象はリンクも解除も出さない", async () => {
+    await renderList({
+      items: [
+        follow({
+          href: undefined,
+          title: "現在公開されていません",
+          unavailable: true,
+        }),
+      ],
+    });
 
     expect(screen.getByText("現在公開されていません")).toBeDefined();
     expect(
@@ -165,18 +163,12 @@ describe("FollowList", () => {
     ).toBeNull();
   });
 
-  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", () => {
-    render(
-      <FollowList
-        items={[]}
-        listErrorMessage="フォロー一覧を取得できませんでした。"
-        nextToken="next"
-        previousToken="previous"
-        tenantId={tenantId}
-        timeZone="Asia/Tokyo"
-        token=""
-      />
-    );
+  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", async () => {
+    await renderList({
+      listErrorMessage: "フォロー一覧を取得できませんでした。",
+      nextToken: "next",
+      previousToken: "previous",
+    });
 
     const sectionError = screen.getByRole("alert");
     expect(sectionError.textContent).toContain(

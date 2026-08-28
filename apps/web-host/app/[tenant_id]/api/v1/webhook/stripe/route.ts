@@ -7,9 +7,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { apiClient } from "#lib/api-client";
-import { tenantIdFormSchema } from "#lib/auth-input";
+import { tenantIdSchema } from "#lib/auth-input";
 
-const webhookPathSchema = z.object({ tenantId: tenantIdFormSchema });
+const webhookPathSchema = z.object({ tenantId: tenantIdSchema });
 
 /**
  * Tenant-scoped Stripe endpoint. This BFF deliberately does not inspect the

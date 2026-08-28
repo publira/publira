@@ -1,6 +1,6 @@
 "use server";
 
-import { parseLocale } from "@publira/i18n";
+import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -16,6 +16,8 @@ import {
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
+import { loadHostMessages } from "#lib/messages";
+import type { HostMessages } from "#lib/messages";
 
 const NOTIFICATION_SETTINGS_RETURN_TO = "/settings/notifications";
 
@@ -29,20 +31,30 @@ const buildSettingsPath = (
   return `${path}?${params.toString()}`;
 };
 
-const updateNotificationSettingsFormSchema = z.object({
-  emailNotificationsEnabled: z
-    .literal("on", { error: "通知設定の値が不正です。" })
-    .optional()
-    .transform((value) => value === "on"),
-  locale: localeFormSchema,
-  tenantId: tenantIdFormSchema,
-});
+const updateNotificationSettingsFormSchema = (messages: HostMessages) =>
+  z.object({
+    emailNotificationsEnabled: z
+      .literal("on", {
+        error: getMessage(
+          messages,
+          "host.settings.email_notifications_invalid"
+        ),
+      })
+      .optional()
+      .transform((value) => value === "on"),
+    locale: localeFormSchema,
+    tenantId: tenantIdFormSchema(messages),
+  });
 
 export const updateNotificationSettingsAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
-  const parsed = updateNotificationSettingsFormSchema.safeParse(
+  // The locale field falls back rather than failing, so a rejected submission
+  // is still worded in the reader's language.
+  const submittedLocale = parseLocale(formData.get("locale"));
+  const messages = await loadHostMessages(submittedLocale);
+  const parsed = updateNotificationSettingsFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       emailNotificationsEnabled: "value",
       locale: "value",
@@ -52,9 +64,9 @@ export const updateNotificationSettingsAction = async (
   if (!parsed.success) {
     redirect(
       buildSettingsPath(
-        parseLocale(formData.get("locale")),
+        submittedLocale,
         "error",
-        toFormErrorMessage(parsed.error)
+        toFormErrorMessage(parsed.error, { locale: submittedLocale })
       )
     );
   }
@@ -79,10 +91,16 @@ export const updateNotificationSettingsAction = async (
       buildSettingsPath(
         locale,
         "error",
-        "通知設定の更新に失敗しました。時間をおいて再度お試しください。"
+        getMessage(messages, "host.settings.email_notifications_update_failed")
       )
     );
   }
 
-  redirect(buildSettingsPath(locale, "success", "通知設定を更新しました。"));
+  redirect(
+    buildSettingsPath(
+      locale,
+      "success",
+      getMessage(messages, "host.settings.email_notifications_updated")
+    )
+  );
 };

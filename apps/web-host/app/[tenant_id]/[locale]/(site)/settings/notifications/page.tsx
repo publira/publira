@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { LocaleField } from "#components/locale-field";
@@ -6,7 +8,7 @@ import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
-import { getLocale } from "#lib/locale";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { updateNotificationSettingsAction } from "./_lib/actions";
@@ -17,17 +19,20 @@ const NotificationsSection = async () => {
   const locale = await getLocale();
   await requirePublicSession(locale, NOTIFICATION_SETTINGS_RETURN_TO);
   const tenantId = await getTenantId();
-  const notificationSettings = await withPublicSessionReauth(
-    locale,
-    NOTIFICATION_SETTINGS_RETURN_TO,
-    () => getNotificationSettings(tenantId)
-  );
+  const [notificationSettings, messages] = await Promise.all([
+    withPublicSessionReauth(locale, NOTIFICATION_SETTINGS_RETURN_TO, () =>
+      getNotificationSettings(tenantId)
+    ),
+    loadHostMessages(locale),
+  ]);
   const emailNotificationsEnabled =
     notificationSettings?.emailNotificationsEnabled ?? true;
 
   return (
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold">メール通知設定</h2>
+      <h2 className="mb-4 text-lg font-semibold">
+        {getMessage(messages, "host.settings.email_notifications_heading")}
+      </h2>
       <form action={updateNotificationSettingsAction} className="space-y-4">
         <LocaleField />
         <input name="tenantId" type="hidden" value={tenantId} />
@@ -39,9 +44,9 @@ const NotificationsSection = async () => {
             type="checkbox"
           />
           <span className="text-sm">
-            メール通知を受け取る
+            {getMessage(messages, "host.settings.email_notifications_label")}
             <span className="block text-muted-foreground">
-              購読や重要なお知らせをメールで受信します。
+              {getMessage(messages, "host.settings.email_notifications_help")}
             </span>
           </span>
         </label>
@@ -51,7 +56,7 @@ const NotificationsSection = async () => {
             className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             type="submit"
           >
-            保存
+            {getMessage(messages, "host.settings.save")}
           </button>
         </div>
       </form>
@@ -61,7 +66,7 @@ const NotificationsSection = async () => {
 
 const NotificationsSectionFallback = () => (
   <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-    <h2 className="mb-4 text-lg font-semibold">メール通知設定</h2>
+    <SkeletonLine className="mb-4 h-6 w-40" />
     <div className="h-20 w-full animate-pulse rounded-md bg-muted" />
   </section>
 );

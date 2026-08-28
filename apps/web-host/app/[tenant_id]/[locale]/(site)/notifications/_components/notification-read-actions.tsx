@@ -13,12 +13,22 @@ import {
 const actionButtonClassName =
   "inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60";
 
+/**
+ * Resolved strings rather than nodes: the label swaps while the Action is in
+ * flight, and the `aria-label` names the notification it belongs to.
+ */
+interface MarkNotificationAsReadCopy {
+  ariaLabel: string;
+  pending: string;
+  submit: string;
+}
+
 export const MarkNotificationAsReadButton = ({
-  label,
+  copy,
   notificationId,
   tenantId,
 }: {
-  label: string;
+  copy: MarkNotificationAsReadCopy;
   notificationId: string;
   tenantId: string;
 }) => {
@@ -33,12 +43,12 @@ export const MarkNotificationAsReadButton = ({
       <input name="tenantId" type="hidden" value={tenantId} />
       <input name="notificationId" type="hidden" value={notificationId} />
       <button
-        aria-label={`${label}を既読にする`}
+        aria-label={copy.ariaLabel}
         className={actionButtonClassName}
         disabled={isPending}
         type="submit"
       >
-        {isPending ? "更新中…" : "既読にする"}
+        {isPending ? copy.pending : copy.submit}
       </button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
@@ -48,8 +58,10 @@ export const MarkNotificationAsReadButton = ({
 };
 
 export const MarkAllNotificationsAsReadButton = ({
+  copy,
   tenantId,
 }: {
+  copy: { pending: string; submit: string };
   tenantId: string;
 }) => {
   const [state, formAction, isPending] = useActionState(
@@ -66,7 +78,7 @@ export const MarkAllNotificationsAsReadButton = ({
         disabled={isPending}
         type="submit"
       >
-        {isPending ? "更新中…" : "すべて既読にする"}
+        {isPending ? copy.pending : copy.submit}
       </button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

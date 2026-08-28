@@ -1,6 +1,6 @@
 "use server";
 
-import { parseLocale } from "@publira/i18n";
+import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -16,24 +16,30 @@ import {
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
+import { loadHostMessages } from "#lib/messages";
+import type { HostMessages } from "#lib/messages";
 
-const tokenOrEmpty = (value: string | undefined): string => {
-  const parsed = authTokenFormSchema.safeParse(value);
+const tokenOrEmpty = (
+  messages: HostMessages,
+  value: string | undefined
+): string => {
+  const parsed = authTokenFormSchema(messages).safeParse(value);
   return parsed.success ? parsed.data : "";
 };
 
-const confirmPasswordFormSchema = z
-  .object({
-    confirmPassword: passwordFormSchema,
-    locale: localeFormSchema,
-    newPassword: passwordFormSchema,
-    tenantId: tenantIdFormSchema,
-    token: authTokenFormSchema,
-  })
-  .refine((value) => value.newPassword === value.confirmPassword, {
-    error: "パスワード確認が一致しません。",
-    path: ["confirmPassword"],
-  });
+const confirmPasswordFormSchema = (messages: HostMessages) =>
+  z
+    .object({
+      confirmPassword: passwordFormSchema(messages),
+      locale: localeFormSchema,
+      newPassword: passwordFormSchema(messages),
+      tenantId: tenantIdFormSchema(messages),
+      token: authTokenFormSchema(messages),
+    })
+    .refine((value) => value.newPassword === value.confirmPassword, {
+      error: getMessage(messages, "host.auth.errors.password_mismatch"),
+      path: ["confirmPassword"],
+    });
 
 const buildConfirmPasswordErrorPath = (
   locale: Locale,
@@ -64,14 +70,18 @@ export const confirmPasswordAction = async (
     tenantId: "value",
     token: "value",
   });
-  const parsed = confirmPasswordFormSchema.safeParse(input);
+  // The locale field falls back rather than failing, so a rejected submission
+  // is still worded in the reader's language.
+  const submittedLocale = parseLocale(input.locale);
+  const messages = await loadHostMessages(submittedLocale);
+  const parsed = confirmPasswordFormSchema(messages).safeParse(input);
   if (!parsed.success) {
-    const token = tokenOrEmpty(input.token);
+    const token = tokenOrEmpty(messages, input.token);
     redirect(
       buildConfirmPasswordErrorPath(
-        parseLocale(input.locale),
+        submittedLocale,
         token,
-        toFormErrorMessage(parsed.error)
+        toFormErrorMessage(parsed.error, { locale: submittedLocale })
       )
     );
   }
@@ -87,7 +97,7 @@ export const confirmPasswordAction = async (
       buildConfirmPasswordErrorPath(
         locale,
         token,
-        "再設定に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。"
+        getMessage(messages, "host.auth.errors.reset_confirm_failed")
       )
     );
   }

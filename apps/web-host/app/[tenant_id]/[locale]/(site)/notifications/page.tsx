@@ -1,9 +1,12 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLogin } from "#lib/auth-session";
-import { getLocale } from "#lib/locale";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -15,15 +18,18 @@ import {
   parseNotificationsSearchParams,
 } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "通知",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return { title: getMessage(messages, "host.notifications.title") };
 };
 
 type NotificationsPageProps = PageProps<"/[tenant_id]/[locale]/notifications">;
 
 const NotificationListSkeleton = () => (
   <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-    <h2 className="mb-4 text-lg font-semibold">通知一覧</h2>
+    <SkeletonLine className="mb-4 h-6 w-28" />
     <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
   </section>
 );
@@ -40,9 +46,10 @@ const NotificationListData = async ({
   const [listResult, unreadResult, timeZone] = await Promise.all([
     listNotifications(tenantId, {
       limit: defaultNotificationsPageSize,
+      locale,
       token,
     }),
-    countUnreadNotifications(tenantId),
+    countUnreadNotifications(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -67,13 +74,25 @@ const NotificationListData = async ({
 const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
   <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-      <h1 className="text-xl font-semibold">通知</h1>
+      <h1 className="text-xl font-semibold">
+        <Suspense fallback={<SkeletonLine className="h-6 w-20" />}>
+          <Message message="host.notifications.title" />
+        </Suspense>
+      </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        自分宛の通知を確認し、既読にできます。運営からのお知らせは別の一覧です。
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="host.notifications.description" />
+        </Suspense>
       </p>
     </section>
 
-    <SectionErrorBoundary title="通知一覧を表示できませんでした">
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
+          <Message message="host.notifications.list_error" />
+        </Suspense>
+      }
+    >
       <Suspense fallback={<NotificationListSkeleton />}>
         <NotificationListData searchParams={searchParams} />
       </Suspense>

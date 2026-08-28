@@ -1,13 +1,17 @@
+import { getMessage } from "@publira/i18n";
 import { SectionError } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listMyAnnouncements } from "#lib/announcements";
 import { redirectToLogin } from "#lib/auth-session";
-import { getLocale } from "#lib/locale";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -23,6 +27,13 @@ import {
 
 const ANNOUNCEMENTS_PAGE_SIZE = 20;
 
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return { title: getMessage(messages, "host.announcements.title") };
+};
+
 /*
  * The session id is left to `resolveAccessToken()` inside `#lib/announcements`.
  * The `publira_web_host_auth` cookie holds an *encrypted* session payload, not
@@ -30,42 +41,56 @@ const ANNOUNCEMENTS_PAGE_SIZE = 20;
  * call fail `unauthenticated`; only the library's own cookie path decrypts it.
  */
 
-const AnnouncementsPagination = ({
+/**
+ * Resolves the catalog itself rather than taking it as a prop: every caller
+ * already sits inside the section's own boundary, and the `aria-label` cannot
+ * stream in any case.
+ */
+const AnnouncementsPagination = async ({
   nextToken,
   previousToken,
 }: {
   nextToken: string;
   previousToken: string;
-}) => (
-  <nav
-    aria-label="お知らせ一覧ページング"
-    className="mt-6 flex items-center justify-center gap-6"
-  >
-    {previousToken ? (
-      <LocaleLink
-        className="text-sm text-primary underline-offset-4 hover:underline"
-        href={announcementsListHref(previousToken)}
-      >
-        前のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">前のページ</span>
-    )}
+}) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
 
-    {nextToken ? (
-      <LocaleLink
-        className="text-sm text-primary underline-offset-4 hover:underline"
-        href={announcementsListHref(nextToken)}
-      >
-        次のページ
-      </LocaleLink>
-    ) : (
-      <span className="text-sm text-muted-foreground">次のページ</span>
-    )}
-  </nav>
-);
+  return (
+    <nav
+      aria-label={getMessage(messages, "host.announcements.pagination_aria")}
+      className="mt-6 flex items-center justify-center gap-6"
+    >
+      {previousToken ? (
+        <LocaleLink
+          className="text-sm text-primary underline-offset-4 hover:underline"
+          href={announcementsListHref(previousToken)}
+        >
+          {getMessage(messages, "host.common.previous_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.previous_page")}
+        </span>
+      )}
 
-const AnnouncementsEmptyState = ({
+      {nextToken ? (
+        <LocaleLink
+          className="text-sm text-primary underline-offset-4 hover:underline"
+          href={announcementsListHref(nextToken)}
+        >
+          {getMessage(messages, "host.common.next_page")}
+        </LocaleLink>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "host.common.next_page")}
+        </span>
+      )}
+    </nav>
+  );
+};
+
+const AnnouncementsEmptyState = async ({
   nextToken,
   previousToken,
   token,
@@ -74,10 +99,13 @@ const AnnouncementsEmptyState = ({
   previousToken: string;
   token: string;
 }) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
   if (!token) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
-        現在表示できるお知らせはありません。
+        {getMessage(messages, "host.announcements.list_empty")}
       </div>
     );
   }
@@ -87,7 +115,7 @@ const AnnouncementsEmptyState = ({
   // the only way out is the first page (`proto/README.md`).
   return (
     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
-      <p>このページに表示できるお知らせがありません。</p>
+      <p>{getMessage(messages, "host.announcements.page_empty")}</p>
       {previousToken || nextToken ? (
         <AnnouncementsPagination
           nextToken={nextToken}
@@ -98,7 +126,7 @@ const AnnouncementsEmptyState = ({
           className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
           href={announcementsListHref("")}
         >
-          お知らせ一覧の先頭へ
+          {getMessage(messages, "host.announcements.first_page")}
         </LocaleLink>
       )}
     </div>
@@ -117,12 +145,14 @@ const AnnouncementsSection = async ({
   ]);
   const { token } = parseAnnouncementsListSearchParams(resolvedSearchParams);
 
-  const [result, timeZone] = await Promise.all([
+  const [result, timeZone, messages] = await Promise.all([
     listMyAnnouncements(tenantId, undefined, {
       limit: ANNOUNCEMENTS_PAGE_SIZE,
+      locale,
       token,
     }),
     getTenantDisplayTimeZone(tenantId),
+    loadHostMessages(locale),
   ]);
   if (!result.ok && result.requiresSignIn) {
     // Come back to the page the reader was actually on, not just the first one.
@@ -140,7 +170,9 @@ const AnnouncementsSection = async ({
   return (
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">お知らせ一覧</h2>
+        <h2 className="text-lg font-semibold">
+          {getMessage(messages, "host.announcements.list_heading")}
+        </h2>
         <div className="flex items-center gap-2">
           <span
             className={
@@ -149,7 +181,9 @@ const AnnouncementsSection = async ({
                 : "rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
             }
           >
-            このページの未読 {unreadCount} 件
+            {getMessage(messages, "host.announcements.unread_on_page", {
+              count: String(unreadCount),
+            })}
           </span>
           {result.announcements.length > 0 ? (
             // Offered on every non-empty page: the unread count above covers
@@ -162,7 +196,7 @@ const AnnouncementsSection = async ({
                 className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
                 type="submit"
               >
-                すべて既読にする
+                {getMessage(messages, "host.common.mark_all_read")}
               </button>
             </form>
           ) : null}
@@ -173,7 +207,7 @@ const AnnouncementsSection = async ({
         <SectionError
           className="mb-4"
           description={result.message}
-          title="お知らせ一覧を表示できませんでした"
+          title={getMessage(messages, "host.announcements.list_error")}
         />
       )}
 
@@ -204,7 +238,7 @@ const AnnouncementsSection = async ({
                     className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
                     href={announcement.linkUrl}
                   >
-                    遷移先を開く
+                    {getMessage(messages, "host.announcements.open_link")}
                   </LocaleLink>
                 );
               }
@@ -222,7 +256,10 @@ const AnnouncementsSection = async ({
                     className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
                     type="submit"
                   >
-                    開いて既読にする
+                    {getMessage(
+                      messages,
+                      "host.announcements.open_and_mark_read"
+                    )}
                   </button>
                 </form>
               );
@@ -243,11 +280,17 @@ const AnnouncementsSection = async ({
                           : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
                       }
                     >
-                      {announcement.isRead ? "既読" : "未読"}
+                      {getMessage(
+                        messages,
+                        announcement.isRead
+                          ? "host.common.read"
+                          : "host.common.unread"
+                      )}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {formatDateTime(announcement.createdAt, {
                         fallback: "-",
+                        locale,
                         timeZone,
                       })}
                     </span>
@@ -270,7 +313,7 @@ const AnnouncementsSection = async ({
                         className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
                         type="submit"
                       >
-                        既読にする
+                        {getMessage(messages, "host.common.mark_read")}
                       </button>
                     </form>
                   )}
@@ -294,7 +337,7 @@ const AnnouncementsSection = async ({
 
 const AnnouncementsSectionFallback = () => (
   <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-    <h2 className="mb-4 text-lg font-semibold">お知らせ一覧</h2>
+    <SkeletonLine className="mb-4 h-6 w-32" />
     <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
   </section>
 );
@@ -304,13 +347,25 @@ const AnnouncementsPage = ({
 }: PageProps<"/[tenant_id]/[locale]/announcements">) => (
   <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-      <h1 className="text-xl font-semibold">お知らせ</h1>
+      <h1 className="text-xl font-semibold">
+        <Suspense fallback={<SkeletonLine className="h-6 w-24" />}>
+          <Message message="host.announcements.title" />
+        </Suspense>
+      </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        運営から配信されたお知らせを確認できます。
+        <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+          <Message message="host.announcements.description" />
+        </Suspense>
       </p>
     </section>
 
-    <SectionErrorBoundary title="お知らせ一覧を表示できませんでした">
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
+          <Message message="host.announcements.list_error" />
+        </Suspense>
+      }
+    >
       <Suspense fallback={<AnnouncementsSectionFallback />}>
         <AnnouncementsSection searchParams={searchParams} />
       </Suspense>

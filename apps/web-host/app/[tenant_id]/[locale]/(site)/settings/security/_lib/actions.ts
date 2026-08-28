@@ -1,10 +1,10 @@
 "use server";
 
-import { parseLocale } from "@publira/i18n";
+import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
   toFormErrorMessage,
-  VALIDATION_ERROR_MESSAGE,
+  validationErrorMessage,
 } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
@@ -23,6 +23,8 @@ import {
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { withLocalePrefix } from "#lib/locale-path";
+import { loadHostMessages } from "#lib/messages";
+import type { HostMessages } from "#lib/messages";
 
 const SECURITY_SETTINGS_RETURN_TO = "/settings/security";
 
@@ -36,19 +38,24 @@ const buildSettingsPath = (
   return `${path}?${params.toString()}`;
 };
 
-const requestEmailChangeFormSchema = z.object({
-  currentEmail: emailFormSchema,
-  currentPassword: passwordFormSchema,
-  locale: localeFormSchema,
-  newEmail: emailFormSchema,
-  tenantId: tenantIdFormSchema,
-});
+const requestEmailChangeFormSchema = (messages: HostMessages) =>
+  z.object({
+    currentEmail: emailFormSchema(messages),
+    currentPassword: passwordFormSchema(messages),
+    locale: localeFormSchema,
+    newEmail: emailFormSchema(messages),
+    tenantId: tenantIdFormSchema(messages),
+  });
 
 export const requestEmailChangeAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
-  const parsed = requestEmailChangeFormSchema.safeParse(
+  // The locale field falls back rather than failing, so a rejected submission
+  // is still worded in the reader's language.
+  const submittedLocale = parseLocale(formData.get("locale"));
+  const messages = await loadHostMessages(submittedLocale);
+  const parsed = requestEmailChangeFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       currentEmail: "value",
       currentPassword: "value",
@@ -60,10 +67,10 @@ export const requestEmailChangeAction = async (
   if (!parsed.success) {
     redirect(
       buildSettingsPath(
-        parseLocale(formData.get("locale")),
+        submittedLocale,
         "error",
         toFormErrorMessage(parsed.error, {
-          fallback: VALIDATION_ERROR_MESSAGE,
+          fallback: validationErrorMessage(submittedLocale),
         })
       )
     );
@@ -94,7 +101,7 @@ export const requestEmailChangeAction = async (
       buildSettingsPath(
         locale,
         "error",
-        "メール変更リクエストに失敗しました。入力内容をご確認ください。"
+        getMessage(messages, "host.settings.email_change_failed")
       )
     );
   }
@@ -103,7 +110,7 @@ export const requestEmailChangeAction = async (
     buildSettingsPath(
       locale,
       "success",
-      "現在のメールアドレスと新しいメールアドレスの両方に確認メールを送信しました。両方のリンクを開いて変更を完了してください。"
+      getMessage(messages, "host.settings.email_change_requested")
     )
   );
 };

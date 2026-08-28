@@ -19,10 +19,14 @@ describe("UnfollowButton", () => {
   it("一覧からの解除操作だけを出す", () => {
     render(
       <UnfollowButton
+        copy={{
+          ariaLabel: "「公開シリーズ」のフォローを解除する",
+          pending: "更新中…",
+          submit: "フォローを解除",
+        }}
         publicId="SERIES01"
         returnTo="/settings/follows"
         targetKind="series"
-        targetName="公開シリーズ"
         tenantId={tenantId}
       />
     );
