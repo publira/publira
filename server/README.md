@@ -79,7 +79,7 @@ task server:test
 
 ## Graceful shutdown
 
-常駐プロセス（`api-server` / `admin-api-server` / `platform-api-server` / `image-server` / `admin-image-server` / `outbox-worker`）は SIGINT / SIGTERM で `http.Server.Shutdown` を呼びます。`outbox-worker` は同じ期限で River クライアントも停止します。処理中リクエストの排出と、登録済みのシャットダウンフックは同じ 30 秒の期限を共有します。猶予を超えた接続は `Close` で切断します。各 `main` は DB プールのクローズをフックとして渡し、起動失敗経路の安全網として `defer db.Close()` も残しています。OpenTelemetry の span flush は [#196](https://github.com/publira/publira/issues/196) がフックを追加したあとにこの経路へ乗ります。
+常駐プロセス（`api-server` / `admin-api-server` / `platform-api-server` / `image-server` / `admin-image-server` / `outbox-worker`）は SIGINT / SIGTERM で `http.Server.Shutdown` を呼びます。`outbox-worker` は同じ期限で River クライアントも停止します。処理中リクエストの排出と、登録済みのシャットダウンフックは同じ 30 秒の期限を共有します。猶予を超えた接続は `Close` で切断します。`admin-api-server` と `platform-api-server` は HTTP の排出後かつ DB プールを閉じる前に、残った非同期監査ログを同じ残り時間で flush します。期限を超えると、進行中の保存をキャンセルして未保存イベントを drop し、件数と原因をメトリクス・構造化ログへ残します。各 `main` は DB プールのクローズを最後のフックとして渡し、起動失敗経路の安全網として `defer db.Close()` も残しています。OpenTelemetry の span flush は [#196](https://github.com/publira/publira/issues/196) がフックを追加したあとにこの経路へ乗ります。
 
 オーケストレータの SIGKILL 猶予は 30 秒より長くしてください（Kubernetes なら `terminationGracePeriodSeconds` を 45 以上）。ロードバランサの readiness 排出は別途の設定です。
 
@@ -192,6 +192,20 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 | outbound HTTP（Next.js 再検証 / email-renderer） | `otelhttp` の Transport | client span と `traceparent` の伝播 |
 
 伝播は W3C Trace Context（`traceparent`）と Baggage です。inbound の `traceparent` は**親として信頼**するため、web アプリから API、その先の DB クエリまでが 1 トレースに繋がります。
+
+### 非同期監査ログの運用監視
+
+`admin-api-server` と `platform-api-server` の非同期監査ログは、OpenTelemetry の次の低カーディナリティメトリクスを記録します。`auditlog.entry_type` は `platform` または `tenant`、`auditlog.drop_reason` は `queue_full`、`retry_exhausted`、`shutdown` のいずれかです。`action` やテナント ID はメトリクス属性に含めません。
+
+| メトリクス | 種別 | 意味 |
+| --- | --- | --- |
+| `publira.auditlog.queue.depth` | gauge | キューで保存待ちのイベント数 |
+| `publira.auditlog.entries.enqueued` | counter | キューに受理したイベント数 |
+| `publira.auditlog.entries.persisted` | counter | 非同期保存に成功したイベント数 |
+| `publira.auditlog.persist.failures` | counter | 保存に失敗した試行数（retry を含む） |
+| `publira.auditlog.entries.dropped` | counter | 保存前に drop したイベント数 |
+
+保存失敗の retry、最終 drop、キューあふれ、shutdown drain の期限切れは構造化ログにも出力します。`queue.depth` の継続的な増加、`persist.failures`、`entries.dropped` はアラート候補です。メーターは OTel MeterProvider が設定されたときに export されます。ローカル Collector の設定は [#198](https://github.com/publira/publira/issues/198) の対象です。
 
 ### resource 属性
 

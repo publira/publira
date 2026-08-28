@@ -71,6 +71,16 @@ func TestAsyncRecorderPersistsPlatformEntry(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for queued platform entry")
 	}
+	recorder.Close()
+	if got := recorder.Metrics().Enqueued.Load(); got != 1 {
+		t.Fatalf("enqueued entries = %d, want 1", got)
+	}
+	if got := recorder.Metrics().Persisted.Load(); got != 1 {
+		t.Fatalf("persisted entries = %d, want 1", got)
+	}
+	if got := recorder.Metrics().QueueDepth.Load(); got != 0 {
+		t.Fatalf("queue depth = %d, want 0", got)
+	}
 }
 
 func TestAsyncRecorderWritesWithRequestValuesButWithoutCancellation(t *testing.T) {
@@ -175,6 +185,9 @@ func TestAsyncRecorderDropsEntryWhenQueueIsFull(t *testing.T) {
 	if !strings.Contains(logs.String(), "auditlog: queue is full; dropping entry") {
 		t.Fatalf("queue overflow was not logged: %s", logs.String())
 	}
+	if got := recorder.Metrics().Dropped.Load(); got != 1 {
+		t.Fatalf("dropped entries = %d, want 1", got)
+	}
 }
 
 func TestAsyncRecorderDropsEntryAfterRetryBudget(t *testing.T) {
@@ -195,5 +208,87 @@ func TestAsyncRecorderDropsEntryAfterRetryBudget(t *testing.T) {
 	}
 	if !strings.Contains(logs.String(), "auditlog: failed to persist; dropping entry") {
 		t.Fatalf("failed write was not logged: %s", logs.String())
+	}
+	if got := recorder.Metrics().Failed.Load(); got != 3 {
+		t.Fatalf("failed persistence attempts = %d, want 3", got)
+	}
+	if got := recorder.Metrics().Dropped.Load(); got != 1 {
+		t.Fatalf("dropped entries = %d, want 1", got)
+	}
+}
+
+func TestAsyncRecorderShutdownDrainsQueuedEntries(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var writes atomic.Int32
+	recorder := NewAsyncWithConfig(recorderTestQuerier{
+		insertPlatform: func(_ context.Context, _ dbmodels.InsertPlatformAuditLogParams) error {
+			if writes.Add(1) == 1 {
+				close(started)
+				<-release
+			}
+			return nil
+		},
+	}, nil, slog.New(slog.DiscardHandler), testAsyncConfig())
+
+	recorder.RecordPlatform(context.Background(), PlatformEntry{Action: "first", Outcome: OutcomeSuccess})
+	<-started
+	recorder.RecordPlatform(context.Background(), PlatformEntry{Action: "second", Outcome: OutcomeSuccess})
+
+	shutdown := make(chan error, 1)
+	go func() { shutdown <- recorder.Shutdown(context.Background()) }()
+	close(release)
+
+	select {
+	case err := <-shutdown:
+		if err != nil {
+			t.Fatalf("Shutdown: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for shutdown drain")
+	}
+	if got := writes.Load(); got != 2 {
+		t.Fatalf("persisted entries = %d, want 2", got)
+	}
+	if got := recorder.Metrics().Dropped.Load(); got != 0 {
+		t.Fatalf("dropped entries = %d, want 0", got)
+	}
+}
+
+func TestAsyncRecorderShutdownDropsPendingEntriesAtDeadline(t *testing.T) {
+	started := make(chan struct{})
+	recorder := NewAsyncWithConfig(recorderTestQuerier{
+		insertPlatform: func(ctx context.Context, _ dbmodels.InsertPlatformAuditLogParams) error {
+			close(started)
+			<-ctx.Done()
+			return ctx.Err()
+		},
+	}, nil, slog.New(slog.DiscardHandler), AsyncConfig{
+		QueueSize:    1,
+		WriteTimeout: time.Minute,
+		MaxAttempts:  3,
+		RetryDelay:   time.Millisecond,
+	})
+
+	recorder.RecordPlatform(context.Background(), PlatformEntry{Action: "in-flight", Outcome: OutcomeSuccess})
+	<-started
+	recorder.RecordPlatform(context.Background(), PlatformEntry{Action: "queued", Outcome: OutcomeSuccess})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	err := recorder.Shutdown(ctx)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Shutdown error = %v, want deadline exceeded", err)
+	}
+	select {
+	case <-recorder.done:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for cancelled writer")
+	}
+	if got := recorder.Metrics().Dropped.Load(); got != 2 {
+		t.Fatalf("dropped entries = %d, want 2", got)
+	}
+	if got := recorder.Metrics().QueueDepth.Load(); got != 0 {
+		t.Fatalf("queue depth = %d, want 0", got)
 	}
 }

@@ -89,7 +89,7 @@ func main() {
 	if err := httpserver.Serve(ctx, logger, []*http.Server{
 		httpserver.New(addr, handler),
 		httpserver.New(grpcAddr, handler),
-	}, shutdownTracing, func(context.Context) error {
+	}, recorder.Shutdown, shutdownTracing, func(context.Context) error {
 		return db.Close()
 	}); err != nil {
 		logger.Error("platform api server failed", "error", err)
