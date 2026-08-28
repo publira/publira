@@ -3,9 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createInitialUser, isSetupCompleted } from "./setup";
 
-const { mockCheckSetupStatus, mockCreateInitialUser } = vi.hoisted(() => ({
+const {
+  mockCheckSetupStatus,
+  mockCreateInitialUser,
+  mockDropFailedCacheEntry,
+} = vi.hoisted(() => ({
   mockCheckSetupStatus: vi.fn(),
   mockCreateInitialUser: vi.fn(),
+  mockDropFailedCacheEntry: vi.fn(),
 }));
 
 vi.mock("@publira/api-client/platform/client", () => ({
@@ -18,17 +23,31 @@ vi.mock("@publira/api-client/platform/client", () => ({
   }),
 }));
 
+vi.mock("@publira/utils/cached-read", () => ({
+  dropFailedCacheEntry: mockDropFailedCacheEntry,
+}));
+
 describe("isSetupCompleted", () => {
+  beforeEach(() => {
+    mockDropFailedCacheEntry.mockReset();
+  });
+
   it("API が setup_completed=true を返した場合 true を返す", async () => {
     mockCheckSetupStatus.mockResolvedValueOnce({ setupCompleted: true });
 
-    await expect(isSetupCompleted()).resolves.toBe(true);
+    await expect(isSetupCompleted()).resolves.toEqual({
+      available: true,
+      completed: true,
+    });
   });
 
   it("API が setup_completed=false を返した場合 false を返す", async () => {
     mockCheckSetupStatus.mockResolvedValueOnce({ setupCompleted: false });
 
-    await expect(isSetupCompleted()).resolves.toBe(false);
+    await expect(isSetupCompleted()).resolves.toEqual({
+      available: true,
+      completed: false,
+    });
   });
 
   it("想定内エラー時は null を返す", async () => {
@@ -36,13 +55,17 @@ describe("isSetupCompleted", () => {
       new ConnectError("setup not initialized", Code.FailedPrecondition)
     );
 
-    await expect(isSetupCompleted()).resolves.toBeNull();
+    await expect(isSetupCompleted()).resolves.toEqual({
+      available: true,
+      completed: null,
+    });
   });
 
-  it("想定外エラー時は再throwする", async () => {
+  it("状態を読めないときは利用不可を返す", async () => {
     mockCheckSetupStatus.mockRejectedValueOnce(new Error("network"));
 
-    await expect(isSetupCompleted()).rejects.toThrow("network");
+    await expect(isSetupCompleted()).resolves.toEqual({ available: false });
+    expect(mockDropFailedCacheEntry).toHaveBeenCalledOnce();
   });
 });
 

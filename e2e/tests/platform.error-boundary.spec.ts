@@ -23,6 +23,8 @@ const runPlatformApiServerScript = (action: "start-wait" | "stop"): void => {
 
 const dashboardHeading = "横断オペレーションの基準点";
 const rootErrorHeading = "Platform Console を表示できませんでした";
+const setupApiUnavailableMessage =
+  "APIサーバーに接続できません。サーバーの起動状態を確認してから再試行してください。";
 
 /**
  * Route-level error boundary for Platform Console.
@@ -95,6 +97,24 @@ test.describe("web-platform console error boundary", () => {
       // outage used to answer 500 here as well.
       expect(response?.status(), await page.content()).toBe(200);
       await expect(page.getByLabel(/メールアドレス/u)).toBeVisible();
+    } finally {
+      runPlatformApiServerScript("start-wait");
+    }
+  });
+
+  test("platform API 停止中の /setup は接続エラーを表示し、フォームを出さない", async ({
+    page,
+  }) => {
+    try {
+      runPlatformApiServerScript("stop");
+
+      const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/setup`);
+
+      expect(response?.status(), await page.content()).toBe(200);
+      await expect(page.getByText(setupApiUnavailableMessage)).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "管理ユーザーを作成する" })
+      ).toHaveCount(0);
     } finally {
       runPlatformApiServerScript("start-wait");
     }
