@@ -14,12 +14,28 @@
 ```
 
 ```tsx
-import { SiteLayout } from "@publira/layouts";
+import {
+  SiteLayout,
+  SiteLayoutBrand,
+  SiteLayoutFooter,
+  SiteLayoutFooterContent,
+  SiteLayoutFooterNote,
+  SiteLayoutHeader,
+  SiteLayoutMain,
+} from "@publira/layouts";
 
 export default function Page() {
   return (
-    <SiteLayout appLabel="Publira" footerNote="Crafted for calm reading.">
-      <main>content</main>
+    <SiteLayout>
+      <SiteLayoutHeader>
+        <SiteLayoutBrand href="/">Publira</SiteLayoutBrand>
+      </SiteLayoutHeader>
+      <SiteLayoutMain>content</SiteLayoutMain>
+      <SiteLayoutFooter>
+        <SiteLayoutFooterContent>
+          <SiteLayoutFooterNote>Crafted for calm reading.</SiteLayoutFooterNote>
+        </SiteLayoutFooterContent>
+      </SiteLayoutFooter>
     </SiteLayout>
   );
 }

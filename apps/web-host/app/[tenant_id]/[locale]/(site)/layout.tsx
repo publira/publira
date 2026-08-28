@@ -1,17 +1,26 @@
 import { getMessage } from "@publira/i18n";
-import type { Locale } from "@publira/i18n";
 import {
-  getAuthActions,
   SiteLayout,
   SiteLayoutActions,
   SiteLayoutBrand,
+  SiteLayoutBrandSkeleton,
   SiteLayoutFooter,
+  SiteLayoutFooterContent,
+  SiteLayoutFooterCopyright,
+  SiteLayoutFooterLink,
+  SiteLayoutFooterLinks,
+  SiteLayoutFooterNote,
   SiteLayoutHeader,
   SiteLayoutHeaderActions,
+  SiteLayoutHeaderActionsSkeleton,
   SiteLayoutMain,
   SiteLayoutNav,
+  SiteLayoutNavLink,
+  SiteLayoutLogoutAction,
+  SiteLayoutPrimaryAction,
+  SiteLayoutSecondaryAction,
 } from "@publira/layouts";
-import type { LayoutLinkItem } from "@publira/layouts";
+import { Skeleton } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
@@ -33,7 +42,7 @@ import { NotificationBellErrorBoundary } from "#components/notification-bell-err
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getLocale, loadHostMessages } from "#lib/locale";
-import type { HostMessageKey, HostMessages } from "#lib/locale";
+import type { HostMessageKey } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { logoutAction } from "#lib/logout-action";
 import { countUnreadNotifications } from "#lib/notification";
@@ -54,24 +63,6 @@ const siteNavItems: { href: string; label: HostMessageKey }[] = [
   { href: "/series", label: "host.nav.series" },
   { href: "/search", label: "host.nav.search" },
 ];
-
-const toNavLinkItems = (
-  locale: Locale,
-  messages: HostMessages
-): LayoutLinkItem[] =>
-  siteNavItems.map((item) => ({
-    href: withLocalePrefix(locale, item.href),
-    label: getMessage(messages, item.label),
-  }));
-
-const toLocaleLinkItems = (
-  locale: Locale,
-  items: readonly LayoutLinkItem[]
-): LayoutLinkItem[] =>
-  items.map((item) => ({
-    ...item,
-    href: withLocalePrefix(locale, item.href),
-  }));
 
 const HostNotificationBell = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
@@ -94,7 +85,7 @@ const HostNotificationBell = async () => {
   );
 };
 
-const getHeaderActionsContent = async () => {
+const HeaderActions = async () => {
   const [cookieStore, tenantId, locale] = await Promise.all([
     cookies(),
     getTenantId(),
@@ -104,12 +95,6 @@ const getHeaderActionsContent = async () => {
   const hasSession = Boolean(
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
   );
-  const actions = getAuthActions(hasSession, {
-    login: getMessage(messages, "host.nav.login"),
-    myPage: getMessage(messages, "host.nav.my_page"),
-    signup: getMessage(messages, "host.nav.signup"),
-  });
-
   return (
     <div className="flex items-center gap-2">
       {hasSession ? (
@@ -121,22 +106,27 @@ const getHeaderActionsContent = async () => {
           </Suspense>
         </NotificationBellErrorBoundary>
       ) : null}
-      <SiteLayoutActions
-        logoutAction={
-          hasSession ? logoutAction.bind(null, tenantId, locale) : undefined
-        }
-        logoutLabel={getMessage(messages, "host.nav.logout")}
-        primaryAction={{
-          ...actions.primaryAction,
-          href: withLocalePrefix(locale, actions.primaryAction.href),
-        }}
-        secondaryAction={
-          actions.secondaryAction && {
-            ...actions.secondaryAction,
-            href: withLocalePrefix(locale, actions.secondaryAction.href),
-          }
-        }
-      />
+      <SiteLayoutActions>
+        {hasSession ? (
+          <SiteLayoutLogoutAction
+            action={logoutAction.bind(null, tenantId, locale)}
+          >
+            {getMessage(messages, "host.nav.logout")}
+          </SiteLayoutLogoutAction>
+        ) : (
+          <SiteLayoutSecondaryAction href={withLocalePrefix(locale, "/login")}>
+            {getMessage(messages, "host.nav.login")}
+          </SiteLayoutSecondaryAction>
+        )}
+        <SiteLayoutPrimaryAction
+          href={withLocalePrefix(locale, hasSession ? "/my" : "/signup")}
+        >
+          {getMessage(
+            messages,
+            hasSession ? "host.nav.my_page" : "host.nav.signup"
+          )}
+        </SiteLayoutPrimaryAction>
+      </SiteLayoutActions>
     </div>
   );
 };
@@ -195,16 +185,31 @@ const getFooterNote = async (
   return tenantInfo?.siteDescription?.trim() || undefined;
 };
 
-const getFooterPageLinks = async (): Promise<LayoutLinkItem[]> => {
+const TenantFooterLinks = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const links = await listPublishedPageLinks(tenantId);
-  return toLocaleLinkItems(locale, links);
-};
+  const [links, messages] = await Promise.all([
+    listPublishedPageLinks(tenantId),
+    loadHostMessages(locale),
+  ]);
 
-const getFooterLinksLabel = async (): Promise<string> => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
-  return getMessage(messages, "host.nav.footer_links");
+  if (links.length === 0) {
+    return null;
+  }
+
+  return (
+    <SiteLayoutFooterLinks
+      ariaLabel={getMessage(messages, "host.nav.footer_links")}
+    >
+      {links.map((link) => (
+        <SiteLayoutFooterLink
+          href={withLocalePrefix(locale, link.href)}
+          key={link.href}
+        >
+          {link.label}
+        </SiteLayoutFooterLink>
+      ))}
+    </SiteLayoutFooterLinks>
+  );
 };
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -233,7 +238,55 @@ const SiteNav = async () => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
-  return <SiteLayoutNav items={toNavLinkItems(locale, messages)} />;
+  return (
+    <SiteLayoutNav>
+      {siteNavItems.map((item) => (
+        <SiteLayoutNavLink
+          href={withLocalePrefix(locale, item.href)}
+          key={item.href}
+        >
+          {getMessage(messages, item.label)}
+        </SiteLayoutNavLink>
+      ))}
+    </SiteLayoutNav>
+  );
+};
+
+const TenantBrand = async ({
+  tenantInfoPromise,
+}: {
+  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>;
+}) => {
+  const [brandMark, appLabel] = await Promise.all([
+    getBrandMark(tenantInfoPromise),
+    getAppLabel(tenantInfoPromise),
+  ]);
+
+  return brandMark ?? appLabel;
+};
+
+const TenantFooterNote = async ({
+  tenantInfoPromise,
+}: {
+  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>;
+}) => {
+  const footerNote = await getFooterNote(tenantInfoPromise);
+
+  return footerNote ? (
+    <SiteLayoutFooterNote>{footerNote}</SiteLayoutFooterNote>
+  ) : null;
+};
+
+const TenantFooterCopyright = async ({
+  tenantInfoPromise,
+}: {
+  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>;
+}) => {
+  const copyrightText = await getCopyrightText(tenantInfoPromise);
+
+  return copyrightText ? (
+    <SiteLayoutFooterCopyright>{copyrightText}</SiteLayoutFooterCopyright>
+  ) : null;
 };
 
 /** Same footprint as the rendered nav, so the header does not shift. */
@@ -254,11 +307,11 @@ const TenantLayout = async ({
   return (
     <SiteLayout>
       <SiteLayoutHeader>
-        <SiteLayoutBrand
-          brandMark={getBrandMark(tenantInfoPromise)}
-          href={withLocalePrefix(locale, "/")}
-          label={getAppLabel(tenantInfoPromise)}
-        />
+        <SiteLayoutBrand href={withLocalePrefix(locale, "/")}>
+          <Suspense fallback={<SiteLayoutBrandSkeleton />}>
+            <TenantBrand tenantInfoPromise={tenantInfoPromise} />
+          </Suspense>
+        </SiteLayoutBrand>
         <Suspense fallback={<SiteNavSkeleton />}>
           <SiteNav />
         </Suspense>
@@ -270,15 +323,38 @@ const TenantLayout = async ({
         <Suspense fallback={<LocaleSwitcherSkeleton />}>
           <LocaleSwitcher />
         </Suspense>
-        <SiteLayoutHeaderActions content={getHeaderActionsContent()} />
+        <SiteLayoutHeaderActions>
+          <Suspense fallback={<SiteLayoutHeaderActionsSkeleton />}>
+            <HeaderActions />
+          </Suspense>
+        </SiteLayoutHeaderActions>
       </SiteLayoutHeader>
       <SiteLayoutMain>{children}</SiteLayoutMain>
-      <SiteLayoutFooter
-        copyrightText={getCopyrightText(tenantInfoPromise)}
-        footerNote={getFooterNote(tenantInfoPromise)}
-        links={getFooterPageLinks()}
-        linksLabel={getFooterLinksLabel()}
-      />
+      <SiteLayoutFooter>
+        <Suspense fallback={null}>
+          <TenantFooterLinks />
+        </Suspense>
+        <SiteLayoutFooterContent>
+          <Suspense
+            fallback={
+              <SiteLayoutFooterNote>
+                <Skeleton className="inline-block h-4 w-56 rounded" />
+              </SiteLayoutFooterNote>
+            }
+          >
+            <TenantFooterNote tenantInfoPromise={tenantInfoPromise} />
+          </Suspense>
+          <Suspense
+            fallback={
+              <SiteLayoutFooterCopyright>
+                <Skeleton className="inline-block h-4 w-48 rounded" />
+              </SiteLayoutFooterCopyright>
+            }
+          >
+            <TenantFooterCopyright tenantInfoPromise={tenantInfoPromise} />
+          </Suspense>
+        </SiteLayoutFooterContent>
+      </SiteLayoutFooter>
     </SiteLayout>
   );
 };

@@ -1,12 +1,38 @@
 import { getMessage } from "@publira/i18n";
 import {
   ConsoleHeader,
+  ConsoleHeaderActions,
+  ConsoleHeaderContext,
+  ConsoleHeaderEyebrow,
+  ConsoleHeaderLabel,
   ConsoleHeaderUser,
   ConsoleHeaderUserSkeleton,
+  ConsoleHeaderText,
   ConsoleLayout,
   ConsoleLayoutContent,
   ConsoleLayoutMain,
   ConsoleSidebar,
+  ConsoleSidebarBrand,
+  ConsoleSidebarContext,
+  ConsoleSidebarNavigation,
+  ConsoleSidebarNavigationContent,
+  ConsoleSidebarNavigationIcon,
+  ConsoleSidebarNavigationItem,
+  ConsoleSidebarNavigationItemDescription,
+  ConsoleSidebarNavigationItemLabel,
+  ConsoleSidebarNavigationItems,
+  ConsoleSidebarNavigationSection,
+  ConsoleSidebarNavigationTitle,
+  ConsoleUserMenuAccountLink,
+  ConsoleUserMenuContent,
+  ConsoleUserMenuIdentity,
+  ConsoleUserMenuInitial,
+  ConsoleUserMenuLogout,
+  ConsoleUserMenuName,
+  ConsoleUserMenuPublicId,
+  ConsoleUserMenuRole,
+  ConsoleUserMenuSeparator,
+  ConsoleUserMenuTrigger,
 } from "@publira/layouts/admin";
 import { StatusChip } from "@publira/ui-components/badge";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -62,20 +88,36 @@ export const AdminUser = async ({
   const messages = await loadAdminMessages(locale);
 
   return (
-    <ConsoleHeaderUser
-      accountHref="/settings/account"
-      currentUser={result.user}
-      logoutAction={logout}
-      roleLabel={getTenantRoleLabel(result.user.role, messages)}
-      userMenuCopy={{
-        accountMenuAriaLabel: getMessage(messages, "admin.shell.account_menu", {
+    <ConsoleHeaderUser>
+      <ConsoleUserMenuTrigger
+        ariaLabel={getMessage(messages, "admin.shell.account_menu", {
           name: result.user.name,
-        }),
-        accountSettings: getMessage(messages, "admin.shell.account_settings"),
-        logout: getMessage(messages, "admin.shell.logout"),
-        logoutAriaLabel: getMessage(messages, "admin.shell.logout"),
-      }}
-    />
+        })}
+      >
+        <ConsoleUserMenuInitial>{result.user.name}</ConsoleUserMenuInitial>
+      </ConsoleUserMenuTrigger>
+      <ConsoleUserMenuContent>
+        <ConsoleUserMenuIdentity>
+          <ConsoleUserMenuName>{result.user.name}</ConsoleUserMenuName>
+          <ConsoleUserMenuPublicId>
+            {result.user.publicId}
+          </ConsoleUserMenuPublicId>
+          <ConsoleUserMenuRole>
+            {getTenantRoleLabel(result.user.role, messages)}
+          </ConsoleUserMenuRole>
+        </ConsoleUserMenuIdentity>
+        <ConsoleUserMenuSeparator />
+        <ConsoleUserMenuAccountLink href="/settings/account">
+          {getMessage(messages, "admin.shell.account_settings")}
+        </ConsoleUserMenuAccountLink>
+        <ConsoleUserMenuLogout
+          action={logout}
+          ariaLabel={getMessage(messages, "admin.shell.logout")}
+        >
+          {getMessage(messages, "admin.shell.logout")}
+        </ConsoleUserMenuLogout>
+      </ConsoleUserMenuContent>
+    </ConsoleHeaderUser>
   );
 };
 
@@ -112,45 +154,86 @@ export const AdminLayout = ({
 
   return (
     <ConsoleLayout gradient={adminGradient}>
-      <ConsoleSidebar brandMark={sidebarBrand} navigation={navigation}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="grid gap-1">
-            <p className="text-sm font-medium text-foreground">{tenant.name}</p>
-            <p className="text-xs leading-5 text-muted-foreground">
-              <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
-                <Message
-                  message="admin.shell.domain"
-                  values={{ domain: tenant.domain || "-" }}
-                />
+      <ConsoleSidebar>
+        <ConsoleSidebarBrand>{sidebarBrand}</ConsoleSidebarBrand>
+        <ConsoleSidebarContext>
+          <div className="flex items-start justify-between gap-3">
+            <div className="grid gap-1">
+              <p className="text-sm font-medium text-foreground">
+                {tenant.name}
+              </p>
+              <p className="text-xs leading-5 text-muted-foreground">
+                <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
+                  <Message
+                    message="admin.shell.domain"
+                    values={{ domain: tenant.domain || "-" }}
+                  />
+                </Suspense>
+              </p>
+            </div>
+            <StatusChip status="success">
+              <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
+                <Message message="admin.shell.status_online" />
               </Suspense>
-            </p>
+            </StatusChip>
           </div>
-          <StatusChip status="success">
-            <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
-              <Message message="admin.shell.status_online" />
-            </Suspense>
-          </StatusChip>
-        </div>
+        </ConsoleSidebarContext>
+        <ConsoleSidebarNavigation>
+          {navigation.map((section) => (
+            <ConsoleSidebarNavigationSection
+              key={section.id ?? section.items[0]?.href}
+            >
+              <ConsoleSidebarNavigationTitle>
+                {section.title}
+              </ConsoleSidebarNavigationTitle>
+              <ConsoleSidebarNavigationItems>
+                {section.items.map((item) => (
+                  <ConsoleSidebarNavigationItem
+                    href={item.href}
+                    key={item.href}
+                  >
+                    <ConsoleSidebarNavigationIcon>
+                      <item.icon className="size-5" />
+                    </ConsoleSidebarNavigationIcon>
+                    <ConsoleSidebarNavigationContent>
+                      <ConsoleSidebarNavigationItemLabel>
+                        {item.label}
+                      </ConsoleSidebarNavigationItemLabel>
+                      <ConsoleSidebarNavigationItemDescription>
+                        {item.description}
+                      </ConsoleSidebarNavigationItemDescription>
+                    </ConsoleSidebarNavigationContent>
+                  </ConsoleSidebarNavigationItem>
+                ))}
+              </ConsoleSidebarNavigationItems>
+            </ConsoleSidebarNavigationSection>
+          ))}
+        </ConsoleSidebarNavigation>
       </ConsoleSidebar>
 
       <ConsoleLayoutContent>
-        <ConsoleHeader
-          brandMark={headerBrand}
-          contextLabel={tenant.name}
-          eyebrow={
-            <Suspense fallback={<SkeletonLine className="h-3 w-28" />}>
-              <Message message="admin.shell.eyebrow" />
+        <ConsoleHeader>
+          <ConsoleHeaderContext>
+            {headerBrand}
+            <ConsoleHeaderText>
+              <ConsoleHeaderEyebrow>
+                <Suspense fallback={<SkeletonLine className="h-3 w-28" />}>
+                  <Message message="admin.shell.eyebrow" />
+                </Suspense>
+              </ConsoleHeaderEyebrow>
+              <ConsoleHeaderLabel>{tenant.name}</ConsoleHeaderLabel>
+            </ConsoleHeaderText>
+          </ConsoleHeaderContext>
+          <ConsoleHeaderActions>
+            <Suspense fallback={<NotificationBellSkeleton />}>
+              <NotificationBell />
             </Suspense>
-          }
-        >
-          <Suspense fallback={<NotificationBellSkeleton />}>
-            <NotificationBell />
-          </Suspense>
-          <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
-            <AdminUser
-              logoutAction={logoutAction.bind(null, tenant.publicId)}
-            />
-          </Suspense>
+            <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
+              <AdminUser
+                logoutAction={logoutAction.bind(null, tenant.publicId)}
+              />
+            </Suspense>
+          </ConsoleHeaderActions>
         </ConsoleHeader>
         <ConsoleLayoutMain>{children}</ConsoleLayoutMain>
       </ConsoleLayoutContent>

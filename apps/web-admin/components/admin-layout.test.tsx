@@ -4,61 +4,11 @@ import { getMessage } from "@publira/i18n";
 import type { Locale, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getAdminCurrentUser } from "../lib/admin-auth";
 import { getLocale } from "../lib/locale";
 import { AdminLayout, AdminUser } from "./admin-layout";
-
-vi.mock("@publira/layouts/admin", () => ({
-  ConsoleHeader: ({
-    brandMark,
-    contextLabel,
-  }: {
-    brandMark?: ReactNode;
-    contextLabel: string;
-  }) => (
-    <header>
-      {brandMark}
-      <p>{contextLabel}</p>
-    </header>
-  ),
-  // The real menu lives in `@publira/layouts`; what this app owns is the copy
-  // it hands over, so the stub only exposes the resolved aria-label.
-  ConsoleHeaderUser: ({
-    userMenuCopy,
-  }: {
-    userMenuCopy?: { accountMenuAriaLabel: string };
-  }) => (
-    <button aria-label={userMenuCopy?.accountMenuAriaLabel} type="button" />
-  ),
-  ConsoleHeaderUserSkeleton: () => null,
-  ConsoleLayout: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  ConsoleLayoutContent: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  ConsoleLayoutMain: ({ children }: { children: ReactNode }) => (
-    <main>{children}</main>
-  ),
-  ConsoleSidebar: ({
-    brandMark,
-    children,
-    logoLabel,
-  }: {
-    brandMark?: ReactNode;
-    children?: ReactNode;
-    logoLabel: string;
-  }) => (
-    <aside>
-      {brandMark}
-      {logoLabel ? <p>{logoLabel}</p> : null}
-      {children}
-    </aside>
-  ),
-}));
 
 // 代替テキストの解決は `admin-brand-logo.test.tsx` が見る。ここではロゴが
 // ヘッダとサイドバーの両方に置かれることだけを確かめたい。

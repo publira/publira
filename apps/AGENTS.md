@@ -6,6 +6,12 @@ Shared conventions for Next.js apps under `apps/` (`web-admin`, `web-host`, `web
 
 Norm and enforcement: repository root [AGENTS.md](../AGENTS.md) (React: Effects and useEffectEvent). Decision flow and OK/NG rules: the `coding-standards` skill.
 
+## Layout components: compose slots, do not aggregate values in props
+
+`@publira/layouts` uses the Compound Component Pattern. A layout component owns only its DOM structure; each independently resolved piece of copy, navigation, branding, or action is passed as a named child slot. Keep each async slot's `<Suspense>` boundary at the call site, where its fallback size is visible.
+
+Props are limited to values that cannot be rendered as a node: HTML attributes such as `href` and `aria-label`, and a Server Action. Do not replace a slot with a bag prop (`navigation`, `currentUser`, `userMenuCopy`, `primaryAction`) or a `T | Promise<T>` prop. A slot that renders a link receives the `href`; its label is the child node. Do not pass Tailwind classes through a layout data object.
+
 ## Untrusted input: validate with zod at the boundary
 
 Treat every value that a caller can put into a request as untrusted, even when Next.js gives the surrounding object a TypeScript type. This includes:

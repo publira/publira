@@ -1,14 +1,30 @@
 // @vitest-environment jsdom
 
 import { DashboardIcon } from "@publira/icons";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ConsoleHeader,
-  ConsoleHeaderUser,
+  ConsoleHeaderActions,
+  ConsoleHeaderContext,
+  ConsoleHeaderEyebrow,
+  ConsoleHeaderLabel,
+  ConsoleHeaderText,
   ConsoleSidebar,
+  ConsoleSidebarBrand,
+  ConsoleSidebarBrandLabel,
+  ConsoleSidebarBrandName,
+  ConsoleSidebarNavigation,
+  ConsoleSidebarNavigationContent,
+  ConsoleSidebarNavigationIcon,
+  ConsoleSidebarNavigationItem,
+  ConsoleSidebarNavigationItemDescription,
+  ConsoleSidebarNavigationItemLabel,
+  ConsoleSidebarNavigationItems,
+  ConsoleSidebarNavigationSection,
+  ConsoleSidebarNavigationTitle,
 } from "./console-layout";
 
 vi.mock("next/link", () => ({
@@ -22,111 +38,62 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-const navigation = [
-  {
-    items: [
-      {
-        description: "公開準備と編集状況の概況",
-        href: "/",
-        icon: DashboardIcon,
-        label: "ダッシュボード",
-      },
-    ],
-    title: "運用",
-  },
-];
+afterEach(cleanup);
 
-afterEach(() => {
-  cleanup();
-});
-
-describe("ConsoleHeader", () => {
-  it("brandMark がなければテナント名だけのブランド領域になる", () => {
-    render(<ConsoleHeader contextLabel="青枝出版" eyebrow="現在の運用先" />);
-
-    expect(screen.getByText("青枝出版")).toBeDefined();
-    expect(screen.queryByText("テナントロゴ")).toBeNull();
-  });
-
-  it("brandMark があればヘッダのブランド領域に載せる", () => {
+describe("Console layout slots", () => {
+  it("ヘッダーのコンテキストとアクションを子スロットで構成する", () => {
     render(
-      <ConsoleHeader
-        brandMark={<span>テナントロゴ</span>}
-        contextLabel="青枝出版"
-        eyebrow="現在の運用先"
-      />
+      <ConsoleHeader>
+        <ConsoleHeaderContext>
+          <ConsoleHeaderText>
+            <ConsoleHeaderEyebrow>現在の運用先</ConsoleHeaderEyebrow>
+            <ConsoleHeaderLabel>青枝出版</ConsoleHeaderLabel>
+          </ConsoleHeaderText>
+        </ConsoleHeaderContext>
+        <ConsoleHeaderActions>通知</ConsoleHeaderActions>
+      </ConsoleHeader>
     );
 
-    expect(screen.getByText("テナントロゴ")).toBeDefined();
-    expect(screen.getByText("青枝出版")).toBeDefined();
+    expect(screen.getByText("現在の運用先")).toBeTruthy();
+    expect(screen.getByText("青枝出版")).toBeTruthy();
+    expect(screen.getByText("通知")).toBeTruthy();
   });
 
-  it("ログアウトはユーザーメニュー側なのでヘッダ直下には出さない", () => {
-    render(<ConsoleHeader contextLabel="青枝出版" eyebrow="現在の運用先" />);
-
-    expect(screen.queryByRole("button", { name: "ログアウト" })).toBeNull();
-  });
-});
-
-describe("ConsoleHeaderUser", () => {
-  it("役割ラベルに直してユーザーメニューへ渡す", () => {
+  it("サイドバーのナビゲーションを子スロットで構成する", () => {
     render(
-      <ConsoleHeaderUser
-        accountHref="/settings/account"
-        currentUser={{
-          name: "青枝 花子",
-          publicId: "user_admin_001",
-          role: "tenant_owner",
-        }}
-        logoutAction={() => {}}
-      />
+      <ConsoleSidebar>
+        <ConsoleSidebarBrand>
+          <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
+          <ConsoleSidebarBrandLabel>Platform Console</ConsoleSidebarBrandLabel>
+        </ConsoleSidebarBrand>
+        <ConsoleSidebarNavigation>
+          <ConsoleSidebarNavigationSection>
+            <ConsoleSidebarNavigationTitle>運用</ConsoleSidebarNavigationTitle>
+            <ConsoleSidebarNavigationItems>
+              <ConsoleSidebarNavigationItem href="/">
+                <ConsoleSidebarNavigationIcon>
+                  <DashboardIcon className="size-5" />
+                </ConsoleSidebarNavigationIcon>
+                <ConsoleSidebarNavigationContent>
+                  <ConsoleSidebarNavigationItemLabel>
+                    ダッシュボード
+                  </ConsoleSidebarNavigationItemLabel>
+                  <ConsoleSidebarNavigationItemDescription>
+                    概況
+                  </ConsoleSidebarNavigationItemDescription>
+                </ConsoleSidebarNavigationContent>
+              </ConsoleSidebarNavigationItem>
+            </ConsoleSidebarNavigationItems>
+          </ConsoleSidebarNavigationSection>
+        </ConsoleSidebarNavigation>
+      </ConsoleSidebar>
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /アカウントメニュー/u })
-    );
-
-    expect(screen.getByText("オーナー")).toBeDefined();
     expect(
-      screen
-        .getByRole("menuitem", { name: "アカウント設定" })
-        .getAttribute("href")
-    ).toBe("/settings/account");
-  });
-});
-
-describe("ConsoleSidebar", () => {
-  it("brandMark がなければ Publira のテキストブランドを出す", () => {
-    render(
-      <ConsoleSidebar logoLabel="Platform Console" navigation={navigation} />
-    );
-
-    expect(screen.getByText("Publira")).toBeDefined();
-    expect(screen.getByText("Platform Console")).toBeDefined();
-  });
-
-  it("brandMark があれば Publira の代わりに載せる", () => {
-    render(
-      <ConsoleSidebar
-        brandMark={<span>テナントロゴ</span>}
-        navigation={navigation}
-      />
-    );
-
-    expect(screen.queryByText("Publira")).toBeNull();
-    expect(screen.getByText("テナントロゴ")).toBeDefined();
-  });
-
-  it("logoLabel がなければサブタイトルは出さない", () => {
-    render(
-      <ConsoleSidebar
-        brandMark={<span>青枝出版</span>}
-        navigation={navigation}
-      />
-    );
-
-    expect(screen.getByText("青枝出版")).toBeDefined();
-    expect(screen.queryByText("Admin Console")).toBeNull();
-    expect(screen.queryByText("Platform Console")).toBeNull();
+      screen.getByRole("link", { name: /Publira/u }).dataset.nextLink
+    ).toBe("true");
+    expect(
+      screen.getByRole("link", { name: /ダッシュボード/u }).getAttribute("href")
+    ).toBe("/");
   });
 });
