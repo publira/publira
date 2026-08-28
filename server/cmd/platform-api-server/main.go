@@ -79,7 +79,7 @@ func main() {
 	}
 
 	recorder := auditlog.NewAsync(dbmodels.New(db), nil, logger)
-	handler := platformapi.NewHandlerWithRecorder(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient(), tokens, recorder)
+	handler := platformapi.NewHandlerWithAsyncRecorder(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient(), tokens, recorder)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

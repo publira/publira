@@ -86,7 +86,7 @@ func main() {
 	}
 
 	recorder := auditlog.NewAsync(dbmodels.New(db), db, logger)
-	handler := adminapi.NewHandlerWithRecorder(db, dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient(), tokens, recorder)
+	handler := adminapi.NewHandlerWithAsyncRecorder(db, dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient(), tokens, recorder)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

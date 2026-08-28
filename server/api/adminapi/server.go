@@ -34,16 +34,20 @@ type Querier interface {
 }
 
 type adminServer struct {
-	db        *sql.DB
-	queries   Querier
-	storage   storage.Provider
-	recorder  auditlog.Recorder
-	encryptor emailsettings.SecretManager
-	tester    internalsmtp.Tester
-	mailer    internalsmtp.Sender
-	logger    *slog.Logger
-	reval     *revalidate.Client
-	tokens    *auth.TokenManager
+	db       *sql.DB
+	queries  Querier
+	storage  storage.Provider
+	recorder auditlog.Recorder
+	// requestScopedRecorder keeps the synchronous test recorder on the RLS
+	// connection acquired by the request. AsyncRecorder instead acquires a new
+	// tenant-scoped connection after the request finishes.
+	requestScopedRecorder bool
+	encryptor             emailsettings.SecretManager
+	tester                internalsmtp.Tester
+	mailer                internalsmtp.Sender
+	logger                *slog.Logger
+	reval                 *revalidate.Client
+	tokens                *auth.TokenManager
 }
 
 func invalidSessionError() error {
@@ -116,7 +120,14 @@ func isSQLMockDB(db *sql.DB) bool {
 	return strings.Contains(strings.ToLower(fmt.Sprintf("%T", db.Driver())), "sqlmock")
 }
 
-func (s *adminServer) recorderFor(context.Context) auditlog.Recorder { return s.recorder }
+func (s *adminServer) recorderFor(ctx context.Context) auditlog.Recorder {
+	if s.requestScopedRecorder {
+		if queries, ok := rpcmiddleware.TenantQueriesFromContext(ctx); ok {
+			return auditlog.New(queries, s.logger)
+		}
+	}
+	return s.recorder
+}
 
 func (s *adminServer) authenticateSession(
 	ctx context.Context,
@@ -173,17 +184,22 @@ func (s *adminServer) authenticateSession(
 // NewHandler は管理 API 専用の HTTP ハンドラを返します。
 // AdminSeriesService と AdminAuthService のみ公開し、公開 API (CatalogService, AuthService) は含みません。
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) http.Handler {
-	return NewHandlerWithRecorder(db, queries, storageProvider, logger, encryptor, tester, tokens, nil)
+	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, nil)
 }
 
-// NewHandlerWithRecorder creates an admin API handler with the supplied audit
-// recorder. A nil recorder preserves the synchronous recorder used by focused
-// handler tests; production entrypoints provide AsyncRecorder.
-func NewHandlerWithRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) http.Handler {
+// NewHandlerWithAsyncRecorder creates an admin API handler with an
+// AsyncRecorder. The asynchronous writer acquires a fresh tenant-scoped
+// connection for every tenant audit entry.
+func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) http.Handler {
+	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, recorder)
+}
+
+func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) http.Handler {
 	mailer, _ := tester.(internalsmtp.Sender)
 	if logger == nil {
 		logger = slog.Default()
 	}
+	requestScopedRecorder := recorder == nil
 	if recorder == nil {
 		recorder = auditlog.New(queries, logger)
 	}
@@ -195,16 +211,17 @@ func NewHandlerWithRecorder(db *sql.DB, queries Querier, storageProvider storage
 		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
 	}
 	server := &adminServer{
-		db:        db,
-		queries:   queries,
-		storage:   storageProvider,
-		recorder:  recorder,
-		encryptor: encryptor,
-		tester:    tester,
-		mailer:    mailer,
-		logger:    logger,
-		reval:     revalidator,
-		tokens:    tokens,
+		db:                    db,
+		queries:               queries,
+		storage:               storageProvider,
+		recorder:              recorder,
+		requestScopedRecorder: requestScopedRecorder,
+		encryptor:             encryptor,
+		tester:                tester,
+		mailer:                mailer,
+		logger:                logger,
+		reval:                 revalidator,
+		tokens:                tokens,
 	}
 	traced := tracing.ConnectHandlerOption()
 
