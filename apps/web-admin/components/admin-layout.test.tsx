@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 
 import { getMessage } from "@publira/i18n";
-import type { MessageValues } from "@publira/i18n";
+import type { Locale, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLayout } from "./admin-layout";
+import { getAdminCurrentUser } from "../lib/admin-auth";
+import { getLocale } from "../lib/locale";
+import { AdminLayout, AdminUser } from "./admin-layout";
 
 vi.mock("@publira/layouts/admin", () => ({
   ConsoleHeader: ({
@@ -22,7 +24,15 @@ vi.mock("@publira/layouts/admin", () => ({
       <p>{contextLabel}</p>
     </header>
   ),
-  ConsoleHeaderUser: () => null,
+  // The real menu lives in `@publira/layouts`; what this app owns is the copy
+  // it hands over, so the stub only exposes the resolved aria-label.
+  ConsoleHeaderUser: ({
+    userMenuCopy,
+  }: {
+    userMenuCopy?: { accountMenuAriaLabel: string };
+  }) => (
+    <button aria-label={userMenuCopy?.accountMenuAriaLabel} type="button" />
+  ),
   ConsoleHeaderUserSkeleton: () => null,
   ConsoleLayout: ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
@@ -73,8 +83,8 @@ vi.mock("../lib/auth-session", () => ({
 }));
 
 vi.mock("../lib/locale", () => ({
-  getLocale: () => Promise.resolve("ja"),
-  loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
+  getLocale: vi.fn(() => Promise.resolve("ja")),
+  loadAdminMessages: (locale: Locale) => Promise.resolve(sharedCatalog(locale)),
 }));
 
 vi.mock("../lib/logout-action", () => ({
@@ -142,4 +152,28 @@ describe("AdminLayout", () => {
     expect(screen.queryByText("Admin Console")).toBeNull();
     expect(screen.getAllByText("青枝出版").length).toBeGreaterThan(0);
   });
+});
+
+describe("AdminUser", () => {
+  it.each([
+    ["ja", "青枝 花子のアカウントメニュー"],
+    ["en", "Account menu for 青枝 花子"],
+  ] as const)(
+    "%s のアカウントメニューの aria-label に氏名を補間する",
+    async (locale, expected) => {
+      vi.mocked(getLocale).mockResolvedValue(locale);
+      vi.mocked(getAdminCurrentUser).mockResolvedValue({
+        ok: true,
+        user: {
+          name: "青枝 花子",
+          publicId: "user_admin_001",
+          role: "tenant_owner",
+        },
+      });
+
+      render(await AdminUser({ logoutAction: () => Promise.resolve() }));
+
+      expect(screen.getByRole("button", { name: expected })).toBeDefined();
+    }
+  );
 });

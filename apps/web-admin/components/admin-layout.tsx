@@ -68,7 +68,9 @@ export const AdminUser = async ({
       logoutAction={logout}
       roleLabel={getTenantRoleLabel(result.user.role, messages)}
       userMenuCopy={{
-        accountMenuAriaLabel: getMessage(messages, "admin.shell.account_menu"),
+        accountMenuAriaLabel: getMessage(messages, "admin.shell.account_menu", {
+          name: result.user.name,
+        }),
         accountSettings: getMessage(messages, "admin.shell.account_settings"),
         logout: getMessage(messages, "admin.shell.logout"),
         logoutAriaLabel: getMessage(messages, "admin.shell.logout"),

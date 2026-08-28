@@ -53,7 +53,8 @@ export const PlatformUser = async () => {
       userMenuCopy={{
         accountMenuAriaLabel: getMessage(
           messages,
-          "platform.shell.account_menu"
+          "platform.shell.account_menu",
+          { name: result.operator.name }
         ),
         accountSettings: getMessage(
           messages,
