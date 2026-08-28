@@ -1,4 +1,5 @@
 {
+  "dart.openDevTools": "never",
   "editor.defaultFormatter": "oxc.oxc-vscode",
   "editor.formatOnSave": true,
   "editor.formatOnSaveMode": "file",
