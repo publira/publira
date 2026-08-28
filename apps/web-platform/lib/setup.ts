@@ -19,9 +19,7 @@ import { loadPlatformMessages } from "./locale";
 const isSetupStatusUnknownError = (error: unknown): boolean =>
   isRpcError(error, Code.NotFound, Code.FailedPrecondition);
 
-export const isSetupCompleted = async (): Promise<boolean | null> => {
-  "use cache: private";
-
+const readSetupStatus = async (): Promise<boolean | null> => {
   try {
     const response = await apiClient.setup.checkSetupStatus({});
     return response.setupCompleted;
@@ -30,6 +28,46 @@ export const isSetupCompleted = async (): Promise<boolean | null> => {
       return null;
     }
     throw error;
+  }
+};
+
+export const isSetupCompleted = async (): Promise<boolean | null> => {
+  "use cache: private";
+
+  return await readSetupStatus();
+};
+
+/**
+ * The last setup state the platform API answered with, for this server process.
+ * `undefined` while it has never answered one — a freshly started instance, or
+ * one that has only ever seen the API down.
+ */
+let lastKnownSetupState: boolean | null | undefined;
+
+/**
+ * Setup state for `proxy.ts`, which has to keep routing while the platform API
+ * is unreachable.
+ *
+ * A proxy that rejects answers a bare `500` for every path it matches: no page
+ * renders, so neither `app/error.tsx` nor `global-error.tsx` is reached, and
+ * the console cannot even show its login screen. Routing therefore falls back
+ * to the last state the API confirmed, the same shape `web-admin` uses to keep
+ * serving on its cached tenant resolution.
+ *
+ * A process that has never had an answer falls back to "completed", so the
+ * outage sends the operator to `/login` rather than re-opening the setup form
+ * on a platform that was bootstrapped long ago. There is deliberately no TTL on
+ * the fallback: the API is asked on every request and only a failure reads the
+ * stored value, so a platform that finishes setup is routed on the new state at
+ * once.
+ */
+export const resolveSetupCompleted = async (): Promise<boolean | null> => {
+  try {
+    const completed = await readSetupStatus();
+    lastKnownSetupState = completed;
+    return completed;
+  } catch {
+    return lastKnownSetupState === undefined ? true : lastKnownSetupState;
   }
 };
 

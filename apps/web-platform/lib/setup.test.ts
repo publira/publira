@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createInitialUser, isSetupCompleted } from "./setup";
 
@@ -43,6 +43,74 @@ describe("isSetupCompleted", () => {
     mockCheckSetupStatus.mockRejectedValueOnce(new Error("network"));
 
     await expect(isSetupCompleted()).rejects.toThrow("network");
+  });
+});
+
+const unavailable = (): ConnectError =>
+  new ConnectError("connect ECONNREFUSED 127.0.0.1:8102", Code.Unavailable);
+
+const loadSetup = () => import("./setup");
+
+/**
+ * `proxy.ts` reads the setup state on every request it matches, so the read has
+ * to answer even while the platform API is down: a throw there is a bare 500
+ * for the whole console, with no page rendered to put an error screen on.
+ *
+ * Each case re-imports the module so the process-wide "last known state" starts
+ * empty, which is what a freshly started server instance sees.
+ */
+describe("resolveSetupCompleted", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mockCheckSetupStatus.mockReset();
+  });
+
+  it("API が答えた値をそのまま返す", async () => {
+    mockCheckSetupStatus.mockResolvedValue({ setupCompleted: false });
+    const { resolveSetupCompleted } = await loadSetup();
+
+    await expect(resolveSetupCompleted()).resolves.toBe(false);
+  });
+
+  it("接続できないときは直近に API が答えた値でルーティングを続ける", async () => {
+    mockCheckSetupStatus
+      .mockResolvedValueOnce({ setupCompleted: false })
+      .mockRejectedValueOnce(unavailable());
+    const { resolveSetupCompleted } = await loadSetup();
+
+    await expect(resolveSetupCompleted()).resolves.toBe(false);
+    await expect(resolveSetupCompleted()).resolves.toBe(false);
+  });
+
+  it("直近の既知値が null なら接続エラー時も null のままにする", async () => {
+    mockCheckSetupStatus
+      .mockRejectedValueOnce(
+        new ConnectError("setup not initialized", Code.FailedPrecondition)
+      )
+      .mockRejectedValueOnce(unavailable());
+    const { resolveSetupCompleted } = await loadSetup();
+
+    await expect(resolveSetupCompleted()).resolves.toBeNull();
+    await expect(resolveSetupCompleted()).resolves.toBeNull();
+  });
+
+  it("API が一度も答えていない状態の接続エラーはセットアップ済みとして扱う", async () => {
+    mockCheckSetupStatus.mockRejectedValue(unavailable());
+    const { resolveSetupCompleted } = await loadSetup();
+
+    await expect(resolveSetupCompleted()).resolves.toBe(true);
+  });
+
+  it("復旧後は API の答えに戻る", async () => {
+    mockCheckSetupStatus
+      .mockResolvedValueOnce({ setupCompleted: false })
+      .mockRejectedValueOnce(unavailable())
+      .mockResolvedValueOnce({ setupCompleted: true });
+    const { resolveSetupCompleted } = await loadSetup();
+
+    await expect(resolveSetupCompleted()).resolves.toBe(false);
+    await expect(resolveSetupCompleted()).resolves.toBe(false);
+    await expect(resolveSetupCompleted()).resolves.toBe(true);
   });
 });
 

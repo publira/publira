@@ -1,16 +1,16 @@
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockIsSetupCompleted } = vi.hoisted(() => ({
-  mockIsSetupCompleted: vi.fn(),
+const { mockResolveSetupCompleted } = vi.hoisted(() => ({
+  mockResolveSetupCompleted: vi.fn(),
 }));
 
 beforeEach(() => {
-  mockIsSetupCompleted.mockReset();
+  mockResolveSetupCompleted.mockReset();
 });
 
 vi.mock("./lib/setup", () => ({
-  isSetupCompleted: mockIsSetupCompleted,
+  resolveSetupCompleted: mockResolveSetupCompleted,
 }));
 
 describe("web-platform proxy", () => {
@@ -26,7 +26,7 @@ describe("web-platform proxy", () => {
 
     expect(response.status).toBe(404);
     expect(response.headers.get("set-cookie")).toBeNull();
-    expect(mockIsSetupCompleted).not.toHaveBeenCalled();
+    expect(mockResolveSetupCompleted).not.toHaveBeenCalled();
   });
 
   it("未認証の GET /logout もログインへ送らず 404 を返す", async () => {
@@ -40,7 +40,7 @@ describe("web-platform proxy", () => {
     expect(response.status).toBe(404);
     expect(response.headers.get("set-cookie")).toBeNull();
     expect(response.headers.get("location")).toBeNull();
-    expect(mockIsSetupCompleted).not.toHaveBeenCalled();
+    expect(mockResolveSetupCompleted).not.toHaveBeenCalled();
   });
 
   it("再検証パスを proxy matcher から除外する", async () => {
