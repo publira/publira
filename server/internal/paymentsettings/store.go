@@ -24,11 +24,11 @@ type PaymentQuerier interface {
 type Store struct {
 	queries   PaymentQuerier
 	encryptor SecretManager
-	recorder  *auditlog.Recorder
+	recorder  auditlog.Recorder
 	logger    *slog.Logger
 }
 
-func New(queries PaymentQuerier, encryptor SecretManager, recorder *auditlog.Recorder, logger *slog.Logger) *Store {
+func New(queries PaymentQuerier, encryptor SecretManager, recorder auditlog.Recorder, logger *slog.Logger) *Store {
 	if logger == nil {
 		logger = slog.Default()
 	}

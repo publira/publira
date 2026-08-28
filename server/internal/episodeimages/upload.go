@@ -46,7 +46,7 @@ type Querier interface {
 type Service struct {
 	Queries  Querier
 	Storage  storage.Provider
-	Recorder *auditlog.Recorder
+	Recorder auditlog.Recorder
 }
 
 type UploadRequest struct {

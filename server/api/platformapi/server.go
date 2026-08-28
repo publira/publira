@@ -30,7 +30,7 @@ type Querier interface {
 type platformServer struct {
 	queries   Querier
 	db        *sql.DB
-	recorder  *auditlog.Recorder
+	recorder  auditlog.Recorder
 	encryptor emailsettings.SecretManager
 	tester    internalsmtp.Tester
 	mailer    internalsmtp.Sender
@@ -92,14 +92,27 @@ func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (strin
 // NewHandler はプラットフォーム API 用の HTTP ハンドラを返します。
 // DB 接続は publira_platform ユーザーで行い、BYPASSRLS 属性により RLS を透過します。
 func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) http.Handler {
+	return NewHandlerWithRecorder(db, queries, logger, encryptor, tester, tokens, nil)
+}
+
+// NewHandlerWithRecorder creates a platform API handler with the supplied
+// audit recorder. A nil recorder preserves the synchronous recorder used by
+// focused handler tests; production entrypoints provide AsyncRecorder.
+func NewHandlerWithRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) http.Handler {
 	var mailer internalsmtp.Sender
 	if sender, ok := tester.(internalsmtp.Sender); ok {
 		mailer = sender
 	}
+	if logger == nil {
+		logger = slog.Default()
+	}
+	if recorder == nil {
+		recorder = auditlog.New(queries, logger)
+	}
 	server := &platformServer{
 		queries:   queries,
 		db:        db,
-		recorder:  auditlog.New(queries, logger),
+		recorder:  recorder,
 		encryptor: encryptor,
 		tester:    tester,
 		mailer:    mailer,
