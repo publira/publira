@@ -11,6 +11,7 @@ import (
 
 	"github.com/publira/publira/server/api/adminapi"
 	"github.com/publira/publira/server/config"
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/httpserver"
@@ -84,7 +85,8 @@ func main() {
 		grpcAddr = defaultAdminGrpcServerURL
 	}
 
-	handler := adminapi.NewHandler(db, dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient(), tokens)
+	recorder := auditlog.NewAsync(dbmodels.New(db), db, logger)
+	handler := adminapi.NewHandlerWithAsyncRecorder(db, dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient(), tokens, recorder)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

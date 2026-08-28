@@ -30,7 +30,7 @@ type Querier interface {
 type platformServer struct {
 	queries   Querier
 	db        *sql.DB
-	recorder  *auditlog.Recorder
+	recorder  auditlog.Recorder
 	encryptor emailsettings.SecretManager
 	tester    internalsmtp.Tester
 	mailer    internalsmtp.Sender
@@ -92,14 +92,30 @@ func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (strin
 // NewHandler はプラットフォーム API 用の HTTP ハンドラを返します。
 // DB 接続は publira_platform ユーザーで行い、BYPASSRLS 属性により RLS を透過します。
 func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) http.Handler {
+	return newHandler(db, queries, logger, encryptor, tester, tokens, nil)
+}
+
+// NewHandlerWithAsyncRecorder creates a platform API handler with an
+// AsyncRecorder.
+func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) http.Handler {
+	return newHandler(db, queries, logger, encryptor, tester, tokens, recorder)
+}
+
+func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) http.Handler {
 	var mailer internalsmtp.Sender
 	if sender, ok := tester.(internalsmtp.Sender); ok {
 		mailer = sender
 	}
+	if logger == nil {
+		logger = slog.Default()
+	}
+	if recorder == nil {
+		recorder = auditlog.New(queries, logger)
+	}
 	server := &platformServer{
 		queries:   queries,
 		db:        db,
-		recorder:  auditlog.New(queries, logger),
+		recorder:  recorder,
 		encryptor: encryptor,
 		tester:    tester,
 		mailer:    mailer,

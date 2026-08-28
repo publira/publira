@@ -11,6 +11,7 @@ import (
 
 	"github.com/publira/publira/server/api/platformapi"
 	"github.com/publira/publira/server/config"
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/httpserver"
@@ -77,7 +78,8 @@ func main() {
 		grpcAddr = defaultPlatformGrpcServerURL
 	}
 
-	handler := platformapi.NewHandler(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient(), tokens)
+	recorder := auditlog.NewAsync(dbmodels.New(db), nil, logger)
+	handler := platformapi.NewHandlerWithAsyncRecorder(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient(), tokens, recorder)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
