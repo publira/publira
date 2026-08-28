@@ -7,6 +7,7 @@ import {
 } from "@publira/api-client/errors";
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
 import { loadPlatformMessages } from "./locale";
@@ -31,10 +32,25 @@ const readSetupStatus = async (): Promise<boolean | null> => {
   }
 };
 
-export const isSetupCompleted = async (): Promise<boolean | null> => {
+/**
+ * The setup page needs to distinguish an uninitialized platform from a status
+ * it could not read. `null` alone cannot represent both states.
+ */
+export type SetupStatus =
+  | { available: false }
+  | { available: true; completed: boolean | null };
+
+export const isSetupCompleted = async (): Promise<SetupStatus> => {
   "use cache: private";
 
-  return await readSetupStatus();
+  try {
+    return { available: true, completed: await readSetupStatus() };
+  } catch {
+    // A cache fill must not throw: the page can render its API-unavailable
+    // message, while a successful read on the next request replaces it.
+    dropFailedCacheEntry();
+    return { available: false };
+  }
 };
 
 /**

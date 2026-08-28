@@ -22,11 +22,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 const SetupContent = async () => {
   const setupStatus = await isSetupCompleted();
 
-  if (setupStatus === true) {
-    redirect("/login");
-  }
-
-  if (setupStatus === null) {
+  if (!setupStatus.available) {
     return (
       <FormMessage variant="destructive">
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
@@ -34,6 +30,10 @@ const SetupContent = async () => {
         </Suspense>
       </FormMessage>
     );
+  }
+
+  if (setupStatus.completed === true) {
+    redirect("/login");
   }
 
   return (
