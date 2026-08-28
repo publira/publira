@@ -24,7 +24,6 @@ import { Skeleton } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
-import type { ReactNode } from "react";
 
 import {
   CatalogSearchForm,
@@ -131,60 +130,6 @@ const HeaderActions = async () => {
   );
 };
 
-const resolveTenantInfo = async () => {
-  const tenantId = await getTenantId();
-  return getTenantSiteInfo(tenantId);
-};
-
-const getAppLabel = async (
-  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
-): Promise<string | undefined> => {
-  const tenantInfo = await tenantInfoPromise;
-  return tenantInfo?.name.trim() || undefined;
-};
-
-const getBrandMark = async (
-  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
-): Promise<ReactNode | undefined> => {
-  const [tenantInfo, tenantId, locale] = await Promise.all([
-    tenantInfoPromise,
-    getTenantId(),
-    getLocale(),
-  ]);
-  const variant = resolveTenantLogoVariant(tenantInfo);
-  if (!variant) {
-    return undefined;
-  }
-
-  const [siteLabel, messages] = await Promise.all([
-    getTenantSiteLabel(tenantId, locale),
-    loadHostMessages(locale),
-  ]);
-
-  return (
-    <TenantBrandLogo
-      alt={getMessage(messages, "host.nav.logo_alt", { name: siteLabel })}
-      fallbackLabel={siteLabel}
-      priority
-      variant={variant}
-    />
-  );
-};
-
-const getCopyrightText = async (
-  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
-): Promise<string | undefined> => {
-  const tenantInfo = await tenantInfoPromise;
-  return tenantInfo?.copyrightText?.trim() || undefined;
-};
-
-const getFooterNote = async (
-  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
-): Promise<string | undefined> => {
-  const tenantInfo = await tenantInfoPromise;
-  return tenantInfo?.siteDescription?.trim() || undefined;
-};
-
 const TenantFooterLinks = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [links, messages] = await Promise.all([
@@ -252,37 +197,41 @@ const SiteNav = async () => {
   );
 };
 
-const TenantBrand = async ({
-  tenantInfoPromise,
-}: {
-  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>;
-}) => {
-  const [brandMark, appLabel] = await Promise.all([
-    getBrandMark(tenantInfoPromise),
-    getAppLabel(tenantInfoPromise),
+const TenantBrand = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const tenantInfo = await getTenantSiteInfo(tenantId);
+  const variant = resolveTenantLogoVariant(tenantInfo);
+  if (!variant) {
+    return tenantInfo?.name.trim() || undefined;
+  }
+
+  const [siteLabel, messages] = await Promise.all([
+    getTenantSiteLabel(tenantId, locale),
+    loadHostMessages(locale),
   ]);
 
-  return brandMark ?? appLabel;
+  return (
+    <TenantBrandLogo
+      alt={getMessage(messages, "host.nav.logo_alt", { name: siteLabel })}
+      fallbackLabel={siteLabel}
+      priority
+      variant={variant}
+    />
+  );
 };
 
-const TenantFooterNote = async ({
-  tenantInfoPromise,
-}: {
-  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>;
-}) => {
-  const footerNote = await getFooterNote(tenantInfoPromise);
+const TenantFooterNote = async () => {
+  const tenantInfo = await getTenantSiteInfo(await getTenantId());
+  const footerNote = tenantInfo?.siteDescription?.trim();
 
   return footerNote ? (
     <SiteLayoutFooterNote>{footerNote}</SiteLayoutFooterNote>
   ) : null;
 };
 
-const TenantFooterCopyright = async ({
-  tenantInfoPromise,
-}: {
-  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>;
-}) => {
-  const copyrightText = await getCopyrightText(tenantInfoPromise);
+const TenantFooterCopyright = async () => {
+  const tenantInfo = await getTenantSiteInfo(await getTenantId());
+  const copyrightText = tenantInfo?.copyrightText?.trim();
 
   return copyrightText ? (
     <SiteLayoutFooterCopyright>{copyrightText}</SiteLayoutFooterCopyright>
@@ -300,7 +249,6 @@ const SiteNavSkeleton = () => (
 const TenantLayout = async ({
   children,
 }: LayoutProps<"/[tenant_id]/[locale]">) => {
-  const tenantInfoPromise = resolveTenantInfo();
   // A root parameter, so awaiting it here costs the shell nothing.
   const locale = await getLocale();
 
@@ -309,7 +257,7 @@ const TenantLayout = async ({
       <SiteLayoutHeader>
         <SiteLayoutBrand href={withLocalePrefix(locale, "/")}>
           <Suspense fallback={<SiteLayoutBrandSkeleton />}>
-            <TenantBrand tenantInfoPromise={tenantInfoPromise} />
+            <TenantBrand />
           </Suspense>
         </SiteLayoutBrand>
         <Suspense fallback={<SiteNavSkeleton />}>
@@ -342,7 +290,7 @@ const TenantLayout = async ({
               </SiteLayoutFooterNote>
             }
           >
-            <TenantFooterNote tenantInfoPromise={tenantInfoPromise} />
+            <TenantFooterNote />
           </Suspense>
           <Suspense
             fallback={
@@ -351,7 +299,7 @@ const TenantLayout = async ({
               </SiteLayoutFooterCopyright>
             }
           >
-            <TenantFooterCopyright tenantInfoPromise={tenantInfoPromise} />
+            <TenantFooterCopyright />
           </Suspense>
         </SiteLayoutFooterContent>
       </SiteLayoutFooter>
