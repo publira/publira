@@ -9,24 +9,6 @@ import { getPlatformCurrentOperator } from "../lib/auth";
 import { getPlatformLocale } from "../lib/locale";
 import { PlatformUser } from "./platform-layout";
 
-vi.mock("@publira/layouts/admin", () => ({
-  ConsoleHeader: () => null,
-  // The real menu lives in `@publira/layouts`; what this app owns is the copy
-  // it hands over, so the stub only exposes the resolved aria-label.
-  ConsoleHeaderUser: ({
-    userMenuCopy,
-  }: {
-    userMenuCopy?: { accountMenuAriaLabel: string };
-  }) => (
-    <button aria-label={userMenuCopy?.accountMenuAriaLabel} type="button" />
-  ),
-  ConsoleHeaderUserSkeleton: () => null,
-  ConsoleLayout: () => null,
-  ConsoleLayoutContent: () => null,
-  ConsoleLayoutMain: () => null,
-  ConsoleSidebar: () => null,
-}));
-
 vi.mock("../lib/auth", () => ({
   getPlatformCurrentOperator: vi.fn(),
 }));

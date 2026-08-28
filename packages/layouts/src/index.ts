@@ -3,18 +3,25 @@ export {
   SiteLayoutBrand,
   SiteLayoutBrandSkeleton,
   SiteLayoutFooter,
+  SiteLayoutFooterContent,
+  SiteLayoutFooterCopyright,
+  SiteLayoutFooterLink,
+  SiteLayoutFooterLinks,
+  SiteLayoutFooterNote,
   SiteLayoutFooterSkeleton,
   SiteLayoutHeader,
   SiteLayoutHeaderActions,
   SiteLayoutHeaderActionsSkeleton,
   SiteLayoutMain,
   SiteLayoutNav,
+  SiteLayoutNavLink,
 } from "./site-layout";
-export type { LayoutActionItem, LayoutLinkItem } from "./site-layout";
-export { SiteLayoutActions } from "./site-layout-actions";
+export {
+  SiteLayoutActions,
+  SiteLayoutLogoutAction,
+  SiteLayoutPrimaryAction,
+  SiteLayoutSecondaryAction,
+} from "./site-layout-actions";
 
 export { isCurrentPath } from "./navigation";
 export type { NavItem, NavSection } from "./navigation";
-
-export { getAuthActions } from "./auth-actions";
-export type { AuthActionLabels } from "./auth-actions";

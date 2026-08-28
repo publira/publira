@@ -1,12 +1,40 @@
 import { getMessage } from "@publira/i18n";
 import {
   ConsoleHeader,
+  ConsoleHeaderActions,
+  ConsoleHeaderContext,
+  ConsoleHeaderEyebrow,
+  ConsoleHeaderLabel,
   ConsoleHeaderUser,
   ConsoleHeaderUserSkeleton,
+  ConsoleHeaderText,
   ConsoleLayout,
   ConsoleLayoutContent,
   ConsoleLayoutMain,
   ConsoleSidebar,
+  ConsoleSidebarBrand,
+  ConsoleSidebarBrandLabel,
+  ConsoleSidebarBrandName,
+  ConsoleSidebarContext,
+  ConsoleSidebarNavigation,
+  ConsoleSidebarNavigationContent,
+  ConsoleSidebarNavigationIcon,
+  ConsoleSidebarNavigationItem,
+  ConsoleSidebarNavigationItemDescription,
+  ConsoleSidebarNavigationItemLabel,
+  ConsoleSidebarNavigationItems,
+  ConsoleSidebarNavigationSection,
+  ConsoleSidebarNavigationTitle,
+  ConsoleUserMenuAccountLink,
+  ConsoleUserMenuContent,
+  ConsoleUserMenuIdentity,
+  ConsoleUserMenuInitial,
+  ConsoleUserMenuLogout,
+  ConsoleUserMenuName,
+  ConsoleUserMenuPublicId,
+  ConsoleUserMenuRole,
+  ConsoleUserMenuSeparator,
+  ConsoleUserMenuTrigger,
 } from "@publira/layouts/admin";
 import { StatusChip } from "@publira/ui-components/badge";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -45,25 +73,36 @@ export const PlatformUser = async () => {
   const messages = await loadPlatformMessages(locale);
 
   return (
-    <ConsoleHeaderUser
-      accountHref="/settings/account"
-      currentUser={result.operator}
-      logoutAction={logoutAction}
-      roleLabel={getOperatorRoleLabel(result.operator.role, messages)}
-      userMenuCopy={{
-        accountMenuAriaLabel: getMessage(
-          messages,
-          "platform.shell.account_menu",
-          { name: result.operator.name }
-        ),
-        accountSettings: getMessage(
-          messages,
-          "platform.shell.account_settings"
-        ),
-        logout: getMessage(messages, "platform.shell.logout"),
-        logoutAriaLabel: getMessage(messages, "platform.shell.logout"),
-      }}
-    />
+    <ConsoleHeaderUser>
+      <ConsoleUserMenuTrigger
+        ariaLabel={getMessage(messages, "platform.shell.account_menu", {
+          name: result.operator.name,
+        })}
+      >
+        <ConsoleUserMenuInitial>{result.operator.name}</ConsoleUserMenuInitial>
+      </ConsoleUserMenuTrigger>
+      <ConsoleUserMenuContent>
+        <ConsoleUserMenuIdentity>
+          <ConsoleUserMenuName>{result.operator.name}</ConsoleUserMenuName>
+          <ConsoleUserMenuPublicId>
+            {result.operator.publicId}
+          </ConsoleUserMenuPublicId>
+          <ConsoleUserMenuRole>
+            {getOperatorRoleLabel(result.operator.role, messages)}
+          </ConsoleUserMenuRole>
+        </ConsoleUserMenuIdentity>
+        <ConsoleUserMenuSeparator />
+        <ConsoleUserMenuAccountLink href="/settings/account">
+          {getMessage(messages, "platform.shell.account_settings")}
+        </ConsoleUserMenuAccountLink>
+        <ConsoleUserMenuLogout
+          action={logoutAction}
+          ariaLabel={getMessage(messages, "platform.shell.logout")}
+        >
+          {getMessage(messages, "platform.shell.logout")}
+        </ConsoleUserMenuLogout>
+      </ConsoleUserMenuContent>
+    </ConsoleHeaderUser>
   );
 };
 
@@ -88,49 +127,88 @@ export const PlatformNotificationBell = async () => {
 
 export const PlatformLayout = ({ children }: { children: ReactNode }) => (
   <ConsoleLayout gradient={platformGradient}>
-    <ConsoleSidebar logoLabel="Platform Console" navigation={navigation}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="grid gap-1">
-          <p className="text-sm font-medium text-foreground">
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <Message message="platform.shell.status_title" />
+    <ConsoleSidebar>
+      <ConsoleSidebarBrand>
+        <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
+        <ConsoleSidebarBrandLabel>Platform Console</ConsoleSidebarBrandLabel>
+      </ConsoleSidebarBrand>
+      <ConsoleSidebarContext>
+        <div className="flex items-start justify-between gap-3">
+          <div className="grid gap-1">
+            <p className="text-sm font-medium text-foreground">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="platform.shell.status_title" />
+              </Suspense>
+            </p>
+            <p className="text-xs leading-5 text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
+                <Message message="platform.shell.status_body" />
+              </Suspense>
+            </p>
+          </div>
+          <StatusChip status="success">
+            <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
+              <Message message="platform.shell.status_online" />
             </Suspense>
-          </p>
-          <p className="text-xs leading-5 text-muted-foreground">
-            <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
-              <Message message="platform.shell.status_body" />
-            </Suspense>
-          </p>
+          </StatusChip>
         </div>
-        <StatusChip status="success">
-          <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
-            <Message message="platform.shell.status_online" />
-          </Suspense>
-        </StatusChip>
-      </div>
+      </ConsoleSidebarContext>
+      <ConsoleSidebarNavigation>
+        {navigation.map((section) => (
+          <ConsoleSidebarNavigationSection
+            key={section.id ?? section.items[0]?.href}
+          >
+            <ConsoleSidebarNavigationTitle>
+              {section.title}
+            </ConsoleSidebarNavigationTitle>
+            <ConsoleSidebarNavigationItems>
+              {section.items.map((item) => (
+                <ConsoleSidebarNavigationItem href={item.href} key={item.href}>
+                  <ConsoleSidebarNavigationIcon>
+                    <item.icon className="size-5" />
+                  </ConsoleSidebarNavigationIcon>
+                  <ConsoleSidebarNavigationContent>
+                    <ConsoleSidebarNavigationItemLabel>
+                      {item.label}
+                    </ConsoleSidebarNavigationItemLabel>
+                    <ConsoleSidebarNavigationItemDescription>
+                      {item.description}
+                    </ConsoleSidebarNavigationItemDescription>
+                  </ConsoleSidebarNavigationContent>
+                </ConsoleSidebarNavigationItem>
+              ))}
+            </ConsoleSidebarNavigationItems>
+          </ConsoleSidebarNavigationSection>
+        ))}
+      </ConsoleSidebarNavigation>
     </ConsoleSidebar>
 
     <ConsoleLayoutContent>
-      <ConsoleHeader
-        contextLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-            <Message message="platform.shell.context" />
+      <ConsoleHeader>
+        <ConsoleHeaderContext>
+          <ConsoleHeaderText>
+            <ConsoleHeaderEyebrow>
+              <Suspense fallback={<SkeletonLine className="h-3 w-36" />}>
+                <Message message="platform.shell.eyebrow" />
+              </Suspense>
+            </ConsoleHeaderEyebrow>
+            <ConsoleHeaderLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="platform.shell.context" />
+              </Suspense>
+            </ConsoleHeaderLabel>
+          </ConsoleHeaderText>
+        </ConsoleHeaderContext>
+        <ConsoleHeaderActions>
+          <NotificationBellErrorBoundary>
+            <Suspense fallback={<NotificationBellSkeleton />}>
+              <PlatformNotificationBell />
+            </Suspense>
+          </NotificationBellErrorBoundary>
+          <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
+            <PlatformUser />
           </Suspense>
-        }
-        eyebrow={
-          <Suspense fallback={<SkeletonLine className="h-3 w-36" />}>
-            <Message message="platform.shell.eyebrow" />
-          </Suspense>
-        }
-      >
-        <NotificationBellErrorBoundary>
-          <Suspense fallback={<NotificationBellSkeleton />}>
-            <PlatformNotificationBell />
-          </Suspense>
-        </NotificationBellErrorBoundary>
-        <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
-          <PlatformUser />
-        </Suspense>
+        </ConsoleHeaderActions>
       </ConsoleHeader>
       <ConsoleLayoutMain>{children}</ConsoleLayoutMain>
     </ConsoleLayoutContent>

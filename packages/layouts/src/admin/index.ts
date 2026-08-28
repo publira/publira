@@ -1,26 +1,47 @@
 export {
   ConsoleHeader,
+  ConsoleHeaderActions,
+  ConsoleHeaderContext,
+  ConsoleHeaderEyebrow,
+  ConsoleHeaderLabel,
   ConsoleHeaderSkeleton,
-  ConsoleHeaderUser,
+  ConsoleHeaderText,
   ConsoleHeaderUserSkeleton,
   ConsoleLayout,
   ConsoleLayoutContent,
   ConsoleLayoutMain,
   ConsoleSidebar,
+  ConsoleSidebarBrand,
+  ConsoleSidebarBrandLabel,
+  ConsoleSidebarBrandName,
+  ConsoleSidebarContext,
+  ConsoleSidebarFooter,
+  ConsoleSidebarNavigation,
+  ConsoleSidebarNavigationContent,
+  ConsoleSidebarNavigationIcon,
+  ConsoleSidebarNavigationItem,
+  ConsoleSidebarNavigationItemDescription,
+  ConsoleSidebarNavigationItemLabel,
+  ConsoleSidebarNavigationItems,
+  ConsoleSidebarNavigationSection,
+  ConsoleSidebarNavigationTitle,
   ConsoleSidebarSkeleton,
   defaultConsoleGradient,
 } from "./console-layout";
-export type {
-  ConsoleCurrentUser,
-  ConsoleHeaderProps,
-  ConsoleHeaderUserProps,
-  ConsoleLayoutProps,
-  ConsoleSidebarProps,
-} from "./console-layout";
-export { ConsoleUserMenu } from "./console-user-menu";
-export type {
-  ConsoleUserMenuCopy,
-  ConsoleUserMenuProps,
+export type { ConsoleLayoutProps } from "./console-layout";
+export {
+  ConsoleHeaderUser,
+  ConsoleUserMenu,
+  ConsoleUserMenuAccountLink,
+  ConsoleUserMenuContent,
+  ConsoleUserMenuIdentity,
+  ConsoleUserMenuInitial,
+  ConsoleUserMenuLogout,
+  ConsoleUserMenuName,
+  ConsoleUserMenuPublicId,
+  ConsoleUserMenuRole,
+  ConsoleUserMenuSeparator,
+  ConsoleUserMenuTrigger,
 } from "./console-user-menu";
 
 export {
