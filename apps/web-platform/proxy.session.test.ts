@@ -10,12 +10,12 @@ import {
   vi,
 } from "vitest";
 
-const { mockIsSetupCompleted } = vi.hoisted(() => ({
-  mockIsSetupCompleted: vi.fn(),
+const { mockResolveSetupCompleted } = vi.hoisted(() => ({
+  mockResolveSetupCompleted: vi.fn(),
 }));
 
 vi.mock("./lib/setup", () => ({
-  isSetupCompleted: mockIsSetupCompleted,
+  resolveSetupCompleted: mockResolveSetupCompleted,
 }));
 
 const PUBLIRA_AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
@@ -78,7 +78,7 @@ describe("web-platform proxy session handling", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIsSetupCompleted.mockResolvedValue(true);
+    mockResolveSetupCompleted.mockResolvedValue(true);
   });
 
   it("復号できない Cookie は保護ルートへ通さず削除する", async () => {
@@ -170,7 +170,7 @@ describe("web-platform proxy session handling", () => {
   });
 
   it("セットアップ未完了なら死んだ Cookie を消して /setup へ送る", async () => {
-    mockIsSetupCompleted.mockResolvedValue(false);
+    mockResolveSetupCompleted.mockResolvedValue(false);
     const { proxy } = await import("./proxy");
 
     const response = await proxy(

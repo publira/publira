@@ -10,7 +10,7 @@ import {
   PLATFORM_SESSION_COOKIE_NAME,
   RETURN_TO_HEADER_NAME,
 } from "./lib/auth-shared";
-import { isSetupCompleted } from "./lib/setup";
+import { resolveSetupCompleted } from "./lib/setup";
 
 const PUBLIC_PATHS = new Set([
   "/confirm-email",
@@ -40,7 +40,7 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.next();
   }
 
-  const setupCompleted = await isSetupCompleted();
+  const setupCompleted = await resolveSetupCompleted();
 
   if (!setupCompleted && pathname === "/login") {
     return NextResponse.redirect(new URL("/setup", request.url));

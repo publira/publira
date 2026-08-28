@@ -30,12 +30,6 @@ import { ErrorScreen } from "#components/error-screen";
  * flush, React cuts the response short after the 200 is already committed and
  * the operator gets the browser's own network-error page instead of this
  * screen.
- *
- * A platform API outage does not reach this screen today: `proxy.ts` awaits
- * `isSetupCompleted()`, which re-throws an `unavailable` RPC error, so every
- * path outside `/setup` and the health probes answers a bare
- * `500 Internal Server Error` from the proxy before any page renders — tracked
- * in #1201, which also owns the e2e that measures this screen.
  */
 const RootError = ({
   error,

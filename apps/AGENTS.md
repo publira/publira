@@ -359,6 +359,22 @@ try {
 }
 ```
 
+## `proxy.ts` must not throw
+
+The proxy answers before any page renders, so a proxy that rejects is a bare `500 Internal Server Error` on every path its matcher covers. `error.tsx`, `global-error.tsx`, and the login screen are all out of reach — the app has nothing at all to show. A backend read the proxy depends on must therefore still produce a routing decision when the API is unreachable.
+
+| App | What the proxy reads | While the API is down |
+| --- | --- | --- |
+| `web-admin` / `web-host` | `resolveTenantId()` | An in-process LRU keeps serving the hosts it has already resolved; a host it cannot resolve gets `503` + `Retry-After` from the proxy's own `try` / `catch` |
+| `web-platform` | `resolveSetupCompleted()` | Routing continues on the last state the platform API confirmed, so a protected path reaches the page and `app/error.tsx` renders the failure |
+
+Two rules follow:
+
+- **Answer the paths that must survive an outage above the read.** `isHealthProbePath()` and `/setup` return before any RPC is attempted, so a probe never reports the API's health as its own.
+- **Never fall back to a value that changes what the operator is asked to do.** "Setup is not completed" during an outage re-opens the bootstrap form on a platform that was set up long ago. The fallback is the state the API last confirmed, and a fixed default only where it has never confirmed one.
+
+No lint covers this. The `*.error-boundary` e2e specs measure it: each stops that app's API server and asserts the app answers `200` with its own error screen instead of a bare 500.
+
 ## UI locale
 
 The UI renders in `ja` or `en`, defaulting to `ja`; every unknown value falls back to `ja`. No i18n library is added (Epic [#864](https://github.com/publira/publira/issues/864)).
