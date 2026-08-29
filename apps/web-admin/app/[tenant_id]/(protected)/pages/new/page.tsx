@@ -1,6 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -14,13 +13,13 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getAdminMetadata } from "#lib/admin-metadata";
 
 import { PageForm } from "../_components/page-form";
 import { createPageAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "ページ新規作成",
-};
+export const generateMetadata = () => getAdminMetadata("admin.pages.new_title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -44,15 +43,16 @@ const NewPagePage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>ページ新規作成</AdminPageTitle>
+        <AdminPageTitle>
+          <Message message="admin.pages.new_title" />
+        </AdminPageTitle>
         <AdminPageDescription>
-          新しい固定ページを作成します。作成後は編集画面で Markdown
-          と公開設定を管理できます。
+          <Message message="admin.pages.new_description" />
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/pages" />} variant="outline">
-          一覧へ戻る
+          <Message message="admin.pages.back_to_list" />
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

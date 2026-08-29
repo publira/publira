@@ -18,6 +18,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { useActionState, useCallback } from "react";
 
+import { useAdminMessage } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -38,6 +39,7 @@ export const EpisodeForm = ({
   action,
   timeZone,
 }: EpisodeFormProps) => {
+  const t = useAdminMessage();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -52,17 +54,17 @@ export const EpisodeForm = ({
     [timeZone]
   );
 
-  let submitLabel = "エピソードを入稿";
+  let submitLabel = t("admin.series.episodes.form.create");
   if (isPending) {
-    submitLabel = "送信中...";
+    submitLabel = t("admin.series.episodes.form.submitting");
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>エピソード入稿フォーム</CardTitle>
+        <CardTitle>{t("admin.series.episodes.form.card_title")}</CardTitle>
         <CardDescription>
-          エピソードの基本情報と公開設定を入力して登録します。
+          {t("admin.series.episodes.form.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -75,11 +77,13 @@ export const EpisodeForm = ({
           <input name="series_public_id" type="hidden" value={seriesPublicId} />
 
           <Field>
-            <FieldLabel required>タイトル</FieldLabel>
+            <FieldLabel required>
+              {t("admin.series.episodes.form.title")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 name="title"
-                placeholder="例: 第1話 はじまりの朝"
+                placeholder={t("admin.series.episodes.form.title_placeholder")}
                 required
                 type="text"
               />
@@ -87,7 +91,9 @@ export const EpisodeForm = ({
           </Field>
 
           <Field>
-            <FieldLabel required>価格</FieldLabel>
+            <FieldLabel required>
+              {t("admin.series.episodes.form.price")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={0}
@@ -97,13 +103,15 @@ export const EpisodeForm = ({
                 type="number"
               />
               <FieldDescription>
-                0 を指定すると無料で公開されます。
+                {t("admin.series.episodes.form.price_description")}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel required>閲覧可能期間</FieldLabel>
+            <FieldLabel required>
+              {t("admin.series.episodes.form.reading_period")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={0}
@@ -113,7 +121,7 @@ export const EpisodeForm = ({
                 type="number"
               />
               <FieldDescription>
-                単位は時間です。0 を指定すると無制限で閲覧できます。
+                {t("admin.series.episodes.form.reading_period_description")}
               </FieldDescription>
             </FieldContent>
           </Field>

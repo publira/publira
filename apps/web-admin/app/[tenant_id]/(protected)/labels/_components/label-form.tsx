@@ -14,6 +14,7 @@ import { Input } from "@publira/ui-components/input";
 import { useActionState, useCallback, useState } from "react";
 import type { ChangeEvent } from "react";
 
+import { useAdminMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { LabelActionState, LabelListItem } from "../label-types";
@@ -27,31 +28,42 @@ interface LabelFormProps {
   initialLabel?: LabelListItem;
 }
 
-const getSubmitLabel = (isUpdate: boolean, isPending: boolean): string => {
+const getSubmitLabel = (
+  t: ReturnType<typeof useAdminMessage>,
+  isUpdate: boolean,
+  isPending: boolean
+): string => {
   if (isPending) {
-    return "送信中...";
+    return t("admin.labels.form.submitting");
   }
   if (isUpdate) {
-    return "レーベルを更新";
+    return t("admin.labels.form.update");
   }
-  return "レーベルを作成";
+  return t("admin.labels.form.create");
 };
 
-const getCardTitle = (isUpdate: boolean): string => {
+const getCardTitle = (
+  t: ReturnType<typeof useAdminMessage>,
+  isUpdate: boolean
+): string => {
   if (isUpdate) {
-    return "レーベル情報";
+    return t("admin.labels.form.update_card_title");
   }
-  return "新規レーベル";
+  return t("admin.labels.form.create_card_title");
 };
 
-const getCardDescription = (isUpdate: boolean): string => {
+const getCardDescription = (
+  t: ReturnType<typeof useAdminMessage>,
+  isUpdate: boolean
+): string => {
   if (isUpdate) {
-    return "レーベル名を編集します。";
+    return t("admin.labels.form.update_description");
   }
-  return "新しいレーベル名を入力してください。";
+  return t("admin.labels.form.create_description");
 };
 
 export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
+  const t = useAdminMessage();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const initialName = initialLabel?.name ?? "";
@@ -74,9 +86,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
   );
 
   const isUpdate = mode === "update";
-  const submitLabel = getSubmitLabel(isUpdate, isPending);
-  const cardTitle = getCardTitle(isUpdate);
-  const cardDescription = getCardDescription(isUpdate);
+  const submitLabel = getSubmitLabel(t, isUpdate, isPending);
+  const cardTitle = getCardTitle(t, isUpdate);
+  const cardDescription = getCardDescription(t, isUpdate);
 
   return (
     <Card>
@@ -94,12 +106,12 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
           />
 
           <Field>
-            <FieldLabel required>レーベル名</FieldLabel>
+            <FieldLabel required>{t("admin.labels.form.name")}</FieldLabel>
             <FieldContent>
               <Input
                 name="name"
                 onChange={handleNameChange}
-                placeholder="例: 月刊ノベルズ"
+                placeholder={t("admin.labels.form.name_placeholder")}
                 required
                 type="text"
                 value={name}
@@ -109,7 +121,7 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
 
           {isUpdate ? null : (
             <Field>
-              <FieldLabel>レーベルアイキャッチ画像</FieldLabel>
+              <FieldLabel>{t("admin.labels.form.eye_catch")}</FieldLabel>
               <FieldContent>
                 <Input
                   accept="image/jpeg,image/png,image/webp"
@@ -117,7 +129,7 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
                   type="file"
                 />
                 <p className="text-sm text-muted-foreground">
-                  3:4 基準で 2400x3200px 以上、10MB 以下の画像を推奨します。
+                  {t("admin.labels.form.eye_catch_description")}
                 </p>
               </FieldContent>
             </Field>

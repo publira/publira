@@ -1,5 +1,6 @@
 "use client";
 
+import { toIntlLocale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import { Card, CardContent } from "@publira/ui-components/card";
 import { Combobox, MultiCombobox } from "@publira/ui-components/combobox";
@@ -28,6 +29,7 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
+import { useAdminMessage, useAdminMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -59,13 +61,16 @@ interface SeriesFormProps {
 }
 
 const getSubmitLabel = (
+  t: ReturnType<typeof useAdminMessage>,
   mode: "create" | "update",
   isPending: boolean
 ): string => {
   if (isPending) {
-    return "送信中...";
+    return t("admin.series.form.submitting");
   }
-  return mode === "update" ? "シリーズを更新" : "シリーズを作成";
+  return mode === "update"
+    ? t("admin.series.form.update")
+    : t("admin.series.form.create");
 };
 
 interface CreatorFieldProps {
@@ -81,13 +86,16 @@ const CreatorField = ({
   selectedCreatorPublicIds,
   onChange,
 }: CreatorFieldProps) => {
+  const t = useAdminMessage();
   // MultiCombobox renders its own input instead of a Field control, so the
   // label needs an id to point at.
   const comboboxId = useId();
 
   return (
     <Field>
-      <FieldLabel htmlFor={comboboxId}>クリエイター</FieldLabel>
+      <FieldLabel htmlFor={comboboxId}>
+        {t("admin.series.form.creators")}
+      </FieldLabel>
       <FieldContent>
         {creatorsErrorMessage ? (
           <FormMessage variant="destructive">
@@ -97,14 +105,14 @@ const CreatorField = ({
 
         {creatorItems.length === 0 ? (
           <FieldDescription>
-            選択可能なクリエイターがいません。先にクリエイターを作成してください。
+            {t("admin.series.form.creators_empty")}
           </FieldDescription>
         ) : (
           <MultiCombobox
             id={comboboxId}
             items={creatorItems}
             onValueChange={onChange}
-            searchPlaceholder="クリエイター名で検索"
+            searchPlaceholder={t("admin.series.form.creators_search")}
             value={selectedCreatorPublicIds}
           />
         )}
@@ -119,7 +127,7 @@ const CreatorField = ({
         ))}
 
         <FieldDescription>
-          複数選択できます。シリーズに紐づけるクリエイターを選んでください。
+          {t("admin.series.form.creators_description")}
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -143,6 +151,7 @@ const LabelField = ({
   onComboboxChange,
   onFallbackChange,
 }: LabelFieldProps) => {
+  const t = useAdminMessage();
   // Combobox renders its own input instead of a Field control, so the label
   // needs an id to point at. The fallback Input is a Field control and wires
   // itself up.
@@ -154,7 +163,7 @@ const LabelField = ({
         htmlFor={useLabelFallbackInput ? undefined : comboboxId}
         required
       >
-        レーベル
+        {t("admin.series.form.label")}
       </FieldLabel>
       <FieldContent>
         {labelsErrorMessage ? (
@@ -166,23 +175,23 @@ const LabelField = ({
             <Input
               name="label_public_id"
               onChange={onFallbackChange}
-              placeholder="例: label_demo"
+              placeholder={t("admin.series.form.label_fallback_placeholder")}
               required
               type="text"
               value={selectedLabelPublicId}
             />
             <FieldDescription>
-              レーベル一覧を取得できないため、公開 ID を直接入力してください。
+              {t("admin.series.form.label_fallback_description")}
             </FieldDescription>
           </>
         ) : (
           <>
             <Combobox
-              emptyMessage="一致するレーベルが見つかりません。"
+              emptyMessage={t("admin.series.form.label_empty")}
               id={comboboxId}
               items={labelItems}
               onValueChange={onComboboxChange}
-              placeholder="レーベル名で検索"
+              placeholder={t("admin.series.form.label_placeholder")}
               value={selectedLabelPublicId}
             />
 
@@ -193,7 +202,7 @@ const LabelField = ({
             />
 
             <FieldDescription>
-              シリーズに紐づけるレーベルを選択してください。
+              {t("admin.series.form.label_description")}
             </FieldDescription>
           </>
         )}
@@ -213,19 +222,22 @@ const EyeCatchImageField = ({
   onImageFileChange,
   previewImageUrl,
 }: EyeCatchImageFieldProps) => {
+  const t = useAdminMessage();
   const hasPreviewImage = previewImageUrl.length > 0;
 
   return (
     <Field>
-      <FieldLabel>アイキャッチ画像</FieldLabel>
+      <FieldLabel>{t("admin.series.form.eye_catch")}</FieldLabel>
       <FieldContent>
         <div className="grid gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4">
           <div className="rounded-xl border border-border/60 bg-background p-3">
-            <p className="mb-2 text-sm font-medium">アップロード前プレビュー</p>
+            <p className="mb-2 text-sm font-medium">
+              {t("admin.series.form.eye_catch_preview")}
+            </p>
             <div className="relative aspect-[3/4] max-w-52 overflow-hidden rounded-lg border border-border/60 bg-muted/50">
               {hasPreviewImage ? (
                 <Image
-                  alt="アップロード画像プレビュー"
+                  alt={t("admin.series.form.eye_catch_preview_alt")}
                   className="h-full w-full object-cover"
                   fill
                   sizes="(max-width: 768px) 100vw, 240px"
@@ -234,7 +246,7 @@ const EyeCatchImageField = ({
                 />
               ) : (
                 <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-                  新しい画像を選択するとここに表示されます。
+                  {t("admin.series.form.eye_catch_preview_empty")}
                 </div>
               )}
             </div>
@@ -253,9 +265,7 @@ const EyeCatchImageField = ({
           value={clearEyeCatchImage ? "1" : "0"}
         />
         <FieldDescription>
-          JPEG/PNG/WebP、10MB以下、2400x3200px以上の画像を選択してください。
-          保存時に用途別バリアント (3:4 / 1:1 / 16:9 / OG)
-          と端末向けサイズが生成されます。
+          {t("admin.series.form.eye_catch_description")}
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -345,6 +355,8 @@ export const SeriesForm = ({
   initialSeries,
   timeZone,
 }: SeriesFormProps) => {
+  const t = useAdminMessage();
+  const { locale } = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const creatorItems = useMemo<MultiComboboxItem[]>(
@@ -354,8 +366,10 @@ export const SeriesForm = ({
           label: creator.name,
           value: creator.publicId,
         }))
-        .toSorted((a, b) => a.label.localeCompare(b.label, "ja")),
-    [creators]
+        .toSorted((a, b) =>
+          a.label.localeCompare(b.label, toIntlLocale(locale))
+        ),
+    [creators, locale]
   );
   const labelItems = useMemo<ComboboxItem[]>(
     () =>
@@ -364,8 +378,10 @@ export const SeriesForm = ({
           label: label.name,
           value: label.publicId,
         }))
-        .toSorted((a, b) => a.label.localeCompare(b.label, "ja")),
-    [labels]
+        .toSorted((a, b) =>
+          a.label.localeCompare(b.label, toIntlLocale(locale))
+        ),
+    [labels, locale]
   );
   const {
     eyeCatchPreviewUrl,
@@ -381,7 +397,7 @@ export const SeriesForm = ({
     Boolean(labelsErrorMessage) || labelItems.length === 0;
 
   const isUpdate = mode === "update";
-  const submitLabel = getSubmitLabel(mode, isPending);
+  const submitLabel = getSubmitLabel(t, mode, isPending);
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -411,12 +427,12 @@ export const SeriesForm = ({
 
           <div className="grid gap-4">
             <Field>
-              <FieldLabel required>タイトル</FieldLabel>
+              <FieldLabel required>{t("admin.series.form.title")}</FieldLabel>
               <FieldContent>
                 <Input
                   defaultValue={initialSeries?.title ?? ""}
                   name="title"
-                  placeholder="例: 海風と活版印刷"
+                  placeholder={t("admin.series.form.title_placeholder")}
                   required
                   type="text"
                 />
@@ -424,7 +440,9 @@ export const SeriesForm = ({
             </Field>
 
             <Field>
-              <FieldLabel required>閲覧可能期間</FieldLabel>
+              <FieldLabel required>
+                {t("admin.series.form.reading_period")}
+              </FieldLabel>
               <FieldContent>
                 <Input
                   defaultValue={
@@ -437,18 +455,20 @@ export const SeriesForm = ({
                   type="number"
                 />
                 <FieldDescription>
-                  単位は時間です。0 を指定すると無制限で閲覧できます。
+                  {t("admin.series.form.reading_period_description")}
                 </FieldDescription>
               </FieldContent>
             </Field>
 
             <Field>
-              <FieldLabel required>概要</FieldLabel>
+              <FieldLabel required>
+                {t("admin.series.form.synopsis")}
+              </FieldLabel>
               <FieldContent>
                 <Textarea
                   defaultValue={initialSeries?.synopsis ?? ""}
                   name="synopsis"
-                  placeholder="シリーズの紹介文を入力"
+                  placeholder={t("admin.series.form.synopsis_placeholder")}
                   required
                   rows={5}
                 />
@@ -472,7 +492,7 @@ export const SeriesForm = ({
             />
 
             <Field>
-              <FieldLabel>公開日時</FieldLabel>
+              <FieldLabel>{t("admin.series.form.published_at")}</FieldLabel>
               <FieldContent>
                 <input defaultValue="" name="published_at" type="hidden" />
                 <Input
@@ -486,9 +506,9 @@ export const SeriesForm = ({
                   type="datetime-local"
                 />
                 <FieldDescription>
-                  空欄の場合は非公開です。日時はテナントのタイムゾーン（
-                  {timeZone}
-                  ）の壁時計として解釈し、その時刻以降に公開されます。
+                  {t("admin.series.form.published_at_description", {
+                    time_zone: timeZone,
+                  })}
                 </FieldDescription>
               </FieldContent>
             </Field>

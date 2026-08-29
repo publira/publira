@@ -12,6 +12,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { toDateTimeLocalValue } from "@publira/utils";
 import { useActionState, useCallback } from "react";
 
+import { useAdminMessage } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -36,6 +37,7 @@ export const EpisodeScheduleForm = ({
   action,
   timeZone,
 }: EpisodeScheduleFormProps) => {
+  const t = useAdminMessage();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -53,9 +55,9 @@ export const EpisodeScheduleForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>publish_at 設定</CardTitle>
+        <CardTitle>{t("admin.series.episodes.schedule_title")}</CardTitle>
         <CardDescription>
-          公開予約日時を更新します。空欄で送信すると予約を解除します。
+          {t("admin.series.episodes.schedule_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -86,7 +88,9 @@ export const EpisodeScheduleForm = ({
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={isPending} type="submit">
-              {isPending ? "更新中..." : "publish_at を更新"}
+              {isPending
+                ? t("admin.series.episodes.updating")
+                : t("admin.series.episodes.schedule_update")}
             </Button>
           </div>
         </form>

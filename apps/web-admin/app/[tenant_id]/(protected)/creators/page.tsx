@@ -1,5 +1,4 @@
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
-import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import {
@@ -11,6 +10,8 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listCreators } from "#lib/creator";
 import {
@@ -24,9 +25,7 @@ import { CreatorManager } from "./_components/creator-manager";
 
 type CreatorPageProps = PageProps<"/[tenant_id]/creators">;
 
-export const metadata: Metadata = {
-  title: "著者",
-};
+export const generateMetadata = () => getAdminMetadata("admin.creators.title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -66,9 +65,11 @@ const CreatorPage = ({ searchParams }: CreatorPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>著者</AdminPageTitle>
+        <AdminPageTitle>
+          <Message message="admin.creators.title" />
+        </AdminPageTitle>
         <AdminPageDescription>
-          著者一覧の確認と、編集への遷移を行います。
+          <Message message="admin.creators.page_description" />
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

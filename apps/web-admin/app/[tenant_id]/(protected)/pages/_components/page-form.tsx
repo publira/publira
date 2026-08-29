@@ -20,6 +20,7 @@ import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useCallback, useState } from "react";
 import type { ChangeEvent } from "react";
 
+import { useAdminMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { formatPagePath, normalizePageSlugInput } from "../page-types";
@@ -35,6 +36,7 @@ interface PageFormProps {
 }
 
 export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
+  const t = useAdminMessage();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   // Initial values only; entity switch must remount the form via key on the parent.
@@ -74,21 +76,25 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
     []
   );
 
-  let submitLabel = "ページを作成";
+  let submitLabel = t("admin.pages.form.create");
   if (isPending) {
-    submitLabel = "送信中...";
+    submitLabel = t("admin.pages.form.submitting");
   } else if (isUpdate) {
-    submitLabel = "基本情報を更新";
+    submitLabel = t("admin.pages.form.update");
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isUpdate ? "ページ基本情報" : "新規ページ"}</CardTitle>
+        <CardTitle>
+          {isUpdate
+            ? t("admin.pages.form.update_card_title")
+            : t("admin.pages.form.create_card_title")}
+        </CardTitle>
         <CardDescription>
           {isUpdate
-            ? "タイトルとフッター表示を更新します。slug は公開 URL の一部になるため変更できません。"
-            : "slug とタイトルを設定してページを作成します。"}
+            ? t("admin.pages.form.update_description")
+            : t("admin.pages.form.create_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -114,20 +120,20 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
                 value={slug}
               />
               <FieldDescription>
-                公開 URL は {formatPagePath(slug)} になります。空欄は /。先頭の
-                / は任意で、半角小文字・数字・ハイフン（複数階層は /
-                区切り）を利用できます。
+                {t("admin.pages.form.slug_description", {
+                  path: formatPagePath(slug),
+                })}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel required>タイトル</FieldLabel>
+            <FieldLabel required>{t("admin.pages.form.title")}</FieldLabel>
             <FieldContent>
               <Input
                 name="title"
                 onChange={handleTitleChange}
-                placeholder="プライバシーポリシー"
+                placeholder={t("admin.pages.form.title_placeholder")}
                 required
                 type="text"
                 value={title}
@@ -143,27 +149,27 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
                   onChange={handleDisplayInFooterChange}
                   type="checkbox"
                 />
-                フッターに表示する
+                {t("admin.pages.form.footer_visible")}
               </label>
               <FieldDescription>
-                公開中のページのみ、公開サイトのフッターにタイトルリンクとして表示されます。既定はオフです。
+                {t("admin.pages.form.footer_description")}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           {isUpdate ? null : (
             <Field>
-              <FieldLabel>本文</FieldLabel>
+              <FieldLabel>{t("admin.pages.form.body")}</FieldLabel>
               <FieldContent>
                 <Textarea
                   name="content_markdown"
                   onChange={handleContentMarkdownChange}
-                  placeholder="# プライバシーポリシー"
+                  placeholder={t("admin.pages.form.body_placeholder")}
                   rows={16}
                   value={contentMarkdown}
                 />
                 <FieldDescription>
-                  ここで初回の本文も登録できます。作成後は編集画面で下書き保存、差分確認、公開管理を行えます。
+                  {t("admin.pages.form.body_description")}
                 </FieldDescription>
               </FieldContent>
             </Field>

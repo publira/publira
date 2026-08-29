@@ -6,7 +6,6 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -25,6 +24,7 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getCreator } from "#lib/creator";
 import { getTenantId } from "#lib/tenant-id";
@@ -32,9 +32,8 @@ import { getTenantId } from "#lib/tenant-id";
 import { CreatorForm } from "../_components/creator-form";
 import { updateCreatorAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "著者編集",
-};
+export const generateMetadata = () =>
+  getAdminMetadata("admin.creators.edit_title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "creator_public_id");
@@ -88,11 +87,11 @@ const EditCreatorFormData = async ({
       <SectionError
         actions={
           <LinkButton render={<Link href="/creators" />} variant="outline">
-            一覧へ戻る
+            <Message message="admin.creators.back_to_list" />
           </LinkButton>
         }
         description={result.message}
-        title="著者を表示できませんでした"
+        title={<Message message="admin.creators.detail_error" />}
       />
     );
   }
@@ -111,17 +110,21 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>著者編集</AdminPageTitle>
-        <AdminPageDescription>著者の情報を編集します。</AdminPageDescription>
+        <AdminPageTitle>
+          <Message message="admin.creators.edit_title" />
+        </AdminPageTitle>
+        <AdminPageDescription>
+          <Message message="admin.creators.edit_description" />
+        </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/creators" />} variant="outline">
-          一覧へ戻る
+          <Message message="admin.creators.back_to_list" />
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
-      <FlashToast title="著者を作成しました。" />
+      <FlashToast message="admin.creators.created" />
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>

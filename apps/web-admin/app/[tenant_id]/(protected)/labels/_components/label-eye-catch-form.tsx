@@ -13,6 +13,7 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
+import { useAdminMessage } from "#components/client-message";
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -30,6 +31,7 @@ export const LabelEyeCatchForm = ({
   action,
   initialLabel,
 }: LabelEyeCatchFormProps) => {
+  const t = useAdminMessage();
   const tenantId = useTenantId();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);
@@ -131,7 +133,9 @@ export const LabelEyeCatchForm = ({
 
           <div className="flex justify-end">
             <Button disabled={isPending} type="submit">
-              {isPending ? "送信中..." : "アイキャッチを更新"}
+              {isPending
+                ? t("admin.labels.form.submitting")
+                : t("admin.labels.form.eye_catch_update")}
             </Button>
           </div>
         </form>

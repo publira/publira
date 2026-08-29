@@ -1,5 +1,4 @@
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
-import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import {
@@ -11,6 +10,8 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
@@ -25,9 +26,7 @@ import { PageManager } from "./_components/page-manager";
 
 type PagesPageProps = PageProps<"/[tenant_id]/pages">;
 
-export const metadata: Metadata = {
-  title: "ページ",
-};
+export const generateMetadata = () => getAdminMetadata("admin.pages.title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -71,9 +70,11 @@ const PagesPage = ({ searchParams }: PagesPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>ページ</AdminPageTitle>
+        <AdminPageTitle>
+          <Message message="admin.pages.title" />
+        </AdminPageTitle>
         <AdminPageDescription>
-          個別ページの一覧確認、作成、編集画面への遷移を行います。
+          <Message message="admin.pages.page_description" />
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

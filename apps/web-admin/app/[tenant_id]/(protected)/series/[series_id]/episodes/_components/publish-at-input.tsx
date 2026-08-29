@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Field,
   FieldContent,
@@ -5,6 +7,8 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+
+import { useAdminMessage } from "#components/client-message";
 
 interface PublishAtInputProps {
   defaultValue?: string;
@@ -16,21 +20,26 @@ export const PublishAtInput = ({
   defaultValue,
   name = "publish_at",
   timeZone,
-}: PublishAtInputProps) => (
-  <Field>
-    <FieldLabel>publish_at</FieldLabel>
-    <FieldContent>
-      <input defaultValue="" name={name} type="hidden" />
-      <Input
-        defaultValue={defaultValue}
-        name={`${name}_local`}
-        step={60}
-        type="datetime-local"
-      />
-      <FieldDescription>
-        未入力の場合は下書きとして入稿します。入力するとテナントのタイムゾーン（
-        {timeZone}）の壁時計として予約公開します。
-      </FieldDescription>
-    </FieldContent>
-  </Field>
-);
+}: PublishAtInputProps) => {
+  const t = useAdminMessage();
+
+  return (
+    <Field>
+      <FieldLabel>publish_at</FieldLabel>
+      <FieldContent>
+        <input defaultValue="" name={name} type="hidden" />
+        <Input
+          defaultValue={defaultValue}
+          name={`${name}_local`}
+          step={60}
+          type="datetime-local"
+        />
+        <FieldDescription>
+          {t("admin.series.episodes.form.publish_at_description", {
+            time_zone: timeZone,
+          })}
+        </FieldDescription>
+      </FieldContent>
+    </Field>
+  );
+};

@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
+import { useAdminMessage } from "#components/client-message";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
@@ -49,13 +50,14 @@ const CreatorListBody = ({
   hasPageLinks: boolean;
   listErrorMessage?: string;
 }) => {
+  const t = useAdminMessage();
   // A failed fetch still hands an empty `creators` array; do not show the empty
   // list state alongside the error or operators will read it as "no creators".
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title="著者一覧を表示できませんでした"
+        title={t("admin.creators.list_error")}
       />
     );
   }
@@ -63,10 +65,10 @@ const CreatorListBody = ({
   if (creators.length === 0) {
     return (
       <CursorPageEmptyState
-        description="新規作成ページから著者を作成してください。"
+        description={t("admin.creators.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel="著者"
-        title="著者がまだ登録されていません。"
+        itemLabel={t("admin.creators.title")}
+        title={t("admin.creators.empty_title")}
       />
     );
   }
@@ -75,10 +77,14 @@ const CreatorListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-24">画像</TableHead>
-          <TableHead>名前</TableHead>
-          <TableHead>プロフィール</TableHead>
-          <TableHead className="w-56">操作</TableHead>
+          <TableHead className="w-24">
+            {t("admin.creators.columns.image")}
+          </TableHead>
+          <TableHead>{t("admin.creators.columns.name")}</TableHead>
+          <TableHead>{t("admin.creators.columns.profile")}</TableHead>
+          <TableHead className="w-56">
+            {t("admin.creators.columns.actions")}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -87,14 +93,16 @@ const CreatorListBody = ({
             <TableCell>
               {creator.iconImageUrl ? (
                 <Image
-                  alt={`${creator.name} のアイコン`}
+                  alt={t("admin.creators.icon_alt", { name: creator.name })}
                   className="size-10 rounded-full border object-cover"
                   height={40}
                   src={creator.iconImageUrl}
                   width={40}
                 />
               ) : (
-                <span className="text-xs text-muted-foreground">未設定</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("admin.creators.unset")}
+                </span>
               )}
             </TableCell>
             <TableCell className="font-medium">{creator.name}</TableCell>
@@ -105,7 +113,7 @@ const CreatorListBody = ({
                   render={<Link href={`/creators/${creator.publicId}`} />}
                   variant="outline"
                 >
-                  編集
+                  {t("admin.creators.edit_action")}
                 </LinkButton>
               </div>
             </TableCell>
@@ -123,6 +131,7 @@ export const CreatorManager = ({
   pageSize,
   previousHref,
 }: CreatorManagerProps) => {
+  const t = useAdminMessage();
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -133,13 +142,13 @@ export const CreatorManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>著者一覧</CardTitle>
+          <CardTitle>{t("admin.creators.list_title")}</CardTitle>
           <CardDescription>
-            名前やプロフィールを確認し、必要な著者を編集します。
+            {t("admin.creators.list_description")}
           </CardDescription>
         </div>
         <LinkButton render={<Link href="/creators/new" />} variant="outline">
-          著者を新規作成
+          {t("admin.creators.new_action")}
         </LinkButton>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -151,8 +160,10 @@ export const CreatorManager = ({
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel="著者一覧のページ送り"
-            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            ariaLabel={t("admin.creators.pagination_aria")}
+            description={t("admin.creators.pagination_description", {
+              count: pageSize,
+            })}
             nextHref={nextHref}
             previousHref={previousHref}
           />

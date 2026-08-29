@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 
+import { useAdminMessage } from "#components/client-message";
+
 interface MarkdownPreviewProps {
   content: string;
 }
@@ -279,13 +281,13 @@ const parseMarkdown = (content: string): MarkdownBlock[] => {
 };
 
 export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
+  const t = useAdminMessage();
   const blocks = parseMarkdown(content);
 
   if (blocks.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        まだ内容がありません。左側のエディタに Markdown
-        を入力するとプレビューが表示されます。
+        {t("admin.pages.preview_empty")}
       </p>
     );
   }

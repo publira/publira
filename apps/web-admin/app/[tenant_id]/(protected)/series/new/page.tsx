@@ -1,6 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -13,6 +12,8 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listAllLabels } from "#lib/label";
@@ -23,9 +24,8 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { SeriesForm } from "../_components/series-form";
 import { createSeriesAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "シリーズ新規作成",
-};
+export const generateMetadata = () =>
+  getAdminMetadata("admin.series.new_title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -82,11 +82,13 @@ const NewSeriesPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>シリーズを新規作成</AdminPageTitle>
+        <AdminPageTitle>
+          <Message message="admin.series.new_title" />
+        </AdminPageTitle>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/series" />} variant="outline">
-          一覧へ戻る
+          <Message message="admin.series.back_to_list" />
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

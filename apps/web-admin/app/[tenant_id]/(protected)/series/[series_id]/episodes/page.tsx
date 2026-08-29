@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -11,7 +12,6 @@ import {
   createPlaceholderStaticParams,
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
-import type { Metadata } from "next";
 import Link from "next/link";
 
 import {
@@ -26,7 +26,9 @@ import {
 } from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { FlashToast } from "#components/flash-toast";
+import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
+import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
@@ -35,15 +37,15 @@ import {
   parseCursorSearchParams,
 } from "#lib/cursor-page";
 import { listEpisodes } from "#lib/episode";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodesSortableList } from "./_components/episodes-sortable-list";
 import { reorderEpisodesAction } from "./_lib/actions";
 
-export const metadata: Metadata = {
-  title: "エピソード",
-};
+export const generateMetadata = () =>
+  getAdminMetadata("admin.series.episodes.title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id");
@@ -60,14 +62,16 @@ const SeriesEpisodesPage = async ({
   guardPlaceholder(series_id);
 
   const { token } = parseCursorSearchParams(sp);
-  const [result, timeZone] = await Promise.all([
+  const [result, timeZone, locale] = await Promise.all([
     listEpisodes({
       seriesPublicId: series_id,
       tenantId,
       token,
     }),
     getTenantDisplayTimeZone(tenantId),
+    getLocale(tenantId),
   ]);
+  const messages = await loadAdminMessages(locale);
   await redirectToLoginIfSessionRejected(result);
 
   const pageHrefs = cursorPageHrefs(result);
@@ -78,9 +82,11 @@ const SeriesEpisodesPage = async ({
       <AdminPageHeader>
         <AdminPageHeading>
           <AdminPageEyebrow>{`Series ${series_id}`}</AdminPageEyebrow>
-          <AdminPageTitle>エピソード一覧</AdminPageTitle>
+          <AdminPageTitle>
+            <Message message="admin.series.episodes.list_title" />
+          </AdminPageTitle>
           <AdminPageDescription>
-            シリーズ配下のエピソードを管理します。
+            <Message message="admin.series.episodes.list_description" />
           </AdminPageDescription>
         </AdminPageHeading>
         <AdminPageActions>
@@ -88,13 +94,13 @@ const SeriesEpisodesPage = async ({
             <LinkButton
               render={<Link href={`/series/${series_id}/episodes/new`} />}
             >
-              新規作成
+              <Message message="admin.series.episodes.new_action" />
             </LinkButton>
             <LinkButton
               render={<Link href={`/series/${series_id}`} />}
               variant="outline"
             >
-              シリーズへ戻る
+              <Message message="admin.series.episodes.back_to_series" />
             </LinkButton>
           </div>
         </AdminPageActions>
@@ -102,18 +108,20 @@ const SeriesEpisodesPage = async ({
       <AdminPageContent>
         <FlashToast
           keyName="reordered"
-          title="エピソードの表示順を更新しました。"
+          title={getMessage(messages, "admin.series.episodes.reordered")}
         />
         <FlashToast
           keyName="reorder_error"
-          title="エピソードの表示順更新に失敗しました。"
+          title={getMessage(messages, "admin.series.episodes.reorder_failed")}
         />
 
         <Card>
           <CardHeader>
-            <CardTitle>エピソード管理</CardTitle>
+            <CardTitle>
+              <Message message="admin.series.episodes.manage_title" />
+            </CardTitle>
             <CardDescription>
-              一覧・新規作成・個別編集の導線をこの配下に集約しています。
+              <Message message="admin.series.episodes.manage_description" />
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -133,21 +141,29 @@ const SeriesEpisodesPage = async ({
                           <Link href={`/series/${series_id}/episodes/new`} />
                         }
                       >
-                        エピソードを新規作成
+                        <Message message="admin.series.episodes.create_action" />
                       </LinkButton>
                     }
-                    description="まだエピソードがありません。まずは新規作成してください。"
+                    description={
+                      <Message message="admin.series.episodes.empty_description" />
+                    }
                     hasPageLinks={hasPageLinks}
-                    itemLabel="エピソード"
-                    title="このシリーズのエピソードは未登録です。"
+                    itemLabel={getMessage(
+                      messages,
+                      "admin.series.episodes.title"
+                    )}
+                    title={getMessage(
+                      messages,
+                      "admin.series.episodes.empty_title"
+                    )}
                   />
                 ) : (
                   <div className="grid gap-3">
                     <p className="text-xs text-muted-foreground">
-                      エピソードはカードをドラッグ＆ドロップして並び替えできます。
-                      {hasPageLinks
-                        ? "並び替えはこのページ内で行えます。ページをまたぐ移動はできません。"
-                        : null}
+                      <Message message="admin.series.episodes.drag_description" />
+                      {hasPageLinks ? (
+                        <Message message="admin.series.episodes.drag_page_description" />
+                      ) : null}
                     </p>
                     <EpisodesSortableList
                       episodes={result.episodes}
@@ -161,15 +177,22 @@ const SeriesEpisodesPage = async ({
                 {result.episodes.length > 0 || hasPageLinks ? (
                   <PaginationFooter
                     {...pageHrefs}
-                    ariaLabel="エピソード一覧のページ送り"
-                    description={`表示順に、1ページあたり ${DEFAULT_PAGE_SIZE} 件まで表示します。`}
+                    ariaLabel={getMessage(
+                      messages,
+                      "admin.series.episodes.pagination_aria"
+                    )}
+                    description={getMessage(
+                      messages,
+                      "admin.series.episodes.pagination_description",
+                      { count: DEFAULT_PAGE_SIZE }
+                    )}
                   />
                 ) : null}
               </>
             ) : (
               <SectionError
                 description={result.message}
-                title="エピソード一覧を表示できませんでした"
+                title={<Message message="admin.series.episodes.list_error" />}
               />
             )}
           </CardContent>

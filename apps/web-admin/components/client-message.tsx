@@ -6,6 +6,7 @@ import {
   parseLocaleCookie,
 } from "@publira/i18n";
 import type { Locale, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { use } from "react";
 
 import { loadAdminMessages } from "#lib/messages";
@@ -76,4 +77,31 @@ export const ClientMessage = ({
   const messages = use(adminCatalog(locale));
 
   return getMessage(messages, message, values);
+};
+
+/**
+ * The active UI locale and catalog for Client Components.
+ *
+ * Content-entry forms need strings for native labels and component props, not
+ * only JSX children. They must also be able to render their initial controls
+ * before a route-level Suspense boundary is reached, so this hook uses the
+ * synchronously available shared catalog. Locale-specific route copy still
+ * loads lazily through {@link ClientMessage}.
+ */
+export const useAdminMessages = (): {
+  locale: Locale;
+  messages: AdminMessages;
+} => {
+  const locale = parseLocaleCookie(readDocumentLocale());
+  const messages = sharedCatalog(locale);
+
+  return { locale, messages };
+};
+
+/** Resolve a catalog message for a Client Component. */
+export const useAdminMessage = () => {
+  const { messages } = useAdminMessages();
+
+  return (message: AdminMessageKey, values?: MessageValues): string =>
+    getMessage(messages, message, values);
 };

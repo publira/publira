@@ -30,6 +30,7 @@ import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useCallback, useState } from "react";
 import type { ChangeEvent, MouseEvent } from "react";
 
+import { useAdminMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import {
@@ -61,16 +62,20 @@ interface PageWorkspaceProps {
 }
 
 const getVersionStatus = (
+  t: ReturnType<typeof useAdminMessage>,
   page: PageListItem,
   version: PageVersionListItem
 ): { label: string; tone: "info" | "muted" | "warning" } => {
   if (page.publishedVersionId === version.id) {
-    return { label: "公開中", tone: "info" };
+    return { label: t("admin.pages.workspace.published"), tone: "info" };
   }
   if (version.status === "published") {
-    return { label: "過去公開", tone: "warning" };
+    return {
+      label: t("admin.pages.workspace.past_published"),
+      tone: "warning",
+    };
   }
-  return { label: "下書き", tone: "muted" };
+  return { label: t("admin.pages.workspace.draft"), tone: "muted" };
 };
 
 const getDiffLineDisplay = (line: {
@@ -105,6 +110,7 @@ export const PageWorkspace = ({
   timeZone,
   updatePageAction,
 }: PageWorkspaceProps) => {
+  const t = useAdminMessage();
   const tenantId = useTenantId();
   const [titleState, titleFormAction, isTitlePending] = useActionState(
     updatePageAction,
@@ -157,7 +163,7 @@ export const PageWorkspace = ({
     : [];
 
   const versionOptions = initialVersions.map((version) => {
-    const status = getVersionStatus(initialPage, version);
+    const status = getVersionStatus(t, initialPage, version);
     return {
       label: `v${version.versionNumber} ・ ${status.label}`,
       value: version.id,
@@ -220,10 +226,9 @@ export const PageWorkspace = ({
     <div className="grid gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>基本情報</CardTitle>
+          <CardTitle>{t("admin.pages.workspace.basic_title")}</CardTitle>
           <CardDescription>
-            公開 URL とタイトルを管理します。slug
-            は公開導線に影響するため読み取り専用です。
+            {t("admin.pages.workspace.basic_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -245,7 +250,9 @@ export const PageWorkspace = ({
               </Field>
 
               <Field>
-                <FieldLabel required>タイトル</FieldLabel>
+                <FieldLabel required>
+                  {t("admin.pages.workspace.title")}
+                </FieldLabel>
                 <FieldContent>
                   <Input
                     name="title"
@@ -260,10 +267,14 @@ export const PageWorkspace = ({
 
             <div className="flex flex-wrap items-center gap-3">
               <Badge tone={initialPage.publishedVersionId ? "info" : "muted"}>
-                {initialPage.publishedVersionId ? "公開中" : "下書き"}
+                {initialPage.publishedVersionId
+                  ? t("admin.pages.workspace.published")
+                  : t("admin.pages.workspace.draft")}
               </Badge>
               <span className="text-sm text-muted-foreground">
-                最終更新: {formatPageDateTime(initialPage.updatedAt, timeZone)}
+                {t("admin.pages.workspace.updated_at", {
+                  date: formatPageDateTime(initialPage.updatedAt, timeZone),
+                })}
               </span>
             </div>
 
@@ -275,7 +286,9 @@ export const PageWorkspace = ({
 
             <div className="flex justify-end">
               <Button disabled={isTitlePending} type="submit">
-                {isTitlePending ? "更新中..." : "タイトルを更新"}
+                {isTitlePending
+                  ? t("admin.pages.workspace.updating")
+                  : t("admin.pages.workspace.update_title")}
               </Button>
             </div>
           </form>
@@ -285,9 +298,9 @@ export const PageWorkspace = ({
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader>
-            <CardTitle>Markdown エディタ</CardTitle>
+            <CardTitle>{t("admin.pages.workspace.editor_title")}</CardTitle>
             <CardDescription>
-              内容を保存すると新しい下書きバージョンが作成されます。公開はバージョン一覧から実行します。
+              {t("admin.pages.workspace.editor_description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -297,7 +310,7 @@ export const PageWorkspace = ({
               <input name="title" type="hidden" value={initialPage.title} />
 
               <Field>
-                <FieldLabel>本文</FieldLabel>
+                <FieldLabel>{t("admin.pages.workspace.body")}</FieldLabel>
                 <FieldContent>
                   <Textarea
                     name="content_markdown"
@@ -306,8 +319,7 @@ export const PageWorkspace = ({
                     value={draftContent}
                   />
                   <FieldDescription>
-                    見出し、リスト、引用、コードブロックを含む Markdown
-                    を入力できます。
+                    {t("admin.pages.workspace.body_description")}
                   </FieldDescription>
                 </FieldContent>
               </Field>
@@ -320,7 +332,9 @@ export const PageWorkspace = ({
 
               <div className="flex justify-end">
                 <Button disabled={isDraftPending} type="submit">
-                  {isDraftPending ? "保存中..." : "この内容で下書きを保存"}
+                  {isDraftPending
+                    ? t("admin.pages.workspace.saving")
+                    : t("admin.pages.workspace.save_draft")}
                 </Button>
               </div>
             </form>
@@ -329,9 +343,9 @@ export const PageWorkspace = ({
 
         <Card>
           <CardHeader>
-            <CardTitle>プレビュー</CardTitle>
+            <CardTitle>{t("admin.pages.workspace.preview_title")}</CardTitle>
             <CardDescription>
-              現在のエディタ内容をレンダリングした見た目です。公開前の確認に使えます。
+              {t("admin.pages.workspace.preview_description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -342,30 +356,40 @@ export const PageWorkspace = ({
 
       <Card>
         <CardHeader>
-          <CardTitle>バージョン一覧</CardTitle>
+          <CardTitle>{t("admin.pages.workspace.versions_title")}</CardTitle>
           <CardDescription>
-            履歴の確認、公開中バージョンの切り替え、旧バージョンからのロールバックを行います。
+            {t("admin.pages.workspace.versions_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {initialVersions.length === 0 ? (
             <FormMessage>
-              まだバージョンがありません。まず下書きを保存してください。
+              {t("admin.pages.workspace.versions_empty")}
             </FormMessage>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-24">版</TableHead>
-                  <TableHead className="w-24">状態</TableHead>
-                  <TableHead>作成日時</TableHead>
-                  <TableHead>公開日時</TableHead>
-                  <TableHead className="w-[320px]">操作</TableHead>
+                  <TableHead className="w-24">
+                    {t("admin.pages.workspace.columns.version")}
+                  </TableHead>
+                  <TableHead className="w-24">
+                    {t("admin.pages.workspace.columns.status")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.pages.workspace.columns.created_at")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.pages.workspace.columns.published_at")}
+                  </TableHead>
+                  <TableHead className="w-[320px]">
+                    {t("admin.pages.workspace.columns.actions")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {initialVersions.map((version) => {
-                  const status = getVersionStatus(initialPage, version);
+                  const status = getVersionStatus(t, initialPage, version);
 
                   return (
                     <TableRow key={version.id}>
@@ -389,7 +413,7 @@ export const PageWorkspace = ({
                             type="button"
                             variant="outline"
                           >
-                            内容を読み込む
+                            {t("admin.pages.workspace.load")}
                           </Button>
 
                           <form action={publishAction}>
@@ -415,7 +439,7 @@ export const PageWorkspace = ({
                               type="submit"
                               variant="outline"
                             >
-                              公開する
+                              {t("admin.pages.workspace.publish")}
                             </Button>
                           </form>
 
@@ -436,7 +460,7 @@ export const PageWorkspace = ({
                               value={version.id}
                             />
                             <Button type="submit" variant="outline">
-                              この版へロールバック
+                              {t("admin.pages.workspace.rollback")}
                             </Button>
                           </form>
                         </div>
@@ -452,22 +476,21 @@ export const PageWorkspace = ({
 
       <Card>
         <CardHeader>
-          <CardTitle>差分確認</CardTitle>
+          <CardTitle>{t("admin.pages.workspace.diff_title")}</CardTitle>
           <CardDescription>
-            比較対象の 2 バージョンを選び、追加・削除の差分を確認できます。
+            {t("admin.pages.workspace.diff_description")}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {initialVersions.length <= 1 ? (
-            <FormMessage>
-              差分の表示には 2
-              件以上のバージョンが必要です。下書きを保存すると履歴が増えます。
-            </FormMessage>
+            <FormMessage>{t("admin.pages.workspace.diff_empty")}</FormMessage>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <Field>
-                  <FieldLabel>比較元</FieldLabel>
+                  <FieldLabel>
+                    {t("admin.pages.workspace.compare_from")}
+                  </FieldLabel>
                   <FieldContent>
                     <Select
                       items={versionOptions}
@@ -478,7 +501,9 @@ export const PageWorkspace = ({
                 </Field>
 
                 <Field>
-                  <FieldLabel>比較先</FieldLabel>
+                  <FieldLabel>
+                    {t("admin.pages.workspace.compare_to")}
+                  </FieldLabel>
                   <FieldContent>
                     <Select
                       items={availableCompareOptions}
@@ -492,12 +517,20 @@ export const PageWorkspace = ({
               {diffResult ? (
                 <>
                   <div className="flex flex-wrap gap-2">
-                    <Badge tone="info">追加 {diffResult.summary.added}</Badge>
+                    <Badge tone="info">
+                      {t("admin.pages.workspace.diff_added", {
+                        count: diffResult.summary.added,
+                      })}
+                    </Badge>
                     <Badge tone="warning">
-                      削除 {diffResult.summary.removed}
+                      {t("admin.pages.workspace.diff_removed", {
+                        count: diffResult.summary.removed,
+                      })}
                     </Badge>
                     <Badge tone="muted">
-                      共通 {diffResult.summary.unchanged}
+                      {t("admin.pages.workspace.diff_unchanged", {
+                        count: diffResult.summary.unchanged,
+                      })}
                     </Badge>
                   </div>
 

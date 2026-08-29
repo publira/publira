@@ -4,7 +4,6 @@ import {
   createPlaceholderStaticParams,
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -18,15 +17,16 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getAdminMetadata } from "#lib/admin-metadata";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodeForm } from "../_components/episode-form";
 import { createEpisodeAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "エピソード新規作成",
-};
+export const generateMetadata = () =>
+  getAdminMetadata("admin.series.episodes.new_title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id");
@@ -58,13 +58,13 @@ const NewEpisodeActions = async ({
         render={<Link href={`/series/${seriesId}/episodes`} />}
         variant="outline"
       >
-        一覧へ戻る
+        <Message message="admin.series.episodes.back_to_list" />
       </LinkButton>
       <LinkButton
         render={<Link href={`/series/${seriesId}`} />}
         variant="outline"
       >
-        シリーズへ戻る
+        <Message message="admin.series.episodes.back_to_series" />
       </LinkButton>
     </div>
   );
@@ -106,9 +106,11 @@ const NewEpisodePage = ({ params }: Pick<NewEpisodePageProps, "params">) => (
             <NewEpisodeEyebrow params={params} />
           </Suspense>
         </AdminPageEyebrow>
-        <AdminPageTitle>エピソード新規作成</AdminPageTitle>
+        <AdminPageTitle>
+          <Message message="admin.series.episodes.new_title" />
+        </AdminPageTitle>
         <AdminPageDescription>
-          シリーズ配下に新しいエピソードを登録します。
+          <Message message="admin.series.episodes.new_description" />
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>

@@ -1,11 +1,13 @@
 "use server";
 
+import { getMessage } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getActionMessages } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -15,20 +17,29 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { createLabel, updateLabel } from "#lib/label";
+import type { AdminMessages } from "#lib/locale";
 
 import type { LabelActionState, LabelMutationMode } from "../label-types";
 
-const labelCommonSchema = z.object({
-  eyeCatchImage: optionalFileFormSchema,
-  name: requiredTrimmedString("レーベル名は必須です。"),
-  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-});
+const labelCommonSchema = (messages: AdminMessages) =>
+  z.object({
+    eyeCatchImage: optionalFileFormSchema,
+    name: requiredTrimmedString(
+      getMessage(messages, "admin.labels.validation.name_required")
+    ),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.labels.validation.tenant_missing")
+    ),
+  });
 
-const labelUpdateSchema = labelCommonSchema.extend({
-  clearEyeCatchImage: flagOneFormSchema,
-  currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
-  publicId: requiredTrimmedString("更新対象のレーベル ID が見つかりません。"),
-});
+const labelUpdateSchema = (messages: AdminMessages) =>
+  labelCommonSchema(messages).extend({
+    clearEyeCatchImage: flagOneFormSchema,
+    currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
+    publicId: requiredTrimmedString(
+      getMessage(messages, "admin.labels.validation.id_missing")
+    ),
+  });
 
 const labelFormFields = {
   eyeCatchImage: { kind: "file", name: "eye_catch_image" },
@@ -64,7 +75,8 @@ export const createLabelAction = async (
   formData: FormData
 ): Promise<LabelActionState> => {
   await assertSameOrigin();
-  const parsed = labelCommonSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = labelCommonSchema(messages).safeParse(
     toFormDataInput(formData, labelFormFields)
   );
   if (!parsed.success) {
@@ -98,7 +110,8 @@ export const updateLabelAction = async (
   formData: FormData
 ): Promise<LabelActionState> => {
   await assertSameOrigin();
-  const parsed = labelUpdateSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = labelUpdateSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...labelFormFields,
       clearEyeCatchImage: { kind: "value", name: "clear_eye_catch_image" },
@@ -145,7 +158,7 @@ export const updateLabelAction = async (
     (result.label.eyeCatchImageVariants?.length ?? 0) === 0
   ) {
     return toFailure(
-      "アップロードは受け付けましたが、生成画像を確認できませんでした。再試行してください。",
+      getMessage(messages, "admin.labels.eye_catch_variants_missing"),
       "update"
     );
   }
@@ -157,7 +170,7 @@ export const updateLabelAction = async (
     result.label.eyeCatchImageUpdatedAt === currentEyeCatchImageUpdatedAt
   ) {
     return toFailure(
-      "アップロード処理が反映されていません。画像を選び直して再試行してください。",
+      getMessage(messages, "admin.labels.eye_catch_upload_not_reflected"),
       "update"
     );
   }
@@ -167,7 +180,7 @@ export const updateLabelAction = async (
 
   return {
     label: result.label,
-    message: "レーベルを更新しました。",
+    message: getMessage(messages, "admin.labels.updated"),
     mode: "update",
     ok: true,
   };

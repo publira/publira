@@ -1,6 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -14,13 +13,14 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getAdminMetadata } from "#lib/admin-metadata";
 
 import { CreatorForm } from "../_components/creator-form";
 import { createCreatorAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "著者新規作成",
-};
+export const generateMetadata = () =>
+  getAdminMetadata("admin.creators.new_title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -44,12 +44,16 @@ const NewCreatorPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>著者新規作成</AdminPageTitle>
-        <AdminPageDescription>新しい著者を登録します。</AdminPageDescription>
+        <AdminPageTitle>
+          <Message message="admin.creators.new_title" />
+        </AdminPageTitle>
+        <AdminPageDescription>
+          <Message message="admin.creators.new_description" />
+        </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/creators" />} variant="outline">
-          一覧へ戻る
+          <Message message="admin.creators.back_to_list" />
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

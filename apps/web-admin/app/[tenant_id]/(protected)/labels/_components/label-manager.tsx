@@ -17,6 +17,7 @@ import {
 } from "@publira/ui-components/table";
 import Link from "next/link";
 
+import { useAdminMessage } from "#components/client-message";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
@@ -39,13 +40,14 @@ const LabelListBody = ({
   labels: LabelListItem[];
   listErrorMessage?: string;
 }) => {
+  const t = useAdminMessage();
   // A failed fetch still hands an empty `labels` array; do not show the empty
   // list state alongside the error or operators will read it as "no labels".
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title="レーベル一覧を表示できませんでした"
+        title={t("admin.labels.list_error")}
       />
     );
   }
@@ -53,10 +55,10 @@ const LabelListBody = ({
   if (labels.length === 0) {
     return (
       <CursorPageEmptyState
-        description="新規作成ページからレーベルを作成してください。"
+        description={t("admin.labels.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel="レーベル"
-        title="レーベルがまだ登録されていません。"
+        itemLabel={t("admin.labels.title")}
+        title={t("admin.labels.empty_title")}
       />
     );
   }
@@ -65,8 +67,10 @@ const LabelListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>レーベル名</TableHead>
-          <TableHead className="w-56">操作</TableHead>
+          <TableHead>{t("admin.labels.columns.name")}</TableHead>
+          <TableHead className="w-56">
+            {t("admin.labels.columns.actions")}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -79,7 +83,7 @@ const LabelListBody = ({
                   render={<Link href={`/labels/${label.publicId}`} />}
                   variant="outline"
                 >
-                  編集
+                  {t("admin.labels.edit_action")}
                 </LinkButton>
               </div>
             </TableCell>
@@ -97,6 +101,7 @@ export const LabelManager = ({
   pageSize,
   previousHref,
 }: LabelManagerProps) => {
+  const t = useAdminMessage();
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -107,13 +112,13 @@ export const LabelManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>レーベル一覧</CardTitle>
+          <CardTitle>{t("admin.labels.list_title")}</CardTitle>
           <CardDescription>
-            レーベル名を確認し、必要な項目を編集します。
+            {t("admin.labels.list_description")}
           </CardDescription>
         </div>
         <LinkButton render={<Link href="/labels/new" />} variant="outline">
-          レーベルを新規作成
+          {t("admin.labels.new_action")}
         </LinkButton>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -125,8 +130,10 @@ export const LabelManager = ({
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel="レーベル一覧のページ送り"
-            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            ariaLabel={t("admin.labels.pagination_aria")}
+            description={t("admin.labels.pagination_description", {
+              count: pageSize,
+            })}
             nextHref={nextHref}
             previousHref={previousHref}
           />

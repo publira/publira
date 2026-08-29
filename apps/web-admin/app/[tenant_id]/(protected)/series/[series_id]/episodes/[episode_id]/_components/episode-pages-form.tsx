@@ -19,6 +19,7 @@ import { Input } from "@publira/ui-components/input";
 import { useActionState, useCallback, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 
+import { useAdminMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EpisodeEditActionState } from "../episode-edit-types";
@@ -37,6 +38,7 @@ export const EpisodePagesForm = ({
   episodePublicId,
   action,
 }: EpisodePagesFormProps) => {
+  const t = useAdminMessage();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [uploadMode, setUploadMode] = useState<"pages" | "zip" | "epub">(
@@ -118,33 +120,31 @@ export const EpisodePagesForm = ({
     }
   }, []);
 
-  let fileLabel = "ページ画像";
-  let dropMessage = "ここに画像をドロップするか、ファイルを選択してください。";
+  let fileLabel = t("admin.series.episodes.pages.image");
+  let dropMessage = t("admin.series.episodes.pages.drop_image");
   let acceptValue = "image/*";
-  let fieldDescription = "追加時の表示順は既存の末尾に続けて自動採番されます。";
+  let fieldDescription = t("admin.series.episodes.pages.image_description");
 
   if (uploadMode === "zip") {
-    fileLabel = "ZIP ファイル";
-    dropMessage = "ここに ZIP をドロップするか、ファイルを選択してください。";
+    fileLabel = t("admin.series.episodes.pages.zip");
+    dropMessage = t("admin.series.episodes.pages.drop_zip");
     acceptValue = ".zip,application/zip";
-    fieldDescription =
-      "ZIP 内の画像を展開して登録します。壊れた ZIP や不正パスを含む ZIP は拒否されます。";
+    fieldDescription = t("admin.series.episodes.pages.zip_description");
   }
 
   if (uploadMode === "epub") {
-    fileLabel = "ePub ファイル";
-    dropMessage = "ここに ePub をドロップするか、ファイルを選択してください。";
+    fileLabel = t("admin.series.episodes.pages.epub");
+    dropMessage = t("admin.series.episodes.pages.drop_epub");
     acceptValue = ".epub,application/epub+zip";
-    fieldDescription =
-      "ePub（.epub）から本文画像を抽出して登録します。壊れた ePub や参照不整合・不正パスを含むファイルは拒否されます。";
+    fieldDescription = t("admin.series.episodes.pages.epub_description");
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>漫画ページ追加</CardTitle>
+        <CardTitle>{t("admin.series.episodes.pages.title")}</CardTitle>
         <CardDescription>
-          エピソードに紐づくページ画像を複数選択して追加します。
+          {t("admin.series.episodes.pages.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -159,7 +159,7 @@ export const EpisodePagesForm = ({
           <input name="upload_mode" type="hidden" value={uploadMode} />
 
           <Field>
-            <FieldLabel>入稿対象</FieldLabel>
+            <FieldLabel>{t("admin.series.episodes.pages.target")}</FieldLabel>
             <FieldContent>
               <p className="text-sm text-muted-foreground">
                 Series: {seriesPublicId} / Episode: {episodePublicId}
@@ -168,7 +168,7 @@ export const EpisodePagesForm = ({
           </Field>
 
           <Field>
-            <FieldLabel>アップロード方法</FieldLabel>
+            <FieldLabel>{t("admin.series.episodes.pages.method")}</FieldLabel>
             <FieldContent>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -177,7 +177,7 @@ export const EpisodePagesForm = ({
                   type="button"
                   variant={uploadMode === "pages" ? "default" : "outline"}
                 >
-                  ページ画像を複数選択
+                  {t("admin.series.episodes.pages.select_images")}
                 </Button>
                 <Button
                   disabled={isPending}
@@ -185,7 +185,7 @@ export const EpisodePagesForm = ({
                   type="button"
                   variant={uploadMode === "zip" ? "default" : "outline"}
                 >
-                  ZIP で入稿
+                  {t("admin.series.episodes.pages.select_zip")}
                 </Button>
                 <Button
                   disabled={isPending}
@@ -193,7 +193,7 @@ export const EpisodePagesForm = ({
                   type="button"
                   variant={uploadMode === "epub" ? "default" : "outline"}
                 >
-                  ePub で入稿
+                  {t("admin.series.episodes.pages.select_epub")}
                 </Button>
               </div>
             </FieldContent>
@@ -236,9 +236,14 @@ export const EpisodePagesForm = ({
               ) : null}
               {isPending ? (
                 <div className="grid gap-2">
-                  <progress aria-label="アップロード進捗" className="w-full" />
+                  <progress
+                    aria-label={t(
+                      "admin.series.episodes.pages.upload_progress"
+                    )}
+                    className="w-full"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    ファイルを処理しています。完了までしばらくお待ちください。
+                    {t("admin.series.episodes.pages.processing")}
                   </p>
                 </div>
               ) : null}
@@ -255,15 +260,15 @@ export const EpisodePagesForm = ({
             <Button disabled={isPending} type="submit">
               {(() => {
                 if (isPending) {
-                  return "追加中...";
+                  return t("admin.series.episodes.pages.adding");
                 }
                 if (uploadMode === "zip") {
-                  return "ZIP を入稿";
+                  return t("admin.series.episodes.pages.submit_zip");
                 }
                 if (uploadMode === "epub") {
-                  return "ePub を入稿";
+                  return t("admin.series.episodes.pages.submit_epub");
                 }
-                return "ページ画像を追加";
+                return t("admin.series.episodes.pages.submit_image");
               })()}
             </Button>
           </div>

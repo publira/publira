@@ -1,6 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -14,13 +13,14 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getAdminMetadata } from "#lib/admin-metadata";
 
 import { LabelForm } from "../_components/label-form";
 import { createLabelAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "レーベル新規作成",
-};
+export const generateMetadata = () =>
+  getAdminMetadata("admin.labels.new_title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -43,14 +43,16 @@ const NewLabelPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>レーベル新規作成</AdminPageTitle>
+        <AdminPageTitle>
+          <Message message="admin.labels.new_title" />
+        </AdminPageTitle>
         <AdminPageDescription>
-          新しいレーベルを登録します。
+          <Message message="admin.labels.new_description" />
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/labels" />} variant="outline">
-          一覧へ戻る
+          <Message message="admin.labels.back_to_list" />
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

@@ -1,11 +1,13 @@
 "use server";
 
+import { getMessage } from "@publira/i18n";
 import { toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getActionMessages } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -17,6 +19,7 @@ import {
   requiredTrimmedString,
   trimmedStringListFormSchema,
 } from "#lib/form-schemas";
+import type { AdminMessages } from "#lib/locale";
 import { createSeries, updateSeries } from "#lib/series";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -29,28 +32,42 @@ import type { SeriesActionState, SeriesMutationMode } from "../series-types";
  * current display zone rather than being glued to a hardcoded `+09:00` or
  * reinterpreted in the server's local zone.
  */
-const seriesCommonSchema = z.object({
-  creatorPublicIds: trimmedStringListFormSchema,
-  eyeCatchImage: optionalFileFormSchema,
-  isPublished: checkboxOnFormSchema,
-  labelPublicId: requiredTrimmedString("レーベルは必須です。"),
-  publishedAt: optionalTrimmedString(),
-  readingPeriodHours: nonNegativeIntFormSchema(
-    "閲覧可能期間は 0 以上の整数で入力してください。"
-  ),
-  synopsis: requiredTrimmedString("概要は必須です。", 10_000),
-  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-  title: requiredTrimmedString("タイトルは必須です。"),
-});
+const seriesCommonSchema = (messages: AdminMessages) =>
+  z.object({
+    creatorPublicIds: trimmedStringListFormSchema,
+    eyeCatchImage: optionalFileFormSchema,
+    isPublished: checkboxOnFormSchema,
+    labelPublicId: requiredTrimmedString(
+      getMessage(messages, "admin.series.validation.label_required")
+    ),
+    publishedAt: optionalTrimmedString(),
+    readingPeriodHours: nonNegativeIntFormSchema(
+      getMessage(messages, "admin.series.validation.reading_period_invalid")
+    ),
+    synopsis: requiredTrimmedString(
+      getMessage(messages, "admin.series.validation.synopsis_required"),
+      10_000
+    ),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.series.validation.tenant_missing")
+    ),
+    title: requiredTrimmedString(
+      getMessage(messages, "admin.series.validation.title_required")
+    ),
+  });
 
-const seriesUpdateSchema = seriesCommonSchema.extend({
-  publicId: requiredTrimmedString("更新対象のシリーズ ID が見つかりません。"),
-});
+const seriesUpdateSchema = (messages: AdminMessages) =>
+  seriesCommonSchema(messages).extend({
+    publicId: requiredTrimmedString(
+      getMessage(messages, "admin.series.validation.id_missing")
+    ),
+  });
 
-const seriesEyeCatchSchema = seriesUpdateSchema.extend({
-  clearEyeCatchImage: flagOneFormSchema,
-  currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
-});
+const seriesEyeCatchSchema = (messages: AdminMessages) =>
+  seriesUpdateSchema(messages).extend({
+    clearEyeCatchImage: flagOneFormSchema,
+    currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
+  });
 
 const seriesFormFields = {
   creatorPublicIds: { kind: "values", name: "creator_public_ids" },
@@ -90,7 +107,8 @@ const toEyeCatchImage = async (file: File | undefined) => {
 const resolvePublishedAt = async (
   publishedAtRaw: string,
   tenantId: string,
-  mode: SeriesMutationMode
+  mode: SeriesMutationMode,
+  messages: AdminMessages
 ): Promise<
   { ok: true; publishedAt: string } | ReturnType<typeof toFailure>
 > => {
@@ -101,7 +119,10 @@ const resolvePublishedAt = async (
   const timeZone = await getTenantDisplayTimeZone(tenantId);
   const publishedAt = toInstantIsoString(publishedAtRaw, timeZone);
   if (publishedAtRaw.length > 0 && publishedAt.length === 0) {
-    return toFailure("公開日時の形式が正しくありません。", mode);
+    return toFailure(
+      getMessage(messages, "admin.series.validation.published_at_invalid"),
+      mode
+    );
   }
 
   return { ok: true, publishedAt };
@@ -112,7 +133,8 @@ export const createSeriesAction = async (
   formData: FormData
 ): Promise<SeriesActionState> => {
   await assertSameOrigin();
-  const parsed = seriesCommonSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = seriesCommonSchema(messages).safeParse(
     toFormDataInput(formData, seriesFormFields)
   );
   if (!parsed.success) {
@@ -122,7 +144,8 @@ export const createSeriesAction = async (
   const schedule = await resolvePublishedAt(
     parsed.data.publishedAt,
     parsed.data.tenantId,
-    "create"
+    "create",
+    messages
   );
   if (!schedule.ok) {
     return schedule;
@@ -159,7 +182,8 @@ export const updateSeriesAction = async (
   formData: FormData
 ): Promise<SeriesActionState> => {
   await assertSameOrigin();
-  const parsed = seriesUpdateSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = seriesUpdateSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,
       publicId: { kind: "value", name: "public_id" },
@@ -172,7 +196,8 @@ export const updateSeriesAction = async (
   const schedule = await resolvePublishedAt(
     parsed.data.publishedAt,
     parsed.data.tenantId,
-    "update"
+    "update",
+    messages
   );
   if (!schedule.ok) {
     return schedule;
@@ -210,7 +235,8 @@ export const updateSeriesEyeCatchAction = async (
   formData: FormData
 ): Promise<SeriesActionState> => {
   await assertSameOrigin();
-  const parsed = seriesEyeCatchSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = seriesEyeCatchSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,
       clearEyeCatchImage: { kind: "value", name: "clear_eye_catch_image" },
@@ -228,7 +254,8 @@ export const updateSeriesEyeCatchAction = async (
   const schedule = await resolvePublishedAt(
     parsed.data.publishedAt,
     parsed.data.tenantId,
-    "update"
+    "update",
+    messages
   );
   if (!schedule.ok) {
     return schedule;
@@ -240,7 +267,7 @@ export const updateSeriesEyeCatchAction = async (
 
   if (!parsed.data.clearEyeCatchImage && !eyeCatchImageData) {
     return toFailure(
-      "画像を選択するか、削除チェックを選んでください。",
+      getMessage(messages, "admin.series.eye_catch_choice_required"),
       "update"
     );
   }
@@ -272,7 +299,7 @@ export const updateSeriesEyeCatchAction = async (
     (result.series.eyeCatchImageVariants?.length ?? 0) === 0
   ) {
     return toFailure(
-      "アップロードは受け付けましたが、生成画像を確認できませんでした。再試行してください。",
+      getMessage(messages, "admin.series.eye_catch_variants_missing"),
       "update"
     );
   }
@@ -285,13 +312,13 @@ export const updateSeriesEyeCatchAction = async (
       parsed.data.currentEyeCatchImageUpdatedAt
   ) {
     return toFailure(
-      "アップロード処理が反映されていません。画像を選び直して再試行してください。",
+      getMessage(messages, "admin.series.eye_catch_upload_not_reflected"),
       "update"
     );
   }
 
   return {
-    message: "アイキャッチを更新しました。",
+    message: getMessage(messages, "admin.series.eye_catch_updated"),
     mode: "update",
     ok: true,
     series: result.series,

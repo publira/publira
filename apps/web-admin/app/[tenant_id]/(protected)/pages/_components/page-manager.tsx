@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 
+import { useAdminMessage } from "#components/client-message";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
@@ -43,13 +44,14 @@ const PageListBody = ({
   pages: PageListItem[];
   timeZone: string;
 }) => {
+  const t = useAdminMessage();
   // A failed fetch still hands an empty `pages` array; do not show the empty
   // list state alongside the error or operators will read it as "no pages".
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title="ページ一覧を表示できませんでした"
+        title={t("admin.pages.list_error")}
       />
     );
   }
@@ -57,10 +59,10 @@ const PageListBody = ({
   if (pages.length === 0) {
     return (
       <CursorPageEmptyState
-        description="新規作成ページから固定ページを登録してください。"
+        description={t("admin.pages.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel="ページ"
-        title="ページはまだ登録されていません。"
+        itemLabel={t("admin.pages.title")}
+        title={t("admin.pages.empty_title")}
       />
     );
   }
@@ -69,12 +71,20 @@ const PageListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>タイトル</TableHead>
-          <TableHead>slug</TableHead>
-          <TableHead className="w-32">状態</TableHead>
-          <TableHead className="w-28">フッター</TableHead>
-          <TableHead className="w-40">更新日時</TableHead>
-          <TableHead className="w-32">操作</TableHead>
+          <TableHead>{t("admin.pages.columns.title")}</TableHead>
+          <TableHead>{t("admin.pages.columns.slug")}</TableHead>
+          <TableHead className="w-32">
+            {t("admin.pages.columns.status")}
+          </TableHead>
+          <TableHead className="w-28">
+            {t("admin.pages.columns.footer")}
+          </TableHead>
+          <TableHead className="w-40">
+            {t("admin.pages.columns.updated_at")}
+          </TableHead>
+          <TableHead className="w-32">
+            {t("admin.pages.columns.actions")}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -86,14 +96,16 @@ const PageListBody = ({
               <Badge
                 tone={page.publishedVersionId.length > 0 ? "info" : "muted"}
               >
-                {page.publishedVersionId.length > 0 ? "公開中" : "下書き"}
+                {page.publishedVersionId.length > 0
+                  ? t("admin.pages.published")
+                  : t("admin.pages.draft")}
               </Badge>
             </TableCell>
             <TableCell>
               {page.displayInFooter ? (
-                <Badge tone="info">表示</Badge>
+                <Badge tone="info">{t("admin.pages.visible")}</Badge>
               ) : (
-                <Badge tone="muted">非表示</Badge>
+                <Badge tone="muted">{t("admin.pages.hidden")}</Badge>
               )}
             </TableCell>
             <TableCell>
@@ -101,7 +113,7 @@ const PageListBody = ({
             </TableCell>
             <TableCell>
               <LinkButton href={`/pages/${page.id}`} variant="outline">
-                編集
+                {t("admin.pages.edit_action")}
               </LinkButton>
             </TableCell>
           </TableRow>
@@ -119,6 +131,7 @@ export const PageManager = ({
   previousHref,
   timeZone,
 }: PageManagerProps) => {
+  const t = useAdminMessage();
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -129,13 +142,11 @@ export const PageManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>ページ一覧</CardTitle>
-          <CardDescription>
-            ページの作成状況、slug、公開状態を確認し、編集画面へ移動します。
-          </CardDescription>
+          <CardTitle>{t("admin.pages.list_title")}</CardTitle>
+          <CardDescription>{t("admin.pages.list_description")}</CardDescription>
         </div>
         <LinkButton href="/pages/new" variant="outline">
-          ページを新規作成
+          {t("admin.pages.new_action")}
         </LinkButton>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -148,8 +159,10 @@ export const PageManager = ({
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel="ページ一覧のページ送り"
-            description={`作成順に、1ページあたり ${pageSize} 件まで表示します。`}
+            ariaLabel={t("admin.pages.pagination_aria")}
+            description={t("admin.pages.pagination_description", {
+              count: pageSize,
+            })}
             nextHref={nextHref}
             previousHref={previousHref}
           />

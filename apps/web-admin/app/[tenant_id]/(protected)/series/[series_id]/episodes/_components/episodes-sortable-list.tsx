@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useOptimistic, useRef, useTransition } from "react";
 
+import { useAdminMessage } from "#components/client-message";
 import type { EpisodeItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -46,6 +47,7 @@ export const EpisodesSortableList = ({
   reorderAction,
   timeZone,
 }: EpisodesSortableListProps) => {
+  const t = useAdminMessage();
   const tenantId = useTenantId();
   const router = useRouter();
   const { add } = useToastManager();
@@ -75,24 +77,24 @@ export const EpisodesSortableList = ({
         const result = await reorderAction(formData);
         if (!result.ok) {
           add({
-            title: result.message ?? "エピソードの表示順更新に失敗しました。",
+            title: result.message ?? t("admin.series.episodes.reorder_failed"),
             type: "error",
           });
           router.refresh();
           return;
         }
 
-        add({ title: "エピソードの表示順を更新しました。", type: "success" });
+        add({ title: t("admin.series.episodes.reordered"), type: "success" });
         router.refresh();
       } catch {
         add({
-          title: "エピソードの表示順更新に失敗しました。",
+          title: t("admin.series.episodes.reorder_failed"),
           type: "error",
         });
         router.refresh();
       }
     },
-    [add, reorderAction, router, seriesPublicId, tenantId]
+    [add, reorderAction, router, seriesPublicId, t, tenantId]
   );
 
   const handleDragOver = useCallback(
@@ -169,11 +171,16 @@ export const EpisodesSortableList = ({
               {episode.orderIndex}. {episode.title}
             </p>
             <p className="text-xs text-muted-foreground">
-              status: {episode.status} / price: {episode.price}
+              {t("admin.series.episodes.status_price", {
+                price: episode.price,
+                status: episode.status,
+              })}
             </p>
             {episode.status === "scheduled" && episode.scheduledAt ? (
               <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                公開予約: {formatDateTime(episode.scheduledAt, { timeZone })}
+                {t("admin.series.episodes.scheduled_at", {
+                  date: formatDateTime(episode.scheduledAt, { timeZone }),
+                })}
               </p>
             ) : null}
           </div>
@@ -187,7 +194,7 @@ export const EpisodesSortableList = ({
               }
               variant="outline"
             >
-              編集
+              {t("admin.series.episodes.edit_action")}
             </LinkButton>
           </div>
         </div>

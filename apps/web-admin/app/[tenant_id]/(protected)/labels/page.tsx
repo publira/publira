@@ -1,5 +1,4 @@
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
-import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import {
@@ -11,6 +10,8 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
@@ -24,9 +25,7 @@ import { LabelManager } from "./_components/label-manager";
 
 type LabelPageProps = PageProps<"/[tenant_id]/labels">;
 
-export const metadata: Metadata = {
-  title: "レーベル",
-};
+export const generateMetadata = () => getAdminMetadata("admin.labels.title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -66,9 +65,11 @@ const LabelPage = ({ searchParams }: LabelPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>レーベル</AdminPageTitle>
+        <AdminPageTitle>
+          <Message message="admin.labels.title" />
+        </AdminPageTitle>
         <AdminPageDescription>
-          レーベル一覧の確認と、編集への遷移を行います。
+          <Message message="admin.labels.page_description" />
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

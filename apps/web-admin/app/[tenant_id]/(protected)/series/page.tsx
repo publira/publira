@@ -1,5 +1,4 @@
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
-import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import {
@@ -11,6 +10,8 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
@@ -25,9 +26,7 @@ import { SeriesManager } from "./_components/series-manager";
 
 type SeriesPageProps = PageProps<"/[tenant_id]/series">;
 
-export const metadata: Metadata = {
-  title: "シリーズ",
-};
+export const generateMetadata = () => getAdminMetadata("admin.series.title");
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -71,9 +70,11 @@ const SeriesPage = ({ searchParams }: SeriesPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>シリーズ</AdminPageTitle>
+        <AdminPageTitle>
+          <Message message="admin.series.title" />
+        </AdminPageTitle>
         <AdminPageDescription>
-          シリーズ一覧の確認と、編集・エピソード管理への遷移を行います。
+          <Message message="admin.series.page_description" />
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>
