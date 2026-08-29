@@ -79,7 +79,7 @@ afterEach(() => {
 describe("AdminLayout", () => {
   it("ロゴがあるときはヘッダとサイドバーに出し、テナント名も残す", () => {
     render(
-      <AdminLayout logo={logo} tenant={tenant}>
+      <AdminLayout logo={logo} tenant={tenant} tenantId="tenant-id">
         <p>本文</p>
       </AdminLayout>
     );
@@ -92,7 +92,7 @@ describe("AdminLayout", () => {
 
   it("ロゴがないときはテナント名をブランドにし、製品名は出さない", () => {
     render(
-      <AdminLayout logo={null} tenant={tenant}>
+      <AdminLayout logo={null} tenant={tenant} tenantId="tenant-id">
         <p>本文</p>
       </AdminLayout>
     );

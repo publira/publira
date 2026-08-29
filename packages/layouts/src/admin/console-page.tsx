@@ -13,8 +13,8 @@ import type { ReactNode } from "react";
  *   <ConsolePageHeader>
  *     <ConsolePageHeading>
  *       <ConsolePageEyebrow>Console</ConsolePageEyebrow>
- *       <ConsolePageTitle>タイトル</ConsolePageTitle>
- *       <ConsolePageDescription>説明</ConsolePageDescription>
+ *       <ConsolePageTitle>Title</ConsolePageTitle>
+ *       <ConsolePageDescription>Description</ConsolePageDescription>
  *     </ConsolePageHeading>
  *     <ConsolePageActions>{actions}</ConsolePageActions>
  *   </ConsolePageHeader>

@@ -11,6 +11,9 @@ import {
   ConsoleLayout,
   ConsoleLayoutContent,
   ConsoleLayoutMain,
+  ConsoleMobileNavigation,
+  ConsoleMobileNavigationCloseButton,
+  ConsoleMobileNavigationOpenButton,
   ConsoleSidebar,
   ConsoleSidebarBrand,
   ConsoleSidebarContext,
@@ -121,14 +124,34 @@ export const AdminUser = async ({
   );
 };
 
+const AdminMobileNavigation = async ({ tenantId }: { tenantId: string }) => {
+  const locale = await getLocale(tenantId);
+  const messages = await loadAdminMessages(locale);
+
+  return (
+    <>
+      <ConsoleMobileNavigation>
+        <ConsoleMobileNavigationCloseButton
+          ariaLabel={getMessage(messages, "admin.shell.navigation_close")}
+        />
+      </ConsoleMobileNavigation>
+      <ConsoleMobileNavigationOpenButton
+        ariaLabel={getMessage(messages, "admin.shell.navigation_open")}
+      />
+    </>
+  );
+};
+
 export const AdminLayout = ({
   children,
   logo,
   tenant,
+  tenantId,
 }: {
   children: ReactNode;
   logo: TenantBrandingImage | null;
   tenant: AdminLayoutTenant;
+  tenantId: string;
 }) => {
   const logoVariant = tenantBrandingVariant(logo);
   const headerBrand = logoVariant ? (
@@ -154,6 +177,9 @@ export const AdminLayout = ({
 
   return (
     <ConsoleLayout gradient={adminGradient}>
+      <Suspense fallback={null}>
+        <AdminMobileNavigation tenantId={tenantId} />
+      </Suspense>
       <ConsoleSidebar>
         <ConsoleSidebarBrand>{sidebarBrand}</ConsoleSidebarBrand>
         <ConsoleSidebarContext>

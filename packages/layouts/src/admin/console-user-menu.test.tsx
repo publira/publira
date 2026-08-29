@@ -32,21 +32,21 @@ vi.mock("next/link", () => ({
 const renderMenu = (logoutAction = () => {}) =>
   render(
     <ConsoleHeaderUser>
-      <ConsoleUserMenuTrigger ariaLabel="青枝 花子のアカウントメニュー">
-        <ConsoleUserMenuInitial>青枝 花子</ConsoleUserMenuInitial>
+      <ConsoleUserMenuTrigger ariaLabel="Account menu for Taylor Morgan">
+        <ConsoleUserMenuInitial>Taylor Morgan</ConsoleUserMenuInitial>
       </ConsoleUserMenuTrigger>
       <ConsoleUserMenuContent>
         <ConsoleUserMenuIdentity>
-          <ConsoleUserMenuName>青枝 花子</ConsoleUserMenuName>
+          <ConsoleUserMenuName>Taylor Morgan</ConsoleUserMenuName>
           <ConsoleUserMenuPublicId>user_admin_001</ConsoleUserMenuPublicId>
-          <ConsoleUserMenuRole>テナント管理者</ConsoleUserMenuRole>
+          <ConsoleUserMenuRole>Tenant administrator</ConsoleUserMenuRole>
         </ConsoleUserMenuIdentity>
         <ConsoleUserMenuSeparator />
         <ConsoleUserMenuAccountLink href="/settings/account">
-          アカウント設定
+          Account settings
         </ConsoleUserMenuAccountLink>
-        <ConsoleUserMenuLogout action={logoutAction} ariaLabel="ログアウト">
-          ログアウト
+        <ConsoleUserMenuLogout action={logoutAction} ariaLabel="Sign out">
+          Sign out
         </ConsoleUserMenuLogout>
       </ConsoleUserMenuContent>
     </ConsoleHeaderUser>
@@ -55,30 +55,26 @@ const renderMenu = (logoutAction = () => {}) =>
 afterEach(cleanup);
 
 describe("ConsoleUserMenu slots", () => {
-  it("開くと子スロットの識別情報とアクションを表示する", () => {
+  it("renders identity and action slots when opened", () => {
     renderMenu();
-    fireEvent.click(
-      screen.getByRole("button", { name: /アカウントメニュー/u })
-    );
+    fireEvent.click(screen.getByRole("button", { name: /account menu/iu }));
 
-    expect(screen.getByText("青枝 花子")).toBeTruthy();
+    expect(screen.getByText("Taylor Morgan")).toBeTruthy();
     expect(screen.getByText("user_admin_001")).toBeTruthy();
-    expect(screen.getByText("テナント管理者")).toBeTruthy();
+    expect(screen.getByText("Tenant administrator")).toBeTruthy();
     expect(
       screen
-        .getByRole("menuitem", { name: "アカウント設定" })
+        .getByRole("menuitem", { name: "Account settings" })
         .getAttribute("href")
     ).toBe("/settings/account");
   });
 
-  it("ログアウト用スロットが Server Action の form を持つ", () => {
+  it("renders the sign-out slot inside a Server Action form", () => {
     const logoutAction = vi.fn();
     renderMenu(logoutAction);
-    fireEvent.click(
-      screen.getByRole("button", { name: /アカウントメニュー/u })
-    );
+    fireEvent.click(screen.getByRole("button", { name: /account menu/iu }));
 
-    const logout = screen.getByRole("menuitem", { name: "ログアウト" });
+    const logout = screen.getByRole("menuitem", { name: "Sign out" });
     const form = logout.closest("form");
     expect(form).toBeTruthy();
     if (form) {

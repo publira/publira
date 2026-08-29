@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { DashboardIcon } from "@publira/icons";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -12,6 +12,10 @@ import {
   ConsoleHeaderEyebrow,
   ConsoleHeaderLabel,
   ConsoleHeaderText,
+  ConsoleLayout,
+  ConsoleMobileNavigation,
+  ConsoleMobileNavigationCloseButton,
+  ConsoleMobileNavigationOpenButton,
   ConsoleSidebar,
   ConsoleSidebarBrand,
   ConsoleSidebarBrandLabel,
@@ -41,25 +45,25 @@ vi.mock("next/link", () => ({
 afterEach(cleanup);
 
 describe("Console layout slots", () => {
-  it("ヘッダーのコンテキストとアクションを子スロットで構成する", () => {
+  it("renders the header context and actions from child slots", () => {
     render(
       <ConsoleHeader>
         <ConsoleHeaderContext>
           <ConsoleHeaderText>
-            <ConsoleHeaderEyebrow>現在の運用先</ConsoleHeaderEyebrow>
-            <ConsoleHeaderLabel>青枝出版</ConsoleHeaderLabel>
+            <ConsoleHeaderEyebrow>Current tenant</ConsoleHeaderEyebrow>
+            <ConsoleHeaderLabel>Example Publishing</ConsoleHeaderLabel>
           </ConsoleHeaderText>
         </ConsoleHeaderContext>
-        <ConsoleHeaderActions>通知</ConsoleHeaderActions>
+        <ConsoleHeaderActions>Notifications</ConsoleHeaderActions>
       </ConsoleHeader>
     );
 
-    expect(screen.getByText("現在の運用先")).toBeTruthy();
-    expect(screen.getByText("青枝出版")).toBeTruthy();
-    expect(screen.getByText("通知")).toBeTruthy();
+    expect(screen.getByText("Current tenant")).toBeTruthy();
+    expect(screen.getByText("Example Publishing")).toBeTruthy();
+    expect(screen.getByText("Notifications")).toBeTruthy();
   });
 
-  it("サイドバーのナビゲーションを子スロットで構成する", () => {
+  it("renders sidebar navigation from child slots", () => {
     render(
       <ConsoleSidebar>
         <ConsoleSidebarBrand>
@@ -68,7 +72,9 @@ describe("Console layout slots", () => {
         </ConsoleSidebarBrand>
         <ConsoleSidebarNavigation>
           <ConsoleSidebarNavigationSection>
-            <ConsoleSidebarNavigationTitle>運用</ConsoleSidebarNavigationTitle>
+            <ConsoleSidebarNavigationTitle>
+              Operations
+            </ConsoleSidebarNavigationTitle>
             <ConsoleSidebarNavigationItems>
               <ConsoleSidebarNavigationItem href="/">
                 <ConsoleSidebarNavigationIcon>
@@ -76,10 +82,10 @@ describe("Console layout slots", () => {
                 </ConsoleSidebarNavigationIcon>
                 <ConsoleSidebarNavigationContent>
                   <ConsoleSidebarNavigationItemLabel>
-                    ダッシュボード
+                    Dashboard
                   </ConsoleSidebarNavigationItemLabel>
                   <ConsoleSidebarNavigationItemDescription>
-                    概況
+                    Overview
                   </ConsoleSidebarNavigationItemDescription>
                 </ConsoleSidebarNavigationContent>
               </ConsoleSidebarNavigationItem>
@@ -93,7 +99,25 @@ describe("Console layout slots", () => {
       screen.getByRole("link", { name: /Publira/u }).dataset.nextLink
     ).toBe("true");
     expect(
-      screen.getByRole("link", { name: /ダッシュボード/u }).getAttribute("href")
+      screen.getByRole("link", { name: /dashboard/iu }).getAttribute("href")
     ).toBe("/");
+  });
+
+  it("uses navigation aria labels supplied by the caller", () => {
+    render(
+      <ConsoleLayout>
+        <ConsoleMobileNavigation>
+          <ConsoleMobileNavigationCloseButton ariaLabel="Close navigation" />
+        </ConsoleMobileNavigation>
+        <ConsoleMobileNavigationOpenButton ariaLabel="Open navigation" />
+        <div />
+      </ConsoleLayout>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+
+    expect(
+      screen.getByRole("button", { name: "Close navigation" })
+    ).toBeTruthy();
   });
 });

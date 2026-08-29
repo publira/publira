@@ -6,6 +6,12 @@ import type { ReactNode } from "react";
 
 import { ConsoleLayoutClient } from "./console-layout-client";
 
+export {
+  ConsoleMobileNavigation,
+  ConsoleMobileNavigationCloseButton,
+  ConsoleMobileNavigationOpenButton,
+} from "./console-layout-client";
+
 export interface ConsoleLayoutProps {
   children: ReactNode;
   gradient?: string;
@@ -14,7 +20,7 @@ export interface ConsoleLayoutProps {
 export const defaultConsoleGradient =
   "bg-[radial-gradient(circle_at_top_left,rgba(15,124,130,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(217,111,74,0.13),transparent_30%),linear-gradient(180deg,rgba(255,253,248,0.78),rgba(246,242,233,0.98))]";
 
-const ConsoleLayoutStaticShell = ({ gradient }: { gradient?: string }) => (
+export const ConsoleLayoutSkeleton = ({ gradient }: { gradient?: string }) => (
   <div className="relative min-h-dvh bg-background text-foreground">
     <div
       aria-hidden="true"
@@ -50,9 +56,7 @@ const ConsoleLayoutStaticShell = ({ gradient }: { gradient?: string }) => (
 );
 
 export const ConsoleLayout = ({ children, gradient }: ConsoleLayoutProps) => (
-  <Suspense fallback={<ConsoleLayoutStaticShell gradient={gradient} />}>
-    <ConsoleLayoutClient gradient={gradient}>{children}</ConsoleLayoutClient>
-  </Suspense>
+  <ConsoleLayoutClient gradient={gradient}>{children}</ConsoleLayoutClient>
 );
 
 export const ConsoleLayoutMain = ({ children }: { children: ReactNode }) => (
