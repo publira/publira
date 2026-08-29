@@ -103,9 +103,10 @@ describe("NotificationBell", () => {
     fireEvent.click(trigger);
     expect(screen.getByText("通知はまだありません。")).toBeDefined();
     expect(screen.getByText("通知が届くとここに表示されます。")).toBeDefined();
-    expect(
-      screen.getByRole("link", { name: "もっと見る" }).getAttribute("href")
-    ).toBe("/ja/notifications");
+    const more = screen.getByRole("link", { name: "もっと見る" });
+    expect(more.getAttribute("href")).toBe("/ja/notifications");
+    fireEvent.click(more);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("未読があれば件数を出す", () => {

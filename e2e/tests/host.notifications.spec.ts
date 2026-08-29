@@ -25,10 +25,13 @@ test.describe("web-host notification bell", () => {
     await menu.getByRole("link", { name: "もっと見る" }).click();
 
     await expect(page).toHaveURL(/\/notifications\/?$/u);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
       page.getByRole("heading", { exact: true, level: 1, name: "通知" })
     ).toBeVisible();
-    await expect(page.getByText("通知はまだありません。")).toBeVisible();
+    await expect(
+      page.getByRole("main").getByText("通知はまだありません。")
+    ).toBeVisible();
 
     await page.goto(hostPath("/announcements"));
     await expect(page).toHaveURL(/\/announcements\/?$/u);

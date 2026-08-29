@@ -4,7 +4,21 @@ import { Popover } from "@base-ui/react/popover";
 import { BellIcon } from "@publira/icons";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import Link from "next/link";
+import { createContext, useCallback, useContext, useState } from "react";
 import type { ReactNode } from "react";
+
+const NotificationBellCloseContext = createContext<(() => void) | null>(null);
+
+const useNotificationBellClose = () => {
+  const close = useContext(NotificationBellCloseContext);
+  if (!close) {
+    throw new Error(
+      "NotificationBell links must be rendered inside NotificationBell"
+    );
+  }
+
+  return close;
+};
 
 export const NotificationBellSkeleton = () => (
   <span
@@ -19,9 +33,18 @@ export const NotificationBellSkeleton = () => (
  * Header notification menu frame. Its trigger, state, and rows are explicit
  * child slots so callers keep copy and loading boundaries at their call sites.
  */
-export const NotificationBell = ({ children }: { children: ReactNode }) => (
-  <Popover.Root>{children}</Popover.Root>
-);
+export const NotificationBell = ({ children }: { children: ReactNode }) => {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+
+  return (
+    <NotificationBellCloseContext.Provider value={close}>
+      <Popover.Root onOpenChange={setOpen} open={open}>
+        {children}
+      </Popover.Root>
+    </NotificationBellCloseContext.Provider>
+  );
+};
 
 export const NotificationBellTrigger = ({
   children,
@@ -132,6 +155,7 @@ export const NotificationBellItem = ({
   href?: string;
   isRead: boolean;
 }) => {
+  const close = useNotificationBellClose();
   const content = (
     <span className="flex items-start gap-2">
       <span
@@ -150,6 +174,7 @@ export const NotificationBellItem = ({
     <Link
       className="block cursor-default rounded-xl px-2.5 py-2.5 text-left outline-hidden select-none data-highlighted:bg-muted/70"
       href={href}
+      onClick={close}
     >
       {content}
     </Link>
@@ -186,14 +211,19 @@ export const NotificationBellMore = ({
 }: {
   children: ReactNode;
   href: string;
-}) => (
-  <>
-    <div className="my-1.5 h-px bg-border/70" />
-    <Link
-      className="flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium text-foreground underline underline-offset-4 outline-hidden hover:bg-muted"
-      href={href}
-    >
-      {children}
-    </Link>
-  </>
-);
+}) => {
+  const close = useNotificationBellClose();
+
+  return (
+    <>
+      <div className="my-1.5 h-px bg-border/70" />
+      <Link
+        className="flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium text-foreground underline underline-offset-4 outline-hidden hover:bg-muted"
+        href={href}
+        onClick={close}
+      >
+        {children}
+      </Link>
+    </>
+  );
+};
