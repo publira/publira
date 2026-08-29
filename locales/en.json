@@ -480,6 +480,7 @@
       "to_settings_page": "Go to settings"
     },
     "nav": {
+      "account_menu": "Account menu",
       "authors": "Authors",
       "footer_links": "Footer links",
       "labels": "Labels",

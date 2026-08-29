@@ -25,7 +25,13 @@ export const signInAsSeedMember = async (
   await signInAsMember(page, SEED_MEMBER, returnTo);
 };
 
+/** Open the public site's header account menu. */
+export const openHostUserMenu = async (page: Page): Promise<void> => {
+  await page.getByRole("button", { name: "アカウントメニュー" }).click();
+};
+
 export const signOutHost = async (page: Page): Promise<void> => {
-  await page.getByRole("button", { name: "ログアウト" }).click();
+  await openHostUserMenu(page);
+  await page.getByRole("menuitem", { name: "ログアウト" }).click();
   await page.waitForURL((url) => url.pathname.endsWith("/login"));
 };
