@@ -22,6 +22,14 @@ export {
   SiteLayoutPrimaryAction,
   SiteLayoutSecondaryAction,
 } from "./site-layout-actions";
+export {
+  SiteLayoutUserMenu,
+  SiteLayoutUserMenuContent,
+  SiteLayoutUserMenuLogout,
+  SiteLayoutUserMenuMyPageLink,
+  SiteLayoutUserMenuSeparator,
+  SiteLayoutUserMenuTrigger,
+} from "./site-layout-user-menu";
 
 export { isCurrentPath } from "./navigation";
 export type { NavItem, NavSection } from "./navigation";

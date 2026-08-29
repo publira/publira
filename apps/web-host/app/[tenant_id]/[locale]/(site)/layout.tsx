@@ -16,9 +16,14 @@ import {
   SiteLayoutMain,
   SiteLayoutNav,
   SiteLayoutNavLink,
-  SiteLayoutLogoutAction,
   SiteLayoutPrimaryAction,
   SiteLayoutSecondaryAction,
+  SiteLayoutUserMenu,
+  SiteLayoutUserMenuContent,
+  SiteLayoutUserMenuLogout,
+  SiteLayoutUserMenuMyPageLink,
+  SiteLayoutUserMenuSeparator,
+  SiteLayoutUserMenuTrigger,
 } from "@publira/layouts";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -107,24 +112,35 @@ const HeaderActions = async () => {
       ) : null}
       <SiteLayoutActions>
         {hasSession ? (
-          <SiteLayoutLogoutAction
-            action={logoutAction.bind(null, tenantId, locale)}
-          >
-            {getMessage(messages, "host.nav.logout")}
-          </SiteLayoutLogoutAction>
+          <SiteLayoutUserMenu>
+            <SiteLayoutUserMenuTrigger
+              ariaLabel={getMessage(messages, "host.nav.account_menu")}
+            />
+            <SiteLayoutUserMenuContent>
+              <SiteLayoutUserMenuMyPageLink
+                href={withLocalePrefix(locale, "/my")}
+              >
+                {getMessage(messages, "host.nav.my_page")}
+              </SiteLayoutUserMenuMyPageLink>
+              <SiteLayoutUserMenuSeparator />
+              <SiteLayoutUserMenuLogout
+                action={logoutAction.bind(null, tenantId, locale)}
+                ariaLabel={getMessage(messages, "host.nav.logout")}
+              >
+                {getMessage(messages, "host.nav.logout")}
+              </SiteLayoutUserMenuLogout>
+            </SiteLayoutUserMenuContent>
+          </SiteLayoutUserMenu>
         ) : (
           <SiteLayoutSecondaryAction href={withLocalePrefix(locale, "/login")}>
             {getMessage(messages, "host.nav.login")}
           </SiteLayoutSecondaryAction>
         )}
-        <SiteLayoutPrimaryAction
-          href={withLocalePrefix(locale, hasSession ? "/my" : "/signup")}
-        >
-          {getMessage(
-            messages,
-            hasSession ? "host.nav.my_page" : "host.nav.signup"
-          )}
-        </SiteLayoutPrimaryAction>
+        {hasSession ? null : (
+          <SiteLayoutPrimaryAction href={withLocalePrefix(locale, "/signup")}>
+            {getMessage(messages, "host.nav.signup")}
+          </SiteLayoutPrimaryAction>
+        )}
       </SiteLayoutActions>
     </div>
   );
