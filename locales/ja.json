@@ -512,6 +512,8 @@
       "list_error": "通知一覧を表示できませんでした",
       "list_failed": "通知一覧の取得に失敗しました。時間をおいて再試行してください。",
       "list_heading": "通知一覧",
+      "menu_loading": "通知を読み込んでいます。",
+      "menu_more": "もっと見る",
       "mark_all_read_failed": "一括既読に失敗しました。時間をおいて再試行してください。",
       "mark_read_aria": "{$title}を既読にする",
       "mark_read_failed": "既読への更新に失敗しました。時間をおいて再試行してください。",

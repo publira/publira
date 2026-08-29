@@ -229,6 +229,9 @@ importers:
 
   apps/web-host:
     dependencies:
+      '@base-ui/react':
+        specifier: 'catalog:'
+        version: 1.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@publira/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client

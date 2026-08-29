@@ -38,10 +38,8 @@ import {
   LocaleSwitcher,
   LocaleSwitcherSkeleton,
 } from "#components/locale-switcher";
-import {
-  NotificationBell,
-  NotificationBellSkeleton,
-} from "#components/notification-bell";
+import { NotificationBell } from "#components/notification-bell";
+import type { NotificationBellCopy } from "#components/notification-bell";
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
@@ -49,7 +47,7 @@ import { getLocale, loadHostMessages } from "#lib/locale";
 import type { HostMessageKey } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { logoutAction } from "#lib/logout-action";
-import { countUnreadNotifications } from "#lib/notification";
+import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { listPublishedPageLinks } from "#lib/pages";
 import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -68,15 +66,41 @@ const siteNavItems: { href: string; label: HostMessageKey }[] = [
   { href: "/search", label: "host.nav.search" },
 ];
 
-const HostNotificationBell = async () => {
+const notificationMenuLimit = 5;
+
+const notificationBellCopy = (
+  messages: Awaited<ReturnType<typeof loadHostMessages>>
+): NotificationBellCopy => ({
+  emptyDescription: getMessage(
+    messages,
+    "host.notifications.empty_description"
+  ),
+  emptyTitle: getMessage(messages, "host.notifications.empty_title"),
+  errorDescription: getMessage(messages, "host.notifications.list_failed"),
+  heading: getMessage(messages, "host.notifications.list_heading"),
+  loadingDescription: getMessage(messages, "host.notifications.menu_loading"),
+  more: getMessage(messages, "host.notifications.menu_more"),
+  read: getMessage(messages, "host.common.read"),
+  unread: getMessage(messages, "host.common.unread"),
+});
+
+const HostNotificationBell = async ({
+  copy,
+  moreHref,
+}: {
+  copy: NotificationBellCopy;
+  moreHref: string;
+}) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [unread, messages] = await Promise.all([
-    countUnreadNotifications(tenantId, locale),
+  const [list, messages, unread] = await Promise.all([
+    listNotifications(tenantId, { limit: notificationMenuLimit, locale }),
     loadHostMessages(locale),
+    countUnreadNotifications(tenantId, locale),
   ]);
 
   return (
     <NotificationBell
+      copy={copy}
       label={
         unread.unreadCount > 0
           ? getMessage(messages, "host.nav.notifications_unread", {
@@ -84,6 +108,21 @@ const HostNotificationBell = async () => {
             })
           : getMessage(messages, "host.nav.notifications_none")
       }
+      moreHref={moreHref}
+      notifications={
+        list.ok
+          ? list.notifications.map((notification) => ({
+              description: notification.description,
+              href: notification.href
+                ? withLocalePrefix(locale, notification.href)
+                : undefined,
+              id: notification.id,
+              isRead: notification.isRead,
+              title: notification.title,
+            }))
+          : []
+      }
+      status={list.ok ? "ready" : "error"}
       unreadCount={unread.unreadCount}
     />
   );
@@ -99,14 +138,29 @@ const HeaderActions = async () => {
   const hasSession = Boolean(
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
   );
+  const copy = notificationBellCopy(messages);
+  const moreHref = withLocalePrefix(locale, "/notifications");
+  const notificationLabel = getMessage(messages, "host.nav.notifications_none");
   return (
     <div className="flex items-center gap-2">
       {hasSession ? (
         <NotificationBellErrorBoundary
-          label={getMessage(messages, "host.nav.notifications_none")}
+          copy={copy}
+          label={notificationLabel}
+          moreHref={moreHref}
         >
-          <Suspense fallback={<NotificationBellSkeleton />}>
-            <HostNotificationBell />
+          <Suspense
+            fallback={
+              <NotificationBell
+                copy={copy}
+                label={notificationLabel}
+                moreHref={moreHref}
+                status="loading"
+                unreadCount={0}
+              />
+            }
+          >
+            <HostNotificationBell copy={copy} moreHref={moreHref} />
           </Suspense>
         </NotificationBellErrorBoundary>
       ) : null}
