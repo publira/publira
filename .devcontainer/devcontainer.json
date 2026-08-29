@@ -4,15 +4,9 @@
   "service": "app",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
-    "ghcr.io/devcontainers/features/aws-cli:1.1.4": {},
     "ghcr.io/devcontainers/features/docker-in-docker:4.1.0": {
+      "moby": false,
       "version": "29.3.1"
-    },
-    "ghcr.io/devcontainers/features/node:2.1.0": {
-      "version": "24.20.0"
-    },
-    "ghcr.io/devcontainers/features/github-cli:1.1.1": {
-      "version": "2.97.0"
     },
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {}
   },

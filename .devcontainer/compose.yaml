@@ -14,11 +14,8 @@ services:
       - app
 
   app:
-    platform: linux/amd64
     init: true
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/publira/base-images/publira-dev:2026.08.29@sha256:c7806502cfcfc13adefe925c28cfba3a912035441f9d8756cfa19bbca362c4ba
     command: sleep infinity
     volumes:
       # Keep Claude Code login, configuration, and local state across rebuilds.
