@@ -528,6 +528,15 @@ type Querier interface {
 	MarkUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailVerificationTokenUsed(ctx context.Context, id uuid.UUID) error
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
+	// Projects the Stripe-confirmed purchase without trusting webhook metadata for
+	// the actor or content target. purchases stays the source of truth: its user
+	// is copied directly and the episode resolves its owning series. A retry is a
+	// no-op after the source unique index has accepted the first event.
+	//
+	// The Phase 0 daily purchase aggregate reads purchases directly. Do not mix
+	// this projection into that aggregate until its source contract moves to
+	// content_events, or purchases will be counted twice.
+	ProjectPurchaseContentEvent(ctx context.Context, arg ProjectPurchaseContentEventParams) (ContentEvent, error)
 	// ページバージョンを公開状態にする
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
 	// Re-queue rows left in processing after a worker crash. updated_at is the

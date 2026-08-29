@@ -139,6 +139,49 @@ WHERE source_id IS NOT NULL
 DO NOTHING
 RETURNING *;
 
+-- Projects the Stripe-confirmed purchase without trusting webhook metadata for
+-- the actor or content target. purchases stays the source of truth: its user
+-- is copied directly and the episode resolves its owning series. A retry is a
+-- no-op after the source unique index has accepted the first event.
+--
+-- The Phase 0 daily purchase aggregate reads purchases directly. Do not mix
+-- this projection into that aggregate until its source contract moves to
+-- content_events, or purchases will be counted twice.
+-- name: ProjectPurchaseContentEvent :one
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    payload,
+    occurred_at
+)
+SELECT
+    sqlc.arg('id'),
+    p.tenant_id,
+    'purchase',
+    p.user_id,
+    e.series_id,
+    p.episode_id,
+    'purchases',
+    p.id,
+    '{}'::jsonb,
+    p.purchased_at
+FROM purchases p
+JOIN episodes e
+    ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.stripe_checkout_session_id = sqlc.arg('stripe_checkout_session_id')::text
+ON CONFLICT (tenant_id, source_table, source_id)
+WHERE source_id IS NOT NULL
+DO NOTHING
+RETURNING *;
+
 -- Ratings are append-only, like every other content_events row: a member who
 -- changes their score inserts another event instead of updating the previous
 -- one, so the history stays reconstructable and nothing has to be deleted.

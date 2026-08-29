@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
+	"github.com/stripe/stripe-go/v86"
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
@@ -139,5 +141,103 @@ func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
 	}, token))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+}
+
+func TestDBProcessStripeWebhookProjectsPurchaseEventIdempotently(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	encryptor := newPublicTestEncryptor(t)
+	tenant := pg.SeedTenant(t, "PAYPROJ", "pay-projection.example.com", "Pay Projection")
+	user := pg.SeedEndUser(t, tenant.ID, "PAYPROJUSER", "projection@example.com", "Projection buyer")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		Price:       500,
+		Status:      testutil.EpisodeStatusPublished,
+		PublishedAt: time.Now().Add(-time.Hour),
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, nil, slog.Default())
+	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
+		Enabled:                 true,
+		SecretKey:               testCheckoutSecretKey,
+		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		WebhookSecret:           testCheckoutWebhookSecret,
+		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+	}, paymentsettings.AuditMeta{}); err != nil {
+		t.Fatalf("upsert payment settings: %v", err)
+	}
+
+	db := pg.OpenPublicDB(t)
+	server := newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, encryptor, nil, testutil.TokenManager(), slog.Default())
+	ts := httptest.NewServer(handlerFromServer(server))
+	t.Cleanup(ts.Close)
+	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
+
+	payload, signature := signedStripeEvent(t, testCheckoutWebhookSecret, string(stripe.EventTypeCheckoutSessionCompleted), map[string]any{
+		"id":             "cs_purchase_projection",
+		"object":         "checkout.session",
+		"amount_total":   500,
+		"currency":       "jpy",
+		"payment_status": "paid",
+		"metadata": map[string]string{
+			stripeMetadataTenantID:  tenant.ID.String(),
+			stripeMetadataUserID:    user.ID.String(),
+			stripeMetadataEpisodeID: episode.ID.String(),
+			stripeMetadataPrice:     "500",
+		},
+	})
+	req := func() *connect.Request[publirav1.ProcessStripeWebhookRequest] {
+		return connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
+			Payload:         payload,
+			StripeSignature: signature,
+			Tenant:          &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
+		})
+	}
+	if _, err := client.ProcessStripeWebhook(context.Background(), req()); err != nil {
+		t.Fatalf("first ProcessStripeWebhook: %v", err)
+	}
+	if _, err := client.ProcessStripeWebhook(context.Background(), req()); err != nil {
+		t.Fatalf("retry ProcessStripeWebhook: %v", err)
+	}
+
+	var (
+		purchaseID   uuid.UUID
+		eventType    string
+		eventUser    uuid.UUID
+		eventSeries  uuid.UUID
+		eventEpisode uuid.UUID
+		sourceTable  string
+		sourceID     uuid.UUID
+	)
+	err := pg.DB.QueryRowContext(ctx, `
+		SELECT p.id, ce.event_type, ce.user_id, ce.series_id, ce.episode_id, ce.source_table, ce.source_id
+		FROM purchases p
+		JOIN content_events ce
+			ON ce.tenant_id = p.tenant_id
+			AND ce.source_table = 'purchases'
+			AND ce.source_id = p.id
+		WHERE p.tenant_id = $1
+	`, tenant.ID).Scan(&purchaseID, &eventType, &eventUser, &eventSeries, &eventEpisode, &sourceTable, &sourceID)
+	if err != nil {
+		t.Fatalf("read projected purchase event: %v", err)
+	}
+	if eventType != "purchase" || eventUser != user.ID || eventSeries != series.ID || eventEpisode != episode.ID || sourceTable != "purchases" || sourceID != purchaseID {
+		t.Fatalf("projected event = type=%q user=%s series=%s episode=%s source=%s/%s, want purchase SoT projection", eventType, eventUser, eventSeries, eventEpisode, sourceTable, sourceID)
+	}
+
+	var eventCount int
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT count(*)
+		FROM content_events
+		WHERE tenant_id = $1 AND source_table = 'purchases' AND source_id = $2
+	`, tenant.ID, purchaseID).Scan(&eventCount); err != nil {
+		t.Fatalf("count projected purchase events: %v", err)
+	}
+	if eventCount != 1 {
+		t.Fatalf("projected purchase events = %d, want 1", eventCount)
 	}
 }
