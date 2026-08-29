@@ -1,10 +1,4 @@
-import {
-  ConsoleHeaderSkeleton,
-  ConsoleLayout,
-  ConsoleLayoutContent,
-  ConsoleLayoutMain,
-  ConsoleSidebarSkeleton,
-} from "@publira/layouts/admin";
+import { ConsoleLayoutSkeleton } from "@publira/layouts/admin";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -16,17 +10,7 @@ import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeLogo } from "#lib/theme-settings";
 
-const AdminLayoutSkeleton = () => (
-  <ConsoleLayout>
-    <ConsoleSidebarSkeleton />
-    <ConsoleLayoutContent>
-      <ConsoleHeaderSkeleton />
-      <ConsoleLayoutMain>
-        <div className="p-8" />
-      </ConsoleLayoutMain>
-    </ConsoleLayoutContent>
-  </ConsoleLayout>
-);
+const AdminLayoutSkeleton = () => <ConsoleLayoutSkeleton />;
 
 const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   const tenantId = await getTenantId();
@@ -45,7 +29,7 @@ const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AdminLayout logo={logo} tenant={result.tenant}>
+    <AdminLayout logo={logo} tenant={result.tenant} tenantId={tenantId}>
       <AdminToastProvider>{children}</AdminToastProvider>
     </AdminLayout>
   );

@@ -11,6 +11,9 @@ import {
   ConsoleLayout,
   ConsoleLayoutContent,
   ConsoleLayoutMain,
+  ConsoleMobileNavigation,
+  ConsoleMobileNavigationCloseButton,
+  ConsoleMobileNavigationOpenButton,
   ConsoleSidebar,
   ConsoleSidebarBrand,
   ConsoleSidebarBrandLabel,
@@ -125,8 +128,29 @@ export const PlatformNotificationBell = async () => {
   );
 };
 
+const PlatformMobileNavigation = async () => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return (
+    <>
+      <ConsoleMobileNavigation>
+        <ConsoleMobileNavigationCloseButton
+          ariaLabel={getMessage(messages, "platform.shell.navigation_close")}
+        />
+      </ConsoleMobileNavigation>
+      <ConsoleMobileNavigationOpenButton
+        ariaLabel={getMessage(messages, "platform.shell.navigation_open")}
+      />
+    </>
+  );
+};
+
 export const PlatformLayout = ({ children }: { children: ReactNode }) => (
   <ConsoleLayout gradient={platformGradient}>
+    <Suspense fallback={null}>
+      <PlatformMobileNavigation />
+    </Suspense>
     <ConsoleSidebar>
       <ConsoleSidebarBrand>
         <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
