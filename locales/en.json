@@ -512,6 +512,8 @@
       "list_error": "Could not display your notifications",
       "list_failed": "Could not load your notifications. Please try again later.",
       "list_heading": "Notifications",
+      "menu_loading": "Loading notifications.",
+      "menu_more": "View all",
       "mark_all_read_failed": "Could not mark everything as read. Please try again later.",
       "mark_read_aria": "Mark {$title} as read",
       "mark_read_failed": "Could not mark it as read. Please try again later.",

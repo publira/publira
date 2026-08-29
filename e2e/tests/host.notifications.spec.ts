@@ -10,20 +10,28 @@ import { hostPath } from "../src/urls";
  */
 
 test.describe("web-host notification bell", () => {
-  test("空のベルと通知一覧を出し、お知らせ画面は回帰しない", async ({
+  test("空のベルのメニューと通知一覧を出し、お知らせ画面は回帰しない", async ({
     page,
   }) => {
     await signInAsSeedMember(page, "/notifications");
 
-    const bell = page.getByRole("link", { name: "通知、未読はありません" });
+    const bell = page.getByRole("button", { name: "通知、未読はありません" });
     await expect(bell).toBeVisible();
-    await expect(bell).toHaveAttribute("href", hostPath("/notifications"));
+    await bell.click();
+
+    const menu = page.getByRole("dialog");
+    await expect(menu.getByText("通知一覧")).toBeVisible();
+    await expect(menu.getByText("通知はまだありません。")).toBeVisible();
+    await menu.getByRole("link", { name: "もっと見る" }).click();
 
     await expect(page).toHaveURL(/\/notifications\/?$/u);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
       page.getByRole("heading", { exact: true, level: 1, name: "通知" })
     ).toBeVisible();
-    await expect(page.getByText("通知はまだありません。")).toBeVisible();
+    await expect(
+      page.getByRole("main").getByText("通知はまだありません。")
+    ).toBeVisible();
 
     await page.goto(hostPath("/announcements"));
     await expect(page).toHaveURL(/\/announcements\/?$/u);

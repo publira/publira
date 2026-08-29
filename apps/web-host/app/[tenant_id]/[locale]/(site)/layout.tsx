@@ -38,9 +38,23 @@ import {
   LocaleSwitcher,
   LocaleSwitcherSkeleton,
 } from "#components/locale-switcher";
+import { Message } from "#components/message";
 import {
   NotificationBell,
+  NotificationBellContent,
+  NotificationBellEmpty,
+  NotificationBellEmptyDescription,
+  NotificationBellEmptyTitle,
+  NotificationBellError,
+  NotificationBellHeader,
+  NotificationBellItem,
+  NotificationBellItemDescription,
+  NotificationBellItemState,
+  NotificationBellItemTitle,
+  NotificationBellList,
+  NotificationBellMore,
   NotificationBellSkeleton,
+  NotificationBellTrigger,
 } from "#components/notification-bell";
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
@@ -49,7 +63,7 @@ import { getLocale, loadHostMessages } from "#lib/locale";
 import type { HostMessageKey } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { logoutAction } from "#lib/logout-action";
-import { countUnreadNotifications } from "#lib/notification";
+import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { listPublishedPageLinks } from "#lib/pages";
 import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -68,24 +82,103 @@ const siteNavItems: { href: string; label: HostMessageKey }[] = [
   { href: "/search", label: "host.nav.search" },
 ];
 
-const HostNotificationBell = async () => {
+const notificationMenuLimit = 5;
+
+const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [unread, messages] = await Promise.all([
+  const [list, unread] = await Promise.all([
+    listNotifications(tenantId, { limit: notificationMenuLimit, locale }),
     countUnreadNotifications(tenantId, locale),
-    loadHostMessages(locale),
   ]);
+  const unreadMessage =
+    unread.unreadCount > 0
+      ? "host.nav.notifications_unread"
+      : "host.nav.notifications_none";
+  let notificationContent = (
+    <NotificationBellError>
+      <Suspense fallback={<Skeleton className="h-4 w-64" />}>
+        <Message message="host.notifications.list_failed" />
+      </Suspense>
+    </NotificationBellError>
+  );
+
+  if (list.ok && list.notifications.length === 0) {
+    notificationContent = (
+      <NotificationBellEmpty>
+        <NotificationBellEmptyTitle>
+          <Suspense fallback={<Skeleton className="h-4 w-32" />}>
+            <Message message="host.notifications.empty_title" />
+          </Suspense>
+        </NotificationBellEmptyTitle>
+        <NotificationBellEmptyDescription>
+          <Suspense fallback={<Skeleton className="mt-1 h-4 w-56" />}>
+            <Message message="host.notifications.empty_description" />
+          </Suspense>
+        </NotificationBellEmptyDescription>
+      </NotificationBellEmpty>
+    );
+  }
+
+  if (list.ok && list.notifications.length > 0) {
+    notificationContent = (
+      <NotificationBellList>
+        {list.notifications.map((notification) => (
+          <NotificationBellItem
+            href={
+              notification.href
+                ? withLocalePrefix(locale, notification.href)
+                : undefined
+            }
+            isRead={notification.isRead}
+            key={notification.id}
+          >
+            <NotificationBellItemState>
+              <Suspense fallback={null}>
+                <Message
+                  message={
+                    notification.isRead
+                      ? "host.common.read"
+                      : "host.common.unread"
+                  }
+                />
+              </Suspense>
+            </NotificationBellItemState>
+            <NotificationBellItemTitle>
+              {notification.title}
+            </NotificationBellItemTitle>
+            <NotificationBellItemDescription>
+              {notification.description}
+            </NotificationBellItemDescription>
+          </NotificationBellItem>
+        ))}
+      </NotificationBellList>
+    );
+  }
 
   return (
-    <NotificationBell
-      label={
-        unread.unreadCount > 0
-          ? getMessage(messages, "host.nav.notifications_unread", {
-              count: unread.unreadCount,
-            })
-          : getMessage(messages, "host.nav.notifications_none")
-      }
-      unreadCount={unread.unreadCount}
-    />
+    <NotificationBell>
+      <NotificationBellTrigger unreadCount={unread.unreadCount}>
+        <Suspense fallback={null}>
+          <Message
+            message={unreadMessage}
+            values={{ count: unread.unreadCount }}
+          />
+        </Suspense>
+      </NotificationBellTrigger>
+      <NotificationBellContent>
+        <NotificationBellHeader unreadCount={unread.unreadCount}>
+          <Suspense fallback={<Skeleton className="h-4 w-16" />}>
+            <Message message="host.notifications.list_heading" />
+          </Suspense>
+        </NotificationBellHeader>
+        {notificationContent}
+        <NotificationBellMore href={moreHref}>
+          <Suspense fallback={<Skeleton className="h-4 w-16" />}>
+            <Message message="host.notifications.menu_more" />
+          </Suspense>
+        </NotificationBellMore>
+      </NotificationBellContent>
+    </NotificationBell>
   );
 };
 
@@ -99,14 +192,13 @@ const HeaderActions = async () => {
   const hasSession = Boolean(
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
   );
+  const moreHref = withLocalePrefix(locale, "/notifications");
   return (
     <div className="flex items-center gap-2">
       {hasSession ? (
-        <NotificationBellErrorBoundary
-          label={getMessage(messages, "host.nav.notifications_none")}
-        >
+        <NotificationBellErrorBoundary moreHref={moreHref}>
           <Suspense fallback={<NotificationBellSkeleton />}>
-            <HostNotificationBell />
+            <HostNotificationBell moreHref={moreHref} />
           </Suspense>
         </NotificationBellErrorBoundary>
       ) : null}
