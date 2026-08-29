@@ -414,29 +414,43 @@ func (s *apiServer) createPurchaseFromStripeSession(
 		EpisodeID: episodeID,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("check existing purchase: %w", err)
 	}
 	if hasPurchase {
-		return nil
+		// A prior delivery may have committed purchases before the projection
+		// failed. Continue so Stripe's retry repairs that derived event.
+	} else {
+		var expiresAt sql.NullTime
+		if readingPeriodHours > 0 {
+			now := time.Now().UTC()
+			expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(readingPeriodHours/24)).Add(time.Duration(readingPeriodHours%24) * time.Hour), Valid: true}
+		}
+		_, err = queries.CreatePurchaseFromStripeCheckout(ctx, dbmodels.CreatePurchaseFromStripeCheckoutParams{
+			ID:                      uuid.New(),
+			TenantID:                expectedTenantID,
+			UserID:                  userID,
+			EpisodeID:               episodeID,
+			PriceAtPurchase:         price,
+			ExpiresAt:               expiresAt,
+			StripeCheckoutSessionID: sql.NullString{String: session.ID, Valid: true},
+		})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("create purchase: %w", err)
+		}
 	}
-	var expiresAt sql.NullTime
-	if readingPeriodHours > 0 {
-		now := time.Now().UTC()
-		expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(readingPeriodHours/24)).Add(time.Duration(readingPeriodHours%24) * time.Hour), Valid: true}
-	}
-	_, err = queries.CreatePurchaseFromStripeCheckout(ctx, dbmodels.CreatePurchaseFromStripeCheckoutParams{
-		ID:                      uuid.New(),
+
+	_, err = queries.ProjectPurchaseContentEvent(ctx, dbmodels.ProjectPurchaseContentEventParams{
+		ID:                      uuid.Must(uuid.NewV7()),
 		TenantID:                expectedTenantID,
-		UserID:                  userID,
-		EpisodeID:               episodeID,
-		PriceAtPurchase:         price,
-		ExpiresAt:               expiresAt,
-		StripeCheckoutSessionID: sql.NullString{String: session.ID, Valid: true},
+		StripeCheckoutSessionID: session.ID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
-	return err
+	if err != nil {
+		return fmt.Errorf("project purchase content event: %w", err)
+	}
+	return nil
 }
 
 func stripePurchaseMetadata(session *stripe.CheckoutSession) (uuid.UUID, uuid.UUID, uuid.UUID, int32, int32, error) {

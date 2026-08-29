@@ -802,6 +802,79 @@ func (q *Queries) ListLatestContentRatingsByEntity(ctx context.Context, arg List
 	return items, nil
 }
 
+const projectPurchaseContentEvent = `-- name: ProjectPurchaseContentEvent :one
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    payload,
+    occurred_at
+)
+SELECT
+    $1,
+    p.tenant_id,
+    'purchase',
+    p.user_id,
+    e.series_id,
+    p.episode_id,
+    'purchases',
+    p.id,
+    '{}'::jsonb,
+    p.purchased_at
+FROM purchases p
+JOIN episodes e
+    ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+WHERE p.tenant_id = $2
+    AND p.stripe_checkout_session_id = $3::text
+ON CONFLICT (tenant_id, source_table, source_id)
+WHERE source_id IS NOT NULL
+DO NOTHING
+RETURNING id, tenant_id, event_type, user_id, anonymous_id, actor_key, series_id, episode_id, debounce_bucket, rating_score, source_table, source_id, payload, occurred_at, created_at
+`
+
+type ProjectPurchaseContentEventParams struct {
+	ID                      uuid.UUID `json:"id"`
+	TenantID                uuid.UUID `json:"tenant_id"`
+	StripeCheckoutSessionID string    `json:"stripe_checkout_session_id"`
+}
+
+// Projects the Stripe-confirmed purchase without trusting webhook metadata for
+// the actor or content target. purchases stays the source of truth: its user
+// is copied directly and the episode resolves its owning series. A retry is a
+// no-op after the source unique index has accepted the first event.
+//
+// The Phase 0 daily purchase aggregate reads purchases directly. Do not mix
+// this projection into that aggregate until its source contract moves to
+// content_events, or purchases will be counted twice.
+func (q *Queries) ProjectPurchaseContentEvent(ctx context.Context, arg ProjectPurchaseContentEventParams) (ContentEvent, error) {
+	row := q.db.QueryRowContext(ctx, projectPurchaseContentEvent, arg.ID, arg.TenantID, arg.StripeCheckoutSessionID)
+	var i ContentEvent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EventType,
+		&i.UserID,
+		&i.AnonymousID,
+		&i.ActorKey,
+		&i.SeriesID,
+		&i.EpisodeID,
+		&i.DebounceBucket,
+		&i.RatingScore,
+		&i.SourceTable,
+		&i.SourceID,
+		&i.Payload,
+		&i.OccurredAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const upsertContentDailyStats = `-- name: UpsertContentDailyStats :one
 INSERT INTO content_daily_stats (
     id,

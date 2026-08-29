@@ -879,7 +879,9 @@ const createPurchaseFromStripeCheckout = `-- name: CreatePurchaseFromStripeCheck
 WITH locked AS (
     SELECT pg_advisory_xact_lock(
         hashtextextended(
-            $2::text || ':' || $3::text || ':' || $4::text,
+            $2::uuid::text || ':' ||
+                $3::uuid::text || ':' ||
+                $4::uuid::text,
             0
         )
     )
@@ -893,14 +895,21 @@ INSERT INTO purchases (
     expires_at,
     stripe_checkout_session_id
 )
-SELECT $1, $2, $3, $4, $5, $6, $7
+SELECT
+    $1::uuid,
+    $2::uuid,
+    $3::uuid,
+    $4::uuid,
+    $5::integer,
+    $6::timestamptz,
+    $7::text
 FROM locked
 WHERE NOT EXISTS (
     SELECT 1
     FROM purchases
-    WHERE tenant_id = $2
-        AND user_id = $3
-        AND episode_id = $4
+    WHERE tenant_id = $2::uuid
+        AND user_id = $3::uuid
+        AND episode_id = $4::uuid
         AND (expires_at IS NULL OR expires_at > NOW())
 )
 ON CONFLICT (stripe_checkout_session_id) DO NOTHING
