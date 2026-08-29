@@ -1,5 +1,8 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -14,13 +17,17 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { getAdminMetadata } from "#lib/admin-metadata";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 
 import { LabelForm } from "../_components/label-form";
 import { createLabelAction } from "../_lib/actions";
 
-export const generateMetadata = () =>
-  getAdminMetadata("admin.labels.new_title");
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.labels.new_title") };
+};
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -44,15 +51,21 @@ const NewLabelPage = () => (
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
-          <Message message="admin.labels.new_title" />
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.labels.new_title" />
+          </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
-          <Message message="admin.labels.new_description" />
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.labels.new_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/labels" />} variant="outline">
-          <Message message="admin.labels.back_to_list" />
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.labels.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

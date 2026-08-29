@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -6,6 +7,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -24,10 +26,10 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { getLabel } from "#lib/label";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { LabelEyeCatchForm } from "../_components/label-eye-catch-form";
@@ -49,8 +51,12 @@ const editLabelParamsSchema = z.object({
   label_public_id: routeParamString(),
 });
 
-export const generateMetadata = () =>
-  getAdminMetadata("admin.labels.edit_title");
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.labels.edit_title") };
+};
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "label_public_id");
@@ -185,7 +191,9 @@ const EditLabelPage = ({ params, searchParams }: EditLabelPageProps) => (
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/labels" />} variant="outline">
-          <Message message="admin.labels.back_to_list" />
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.labels.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import { LinkButton } from "@publira/ui-components/button";
 import { formatDateTime } from "@publira/utils";
@@ -7,7 +9,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useOptimistic, useRef, useTransition } from "react";
 
-import { useAdminMessage } from "#components/client-message";
 import type { EpisodeItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -47,7 +48,7 @@ export const EpisodesSortableList = ({
   reorderAction,
   timeZone,
 }: EpisodesSortableListProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const tenantId = useTenantId();
   const router = useRouter();
   const { add } = useToastManager();
@@ -77,24 +78,29 @@ export const EpisodesSortableList = ({
         const result = await reorderAction(formData);
         if (!result.ok) {
           add({
-            title: result.message ?? t("admin.series.episodes.reorder_failed"),
+            title:
+              result.message ??
+              getMessage(messages, "admin.series.episodes.reorder_failed"),
             type: "error",
           });
           router.refresh();
           return;
         }
 
-        add({ title: t("admin.series.episodes.reordered"), type: "success" });
+        add({
+          title: getMessage(messages, "admin.series.episodes.reordered"),
+          type: "success",
+        });
         router.refresh();
       } catch {
         add({
-          title: t("admin.series.episodes.reorder_failed"),
+          title: getMessage(messages, "admin.series.episodes.reorder_failed"),
           type: "error",
         });
         router.refresh();
       }
     },
-    [add, reorderAction, router, seriesPublicId, t, tenantId]
+    [add, messages, reorderAction, router, seriesPublicId, tenantId]
   );
 
   const handleDragOver = useCallback(
@@ -171,14 +177,14 @@ export const EpisodesSortableList = ({
               {episode.orderIndex}. {episode.title}
             </p>
             <p className="text-xs text-muted-foreground">
-              {t("admin.series.episodes.status_price", {
+              {getMessage(messages, "admin.series.episodes.status_price", {
                 price: episode.price,
                 status: episode.status,
               })}
             </p>
             {episode.status === "scheduled" && episode.scheduledAt ? (
               <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                {t("admin.series.episodes.scheduled_at", {
+                {getMessage(messages, "admin.series.episodes.scheduled_at", {
                   date: formatDateTime(episode.scheduledAt, { timeZone }),
                 })}
               </p>
@@ -194,7 +200,7 @@ export const EpisodesSortableList = ({
               }
               variant="outline"
             >
-              {t("admin.series.episodes.edit_action")}
+              {getMessage(messages, "admin.series.episodes.edit_action")}
             </LinkButton>
           </div>
         </div>

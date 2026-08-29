@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -19,7 +21,6 @@ import { Input } from "@publira/ui-components/input";
 import { useActionState, useCallback, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 
-import { useAdminMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EpisodeEditActionState } from "../episode-edit-types";
@@ -38,7 +39,7 @@ export const EpisodePagesForm = ({
   episodePublicId,
   action,
 }: EpisodePagesFormProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [uploadMode, setUploadMode] = useState<"pages" | "zip" | "epub">(
@@ -120,31 +121,45 @@ export const EpisodePagesForm = ({
     }
   }, []);
 
-  let fileLabel = t("admin.series.episodes.pages.image");
-  let dropMessage = t("admin.series.episodes.pages.drop_image");
+  let fileLabel = getMessage(messages, "admin.series.episodes.pages.image");
+  let dropMessage = getMessage(
+    messages,
+    "admin.series.episodes.pages.drop_image"
+  );
   let acceptValue = "image/*";
-  let fieldDescription = t("admin.series.episodes.pages.image_description");
+  let fieldDescription = getMessage(
+    messages,
+    "admin.series.episodes.pages.image_description"
+  );
 
   if (uploadMode === "zip") {
-    fileLabel = t("admin.series.episodes.pages.zip");
-    dropMessage = t("admin.series.episodes.pages.drop_zip");
+    fileLabel = getMessage(messages, "admin.series.episodes.pages.zip");
+    dropMessage = getMessage(messages, "admin.series.episodes.pages.drop_zip");
     acceptValue = ".zip,application/zip";
-    fieldDescription = t("admin.series.episodes.pages.zip_description");
+    fieldDescription = getMessage(
+      messages,
+      "admin.series.episodes.pages.zip_description"
+    );
   }
 
   if (uploadMode === "epub") {
-    fileLabel = t("admin.series.episodes.pages.epub");
-    dropMessage = t("admin.series.episodes.pages.drop_epub");
+    fileLabel = getMessage(messages, "admin.series.episodes.pages.epub");
+    dropMessage = getMessage(messages, "admin.series.episodes.pages.drop_epub");
     acceptValue = ".epub,application/epub+zip";
-    fieldDescription = t("admin.series.episodes.pages.epub_description");
+    fieldDescription = getMessage(
+      messages,
+      "admin.series.episodes.pages.epub_description"
+    );
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("admin.series.episodes.pages.title")}</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.series.episodes.pages.title")}
+        </CardTitle>
         <CardDescription>
-          {t("admin.series.episodes.pages.description")}
+          {getMessage(messages, "admin.series.episodes.pages.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -159,7 +174,9 @@ export const EpisodePagesForm = ({
           <input name="upload_mode" type="hidden" value={uploadMode} />
 
           <Field>
-            <FieldLabel>{t("admin.series.episodes.pages.target")}</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.series.episodes.pages.target")}
+            </FieldLabel>
             <FieldContent>
               <p className="text-sm text-muted-foreground">
                 Series: {seriesPublicId} / Episode: {episodePublicId}
@@ -168,7 +185,9 @@ export const EpisodePagesForm = ({
           </Field>
 
           <Field>
-            <FieldLabel>{t("admin.series.episodes.pages.method")}</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.series.episodes.pages.method")}
+            </FieldLabel>
             <FieldContent>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -177,7 +196,10 @@ export const EpisodePagesForm = ({
                   type="button"
                   variant={uploadMode === "pages" ? "default" : "outline"}
                 >
-                  {t("admin.series.episodes.pages.select_images")}
+                  {getMessage(
+                    messages,
+                    "admin.series.episodes.pages.select_images"
+                  )}
                 </Button>
                 <Button
                   disabled={isPending}
@@ -185,7 +207,10 @@ export const EpisodePagesForm = ({
                   type="button"
                   variant={uploadMode === "zip" ? "default" : "outline"}
                 >
-                  {t("admin.series.episodes.pages.select_zip")}
+                  {getMessage(
+                    messages,
+                    "admin.series.episodes.pages.select_zip"
+                  )}
                 </Button>
                 <Button
                   disabled={isPending}
@@ -193,7 +218,10 @@ export const EpisodePagesForm = ({
                   type="button"
                   variant={uploadMode === "epub" ? "default" : "outline"}
                 >
-                  {t("admin.series.episodes.pages.select_epub")}
+                  {getMessage(
+                    messages,
+                    "admin.series.episodes.pages.select_epub"
+                  )}
                 </Button>
               </div>
             </FieldContent>
@@ -237,13 +265,17 @@ export const EpisodePagesForm = ({
               {isPending ? (
                 <div className="grid gap-2">
                   <progress
-                    aria-label={t(
+                    aria-label={getMessage(
+                      messages,
                       "admin.series.episodes.pages.upload_progress"
                     )}
                     className="w-full"
                   />
                   <p className="text-xs text-muted-foreground">
-                    {t("admin.series.episodes.pages.processing")}
+                    {getMessage(
+                      messages,
+                      "admin.series.episodes.pages.processing"
+                    )}
                   </p>
                 </div>
               ) : null}
@@ -260,15 +292,27 @@ export const EpisodePagesForm = ({
             <Button disabled={isPending} type="submit">
               {(() => {
                 if (isPending) {
-                  return t("admin.series.episodes.pages.adding");
+                  return getMessage(
+                    messages,
+                    "admin.series.episodes.pages.adding"
+                  );
                 }
                 if (uploadMode === "zip") {
-                  return t("admin.series.episodes.pages.submit_zip");
+                  return getMessage(
+                    messages,
+                    "admin.series.episodes.pages.submit_zip"
+                  );
                 }
                 if (uploadMode === "epub") {
-                  return t("admin.series.episodes.pages.submit_epub");
+                  return getMessage(
+                    messages,
+                    "admin.series.episodes.pages.submit_epub"
+                  );
                 }
-                return t("admin.series.episodes.pages.submit_image");
+                return getMessage(
+                  messages,
+                  "admin.series.episodes.pages.submit_image"
+                );
               })()}
             </Button>
           </div>

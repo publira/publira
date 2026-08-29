@@ -1,12 +1,13 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useRef } from "react";
 
 import type { AdminMessageKey } from "#lib/locale";
 
-import { useAdminMessage } from "./client-message";
 import { isFlashFlagSet } from "./flash-flag";
 
 interface FlashToastProps {
@@ -20,8 +21,8 @@ export const FlashToast = ({
   message,
   title,
 }: FlashToastProps) => {
-  const t = useAdminMessage();
-  const resolvedTitle = title ?? (message ? t(message) : "");
+  const messages = sharedCatalog(document.documentElement.lang);
+  const resolvedTitle = title ?? (message ? getMessage(messages, message) : "");
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();

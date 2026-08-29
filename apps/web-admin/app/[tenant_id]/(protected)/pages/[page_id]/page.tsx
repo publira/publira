@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -6,6 +7,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -24,8 +26,8 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getPage, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -49,8 +51,12 @@ const editPageParamsSchema = z.object({
   page_id: routeParamString(),
 });
 
-export const generateMetadata = () =>
-  getAdminMetadata("admin.pages.edit_title");
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.pages.edit_title") };
+};
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "page_id");
@@ -140,7 +146,9 @@ const EditPagePage = ({ params }: EditPagePageProps) => (
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/pages" />} variant="outline">
-          <Message message="admin.pages.back_to_list" />
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.pages.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

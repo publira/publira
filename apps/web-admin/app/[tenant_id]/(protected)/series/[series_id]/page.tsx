@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -6,6 +7,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -24,11 +26,11 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { listAllLabels } from "#lib/label";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -41,8 +43,12 @@ import {
   updateSeriesEyeCatchAction,
 } from "../_lib/actions";
 
-export const generateMetadata = () =>
-  getAdminMetadata("admin.series.edit_title");
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.series.edit_title") };
+};
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id");
@@ -213,7 +219,9 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/series" />} variant="outline">
-          <Message message="admin.series.back_to_list" />
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.series.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

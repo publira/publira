@@ -1,8 +1,8 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import type { ReactNode } from "react";
-
-import { useAdminMessage } from "#components/client-message";
 
 interface MarkdownPreviewProps {
   content: string;
@@ -281,13 +281,13 @@ const parseMarkdown = (content: string): MarkdownBlock[] => {
 };
 
 export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const blocks = parseMarkdown(content);
 
   if (blocks.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        {t("admin.pages.preview_empty")}
+        {getMessage(messages, "admin.pages.preview_empty")}
       </p>
     );
   }

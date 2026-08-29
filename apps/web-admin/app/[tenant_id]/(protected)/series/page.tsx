@@ -1,4 +1,7 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import {
@@ -11,13 +14,13 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -26,7 +29,12 @@ import { SeriesManager } from "./_components/series-manager";
 
 type SeriesPageProps = PageProps<"/[tenant_id]/series">;
 
-export const generateMetadata = () => getAdminMetadata("admin.series.title");
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.series.title") };
+};
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -71,10 +79,14 @@ const SeriesPage = ({ searchParams }: SeriesPageProps) => (
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
-          <Message message="admin.series.title" />
+          <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+            <Message message="admin.series.title" />
+          </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
-          <Message message="admin.series.page_description" />
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.series.page_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

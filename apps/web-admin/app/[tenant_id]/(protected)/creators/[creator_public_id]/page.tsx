@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -6,6 +7,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -24,16 +26,20 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getCreator } from "#lib/creator";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { CreatorForm } from "../_components/creator-form";
 import { updateCreatorAction } from "../_lib/actions";
 
-export const generateMetadata = () =>
-  getAdminMetadata("admin.creators.edit_title");
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.creators.edit_title") };
+};
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "creator_public_id");
@@ -119,7 +125,9 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/creators" />} variant="outline">
-          <Message message="admin.creators.back_to_list" />
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.creators.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

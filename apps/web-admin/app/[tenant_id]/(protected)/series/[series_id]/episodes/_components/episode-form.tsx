@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -18,7 +20,6 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { useActionState, useCallback } from "react";
 
-import { useAdminMessage } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -39,7 +40,7 @@ export const EpisodeForm = ({
   action,
   timeZone,
 }: EpisodeFormProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -54,17 +55,19 @@ export const EpisodeForm = ({
     [timeZone]
   );
 
-  let submitLabel = t("admin.series.episodes.form.create");
+  let submitLabel = getMessage(messages, "admin.series.episodes.form.create");
   if (isPending) {
-    submitLabel = t("admin.series.episodes.form.submitting");
+    submitLabel = getMessage(messages, "admin.series.episodes.form.submitting");
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("admin.series.episodes.form.card_title")}</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.series.episodes.form.card_title")}
+        </CardTitle>
         <CardDescription>
-          {t("admin.series.episodes.form.card_description")}
+          {getMessage(messages, "admin.series.episodes.form.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -78,12 +81,15 @@ export const EpisodeForm = ({
 
           <Field>
             <FieldLabel required>
-              {t("admin.series.episodes.form.title")}
+              {getMessage(messages, "admin.series.episodes.form.title")}
             </FieldLabel>
             <FieldContent>
               <Input
                 name="title"
-                placeholder={t("admin.series.episodes.form.title_placeholder")}
+                placeholder={getMessage(
+                  messages,
+                  "admin.series.episodes.form.title_placeholder"
+                )}
                 required
                 type="text"
               />
@@ -92,7 +98,7 @@ export const EpisodeForm = ({
 
           <Field>
             <FieldLabel required>
-              {t("admin.series.episodes.form.price")}
+              {getMessage(messages, "admin.series.episodes.form.price")}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -103,14 +109,20 @@ export const EpisodeForm = ({
                 type="number"
               />
               <FieldDescription>
-                {t("admin.series.episodes.form.price_description")}
+                {getMessage(
+                  messages,
+                  "admin.series.episodes.form.price_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
             <FieldLabel required>
-              {t("admin.series.episodes.form.reading_period")}
+              {getMessage(
+                messages,
+                "admin.series.episodes.form.reading_period"
+              )}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -121,7 +133,10 @@ export const EpisodeForm = ({
                 type="number"
               />
               <FieldDescription>
-                {t("admin.series.episodes.form.reading_period_description")}
+                {getMessage(
+                  messages,
+                  "admin.series.episodes.form.reading_period_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>

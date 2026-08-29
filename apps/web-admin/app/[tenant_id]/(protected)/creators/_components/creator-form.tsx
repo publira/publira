@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -20,7 +22,6 @@ import { Textarea } from "@publira/ui-components/textarea";
 import Image from "next/image";
 import { useActionState, useCallback, useState } from "react";
 
-import { useAdminMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { CreatorActionState, CreatorListItem } from "../creator-types";
@@ -47,17 +48,19 @@ const IconImageField = ({
   isUpdate,
   onClearIconImageChange,
 }: IconImageFieldProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const iconImageUrl = initialCreator?.iconImageUrl ?? "";
   const hasExistingIconImage = iconImageUrl.length > 0;
 
   return (
     <Field>
-      <FieldLabel>{t("admin.creators.form.icon")}</FieldLabel>
+      <FieldLabel>
+        {getMessage(messages, "admin.creators.form.icon")}
+      </FieldLabel>
       <FieldContent>
         {hasExistingIconImage && !clearIconImage ? (
           <Image
-            alt={t("admin.creators.form.current_icon_alt")}
+            alt={getMessage(messages, "admin.creators.form.current_icon_alt")}
             className="size-20 rounded-full border object-cover"
             height={80}
             src={iconImageUrl}
@@ -76,7 +79,7 @@ const IconImageField = ({
               onChange={onClearIconImageChange}
               type="checkbox"
             />
-            {t("admin.creators.form.clear_icon")}
+            {getMessage(messages, "admin.creators.form.clear_icon")}
           </label>
         ) : null}
         <input
@@ -85,7 +88,7 @@ const IconImageField = ({
           value={clearIconImage ? "1" : "0"}
         />
         <FieldDescription>
-          {t("admin.creators.form.icon_description")}
+          {getMessage(messages, "admin.creators.form.icon_description")}
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -97,7 +100,7 @@ export const CreatorForm = ({
   action,
   initialCreator,
 }: CreatorFormProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const initialName = initialCreator?.name ?? "";
@@ -145,12 +148,12 @@ export const CreatorForm = ({
   );
 
   const isUpdate = mode === "update";
-  let submitLabel = t("admin.creators.form.create");
+  let submitLabel = getMessage(messages, "admin.creators.form.create");
   if (isUpdate) {
-    submitLabel = t("admin.creators.form.update");
+    submitLabel = getMessage(messages, "admin.creators.form.update");
   }
   if (isPending) {
-    submitLabel = t("admin.creators.form.submitting");
+    submitLabel = getMessage(messages, "admin.creators.form.submitting");
   }
 
   return (
@@ -158,13 +161,13 @@ export const CreatorForm = ({
       <CardHeader>
         <CardTitle>
           {isUpdate
-            ? t("admin.creators.form.update_card_title")
-            : t("admin.creators.form.create_card_title")}
+            ? getMessage(messages, "admin.creators.form.update_card_title")
+            : getMessage(messages, "admin.creators.form.create_card_title")}
         </CardTitle>
         <CardDescription>
           {isUpdate
-            ? t("admin.creators.form.update_description")
-            : t("admin.creators.form.create_description")}
+            ? getMessage(messages, "admin.creators.form.update_description")
+            : getMessage(messages, "admin.creators.form.create_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -177,12 +180,17 @@ export const CreatorForm = ({
           />
 
           <Field>
-            <FieldLabel required>{t("admin.creators.form.name")}</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.creators.form.name")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 name="name"
                 onChange={handleNameChange}
-                placeholder={t("admin.creators.form.name_placeholder")}
+                placeholder={getMessage(
+                  messages,
+                  "admin.creators.form.name_placeholder"
+                )}
                 required
                 type="text"
                 value={name}
@@ -191,17 +199,25 @@ export const CreatorForm = ({
           </Field>
 
           <Field>
-            <FieldLabel>{t("admin.creators.form.profile")}</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.creators.form.profile")}
+            </FieldLabel>
             <FieldContent>
               <Textarea
                 name="profile_text"
                 onChange={handleProfileTextChange}
-                placeholder={t("admin.creators.form.profile_placeholder")}
+                placeholder={getMessage(
+                  messages,
+                  "admin.creators.form.profile_placeholder"
+                )}
                 rows={5}
                 value={profileText}
               />
               <FieldDescription>
-                {t("admin.creators.form.profile_description")}
+                {getMessage(
+                  messages,
+                  "admin.creators.form.profile_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>

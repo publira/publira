@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -14,7 +16,6 @@ import { Input } from "@publira/ui-components/input";
 import { useActionState, useCallback, useState } from "react";
 import type { ChangeEvent } from "react";
 
-import { useAdminMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { LabelActionState, LabelListItem } from "../label-types";
@@ -29,41 +30,41 @@ interface LabelFormProps {
 }
 
 const getSubmitLabel = (
-  t: ReturnType<typeof useAdminMessage>,
+  messages: ReturnType<typeof sharedCatalog>,
   isUpdate: boolean,
   isPending: boolean
 ): string => {
   if (isPending) {
-    return t("admin.labels.form.submitting");
+    return getMessage(messages, "admin.labels.form.submitting");
   }
   if (isUpdate) {
-    return t("admin.labels.form.update");
+    return getMessage(messages, "admin.labels.form.update");
   }
-  return t("admin.labels.form.create");
+  return getMessage(messages, "admin.labels.form.create");
 };
 
 const getCardTitle = (
-  t: ReturnType<typeof useAdminMessage>,
+  messages: ReturnType<typeof sharedCatalog>,
   isUpdate: boolean
 ): string => {
   if (isUpdate) {
-    return t("admin.labels.form.update_card_title");
+    return getMessage(messages, "admin.labels.form.update_card_title");
   }
-  return t("admin.labels.form.create_card_title");
+  return getMessage(messages, "admin.labels.form.create_card_title");
 };
 
 const getCardDescription = (
-  t: ReturnType<typeof useAdminMessage>,
+  messages: ReturnType<typeof sharedCatalog>,
   isUpdate: boolean
 ): string => {
   if (isUpdate) {
-    return t("admin.labels.form.update_description");
+    return getMessage(messages, "admin.labels.form.update_description");
   }
-  return t("admin.labels.form.create_description");
+  return getMessage(messages, "admin.labels.form.create_description");
 };
 
 export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const initialName = initialLabel?.name ?? "";
@@ -86,9 +87,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
   );
 
   const isUpdate = mode === "update";
-  const submitLabel = getSubmitLabel(t, isUpdate, isPending);
-  const cardTitle = getCardTitle(t, isUpdate);
-  const cardDescription = getCardDescription(t, isUpdate);
+  const submitLabel = getSubmitLabel(messages, isUpdate, isPending);
+  const cardTitle = getCardTitle(messages, isUpdate);
+  const cardDescription = getCardDescription(messages, isUpdate);
 
   return (
     <Card>
@@ -106,12 +107,17 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
           />
 
           <Field>
-            <FieldLabel required>{t("admin.labels.form.name")}</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.labels.form.name")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 name="name"
                 onChange={handleNameChange}
-                placeholder={t("admin.labels.form.name_placeholder")}
+                placeholder={getMessage(
+                  messages,
+                  "admin.labels.form.name_placeholder"
+                )}
                 required
                 type="text"
                 value={name}
@@ -121,7 +127,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
 
           {isUpdate ? null : (
             <Field>
-              <FieldLabel>{t("admin.labels.form.eye_catch")}</FieldLabel>
+              <FieldLabel>
+                {getMessage(messages, "admin.labels.form.eye_catch")}
+              </FieldLabel>
               <FieldContent>
                 <Input
                   accept="image/jpeg,image/png,image/webp"
@@ -129,7 +137,10 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
                   type="file"
                 />
                 <p className="text-sm text-muted-foreground">
-                  {t("admin.labels.form.eye_catch_description")}
+                  {getMessage(
+                    messages,
+                    "admin.labels.form.eye_catch_description"
+                  )}
                 </p>
               </FieldContent>
             </Field>

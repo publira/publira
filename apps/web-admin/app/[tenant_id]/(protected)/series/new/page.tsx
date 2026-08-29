@@ -1,5 +1,8 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -13,10 +16,10 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listAllLabels } from "#lib/label";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -24,8 +27,12 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { SeriesForm } from "../_components/series-form";
 import { createSeriesAction } from "../_lib/actions";
 
-export const generateMetadata = () =>
-  getAdminMetadata("admin.series.new_title");
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.series.new_title") };
+};
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -83,12 +90,16 @@ const NewSeriesPage = () => (
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
-          <Message message="admin.series.new_title" />
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.series.new_title" />
+          </Suspense>
         </AdminPageTitle>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/series" />} variant="outline">
-          <Message message="admin.series.back_to_list" />
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.series.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

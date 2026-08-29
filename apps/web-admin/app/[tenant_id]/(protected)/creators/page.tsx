@@ -1,4 +1,7 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import {
@@ -11,7 +14,6 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { getAdminMetadata } from "#lib/admin-metadata";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listCreators } from "#lib/creator";
 import {
@@ -19,13 +21,19 @@ import {
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { CreatorManager } from "./_components/creator-manager";
 
 type CreatorPageProps = PageProps<"/[tenant_id]/creators">;
 
-export const generateMetadata = () => getAdminMetadata("admin.creators.title");
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.creators.title") };
+};
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -66,10 +74,14 @@ const CreatorPage = ({ searchParams }: CreatorPageProps) => (
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
-          <Message message="admin.creators.title" />
+          <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+            <Message message="admin.creators.title" />
+          </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
-          <Message message="admin.creators.page_description" />
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.creators.page_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

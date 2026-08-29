@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -17,7 +19,6 @@ import {
 } from "@publira/ui-components/table";
 import Link from "next/link";
 
-import { useAdminMessage } from "#components/client-message";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
@@ -40,14 +41,14 @@ const LabelListBody = ({
   labels: LabelListItem[];
   listErrorMessage?: string;
 }) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   // A failed fetch still hands an empty `labels` array; do not show the empty
   // list state alongside the error or operators will read it as "no labels".
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title={t("admin.labels.list_error")}
+        title={getMessage(messages, "admin.labels.list_error")}
       />
     );
   }
@@ -55,10 +56,10 @@ const LabelListBody = ({
   if (labels.length === 0) {
     return (
       <CursorPageEmptyState
-        description={t("admin.labels.empty_description")}
+        description={getMessage(messages, "admin.labels.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel={t("admin.labels.title")}
-        title={t("admin.labels.empty_title")}
+        itemLabel={getMessage(messages, "admin.labels.title")}
+        title={getMessage(messages, "admin.labels.empty_title")}
       />
     );
   }
@@ -67,9 +68,11 @@ const LabelListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>{t("admin.labels.columns.name")}</TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.labels.columns.name")}
+          </TableHead>
           <TableHead className="w-56">
-            {t("admin.labels.columns.actions")}
+            {getMessage(messages, "admin.labels.columns.actions")}
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -83,7 +86,7 @@ const LabelListBody = ({
                   render={<Link href={`/labels/${label.publicId}`} />}
                   variant="outline"
                 >
-                  {t("admin.labels.edit_action")}
+                  {getMessage(messages, "admin.labels.edit_action")}
                 </LinkButton>
               </div>
             </TableCell>
@@ -101,7 +104,7 @@ export const LabelManager = ({
   pageSize,
   previousHref,
 }: LabelManagerProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -112,13 +115,15 @@ export const LabelManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>{t("admin.labels.list_title")}</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.labels.list_title")}
+          </CardTitle>
           <CardDescription>
-            {t("admin.labels.list_description")}
+            {getMessage(messages, "admin.labels.list_description")}
           </CardDescription>
         </div>
         <LinkButton render={<Link href="/labels/new" />} variant="outline">
-          {t("admin.labels.new_action")}
+          {getMessage(messages, "admin.labels.new_action")}
         </LinkButton>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -130,10 +135,14 @@ export const LabelManager = ({
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel={t("admin.labels.pagination_aria")}
-            description={t("admin.labels.pagination_description", {
-              count: pageSize,
-            })}
+            ariaLabel={getMessage(messages, "admin.labels.pagination_aria")}
+            description={getMessage(
+              messages,
+              "admin.labels.pagination_description",
+              {
+                count: pageSize,
+              }
+            )}
             nextHref={nextHref}
             previousHref={previousHref}
           />

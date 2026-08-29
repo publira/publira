@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -18,7 +20,6 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
-import { useAdminMessage } from "#components/client-message";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
@@ -50,14 +51,14 @@ const CreatorListBody = ({
   hasPageLinks: boolean;
   listErrorMessage?: string;
 }) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   // A failed fetch still hands an empty `creators` array; do not show the empty
   // list state alongside the error or operators will read it as "no creators".
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title={t("admin.creators.list_error")}
+        title={getMessage(messages, "admin.creators.list_error")}
       />
     );
   }
@@ -65,10 +66,10 @@ const CreatorListBody = ({
   if (creators.length === 0) {
     return (
       <CursorPageEmptyState
-        description={t("admin.creators.empty_description")}
+        description={getMessage(messages, "admin.creators.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel={t("admin.creators.title")}
-        title={t("admin.creators.empty_title")}
+        itemLabel={getMessage(messages, "admin.creators.title")}
+        title={getMessage(messages, "admin.creators.empty_title")}
       />
     );
   }
@@ -78,12 +79,16 @@ const CreatorListBody = ({
       <TableHeader>
         <TableRow>
           <TableHead className="w-24">
-            {t("admin.creators.columns.image")}
+            {getMessage(messages, "admin.creators.columns.image")}
           </TableHead>
-          <TableHead>{t("admin.creators.columns.name")}</TableHead>
-          <TableHead>{t("admin.creators.columns.profile")}</TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.creators.columns.name")}
+          </TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.creators.columns.profile")}
+          </TableHead>
           <TableHead className="w-56">
-            {t("admin.creators.columns.actions")}
+            {getMessage(messages, "admin.creators.columns.actions")}
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -93,7 +98,9 @@ const CreatorListBody = ({
             <TableCell>
               {creator.iconImageUrl ? (
                 <Image
-                  alt={t("admin.creators.icon_alt", { name: creator.name })}
+                  alt={getMessage(messages, "admin.creators.icon_alt", {
+                    name: creator.name,
+                  })}
                   className="size-10 rounded-full border object-cover"
                   height={40}
                   src={creator.iconImageUrl}
@@ -101,7 +108,7 @@ const CreatorListBody = ({
                 />
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  {t("admin.creators.unset")}
+                  {getMessage(messages, "admin.creators.unset")}
                 </span>
               )}
             </TableCell>
@@ -113,7 +120,7 @@ const CreatorListBody = ({
                   render={<Link href={`/creators/${creator.publicId}`} />}
                   variant="outline"
                 >
-                  {t("admin.creators.edit_action")}
+                  {getMessage(messages, "admin.creators.edit_action")}
                 </LinkButton>
               </div>
             </TableCell>
@@ -131,7 +138,7 @@ export const CreatorManager = ({
   pageSize,
   previousHref,
 }: CreatorManagerProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -142,13 +149,15 @@ export const CreatorManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>{t("admin.creators.list_title")}</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.creators.list_title")}
+          </CardTitle>
           <CardDescription>
-            {t("admin.creators.list_description")}
+            {getMessage(messages, "admin.creators.list_description")}
           </CardDescription>
         </div>
         <LinkButton render={<Link href="/creators/new" />} variant="outline">
-          {t("admin.creators.new_action")}
+          {getMessage(messages, "admin.creators.new_action")}
         </LinkButton>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -160,10 +169,14 @@ export const CreatorManager = ({
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel={t("admin.creators.pagination_aria")}
-            description={t("admin.creators.pagination_description", {
-              count: pageSize,
-            })}
+            ariaLabel={getMessage(messages, "admin.creators.pagination_aria")}
+            description={getMessage(
+              messages,
+              "admin.creators.pagination_description",
+              {
+                count: pageSize,
+              }
+            )}
             nextHref={nextHref}
             previousHref={previousHref}
           />

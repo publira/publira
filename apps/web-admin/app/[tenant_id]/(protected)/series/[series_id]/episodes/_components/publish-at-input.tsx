@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   Field,
   FieldContent,
@@ -7,8 +9,6 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-
-import { useAdminMessage } from "#components/client-message";
 
 interface PublishAtInputProps {
   defaultValue?: string;
@@ -21,7 +21,7 @@ export const PublishAtInput = ({
   name = "publish_at",
   timeZone,
 }: PublishAtInputProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
 
   return (
     <Field>
@@ -35,9 +35,13 @@ export const PublishAtInput = ({
           type="datetime-local"
         />
         <FieldDescription>
-          {t("admin.series.episodes.form.publish_at_description", {
-            time_zone: timeZone,
-          })}
+          {getMessage(
+            messages,
+            "admin.series.episodes.form.publish_at_description",
+            {
+              time_zone: timeZone,
+            }
+          )}
         </FieldDescription>
       </FieldContent>
     </Field>

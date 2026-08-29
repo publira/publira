@@ -1,6 +1,7 @@
 "use client";
 
-import { toIntlLocale } from "@publira/i18n";
+import { getMessage, parseLocale, toIntlLocale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { Card, CardContent } from "@publira/ui-components/card";
 import { Combobox, MultiCombobox } from "@publira/ui-components/combobox";
@@ -29,7 +30,6 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
-import { useAdminMessage, useAdminMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -61,16 +61,16 @@ interface SeriesFormProps {
 }
 
 const getSubmitLabel = (
-  t: ReturnType<typeof useAdminMessage>,
+  messages: ReturnType<typeof sharedCatalog>,
   mode: "create" | "update",
   isPending: boolean
 ): string => {
   if (isPending) {
-    return t("admin.series.form.submitting");
+    return getMessage(messages, "admin.series.form.submitting");
   }
   return mode === "update"
-    ? t("admin.series.form.update")
-    : t("admin.series.form.create");
+    ? getMessage(messages, "admin.series.form.update")
+    : getMessage(messages, "admin.series.form.create");
 };
 
 interface CreatorFieldProps {
@@ -86,7 +86,7 @@ const CreatorField = ({
   selectedCreatorPublicIds,
   onChange,
 }: CreatorFieldProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   // MultiCombobox renders its own input instead of a Field control, so the
   // label needs an id to point at.
   const comboboxId = useId();
@@ -94,7 +94,7 @@ const CreatorField = ({
   return (
     <Field>
       <FieldLabel htmlFor={comboboxId}>
-        {t("admin.series.form.creators")}
+        {getMessage(messages, "admin.series.form.creators")}
       </FieldLabel>
       <FieldContent>
         {creatorsErrorMessage ? (
@@ -105,14 +105,17 @@ const CreatorField = ({
 
         {creatorItems.length === 0 ? (
           <FieldDescription>
-            {t("admin.series.form.creators_empty")}
+            {getMessage(messages, "admin.series.form.creators_empty")}
           </FieldDescription>
         ) : (
           <MultiCombobox
             id={comboboxId}
             items={creatorItems}
             onValueChange={onChange}
-            searchPlaceholder={t("admin.series.form.creators_search")}
+            searchPlaceholder={getMessage(
+              messages,
+              "admin.series.form.creators_search"
+            )}
             value={selectedCreatorPublicIds}
           />
         )}
@@ -127,7 +130,7 @@ const CreatorField = ({
         ))}
 
         <FieldDescription>
-          {t("admin.series.form.creators_description")}
+          {getMessage(messages, "admin.series.form.creators_description")}
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -151,7 +154,7 @@ const LabelField = ({
   onComboboxChange,
   onFallbackChange,
 }: LabelFieldProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   // Combobox renders its own input instead of a Field control, so the label
   // needs an id to point at. The fallback Input is a Field control and wires
   // itself up.
@@ -163,7 +166,7 @@ const LabelField = ({
         htmlFor={useLabelFallbackInput ? undefined : comboboxId}
         required
       >
-        {t("admin.series.form.label")}
+        {getMessage(messages, "admin.series.form.label")}
       </FieldLabel>
       <FieldContent>
         {labelsErrorMessage ? (
@@ -175,23 +178,35 @@ const LabelField = ({
             <Input
               name="label_public_id"
               onChange={onFallbackChange}
-              placeholder={t("admin.series.form.label_fallback_placeholder")}
+              placeholder={getMessage(
+                messages,
+                "admin.series.form.label_fallback_placeholder"
+              )}
               required
               type="text"
               value={selectedLabelPublicId}
             />
             <FieldDescription>
-              {t("admin.series.form.label_fallback_description")}
+              {getMessage(
+                messages,
+                "admin.series.form.label_fallback_description"
+              )}
             </FieldDescription>
           </>
         ) : (
           <>
             <Combobox
-              emptyMessage={t("admin.series.form.label_empty")}
+              emptyMessage={getMessage(
+                messages,
+                "admin.series.form.label_empty"
+              )}
               id={comboboxId}
               items={labelItems}
               onValueChange={onComboboxChange}
-              placeholder={t("admin.series.form.label_placeholder")}
+              placeholder={getMessage(
+                messages,
+                "admin.series.form.label_placeholder"
+              )}
               value={selectedLabelPublicId}
             />
 
@@ -202,7 +217,7 @@ const LabelField = ({
             />
 
             <FieldDescription>
-              {t("admin.series.form.label_description")}
+              {getMessage(messages, "admin.series.form.label_description")}
             </FieldDescription>
           </>
         )}
@@ -222,22 +237,27 @@ const EyeCatchImageField = ({
   onImageFileChange,
   previewImageUrl,
 }: EyeCatchImageFieldProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const hasPreviewImage = previewImageUrl.length > 0;
 
   return (
     <Field>
-      <FieldLabel>{t("admin.series.form.eye_catch")}</FieldLabel>
+      <FieldLabel>
+        {getMessage(messages, "admin.series.form.eye_catch")}
+      </FieldLabel>
       <FieldContent>
         <div className="grid gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4">
           <div className="rounded-xl border border-border/60 bg-background p-3">
             <p className="mb-2 text-sm font-medium">
-              {t("admin.series.form.eye_catch_preview")}
+              {getMessage(messages, "admin.series.form.eye_catch_preview")}
             </p>
             <div className="relative aspect-[3/4] max-w-52 overflow-hidden rounded-lg border border-border/60 bg-muted/50">
               {hasPreviewImage ? (
                 <Image
-                  alt={t("admin.series.form.eye_catch_preview_alt")}
+                  alt={getMessage(
+                    messages,
+                    "admin.series.form.eye_catch_preview_alt"
+                  )}
                   className="h-full w-full object-cover"
                   fill
                   sizes="(max-width: 768px) 100vw, 240px"
@@ -246,7 +266,10 @@ const EyeCatchImageField = ({
                 />
               ) : (
                 <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-                  {t("admin.series.form.eye_catch_preview_empty")}
+                  {getMessage(
+                    messages,
+                    "admin.series.form.eye_catch_preview_empty"
+                  )}
                 </div>
               )}
             </div>
@@ -265,7 +288,7 @@ const EyeCatchImageField = ({
           value={clearEyeCatchImage ? "1" : "0"}
         />
         <FieldDescription>
-          {t("admin.series.form.eye_catch_description")}
+          {getMessage(messages, "admin.series.form.eye_catch_description")}
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -355,8 +378,8 @@ export const SeriesForm = ({
   initialSeries,
   timeZone,
 }: SeriesFormProps) => {
-  const t = useAdminMessage();
-  const { locale } = useAdminMessages();
+  const messages = sharedCatalog(document.documentElement.lang);
+  const locale = parseLocale(document.documentElement.lang);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const creatorItems = useMemo<MultiComboboxItem[]>(
@@ -397,7 +420,7 @@ export const SeriesForm = ({
     Boolean(labelsErrorMessage) || labelItems.length === 0;
 
   const isUpdate = mode === "update";
-  const submitLabel = getSubmitLabel(t, mode, isPending);
+  const submitLabel = getSubmitLabel(messages, mode, isPending);
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -427,12 +450,17 @@ export const SeriesForm = ({
 
           <div className="grid gap-4">
             <Field>
-              <FieldLabel required>{t("admin.series.form.title")}</FieldLabel>
+              <FieldLabel required>
+                {getMessage(messages, "admin.series.form.title")}
+              </FieldLabel>
               <FieldContent>
                 <Input
                   defaultValue={initialSeries?.title ?? ""}
                   name="title"
-                  placeholder={t("admin.series.form.title_placeholder")}
+                  placeholder={getMessage(
+                    messages,
+                    "admin.series.form.title_placeholder"
+                  )}
                   required
                   type="text"
                 />
@@ -441,7 +469,7 @@ export const SeriesForm = ({
 
             <Field>
               <FieldLabel required>
-                {t("admin.series.form.reading_period")}
+                {getMessage(messages, "admin.series.form.reading_period")}
               </FieldLabel>
               <FieldContent>
                 <Input
@@ -455,20 +483,26 @@ export const SeriesForm = ({
                   type="number"
                 />
                 <FieldDescription>
-                  {t("admin.series.form.reading_period_description")}
+                  {getMessage(
+                    messages,
+                    "admin.series.form.reading_period_description"
+                  )}
                 </FieldDescription>
               </FieldContent>
             </Field>
 
             <Field>
               <FieldLabel required>
-                {t("admin.series.form.synopsis")}
+                {getMessage(messages, "admin.series.form.synopsis")}
               </FieldLabel>
               <FieldContent>
                 <Textarea
                   defaultValue={initialSeries?.synopsis ?? ""}
                   name="synopsis"
-                  placeholder={t("admin.series.form.synopsis_placeholder")}
+                  placeholder={getMessage(
+                    messages,
+                    "admin.series.form.synopsis_placeholder"
+                  )}
                   required
                   rows={5}
                 />
@@ -492,7 +526,9 @@ export const SeriesForm = ({
             />
 
             <Field>
-              <FieldLabel>{t("admin.series.form.published_at")}</FieldLabel>
+              <FieldLabel>
+                {getMessage(messages, "admin.series.form.published_at")}
+              </FieldLabel>
               <FieldContent>
                 <input defaultValue="" name="published_at" type="hidden" />
                 <Input
@@ -506,9 +542,13 @@ export const SeriesForm = ({
                   type="datetime-local"
                 />
                 <FieldDescription>
-                  {t("admin.series.form.published_at_description", {
-                    time_zone: timeZone,
-                  })}
+                  {getMessage(
+                    messages,
+                    "admin.series.form.published_at_description",
+                    {
+                      time_zone: timeZone,
+                    }
+                  )}
                 </FieldDescription>
               </FieldContent>
             </Field>

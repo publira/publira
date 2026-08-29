@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { Card, CardContent } from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -13,7 +15,6 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
-import { useAdminMessage } from "#components/client-message";
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -31,7 +32,7 @@ export const LabelEyeCatchForm = ({
   action,
   initialLabel,
 }: LabelEyeCatchFormProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const tenantId = useTenantId();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);
@@ -134,8 +135,8 @@ export const LabelEyeCatchForm = ({
           <div className="flex justify-end">
             <Button disabled={isPending} type="submit">
               {isPending
-                ? t("admin.labels.form.submitting")
-                : t("admin.labels.form.eye_catch_update")}
+                ? getMessage(messages, "admin.labels.form.submitting")
+                : getMessage(messages, "admin.labels.form.eye_catch_update")}
             </Button>
           </div>
         </form>

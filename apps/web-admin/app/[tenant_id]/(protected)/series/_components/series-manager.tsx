@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -18,7 +20,6 @@ import {
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 
-import { useAdminMessage } from "#components/client-message";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
@@ -37,9 +38,12 @@ const getStatusTone = (isPublished: boolean) =>
   isPublished ? ("info" as const) : ("muted" as const);
 
 const getStatusLabel = (
-  t: ReturnType<typeof useAdminMessage>,
+  messages: ReturnType<typeof sharedCatalog>,
   isPublished: boolean
-) => (isPublished ? t("admin.series.published") : t("admin.series.draft"));
+) =>
+  isPublished
+    ? getMessage(messages, "admin.series.published")
+    : getMessage(messages, "admin.series.draft");
 
 const excerpt = (text: string, max = 56) => {
   const normalized = text.replaceAll(/\s+/gu, " ").trim();
@@ -61,14 +65,14 @@ const SeriesListBody = ({
   series: SeriesListItem[];
   timeZone: string;
 }) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   // A failed fetch still hands an empty `series` array; do not show the empty
   // list state alongside the error or operators will read it as "no series".
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title={t("admin.series.list_error")}
+        title={getMessage(messages, "admin.series.list_error")}
       />
     );
   }
@@ -76,10 +80,10 @@ const SeriesListBody = ({
   if (series.length === 0) {
     return (
       <CursorPageEmptyState
-        description={t("admin.series.empty_description")}
+        description={getMessage(messages, "admin.series.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel={t("admin.series.title")}
-        title={t("admin.series.empty_title")}
+        itemLabel={getMessage(messages, "admin.series.title")}
+        title={getMessage(messages, "admin.series.empty_title")}
       />
     );
   }
@@ -88,20 +92,26 @@ const SeriesListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>{t("admin.series.columns.title")}</TableHead>
-          <TableHead>{t("admin.series.columns.label")}</TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.series.columns.title")}
+          </TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.series.columns.label")}
+          </TableHead>
           <TableHead className="w-44">
-            {t("admin.series.columns.published_at")}
+            {getMessage(messages, "admin.series.columns.published_at")}
           </TableHead>
           <TableHead className="w-40">
-            {t("admin.series.columns.reading_period")}
+            {getMessage(messages, "admin.series.columns.reading_period")}
           </TableHead>
-          <TableHead>{t("admin.series.columns.synopsis")}</TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.series.columns.synopsis")}
+          </TableHead>
           <TableHead className="w-32">
-            {t("admin.series.columns.status")}
+            {getMessage(messages, "admin.series.columns.status")}
           </TableHead>
           <TableHead className="w-56">
-            {t("admin.series.columns.actions")}
+            {getMessage(messages, "admin.series.columns.actions")}
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -120,19 +130,19 @@ const SeriesListBody = ({
             <TableCell>{excerpt(item.synopsis)}</TableCell>
             <TableCell>
               <Badge tone={getStatusTone(item.isPublished)}>
-                {getStatusLabel(t, item.isPublished)}
+                {getStatusLabel(messages, item.isPublished)}
               </Badge>
             </TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-2">
                 <LinkButton href={`/series/${item.publicId}`} variant="outline">
-                  {t("admin.series.edit_action")}
+                  {getMessage(messages, "admin.series.edit_action")}
                 </LinkButton>
                 <LinkButton
                   href={`/series/${item.publicId}/episodes`}
                   variant="outline"
                 >
-                  {t("admin.series.episodes_action")}
+                  {getMessage(messages, "admin.series.episodes_action")}
                 </LinkButton>
               </div>
             </TableCell>
@@ -151,7 +161,7 @@ export const SeriesManager = ({
   previousHref,
   timeZone,
 }: SeriesManagerProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -162,13 +172,15 @@ export const SeriesManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>{t("admin.series.list_title")}</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.series.list_title")}
+          </CardTitle>
           <CardDescription>
-            {t("admin.series.list_description")}
+            {getMessage(messages, "admin.series.list_description")}
           </CardDescription>
         </div>
         <LinkButton href="/series/new" variant="outline">
-          {t("admin.series.new_action")}
+          {getMessage(messages, "admin.series.new_action")}
         </LinkButton>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -181,10 +193,14 @@ export const SeriesManager = ({
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel={t("admin.series.pagination_aria")}
-            description={t("admin.series.pagination_description", {
-              count: pageSize,
-            })}
+            ariaLabel={getMessage(messages, "admin.series.pagination_aria")}
+            description={getMessage(
+              messages,
+              "admin.series.pagination_description",
+              {
+                count: pageSize,
+              }
+            )}
             nextHref={nextHref}
             previousHref={previousHref}
           />

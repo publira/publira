@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -30,7 +32,6 @@ import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useCallback, useState } from "react";
 import type { ChangeEvent, MouseEvent } from "react";
 
-import { useAdminMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import {
@@ -62,20 +63,26 @@ interface PageWorkspaceProps {
 }
 
 const getVersionStatus = (
-  t: ReturnType<typeof useAdminMessage>,
+  messages: ReturnType<typeof sharedCatalog>,
   page: PageListItem,
   version: PageVersionListItem
 ): { label: string; tone: "info" | "muted" | "warning" } => {
   if (page.publishedVersionId === version.id) {
-    return { label: t("admin.pages.workspace.published"), tone: "info" };
+    return {
+      label: getMessage(messages, "admin.pages.workspace.published"),
+      tone: "info",
+    };
   }
   if (version.status === "published") {
     return {
-      label: t("admin.pages.workspace.past_published"),
+      label: getMessage(messages, "admin.pages.workspace.past_published"),
       tone: "warning",
     };
   }
-  return { label: t("admin.pages.workspace.draft"), tone: "muted" };
+  return {
+    label: getMessage(messages, "admin.pages.workspace.draft"),
+    tone: "muted",
+  };
 };
 
 const getDiffLineDisplay = (line: {
@@ -110,7 +117,7 @@ export const PageWorkspace = ({
   timeZone,
   updatePageAction,
 }: PageWorkspaceProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const tenantId = useTenantId();
   const [titleState, titleFormAction, isTitlePending] = useActionState(
     updatePageAction,
@@ -163,7 +170,7 @@ export const PageWorkspace = ({
     : [];
 
   const versionOptions = initialVersions.map((version) => {
-    const status = getVersionStatus(t, initialPage, version);
+    const status = getVersionStatus(messages, initialPage, version);
     return {
       label: `v${version.versionNumber} ・ ${status.label}`,
       value: version.id,
@@ -202,22 +209,19 @@ export const PageWorkspace = ({
     },
     [initialVersions]
   );
-  const handleSelectedVersionChange = useCallback(
-    (nextValue: string | null) => {
-      if (!nextValue) {
-        return;
-      }
+  const handleSelectedVersionChange = (nextValue: string | null) => {
+    if (!nextValue) {
+      return;
+    }
 
-      setSelectedVersionId(nextValue);
-      if (compareVersionId === nextValue) {
-        const fallbackCompareId = availableCompareOptions.find(
-          (option) => option.value !== nextValue
-        )?.value;
-        setCompareVersionId(fallbackCompareId ?? "");
-      }
-    },
-    [availableCompareOptions, compareVersionId]
-  );
+    setSelectedVersionId(nextValue);
+    if (compareVersionId === nextValue) {
+      const fallbackCompareId = availableCompareOptions.find(
+        (option) => option.value !== nextValue
+      )?.value;
+      setCompareVersionId(fallbackCompareId ?? "");
+    }
+  };
   const handleCompareVersionChange = useCallback((nextValue: string | null) => {
     setCompareVersionId(nextValue ?? "");
   }, []);
@@ -226,9 +230,11 @@ export const PageWorkspace = ({
     <div className="grid gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>{t("admin.pages.workspace.basic_title")}</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.pages.workspace.basic_title")}
+          </CardTitle>
           <CardDescription>
-            {t("admin.pages.workspace.basic_description")}
+            {getMessage(messages, "admin.pages.workspace.basic_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -251,7 +257,7 @@ export const PageWorkspace = ({
 
               <Field>
                 <FieldLabel required>
-                  {t("admin.pages.workspace.title")}
+                  {getMessage(messages, "admin.pages.workspace.title")}
                 </FieldLabel>
                 <FieldContent>
                   <Input
@@ -268,11 +274,11 @@ export const PageWorkspace = ({
             <div className="flex flex-wrap items-center gap-3">
               <Badge tone={initialPage.publishedVersionId ? "info" : "muted"}>
                 {initialPage.publishedVersionId
-                  ? t("admin.pages.workspace.published")
-                  : t("admin.pages.workspace.draft")}
+                  ? getMessage(messages, "admin.pages.workspace.published")
+                  : getMessage(messages, "admin.pages.workspace.draft")}
               </Badge>
               <span className="text-sm text-muted-foreground">
-                {t("admin.pages.workspace.updated_at", {
+                {getMessage(messages, "admin.pages.workspace.updated_at", {
                   date: formatPageDateTime(initialPage.updatedAt, timeZone),
                 })}
               </span>
@@ -287,8 +293,8 @@ export const PageWorkspace = ({
             <div className="flex justify-end">
               <Button disabled={isTitlePending} type="submit">
                 {isTitlePending
-                  ? t("admin.pages.workspace.updating")
-                  : t("admin.pages.workspace.update_title")}
+                  ? getMessage(messages, "admin.pages.workspace.updating")
+                  : getMessage(messages, "admin.pages.workspace.update_title")}
               </Button>
             </div>
           </form>
@@ -298,9 +304,11 @@ export const PageWorkspace = ({
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader>
-            <CardTitle>{t("admin.pages.workspace.editor_title")}</CardTitle>
+            <CardTitle>
+              {getMessage(messages, "admin.pages.workspace.editor_title")}
+            </CardTitle>
             <CardDescription>
-              {t("admin.pages.workspace.editor_description")}
+              {getMessage(messages, "admin.pages.workspace.editor_description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -310,7 +318,9 @@ export const PageWorkspace = ({
               <input name="title" type="hidden" value={initialPage.title} />
 
               <Field>
-                <FieldLabel>{t("admin.pages.workspace.body")}</FieldLabel>
+                <FieldLabel>
+                  {getMessage(messages, "admin.pages.workspace.body")}
+                </FieldLabel>
                 <FieldContent>
                   <Textarea
                     name="content_markdown"
@@ -319,7 +329,10 @@ export const PageWorkspace = ({
                     value={draftContent}
                   />
                   <FieldDescription>
-                    {t("admin.pages.workspace.body_description")}
+                    {getMessage(
+                      messages,
+                      "admin.pages.workspace.body_description"
+                    )}
                   </FieldDescription>
                 </FieldContent>
               </Field>
@@ -333,8 +346,8 @@ export const PageWorkspace = ({
               <div className="flex justify-end">
                 <Button disabled={isDraftPending} type="submit">
                   {isDraftPending
-                    ? t("admin.pages.workspace.saving")
-                    : t("admin.pages.workspace.save_draft")}
+                    ? getMessage(messages, "admin.pages.workspace.saving")
+                    : getMessage(messages, "admin.pages.workspace.save_draft")}
                 </Button>
               </div>
             </form>
@@ -343,9 +356,14 @@ export const PageWorkspace = ({
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("admin.pages.workspace.preview_title")}</CardTitle>
+            <CardTitle>
+              {getMessage(messages, "admin.pages.workspace.preview_title")}
+            </CardTitle>
             <CardDescription>
-              {t("admin.pages.workspace.preview_description")}
+              {getMessage(
+                messages,
+                "admin.pages.workspace.preview_description"
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -356,40 +374,61 @@ export const PageWorkspace = ({
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("admin.pages.workspace.versions_title")}</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.pages.workspace.versions_title")}
+          </CardTitle>
           <CardDescription>
-            {t("admin.pages.workspace.versions_description")}
+            {getMessage(messages, "admin.pages.workspace.versions_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {initialVersions.length === 0 ? (
             <FormMessage>
-              {t("admin.pages.workspace.versions_empty")}
+              {getMessage(messages, "admin.pages.workspace.versions_empty")}
             </FormMessage>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-24">
-                    {t("admin.pages.workspace.columns.version")}
+                    {getMessage(
+                      messages,
+                      "admin.pages.workspace.columns.version"
+                    )}
                   </TableHead>
                   <TableHead className="w-24">
-                    {t("admin.pages.workspace.columns.status")}
+                    {getMessage(
+                      messages,
+                      "admin.pages.workspace.columns.status"
+                    )}
                   </TableHead>
                   <TableHead>
-                    {t("admin.pages.workspace.columns.created_at")}
+                    {getMessage(
+                      messages,
+                      "admin.pages.workspace.columns.created_at"
+                    )}
                   </TableHead>
                   <TableHead>
-                    {t("admin.pages.workspace.columns.published_at")}
+                    {getMessage(
+                      messages,
+                      "admin.pages.workspace.columns.published_at"
+                    )}
                   </TableHead>
                   <TableHead className="w-[320px]">
-                    {t("admin.pages.workspace.columns.actions")}
+                    {getMessage(
+                      messages,
+                      "admin.pages.workspace.columns.actions"
+                    )}
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {initialVersions.map((version) => {
-                  const status = getVersionStatus(t, initialPage, version);
+                  const status = getVersionStatus(
+                    messages,
+                    initialPage,
+                    version
+                  );
 
                   return (
                     <TableRow key={version.id}>
@@ -413,7 +452,7 @@ export const PageWorkspace = ({
                             type="button"
                             variant="outline"
                           >
-                            {t("admin.pages.workspace.load")}
+                            {getMessage(messages, "admin.pages.workspace.load")}
                           </Button>
 
                           <form action={publishAction}>
@@ -439,7 +478,10 @@ export const PageWorkspace = ({
                               type="submit"
                               variant="outline"
                             >
-                              {t("admin.pages.workspace.publish")}
+                              {getMessage(
+                                messages,
+                                "admin.pages.workspace.publish"
+                              )}
                             </Button>
                           </form>
 
@@ -460,7 +502,10 @@ export const PageWorkspace = ({
                               value={version.id}
                             />
                             <Button type="submit" variant="outline">
-                              {t("admin.pages.workspace.rollback")}
+                              {getMessage(
+                                messages,
+                                "admin.pages.workspace.rollback"
+                              )}
                             </Button>
                           </form>
                         </div>
@@ -476,20 +521,24 @@ export const PageWorkspace = ({
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("admin.pages.workspace.diff_title")}</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.pages.workspace.diff_title")}
+          </CardTitle>
           <CardDescription>
-            {t("admin.pages.workspace.diff_description")}
+            {getMessage(messages, "admin.pages.workspace.diff_description")}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {initialVersions.length <= 1 ? (
-            <FormMessage>{t("admin.pages.workspace.diff_empty")}</FormMessage>
+            <FormMessage>
+              {getMessage(messages, "admin.pages.workspace.diff_empty")}
+            </FormMessage>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <Field>
                   <FieldLabel>
-                    {t("admin.pages.workspace.compare_from")}
+                    {getMessage(messages, "admin.pages.workspace.compare_from")}
                   </FieldLabel>
                   <FieldContent>
                     <Select
@@ -502,7 +551,7 @@ export const PageWorkspace = ({
 
                 <Field>
                   <FieldLabel>
-                    {t("admin.pages.workspace.compare_to")}
+                    {getMessage(messages, "admin.pages.workspace.compare_to")}
                   </FieldLabel>
                   <FieldContent>
                     <Select
@@ -518,19 +567,31 @@ export const PageWorkspace = ({
                 <>
                   <div className="flex flex-wrap gap-2">
                     <Badge tone="info">
-                      {t("admin.pages.workspace.diff_added", {
-                        count: diffResult.summary.added,
-                      })}
+                      {getMessage(
+                        messages,
+                        "admin.pages.workspace.diff_added",
+                        {
+                          count: diffResult.summary.added,
+                        }
+                      )}
                     </Badge>
                     <Badge tone="warning">
-                      {t("admin.pages.workspace.diff_removed", {
-                        count: diffResult.summary.removed,
-                      })}
+                      {getMessage(
+                        messages,
+                        "admin.pages.workspace.diff_removed",
+                        {
+                          count: diffResult.summary.removed,
+                        }
+                      )}
                     </Badge>
                     <Badge tone="muted">
-                      {t("admin.pages.workspace.diff_unchanged", {
-                        count: diffResult.summary.unchanged,
-                      })}
+                      {getMessage(
+                        messages,
+                        "admin.pages.workspace.diff_unchanged",
+                        {
+                          count: diffResult.summary.unchanged,
+                        }
+                      )}
                     </Badge>
                   </div>
 

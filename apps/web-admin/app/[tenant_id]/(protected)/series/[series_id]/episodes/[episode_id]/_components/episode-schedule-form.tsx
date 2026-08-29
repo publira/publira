@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -12,7 +14,6 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { toDateTimeLocalValue } from "@publira/utils";
 import { useActionState, useCallback } from "react";
 
-import { useAdminMessage } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -37,7 +38,7 @@ export const EpisodeScheduleForm = ({
   action,
   timeZone,
 }: EpisodeScheduleFormProps) => {
-  const t = useAdminMessage();
+  const messages = sharedCatalog(document.documentElement.lang);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -55,9 +56,11 @@ export const EpisodeScheduleForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("admin.series.episodes.schedule_title")}</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.series.episodes.schedule_title")}
+        </CardTitle>
         <CardDescription>
-          {t("admin.series.episodes.schedule_description")}
+          {getMessage(messages, "admin.series.episodes.schedule_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -89,8 +92,8 @@ export const EpisodeScheduleForm = ({
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={isPending} type="submit">
               {isPending
-                ? t("admin.series.episodes.updating")
-                : t("admin.series.episodes.schedule_update")}
+                ? getMessage(messages, "admin.series.episodes.updating")
+                : getMessage(messages, "admin.series.episodes.schedule_update")}
             </Button>
           </div>
         </form>
