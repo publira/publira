@@ -21,7 +21,9 @@ export const FlashToast = ({
   message,
   title,
 }: FlashToastProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const resolvedTitle = title ?? (message ? getMessage(messages, message) : "");
   const pathname = usePathname();
   const router = useRouter();

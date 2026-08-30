@@ -46,7 +46,9 @@ export const EpisodeImagesSortableGrid = ({
   images,
   reorderAction,
 }: EpisodeImagesSortableGridProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const tenantId = useTenantId();
   const router = useRouter();
   const { add } = useToastManager();

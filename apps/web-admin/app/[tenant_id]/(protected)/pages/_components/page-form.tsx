@@ -37,7 +37,9 @@ interface PageFormProps {
 }
 
 export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   // Initial values only; entity switch must remount the form via key on the parent.

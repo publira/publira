@@ -117,7 +117,9 @@ export const PageWorkspace = ({
   timeZone,
   updatePageAction,
 }: PageWorkspaceProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const tenantId = useTenantId();
   const [titleState, titleFormAction, isTitlePending] = useActionState(
     updatePageAction,

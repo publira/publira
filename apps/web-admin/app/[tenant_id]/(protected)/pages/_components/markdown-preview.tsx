@@ -281,7 +281,9 @@ const parseMarkdown = (content: string): MarkdownBlock[] => {
 };
 
 export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const blocks = parseMarkdown(content);
 
   if (blocks.length === 0) {

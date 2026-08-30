@@ -32,7 +32,9 @@ export const LabelEyeCatchForm = ({
   action,
   initialLabel,
 }: LabelEyeCatchFormProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const tenantId = useTenantId();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);

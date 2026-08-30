@@ -38,7 +38,9 @@ export const EpisodeScheduleForm = ({
   action,
   timeZone,
 }: EpisodeScheduleFormProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 

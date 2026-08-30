@@ -48,7 +48,9 @@ const IconImageField = ({
   isUpdate,
   onClearIconImageChange,
 }: IconImageFieldProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const iconImageUrl = initialCreator?.iconImageUrl ?? "";
   const hasExistingIconImage = iconImageUrl.length > 0;
 
@@ -100,7 +102,9 @@ export const CreatorForm = ({
   action,
   initialCreator,
 }: CreatorFormProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const initialName = initialCreator?.name ?? "";

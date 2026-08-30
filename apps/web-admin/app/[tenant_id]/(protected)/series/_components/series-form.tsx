@@ -86,7 +86,9 @@ const CreatorField = ({
   selectedCreatorPublicIds,
   onChange,
 }: CreatorFieldProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   // MultiCombobox renders its own input instead of a Field control, so the
   // label needs an id to point at.
   const comboboxId = useId();
@@ -154,7 +156,9 @@ const LabelField = ({
   onComboboxChange,
   onFallbackChange,
 }: LabelFieldProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   // Combobox renders its own input instead of a Field control, so the label
   // needs an id to point at. The fallback Input is a Field control and wires
   // itself up.
@@ -237,7 +241,9 @@ const EyeCatchImageField = ({
   onImageFileChange,
   previewImageUrl,
 }: EyeCatchImageFieldProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const hasPreviewImage = previewImageUrl.length > 0;
 
   return (
@@ -378,8 +384,12 @@ export const SeriesForm = ({
   initialSeries,
   timeZone,
 }: SeriesFormProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
-  const locale = parseLocale(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
+  const locale = parseLocale(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const creatorItems = useMemo<MultiComboboxItem[]>(

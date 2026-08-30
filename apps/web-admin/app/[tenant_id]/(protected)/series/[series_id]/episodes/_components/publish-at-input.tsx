@@ -21,7 +21,9 @@ export const PublishAtInput = ({
   name = "publish_at",
   timeZone,
 }: PublishAtInputProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
 
   return (
     <Field>

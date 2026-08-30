@@ -65,7 +65,9 @@ const SeriesListBody = ({
   series: SeriesListItem[];
   timeZone: string;
 }) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   // A failed fetch still hands an empty `series` array; do not show the empty
   // list state alongside the error or operators will read it as "no series".
   if (listErrorMessage) {
@@ -161,7 +163,9 @@ export const SeriesManager = ({
   previousHref,
   timeZone,
 }: SeriesManagerProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.

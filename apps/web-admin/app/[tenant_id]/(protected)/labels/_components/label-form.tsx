@@ -64,7 +64,9 @@ const getCardDescription = (
 };
 
 export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
-  const messages = sharedCatalog(document.documentElement.lang);
+  const messages = sharedCatalog(
+    typeof document === "undefined" ? undefined : document.documentElement.lang
+  );
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const initialName = initialLabel?.name ?? "";
