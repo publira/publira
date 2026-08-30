@@ -59,6 +59,10 @@
       "types": "./dist/input/index.d.mts",
       "default": "./dist/input/index.mjs"
     },
+    "./popover": {
+      "types": "./dist/popover/index.d.mts",
+      "default": "./dist/popover/index.mjs"
+    },
     "./link-button": {
       "types": "./dist/link-button/index.d.mts",
       "default": "./dist/link-button/index.mjs"

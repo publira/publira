@@ -62,6 +62,13 @@ export { Input } from "./input";
 export type { InputProps } from "./input";
 export { LinkButton } from "./button";
 export type { LinkButtonProps } from "./button";
+export {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "./popover";
+export type { PopoverContentProps } from "./popover";
 export { RadioGroup } from "./radio-group";
 export type { RadioGroupProps } from "./radio-group";
 export { SectionError, sectionErrorFallback } from "./section-error";
