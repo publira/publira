@@ -1331,6 +1331,7 @@
       "empty_title": "通知はまだありません。",
       "heading": "通知",
       "list_failed": "通知一覧を表示できませんでした",
+      "menu_more": "もっと見る",
       "mark_all_read": "すべて既読にする",
       "mark_read": "既読にする",
       "mark_read_aria": "{$title}を既読にする",

@@ -2,12 +2,16 @@
 
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getPlatformCurrentOperator } from "../lib/auth";
 import { getPlatformLocale } from "../lib/locale";
-import { PlatformUser } from "./platform-layout";
+import {
+  countUnreadNotifications,
+  listNotifications,
+} from "../lib/notification";
+import { PlatformNotificationBell, PlatformUser } from "./platform-layout";
 
 vi.mock("../lib/auth", () => ({
   getPlatformCurrentOperator: vi.fn(),
@@ -25,6 +29,23 @@ vi.mock("../lib/locale", () => ({
 
 vi.mock("../lib/logout-action", () => ({
   logoutAction: vi.fn(),
+}));
+
+vi.mock("../lib/notification", () => ({
+  countUnreadNotifications: vi.fn(),
+  listNotifications: vi.fn(),
+}));
+
+vi.mock("./message", () => ({
+  Message: ({ message }: { message: string }) => message,
+}));
+
+vi.mock("next/link", () => ({
+  default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 afterEach(() => {
@@ -53,4 +74,45 @@ describe("PlatformUser", () => {
       expect(screen.getByRole("button", { name: expected })).toBeDefined();
     }
   );
+});
+
+describe("PlatformNotificationBell", () => {
+  it("直近 5 件をメニューに表示し、通知一覧へ移動できる", async () => {
+    vi.mocked(getPlatformLocale).mockResolvedValue("ja");
+    vi.mocked(countUnreadNotifications).mockResolvedValue({
+      ok: true,
+      unreadCount: 1,
+    });
+    vi.mocked(listNotifications).mockResolvedValue({
+      nextToken: "",
+      notifications: [
+        {
+          createdAt: "2026-08-01T00:00:00Z",
+          description: "テナントの公開設定を確認してください。",
+          href: "/tenants/tenant_01",
+          id: "notification_01",
+          isRead: false,
+          notificationType: "episode_publish_failed",
+          title: "予約公開に失敗しました",
+        },
+      ],
+      ok: true,
+      previousToken: "",
+    });
+
+    render(await PlatformNotificationBell());
+
+    expect(listNotifications).toHaveBeenCalledWith({ limit: 5 });
+    fireEvent.click(screen.getByRole("button", { name: "通知、未読1件" }));
+    expect(
+      screen
+        .getByRole("link", { name: /予約公開に失敗しました/u })
+        .getAttribute("href")
+    ).toBe("/tenants/tenant_01");
+    expect(
+      screen
+        .getByRole("link", { name: "platform.notifications.menu_more" })
+        .getAttribute("href")
+    ).toBe("/notifications");
+  });
 });
