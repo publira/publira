@@ -62,6 +62,11 @@ export { Input } from "./input";
 export type { InputProps } from "./input";
 export { LinkButton } from "./button";
 export type { LinkButtonProps } from "./button";
+export { LocaleSwitcher } from "./locale-switcher";
+export type {
+  LocaleSwitcherOption,
+  LocaleSwitcherProps,
+} from "./locale-switcher";
 export {
   Popover,
   PopoverContent,

@@ -1,7 +1,6 @@
-import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
-import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
+import { getLocaleLabel, getLocales } from "@publira/i18n";
 import { SectionError } from "@publira/ui-components/section-error";
-import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -19,15 +18,11 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getLocale, loadAdminMessages } from "#lib/locale";
-import { setAdminLocaleAction } from "#lib/locale-action";
 import { getTenantSiteSettings } from "#lib/site-settings";
 import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantTimezone } from "#lib/tenant-timezone";
 
-import { LocaleForm } from "./_components/locale-form";
-import type { LocaleFormOption } from "./_components/locale-form";
 import { SettingsTabNav } from "./_components/settings-tab-nav";
 import { SiteSettingsForm } from "./_components/site-settings-form";
 import { TenantDefaultLocaleForm } from "./_components/tenant-default-locale-form";
@@ -45,44 +40,6 @@ export const metadata: Metadata = {
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
-
-const LocaleSectionSkeleton = () => (
-  <Card>
-    <CardHeader>
-      <Skeleton className="h-6 w-32" />
-      <Skeleton className="h-4 w-3/4" />
-    </CardHeader>
-    <CardContent className="flex flex-wrap gap-2">
-      <Skeleton className="h-9 w-24" />
-      <Skeleton className="h-9 w-24" />
-    </CardContent>
-  </Card>
-);
-
-/**
- * Reading the locale cookie and loading its catalog are both request-time work,
- * so they stay behind this section's own `<Suspense>` boundary and the rest of
- * the settings screen still prerenders.
- */
-const LocaleSection = async () => {
-  const locale = await getLocale(await getTenantId());
-  const messages = await loadAdminMessages(locale);
-
-  const options: LocaleFormOption[] = getLocales().map((value) => ({
-    label: getLocaleLabel(value),
-    locale: value,
-  }));
-
-  return (
-    <LocaleForm
-      action={setAdminLocaleAction}
-      currentLocale={locale}
-      description={getMessage(messages, "locale.description")}
-      label={getMessage(messages, "locale.label")}
-      options={options}
-    />
-  );
-};
 
 const SettingsFormsSkeleton = () => (
   <div className="grid gap-6">
@@ -189,9 +146,6 @@ const SettingsPage = () => (
     <AdminPageContent>
       <div className="grid gap-6">
         <SettingsTabNav current="basic" />
-        <Suspense fallback={<LocaleSectionSkeleton />}>
-          <LocaleSection />
-        </Suspense>
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>

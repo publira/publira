@@ -11,6 +11,7 @@ import {
   countUnreadNotifications,
   listNotifications,
 } from "../lib/notification";
+import { PlatformLocaleSwitcher } from "./locale-switcher";
 import { PlatformNotificationBell, PlatformUser } from "./platform-layout";
 
 vi.mock("../lib/auth", () => ({
@@ -70,6 +71,22 @@ describe("PlatformUser", () => {
       });
 
       render(await PlatformUser());
+
+      expect(screen.getByRole("button", { name: expected })).toBeDefined();
+    }
+  );
+});
+
+describe("PlatformLocaleSwitcher", () => {
+  it.each([
+    ["ja", "表示言語: 日本語"],
+    ["en", "Display language: English"],
+  ] as const)(
+    "%s の現在の表示言語をヘッダートリガーに示す",
+    async (locale, expected) => {
+      vi.mocked(getPlatformLocale).mockResolvedValue(locale);
+
+      render(await PlatformLocaleSwitcher());
 
       expect(screen.getByRole("button", { name: expected })).toBeDefined();
     }

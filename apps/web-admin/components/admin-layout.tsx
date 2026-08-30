@@ -53,6 +53,7 @@ import type { TenantBrandingImage } from "../lib/tenant-branding-image";
 import { getTenantId } from "../lib/tenant-id";
 import { AdminBrandLogo } from "./admin-brand-logo";
 import { navigation } from "./admin-navigation";
+import { AdminLocaleSwitcher } from "./locale-switcher";
 import { Message } from "./message";
 import {
   NotificationBell,
@@ -251,6 +252,9 @@ export const AdminLayout = ({
             </ConsoleHeaderText>
           </ConsoleHeaderContext>
           <ConsoleHeaderActions>
+            <Suspense fallback={<Skeleton className="h-9 w-24 rounded-full" />}>
+              <AdminLocaleSwitcher tenantId={tenantId} />
+            </Suspense>
             <Suspense fallback={<NotificationBellSkeleton />}>
               <NotificationBell />
             </Suspense>
