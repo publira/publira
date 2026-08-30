@@ -59,6 +59,7 @@ import {
   NotificationBell,
   NotificationBellSkeleton,
 } from "./notification-bell";
+import { NotificationBellErrorBoundary } from "./notification-bell-error-boundary";
 
 export interface AdminLayoutCurrentUser {
   name: string;
@@ -255,9 +256,11 @@ export const AdminLayout = ({
             <Suspense fallback={<Skeleton className="h-9 w-24 rounded-full" />}>
               <AdminLocaleSwitcher tenantId={tenantId} />
             </Suspense>
-            <Suspense fallback={<NotificationBellSkeleton />}>
-              <NotificationBell />
-            </Suspense>
+            <NotificationBellErrorBoundary>
+              <Suspense fallback={<NotificationBellSkeleton />}>
+                <NotificationBell />
+              </Suspense>
+            </NotificationBellErrorBoundary>
             <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
               <AdminUser
                 logoutAction={logoutAction.bind(null, tenant.publicId)}

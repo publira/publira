@@ -569,6 +569,15 @@
       "section_error": "Could not display the settings",
       "theme_error": "Could not display the theme"
     },
+    "notifications": {
+      "empty_description": "When operational events such as scheduled publication occur, your notifications appear here.",
+      "empty_title": "You have no notifications yet.",
+      "list_failed": "Could not load your notifications. Please try again later.",
+      "menu_more": "View all",
+      "read": "Read",
+      "title": "Notifications",
+      "unread": "Unread"
+    },
     "shell": {
       "account_menu": "Account menu for {$name}",
       "account_settings": "Account settings",

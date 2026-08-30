@@ -569,6 +569,15 @@
       "section_error": "設定を表示できませんでした",
       "theme_error": "テーマを表示できませんでした"
     },
+    "notifications": {
+      "empty_description": "予約公開などの業務イベントが起きると、ここに自分宛の通知が届きます。",
+      "empty_title": "通知はまだありません。",
+      "list_failed": "通知一覧の取得に失敗しました。時間をおいて再試行してください。",
+      "menu_more": "もっと見る",
+      "read": "既読",
+      "title": "通知",
+      "unread": "未読"
+    },
     "shell": {
       "account_menu": "{$name}のアカウントメニュー",
       "account_settings": "アカウント設定",
