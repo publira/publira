@@ -1,7 +1,12 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { BellIcon } from "@publira/icons";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@publira/ui-components/popover";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { createContext, useCallback, useContext, useState } from "react";
@@ -39,9 +44,9 @@ export const NotificationBell = ({ children }: { children: ReactNode }) => {
 
   return (
     <NotificationBellCloseContext.Provider value={close}>
-      <Popover.Root onOpenChange={setOpen} open={open}>
+      <Popover onOpenChange={setOpen} open={open}>
         {children}
-      </Popover.Root>
+      </Popover>
     </NotificationBellCloseContext.Provider>
   );
 };
@@ -56,7 +61,7 @@ export const NotificationBellTrigger = ({
   const count = Math.max(0, unreadCount);
 
   return (
-    <Popover.Trigger className="relative inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted data-popup-open:bg-muted">
+    <PopoverTrigger className="relative inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted data-popup-open:bg-muted">
       <BellIcon aria-hidden="true" className="size-5" />
       <span className="sr-only">{children}</span>
       {count > 0 ? (
@@ -67,7 +72,7 @@ export const NotificationBellTrigger = ({
           {count > 99 ? "99+" : count}
         </span>
       ) : null}
-    </Popover.Trigger>
+    </PopoverTrigger>
   );
 };
 
@@ -76,17 +81,9 @@ export const NotificationBellContent = ({
 }: {
   children: ReactNode;
 }) => (
-  <Popover.Portal>
-    <Popover.Positioner
-      align="end"
-      className="z-40 outline-hidden"
-      sideOffset={8}
-    >
-      <Popover.Popup className="w-80 max-w-[calc(100vw-2rem)] origin-[var(--transform-origin)] rounded-2xl border border-border bg-card p-1.5 text-card-foreground shadow-lg outline-hidden">
-        {children}
-      </Popover.Popup>
-    </Popover.Positioner>
-  </Popover.Portal>
+  <PopoverContent align="end" className="w-80" sideOffset={8}>
+    {children}
+  </PopoverContent>
 );
 
 export const NotificationBellHeader = ({
@@ -97,7 +94,7 @@ export const NotificationBellHeader = ({
   unreadCount: number;
 }) => (
   <div className="flex items-center justify-between gap-3 px-2.5 pt-2 pb-1.5">
-    <Popover.Title className="text-sm font-semibold">{children}</Popover.Title>
+    <PopoverTitle className="text-sm font-semibold">{children}</PopoverTitle>
     {unreadCount > 0 ? (
       <span className="text-xs text-muted-foreground">
         {unreadCount > 99 ? "99+" : unreadCount}
