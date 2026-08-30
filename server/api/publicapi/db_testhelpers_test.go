@@ -94,6 +94,10 @@ func (e *publicDBEnv) catalogClient() publirav1connect.CatalogServiceClient {
 	return publirav1connect.NewCatalogServiceClient(e.Server.Client(), e.Server.URL)
 }
 
+func (e *publicDBEnv) episodeReadClient() publirav1connect.EpisodeReadServiceClient {
+	return publirav1connect.NewEpisodeReadServiceClient(e.Server.Client(), e.Server.URL)
+}
+
 func (e *publicDBEnv) followClient() publirav1connect.FollowServiceClient {
 	return publirav1connect.NewFollowServiceClient(e.Server.Client(), e.Server.URL)
 }

@@ -23,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// CatalogServiceName is the fully-qualified name of the CatalogService service.
 	CatalogServiceName = "publira.v1.CatalogService"
+	// EpisodeReadServiceName is the fully-qualified name of the EpisodeReadService service.
+	EpisodeReadServiceName = "publira.v1.EpisodeReadService"
 	// FollowServiceName is the fully-qualified name of the FollowService service.
 	FollowServiceName = "publira.v1.FollowService"
 	// RatingServiceName is the fully-qualified name of the RatingService service.
@@ -63,6 +65,9 @@ const (
 	// CatalogServiceSearchPublishedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// SearchPublishedSeries RPC.
 	CatalogServiceSearchPublishedSeriesProcedure = "/publira.v1.CatalogService/SearchPublishedSeries"
+	// EpisodeReadServiceMarkEpisodeAsReadProcedure is the fully-qualified name of the
+	// EpisodeReadService's MarkEpisodeAsRead RPC.
+	EpisodeReadServiceMarkEpisodeAsReadProcedure = "/publira.v1.EpisodeReadService/MarkEpisodeAsRead"
 	// FollowServiceGetMyFollowStatusProcedure is the fully-qualified name of the FollowService's
 	// GetMyFollowStatus RPC.
 	FollowServiceGetMyFollowStatusProcedure = "/publira.v1.FollowService/GetMyFollowStatus"
@@ -365,6 +370,82 @@ func (UnimplementedCatalogServiceHandler) GetPublishedLabelDetail(context.Contex
 
 func (UnimplementedCatalogServiceHandler) SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.SearchPublishedSeries is not implemented"))
+}
+
+// EpisodeReadServiceClient is a client for the publira.v1.EpisodeReadService service.
+type EpisodeReadServiceClient interface {
+	// Idempotently records that the authenticated member finished a currently
+	// published episode they may read. Unpublished, foreign, missing, and
+	// inaccessible episodes are all surfaced as NotFound.
+	MarkEpisodeAsRead(context.Context, *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error)
+}
+
+// NewEpisodeReadServiceClient constructs a client for the publira.v1.EpisodeReadService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewEpisodeReadServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) EpisodeReadServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	episodeReadServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("EpisodeReadService").Methods()
+	return &episodeReadServiceClient{
+		markEpisodeAsRead: connect.NewClient[v1.MarkEpisodeAsReadRequest, v1.MarkEpisodeAsReadResponse](
+			httpClient,
+			baseURL+EpisodeReadServiceMarkEpisodeAsReadProcedure,
+			connect.WithSchema(episodeReadServiceMethods.ByName("MarkEpisodeAsRead")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// episodeReadServiceClient implements EpisodeReadServiceClient.
+type episodeReadServiceClient struct {
+	markEpisodeAsRead *connect.Client[v1.MarkEpisodeAsReadRequest, v1.MarkEpisodeAsReadResponse]
+}
+
+// MarkEpisodeAsRead calls publira.v1.EpisodeReadService.MarkEpisodeAsRead.
+func (c *episodeReadServiceClient) MarkEpisodeAsRead(ctx context.Context, req *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error) {
+	return c.markEpisodeAsRead.CallUnary(ctx, req)
+}
+
+// EpisodeReadServiceHandler is an implementation of the publira.v1.EpisodeReadService service.
+type EpisodeReadServiceHandler interface {
+	// Idempotently records that the authenticated member finished a currently
+	// published episode they may read. Unpublished, foreign, missing, and
+	// inaccessible episodes are all surfaced as NotFound.
+	MarkEpisodeAsRead(context.Context, *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error)
+}
+
+// NewEpisodeReadServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewEpisodeReadServiceHandler(svc EpisodeReadServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	episodeReadServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("EpisodeReadService").Methods()
+	episodeReadServiceMarkEpisodeAsReadHandler := connect.NewUnaryHandler(
+		EpisodeReadServiceMarkEpisodeAsReadProcedure,
+		svc.MarkEpisodeAsRead,
+		connect.WithSchema(episodeReadServiceMethods.ByName("MarkEpisodeAsRead")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/publira.v1.EpisodeReadService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case EpisodeReadServiceMarkEpisodeAsReadProcedure:
+			episodeReadServiceMarkEpisodeAsReadHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedEpisodeReadServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedEpisodeReadServiceHandler struct{}
+
+func (UnimplementedEpisodeReadServiceHandler) MarkEpisodeAsRead(context.Context, *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.MarkEpisodeAsRead is not implemented"))
 }
 
 // FollowServiceClient is a client for the publira.v1.FollowService service.

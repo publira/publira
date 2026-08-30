@@ -2059,6 +2059,47 @@ WHERE s.tenant_id = $1
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
 LIMIT 1;
+
+-- name: MarkPublishedEpisodeAsRead :one
+-- Inserts the first completed read only after checking publication and body
+-- access in the same statement. A duplicate returns the preserved read_at.
+INSERT INTO episode_reads (tenant_id, user_id, episode_id)
+SELECT sqlc.arg('tenant_id'), sqlc.arg('user_id'), e.id
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND e.public_id = sqlc.arg('episode_public_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND (
+        el.price = 0
+        OR EXISTS (
+            SELECT 1
+            FROM purchases p
+            WHERE p.tenant_id = sqlc.arg('tenant_id')
+                AND p.user_id = sqlc.arg('user_id')
+                AND p.episode_id = e.id
+                AND (p.expires_at IS NULL OR p.expires_at > NOW())
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM access_tickets at
+            WHERE at.tenant_id = sqlc.arg('tenant_id')
+                AND at.user_id = sqlc.arg('user_id')
+                AND at.episode_id = e.id
+                AND at.revoked_at IS NULL
+                AND (at.expires_at IS NULL OR at.expires_at > NOW())
+        )
+    )
+ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
+SET read_at = episode_reads.read_at
+RETURNING *;
+
 -- name: CreateEpisodeImage :one
 INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
 VALUES ($1, $2, $3, $4)

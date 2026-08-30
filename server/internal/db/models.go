@@ -189,6 +189,13 @@ type EpisodeListing struct {
 	TenantID           uuid.UUID     `json:"tenant_id"`
 }
 
+type EpisodeRead struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+	ReadAt    time.Time `json:"read_at"`
+}
+
 type ItemRecommendFeature struct {
 	TenantID       uuid.UUID       `json:"tenant_id"`
 	EntityType     string          `json:"entity_type"`
