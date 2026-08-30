@@ -1,9 +1,10 @@
 import type { Locale, MessageKey } from "@publira/i18n";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { loadLocaleMessages } from "@publira/i18n/messages";
 
+import type ja from "../../../locales/ja.json";
+
 /** `ja.json` is the source of truth for the key set (`locales/README.md`). */
-export type AdminMessages = SharedMessages;
+export type AdminMessages = typeof ja;
 
 /** Dotted key of any string in the catalog, checked at the call site. */
 export type AdminMessageKey = MessageKey<AdminMessages>;
