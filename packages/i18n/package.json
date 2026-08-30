@@ -12,7 +12,7 @@
       "default": "./dist/index.mjs"
     },
     "./catalog": {
-      "types": "./dist/catalog.d.mts",
+      "types": "./src/gen/locale-message-types.d.ts",
       "default": "./dist/catalog.mjs"
     },
     "./messages": {

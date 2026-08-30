@@ -6,11 +6,12 @@ import en from "../../../../locales/en.json" with { type: "json" };
 import type { ExactCatalog } from "../i18n";
 import type { Locale } from "./locale-registry";
 
-export type LocaleMessages = typeof ja;
+export type LocaleMessages = typeof ja | typeof en;
 
-const enMatchesSource: ExactCatalog<typeof en, LocaleMessages> = en;
+const jaMatchesCatalogs: ExactCatalog<typeof ja, LocaleMessages> = ja;
+const enMatchesCatalogs: ExactCatalog<typeof en, LocaleMessages> = en;
 
 export const CATALOGS = {
-  ja,
-  en: enMatchesSource,
+  ja: jaMatchesCatalogs,
+  en: enMatchesCatalogs,
 } as const satisfies Record<Locale, LocaleMessages>;
