@@ -46,4 +46,19 @@ assert_route "images on platform host" GET platform.localhost /images/cover imag
 assert_route "images on admin host" GET admin.localhost /images/cover admin-image-server /images/cover
 assert_route "images on numbered admin host" GET admin1.localhost /images/x admin-image-server /images/x
 
+# Inbound W3C Trace Context is dropped at the `web` entrypoint, before any
+# router runs. The Go servers adopt an inbound `traceparent` as the parent
+# span, so a caller that could set it would pick the trace ID and the sampled
+# flag; every backend reachable from outside has to see it gone. The probes
+# also re-assert backend and path, because the entrypoint middleware runs
+# ahead of the router's own `api-strip`.
+assert_trace_context_stripped "web-host drops trace context" GET localhost / web-host /
+assert_trace_context_stripped "web-admin drops trace context" GET admin.localhost / web-admin /
+assert_trace_context_stripped "web-platform drops trace context" GET platform.localhost / web-platform /
+assert_trace_context_stripped "api drops trace context" GET localhost /api/readyz api /readyz
+assert_trace_context_stripped "api on admin host drops trace context" GET admin.localhost /api/readyz api /readyz
+assert_trace_context_stripped "revalidate drops trace context" POST localhost /api/v1/revalidate web-host /api/v1/revalidate
+assert_trace_context_stripped "image-server drops trace context" GET localhost /images/cover image-server /images/cover
+assert_trace_context_stripped "admin-image-server drops trace context" GET admin.localhost /images/cover admin-image-server /images/cover
+
 routing_log "=== route probes passed ==="

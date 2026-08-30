@@ -13,6 +13,10 @@ import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+# W3C Trace Context headers the entrypoint middleware drops. Echoing what
+# the backend actually received is how the suite asserts they are gone.
+TRACE_CONTEXT_HEADERS: tuple[str, ...] = ("traceparent", "tracestate", "baggage")
+
 # Port -> backend name. Must match loadbalancer.server.port on the
 # Traefik labels in .devcontainer/compose.yaml.
 BACKENDS: dict[int, str] = {
@@ -50,6 +54,10 @@ def make_handler(backend: str, port: int) -> type[BaseHTTPRequestHandler]:
                 "path": self.path,
                 "host": self.headers.get("Host", ""),
                 "method": self.command,
+                **{
+                    name: self.headers.get(name, "")
+                    for name in TRACE_CONTEXT_HEADERS
+                },
             }
             raw = json.dumps(payload, separators=(",", ":")).encode()
             self.send_response(200)
