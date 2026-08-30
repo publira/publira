@@ -7,7 +7,7 @@ import { resolveAccessToken as getSession } from "./api-client";
 import { logoutPublic } from "./auth";
 import { clearPublicSessionCookie } from "./auth-session";
 import { assertSameOrigin } from "./csrf";
-import { withLocalePrefix } from "./locale-path";
+import { tenantLocalePath } from "./tenant-locale-path";
 
 /**
  * Revoke the upstream session, drop the local cookie, and send the user to
@@ -28,5 +28,6 @@ export const logoutAction = async (
   }
 
   await clearPublicSessionCookie();
-  redirect(withLocalePrefix(locale, "/login"));
+  const loginPath = await tenantLocalePath(tenantId, locale, "/login");
+  redirect(loginPath);
 };

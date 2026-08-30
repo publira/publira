@@ -62,17 +62,16 @@ const follow = (overrides: Partial<FollowListItem> = {}): FollowListItem => ({
 const renderList = async (
   props: Partial<ComponentProps<typeof FollowList>> = {}
 ) => {
-  render(
-    await FollowList({
-      items: [],
-      nextToken: "",
-      previousToken: "",
-      tenantId,
-      timeZone: "Asia/Tokyo",
-      token: "",
-      ...props,
-    })
-  );
+  const list = await FollowList({
+    items: [],
+    nextToken: "",
+    previousToken: "",
+    tenantId,
+    timeZone: "Asia/Tokyo",
+    token: "",
+    ...props,
+  });
+  render(list);
 };
 
 afterEach(() => {
@@ -92,7 +91,7 @@ describe("FollowList", () => {
     expect(screen.queryByLabelText("フォロー一覧ページング")).toBeNull();
     expect(
       screen.getByRole("link", { name: "シリーズを探す" }).getAttribute("href")
-    ).toBe("/ja/series");
+    ).toBe("/series");
   });
 
   it("ページ送りの先が空でも一覧全体が空だとは案内しない", async () => {
@@ -103,7 +102,7 @@ describe("FollowList", () => {
     ).toBeDefined();
     const previous = screen.getByRole("link", { name: "前のページ" });
     expect(previous.getAttribute("href")).toBe(
-      "/ja/settings/follows?token=previous"
+      "/settings/follows?token=previous"
     );
   });
 
@@ -124,9 +123,9 @@ describe("FollowList", () => {
     });
 
     const seriesLink = screen.getByRole("link", { name: "公開シリーズ" });
-    expect(seriesLink.getAttribute("href")).toBe("/ja/series/SERIES01");
+    expect(seriesLink.getAttribute("href")).toBe("/series/SERIES01");
     const authorLink = screen.getByRole("link", { name: "公開著者" });
-    expect(authorLink.getAttribute("href")).toBe("/ja/authors/AUTHOR01");
+    expect(authorLink.getAttribute("href")).toBe("/authors/AUTHOR01");
     expect(screen.getByText("作品")).toBeDefined();
     expect(screen.getByText("著者")).toBeDefined();
     expect(screen.getByText("2026/06/01 9:00")).toBeDefined();
@@ -135,10 +134,10 @@ describe("FollowList", () => {
     ).toBeDefined();
     expect(
       screen.getByRole("link", { name: "前のページ" }).getAttribute("href")
-    ).toBe("/ja/settings/follows?token=previous");
+    ).toBe("/settings/follows?token=previous");
     expect(
       screen.getByRole("link", { name: "次のページ" }).getAttribute("href")
-    ).toBe("/ja/settings/follows?token=next");
+    ).toBe("/settings/follows?token=next");
   });
 
   it("非公開になった対象はリンクも解除も出さない", async () => {

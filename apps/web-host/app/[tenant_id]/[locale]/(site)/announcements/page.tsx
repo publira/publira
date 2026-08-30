@@ -156,7 +156,7 @@ const AnnouncementsSection = async ({
   ]);
   if (!result.ok && result.requiresSignIn) {
     // Come back to the page the reader was actually on, not just the first one.
-    redirectToLogin(locale, announcementsListHref(token));
+    await redirectToLogin(locale, announcementsListHref(token), tenantId);
   }
 
   const { nextToken, previousToken } = result;

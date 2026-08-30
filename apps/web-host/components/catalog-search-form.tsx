@@ -2,8 +2,7 @@ import { getMessage } from "@publira/i18n";
 import Form from "next/form";
 
 import { SEARCH_QUERY_MAX_LENGTH } from "#lib/catalog";
-import { getLocale, loadHostMessages } from "#lib/locale";
-import { withLocalePrefix } from "#lib/locale-path";
+import { getLocale, loadHostMessages, localePath } from "#lib/locale";
 
 /** Same footprint as the rendered control, so the header does not shift. */
 export const CatalogSearchFormSkeleton = () => (
@@ -34,11 +33,12 @@ export const CatalogSearchForm = async ({
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
   const label = getMessage(messages, "host.nav.search_label");
+  const action = await localePath("/search");
 
   return (
     <search className="flex max-w-64 min-w-0 flex-1 items-center gap-2">
       <Form
-        action={withLocalePrefix(locale, "/search")}
+        action={action}
         className="flex min-w-0 flex-1 items-center gap-2"
         key={defaultQuery}
       >

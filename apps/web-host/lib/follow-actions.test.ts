@@ -83,7 +83,8 @@ describe("toggleFollowAction", () => {
     // 再ログインへ送るときにリーダーの locale を保つ。
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
       "en",
-      "/series/SERIES01"
+      "/series/SERIES01",
+      tenantId
     );
     expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);
   });
@@ -139,7 +140,8 @@ describe("toggleFollowAction", () => {
     });
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
       "ja",
-      "/settings/follows"
+      "/settings/follows",
+      tenantId
     );
     expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);
     expect(mockUpdateTag).toHaveBeenCalledTimes(1);

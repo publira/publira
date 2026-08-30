@@ -70,6 +70,7 @@ export const SESSION_REVOKED_REASON = "session_revoked";
 
 export const buildLoginPath = (
   locale: Locale,
+  defaultLocale: Locale,
   returnTo: string | null | undefined,
   options?: { revoked?: boolean }
 ): string => {
@@ -79,7 +80,7 @@ export const buildLoginPath = (
   if (options?.revoked) {
     params.set(SESSION_REVOKED_PARAM_NAME, SESSION_REVOKED_REASON);
   }
-  return `${withLocalePrefix(locale, "/login")}?${params.toString()}`;
+  return `${withLocalePrefix(locale, defaultLocale, "/login")}?${params.toString()}`;
 };
 
 /** Whether this request is the redirect a rejected session produced. */
@@ -115,11 +116,15 @@ export const hasActivePublicSessionCookie = async (
 export const buildLoginUrl = (
   requestUrl: URL,
   locale: Locale,
+  defaultLocale: Locale,
   options?: { returnToParamName?: string }
 ): URL => {
   const { returnToParamName = "returnTo" } = options ?? {};
 
-  const loginUrl = new URL(withLocalePrefix(locale, "/login"), requestUrl);
+  const loginUrl = new URL(
+    withLocalePrefix(locale, defaultLocale, "/login"),
+    requestUrl
+  );
   const returnToPath = sanitizeRedirectPath(
     `${requestUrl.pathname}${requestUrl.search}`
   );

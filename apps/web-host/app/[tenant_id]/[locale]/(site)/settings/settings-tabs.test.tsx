@@ -13,7 +13,7 @@ const labels = {
   security: "セキュリティ",
 };
 
-const mockUsePathname = vi.hoisted(() => vi.fn(() => "/ja/settings"));
+const mockUsePathname = vi.hoisted(() => vi.fn(() => "/settings"));
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ locale: "ja" }),
@@ -41,16 +41,16 @@ afterEach(() => {
 
 describe("SettingsTabs", () => {
   it("フォロー一覧へのナビを出す", () => {
-    mockUsePathname.mockReturnValue("/ja/settings");
+    mockUsePathname.mockReturnValue("/settings");
     render(<SettingsTabs labels={labels} />);
 
     expect(
       screen.getByRole("link", { name: "フォロー" }).getAttribute("href")
-    ).toBe("/ja/settings/follows");
+    ).toBe("/settings/follows");
   });
 
   it("フォロー一覧ではフォロータブだけを選択中にする", () => {
-    mockUsePathname.mockReturnValue("/ja/settings/follows");
+    mockUsePathname.mockReturnValue("/settings/follows");
     render(<SettingsTabs labels={labels} />);
 
     const follows = screen.getByRole("link", { name: "フォロー" });

@@ -15,9 +15,9 @@ import {
 } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
-import { withLocalePrefix } from "#lib/locale-path";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const tokenOrEmpty = (
   messages: HostMessages,
@@ -41,22 +41,27 @@ const confirmPasswordFormSchema = (messages: HostMessages) =>
       path: ["confirmPassword"],
     });
 
-const buildConfirmPasswordErrorPath = (
+const buildConfirmPasswordErrorPath = async (
   locale: Locale,
+  tenantId: string,
   token: string,
   message: string
-): string => {
+): Promise<string> => {
   const params = new URLSearchParams({
     error: message,
     token,
   });
-  const path = withLocalePrefix(locale, "/confirm-password");
+  const path = await tenantLocalePath(tenantId, locale, "/confirm-password");
   return `${path}?${params.toString()}`;
 };
 
-const buildLoginPathWithResetResult = (locale: Locale): string => {
+const buildLoginPathWithResetResult = async (
+  locale: Locale,
+  tenantId: string
+): Promise<string> => {
   const params = new URLSearchParams({ reset: "done" });
-  return `${withLocalePrefix(locale, "/login")}?${params.toString()}`;
+  const path = await tenantLocalePath(tenantId, locale, "/login");
+  return `${path}?${params.toString()}`;
 };
 
 export const confirmPasswordAction = async (
@@ -77,13 +82,13 @@ export const confirmPasswordAction = async (
   const parsed = confirmPasswordFormSchema(messages).safeParse(input);
   if (!parsed.success) {
     const token = tokenOrEmpty(messages, input.token);
-    redirect(
-      buildConfirmPasswordErrorPath(
-        submittedLocale,
-        token,
-        toFormErrorMessage(parsed.error, { locale: submittedLocale })
-      )
+    const errorPath = await buildConfirmPasswordErrorPath(
+      submittedLocale,
+      String(input.tenantId ?? ""),
+      token,
+      toFormErrorMessage(parsed.error, { locale: submittedLocale })
     );
+    redirect(errorPath);
   }
 
   const { locale, newPassword, tenantId, token } = parsed.data;
@@ -93,14 +98,15 @@ export const confirmPasswordAction = async (
     tenantId
   );
   if (!confirmed) {
-    redirect(
-      buildConfirmPasswordErrorPath(
-        locale,
-        token,
-        getMessage(messages, "host.auth.errors.reset_confirm_failed")
-      )
+    const errorPath = await buildConfirmPasswordErrorPath(
+      locale,
+      tenantId,
+      token,
+      getMessage(messages, "host.auth.errors.reset_confirm_failed")
     );
+    redirect(errorPath);
   }
 
-  redirect(buildLoginPathWithResetResult(locale));
+  const loginPath = await buildLoginPathWithResetResult(locale, tenantId);
+  redirect(loginPath);
 };

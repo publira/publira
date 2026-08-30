@@ -10,6 +10,7 @@ import {
   isUnauthenticatedError,
   PUBLIC_SESSION_COOKIE_NAME,
 } from "./auth-shared";
+import { getTenantDefaultLocale } from "./tenant";
 
 /**
  * Drop the local session cookie.
@@ -33,15 +34,19 @@ export const clearPublicSessionCookie = async (): Promise<void> => {
  *
  * `locale` is explicit rather than read from `next/root-params`, because half
  * the callers are Server Actions, where root params are unavailable. A Server
- * Component passes `await getLocale()`; an Action takes the locale the way it
- * takes the tenant id — bound by the component that rendered the form, or read
- * from the hidden field in `lib/locale-form.ts`.
+ * Component passes `await getLocale()` and `await getTenantId()`; an Action
+ * takes them from the form fields bound by the component that rendered it.
  */
-export const redirectToLogin = (
+export const redirectToLogin = async (
   locale: Locale,
-  returnTo: string | null | undefined
-): never => {
-  redirect(buildLoginPath(locale, returnTo, { revoked: true }));
+  returnTo: string | null | undefined,
+  tenantId: string
+): Promise<never> => {
+  const defaultLocale = await getTenantDefaultLocale(tenantId);
+  const loginPath = buildLoginPath(locale, defaultLocale, returnTo, {
+    revoked: true,
+  });
+  return redirect(loginPath);
 };
 
 /**
@@ -52,11 +57,12 @@ export const redirectToLogin = (
  */
 export const requirePublicSession = async (
   locale: Locale,
-  returnTo: string
+  returnTo: string,
+  tenantId: string
 ): Promise<string> => {
   const accessToken = await resolveAccessToken();
   if (!accessToken) {
-    redirectToLogin(locale, returnTo);
+    return redirectToLogin(locale, returnTo, tenantId);
   }
   return accessToken;
 };
@@ -72,13 +78,14 @@ export const requirePublicSession = async (
 export const withPublicSessionReauth = async <T>(
   locale: Locale,
   returnTo: string,
-  run: () => Promise<T>
+  run: () => Promise<T>,
+  tenantId: string
 ): Promise<T> => {
   try {
     return await run();
   } catch (error) {
     if (isUnauthenticatedError(error)) {
-      redirectToLogin(locale, returnTo);
+      return redirectToLogin(locale, returnTo, tenantId);
     }
     throw error;
   }

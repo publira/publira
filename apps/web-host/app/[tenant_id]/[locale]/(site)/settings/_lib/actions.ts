@@ -51,37 +51,42 @@ export const updateProfileAction = async (
     })
   );
   if (!parsed.success) {
-    redirect(
-      buildSettingsPath(
-        submittedLocale,
-        "error",
-        toFormErrorMessage(parsed.error, { locale: submittedLocale })
-      )
+    const errorPath = await buildSettingsPath(
+      submittedLocale,
+      String(formData.get("tenantId") ?? ""),
+      "error",
+      toFormErrorMessage(parsed.error, { locale: submittedLocale })
     );
+    redirect(errorPath);
   }
 
   const { locale, name, tenantId } = parsed.data;
-  const accessToken = await requirePublicSession(locale, SETTINGS_RETURN_TO);
+  const accessToken = await requirePublicSession(
+    locale,
+    SETTINGS_RETURN_TO,
+    tenantId
+  );
   const updated = await withPublicSessionReauth(
     locale,
     SETTINGS_RETURN_TO,
-    () => updateMe(tenantId, name, accessToken)
+    () => updateMe(tenantId, name, accessToken),
+    tenantId
   );
   if (!updated) {
-    redirect(
-      buildSettingsPath(
-        locale,
-        "error",
-        getMessage(messages, "host.settings.profile_update_failed")
-      )
+    const errorPath = await buildSettingsPath(
+      locale,
+      tenantId,
+      "error",
+      getMessage(messages, "host.settings.profile_update_failed")
     );
+    redirect(errorPath);
   }
 
-  redirect(
-    buildSettingsPath(
-      locale,
-      "success",
-      getMessage(messages, "host.settings.profile_updated")
-    )
+  const successPath = await buildSettingsPath(
+    locale,
+    tenantId,
+    "success",
+    getMessage(messages, "host.settings.profile_updated")
   );
+  redirect(successPath);
 };

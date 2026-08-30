@@ -22,19 +22,24 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
-import { withLocalePrefix } from "#lib/locale-path";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const SECURITY_SETTINGS_RETURN_TO = "/settings/security";
 
-const buildSettingsPath = (
+const buildSettingsPath = async (
   locale: Locale,
+  tenantId: string,
   status: "success" | "error",
   message: string
-) => {
+): Promise<string> => {
   const params = new URLSearchParams({ message, status });
-  const path = withLocalePrefix(locale, SECURITY_SETTINGS_RETURN_TO);
+  const path = await tenantLocalePath(
+    tenantId,
+    locale,
+    SECURITY_SETTINGS_RETURN_TO
+  );
   return `${path}?${params.toString()}`;
 };
 
@@ -65,22 +70,23 @@ export const requestEmailChangeAction = async (
     })
   );
   if (!parsed.success) {
-    redirect(
-      buildSettingsPath(
-        submittedLocale,
-        "error",
-        toFormErrorMessage(parsed.error, {
-          fallback: validationErrorMessage(submittedLocale),
-        })
-      )
+    const errorPath = await buildSettingsPath(
+      submittedLocale,
+      String(formData.get("tenantId") ?? ""),
+      "error",
+      toFormErrorMessage(parsed.error, {
+        fallback: validationErrorMessage(submittedLocale),
+      })
     );
+    redirect(errorPath);
   }
 
   const { currentEmail, currentPassword, locale, newEmail, tenantId } =
     parsed.data;
   const accessToken = await requirePublicSession(
     locale,
-    SECURITY_SETTINGS_RETURN_TO
+    SECURITY_SETTINGS_RETURN_TO,
+    tenantId
   );
   // A wrong `currentPassword` is `invalid_argument` with a field violation, not
   // `unauthenticated`, so it stays a form error instead of ending the session.
@@ -94,23 +100,24 @@ export const requestEmailChangeAction = async (
         newEmail,
         currentPassword,
         accessToken
-      )
+      ),
+    tenantId
   );
   if (!requested) {
-    redirect(
-      buildSettingsPath(
-        locale,
-        "error",
-        getMessage(messages, "host.settings.email_change_failed")
-      )
+    const errorPath = await buildSettingsPath(
+      locale,
+      tenantId,
+      "error",
+      getMessage(messages, "host.settings.email_change_failed")
     );
+    redirect(errorPath);
   }
 
-  redirect(
-    buildSettingsPath(
-      locale,
-      "success",
-      getMessage(messages, "host.settings.email_change_requested")
-    )
+  const successPath = await buildSettingsPath(
+    locale,
+    tenantId,
+    "success",
+    getMessage(messages, "host.settings.email_change_requested")
   );
+  redirect(successPath);
 };

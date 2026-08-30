@@ -19,9 +19,9 @@ import {
   SIGNUP_PENDING_EMAIL_COOKIE,
 } from "#lib/email-flash-cookie";
 import { localeFormSchema } from "#lib/locale-form";
-import { withLocalePrefix } from "#lib/locale-path";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const signupFormSchema = (messages: HostMessages) => {
   const confirmRequired = getMessage(
@@ -91,8 +91,14 @@ export const signupAction = async (
 
   if (result.pendingVerification) {
     await setEmailFlashCookie(SIGNUP_PENDING_EMAIL_COOKIE, email);
-    redirect(withLocalePrefix(locale, "/signup/pending"));
+    const pendingPath = await tenantLocalePath(
+      tenantId,
+      locale,
+      "/signup/pending"
+    );
+    redirect(pendingPath);
   }
 
-  redirect(withLocalePrefix(locale, "/my"));
+  const myPath = await tenantLocalePath(tenantId, locale, "/my");
+  redirect(myPath);
 };

@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 import { toBarePathname, withLocalePrefix } from "#lib/locale-path";
 
 import { useHostMessages } from "./client-message";
-import { useLocale } from "./locale-provider";
+import { useLocale, useTenantDefaultLocale } from "./locale-provider";
 
 /**
  * Autonyms. A language is offered in its own language, so these stay the same
@@ -45,6 +45,7 @@ export const LocaleSwitcherSkeleton = () => (
 
 export const LocaleSwitcher = () => {
   const currentLocale = useLocale();
+  const defaultLocale = useTenantDefaultLocale();
   const messages = useHostMessages();
   const barePathname = toBarePathname(usePathname());
 
@@ -64,7 +65,7 @@ export const LocaleSwitcher = () => {
                 ? "rounded px-1.5 py-1 font-medium text-foreground"
                 : "rounded px-1.5 py-1 text-muted-foreground transition-colors hover:text-foreground"
             }
-            href={withLocalePrefix(locale, barePathname)}
+            href={withLocalePrefix(locale, defaultLocale, barePathname)}
             hrefLang={locale}
             key={locale}
             lang={locale}

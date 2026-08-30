@@ -13,7 +13,7 @@ pnpm dev
 
 ### URL とロケール
 
-公開 URL は `/{locale}/...` です（`ja` / `en`）。`proxy.ts` が Host からテナントを解決し、`/{tenantId}/{locale}{path}` へ rewrite します。ロケールの無い URL は**そのテナントの既定ロケール**へ 307 でリダイレクトするので、プレフィックス導入前のブックマークもそのまま開けます。既定ロケールは `GetTenantByDomain` がテナント ID と同じ応答で返すため、リダイレクトの判断に追加のラウンドトリップは要りません。
+公開 URL はテナント既定ロケールでは locale 接頭辞なし（`/series/SR01`）、非既定ロケールでは `/{locale}/...`（`/en/series/SR01`）です。`proxy.ts` は Host からテナントを解決し、接頭辞なしの URL をそのテナント既定ロケールとして `/{tenantId}/{locale}{path}` へ内部 rewrite します。既定ロケールを明示した URL は、パスとクエリを保った接頭辞なしの正規 URL へ 307 リダイレクトします。既定ロケールは `GetTenantByDomain` がテナント ID と同じ応答で返すため、判断に追加のラウンドトリップは要りません。
 
 - `/theme.css` と Route Handler（`/api/*`）はロケールの外に置きます。Route Handler は `next/root-params` を読めません
 - 個別ページの slug 判定はロケールを外した残りのパスで行うので、`/{locale}/ja` のような slug も公開ページとして解決します

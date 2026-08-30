@@ -14,8 +14,8 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { getLocale, loadHostMessages } from "#lib/locale";
-import { withLocalePrefix } from "#lib/locale-path";
 import { getTenantId } from "#lib/tenant-id";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 import { updateProfileAction } from "./_lib/actions";
 import {
@@ -36,32 +36,37 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   const messages = await loadHostMessages(submittedLocale);
   const parsed = parseDeleteAccountForm(messages, formData);
   if (!parsed.success) {
-    redirect(
-      buildSettingsPath(
-        submittedLocale,
-        "error",
-        toFormErrorMessage(parsed.error, { locale: submittedLocale })
-      )
+    const errorPath = await buildSettingsPath(
+      submittedLocale,
+      String(formData.get("tenantId") ?? ""),
+      "error",
+      toFormErrorMessage(parsed.error, { locale: submittedLocale })
     );
+    redirect(errorPath);
   }
 
   const { locale, password, tenantId } = parsed.data;
-  const accessToken = await requirePublicSession(locale, SETTINGS_RETURN_TO);
+  const accessToken = await requirePublicSession(
+    locale,
+    SETTINGS_RETURN_TO,
+    tenantId
+  );
   // A wrong `password` is `invalid_argument` with a field violation, not
   // `unauthenticated`, so it stays a form error instead of ending the session.
   const deleted = await withPublicSessionReauth(
     locale,
     SETTINGS_RETURN_TO,
-    () => deleteMe(tenantId, password, accessToken)
+    () => deleteMe(tenantId, password, accessToken),
+    tenantId
   );
   if (!deleted) {
-    redirect(
-      buildSettingsPath(
-        locale,
-        "error",
-        getMessage(messages, "host.settings.delete_failed")
-      )
+    const errorPath = await buildSettingsPath(
+      locale,
+      tenantId,
+      "error",
+      getMessage(messages, "host.settings.delete_failed")
     );
+    redirect(errorPath);
   }
 
   await clearPublicSessionCookie();
@@ -69,13 +74,19 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
     message: getMessage(messages, "host.settings.deleted"),
     status: "success",
   });
-  redirect(`${withLocalePrefix(locale, "/login")}?${params.toString()}`);
+  const loginPath = await tenantLocalePath(tenantId, locale, "/login");
+  redirect(`${loginPath}?${params.toString()}`);
 };
 
 const ProfileSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [me, messages] = await Promise.all([
-    withPublicSessionReauth(locale, SETTINGS_RETURN_TO, () => getMe(tenantId)),
+    withPublicSessionReauth(
+      locale,
+      SETTINGS_RETURN_TO,
+      () => getMe(tenantId),
+      tenantId
+    ),
     loadHostMessages(locale),
   ]);
   const displayName = me?.name?.trim() ?? "";

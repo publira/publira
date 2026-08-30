@@ -62,11 +62,15 @@ export const toggleFollowAction = async (
 
   const { intent, locale, publicId, returnTo, targetKind, tenantId } =
     parsed.data;
-  await requirePublicSession(locale, returnTo);
-  const result = await withPublicSessionReauth(locale, returnTo, () =>
-    intent === "follow"
-      ? followTarget({ locale, publicId, targetKind, tenantId })
-      : unfollowTarget({ locale, publicId, targetKind, tenantId })
+  await requirePublicSession(locale, returnTo, tenantId);
+  const result = await withPublicSessionReauth(
+    locale,
+    returnTo,
+    () =>
+      intent === "follow"
+        ? followTarget({ locale, publicId, targetKind, tenantId })
+        : unfollowTarget({ locale, publicId, targetKind, tenantId }),
+    tenantId
   );
   if (!result.ok) {
     return {

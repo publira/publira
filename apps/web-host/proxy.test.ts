@@ -68,13 +68,11 @@ describe("web-host proxy session handling", () => {
   it("Cookie が無い会員ページはログインへ送る", async () => {
     const { proxy } = await import("./proxy");
 
-    const response = await proxy(
-      request("https://shop.example.com/ja/settings")
-    );
+    const response = await proxy(request("https://shop.example.com/settings"));
 
     expect(response.status).toBe(307);
     const location = new URL(response.headers.get("location") ?? "");
-    expect(location.pathname).toBe("/ja/login");
+    expect(location.pathname).toBe("/login");
     // `returnTo` は locale を落とした形で持ち回る。
     expect(location.searchParams.get("returnTo")).toBe("/settings");
   });
@@ -95,10 +93,10 @@ describe("web-host proxy session handling", () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
-      request("https://shop.example.com/ja/settings", "not-a-session")
+      request("https://shop.example.com/settings", "not-a-session")
     );
 
-    expect(response.headers.get("location")).toContain("/ja/login");
+    expect(response.headers.get("location")).toContain("/login");
     expect(deletedCookieNames(response)).toContain(COOKIE_NAME);
   });
 
@@ -109,11 +107,11 @@ describe("web-host proxy session handling", () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
-      request("https://shop.example.com/ja/login", cookie)
+      request("https://shop.example.com/login", cookie)
     );
 
     expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
-      "/ja/my"
+      "/my"
     );
   });
 
@@ -131,7 +129,7 @@ describe("web-host proxy session handling", () => {
 
     const response = await proxy(
       request(
-        "https://shop.example.com/ja/login?returnTo=%2Fmy&reason=session_revoked",
+        "https://shop.example.com/login?returnTo=%2Fmy&reason=session_revoked",
         cookie
       )
     );
@@ -148,7 +146,7 @@ describe("web-host proxy session handling", () => {
 
     const response = await proxy(
       request(
-        "https://shop.example.com/ja/settings?reason=session_revoked",
+        "https://shop.example.com/settings?reason=session_revoked",
         cookie
       )
     );
@@ -187,28 +185,28 @@ describe("web-host proxy locale routing", () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
-      request("https://shop.example.com/ja/privacy")
+      request("https://shop.example.com/en/privacy")
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toContain(
-      `/${TENANT_ID}/ja/page/privacy`
+      `/${TENANT_ID}/en/page/privacy`
     );
   });
 
-  it("locale の無い旧 URL はテナントの既定 locale へリダイレクトする", async () => {
+  it("locale の無い URL をテナントの既定 locale の内部ルートへ rewrite する", async () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(request("https://shop.example.com/series"));
 
-    expect(response.status).toBe(307);
-    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
-      "/ja/series"
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/series`
     );
   });
 
   // 既定ロケールはこのアプリの定数ではなくテナントの設定なので、`en` の
   // テナントに来た locale 無しの URL が `/ja` へ落ちてはいけない。
-  it("既定 locale が en のテナントでは /en へ送る", async () => {
+  it("既定 locale が en のテナントでは locale 無し URL を en として rewrite する", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
       tenantId: TENANT_ID,
@@ -217,12 +215,13 @@ describe("web-host proxy locale routing", () => {
 
     const response = await proxy(request("https://shop.example.com/series"));
 
-    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
-      "/en/series"
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/en/series`
     );
   });
 
-  it("既定 locale が en のテナントではトップも /en へ送る", async () => {
+  it("既定 locale が en のテナントでもトップを en として rewrite する", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
       tenantId: TENANT_ID,
@@ -231,9 +230,38 @@ describe("web-host proxy locale routing", () => {
 
     const response = await proxy(request("https://shop.example.com/"));
 
-    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
-      "/en"
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/en`
     );
+  });
+
+  it("既定 locale を明示した URL はパスとクエリを保って正規 URL へ送る", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/ja/series/SR01?source=bookmark")
+    );
+
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/series/SR01");
+    expect(location.search).toBe("?source=bookmark");
+  });
+
+  it("既定 locale が en のテナントでも /en を正規 URL へ送る", async () => {
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "en",
+      tenantId: TENANT_ID,
+    });
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/en/series/SR01?source=bookmark")
+    );
+
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/series/SR01");
+    expect(location.search).toBe("?source=bookmark");
   });
 
   // locale を名指しした URL は読者の選択なので、既定ロケールで引き戻さない。

@@ -92,8 +92,11 @@ const notificationStatusKey = (
 const SubscriptionSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [notificationSettings, messages] = await Promise.all([
-    withPublicSessionReauth(locale, MY_RETURN_TO, () =>
-      getNotificationSettings(tenantId)
+    withPublicSessionReauth(
+      locale,
+      MY_RETURN_TO,
+      () => getNotificationSettings(tenantId),
+      tenantId
     ),
     loadHostMessages(locale),
   ]);
@@ -129,11 +132,15 @@ const SubscriptionSectionFallback = () => (
 );
 
 const MyContent = async () => {
-  const locale = await getLocale();
-  await requirePublicSession(locale, MY_RETURN_TO);
-  const tenantId = await getTenantId();
+  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
+  await requirePublicSession(locale, MY_RETURN_TO, tenantId);
   const [me, messages] = await Promise.all([
-    withPublicSessionReauth(locale, MY_RETURN_TO, () => getMe(tenantId)),
+    withPublicSessionReauth(
+      locale,
+      MY_RETURN_TO,
+      () => getMe(tenantId),
+      tenantId
+    ),
     loadHostMessages(locale),
   ]);
 
