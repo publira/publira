@@ -1,20 +1,29 @@
 import { getMessage } from "@publira/i18n";
-import { BellIcon } from "@publira/icons";
-import { Skeleton } from "@publira/ui-components/skeleton";
-import Link from "next/link";
 
 import { getLocale, loadAdminMessages } from "#lib/locale";
-import { countUnreadNotifications } from "#lib/notification";
+import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getTenantId } from "#lib/tenant-id";
 
-export const NotificationBellSkeleton = () => (
-  <span
-    aria-hidden="true"
-    className="inline-flex size-9 items-center justify-center"
-  >
-    <Skeleton className="size-5 rounded" />
-  </span>
-);
+import {
+  NotificationBellContent,
+  NotificationBellEmpty,
+  NotificationBellEmptyDescription,
+  NotificationBellEmptyTitle,
+  NotificationBellError,
+  NotificationBellHeader,
+  NotificationBellItem,
+  NotificationBellItemDescription,
+  NotificationBellItemState,
+  NotificationBellItemTitle,
+  NotificationBellList,
+  NotificationBellMenu,
+  NotificationBellMore,
+  NotificationBellTrigger,
+} from "./notification-bell-menu";
+
+const notificationMenuLimit = 5;
+
+export { NotificationBellSkeleton } from "./notification-bell-menu";
 
 /**
  * The header's unread badge, with its accessible name.
@@ -26,29 +35,76 @@ export const NotificationBellSkeleton = () => (
  */
 export const NotificationBell = async () => {
   const tenantId = await getTenantId();
-  const [unread, locale] = await Promise.all([
+  const [list, unread, locale] = await Promise.all([
+    listNotifications(tenantId, { limit: notificationMenuLimit }),
     countUnreadNotifications(tenantId),
     getLocale(tenantId),
   ]);
   const messages = await loadAdminMessages(locale);
   const count = Math.max(0, unread.unreadCount);
-  const label =
+  const ariaLabel =
     count > 0
       ? getMessage(messages, "admin.shell.notifications_unread", { count })
       : getMessage(messages, "admin.shell.notifications_none");
+  let notificationContent = (
+    <NotificationBellError>
+      {getMessage(messages, "admin.notifications.list_failed")}
+    </NotificationBellError>
+  );
+
+  if (list.ok && list.notifications.length === 0) {
+    notificationContent = (
+      <NotificationBellEmpty>
+        <NotificationBellEmptyTitle>
+          {getMessage(messages, "admin.notifications.empty_title")}
+        </NotificationBellEmptyTitle>
+        <NotificationBellEmptyDescription>
+          {getMessage(messages, "admin.notifications.empty_description")}
+        </NotificationBellEmptyDescription>
+      </NotificationBellEmpty>
+    );
+  }
+
+  if (list.ok && list.notifications.length > 0) {
+    notificationContent = (
+      <NotificationBellList>
+        {list.notifications.map((notification) => (
+          <NotificationBellItem
+            href={notification.href}
+            isRead={notification.isRead}
+            key={notification.id}
+          >
+            <NotificationBellItemState>
+              {notification.isRead
+                ? getMessage(messages, "admin.notifications.read")
+                : getMessage(messages, "admin.notifications.unread")}
+            </NotificationBellItemState>
+            <NotificationBellItemTitle>
+              {notification.title}
+            </NotificationBellItemTitle>
+            <NotificationBellItemDescription>
+              {notification.description}
+            </NotificationBellItemDescription>
+          </NotificationBellItem>
+        ))}
+      </NotificationBellList>
+    );
+  }
 
   return (
-    <Link
-      aria-label={label}
-      className="relative inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted"
-      href="/notifications"
-    >
-      <BellIcon aria-hidden="true" className="size-5" />
-      {count > 0 ? (
-        <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-xs leading-none font-medium text-destructive-foreground">
-          {count > 99 ? "99+" : count}
-        </span>
-      ) : null}
-    </Link>
+    <NotificationBellMenu>
+      <NotificationBellTrigger unreadCount={count}>
+        {ariaLabel}
+      </NotificationBellTrigger>
+      <NotificationBellContent>
+        <NotificationBellHeader unreadCount={count}>
+          {getMessage(messages, "admin.notifications.title")}
+        </NotificationBellHeader>
+        {notificationContent}
+        <NotificationBellMore href="/notifications">
+          {getMessage(messages, "admin.notifications.menu_more")}
+        </NotificationBellMore>
+      </NotificationBellContent>
+    </NotificationBellMenu>
   );
 };
