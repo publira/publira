@@ -49,18 +49,36 @@ import { getPlatformCurrentOperator } from "../lib/auth";
 import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
 import { getPlatformLocale, loadPlatformMessages } from "../lib/locale";
 import { logoutAction } from "../lib/logout-action";
-import { countUnreadNotifications } from "../lib/notification";
+import {
+  countUnreadNotifications,
+  listNotifications,
+} from "../lib/notification";
 import { getOperatorRoleLabel } from "../lib/operator-labels";
 import { Message } from "./message";
 import {
   NotificationBell,
+  NotificationBellContent,
+  NotificationBellEmpty,
+  NotificationBellEmptyDescription,
+  NotificationBellEmptyTitle,
+  NotificationBellError,
+  NotificationBellHeader,
+  NotificationBellItem,
+  NotificationBellItemDescription,
+  NotificationBellItemState,
+  NotificationBellItemTitle,
+  NotificationBellList,
+  NotificationBellMore,
   NotificationBellSkeleton,
+  NotificationBellTrigger,
 } from "./notification-bell";
 import { NotificationBellErrorBoundary } from "./notification-bell-error-boundary";
 import { navigation } from "./platform-navigation";
 
 const platformGradient =
   "bg-[radial-gradient(circle_at_top_left,rgba(21,121,194,0.11),transparent_28%),radial-gradient(circle_at_top_right,rgba(24,149,118,0.11),transparent_30%),linear-gradient(180deg,rgba(248,252,255,0.82),rgba(240,247,250,0.96))]";
+
+const notificationMenuLimit = 5;
 
 export const PlatformUser = async () => {
   const result = await getPlatformCurrentOperator();
@@ -110,7 +128,8 @@ export const PlatformUser = async () => {
 };
 
 export const PlatformNotificationBell = async () => {
-  const [unread, locale] = await Promise.all([
+  const [list, unread, locale] = await Promise.all([
+    listNotifications({ limit: notificationMenuLimit }),
     countUnreadNotifications(),
     getPlatformLocale(),
   ]);
@@ -122,9 +141,82 @@ export const PlatformNotificationBell = async () => {
           count,
         })
       : getMessage(messages, "platform.shell.notifications_none");
+  let notificationContent = (
+    <NotificationBellError>
+      <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+        <Message message="platform.notifications.list_failed" />
+      </Suspense>
+    </NotificationBellError>
+  );
+
+  if (list.ok && list.notifications.length === 0) {
+    notificationContent = (
+      <NotificationBellEmpty>
+        <NotificationBellEmptyTitle>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.notifications.empty_title" />
+          </Suspense>
+        </NotificationBellEmptyTitle>
+        <NotificationBellEmptyDescription>
+          <Suspense fallback={<SkeletonLine className="mt-1 h-4 w-56" />}>
+            <Message message="platform.notifications.empty_description" />
+          </Suspense>
+        </NotificationBellEmptyDescription>
+      </NotificationBellEmpty>
+    );
+  }
+
+  if (list.ok && list.notifications.length > 0) {
+    notificationContent = (
+      <NotificationBellList>
+        {list.notifications.map((notification) => (
+          <NotificationBellItem
+            href={notification.href}
+            isRead={notification.isRead}
+            key={notification.id}
+          >
+            <NotificationBellItemState>
+              <Suspense fallback={null}>
+                <Message
+                  message={
+                    notification.isRead
+                      ? "platform.notifications.read"
+                      : "platform.notifications.unread"
+                  }
+                />
+              </Suspense>
+            </NotificationBellItemState>
+            <NotificationBellItemTitle>
+              {notification.title}
+            </NotificationBellItemTitle>
+            <NotificationBellItemDescription>
+              {notification.description}
+            </NotificationBellItemDescription>
+          </NotificationBellItem>
+        ))}
+      </NotificationBellList>
+    );
+  }
 
   return (
-    <NotificationBell ariaLabel={ariaLabel} unreadCount={unread.unreadCount} />
+    <NotificationBell>
+      <NotificationBellTrigger unreadCount={unread.unreadCount}>
+        {ariaLabel}
+      </NotificationBellTrigger>
+      <NotificationBellContent>
+        <NotificationBellHeader unreadCount={unread.unreadCount}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="platform.notifications.title" />
+          </Suspense>
+        </NotificationBellHeader>
+        {notificationContent}
+        <NotificationBellMore href="/notifications">
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="platform.notifications.menu_more" />
+          </Suspense>
+        </NotificationBellMore>
+      </NotificationBellContent>
+    </NotificationBell>
   );
 };
 

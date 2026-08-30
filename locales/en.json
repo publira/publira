@@ -1331,6 +1331,7 @@
       "empty_title": "No notifications yet.",
       "heading": "Notifications",
       "list_failed": "Could not display notifications",
+      "menu_more": "View all",
       "mark_all_read": "Mark all as read",
       "mark_read": "Mark as read",
       "mark_read_aria": "Mark {$title} as read",
