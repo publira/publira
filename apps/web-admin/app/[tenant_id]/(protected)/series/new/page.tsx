@@ -1,4 +1,6 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -13,9 +15,11 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listAllLabels } from "#lib/label";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -23,8 +27,11 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { SeriesForm } from "../_components/series-form";
 import { createSeriesAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "シリーズ新規作成",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.series.new_title") };
 };
 
 export const generateStaticParams = () =>
@@ -82,11 +89,17 @@ const NewSeriesPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>シリーズを新規作成</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.series.new_title" />
+          </Suspense>
+        </AdminPageTitle>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/series" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.series.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

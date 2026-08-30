@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -29,6 +30,7 @@ import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { listAllLabels } from "#lib/label";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -41,8 +43,11 @@ import {
   updateSeriesEyeCatchAction,
 } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "シリーズ編集",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.series.edit_title") };
 };
 
 export const generateStaticParams = () =>
@@ -81,18 +86,22 @@ const EditSeriesTitle = async ({
   searchParams,
 }: Pick<EditSeriesPageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
-  return activeTab === "eye-catch"
-    ? "シリーズのアイキャッチを編集"
-    : "シリーズを編集";
+  return activeTab === "eye-catch" ? (
+    <Message message="admin.series.eye_catch_title" />
+  ) : (
+    <Message message="admin.series.edit_title" />
+  );
 };
 
 const EditSeriesDescription = async ({
   searchParams,
 }: Pick<EditSeriesPageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
-  return activeTab === "eye-catch"
-    ? "アイキャッチ画像の差し替え・削除を行います。"
-    : "タイトル・概要・公開設定などを編集します。";
+  return activeTab === "eye-catch" ? (
+    <Message message="admin.series.eye_catch_description" />
+  ) : (
+    <Message message="admin.series.edit_description" />
+  );
 };
 
 const EditSeriesTabs = async ({
@@ -116,11 +125,11 @@ const SeriesLoadError = ({ message }: { message: string }) => (
   <SectionError
     actions={
       <LinkButton render={<Link href="/series" />} variant="outline">
-        一覧へ戻る
+        <Message message="admin.series.back_to_list" />
       </LinkButton>
     }
     description={message}
-    title="シリーズを表示できませんでした"
+    title={<Message message="admin.series.detail_error" />}
   />
 );
 
@@ -210,13 +219,15 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/series" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.series.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
-      <FlashToast title="シリーズを作成しました。" />
-      <FlashToast keyName="updated" title="シリーズを更新しました。" />
+      <FlashToast message="admin.series.created" />
+      <FlashToast keyName="updated" message="admin.series.updated" />
       <div className="grid gap-6">
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditSeriesTabs params={params} searchParams={searchParams} />

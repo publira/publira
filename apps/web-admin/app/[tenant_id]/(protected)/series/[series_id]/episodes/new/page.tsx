@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
@@ -18,14 +19,19 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodeForm } from "../_components/episode-form";
 import { createEpisodeAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "エピソード新規作成",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.series.episodes.new_title") };
 };
 
 export const generateStaticParams = () =>
@@ -58,13 +64,13 @@ const NewEpisodeActions = async ({
         render={<Link href={`/series/${seriesId}/episodes`} />}
         variant="outline"
       >
-        一覧へ戻る
+        <Message message="admin.series.episodes.back_to_list" />
       </LinkButton>
       <LinkButton
         render={<Link href={`/series/${seriesId}`} />}
         variant="outline"
       >
-        シリーズへ戻る
+        <Message message="admin.series.episodes.back_to_series" />
       </LinkButton>
     </div>
   );
@@ -106,9 +112,15 @@ const NewEpisodePage = ({ params }: Pick<NewEpisodePageProps, "params">) => (
             <NewEpisodeEyebrow params={params} />
           </Suspense>
         </AdminPageEyebrow>
-        <AdminPageTitle>エピソード新規作成</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.series.episodes.new_title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          シリーズ配下に新しいエピソードを登録します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.series.episodes.new_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>

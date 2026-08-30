@@ -1,4 +1,6 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -14,12 +16,17 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 
 import { LabelForm } from "../_components/label-form";
 import { createLabelAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "レーベル新規作成",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.labels.new_title") };
 };
 
 export const generateStaticParams = () =>
@@ -43,14 +50,22 @@ const NewLabelPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>レーベル新規作成</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.labels.new_title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          新しいレーベルを登録します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.labels.new_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/labels" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.labels.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

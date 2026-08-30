@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -16,8 +18,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback } from "react";
+import { useActionState, useCallback, useContext } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -38,6 +41,11 @@ export const EpisodeForm = ({
   action,
   timeZone,
 }: EpisodeFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -52,17 +60,19 @@ export const EpisodeForm = ({
     [timeZone]
   );
 
-  let submitLabel = "エピソードを入稿";
+  let submitLabel = getMessage(messages, "admin.series.episodes.form.create");
   if (isPending) {
-    submitLabel = "送信中...";
+    submitLabel = getMessage(messages, "admin.series.episodes.form.submitting");
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>エピソード入稿フォーム</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.series.episodes.form.card_title")}
+        </CardTitle>
         <CardDescription>
-          エピソードの基本情報と公開設定を入力して登録します。
+          {getMessage(messages, "admin.series.episodes.form.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -75,11 +85,16 @@ export const EpisodeForm = ({
           <input name="series_public_id" type="hidden" value={seriesPublicId} />
 
           <Field>
-            <FieldLabel required>タイトル</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.series.episodes.form.title")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 name="title"
-                placeholder="例: 第1話 はじまりの朝"
+                placeholder={getMessage(
+                  messages,
+                  "admin.series.episodes.form.title_placeholder"
+                )}
                 required
                 type="text"
               />
@@ -87,7 +102,9 @@ export const EpisodeForm = ({
           </Field>
 
           <Field>
-            <FieldLabel required>価格</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.series.episodes.form.price")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={0}
@@ -97,13 +114,21 @@ export const EpisodeForm = ({
                 type="number"
               />
               <FieldDescription>
-                0 を指定すると無料で公開されます。
+                {getMessage(
+                  messages,
+                  "admin.series.episodes.form.price_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel required>閲覧可能期間</FieldLabel>
+            <FieldLabel required>
+              {getMessage(
+                messages,
+                "admin.series.episodes.form.reading_period"
+              )}
+            </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={0}
@@ -113,7 +138,10 @@ export const EpisodeForm = ({
                 type="number"
               />
               <FieldDescription>
-                単位は時間です。0 を指定すると無制限で閲覧できます。
+                {getMessage(
+                  messages,
+                  "admin.series.episodes.form.reading_period_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>

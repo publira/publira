@@ -1,11 +1,13 @@
 "use server";
 
+import { getMessage } from "@publira/i18n";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getActionMessages } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -20,6 +22,7 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
+import type { AdminMessages } from "#lib/locale";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type {
@@ -27,15 +30,23 @@ import type {
   EpisodeEditMode,
 } from "../episode-edit-types";
 
-const hiddenParamsSchema = z.object({
-  episodePublicId: requiredTrimmedString("エピソード ID が見つかりません。"),
-  seriesPublicId: requiredTrimmedString("シリーズ ID が見つかりません。"),
-  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-});
+const hiddenParamsSchema = (messages: AdminMessages) =>
+  z.object({
+    episodePublicId: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.episode_missing")
+    ),
+    seriesPublicId: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.series_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.tenant_missing")
+    ),
+  });
 
-const scheduleFormSchema = hiddenParamsSchema.extend({
-  publishAt: optionalTrimmedString(),
-});
+const scheduleFormSchema = (messages: AdminMessages) =>
+  hiddenParamsSchema(messages).extend({
+    publishAt: optionalTrimmedString(),
+  });
 
 const uploadModeSchema = z.preprocess(
   (value) => {
@@ -48,22 +59,26 @@ const uploadModeSchema = z.preprocess(
   z.enum(["pages", "zip", "epub"])
 );
 
-const uploadPagesFormSchema = hiddenParamsSchema.extend({
-  archive: optionalFileFormSchema,
-  pages: fileListFormSchema,
-  uploadMode: uploadModeSchema,
-});
+const uploadPagesFormSchema = (messages: AdminMessages) =>
+  hiddenParamsSchema(messages).extend({
+    archive: optionalFileFormSchema,
+    pages: fileListFormSchema,
+    uploadMode: uploadModeSchema,
+  });
 
-const reorderImagesSchema = z.object({
-  episodePublicId: requiredTrimmedString(
-    "並び順の更新に必要な情報が不足しています。"
-  ),
-  orderedImageIds: jsonStringArrayFormSchema,
-  seriesPublicId: requiredTrimmedString(
-    "並び順の更新に必要な情報が不足しています。"
-  ),
-  tenantId: requiredTrimmedString("並び順の更新に必要な情報が不足しています。"),
-});
+const reorderImagesSchema = (messages: AdminMessages) =>
+  z.object({
+    episodePublicId: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.sort_data_missing")
+    ),
+    orderedImageIds: jsonStringArrayFormSchema,
+    seriesPublicId: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.sort_data_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.sort_data_missing")
+    ),
+  });
 
 const hiddenFormFields = {
   episodePublicId: { kind: "value", name: "episode_public_id" },
@@ -82,7 +97,8 @@ const toFailure = (
 
 const parsePublishAtToRFC3339 = async (
   value: string,
-  tenantId: string
+  tenantId: string,
+  messages: AdminMessages
 ): Promise<{ ok: true; iso: string } | ReturnType<typeof toFailure>> => {
   if (!value) {
     return { iso: "", ok: true };
@@ -95,12 +111,21 @@ const parsePublishAtToRFC3339 = async (
   const iso = toInstantIsoString(value, timeZone);
   const parsed = parseInstant(iso);
   if (!parsed) {
-    return toFailure("publish_at の形式が正しくありません。", "schedule");
+    return toFailure(
+      getMessage(
+        messages,
+        "admin.series.episodes.validation.publish_at_invalid"
+      ),
+      "schedule"
+    );
   }
 
   if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
     return toFailure(
-      "publish_at は現在時刻より未来を指定してください。",
+      getMessage(
+        messages,
+        "admin.series.episodes.validation.publish_at_future"
+      ),
       "schedule"
     );
   }
@@ -113,7 +138,8 @@ export const updateEpisodeScheduleAction = async (
   formData: FormData
 ): Promise<EpisodeEditActionState> => {
   await assertSameOrigin();
-  const parsed = scheduleFormSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = scheduleFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       publishAt: { kind: "value", name: "publish_at" },
@@ -125,7 +151,8 @@ export const updateEpisodeScheduleAction = async (
 
   const schedule = await parsePublishAtToRFC3339(
     parsed.data.publishAt,
-    parsed.data.tenantId
+    parsed.data.tenantId,
+    messages
   );
   if (!schedule.ok) {
     return schedule;
@@ -153,7 +180,8 @@ export const uploadEpisodePagesAction = async (
   formData: FormData
 ): Promise<EpisodeEditActionState> => {
   await assertSameOrigin();
-  const parsed = uploadPagesFormSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = uploadPagesFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       archive: { kind: "file", name: "archive" },
@@ -178,8 +206,14 @@ export const uploadEpisodePagesAction = async (
     if (!archive) {
       return toFailure(
         uploadMode === "zip"
-          ? "入稿する ZIP ファイルを選択してください。"
-          : "入稿する ePub ファイルを選択してください。",
+          ? getMessage(
+              messages,
+              "admin.series.episodes.validation.zip_required"
+            )
+          : getMessage(
+              messages,
+              "admin.series.episodes.validation.epub_required"
+            ),
         "pages"
       );
     }
@@ -195,8 +229,11 @@ export const uploadEpisodePagesAction = async (
     if (!isValidArchive) {
       return toFailure(
         uploadMode === "zip"
-          ? "ZIP 形式（.zip）のファイルを選択してください。"
-          : "ePub 形式（.epub）のファイルを選択してください。",
+          ? getMessage(messages, "admin.series.episodes.validation.zip_invalid")
+          : getMessage(
+              messages,
+              "admin.series.episodes.validation.epub_invalid"
+            ),
         "pages"
       );
     }
@@ -220,7 +257,10 @@ export const uploadEpisodePagesAction = async (
   }
 
   if (pages.length === 0) {
-    return toFailure("追加するページ画像を選択してください。", "pages");
+    return toFailure(
+      getMessage(messages, "admin.series.episodes.validation.pages_required"),
+      "pages"
+    );
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -244,7 +284,8 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
   "use server";
 
   await assertSameOrigin();
-  const parsed = reorderImagesSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = reorderImagesSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       orderedImageIds: { kind: "value", name: "ordered_image_ids" },
@@ -253,7 +294,10 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
-        fallback: "並び順の更新に必要な情報が不足しています。",
+        fallback: getMessage(
+          messages,
+          "admin.series.episodes.validation.sort_data_missing"
+        ),
       }),
       ok: false,
     };
@@ -261,7 +305,10 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
 
   if (parsed.data.orderedImageIds.length === 0) {
     return {
-      message: "並び替え対象の画像がありません。",
+      message: getMessage(
+        messages,
+        "admin.series.episodes.validation.no_images_to_sort"
+      ),
       ok: false,
     };
   }

@@ -1,4 +1,6 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -14,12 +16,17 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 
 import { PageForm } from "../_components/page-form";
 import { createPageAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "ページ新規作成",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.pages.new_title") };
 };
 
 export const generateStaticParams = () =>
@@ -44,15 +51,22 @@ const NewPagePage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>ページ新規作成</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.pages.new_title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          新しい固定ページを作成します。作成後は編集画面で Markdown
-          と公開設定を管理できます。
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.pages.new_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/pages" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.pages.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -11,9 +13,10 @@ import {
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useState, useContext } from "react";
 import type { ChangeEvent } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { LabelActionState, LabelListItem } from "../label-types";
@@ -27,31 +30,46 @@ interface LabelFormProps {
   initialLabel?: LabelListItem;
 }
 
-const getSubmitLabel = (isUpdate: boolean, isPending: boolean): string => {
+const getSubmitLabel = (
+  messages: ReturnType<typeof sharedCatalog>,
+  isUpdate: boolean,
+  isPending: boolean
+): string => {
   if (isPending) {
-    return "送信中...";
+    return getMessage(messages, "admin.labels.form.submitting");
   }
   if (isUpdate) {
-    return "レーベルを更新";
+    return getMessage(messages, "admin.labels.form.update");
   }
-  return "レーベルを作成";
+  return getMessage(messages, "admin.labels.form.create");
 };
 
-const getCardTitle = (isUpdate: boolean): string => {
+const getCardTitle = (
+  messages: ReturnType<typeof sharedCatalog>,
+  isUpdate: boolean
+): string => {
   if (isUpdate) {
-    return "レーベル情報";
+    return getMessage(messages, "admin.labels.form.update_card_title");
   }
-  return "新規レーベル";
+  return getMessage(messages, "admin.labels.form.create_card_title");
 };
 
-const getCardDescription = (isUpdate: boolean): string => {
+const getCardDescription = (
+  messages: ReturnType<typeof sharedCatalog>,
+  isUpdate: boolean
+): string => {
   if (isUpdate) {
-    return "レーベル名を編集します。";
+    return getMessage(messages, "admin.labels.form.update_description");
   }
-  return "新しいレーベル名を入力してください。";
+  return getMessage(messages, "admin.labels.form.create_description");
 };
 
 export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const initialName = initialLabel?.name ?? "";
@@ -74,9 +92,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
   );
 
   const isUpdate = mode === "update";
-  const submitLabel = getSubmitLabel(isUpdate, isPending);
-  const cardTitle = getCardTitle(isUpdate);
-  const cardDescription = getCardDescription(isUpdate);
+  const submitLabel = getSubmitLabel(messages, isUpdate, isPending);
+  const cardTitle = getCardTitle(messages, isUpdate);
+  const cardDescription = getCardDescription(messages, isUpdate);
 
   return (
     <Card>
@@ -94,12 +112,17 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
           />
 
           <Field>
-            <FieldLabel required>レーベル名</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.labels.form.name")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 name="name"
                 onChange={handleNameChange}
-                placeholder="例: 月刊ノベルズ"
+                placeholder={getMessage(
+                  messages,
+                  "admin.labels.form.name_placeholder"
+                )}
                 required
                 type="text"
                 value={name}
@@ -109,7 +132,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
 
           {isUpdate ? null : (
             <Field>
-              <FieldLabel>レーベルアイキャッチ画像</FieldLabel>
+              <FieldLabel>
+                {getMessage(messages, "admin.labels.form.eye_catch")}
+              </FieldLabel>
               <FieldContent>
                 <Input
                   accept="image/jpeg,image/png,image/webp"
@@ -117,7 +142,10 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
                   type="file"
                 />
                 <p className="text-sm text-muted-foreground">
-                  3:4 基準で 2400x3200px 以上、10MB 以下の画像を推奨します。
+                  {getMessage(
+                    messages,
+                    "admin.labels.form.eye_catch_description"
+                  )}
                 </p>
               </FieldContent>
             </Field>

@@ -1,10 +1,19 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useOptimistic, useRef, useTransition } from "react";
+import {
+  useCallback,
+  useOptimistic,
+  useRef,
+  useTransition,
+  useContext,
+} from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import type { EpisodeImageItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -44,6 +53,11 @@ export const EpisodeImagesSortableGrid = ({
   images,
   reorderAction,
 }: EpisodeImagesSortableGridProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const router = useRouter();
   const { add } = useToastManager();
@@ -68,24 +82,43 @@ export const EpisodeImagesSortableGrid = ({
         const result = await reorderAction(formData);
         if (!result.ok) {
           add({
-            title: result.message ?? "ページ画像の表示順更新に失敗しました。",
+            title:
+              result.message ??
+              getMessage(
+                messages,
+                "admin.series.episodes.image_reorder_failed"
+              ),
             type: "error",
           });
           router.refresh();
           return;
         }
 
-        add({ title: "ページ画像の表示順を更新しました。", type: "success" });
+        add({
+          title: getMessage(messages, "admin.series.episodes.image_reordered"),
+          type: "success",
+        });
         router.refresh();
       } catch {
         add({
-          title: "ページ画像の表示順更新に失敗しました。",
+          title: getMessage(
+            messages,
+            "admin.series.episodes.image_reorder_failed"
+          ),
           type: "error",
         });
         router.refresh();
       }
     },
-    [add, episodePublicId, reorderAction, router, seriesPublicId, tenantId]
+    [
+      add,
+      episodePublicId,
+      messages,
+      reorderAction,
+      router,
+      seriesPublicId,
+      tenantId,
+    ]
   );
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLElement>) => {
@@ -145,7 +178,9 @@ export const EpisodeImagesSortableGrid = ({
           onDrop={handleDrop}
         >
           <Image
-            alt={`ページ ${index + 1}`}
+            alt={getMessage(messages, "admin.series.episodes.image_alt", {
+              index: index + 1,
+            })}
             className="h-36 w-full rounded object-cover"
             height={Math.max(image.height, 144)}
             // The cell is one grid column wide, not the manuscript page's own

@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -26,6 +27,7 @@ import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getPage, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -49,8 +51,11 @@ const editPageParamsSchema = z.object({
   page_id: routeParamString(),
 });
 
-export const metadata: Metadata = {
-  title: "ページ編集",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.pages.edit_title") };
 };
 
 export const generateStaticParams = () =>
@@ -71,11 +76,11 @@ const PageLoadError = ({ message }: { message: string }) => (
   <SectionError
     actions={
       <LinkButton render={<Link href="/pages" />} variant="outline">
-        一覧へ戻る
+        <Message message="admin.pages.back_to_list" />
       </LinkButton>
     }
     description={message}
-    title="ページを表示できませんでした"
+    title={<Message message="admin.pages.detail_error" />}
   />
 );
 
@@ -132,30 +137,27 @@ const EditPagePage = ({ params }: EditPagePageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>ページ編集</AdminPageTitle>
+        <AdminPageTitle>
+          <Message message="admin.pages.edit_title" />
+        </AdminPageTitle>
         <AdminPageDescription>
-          Markdown
-          の編集、プレビュー確認、バージョン比較、公開/ロールバックを行います。管理者のみ実行できます。
+          <Message message="admin.pages.edit_description" />
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/pages" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.pages.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
-      <FlashToast title="ページを作成しました。" />
-      <FlashToast keyName="updated" title="ページ基本情報を更新しました。" />
-      <FlashToast
-        keyName="draft_saved"
-        title="下書きバージョンを保存しました。"
-      />
-      <FlashToast keyName="published" title="ページを公開しました。" />
-      <FlashToast
-        keyName="rolled_back"
-        title="指定バージョンからロールバックしました。"
-      />
+      <FlashToast message="admin.pages.created" />
+      <FlashToast keyName="updated" message="admin.pages.updated" />
+      <FlashToast keyName="draft_saved" message="admin.pages.draft_saved" />
+      <FlashToast keyName="published" message="admin.pages.published_success" />
+      <FlashToast keyName="rolled_back" message="admin.pages.rolled_back" />
 
       <SectionErrorBoundary
         title={

@@ -1,10 +1,24 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render as renderBase,
+  screen,
+} from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { AdminLocaleProvider } from "#components/admin-locale-context";
+
 import { EpisodePagesForm } from "./episode-pages-form";
+
+const render = (ui: React.ReactNode) =>
+  renderBase(ui, {
+    wrapper: ({ children }) => (
+      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+    ),
+  });
 
 vi.mock("#lib/use-tenant-id", () => ({
   useTenantId: () => "TENANT001",

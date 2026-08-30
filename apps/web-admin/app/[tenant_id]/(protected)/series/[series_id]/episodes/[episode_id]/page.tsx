@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -23,6 +24,7 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getEpisode, listEpisodeImages } from "#lib/episode";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -35,8 +37,11 @@ import {
   uploadEpisodePagesAction,
 } from "./_lib/actions";
 
-export const metadata: Metadata = {
-  title: "エピソード編集",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.series.episodes.edit_title") };
 };
 
 export const generateStaticParams = () =>
@@ -57,7 +62,7 @@ const EditEpisodePage = async ({
   }
   const { episode_id, series_id } = parsedParams;
 
-  const [episodeResult, imagesResult, timeZone] = await Promise.all([
+  const [episodeResult, imagesResult, timeZone, locale] = await Promise.all([
     getEpisode({
       publicId: episode_id,
       seriesPublicId: series_id,
@@ -68,7 +73,9 @@ const EditEpisodePage = async ({
       tenantId,
     }),
     getTenantDisplayTimeZone(tenantId),
+    getLocale(tenantId),
   ]);
+  const messages = await loadAdminMessages(locale);
   if (!episodeResult.ok && episodeResult.notFound) {
     notFound();
   }
@@ -80,9 +87,11 @@ const EditEpisodePage = async ({
       <AdminPageHeader>
         <AdminPageHeading>
           <AdminPageEyebrow>{`Series ${series_id} / Episode ${episode_id}`}</AdminPageEyebrow>
-          <AdminPageTitle>エピソード編集</AdminPageTitle>
+          <AdminPageTitle>
+            {getMessage(messages, "admin.series.episodes.edit_title")}
+          </AdminPageTitle>
           <AdminPageDescription>
-            エピソードの公開設定とページ画像を編集します。
+            {getMessage(messages, "admin.series.episodes.edit_description")}
           </AdminPageDescription>
         </AdminPageHeading>
         <AdminPageActions>
@@ -91,34 +100,40 @@ const EditEpisodePage = async ({
               render={<Link href={`/series/${series_id}/episodes`} />}
               variant="outline"
             >
-              一覧へ戻る
+              {getMessage(messages, "admin.series.episodes.back_to_list")}
             </LinkButton>
             <LinkButton
               render={<Link href={`/series/${series_id}/episodes/new`} />}
               variant="outline"
             >
-              新規作成
+              {getMessage(messages, "admin.series.episodes.new_action")}
             </LinkButton>
           </div>
         </AdminPageActions>
       </AdminPageHeader>
       <AdminPageContent>
-        <FlashToast keyName="created" title="エピソードを作成しました。" />
+        <FlashToast
+          keyName="created"
+          title={getMessage(messages, "admin.series.episodes.created")}
+        />
         <FlashToast
           keyName="schedule_updated"
-          title="publish_at を更新しました。"
+          title={getMessage(messages, "admin.series.episodes.schedule_updated")}
         />
         <FlashToast
           keyName="pages_uploaded"
-          title="ページ画像を追加しました。"
+          title={getMessage(messages, "admin.series.episodes.pages_uploaded")}
         />
         <FlashToast
           keyName="images_reordered"
-          title="ページ画像の表示順を更新しました。"
+          title={getMessage(messages, "admin.series.episodes.image_reordered")}
         />
         <FlashToast
           keyName="image_reorder_error"
-          title="ページ画像の表示順更新に失敗しました。"
+          title={getMessage(
+            messages,
+            "admin.series.episodes.image_reorder_failed"
+          )}
         />
 
         <div className="grid gap-6">
@@ -133,7 +148,10 @@ const EditEpisodePage = async ({
           ) : (
             <SectionError
               description={episodeResult.message}
-              title="公開設定を表示できませんでした"
+              title={getMessage(
+                messages,
+                "admin.series.episodes.schedule_error"
+              )}
             />
           )}
           <EpisodePagesForm
@@ -143,9 +161,14 @@ const EditEpisodePage = async ({
           />
 
           <section className="grid gap-3 rounded-lg border border-border/70 p-4">
-            <h2 className="text-sm font-medium">登録済みページ画像</h2>
+            <h2 className="text-sm font-medium">
+              {getMessage(messages, "admin.series.episodes.image_list_title")}
+            </h2>
             <p className="text-xs text-muted-foreground">
-              画像はドラッグ＆ドロップで並び替えできます。
+              {getMessage(
+                messages,
+                "admin.series.episodes.image_list_description"
+              )}
             </p>
 
             {/*
@@ -157,13 +180,16 @@ const EditEpisodePage = async ({
             {imagesResult.ok ? null : (
               <SectionError
                 description={imagesResult.message}
-                title="ページ画像を表示できませんでした"
+                title={getMessage(
+                  messages,
+                  "admin.series.episodes.image_list_error"
+                )}
               />
             )}
 
             {imagesResult.ok && imagesResult.images.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                ページ画像はまだ登録されていません。
+                {getMessage(messages, "admin.series.episodes.image_list_empty")}
               </p>
             ) : null}
 

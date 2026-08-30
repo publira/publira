@@ -1,17 +1,20 @@
 "use server";
 
+import { getMessage } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getActionMessages } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
+import type { AdminMessages } from "#lib/locale";
 import {
   createPage,
   createPageVersion,
@@ -32,24 +35,27 @@ const displayInFooterSchema = z.preprocess((value) => {
   return raw === "1" || raw === "true" || raw === "on";
 }, z.boolean().optional());
 
-const pageCommonSchema = z.object({
-  contentMarkdown: z
-    .string()
-    .optional()
-    .transform((value) => value ?? ""),
-  displayInFooter: displayInFooterSchema,
-  pageId: optionalTrimmedString(),
-  slug: optionalTrimmedString(
-    255,
-    "slug は255文字以内で入力してください。"
-  ).transform((value) => normalizePageSlugInput(value)),
-  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-  title: optionalTrimmedString(
-    255,
-    "タイトルは255文字以内で入力してください。"
-  ),
-  versionId: optionalTrimmedString(),
-});
+const pageCommonSchema = (messages: AdminMessages) =>
+  z.object({
+    contentMarkdown: z
+      .string()
+      .optional()
+      .transform((value) => value ?? ""),
+    displayInFooter: displayInFooterSchema,
+    pageId: optionalTrimmedString(),
+    slug: optionalTrimmedString(
+      255,
+      getMessage(messages, "admin.pages.validation.slug_too_long")
+    ).transform((value) => normalizePageSlugInput(value)),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.pages.validation.tenant_missing")
+    ),
+    title: optionalTrimmedString(
+      255,
+      getMessage(messages, "admin.pages.validation.title_too_long")
+    ),
+    versionId: optionalTrimmedString(),
+  });
 
 const pageFormFields = {
   contentMarkdown: { kind: "value", name: "content_markdown" },
@@ -70,20 +76,26 @@ const toFailure = (
   ok: false,
 });
 
-const parsePageForm = (formData: FormData) =>
-  pageCommonSchema.safeParse(toFormDataInput(formData, pageFormFields));
+const parsePageForm = (formData: FormData, messages: AdminMessages) =>
+  pageCommonSchema(messages).safeParse(
+    toFormDataInput(formData, pageFormFields)
+  );
 
 export const createPageAction = async (
   _prevState: PageFormState,
   formData: FormData
 ): Promise<PageFormState> => {
   await assertSameOrigin();
-  const parsed = parsePageForm(formData);
+  const messages = await getActionMessages(formData);
+  const parsed = parsePageForm(formData, messages);
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error), "create");
   }
   if (!parsed.data.title) {
-    return toFailure("タイトルは必須です。", "create");
+    return toFailure(
+      getMessage(messages, "admin.pages.validation.title_required"),
+      "create"
+    );
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -125,15 +137,22 @@ export const updatePageAction = async (
   formData: FormData
 ): Promise<PageFormState> => {
   await assertSameOrigin();
-  const parsed = parsePageForm(formData);
+  const messages = await getActionMessages(formData);
+  const parsed = parsePageForm(formData, messages);
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error), "update");
   }
   if (!parsed.data.pageId) {
-    return toFailure("更新対象のページ ID が見つかりません。", "update");
+    return toFailure(
+      getMessage(messages, "admin.pages.validation.update_id_missing"),
+      "update"
+    );
   }
   if (!parsed.data.title) {
-    return toFailure("タイトルは必須です。", "update");
+    return toFailure(
+      getMessage(messages, "admin.pages.validation.title_required"),
+      "update"
+    );
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -160,12 +179,16 @@ export const createDraftVersionAction = async (
   formData: FormData
 ): Promise<PageFormState> => {
   await assertSameOrigin();
-  const parsed = parsePageForm(formData);
+  const messages = await getActionMessages(formData);
+  const parsed = parsePageForm(formData, messages);
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error), "draft");
   }
   if (!parsed.data.pageId) {
-    return toFailure("ページ ID が見つかりません。", "draft");
+    return toFailure(
+      getMessage(messages, "admin.pages.validation.id_missing"),
+      "draft"
+    );
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -187,7 +210,8 @@ export const createDraftVersionAction = async (
 
 export const publishVersionAction = async (formData: FormData) => {
   await assertSameOrigin();
-  const parsed = parsePageForm(formData);
+  const messages = await getActionMessages(formData);
+  const parsed = parsePageForm(formData, messages);
   if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
   }
@@ -212,7 +236,8 @@ export const publishVersionAction = async (formData: FormData) => {
 
 export const rollbackVersionAction = async (formData: FormData) => {
   await assertSameOrigin();
-  const parsed = parsePageForm(formData);
+  const messages = await getActionMessages(formData);
+  const parsed = parsePageForm(formData, messages);
   if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
   }

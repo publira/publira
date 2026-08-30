@@ -1,3 +1,6 @@
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -28,6 +31,7 @@ import type { SeriesListItem } from "../series-types";
 type SeriesManagerProps = CursorPageHrefs & {
   series: SeriesListItem[];
   listErrorMessage?: string;
+  locale: Locale;
   pageSize: number;
   timeZone: string;
 };
@@ -35,8 +39,13 @@ type SeriesManagerProps = CursorPageHrefs & {
 const getStatusTone = (isPublished: boolean) =>
   isPublished ? ("info" as const) : ("muted" as const);
 
-const getStatusLabel = (isPublished: boolean) =>
-  isPublished ? "公開中" : "下書き";
+const getStatusLabel = (
+  messages: ReturnType<typeof sharedCatalog>,
+  isPublished: boolean
+) =>
+  isPublished
+    ? getMessage(messages, "admin.series.published")
+    : getMessage(messages, "admin.series.draft");
 
 const excerpt = (text: string, max = 56) => {
   const normalized = text.replaceAll(/\s+/gu, " ").trim();
@@ -50,21 +59,24 @@ const excerpt = (text: string, max = 56) => {
 const SeriesListBody = ({
   hasPageLinks,
   listErrorMessage,
+  locale,
   series,
   timeZone,
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
+  locale: Locale;
   series: SeriesListItem[];
   timeZone: string;
 }) => {
+  const messages = sharedCatalog(locale);
   // A failed fetch still hands an empty `series` array; do not show the empty
   // list state alongside the error or operators will read it as "no series".
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title="シリーズ一覧を表示できませんでした"
+        title={getMessage(messages, "admin.series.list_error")}
       />
     );
   }
@@ -72,10 +84,10 @@ const SeriesListBody = ({
   if (series.length === 0) {
     return (
       <CursorPageEmptyState
-        description="新規作成ページからシリーズを作成してください。"
+        description={getMessage(messages, "admin.series.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel="シリーズ"
-        title="シリーズがまだ登録されていません。"
+        itemLabel={getMessage(messages, "admin.series.title")}
+        title={getMessage(messages, "admin.series.empty_title")}
       />
     );
   }
@@ -84,13 +96,27 @@ const SeriesListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>タイトル</TableHead>
-          <TableHead>レーベル</TableHead>
-          <TableHead className="w-44">公開日</TableHead>
-          <TableHead className="w-40">閲覧可能期間</TableHead>
-          <TableHead>概要</TableHead>
-          <TableHead className="w-32">状態</TableHead>
-          <TableHead className="w-56">操作</TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.series.columns.title")}
+          </TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.series.columns.label")}
+          </TableHead>
+          <TableHead className="w-44">
+            {getMessage(messages, "admin.series.columns.published_at")}
+          </TableHead>
+          <TableHead className="w-40">
+            {getMessage(messages, "admin.series.columns.reading_period")}
+          </TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.series.columns.synopsis")}
+          </TableHead>
+          <TableHead className="w-32">
+            {getMessage(messages, "admin.series.columns.status")}
+          </TableHead>
+          <TableHead className="w-56">
+            {getMessage(messages, "admin.series.columns.actions")}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -108,19 +134,19 @@ const SeriesListBody = ({
             <TableCell>{excerpt(item.synopsis)}</TableCell>
             <TableCell>
               <Badge tone={getStatusTone(item.isPublished)}>
-                {getStatusLabel(item.isPublished)}
+                {getStatusLabel(messages, item.isPublished)}
               </Badge>
             </TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-2">
                 <LinkButton href={`/series/${item.publicId}`} variant="outline">
-                  編集
+                  {getMessage(messages, "admin.series.edit_action")}
                 </LinkButton>
                 <LinkButton
                   href={`/series/${item.publicId}/episodes`}
                   variant="outline"
                 >
-                  エピソード
+                  {getMessage(messages, "admin.series.episodes_action")}
                 </LinkButton>
               </div>
             </TableCell>
@@ -138,7 +164,9 @@ export const SeriesManager = ({
   pageSize,
   previousHref,
   timeZone,
+  locale,
 }: SeriesManagerProps) => {
+  const messages = sharedCatalog(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -149,27 +177,36 @@ export const SeriesManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>シリーズ一覧</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.series.list_title")}
+          </CardTitle>
           <CardDescription>
-            タイトルや公開状態を確認し、必要なシリーズを編集またはエピソード管理へ進めます。
+            {getMessage(messages, "admin.series.list_description")}
           </CardDescription>
         </div>
         <LinkButton href="/series/new" variant="outline">
-          シリーズを新規作成
+          {getMessage(messages, "admin.series.new_action")}
         </LinkButton>
       </CardHeader>
       <CardContent className="grid gap-4">
         <SeriesListBody
           hasPageLinks={hasPageLinks}
           listErrorMessage={listErrorMessage}
+          locale={locale}
           series={series}
           timeZone={timeZone}
         />
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel="シリーズ一覧のページ送り"
-            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            ariaLabel={getMessage(messages, "admin.series.pagination_aria")}
+            description={getMessage(
+              messages,
+              "admin.series.pagination_description",
+              {
+                count: pageSize,
+              }
+            )}
             nextHref={nextHref}
             previousHref={previousHref}
           />

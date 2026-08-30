@@ -1,11 +1,13 @@
 "use server";
 
+import { getMessage } from "@publira/i18n";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getActionMessages } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { createEpisode, reorderEpisodePage } from "#lib/episode";
@@ -15,29 +17,45 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
+import type { AdminMessages } from "#lib/locale";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type { EpisodeActionState } from "../episode-types";
 
-const createEpisodeSchema = z.object({
-  price: nonNegativeIntFormSchema("価格は 0 以上の整数で入力してください。"),
-  publishAt: optionalTrimmedString(),
-  readingPeriodHours: nonNegativeIntFormSchema(
-    "閲覧可能期間は 0 以上の整数で入力してください。"
-  ),
-  seriesPublicId: requiredTrimmedString("シリーズ ID が見つかりません。"),
-  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-  title: requiredTrimmedString("タイトルは必須です。"),
-});
+const createEpisodeSchema = (messages: AdminMessages) =>
+  z.object({
+    price: nonNegativeIntFormSchema(
+      getMessage(messages, "admin.series.episodes.validation.price_invalid")
+    ),
+    publishAt: optionalTrimmedString(),
+    readingPeriodHours: nonNegativeIntFormSchema(
+      getMessage(
+        messages,
+        "admin.series.episodes.validation.reading_period_invalid"
+      )
+    ),
+    seriesPublicId: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.series_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.tenant_missing")
+    ),
+    title: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.title_required")
+    ),
+  });
 
-const reorderEpisodesSchema = z.object({
-  currentEpisodeIds: jsonStringArrayFormSchema,
-  orderedEpisodeIds: jsonStringArrayFormSchema,
-  seriesPublicId: requiredTrimmedString(
-    "並び順の更新に必要な情報が不足しています。"
-  ),
-  tenantId: requiredTrimmedString("並び順の更新に必要な情報が不足しています。"),
-});
+const reorderEpisodesSchema = (messages: AdminMessages) =>
+  z.object({
+    currentEpisodeIds: jsonStringArrayFormSchema,
+    orderedEpisodeIds: jsonStringArrayFormSchema,
+    seriesPublicId: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.sort_data_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.series.episodes.validation.sort_data_missing")
+    ),
+  });
 
 const toCreateFailure = (
   message: string
@@ -49,7 +67,8 @@ const toCreateFailure = (
 
 const toScheduledAt = async (
   publishAtRaw: string,
-  tenantId: string
+  tenantId: string,
+  messages: AdminMessages
 ): Promise<
   { ok: true; value: string } | ReturnType<typeof toCreateFailure>
 > => {
@@ -64,11 +83,18 @@ const toScheduledAt = async (
   const value = toInstantIsoString(publishAtRaw, timeZone);
   const parsed = parseInstant(value);
   if (!parsed) {
-    return toCreateFailure("publish_at の形式が正しくありません。");
+    return toCreateFailure(
+      getMessage(
+        messages,
+        "admin.series.episodes.validation.publish_at_invalid"
+      )
+    );
   }
 
   if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
-    return toCreateFailure("publish_at は現在時刻より未来を指定してください。");
+    return toCreateFailure(
+      getMessage(messages, "admin.series.episodes.validation.publish_at_future")
+    );
   }
 
   return { ok: true, value };
@@ -79,7 +105,8 @@ export const createEpisodeAction = async (
   formData: FormData
 ): Promise<EpisodeActionState> => {
   await assertSameOrigin();
-  const parsed = createEpisodeSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = createEpisodeSchema(messages).safeParse(
     toFormDataInput(formData, {
       price: "value",
       publishAt: { kind: "value", name: "publish_at" },
@@ -95,7 +122,8 @@ export const createEpisodeAction = async (
 
   const scheduledAt = await toScheduledAt(
     parsed.data.publishAt,
-    parsed.data.tenantId
+    parsed.data.tenantId,
+    messages
   );
   if (!scheduledAt.ok) {
     return scheduledAt;
@@ -127,7 +155,8 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   "use server";
 
   await assertSameOrigin();
-  const parsed = reorderEpisodesSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = reorderEpisodesSchema(messages).safeParse(
     toFormDataInput(formData, {
       currentEpisodeIds: { kind: "value", name: "current_episode_public_ids" },
       orderedEpisodeIds: { kind: "value", name: "ordered_episode_public_ids" },
@@ -138,7 +167,10 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
-        fallback: "並び順の更新に必要な情報が不足しています。",
+        fallback: getMessage(
+          messages,
+          "admin.series.episodes.validation.sort_data_missing"
+        ),
       }),
       ok: false,
     };
@@ -146,7 +178,10 @@ export const reorderEpisodesAction = async (formData: FormData) => {
 
   if (parsed.data.orderedEpisodeIds.length === 0) {
     return {
-      message: "並び替え対象のエピソードがありません。",
+      message: getMessage(
+        messages,
+        "admin.series.episodes.validation.no_episodes_to_sort"
+      ),
       ok: false,
     };
   }
@@ -156,7 +191,10 @@ export const reorderEpisodesAction = async (formData: FormData) => {
     parsed.data.orderedEpisodeIds.length
   ) {
     return {
-      message: "並び順の更新に必要な情報が不足しています。",
+      message: getMessage(
+        messages,
+        "admin.series.episodes.validation.sort_data_missing"
+      ),
       ok: false,
     };
   }

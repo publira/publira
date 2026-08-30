@@ -1,11 +1,13 @@
 "use server";
 
+import { getMessage } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getActionMessages } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { createCreator, updateCreator } from "#lib/creator";
 import { assertSameOrigin } from "#lib/csrf";
@@ -15,20 +17,29 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
+import type { AdminMessages } from "#lib/locale";
 
 import type { CreatorActionState, CreatorMutationMode } from "../creator-types";
 
-const creatorCommonSchema = z.object({
-  clearIconImage: flagOneFormSchema,
-  iconImage: optionalFileFormSchema,
-  name: requiredTrimmedString("名前は必須です。"),
-  profileText: optionalTrimmedString(10_000),
-  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-});
+const creatorCommonSchema = (messages: AdminMessages) =>
+  z.object({
+    clearIconImage: flagOneFormSchema,
+    iconImage: optionalFileFormSchema,
+    name: requiredTrimmedString(
+      getMessage(messages, "admin.creators.validation.name_required")
+    ),
+    profileText: optionalTrimmedString(10_000),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.creators.validation.tenant_missing")
+    ),
+  });
 
-const creatorUpdateSchema = creatorCommonSchema.extend({
-  publicId: requiredTrimmedString("更新対象の著者 ID が見つかりません。"),
-});
+const creatorUpdateSchema = (messages: AdminMessages) =>
+  creatorCommonSchema(messages).extend({
+    publicId: requiredTrimmedString(
+      getMessage(messages, "admin.creators.validation.id_missing")
+    ),
+  });
 
 const creatorFormFields = {
   clearIconImage: { kind: "value", name: "clear_icon_image" },
@@ -63,7 +74,8 @@ export const createCreatorAction = async (
   formData: FormData
 ): Promise<CreatorActionState> => {
   await assertSameOrigin();
-  const parsed = creatorCommonSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = creatorCommonSchema(messages).safeParse(
     toFormDataInput(formData, creatorFormFields)
   );
   if (!parsed.success) {
@@ -97,7 +109,8 @@ export const updateCreatorAction = async (
   formData: FormData
 ): Promise<CreatorActionState> => {
   await assertSameOrigin();
-  const parsed = creatorUpdateSchema.safeParse(
+  const messages = await getActionMessages(formData);
+  const parsed = creatorUpdateSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...creatorFormFields,
       publicId: { kind: "value", name: "public_id" },
@@ -132,7 +145,7 @@ export const updateCreatorAction = async (
 
   return {
     creator: result.creator,
-    message: "著者を更新しました。",
+    message: getMessage(messages, "admin.creators.updated"),
     mode: "update",
     ok: true,
   };

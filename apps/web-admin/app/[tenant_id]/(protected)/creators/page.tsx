@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -11,6 +13,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listCreators } from "#lib/creator";
 import {
@@ -18,14 +21,18 @@ import {
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { CreatorManager } from "./_components/creator-manager";
 
 type CreatorPageProps = PageProps<"/[tenant_id]/creators">;
 
-export const metadata: Metadata = {
-  title: "著者",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.creators.title") };
 };
 
 export const generateStaticParams = () =>
@@ -47,7 +54,10 @@ const CreatorManagerData = async ({
 }: Pick<CreatorPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const listResult = await listCreators(tenantId, { token });
+  const [listResult, locale] = await Promise.all([
+    listCreators(tenantId, { token }),
+    getLocale(tenantId),
+  ]);
 
   await redirectToLoginIfSessionRejected(listResult);
 
@@ -56,6 +66,7 @@ const CreatorManagerData = async ({
       {...cursorPageHrefs(listResult)}
       creators={listResult.creators}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
+      locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
     />
   );
@@ -66,9 +77,15 @@ const CreatorPage = ({ searchParams }: CreatorPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>著者</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+            <Message message="admin.creators.title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          著者一覧の確認と、編集への遷移を行います。
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.creators.page_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

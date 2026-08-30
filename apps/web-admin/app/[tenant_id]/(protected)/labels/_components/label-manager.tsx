@@ -1,3 +1,6 @@
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -27,6 +30,7 @@ import type { LabelListItem } from "../label-types";
 type LabelManagerProps = CursorPageHrefs & {
   labels: LabelListItem[];
   listErrorMessage?: string;
+  locale: Locale;
   pageSize: number;
 };
 
@@ -34,18 +38,21 @@ const LabelListBody = ({
   hasPageLinks,
   labels,
   listErrorMessage,
+  locale,
 }: {
   hasPageLinks: boolean;
   labels: LabelListItem[];
   listErrorMessage?: string;
+  locale: Locale;
 }) => {
+  const messages = sharedCatalog(locale);
   // A failed fetch still hands an empty `labels` array; do not show the empty
   // list state alongside the error or operators will read it as "no labels".
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title="レーベル一覧を表示できませんでした"
+        title={getMessage(messages, "admin.labels.list_error")}
       />
     );
   }
@@ -53,10 +60,10 @@ const LabelListBody = ({
   if (labels.length === 0) {
     return (
       <CursorPageEmptyState
-        description="新規作成ページからレーベルを作成してください。"
+        description={getMessage(messages, "admin.labels.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel="レーベル"
-        title="レーベルがまだ登録されていません。"
+        itemLabel={getMessage(messages, "admin.labels.title")}
+        title={getMessage(messages, "admin.labels.empty_title")}
       />
     );
   }
@@ -65,8 +72,12 @@ const LabelListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>レーベル名</TableHead>
-          <TableHead className="w-56">操作</TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.labels.columns.name")}
+          </TableHead>
+          <TableHead className="w-56">
+            {getMessage(messages, "admin.labels.columns.actions")}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -79,7 +90,7 @@ const LabelListBody = ({
                   render={<Link href={`/labels/${label.publicId}`} />}
                   variant="outline"
                 >
-                  編集
+                  {getMessage(messages, "admin.labels.edit_action")}
                 </LinkButton>
               </div>
             </TableCell>
@@ -96,7 +107,9 @@ export const LabelManager = ({
   nextHref,
   pageSize,
   previousHref,
+  locale,
 }: LabelManagerProps) => {
+  const messages = sharedCatalog(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -107,13 +120,15 @@ export const LabelManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>レーベル一覧</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.labels.list_title")}
+          </CardTitle>
           <CardDescription>
-            レーベル名を確認し、必要な項目を編集します。
+            {getMessage(messages, "admin.labels.list_description")}
           </CardDescription>
         </div>
         <LinkButton render={<Link href="/labels/new" />} variant="outline">
-          レーベルを新規作成
+          {getMessage(messages, "admin.labels.new_action")}
         </LinkButton>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -121,12 +136,19 @@ export const LabelManager = ({
           hasPageLinks={hasPageLinks}
           labels={labels}
           listErrorMessage={listErrorMessage}
+          locale={locale}
         />
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel="レーベル一覧のページ送り"
-            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            ariaLabel={getMessage(messages, "admin.labels.pagination_aria")}
+            description={getMessage(
+              messages,
+              "admin.labels.pagination_description",
+              {
+                count: pageSize,
+              }
+            )}
             nextHref={nextHref}
             previousHref={previousHref}
           />

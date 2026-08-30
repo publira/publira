@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -27,13 +28,17 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getCreator } from "#lib/creator";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { CreatorForm } from "../_components/creator-form";
 import { updateCreatorAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "著者編集",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.creators.edit_title") };
 };
 
 export const generateStaticParams = () =>
@@ -88,11 +93,11 @@ const EditCreatorFormData = async ({
       <SectionError
         actions={
           <LinkButton render={<Link href="/creators" />} variant="outline">
-            一覧へ戻る
+            <Message message="admin.creators.back_to_list" />
           </LinkButton>
         }
         description={result.message}
-        title="著者を表示できませんでした"
+        title={<Message message="admin.creators.detail_error" />}
       />
     );
   }
@@ -111,17 +116,23 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>著者編集</AdminPageTitle>
-        <AdminPageDescription>著者の情報を編集します。</AdminPageDescription>
+        <AdminPageTitle>
+          <Message message="admin.creators.edit_title" />
+        </AdminPageTitle>
+        <AdminPageDescription>
+          <Message message="admin.creators.edit_description" />
+        </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/creators" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.creators.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
-      <FlashToast title="著者を作成しました。" />
+      <FlashToast message="admin.creators.created" />
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>

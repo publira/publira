@@ -4,8 +4,10 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { AdminLayout } from "#components/admin-layout";
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 import { AdminToastProvider } from "#components/admin-toast-provider";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getLocale } from "#lib/locale";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeLogo } from "#lib/theme-settings";
@@ -15,9 +17,10 @@ const AdminLayoutSkeleton = () => <ConsoleLayoutSkeleton />;
 const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   const tenantId = await getTenantId();
 
-  const [result, logo] = await Promise.all([
+  const [result, logo, locale] = await Promise.all([
     getTenantForSession(tenantId),
     getTenantThemeLogo(tenantId),
+    getLocale(tenantId),
   ]);
   if (!result.ok) {
     // The proxy let this request in on a cookie the API has since rejected,
@@ -29,9 +32,11 @@ const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AdminLayout logo={logo} tenant={result.tenant} tenantId={tenantId}>
-      <AdminToastProvider>{children}</AdminToastProvider>
-    </AdminLayout>
+    <AdminLocaleProvider locale={locale}>
+      <AdminLayout logo={logo} tenant={result.tenant} tenantId={tenantId}>
+        <AdminToastProvider>{children}</AdminToastProvider>
+      </AdminLayout>
+    </AdminLocaleProvider>
   );
 };
 

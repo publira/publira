@@ -1,6 +1,8 @@
 import { LinkButton } from "@publira/ui-components/button";
 import Link from "next/link";
 
+import { Message } from "#components/message";
+
 interface LabelTabNavProps {
   current: "basic" | "eye-catch";
   labelId: string;
@@ -12,13 +14,13 @@ export const LabelTabNav = ({ current, labelId }: LabelTabNavProps) => (
       render={<Link href={`/labels/${labelId}`} />}
       variant={current === "basic" ? "default" : "outline"}
     >
-      基本情報
+      <Message message="admin.labels.basic_tab" />
     </LinkButton>
     <LinkButton
       render={<Link href={`/labels/${labelId}?tab=eye-catch`} />}
       variant={current === "eye-catch" ? "default" : "outline"}
     >
-      アイキャッチ
+      <Message message="admin.labels.eye_catch_tab" />
     </LinkButton>
   </div>
 );

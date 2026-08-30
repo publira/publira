@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -18,8 +20,9 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
 import Image from "next/image";
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useState, useContext } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { CreatorActionState, CreatorListItem } from "../creator-types";
@@ -46,16 +49,23 @@ const IconImageField = ({
   isUpdate,
   onClearIconImageChange,
 }: IconImageFieldProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const iconImageUrl = initialCreator?.iconImageUrl ?? "";
   const hasExistingIconImage = iconImageUrl.length > 0;
 
   return (
     <Field>
-      <FieldLabel>著者アイコン画像</FieldLabel>
+      <FieldLabel>
+        {getMessage(messages, "admin.creators.form.icon")}
+      </FieldLabel>
       <FieldContent>
         {hasExistingIconImage && !clearIconImage ? (
           <Image
-            alt="現在の著者アイコン"
+            alt={getMessage(messages, "admin.creators.form.current_icon_alt")}
             className="size-20 rounded-full border object-cover"
             height={80}
             src={iconImageUrl}
@@ -74,7 +84,7 @@ const IconImageField = ({
               onChange={onClearIconImageChange}
               type="checkbox"
             />
-            現在のアイコン画像を削除する
+            {getMessage(messages, "admin.creators.form.clear_icon")}
           </label>
         ) : null}
         <input
@@ -83,7 +93,7 @@ const IconImageField = ({
           value={clearIconImage ? "1" : "0"}
         />
         <FieldDescription>
-          JPEG/PNG/WebP、10MB以下、256x256px以上の画像を選択してください。
+          {getMessage(messages, "admin.creators.form.icon_description")}
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -95,6 +105,11 @@ export const CreatorForm = ({
   action,
   initialCreator,
 }: CreatorFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const initialName = initialCreator?.name ?? "";
@@ -142,22 +157,26 @@ export const CreatorForm = ({
   );
 
   const isUpdate = mode === "update";
-  let submitLabel = "著者を作成";
+  let submitLabel = getMessage(messages, "admin.creators.form.create");
   if (isUpdate) {
-    submitLabel = "著者を更新";
+    submitLabel = getMessage(messages, "admin.creators.form.update");
   }
   if (isPending) {
-    submitLabel = "送信中...";
+    submitLabel = getMessage(messages, "admin.creators.form.submitting");
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isUpdate ? "著者情報" : "新規著者"}</CardTitle>
+        <CardTitle>
+          {isUpdate
+            ? getMessage(messages, "admin.creators.form.update_card_title")
+            : getMessage(messages, "admin.creators.form.create_card_title")}
+        </CardTitle>
         <CardDescription>
           {isUpdate
-            ? "名前とプロフィールを編集します。"
-            : "名前とプロフィールを入力してください。"}
+            ? getMessage(messages, "admin.creators.form.update_description")
+            : getMessage(messages, "admin.creators.form.create_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -170,12 +189,17 @@ export const CreatorForm = ({
           />
 
           <Field>
-            <FieldLabel required>名前</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.creators.form.name")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 name="name"
                 onChange={handleNameChange}
-                placeholder="例: 太郎"
+                placeholder={getMessage(
+                  messages,
+                  "admin.creators.form.name_placeholder"
+                )}
                 required
                 type="text"
                 value={name}
@@ -184,17 +208,25 @@ export const CreatorForm = ({
           </Field>
 
           <Field>
-            <FieldLabel>プロフィール</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.creators.form.profile")}
+            </FieldLabel>
             <FieldContent>
               <Textarea
                 name="profile_text"
                 onChange={handleProfileTextChange}
-                placeholder="著者の紹介文を入力"
+                placeholder={getMessage(
+                  messages,
+                  "admin.creators.form.profile_placeholder"
+                )}
                 rows={5}
                 value={profileText}
               />
               <FieldDescription>
-                著者の自己紹介や経歴などを記入できます。
+                {getMessage(
+                  messages,
+                  "admin.creators.form.profile_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>

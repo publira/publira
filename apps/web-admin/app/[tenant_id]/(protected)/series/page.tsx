@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -11,12 +13,14 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -25,8 +29,11 @@ import { SeriesManager } from "./_components/series-manager";
 
 type SeriesPageProps = PageProps<"/[tenant_id]/series">;
 
-export const metadata: Metadata = {
-  title: "シリーズ",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.series.title") };
 };
 
 export const generateStaticParams = () =>
@@ -48,8 +55,9 @@ const SeriesManagerData = async ({
 }: Pick<SeriesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const [listResult, timeZone] = await Promise.all([
+  const [listResult, locale, timeZone] = await Promise.all([
     listSeries(tenantId, { token }),
+    getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -59,6 +67,7 @@ const SeriesManagerData = async ({
     <SeriesManager
       {...cursorPageHrefs(listResult)}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
+      locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
       series={listResult.series}
       timeZone={timeZone}
@@ -71,9 +80,15 @@ const SeriesPage = ({ searchParams }: SeriesPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>シリーズ</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+            <Message message="admin.series.title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          シリーズ一覧の確認と、編集・エピソード管理への遷移を行います。
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.series.page_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

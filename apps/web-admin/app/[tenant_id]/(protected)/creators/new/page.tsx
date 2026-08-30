@@ -1,4 +1,6 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -14,12 +16,17 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 
 import { CreatorForm } from "../_components/creator-form";
 import { createCreatorAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "著者新規作成",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.creators.new_title") };
 };
 
 export const generateStaticParams = () =>
@@ -44,12 +51,22 @@ const NewCreatorPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>著者新規作成</AdminPageTitle>
-        <AdminPageDescription>新しい著者を登録します。</AdminPageDescription>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.creators.new_title" />
+          </Suspense>
+        </AdminPageTitle>
+        <AdminPageDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.creators.new_description" />
+          </Suspense>
+        </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/creators" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.creators.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

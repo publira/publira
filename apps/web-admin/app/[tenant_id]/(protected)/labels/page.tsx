@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -11,6 +13,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
@@ -18,14 +21,18 @@ import {
   parseCursorSearchParams,
 } from "#lib/cursor-page";
 import { listLabels } from "#lib/label";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { LabelManager } from "./_components/label-manager";
 
 type LabelPageProps = PageProps<"/[tenant_id]/labels">;
 
-export const metadata: Metadata = {
-  title: "レーベル",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.labels.title") };
 };
 
 export const generateStaticParams = () =>
@@ -47,7 +54,10 @@ const LabelManagerData = async ({
 }: Pick<LabelPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const listResult = await listLabels(tenantId, { token });
+  const [listResult, locale] = await Promise.all([
+    listLabels(tenantId, { token }),
+    getLocale(tenantId),
+  ]);
 
   await redirectToLoginIfSessionRejected(listResult);
 
@@ -56,6 +66,7 @@ const LabelManagerData = async ({
       {...cursorPageHrefs(listResult)}
       labels={listResult.labels}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
+      locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
     />
   );
@@ -66,9 +77,15 @@ const LabelPage = ({ searchParams }: LabelPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>レーベル</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+            <Message message="admin.labels.title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          レーベル一覧の確認と、編集への遷移を行います。
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.labels.page_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

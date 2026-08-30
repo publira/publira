@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -28,6 +29,7 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { getLabel } from "#lib/label";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { LabelEyeCatchForm } from "../_components/label-eye-catch-form";
@@ -49,8 +51,11 @@ const editLabelParamsSchema = z.object({
   label_public_id: routeParamString(),
 });
 
-export const metadata: Metadata = {
-  title: "レーベル編集",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.labels.edit_title") };
 };
 
 export const generateStaticParams = () =>
@@ -73,18 +78,22 @@ const EditLabelTitle = async ({
   searchParams,
 }: Pick<EditLabelPageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
-  return activeTab === "eye-catch"
-    ? "レーベルのアイキャッチを編集"
-    : "レーベル編集";
+  return activeTab === "eye-catch" ? (
+    <Message message="admin.labels.eye_catch_title" />
+  ) : (
+    <Message message="admin.labels.edit_title" />
+  );
 };
 
 const EditLabelDescription = async ({
   searchParams,
 }: Pick<EditLabelPageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
-  return activeTab === "eye-catch"
-    ? "アイキャッチ画像の差し替え・削除を行います。"
-    : "レーベル情報を編集します。";
+  return activeTab === "eye-catch" ? (
+    <Message message="admin.labels.eye_catch_description" />
+  ) : (
+    <Message message="admin.labels.edit_description" />
+  );
 };
 
 const EditLabelTabNav = async ({
@@ -137,11 +146,11 @@ const EditLabelFormData = async ({
       <SectionError
         actions={
           <LinkButton render={<Link href="/labels" />} variant="outline">
-            一覧へ戻る
+            <Message message="admin.labels.back_to_list" />
           </LinkButton>
         }
         description={result.message}
-        title="レーベルを表示できませんでした"
+        title={<Message message="admin.labels.detail_error" />}
       />
     );
   }
@@ -182,12 +191,14 @@ const EditLabelPage = ({ params, searchParams }: EditLabelPageProps) => (
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/labels" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.labels.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
-      <FlashToast title="レーベルを作成しました。" />
+      <FlashToast message="admin.labels.created" />
       <div className="grid gap-6">
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditLabelTabNav params={params} searchParams={searchParams} />
