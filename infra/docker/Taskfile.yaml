@@ -133,6 +133,8 @@ tasks:
         vars: { CMD_NAME: outbox-worker, PORT: "8003" }
       - task: build:batch
         vars: { CMD_NAME: publish-episodes }
+      - task: build:batch
+        vars: { CMD_NAME: aggregate-content-stats }
       - task: build:node
         vars: { APP_NAME: email-renderer, PORT: "8080" }
       - task: build:image

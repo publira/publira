@@ -229,11 +229,15 @@ show_profile() {
 }
 
 print_env() {
-  local name="$1" key
+  local name="$1" key profile_path
   dev_env_load_profile "${name}"
-  for key in $(awk -F= '/^[A-Z0-9_]+=/{print $1}' "$(dev_env_profile_path "${name}")"); do
+  profile_path="$(dev_env_profile_path "${name}")"
+  for key in $(awk -F= '/^[A-Z0-9_]+=/{print $1}' "${profile_path}"); do
     printf 'export %s=%q\n' "${key}" "${!key}"
   done
+  if ! dev_env_profile_value "${profile_path}" PUBLIRA_CONTENT_STATS_DB_URL >/dev/null; then
+    printf 'export PUBLIRA_CONTENT_STATS_DB_URL=%q\n' "${PUBLIRA_CONTENT_STATS_DB_URL}"
+  fi
 }
 
 list_profiles() {

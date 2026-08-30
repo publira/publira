@@ -146,6 +146,7 @@ dev_env_write_profile() {
     printf 'PUBLIRA_ADMIN_DB_URL=postgres://publira_admin:adminpass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
     printf 'PUBLIRA_PLATFORM_DB_URL=postgres://publira_platform:platformpass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
     printf 'PUBLIRA_WORKER_DB_URL=postgres://postgres:password@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
+    printf 'PUBLIRA_CONTENT_STATS_DB_URL=postgres://publira_content_stats:contentstatspass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
     printf 'PUBLIRA_IMAGE_DB_URL=postgres://publira_public:publicpass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
     printf 'PUBLIRA_ADMIN_IMAGE_DB_URL=postgres://publira_admin:adminpass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
     printf 'PUBLIRA_REDIS_URL=redis://redis:6379/%s\n' "${slot}"
@@ -211,6 +212,19 @@ dev_env_load_profile() {
     PUBLIRA_PLATFORM_APP_URL PUBLIRA_EMAIL_RENDERER_URL; do
     dev_env_load_required_profile_value "${profile_path}" "${key}"
   done
+
+  # Profiles created before the stats batch used the superuser worker URL for
+  # all workers. Keep them usable while new profiles receive the narrower
+  # dedicated BYPASSRLS login above.
+  local content_stats_url
+  if ! content_stats_url="$(dev_env_profile_value "${profile_path}" PUBLIRA_CONTENT_STATS_DB_URL)"; then
+    PUBLIRA_CONTENT_STATS_DB_URL="${PUBLIRA_WORKER_DB_URL}"
+  elif [[ -z "${content_stats_url}" ]]; then
+    dev_env_die "profile has an empty PUBLIRA_CONTENT_STATS_DB_URL: ${profile_path}"
+  else
+    PUBLIRA_CONTENT_STATS_DB_URL="${content_stats_url}"
+  fi
+  export PUBLIRA_CONTENT_STATS_DB_URL
 }
 
 dev_env_selected_profile() {

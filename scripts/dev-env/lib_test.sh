@@ -28,7 +28,7 @@ dev_env_write_profile "bravo" 2
 alpha_path="$(dev_env_profile_path alpha)"
 bravo_path="$(dev_env_profile_path bravo)"
 
-for key in PUBLIRA_DB_URL PUBLIRA_REDIS_URL PUBLIRA_S3_BUCKET PUBLIRA_COOKIE_SUFFIX PUBLIRA_WEB_HOST_PORT; do
+for key in PUBLIRA_DB_URL PUBLIRA_CONTENT_STATS_DB_URL PUBLIRA_REDIS_URL PUBLIRA_S3_BUCKET PUBLIRA_COOKIE_SUFFIX PUBLIRA_WEB_HOST_PORT; do
   alpha_value="$(dev_env_profile_value "${alpha_path}" "${key}")"
   bravo_value="$(dev_env_profile_value "${bravo_path}" "${key}")"
   [[ "${alpha_value}" != "${bravo_value}" ]] || fail "${key} is shared by alpha and bravo"
