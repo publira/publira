@@ -14,6 +14,7 @@ server/
 │   ├── admin-image-server/ # 管理向け画像配送
 │   ├── aggregate-content-stats/ # 日次コンテンツ統計の完全再集計バッチ
 │   ├── publish-episodes/  # 予約公開バッチ
+│   ├── purge-content-events/ # 閲覧イベントの保持期限パージバッチ
 │   └── outbox-worker/     # Outbox + River 常駐ワーカー
 ├── bin/                   # task build で生成されるバイナリ
 ├── gen/                   # buf 自動生成コード (編集禁止)
@@ -27,6 +28,7 @@ server/
 - マルチテナント運用の API 提供
 - コンテンツ入稿/公開に関する業務ロジック
 - 日次コンテンツ統計の完全再集計
+- 閲覧イベントの保持期限パージ
 - 予約公開バッチ (公開状態への遷移)
 - 認証・セキュリティ基盤
 
@@ -78,6 +80,7 @@ task server:test
 - 管理画像サーバー: [cmd/admin-image-server/README.md](cmd/admin-image-server/README.md)
 - 日次コンテンツ統計バッチ: [cmd/aggregate-content-stats/README.md](cmd/aggregate-content-stats/README.md)
 - 予約公開バッチ: [cmd/publish-episodes/README.md](cmd/publish-episodes/README.md)
+- 閲覧イベントパージバッチ: [cmd/purge-content-events/README.md](cmd/purge-content-events/README.md)
 - Outbox ワーカー: [cmd/outbox-worker/README.md](cmd/outbox-worker/README.md)
 
 ## Graceful shutdown
@@ -231,7 +234,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 | キー | 値 |
 | --- | --- |
-| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-aggregate-content-stats` / `publira-publish-episodes` / `publira-outbox-worker`）。`OTEL_SERVICE_NAME` で上書き可能 |
+| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-aggregate-content-stats` / `publira-purge-content-events` / `publira-publish-episodes` / `publira-outbox-worker`）。`OTEL_SERVICE_NAME` で上書き可能 |
 | `service.version` | ビルド時に埋め込んだ version。無ければチェックアウトの VCS リビジョン、それも無ければ `dev`（`internal/buildinfo`） |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`。未設定なら `development` |
 
@@ -416,6 +419,7 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 | api (public) | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
 | outbox-worker | BYPASSRLS 相当（ローカルは superuser） | `PUBLIRA_WORKER_DB_URL`（未設定時 `PUBLIRA_DB_URL`） | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
 | aggregate-content-stats | `publira_content_stats`（BYPASSRLS） | `PUBLIRA_CONTENT_STATS_DB_URL`（未設定時 `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL`） | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| purge-content-events | `publira_content_stats`（BYPASSRLS） | `PUBLIRA_CONTENT_EVENTS_DB_URL`（未設定時 `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL`） | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 
 `publira_platform` と `publira_content_stats` は BYPASSRLS 属性を持ち、全テナントのデータに横断アクセスします。 `publira_admin` / `publira_public` は RLS が有効で、テナント ID でスコープされます。
 

@@ -148,6 +148,10 @@ docker build -f infra/docker/batch/Dockerfile \
   --build-arg CMD_NAME=aggregate-content-stats \
   -t publira/aggregate-content-stats:local .
 
+docker build -f infra/docker/batch/Dockerfile \
+  --build-arg CMD_NAME=purge-content-events \
+  -t publira/purge-content-events:local .
+
 # Node
 docker build -f infra/docker/node/Dockerfile \
   --build-arg APP_NAME=email-renderer --build-arg PORT=8080 \
