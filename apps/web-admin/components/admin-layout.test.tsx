@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getAdminCurrentUser } from "../lib/admin-auth";
 import { getLocale } from "../lib/locale";
 import { AdminLayout, AdminUser } from "./admin-layout";
+import { AdminLocaleSwitcher } from "./locale-switcher";
 
 // 代替テキストの解決は `admin-brand-logo.test.tsx` が見る。ここではロゴが
 // ヘッダとサイドバーの両方に置かれることだけを確かめたい。
@@ -122,6 +123,22 @@ describe("AdminUser", () => {
       });
 
       render(await AdminUser({ logoutAction: () => Promise.resolve() }));
+
+      expect(screen.getByRole("button", { name: expected })).toBeDefined();
+    }
+  );
+});
+
+describe("AdminLocaleSwitcher", () => {
+  it.each([
+    ["ja", "表示言語: 日本語"],
+    ["en", "Display language: English"],
+  ] as const)(
+    "%s の現在の表示言語をヘッダートリガーに示す",
+    async (locale, expected) => {
+      vi.mocked(getLocale).mockResolvedValue(locale);
+
+      render(await AdminLocaleSwitcher({ tenantId: "tenant-id" }));
 
       expect(screen.getByRole("button", { name: expected })).toBeDefined();
     }

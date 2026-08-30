@@ -2,6 +2,12 @@
 
 import { getLocales, getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@publira/ui-components/popover";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -40,7 +46,10 @@ const LOCALE_LABELS = {
  */
 /** Same footprint as the rendered control, so the header does not shift. */
 export const LocaleSwitcherSkeleton = () => (
-  <div aria-hidden="true" className="h-6 w-24 animate-pulse rounded bg-muted" />
+  <div
+    aria-hidden="true"
+    className="h-9 w-24 animate-pulse rounded-full bg-muted"
+  />
 );
 
 export const LocaleSwitcher = () => {
@@ -49,31 +58,43 @@ export const LocaleSwitcher = () => {
   const messages = useHostMessages();
   const barePathname = toBarePathname(usePathname());
 
-  return (
-    <nav
-      aria-label={getMessage(messages, "host.nav.locale_switcher")}
-      className="flex items-center gap-1 text-xs"
-    >
-      {getLocales().map((locale) => {
-        const current = locale === currentLocale;
+  const label = getMessage(messages, "host.nav.locale_switcher");
 
-        return (
-          <Link
-            aria-current={current ? "true" : undefined}
-            className={
-              current
-                ? "rounded px-1.5 py-1 font-medium text-foreground"
-                : "rounded px-1.5 py-1 text-muted-foreground transition-colors hover:text-foreground"
-            }
-            href={withLocalePrefix(locale, defaultLocale, barePathname)}
-            hrefLang={locale}
-            key={locale}
-            lang={locale}
-          >
-            {LOCALE_LABELS[locale]}
-          </Link>
-        );
-      })}
-    </nav>
+  return (
+    <Popover>
+      <PopoverTrigger
+        aria-label={`${label}: ${LOCALE_LABELS[currentLocale]}`}
+        className="inline-flex h-9 max-w-28 items-center rounded-full border border-border/70 bg-card px-3 text-sm font-medium text-foreground transition-colors hover:border-border hover:bg-muted data-popup-open:bg-muted"
+      >
+        <span className="truncate">{LOCALE_LABELS[currentLocale]}</span>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-48" sideOffset={8}>
+        <PopoverTitle className="px-2 py-1.5 text-sm font-medium text-foreground">
+          {label}
+        </PopoverTitle>
+        <div className="grid gap-0.5">
+          {getLocales().map((locale) => {
+            const current = locale === currentLocale;
+
+            return (
+              <Link
+                aria-current={current ? "true" : undefined}
+                className={
+                  current
+                    ? "rounded-xl bg-muted px-3 py-2 text-sm font-medium text-foreground"
+                    : "rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:outline-hidden"
+                }
+                href={withLocalePrefix(locale, defaultLocale, barePathname)}
+                hrefLang={locale}
+                key={locale}
+                lang={locale}
+              >
+                {LOCALE_LABELS[locale]}
+              </Link>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };

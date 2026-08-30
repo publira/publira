@@ -67,6 +67,10 @@
       "types": "./dist/link-button/index.d.mts",
       "default": "./dist/link-button/index.mjs"
     },
+    "./locale-switcher": {
+      "types": "./dist/locale-switcher/index.d.mts",
+      "default": "./dist/locale-switcher/index.mjs"
+    },
     "./radio-group": {
       "types": "./dist/radio-group/index.d.mts",
       "default": "./dist/radio-group/index.mjs"

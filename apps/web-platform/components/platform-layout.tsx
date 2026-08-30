@@ -54,6 +54,7 @@ import {
   listNotifications,
 } from "../lib/notification";
 import { getOperatorRoleLabel } from "../lib/operator-labels";
+import { PlatformLocaleSwitcher } from "./locale-switcher";
 import { Message } from "./message";
 import {
   NotificationBell,
@@ -316,6 +317,11 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
           </ConsoleHeaderText>
         </ConsoleHeaderContext>
         <ConsoleHeaderActions>
+          <Suspense
+            fallback={<SkeletonLine className="h-9 w-24 rounded-full" />}
+          >
+            <PlatformLocaleSwitcher />
+          </Suspense>
           <NotificationBellErrorBoundary>
             <Suspense fallback={<NotificationBellSkeleton />}>
               <PlatformNotificationBell />
