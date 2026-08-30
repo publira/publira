@@ -106,11 +106,6 @@ for (const locale of locales) {
   checkCatalog(locale.code);
 }
 
-const source = "ja";
-if (!codes.has(source)) {
-  fail("locales must include ja as the catalog key source");
-}
-
 const catalogCodes = new Set(
   readdirSync(path.resolve(root, "locales"), { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
@@ -131,12 +126,18 @@ const imports = locales
       `import ${code} from "../../../../locales/${code}.json" with { type: "json" };`
   )
   .join(newline);
+const typeImports = locales
+  .map(
+    ({ code }) => `import type ${code} from "../../../../locales/${code}.json";`
+  )
+  .join(newline);
 const dynamicImports = locales
   .map(
     ({ code }) =>
       `  ${code}: () => import("../../../../locales/${code}.json", { with: { type: "json" } }),`
   )
   .join(newline);
+const catalogTypes = locales.map(({ code }) => `typeof ${code}`).join(" | ");
 const codesLiteral = locales.map(({ code }) => quote(code)).join(", ");
 const localeDetails = locales
   .map(
@@ -145,15 +146,12 @@ const localeDetails = locales
   )
   .join(newline);
 const catalogEntries = locales
-  .map(({ code }) =>
-    code === source ? `  ${code},` : `  ${code}: ${code}MatchesSource,`
-  )
+  .map(({ code }) => `  ${code}: ${code}MatchesCatalogs,`)
   .join(newline);
 const exactCatalogs = locales
-  .filter(({ code }) => code !== source)
   .map(
     ({ code }) =>
-      `const ${code}MatchesSource: ExactCatalog<typeof ${code}, LocaleMessages> = ${code};`
+      `const ${code}MatchesCatalogs: ExactCatalog<typeof ${code}, LocaleMessages> = ${code};`
   )
   .join(newline);
 const goCodes = locales.map(({ code }) => quote(code)).join(", ");
@@ -167,7 +165,11 @@ const files = new Map([
   ],
   [
     "packages/i18n/src/gen/locale-catalogs.ts",
-    `${generatedHeader}${newline}${newline}${imports}${newline}${newline}import type { ExactCatalog } from "../i18n";${newline}import type { Locale } from "./locale-registry";${newline}${newline}export type LocaleMessages = typeof ${source};${newline}${newline}${exactCatalogs}${newline}${newline}export const CATALOGS = {${newline}${catalogEntries}${newline}} as const satisfies Record<Locale, LocaleMessages>;${newline}`,
+    `${generatedHeader}${newline}${newline}${imports}${newline}${newline}import type { ExactCatalog } from "../i18n";${newline}import type { Locale } from "./locale-registry";${newline}${newline}export type LocaleMessages = ${catalogTypes};${newline}${newline}${exactCatalogs}${newline}${newline}export const CATALOGS = {${newline}${catalogEntries}${newline}} as const satisfies Record<Locale, LocaleMessages>;${newline}`,
+  ],
+  [
+    "packages/i18n/src/gen/locale-message-types.d.ts",
+    `${generatedHeader}${newline}${newline}import type { Locale, MessageKey } from "../../dist/index.mjs";${newline}${newline}${typeImports}${newline}${newline}export type SharedMessages = ${catalogTypes};${newline}${newline}export declare const sharedCatalog: (${newline}  locale?: Locale | string${newline}) => SharedMessages;${newline}${newline}export declare const sharedMessage: (${newline}  key: MessageKey<SharedMessages>,${newline}  locale?: Locale | string${newline}) => string;${newline}${newline}export { sharedRpcErrorMessage } from "../../dist/catalog.mjs";${newline}export type { SharedRpcDisposition } from "../../dist/catalog.mjs";${newline}`,
   ],
   [
     "packages/i18n/src/gen/locale-messages.ts",

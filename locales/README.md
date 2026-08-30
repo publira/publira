@@ -2,15 +2,15 @@
 
 サーバー（Go）、Web（Next.js）、モバイル（Flutter）が同じファイルを読む、共有メッセージカタログです。
 
-形式は JSON です。`ja.json` を型とキーの正とし、他ロケール（初版は `en.json`）は同じキー集合を持ちます。欠けるキーも余るキーもコンパイルエラーにします。
+形式は JSON です。すべてのロケールが同じキー集合を持ち、欠けるキーも余るキーもコンパイルエラーにします。
 
 ## ファイル
 
 | ファイル | 役割 |
 | --- | --- |
 | `index.json` | 対応言語、表示名、`Intl` 用 BCP 47 タグの唯一の手編集レジストリ |
-| `ja.json` | 正本。キーと入れ子の形はここが基準 |
-| `en.json` | `ja.json` と同じキー。訳だけが違う |
+| `ja.json` | 日本語のカタログ |
+| `en.json` | 英語のカタログ |
 
 葉は必ず文字列です。
 
@@ -111,16 +111,15 @@ raw, err := files.ReadFile(locale + ".json")
 
 ## キーを足すとき
 
-1. `ja.json` にキーを足す
-2. 同じキーを `en.json` にも足す（訳が未定なら英語でも、空文字にはしない）
-3. `pnpm locales:check` が通ることを確認する（葉が simple message として妥当か検査される）
-4. `pnpm --filter @publira/i18n typecheck` が通ることを確認する（`ExactCatalog` の検査が `packages/i18n` のテストから掛かる）
+1. すべてのロケールの JSON に同じキーを足す（訳が未定でも空文字にはしない）
+2. `pnpm locales:check` が通ることを確認する（葉が simple message として妥当か検査される）
+3. `pnpm --filter @publira/i18n typecheck` が通ることを確認する（`ExactCatalog` の検査が `packages/i18n` のテストから掛かる）
 
 ## ロケールを増やすとき
 
 手編集する一覧は `index.json` だけです。TypeScript の静的 import マップと Go の許可リストは生成物なので、個別に編集しません。
 
-1. このディレクトリに `<code>.json` を足し、上の「キーを足すとき」どおり `ja.json` と同じキーにする
+1. このディレクトリに `<code>.json` を足し、既存のすべてのカタログと同じキーにする
 2. `index.json` の `locales` に `{ "code": "<code>", "label": "…", "intl": "…" }` を足す
 3. `pnpm locales:generate` を実行して生成物を更新する
 4. `pnpm preflight` と `task server:test-short` を実行する
