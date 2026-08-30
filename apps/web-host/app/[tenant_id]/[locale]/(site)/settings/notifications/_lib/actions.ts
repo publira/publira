@@ -15,19 +15,24 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
-import { withLocalePrefix } from "#lib/locale-path";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const NOTIFICATION_SETTINGS_RETURN_TO = "/settings/notifications";
 
-const buildSettingsPath = (
+const buildSettingsPath = async (
   locale: Locale,
+  tenantId: string,
   status: "success" | "error",
   message: string
-) => {
+): Promise<string> => {
   const params = new URLSearchParams({ message, status });
-  const path = withLocalePrefix(locale, NOTIFICATION_SETTINGS_RETURN_TO);
+  const path = await tenantLocalePath(
+    tenantId,
+    locale,
+    NOTIFICATION_SETTINGS_RETURN_TO
+  );
   return `${path}?${params.toString()}`;
 };
 
@@ -62,19 +67,20 @@ export const updateNotificationSettingsAction = async (
     })
   );
   if (!parsed.success) {
-    redirect(
-      buildSettingsPath(
-        submittedLocale,
-        "error",
-        toFormErrorMessage(parsed.error, { locale: submittedLocale })
-      )
+    const errorPath = await buildSettingsPath(
+      submittedLocale,
+      String(formData.get("tenantId") ?? ""),
+      "error",
+      toFormErrorMessage(parsed.error, { locale: submittedLocale })
     );
+    redirect(errorPath);
   }
 
   const { emailNotificationsEnabled, locale, tenantId } = parsed.data;
   const accessToken = await requirePublicSession(
     locale,
-    NOTIFICATION_SETTINGS_RETURN_TO
+    NOTIFICATION_SETTINGS_RETURN_TO,
+    tenantId
   );
   const updated = await withPublicSessionReauth(
     locale,
@@ -84,23 +90,24 @@ export const updateNotificationSettingsAction = async (
         tenantId,
         emailNotificationsEnabled,
         accessToken
-      )
+      ),
+    tenantId
   );
   if (!updated) {
-    redirect(
-      buildSettingsPath(
-        locale,
-        "error",
-        getMessage(messages, "host.settings.email_notifications_update_failed")
-      )
+    const errorPath = await buildSettingsPath(
+      locale,
+      tenantId,
+      "error",
+      getMessage(messages, "host.settings.email_notifications_update_failed")
     );
+    redirect(errorPath);
   }
 
-  redirect(
-    buildSettingsPath(
-      locale,
-      "success",
-      getMessage(messages, "host.settings.email_notifications_updated")
-    )
+  const successPath = await buildSettingsPath(
+    locale,
+    tenantId,
+    "success",
+    getMessage(messages, "host.settings.email_notifications_updated")
   );
+  redirect(successPath);
 };

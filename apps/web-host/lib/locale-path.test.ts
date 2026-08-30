@@ -36,20 +36,21 @@ describe("splitLocalePathname", () => {
 });
 
 describe("withLocalePrefix", () => {
-  it("アプリ内パスにロケールを付ける", () => {
-    expect(withLocalePrefix("ja", "/series")).toBe("/ja/series");
-    expect(withLocalePrefix("en", "/")).toBe("/en");
-    expect(withLocalePrefix("ja", "/settings?tab=1#top")).toBe(
-      "/ja/settings?tab=1#top"
+  it("既定 locale の接頭辞を省略し、非既定 locale だけを付ける", () => {
+    expect(withLocalePrefix("ja", "ja", "/series")).toBe("/series");
+    expect(withLocalePrefix("en", "ja", "/")).toBe("/en");
+    expect(withLocalePrefix("ja", "ja", "/settings?tab=1#top")).toBe(
+      "/settings?tab=1#top"
     );
+    expect(withLocalePrefix("ja", "en", "/settings")).toBe("/ja/settings");
   });
 
   it("アプリ外へ出る href はそのまま返す", () => {
-    expect(withLocalePrefix("ja", "https://example.com/series")).toBe(
+    expect(withLocalePrefix("ja", "ja", "https://example.com/series")).toBe(
       "https://example.com/series"
     );
-    expect(withLocalePrefix("ja", "//example.com")).toBe("//example.com");
-    expect(withLocalePrefix("ja", "#section")).toBe("#section");
+    expect(withLocalePrefix("ja", "ja", "//example.com")).toBe("//example.com");
+    expect(withLocalePrefix("ja", "ja", "#section")).toBe("#section");
   });
 });
 

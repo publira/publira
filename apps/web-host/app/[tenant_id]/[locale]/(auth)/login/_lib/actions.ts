@@ -20,9 +20,9 @@ import {
 import { getPublicSessionCacheTag } from "#lib/auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
-import { withLocalePrefix } from "#lib/locale-path";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const loginFormSchema = (messages: HostMessages) =>
   z.object({
@@ -33,16 +33,18 @@ const loginFormSchema = (messages: HostMessages) =>
     tenantId: tenantIdFormSchema(messages),
   });
 
-const buildLoginErrorPath = (
+const buildLoginErrorPath = async (
   locale: Locale,
+  tenantId: string,
   message: string,
   returnToPath: string
-): string => {
+): Promise<string> => {
   const params = new URLSearchParams({
     error: message,
     returnTo: returnToPath,
   });
-  return `${withLocalePrefix(locale, "/login")}?${params.toString()}`;
+  const path = await tenantLocalePath(tenantId, locale, "/login");
+  return `${path}?${params.toString()}`;
 };
 
 export const loginAction = async (formData: FormData): Promise<void> => {
@@ -65,7 +67,13 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     const returnToPath = returnToFormSchema.parse(
       toFormDataInput(formData, { returnTo: "value" }).returnTo
     );
-    redirect(buildLoginErrorPath(submittedLocale, loginFailed, returnToPath));
+    const errorPath = await buildLoginErrorPath(
+      submittedLocale,
+      String(formData.get("tenantId") ?? ""),
+      loginFailed,
+      returnToPath
+    );
+    redirect(errorPath);
   }
 
   const {
@@ -78,7 +86,13 @@ export const loginAction = async (formData: FormData): Promise<void> => {
 
   const result = await loginPublic(email, password, tenantId);
   if (!result) {
-    redirect(buildLoginErrorPath(locale, loginFailed, returnToPath));
+    const errorPath = await buildLoginErrorPath(
+      locale,
+      tenantId,
+      loginFailed,
+      returnToPath
+    );
+    redirect(errorPath);
   }
 
   const sealed = await sealSessionCookieValue({
@@ -96,5 +110,6 @@ export const loginAction = async (formData: FormData): Promise<void> => {
 
   // `returnTo` is stored locale-less, so the reader comes back in whichever
   // language they signed in from rather than the one they left.
-  redirect(withLocalePrefix(locale, returnToPath));
+  const destination = await tenantLocalePath(tenantId, locale, returnToPath);
+  redirect(destination);
 };

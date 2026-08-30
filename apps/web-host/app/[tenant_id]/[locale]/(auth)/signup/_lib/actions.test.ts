@@ -27,6 +27,10 @@ vi.mock("#lib/email-flash-cookie", () => ({
   setEmailFlashCookie: mockSetEmailFlashCookie,
 }));
 
+vi.mock("#lib/tenant", () => ({
+  getTenantDefaultLocale: () => "ja",
+}));
+
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
   for (const [name, value] of Object.entries(values)) {
@@ -69,7 +73,7 @@ describe("signupAction", () => {
       "publira_web_host_signup_pending_email",
       email
     );
-    expect(mockRedirect).toHaveBeenCalledWith("/ja/signup/pending");
+    expect(mockRedirect).toHaveBeenCalledWith("/signup/pending");
   });
 
   it("does not set a flash cookie when signup succeeds without pending verification", async () => {
@@ -82,7 +86,7 @@ describe("signupAction", () => {
     await signupAction({ message: "", ok: false }, formData(validSignupFields));
 
     expect(mockSetEmailFlashCookie).not.toHaveBeenCalled();
-    expect(mockRedirect).toHaveBeenCalledWith("/ja/my");
+    expect(mockRedirect).toHaveBeenCalledWith("/my");
   });
 
   it("does not set a flash cookie when signup fails", async () => {

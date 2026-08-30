@@ -57,18 +57,17 @@ const notification = (
 const renderList = async (
   props: Partial<React.ComponentProps<typeof NotificationList>> = {}
 ) => {
-  render(
-    await NotificationList({
-      nextToken: "",
-      notifications: [],
-      previousToken: "",
-      tenantId,
-      timeZone: "Asia/Tokyo",
-      token: "",
-      unreadCount: 0,
-      ...props,
-    })
-  );
+  const list = await NotificationList({
+    nextToken: "",
+    notifications: [],
+    previousToken: "",
+    tenantId,
+    timeZone: "Asia/Tokyo",
+    token: "",
+    unreadCount: 0,
+    ...props,
+  });
+  render(list);
 };
 
 afterEach(() => {
@@ -91,9 +90,7 @@ describe("NotificationList", () => {
       screen.getByText("このページに表示できる通知がありません。")
     ).toBeDefined();
     const previous = screen.getByRole("link", { name: "前のページ" });
-    expect(previous.getAttribute("href")).toBe(
-      "/ja/notifications?token=previous"
-    );
+    expect(previous.getAttribute("href")).toBe("/notifications?token=previous");
   });
 
   it("未読行とリンク、既読ボタンを描画する", async () => {
@@ -115,9 +112,7 @@ describe("NotificationList", () => {
     const titleLink = screen.getByRole("link", {
       name: "新しいエピソードが公開されました",
     });
-    expect(titleLink.getAttribute("href")).toBe(
-      "/ja/series/SR01/episodes/EP01"
-    );
+    expect(titleLink.getAttribute("href")).toBe("/series/SR01/episodes/EP01");
     expect(screen.getByText("2026/06/01 9:00")).toBeDefined();
     expect(screen.getByText("未読")).toBeDefined();
     expect(screen.getByText("既読")).toBeDefined();
@@ -126,10 +121,10 @@ describe("NotificationList", () => {
     expect(screen.getByText(`すべて既読にする ${tenantId}`)).toBeDefined();
     expect(
       screen.getByRole("link", { name: "前のページ" }).getAttribute("href")
-    ).toBe("/ja/notifications?token=previous");
+    ).toBe("/notifications?token=previous");
     expect(
       screen.getByRole("link", { name: "次のページ" }).getAttribute("href")
-    ).toBe("/ja/notifications?token=next");
+    ).toBe("/notifications?token=next");
   });
 
   it("取得失敗時はエラーだけを出し、空一覧としては案内しない", async () => {

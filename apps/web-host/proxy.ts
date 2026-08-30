@@ -40,10 +40,11 @@ const isMemberPath = (pathname: string): boolean =>
 const redirectToLogin = (
   request: NextRequest,
   locale: Locale,
+  defaultLocale: Locale,
   clearSession = false
 ) => {
   const response = NextResponse.redirect(
-    buildLoginUrl(request.nextUrl, locale)
+    buildLoginUrl(request.nextUrl, locale, defaultLocale)
   );
   if (clearSession) {
     response.cookies.delete(PUBLIC_SESSION_COOKIE_NAME);
@@ -58,21 +59,15 @@ const serviceUnavailableResponse = () =>
   });
 
 /**
- * Send a URL from before the locale prefix existed to the tenant's own default
- * locale — the setting `GetTenantByDomain` returns alongside the tenant id, so
- * this costs no extra round trip.
- *
- * Temporary on purpose: a permanent redirect would be cached by the browser,
- * and neither a change to that setting nor the day this site negotiates a
- * locale from `Accept-Language` would reach a reader already pinned to
- * whatever they were first sent to.
+ * Remove an explicit tenant-default locale prefix. Public URLs use that locale
+ * without a prefix, while the App Router still receives it after the rewrite.
  */
-const redirectToTenantLocale = (
+const redirectToCanonicalPath = (
   request: NextRequest,
-  locale: Locale
+  pathname: string
 ): NextResponse => {
   const url = request.nextUrl.clone();
-  url.pathname = withLocalePrefix(locale, request.nextUrl.pathname);
+  url.pathname = pathname;
   return NextResponse.redirect(url);
 };
 
@@ -121,18 +116,23 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     return rewriteTo(request, `/${tenant.tenantId}${pathname}`);
   }
 
-  const { locale, pathname: publicPath } = splitLocalePathname(pathname);
-
-  // `/privacy`, `/series/SR01` — a bookmark from before the locale prefix.
-  // Which language it lands in is the tenant's decision, so the Host has to be
-  // resolved before the redirect can be written.
-  if (!locale) {
-    const tenant = await resolveTenant(request);
-    if ("response" in tenant) {
-      return tenant.response;
-    }
-    return redirectToTenantLocale(request, tenant.defaultLocale);
+  const { locale: requestedLocale, pathname: publicPath } =
+    splitLocalePathname(pathname);
+  const tenant = await resolveTenant(request);
+  if ("response" in tenant) {
+    return tenant.response;
   }
+
+  // A prefix is only canonical for a locale other than this tenant's default.
+  // Preserve the path and query while removing a redundant default prefix.
+  if (requestedLocale === tenant.defaultLocale) {
+    return redirectToCanonicalPath(request, publicPath);
+  }
+
+  // A prefix-less public path is served as the tenant's default locale. Unlike
+  // the old compatibility redirect, this keeps the reader on the canonical
+  // URL while the App Router receives its required `[locale]` segment.
+  const locale = requestedLocale ?? tenant.defaultLocale;
 
   const sessionCookie = request.cookies.get(PUBLIC_SESSION_COOKIE_NAME)?.value;
   const hasStoredSessionCookie = Boolean(sessionCookie?.trim());
@@ -147,17 +147,20 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
 
   if (hasSessionCookie && isGuestOnlyPath && !isRejectedSession) {
     return NextResponse.redirect(
-      new URL(withLocalePrefix(locale, "/my"), request.url)
+      new URL(
+        withLocalePrefix(locale, tenant.defaultLocale, "/my"),
+        request.url
+      )
     );
   }
 
   if (!hasSessionCookie && isMemberPath(publicPath)) {
-    return redirectToLogin(request, locale, hasStoredSessionCookie);
-  }
-
-  const tenant = await resolveTenant(request);
-  if ("response" in tenant) {
-    return tenant.response;
+    return redirectToLogin(
+      request,
+      locale,
+      tenant.defaultLocale,
+      hasStoredSessionCookie
+    );
   }
 
   // Single-segment published pages (admin slugs) rewrite to /page/[slug].

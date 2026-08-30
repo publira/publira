@@ -1,10 +1,11 @@
 /**
- * Pure path arithmetic for the `/{locale}/...` public URLs.
+ * Pure path arithmetic for public URLs whose tenant default locale has no
+ * prefix.
  *
  * Three pathname shapes exist in this app and this module is what converts
  * between them:
  *
- * - **public** — what the reader sees, `/{locale}/series/SR01`.
+ * - **public** — what the reader sees, `/series/SR01` or `/en/series/SR01`.
  * - **rewritten** — what `proxy.ts` hands the App Router,
  *   `/{tenantId}/{locale}/series/SR01`.
  * - **bare** — an app-internal path written in source, `/series/SR01`.
@@ -68,14 +69,24 @@ export const splitLocalePathname = (
 };
 
 /**
- * Prefix an app-internal path with `locale`: `/series` → `/ja/series`.
+ * Turn an app-internal path into its canonical public URL. The tenant's
+ * default locale has no prefix; a non-default locale does:
+ * `/series` → `/series` (default `ja`) or `/en/series` (non-default `en`).
  *
  * A query string or hash rides along untouched, and an href that points
  * outside the app is returned as-is, so this is safe to apply blindly to
  * whatever a link was given.
  */
-export const withLocalePrefix = (locale: Locale, href: string): string => {
+export const withLocalePrefix = (
+  locale: Locale,
+  defaultLocale: Locale,
+  href: string
+): string => {
   if (isExternalHref(href)) {
+    return href;
+  }
+
+  if (locale === defaultLocale) {
     return href;
   }
 

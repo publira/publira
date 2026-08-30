@@ -29,13 +29,14 @@ describe("web-host auth-shared", () => {
     expect(PUBLIC_SESSION_COOKIE_NAME).toBe("publira_web_host_auth");
   });
 
-  it("buildLoginUrl は locale 配下の /login へ returnTo を引き継ぐ", () => {
+  it("buildLoginUrl は正規の /login へ returnTo を引き継ぐ", () => {
     const url = buildLoginUrl(
       new URL("https://example.com/ja/me?from=settings"),
+      "ja",
       "ja"
     );
 
-    expect(url.pathname).toBe("/ja/login");
+    expect(url.pathname).toBe("/login");
     // `returnTo` は locale を落とした形で保存する。
     expect(url.searchParams.get("returnTo")).toBe("/me?from=settings");
   });
@@ -53,17 +54,17 @@ describe("web-host auth-shared", () => {
   });
 
   it("buildLoginPath は returnTo を sanitize し、失効時だけ理由を付ける", () => {
-    expect(buildLoginPath("ja", "/settings")).toBe(
-      "/ja/login?returnTo=%2Fsettings"
+    expect(buildLoginPath("ja", "ja", "/settings")).toBe(
+      "/login?returnTo=%2Fsettings"
     );
-    expect(buildLoginPath("en", "/settings")).toBe(
+    expect(buildLoginPath("en", "ja", "/settings")).toBe(
       "/en/login?returnTo=%2Fsettings"
     );
-    expect(buildLoginPath("ja", "https://evil.example.com")).toBe(
-      "/ja/login?returnTo=%2F"
+    expect(buildLoginPath("ja", "ja", "https://evil.example.com")).toBe(
+      "/login?returnTo=%2F"
     );
-    expect(buildLoginPath("ja", "/settings", { revoked: true })).toBe(
-      "/ja/login?returnTo=%2Fsettings&reason=session_revoked"
+    expect(buildLoginPath("ja", "ja", "/settings", { revoked: true })).toBe(
+      "/login?returnTo=%2Fsettings&reason=session_revoked"
     );
   });
 

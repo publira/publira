@@ -53,7 +53,7 @@ const FollowListData = async ({
   ]);
 
   if (!listResult.ok && listResult.requiresSignIn) {
-    redirectToLogin(locale, followsListHref(token));
+    await redirectToLogin(locale, followsListHref(token), tenantId);
   }
 
   const items = listResult.ok

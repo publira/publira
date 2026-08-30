@@ -15,9 +15,9 @@ import {
   setEmailFlashCookie,
 } from "#lib/email-flash-cookie";
 import { localeFormSchema } from "#lib/locale-form";
-import { withLocalePrefix } from "#lib/locale-path";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const requestPasswordResetFormSchema = (messages: HostMessages) =>
   z.object({
@@ -58,5 +58,10 @@ export const requestPasswordResetAction = async (
   }
 
   await setEmailFlashCookie(RESET_PASSWORD_REQUESTED_EMAIL_COOKIE, email);
-  redirect(withLocalePrefix(locale, "/reset-password/requested"));
+  const requestedPath = await tenantLocalePath(
+    tenantId,
+    locale,
+    "/reset-password/requested"
+  );
+  redirect(requestedPath);
 };

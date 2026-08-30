@@ -1,12 +1,14 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRedirect, mockResolveAccessToken } = vi.hoisted(() => ({
-  mockRedirect: vi.fn((path: string) => {
-    throw new Error(`NEXT_REDIRECT:${path}`);
-  }),
-  mockResolveAccessToken: vi.fn(),
-}));
+const { mockGetTenantDefaultLocale, mockRedirect, mockResolveAccessToken } =
+  vi.hoisted(() => ({
+    mockGetTenantDefaultLocale: vi.fn(),
+    mockRedirect: vi.fn((path: string) => {
+      throw new Error(`NEXT_REDIRECT:${path}`);
+    }),
+    mockResolveAccessToken: vi.fn(),
+  }));
 
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
@@ -24,29 +26,37 @@ vi.mock("./api-client", () => ({
   resolveAccessToken: mockResolveAccessToken,
 }));
 
+vi.mock("./tenant", () => ({
+  getTenantDefaultLocale: mockGetTenantDefaultLocale,
+}));
+
 const importAuthSession = () => import("./auth-session");
+const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 describe("web-host auth-session", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    mockGetTenantDefaultLocale.mockResolvedValue("ja");
   });
 
   it("redirectToLogin は sanitize した returnTo と失効理由を付けて /login へ送る", async () => {
     const { redirectToLogin } = await importAuthSession();
 
-    expect(() => redirectToLogin("ja", "/settings")).toThrow(/NEXT_REDIRECT/u);
+    await expect(redirectToLogin("ja", "/settings", tenantId)).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
     expect(mockRedirect).toHaveBeenCalledWith(
-      "/ja/login?returnTo=%2Fsettings&reason=session_revoked"
+      "/login?returnTo=%2Fsettings&reason=session_revoked"
     );
   });
 
   it("redirectToLogin は外部 URL を返送先にしない", async () => {
     const { redirectToLogin } = await importAuthSession();
 
-    expect(() => redirectToLogin("en", "https://evil.example.com")).toThrow(
-      /NEXT_REDIRECT/u
-    );
+    await expect(
+      redirectToLogin("en", "https://evil.example.com", tenantId)
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
     expect(mockRedirect).toHaveBeenCalledWith(
       "/en/login?returnTo=%2F&reason=session_revoked"
     );
@@ -56,7 +66,7 @@ describe("web-host auth-session", () => {
     mockResolveAccessToken.mockResolvedValueOnce("session-token");
     const { requirePublicSession } = await importAuthSession();
 
-    await expect(requirePublicSession("ja", "/my")).resolves.toBe(
+    await expect(requirePublicSession("ja", "/my", tenantId)).resolves.toBe(
       "session-token"
     );
     expect(mockRedirect).not.toHaveBeenCalled();
@@ -66,11 +76,11 @@ describe("web-host auth-session", () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
     const { requirePublicSession } = await importAuthSession();
 
-    await expect(requirePublicSession("ja", "/my")).rejects.toThrow(
+    await expect(requirePublicSession("ja", "/my", tenantId)).rejects.toThrow(
       /NEXT_REDIRECT/u
     );
     expect(mockRedirect).toHaveBeenCalledWith(
-      "/ja/login?returnTo=%2Fmy&reason=session_revoked"
+      "/login?returnTo=%2Fmy&reason=session_revoked"
     );
   });
 
@@ -78,7 +88,12 @@ describe("web-host auth-session", () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
     await expect(
-      withPublicSessionReauth("ja", "/settings", () => Promise.resolve("ok"))
+      withPublicSessionReauth(
+        "ja",
+        "/settings",
+        () => Promise.resolve("ok"),
+        tenantId
+      )
     ).resolves.toBe("ok");
     expect(mockRedirect).not.toHaveBeenCalled();
   });
@@ -87,8 +102,14 @@ describe("web-host auth-session", () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
     await expect(
-      withPublicSessionReauth("en", "/settings", () =>
-        Promise.reject(new ConnectError("invalid token", Code.Unauthenticated))
+      withPublicSessionReauth(
+        "en",
+        "/settings",
+        () =>
+          Promise.reject(
+            new ConnectError("invalid token", Code.Unauthenticated)
+          ),
+        tenantId
       )
     ).rejects.toThrow(/NEXT_REDIRECT/u);
     expect(mockRedirect).toHaveBeenCalledWith(
@@ -102,10 +123,14 @@ describe("web-host auth-session", () => {
     // A wrong password reaches the client as invalid_argument (#679); turning it
     // into a re-login would log a reader out over a typo.
     await expect(
-      withPublicSessionReauth("ja", "/settings", () =>
-        Promise.reject(
-          new ConnectError("invalid password", Code.InvalidArgument)
-        )
+      withPublicSessionReauth(
+        "ja",
+        "/settings",
+        () =>
+          Promise.reject(
+            new ConnectError("invalid password", Code.InvalidArgument)
+          ),
+        tenantId
       )
     ).rejects.toMatchObject({ code: Code.InvalidArgument });
     expect(mockRedirect).not.toHaveBeenCalled();
@@ -115,8 +140,11 @@ describe("web-host auth-session", () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
     await expect(
-      withPublicSessionReauth("ja", "/settings", () =>
-        Promise.reject(new Error("boom"))
+      withPublicSessionReauth(
+        "ja",
+        "/settings",
+        () => Promise.reject(new Error("boom")),
+        tenantId
       )
     ).rejects.toThrow("boom");
     expect(mockRedirect).not.toHaveBeenCalled();

@@ -5,6 +5,7 @@ import { buildLoginPath } from "#lib/auth-shared";
 import type { FollowTargetKind } from "#lib/follow";
 import { getMyFollowStatus } from "#lib/follow";
 import { getLocale, loadHostMessages } from "#lib/locale";
+import { getTenantDefaultLocale } from "#lib/tenant";
 
 import { FollowButton, FollowLoginLink } from "./follow-button";
 
@@ -27,7 +28,8 @@ export const FollowControl = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale();
-  const [result, messages] = await Promise.all([
+  const [defaultLocale, result, messages] = await Promise.all([
+    getTenantDefaultLocale(tenantId),
     getMyFollowStatus(tenantId, targetKind, publicId, locale),
     loadHostMessages(locale),
   ]);
@@ -48,7 +50,7 @@ export const FollowControl = async ({
         ariaLabel={getMessage(messages, "host.follow.login_aria", {
           name: targetName,
         })}
-        href={buildLoginPath(locale, returnTo)}
+        href={buildLoginPath(locale, defaultLocale, returnTo)}
         label={getMessage(messages, "host.follow.follow")}
       />
     );

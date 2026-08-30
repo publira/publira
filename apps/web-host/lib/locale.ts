@@ -1,15 +1,17 @@
 import { isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { notFound } from "next/navigation";
-import { locale } from "next/root-params";
+import { locale as rootLocale } from "next/root-params";
 
-import { withLocalePrefix } from "./locale-path";
+import { getTenantId } from "./tenant-id";
+import { tenantLocalePath } from "./tenant-locale-path";
 
 export {
   type HostMessageKey,
   type HostMessages,
   loadHostMessages,
 } from "./messages";
+export { tenantLocalePath } from "./tenant-locale-path";
 
 /**
  * Resolve the current request's UI locale from the `[locale]` root segment.
@@ -30,7 +32,7 @@ export {
  * `lib/locale-form.ts`.
  */
 export const getLocale = async (): Promise<Locale> => {
-  const value = await locale();
+  const value = await rootLocale();
   if (typeof value !== "string" || !isLocale(value)) {
     notFound();
   }
@@ -38,10 +40,16 @@ export const getLocale = async (): Promise<Locale> => {
 };
 
 /**
- * An app-internal path under the current locale: `/series` → `/ja/series`.
+ * An app-internal path under the current locale, normalized for the tenant's
+ * default locale.
  *
  * Server Components that hand a bare href to a shared layout component use
  * this; JSX links use `<LocaleLink>`, which applies the same prefix on its own.
  */
-export const localePath = async (href: string): Promise<string> =>
-  withLocalePrefix(await getLocale(), href);
+export const localePath = async (href: string): Promise<string> => {
+  const [currentLocale, tenantId] = await Promise.all([
+    getLocale(),
+    getTenantId(),
+  ]);
+  return tenantLocalePath(tenantId, currentLocale, href);
+};

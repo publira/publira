@@ -28,6 +28,10 @@ vi.mock("#lib/email-flash-cookie", () => ({
   setEmailFlashCookie: mockSetEmailFlashCookie,
 }));
 
+vi.mock("#lib/tenant", () => ({
+  getTenantDefaultLocale: () => "ja",
+}));
+
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
   for (const [name, value] of Object.entries(values)) {
@@ -62,7 +66,7 @@ describe("requestPasswordResetAction", () => {
       "publira_web_host_reset_password_email",
       email
     );
-    expect(mockRedirect).toHaveBeenCalledWith("/ja/reset-password/requested");
+    expect(mockRedirect).toHaveBeenCalledWith("/reset-password/requested");
   });
 
   it("does not set a flash cookie when the request fails", async () => {

@@ -54,7 +54,7 @@ const NotificationListData = async ({
   ]);
 
   if (!listResult.ok && listResult.requiresSignIn) {
-    redirectToLogin(locale, notificationsListHref(token));
+    await redirectToLogin(locale, notificationsListHref(token), tenantId);
   }
 
   return (

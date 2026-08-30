@@ -18,7 +18,7 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
-import { withLocalePrefix } from "#lib/locale-path";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const ANNOUNCEMENTS_RETURN_TO = "/announcements";
 
@@ -84,10 +84,14 @@ export const markAnnouncementAsReadAction = async (
   const { announcementId, locale, tenantId } = parsed.data;
   const accessToken = await requirePublicSession(
     locale,
-    ANNOUNCEMENTS_RETURN_TO
+    ANNOUNCEMENTS_RETURN_TO,
+    tenantId
   );
-  await withPublicSessionReauth(locale, ANNOUNCEMENTS_RETURN_TO, () =>
-    markAnnouncementAsRead(tenantId, announcementId, accessToken)
+  await withPublicSessionReauth(
+    locale,
+    ANNOUNCEMENTS_RETURN_TO,
+    () => markAnnouncementAsRead(tenantId, announcementId, accessToken),
+    tenantId
   );
   updateTag(announcementsCacheTag(tenantId));
 };
@@ -106,10 +110,14 @@ export const markAllAnnouncementsAsReadAction = async (
   const { locale, tenantId } = parsed.data;
   const accessToken = await requirePublicSession(
     locale,
-    ANNOUNCEMENTS_RETURN_TO
+    ANNOUNCEMENTS_RETURN_TO,
+    tenantId
   );
-  await withPublicSessionReauth(locale, ANNOUNCEMENTS_RETURN_TO, () =>
-    markAllAnnouncementsAsRead(tenantId, accessToken)
+  await withPublicSessionReauth(
+    locale,
+    ANNOUNCEMENTS_RETURN_TO,
+    () => markAllAnnouncementsAsRead(tenantId, accessToken),
+    tenantId
   );
   updateTag(announcementsCacheTag(tenantId));
 };
@@ -132,19 +140,24 @@ export const markAnnouncementAsReadAndNavigateAction = async (
   const { announcementId, locale, tenantId } = parsed.data;
   const accessToken = await requirePublicSession(
     locale,
-    ANNOUNCEMENTS_RETURN_TO
+    ANNOUNCEMENTS_RETURN_TO,
+    tenantId
   );
   const announcement = await withPublicSessionReauth(
     locale,
     ANNOUNCEMENTS_RETURN_TO,
-    () => getMyAnnouncement(tenantId, announcementId, accessToken)
+    () => getMyAnnouncement(tenantId, announcementId, accessToken),
+    tenantId
   );
   if (!announcement) {
     return;
   }
 
-  await withPublicSessionReauth(locale, ANNOUNCEMENTS_RETURN_TO, () =>
-    markAnnouncementAsRead(tenantId, announcementId, accessToken)
+  await withPublicSessionReauth(
+    locale,
+    ANNOUNCEMENTS_RETURN_TO,
+    () => markAnnouncementAsRead(tenantId, announcementId, accessToken),
+    tenantId
   );
   updateTag(announcementsCacheTag(tenantId));
 
@@ -156,5 +169,6 @@ export const markAnnouncementAsReadAndNavigateAction = async (
   // An operator writes `/series/SR01`, not `/ja/series/SR01`: the destination
   // is the same page in whichever language the reader is already in. An
   // external URL passes through unchanged.
-  redirect(withLocalePrefix(locale, linkUrl));
+  const destination = await tenantLocalePath(tenantId, locale, linkUrl);
+  redirect(destination);
 };

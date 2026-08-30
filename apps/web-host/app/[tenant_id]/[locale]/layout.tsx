@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 
 import { LocaleProvider } from "#components/locale-provider";
 import { getLocale } from "#lib/locale";
-import { getTenantSiteInfo } from "#lib/tenant";
+import { getTenantDefaultLocale, getTenantSiteInfo } from "#lib/tenant";
 import { resolveTenantIcons } from "#lib/tenant-icon";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -51,7 +51,8 @@ export const generateMetadata = async (): Promise<Metadata> => {
 const TenantRootLayout = async ({
   children,
 }: LayoutProps<"/[tenant_id]/[locale]">) => {
-  const locale = await getLocale();
+  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
+  const defaultLocale = await getTenantDefaultLocale(tenantId);
 
   return (
     <html lang={locale}>
@@ -61,7 +62,9 @@ const TenantRootLayout = async ({
         <link href="/theme.css" rel="stylesheet" />
       </head>
       <body className="min-h-dvh bg-background text-foreground antialiased">
-        <LocaleProvider locale={locale}>{children}</LocaleProvider>
+        <LocaleProvider defaultLocale={defaultLocale} locale={locale}>
+          {children}
+        </LocaleProvider>
       </body>
     </html>
   );

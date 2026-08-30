@@ -46,6 +46,10 @@ vi.mock("./auth-shared", () => ({
     `public-session-cookie-${cookieName}`,
 }));
 
+vi.mock("./tenant", () => ({
+  getTenantDefaultLocale: () => "ja",
+}));
+
 describe("logoutAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,7 +68,7 @@ describe("logoutAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "public-session-cookie-publira_web_host_auth"
     );
-    expect(mockRedirect).toHaveBeenCalledWith("/ja/login");
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
   });
 
   it("revoke が失敗しても Cookie 削除と redirect は行う", async () => {

@@ -5,7 +5,6 @@ import {
   isRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
-import { parseLocale } from "@publira/i18n";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -16,8 +15,8 @@ import { redirectToLogin, requirePublicSession } from "#lib/auth-session";
 import { isUnauthenticatedError } from "#lib/auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
-import { withLocalePrefix } from "#lib/locale-path";
 import { getTenantSiteInfo } from "#lib/tenant";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const publicIDFormSchema = z.string().trim().min(1).max(64);
 
@@ -49,7 +48,7 @@ export const startEpisodeCheckoutAction = async (
     })
   );
   if (!parsed.success) {
-    redirect(withLocalePrefix(parseLocale(formData.get("locale")), "/"));
+    redirect("/");
   }
 
   const { episodePublicId, locale, seriesPublicId, tenantId } = parsed.data;
@@ -63,9 +62,10 @@ export const startEpisodeCheckoutAction = async (
   // read is not permission to attempt Checkout.
   const tenant = await getTenantSiteInfo(tenantId);
   if (!tenant?.acceptsPayments) {
-    redirect(withLocalePrefix(locale, returnTo));
+    const returnPath = await tenantLocalePath(tenantId, locale, returnTo);
+    redirect(returnPath);
   }
-  const sessionId = await requirePublicSession(locale, returnTo);
+  const sessionId = await requirePublicSession(locale, returnTo, tenantId);
 
   let checkoutURL = "";
   try {
@@ -79,26 +79,27 @@ export const startEpisodeCheckoutAction = async (
     checkoutURL = response.checkoutUrl.trim();
   } catch (error) {
     if (isUnauthenticatedError(error)) {
-      redirectToLogin(locale, returnTo);
+      await redirectToLogin(locale, returnTo, tenantId);
     }
     if (isRpcError(error, Code.AlreadyExists)) {
-      redirect(withLocalePrefix(locale, returnTo));
+      const returnPath = await tenantLocalePath(tenantId, locale, returnTo);
+      redirect(returnPath);
     }
     rethrowUnclassifiedRpcError(error);
-    redirect(
-      withLocalePrefix(
-        locale,
-        checkoutErrorPath(seriesPublicId, episodePublicId)
-      )
+    const errorPath = await tenantLocalePath(
+      tenantId,
+      locale,
+      checkoutErrorPath(seriesPublicId, episodePublicId)
     );
+    redirect(errorPath);
   }
   if (!checkoutURL) {
-    redirect(
-      withLocalePrefix(
-        locale,
-        checkoutErrorPath(seriesPublicId, episodePublicId)
-      )
+    const errorPath = await tenantLocalePath(
+      tenantId,
+      locale,
+      checkoutErrorPath(seriesPublicId, episodePublicId)
     );
+    redirect(errorPath);
   }
   redirect(checkoutURL);
 };

@@ -74,7 +74,8 @@ describe("notification actions", () => {
     });
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
       "ja",
-      "/notifications"
+      "/notifications",
+      tenantId
     );
     expect(mockUpdateTag).toHaveBeenCalledWith(
       `tenant:${tenantId}:notifications`
@@ -118,7 +119,8 @@ describe("notification actions", () => {
     expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(tenantId, "ja");
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
       "ja",
-      "/notifications"
+      "/notifications",
+      tenantId
     );
     expect(mockUpdateTag).toHaveBeenCalledWith(
       `tenant:${tenantId}:notifications`

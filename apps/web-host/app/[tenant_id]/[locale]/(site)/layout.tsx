@@ -59,13 +59,17 @@ import {
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale, loadHostMessages, localePath } from "#lib/locale";
 import type { HostMessageKey } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { logoutAction } from "#lib/logout-action";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { listPublishedPageLinks } from "#lib/pages";
-import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
+import {
+  getTenantDefaultLocale,
+  getTenantSiteInfo,
+  getTenantSiteLabel,
+} from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { resolveTenantLogoVariant } from "#lib/tenant-logo";
 
@@ -86,7 +90,8 @@ const notificationMenuLimit = 5;
 
 const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [list, unread] = await Promise.all([
+  const [defaultLocale, list, unread] = await Promise.all([
+    getTenantDefaultLocale(tenantId),
     listNotifications(tenantId, { limit: notificationMenuLimit, locale }),
     countUnreadNotifications(tenantId, locale),
   ]);
@@ -126,7 +131,7 @@ const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
           <NotificationBellItem
             href={
               notification.href
-                ? withLocalePrefix(locale, notification.href)
+                ? withLocalePrefix(locale, defaultLocale, notification.href)
                 : undefined
             }
             isRead={notification.isRead}
@@ -188,11 +193,14 @@ const HeaderActions = async () => {
     getTenantId(),
     getLocale(),
   ]);
-  const messages = await loadHostMessages(locale);
+  const [defaultLocale, messages] = await Promise.all([
+    getTenantDefaultLocale(tenantId),
+    loadHostMessages(locale),
+  ]);
   const hasSession = Boolean(
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
   );
-  const moreHref = withLocalePrefix(locale, "/notifications");
+  const moreHref = withLocalePrefix(locale, defaultLocale, "/notifications");
   return (
     <div className="flex items-center gap-2">
       {hasSession ? (
@@ -210,7 +218,7 @@ const HeaderActions = async () => {
             />
             <SiteLayoutUserMenuContent>
               <SiteLayoutUserMenuMyPageLink
-                href={withLocalePrefix(locale, "/my")}
+                href={withLocalePrefix(locale, defaultLocale, "/my")}
               >
                 {getMessage(messages, "host.nav.my_page")}
               </SiteLayoutUserMenuMyPageLink>
@@ -224,12 +232,16 @@ const HeaderActions = async () => {
             </SiteLayoutUserMenuContent>
           </SiteLayoutUserMenu>
         ) : (
-          <SiteLayoutSecondaryAction href={withLocalePrefix(locale, "/login")}>
+          <SiteLayoutSecondaryAction
+            href={withLocalePrefix(locale, defaultLocale, "/login")}
+          >
             {getMessage(messages, "host.nav.login")}
           </SiteLayoutSecondaryAction>
         )}
         {hasSession ? null : (
-          <SiteLayoutPrimaryAction href={withLocalePrefix(locale, "/signup")}>
+          <SiteLayoutPrimaryAction
+            href={withLocalePrefix(locale, defaultLocale, "/signup")}
+          >
             {getMessage(messages, "host.nav.signup")}
           </SiteLayoutPrimaryAction>
         )}
@@ -240,7 +252,8 @@ const HeaderActions = async () => {
 
 const TenantFooterLinks = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [links, messages] = await Promise.all([
+  const [defaultLocale, links, messages] = await Promise.all([
+    getTenantDefaultLocale(tenantId),
     listPublishedPageLinks(tenantId),
     loadHostMessages(locale),
   ]);
@@ -255,7 +268,7 @@ const TenantFooterLinks = async () => {
     >
       {links.map((link) => (
         <SiteLayoutFooterLink
-          href={withLocalePrefix(locale, link.href)}
+          href={withLocalePrefix(locale, defaultLocale, link.href)}
           key={link.href}
         >
           {link.label}
@@ -288,14 +301,17 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 const SiteNav = async () => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
+  const [defaultLocale, messages] = await Promise.all([
+    getTenantDefaultLocale(tenantId),
+    loadHostMessages(locale),
+  ]);
 
   return (
     <SiteLayoutNav>
       {siteNavItems.map((item) => (
         <SiteLayoutNavLink
-          href={withLocalePrefix(locale, item.href)}
+          href={withLocalePrefix(locale, defaultLocale, item.href)}
           key={item.href}
         >
           {getMessage(messages, item.label)}
@@ -329,7 +345,8 @@ const TenantBrand = async () => {
 };
 
 const TenantFooterNote = async () => {
-  const tenantInfo = await getTenantSiteInfo(await getTenantId());
+  const tenantId = await getTenantId();
+  const tenantInfo = await getTenantSiteInfo(tenantId);
   const footerNote = tenantInfo?.siteDescription?.trim();
 
   return footerNote ? (
@@ -338,7 +355,8 @@ const TenantFooterNote = async () => {
 };
 
 const TenantFooterCopyright = async () => {
-  const tenantInfo = await getTenantSiteInfo(await getTenantId());
+  const tenantId = await getTenantId();
+  const tenantInfo = await getTenantSiteInfo(tenantId);
   const copyrightText = tenantInfo?.copyrightText?.trim();
 
   return copyrightText ? (
@@ -357,13 +375,12 @@ const SiteNavSkeleton = () => (
 const TenantLayout = async ({
   children,
 }: LayoutProps<"/[tenant_id]/[locale]">) => {
-  // A root parameter, so awaiting it here costs the shell nothing.
-  const locale = await getLocale();
+  const brandHref = await localePath("/");
 
   return (
     <SiteLayout>
       <SiteLayoutHeader>
-        <SiteLayoutBrand href={withLocalePrefix(locale, "/")}>
+        <SiteLayoutBrand href={brandHref}>
           <Suspense fallback={<SiteLayoutBrandSkeleton />}>
             <TenantBrand />
           </Suspense>

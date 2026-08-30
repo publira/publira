@@ -58,12 +58,13 @@ export const markNotificationAsReadAction = async (
     };
   }
 
-  const { locale, ...input } = parsed.data;
-  await requirePublicSession(locale, NOTIFICATIONS_RETURN_TO);
+  const { locale, tenantId, ...input } = parsed.data;
+  await requirePublicSession(locale, NOTIFICATIONS_RETURN_TO, tenantId);
   const result = await withPublicSessionReauth(
     locale,
     NOTIFICATIONS_RETURN_TO,
-    () => markNotificationAsRead({ locale, ...input })
+    () => markNotificationAsRead({ locale, tenantId, ...input }),
+    tenantId
   );
   if (!result.ok) {
     return {
@@ -101,11 +102,12 @@ export const markAllNotificationsAsReadAction = async (
   }
 
   const { locale, tenantId } = parsed.data;
-  await requirePublicSession(locale, NOTIFICATIONS_RETURN_TO);
+  await requirePublicSession(locale, NOTIFICATIONS_RETURN_TO, tenantId);
   const result = await withPublicSessionReauth(
     locale,
     NOTIFICATIONS_RETURN_TO,
-    () => markAllNotificationsAsRead(tenantId, locale)
+    () => markAllNotificationsAsRead(tenantId, locale),
+    tenantId
   );
   if (!result.ok) {
     return {

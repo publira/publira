@@ -16,12 +16,14 @@ import { updateNotificationSettingsAction } from "./_lib/actions";
 const NOTIFICATION_SETTINGS_RETURN_TO = "/settings/notifications";
 
 const NotificationsSection = async () => {
-  const locale = await getLocale();
-  await requirePublicSession(locale, NOTIFICATION_SETTINGS_RETURN_TO);
-  const tenantId = await getTenantId();
+  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
+  await requirePublicSession(locale, NOTIFICATION_SETTINGS_RETURN_TO, tenantId);
   const [notificationSettings, messages] = await Promise.all([
-    withPublicSessionReauth(locale, NOTIFICATION_SETTINGS_RETURN_TO, () =>
-      getNotificationSettings(tenantId)
+    withPublicSessionReauth(
+      locale,
+      NOTIFICATION_SETTINGS_RETURN_TO,
+      () => getNotificationSettings(tenantId),
+      tenantId
     ),
     loadHostMessages(locale),
   ]);

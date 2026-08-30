@@ -53,7 +53,7 @@ const PurchaseLibraryData = async ({
   ]);
 
   if (!result.ok && result.requiresSignIn) {
-    redirectToLogin(locale, purchasesListHref(token));
+    await redirectToLogin(locale, purchasesListHref(token), tenantId);
   }
 
   return (
