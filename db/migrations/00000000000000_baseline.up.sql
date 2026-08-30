@@ -1342,6 +1342,11 @@ CREATE INDEX idx_purchases_tenant_id ON purchases USING btree (tenant_id);
 -- Reader library keyset scans filter by tenant + user and run newest first.
 CREATE INDEX idx_purchases_tenant_user_purchased_at ON purchases USING btree (tenant_id, user_id, purchased_at DESC, id DESC);
 
+-- INDEX: idx_purchases_tenant_purchased_at_episode
+-- Daily content stats scans one tenant's purchase source for a UTC day and
+-- groups the result by episode.
+CREATE INDEX idx_purchases_tenant_purchased_at_episode ON purchases USING btree (tenant_id, purchased_at DESC, episode_id);
+
 -- INDEX: idx_series_creators_tenant_creator
 -- 著者から公開シリーズを辿る EXISTS / JOIN 用。PK は (series_id, creator_id)
 -- なので creator_id からの検索には乗らない。

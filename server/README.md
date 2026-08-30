@@ -12,6 +12,7 @@ server/
 │   ├── platform-api-server/ # プラットフォーム管理向け ConnectRPC API サーバー
 │   ├── image-server/      # 公開向け画像配送（Manael 変換）
 │   ├── admin-image-server/ # 管理向け画像配送
+│   ├── aggregate-content-stats/ # 日次コンテンツ統計の完全再集計バッチ
 │   ├── publish-episodes/  # 予約公開バッチ
 │   └── outbox-worker/     # Outbox + River 常駐ワーカー
 ├── bin/                   # task build で生成されるバイナリ
@@ -25,6 +26,7 @@ server/
 
 - マルチテナント運用の API 提供
 - コンテンツ入稿/公開に関する業務ロジック
+- 日次コンテンツ統計の完全再集計
 - 予約公開バッチ (公開状態への遷移)
 - 認証・セキュリティ基盤
 
@@ -74,6 +76,7 @@ task server:test
 - プラットフォーム API サーバー: [cmd/platform-api-server/README.md](cmd/platform-api-server/README.md)
 - 公開画像サーバー: [cmd/image-server/README.md](cmd/image-server/README.md)
 - 管理画像サーバー: [cmd/admin-image-server/README.md](cmd/admin-image-server/README.md)
+- 日次コンテンツ統計バッチ: [cmd/aggregate-content-stats/README.md](cmd/aggregate-content-stats/README.md)
 - 予約公開バッチ: [cmd/publish-episodes/README.md](cmd/publish-episodes/README.md)
 - Outbox ワーカー: [cmd/outbox-worker/README.md](cmd/outbox-worker/README.md)
 
@@ -211,7 +214,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 | キー | 値 |
 | --- | --- |
-| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-publish-episodes` / `publira-outbox-worker`）。`OTEL_SERVICE_NAME` で上書き可能 |
+| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-aggregate-content-stats` / `publira-publish-episodes` / `publira-outbox-worker`）。`OTEL_SERVICE_NAME` で上書き可能 |
 | `service.version` | ビルド時に埋め込んだ version。無ければチェックアウトの VCS リビジョン、それも無ければ `dev`（`internal/buildinfo`） |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`。未設定なら `development` |
 
@@ -395,13 +398,13 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 | admin-api | `publira_admin` | `PUBLIRA_ADMIN_DB_URL` | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable` |
 | api (public) | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
 | outbox-worker | BYPASSRLS 相当（ローカルは superuser） | `PUBLIRA_WORKER_DB_URL`（未設定時 `PUBLIRA_DB_URL`） | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
+| aggregate-content-stats | `publira_content_stats`（BYPASSRLS） | `PUBLIRA_CONTENT_STATS_DB_URL`（未設定時 `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL`） | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 
-`publira_platform` は BYPASSRLS 属性を持ち、全テナントのデータに横断アクセスします。  
-`publira_admin` / `publira_public` は RLS が有効で、テナント ID でスコープされます。
+`publira_platform` と `publira_content_stats` は BYPASSRLS 属性を持ち、全テナントのデータに横断アクセスします。 `publira_admin` / `publira_public` は RLS が有効で、テナント ID でスコープされます。
 
 ### ローカル開発
 
-`task db:setup` 実行時に `db/seeds/baseline/000_rls_bypass_role.sql` が適用され、3 ユーザーが作成されます。
+`task db:setup` 実行時に `db/seeds/baseline/000_rls_bypass_role.sql` が適用され、4 ユーザーが作成されます。
 
 ### 本番環境
 
@@ -409,11 +412,12 @@ seed を実行後、各ユーザーのパスワードを安全な値に変更し
 
 ```sql
 ALTER ROLE publira_platform PASSWORD '<secure_password>';
+ALTER ROLE publira_content_stats PASSWORD '<secure_password>';
 ALTER ROLE publira_admin    PASSWORD '<secure_password>';
 ALTER ROLE publira_public   PASSWORD '<secure_password>';
 ```
 
-次に各サーバーの環境変数 (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) にそれぞれのパスワードを含む URL を設定してください。
+次に各サーバーの環境変数 (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) にそれぞれのパスワードを含む URL を設定してください。
 
 ## 初期データメモ
 
