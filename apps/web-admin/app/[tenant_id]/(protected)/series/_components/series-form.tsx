@@ -1,6 +1,6 @@
 "use client";
 
-import { getMessage, parseLocale, toIntlLocale } from "@publira/i18n";
+import { getMessage, toIntlLocale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { Card, CardContent } from "@publira/ui-components/card";
@@ -23,6 +23,7 @@ import Image from "next/image";
 import {
   useActionState,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useMemo,
@@ -30,6 +31,7 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -86,9 +88,11 @@ const CreatorField = ({
   selectedCreatorPublicIds,
   onChange,
 }: CreatorFieldProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   // MultiCombobox renders its own input instead of a Field control, so the
   // label needs an id to point at.
   const comboboxId = useId();
@@ -156,9 +160,11 @@ const LabelField = ({
   onComboboxChange,
   onFallbackChange,
 }: LabelFieldProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   // Combobox renders its own input instead of a Field control, so the label
   // needs an id to point at. The fallback Input is a Field control and wires
   // itself up.
@@ -241,9 +247,11 @@ const EyeCatchImageField = ({
   onImageFileChange,
   previewImageUrl,
 }: EyeCatchImageFieldProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const hasPreviewImage = previewImageUrl.length > 0;
 
   return (
@@ -384,12 +392,11 @@ export const SeriesForm = ({
   initialSeries,
   timeZone,
 }: SeriesFormProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
-  const locale = parseLocale(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const creatorItems = useMemo<MultiComboboxItem[]>(

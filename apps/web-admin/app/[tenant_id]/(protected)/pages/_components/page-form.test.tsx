@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render as renderBase, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import type { PageListItem } from "../page-types";
 import { PageForm } from "./page-form";
@@ -12,6 +14,13 @@ vi.mock("#lib/use-tenant-id", () => ({
 }));
 
 const action = () => Promise.resolve(null);
+
+const render = (ui: React.ReactNode) =>
+  renderBase(ui, {
+    wrapper: ({ children }) => (
+      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+    ),
+  });
 
 const page: PageListItem = {
   createdAt: "2030-01-01T00:00:00Z",

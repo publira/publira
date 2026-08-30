@@ -55,8 +55,9 @@ const PageManagerData = async ({
 }: Pick<PagesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const [listResult, timeZone] = await Promise.all([
+  const [listResult, locale, timeZone] = await Promise.all([
     listPages(tenantId, { token }),
+    getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -66,6 +67,7 @@ const PageManagerData = async ({
     <PageManager
       {...cursorPageHrefs(listResult)}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
+      locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
       pages={listResult.pages}
       timeZone={timeZone}

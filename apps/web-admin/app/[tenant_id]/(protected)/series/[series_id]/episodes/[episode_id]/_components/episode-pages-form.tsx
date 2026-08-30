@@ -18,9 +18,16 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useRef, useState } from "react";
+import {
+  useActionState,
+  useCallback,
+  useRef,
+  useState,
+  useContext,
+} from "react";
 import type { ChangeEvent, DragEvent } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EpisodeEditActionState } from "../episode-edit-types";
@@ -39,9 +46,11 @@ export const EpisodePagesForm = ({
   episodePublicId,
   action,
 }: EpisodePagesFormProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [uploadMode, setUploadMode] = useState<"pages" | "zip" | "epub">(

@@ -9,12 +9,14 @@ import { useRouter } from "next/navigation";
 import {
   useActionState,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
 } from "react";
 import type { ChangeEventHandler } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -32,9 +34,11 @@ export const LabelEyeCatchForm = ({
   action,
   initialLabel,
 }: LabelEyeCatchFormProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);

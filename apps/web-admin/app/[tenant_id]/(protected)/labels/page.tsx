@@ -54,7 +54,10 @@ const LabelManagerData = async ({
 }: Pick<LabelPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const listResult = await listLabels(tenantId, { token });
+  const [listResult, locale] = await Promise.all([
+    listLabels(tenantId, { token }),
+    getLocale(tenantId),
+  ]);
 
   await redirectToLoginIfSessionRejected(listResult);
 
@@ -63,6 +66,7 @@ const LabelManagerData = async ({
       {...cursorPageHrefs(listResult)}
       labels={listResult.labels}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
+      locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
     />
   );

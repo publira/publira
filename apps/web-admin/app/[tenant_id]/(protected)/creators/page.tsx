@@ -54,7 +54,10 @@ const CreatorManagerData = async ({
 }: Pick<CreatorPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const listResult = await listCreators(tenantId, { token });
+  const [listResult, locale] = await Promise.all([
+    listCreators(tenantId, { token }),
+    getLocale(tenantId),
+  ]);
 
   await redirectToLoginIfSessionRejected(listResult);
 
@@ -63,6 +66,7 @@ const CreatorManagerData = async ({
       {...cursorPageHrefs(listResult)}
       creators={listResult.creators}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
+      locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
     />
   );

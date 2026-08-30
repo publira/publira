@@ -29,9 +29,10 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useState, useContext } from "react";
 import type { ChangeEvent, MouseEvent } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import {
@@ -117,9 +118,11 @@ export const PageWorkspace = ({
   timeZone,
   updatePageAction,
 }: PageWorkspaceProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [titleState, titleFormAction, isTitlePending] = useActionState(
     updatePageAction,

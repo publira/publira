@@ -13,9 +13,10 @@ import {
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useState, useContext } from "react";
 import type { ChangeEvent } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { LabelActionState, LabelListItem } from "../label-types";
@@ -64,9 +65,11 @@ const getCardDescription = (
 };
 
 export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const initialName = initialLabel?.name ?? "";

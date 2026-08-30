@@ -9,6 +9,9 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { useContext } from "react";
+
+import { AdminLocaleContext } from "#components/admin-locale-context";
 
 interface PublishAtInputProps {
   defaultValue?: string;
@@ -21,9 +24,11 @@ export const PublishAtInput = ({
   name = "publish_at",
   timeZone,
 }: PublishAtInputProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
 
   return (
     <Field>

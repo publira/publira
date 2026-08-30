@@ -1,4 +1,5 @@
 import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
@@ -30,6 +31,7 @@ import type { SeriesListItem } from "../series-types";
 type SeriesManagerProps = CursorPageHrefs & {
   series: SeriesListItem[];
   listErrorMessage?: string;
+  locale: Locale;
   pageSize: number;
   timeZone: string;
 };
@@ -57,17 +59,17 @@ const excerpt = (text: string, max = 56) => {
 const SeriesListBody = ({
   hasPageLinks,
   listErrorMessage,
+  locale,
   series,
   timeZone,
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
+  locale: Locale;
   series: SeriesListItem[];
   timeZone: string;
 }) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const messages = sharedCatalog(locale);
   // A failed fetch still hands an empty `series` array; do not show the empty
   // list state alongside the error or operators will read it as "no series".
   if (listErrorMessage) {
@@ -162,10 +164,9 @@ export const SeriesManager = ({
   pageSize,
   previousHref,
   timeZone,
+  locale,
 }: SeriesManagerProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const messages = sharedCatalog(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -191,6 +192,7 @@ export const SeriesManager = ({
         <SeriesListBody
           hasPageLinks={hasPageLinks}
           listErrorMessage={listErrorMessage}
+          locale={locale}
           series={series}
           timeZone={timeZone}
         />

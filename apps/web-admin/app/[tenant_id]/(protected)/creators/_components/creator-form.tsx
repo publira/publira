@@ -20,8 +20,9 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
 import Image from "next/image";
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useState, useContext } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { CreatorActionState, CreatorListItem } from "../creator-types";
@@ -48,9 +49,11 @@ const IconImageField = ({
   isUpdate,
   onClearIconImageChange,
 }: IconImageFieldProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const iconImageUrl = initialCreator?.iconImageUrl ?? "";
   const hasExistingIconImage = iconImageUrl.length > 0;
 
@@ -102,9 +105,11 @@ export const CreatorForm = ({
   action,
   initialCreator,
 }: CreatorFormProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const initialName = initialCreator?.name ?? "";

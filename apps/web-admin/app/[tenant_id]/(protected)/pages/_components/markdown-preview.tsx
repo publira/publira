@@ -2,7 +2,10 @@
 
 import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import { useContext } from "react";
 import type { ReactNode } from "react";
+
+import { AdminLocaleContext } from "#components/admin-locale-context";
 
 interface MarkdownPreviewProps {
   content: string;
@@ -281,9 +284,11 @@ const parseMarkdown = (content: string): MarkdownBlock[] => {
 };
 
 export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const blocks = parseMarkdown(content);
 
   if (blocks.length === 0) {

@@ -19,9 +19,10 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useState, useContext } from "react";
 import type { ChangeEvent } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { formatPagePath, normalizePageSlugInput } from "../page-types";
@@ -37,9 +38,11 @@ interface PageFormProps {
 }
 
 export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   // Initial values only; entity switch must remount the form via key on the parent.

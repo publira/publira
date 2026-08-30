@@ -1,4 +1,5 @@
 import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -29,6 +30,7 @@ import type { LabelListItem } from "../label-types";
 type LabelManagerProps = CursorPageHrefs & {
   labels: LabelListItem[];
   listErrorMessage?: string;
+  locale: Locale;
   pageSize: number;
 };
 
@@ -36,14 +38,14 @@ const LabelListBody = ({
   hasPageLinks,
   labels,
   listErrorMessage,
+  locale,
 }: {
   hasPageLinks: boolean;
   labels: LabelListItem[];
   listErrorMessage?: string;
+  locale: Locale;
 }) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const messages = sharedCatalog(locale);
   // A failed fetch still hands an empty `labels` array; do not show the empty
   // list state alongside the error or operators will read it as "no labels".
   if (listErrorMessage) {
@@ -105,10 +107,9 @@ export const LabelManager = ({
   nextHref,
   pageSize,
   previousHref,
+  locale,
 }: LabelManagerProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const messages = sharedCatalog(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -135,6 +136,7 @@ export const LabelManager = ({
           hasPageLinks={hasPageLinks}
           labels={labels}
           listErrorMessage={listErrorMessage}
+          locale={locale}
         />
 
         {showPagination ? (

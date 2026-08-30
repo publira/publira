@@ -18,8 +18,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback } from "react";
+import { useActionState, useCallback, useContext } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -40,9 +41,11 @@ export const EpisodeForm = ({
   action,
   timeZone,
 }: EpisodeFormProps) => {
-  const messages = sharedCatalog(
-    typeof document === "undefined" ? undefined : document.documentElement.lang
-  );
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 

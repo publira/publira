@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render as renderBase, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import type { SeriesListItem } from "../series-types";
 import { SeriesForm } from "./series-form";
@@ -12,6 +14,13 @@ vi.mock("#lib/use-tenant-id", () => ({
 }));
 
 const action = () => Promise.resolve(null);
+
+const render = (ui: React.ReactNode) =>
+  renderBase(ui, {
+    wrapper: ({ children }) => (
+      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+    ),
+  });
 
 const labels = [{ name: "レーベルA", publicId: "LABEL001" }];
 const creators = [{ name: "クリエイターA", publicId: "CREATOR001" }];
@@ -101,4 +110,22 @@ it("ロールとラベルから各入力を引ける", () => {
     screen.getAllByRole("combobox", { name: /クリエイター/u })
   ).toHaveLength(2);
   expect(screen.getAllByLabelText(/公開日時/u)).toHaveLength(2);
+});
+
+it("保護レイアウトから渡されたテナントロケールで表示する", () => {
+  renderBase(
+    <AdminLocaleProvider locale="en">
+      <SeriesForm
+        action={action}
+        creators={creators}
+        defaultReadingPeriodHours={72}
+        labels={labels}
+        mode="create"
+        timeZone="Asia/Tokyo"
+      />
+    </AdminLocaleProvider>
+  );
+
+  expect(screen.getByRole("textbox", { name: /Title/u })).toBeDefined();
+  expect(screen.getByRole("button", { name: "Create series" })).toBeDefined();
 });

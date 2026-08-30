@@ -55,8 +55,9 @@ const SeriesManagerData = async ({
 }: Pick<SeriesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const [listResult, timeZone] = await Promise.all([
+  const [listResult, locale, timeZone] = await Promise.all([
     listSeries(tenantId, { token }),
+    getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -66,6 +67,7 @@ const SeriesManagerData = async ({
     <SeriesManager
       {...cursorPageHrefs(listResult)}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
+      locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
       series={listResult.series}
       timeZone={timeZone}
