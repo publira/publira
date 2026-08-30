@@ -213,4 +213,6 @@ app コンテナに渡す既定値は `.devcontainer/compose.yaml` にありま�
 
 `PUBLIRA_TRACING_ENABLED` 以外は OpenTelemetry SDK 自身が読む変数なので、名前は OpenTelemetry のドキュメントどおりです。トレースは既定で無効で、この dev スタックが明示的に有効化しています。`PUBLIRA_DEPLOYMENT_ENVIRONMENT` は未設定のままなので `development` 扱いになり、root span は全件サンプルされます。
 
+Traefik は `web` エントリポイント（`localhost:3080`）に届いたリクエストから `traceparent` / `tracestate` / `baggage` を落とします。サーバーは inbound の `traceparent` を親として信頼するので、信頼境界を gateway に置くためです。`curl` に自分で `traceparent` を付けて `3080` を叩いてもそのトレース ID にはならず、サーバー側で新しい root span が始まります。
+
 属性・span 命名・サンプリング方針は [#502](https://github.com/publira/publira/issues/502) の設計合意に従います。設定と計装の詳細は [server/README.md](server/README.md#分散トレーシング-opentelemetry) を参照してください。

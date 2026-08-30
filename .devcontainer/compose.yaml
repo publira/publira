@@ -8,6 +8,11 @@ services:
       - "--api.insecure=true"
       - "--api.dashboard=true"
       - "--entrypoints.web.address=:3080"
+      # Every request that reaches this entrypoint comes from outside, so it
+      # loses its W3C Trace Context here. Entrypoint middlewares run before
+      # the ones a router declares, and a new router inherits this one
+      # without having to remember it.
+      - "--entrypoints.web.http.middlewares=strip-trace-context@docker"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
     depends_on:
@@ -73,8 +78,24 @@ services:
       # Tracing is off unless a deployment asks for it; the dev stack asks.
       PUBLIRA_TRACING_ENABLED: "true"
     labels:
-      # web-host: テナント公開サイト (port 3000)
       - "traefik.enable=true"
+
+      # The trust boundary for W3C Trace Context. The Go servers adopt an
+      # inbound `traceparent` as the parent span, so a caller who can set the
+      # header picks the trace ID and the sampled flag: it could graft spans
+      # onto someone else's trace, or force export past the production
+      # sampling ratio. Dropping the three headers here leaves the servers a
+      # request with no trace context, and they open a fresh root span.
+      #
+      # First-party server-to-server traffic keeps its trace context because
+      # none of it passes through Traefik: the SSR clients dial the gRPC
+      # ports directly and the Go APIs call the Next.js revalidate endpoints
+      # over PUBLIRA_WEB_*_INTERNAL_URL.
+      - "traefik.http.middlewares.strip-trace-context.headers.customrequestheaders.traceparent="
+      - "traefik.http.middlewares.strip-trace-context.headers.customrequestheaders.tracestate="
+      - "traefik.http.middlewares.strip-trace-context.headers.customrequestheaders.baggage="
+
+      # web-host: テナント公開サイト (port 3000)
       - "traefik.http.routers.web-host.rule=PathPrefix(`/`)"
       - "traefik.http.routers.web-host.entrypoints=web"
       - "traefik.http.routers.web-host.priority=1"

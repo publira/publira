@@ -69,6 +69,24 @@ ROUTING_ROUTERS=(
   admin-image-server
 )
 
+# Middleware names from the same labels. `strip-trace-context` is attached to
+# the `web` entrypoint in the static configuration, so every router on that
+# entrypoint refuses requests until the Docker provider has advertised it;
+# waiting for it turns that into one readable message instead of a wall of
+# failing probes.
+ROUTING_MIDDLEWARES=(
+  api-strip
+  strip-trace-context
+)
+
+# W3C Trace Context a caller could forge. echo.py reports each of these
+# headers back, so a probe can assert the backend saw none of them.
+ROUTING_TRACE_CONTEXT_HEADERS=(
+  "traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+  "tracestate: publira=forged"
+  "baggage: publira=forged"
+)
+
 routing_log() {
   printf '[routing] %s\n' "$*"
 }
@@ -140,14 +158,28 @@ traefik_router_names() {
     tr ',' '\n' | sed -n 's/.*"name":"\([^"]*\)".*/\1/p'
 }
 
+# Middlewares Traefik has currently advertised on the insecure API.
+traefik_middleware_names() {
+  curl -fsS --max-time 3 \
+    "http://127.0.0.1:${ROUTING_TRAEFIK_API_PORT}/api/http/middlewares" |
+    tr ',' '\n' | sed -n 's/.*"name":"\([^"]*\)".*/\1/p'
+}
+
+# Arguments after the path are extra `Header: value` lines sent as-is.
 http_probe() {
   local method="$1" host="$2" path="$3"
+  shift 3
+  local header_args=() header
+  for header in "$@"; do
+    header_args+=(-H "${header}")
+  done
   local tmpfile code
   tmpfile="$(mktemp)"
   code="$(
     curl -sS -o "${tmpfile}" -w '%{http_code}' --max-time 5 \
       -X "${method}" \
       -H "Host: ${host}" \
+      ${header_args[@]+"${header_args[@]}"} \
       "http://127.0.0.1:${ROUTING_TRAEFIK_PORT}${path}" 2>/dev/null || true
   )"
   printf '%s\n' "${code}"
@@ -180,6 +212,41 @@ assert_route() {
   routing_log "ok: ${name} → ${want_backend}${want_path}"
 }
 
+# The same route with a forged W3C Trace Context on the request: the
+# entrypoint middleware must drop all three headers before the backend sees
+# them, and leave the routing and the strip-prefix alone.
+assert_trace_context_stripped() {
+  local name="$1" method="$2" host="$3" path="$4" want_backend="$5" want_path="$6"
+  local out code body actual_backend actual_path header field value
+
+  out="$(http_probe "${method}" "${host}" "${path}" "${ROUTING_TRACE_CONTEXT_HEADERS[@]}")"
+  code="$(printf '%s' "${out}" | sed -n '1p')"
+  body="$(printf '%s' "${out}" | tail -n +2)"
+
+  if [[ "${code}" != "200" ]]; then
+    routing_fail "${name}: HTTP ${code} (want 200) host=${host} ${method} ${path} body=${body}"
+  fi
+
+  actual_backend="$(json_string_field "${body}" backend)"
+  actual_path="$(json_string_field "${body}" path)"
+  if [[ "${actual_backend}" != "${want_backend}" ]]; then
+    routing_fail "${name}: backend '${actual_backend}' (want '${want_backend}') host=${host} ${method} ${path} body=${body}"
+  fi
+  if [[ "${actual_path}" != "${want_path}" ]]; then
+    routing_fail "${name}: path '${actual_path}' (want '${want_path}') host=${host} ${method} ${path} body=${body}"
+  fi
+
+  for header in "${ROUTING_TRACE_CONTEXT_HEADERS[@]}"; do
+    field="${header%%:*}"
+    value="$(json_string_field "${body}" "${field}")"
+    if [[ -n "${value}" ]]; then
+      routing_fail "${name}: backend saw ${field} '${value}' (want it stripped) host=${host} ${method} ${path} body=${body}"
+    fi
+  done
+
+  routing_log "ok: ${name} → ${want_backend}${want_path} without trace context"
+}
+
 collect_diagnostics() {
   routing_err "collecting diagnostics into ${LOG_DIR}"
   mkdir -p "${LOG_DIR}"
@@ -189,6 +256,9 @@ collect_diagnostics() {
   curl -fsS --max-time 3 \
     "http://127.0.0.1:${ROUTING_TRAEFIK_API_PORT}/api/http/routers" \
     >"${LOG_DIR}/traefik-routers.json" 2>&1 || true
+  curl -fsS --max-time 3 \
+    "http://127.0.0.1:${ROUTING_TRAEFIK_API_PORT}/api/http/middlewares" \
+    >"${LOG_DIR}/traefik-middlewares.json" 2>&1 || true
 
   local f
   for f in "${LOG_DIR}"/*.log "${LOG_DIR}"/*.json; do

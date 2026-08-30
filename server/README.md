@@ -194,7 +194,24 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 | Outbox ワーカー | `internal/outbox` | drain 1 回とイベント処理 1 件につき各 1 本（`outbox.drain` / `outbox.process`） |
 | outbound HTTP（Next.js 再検証 / email-renderer） | `otelhttp` の Transport | client span と `traceparent` の伝播 |
 
-伝播は W3C Trace Context（`traceparent`）と Baggage です。inbound の `traceparent` は**親として信頼**するため、web アプリから API、その先の DB クエリまでが 1 トレースに繋がります。
+伝播は W3C Trace Context（`traceparent`）と Baggage です。inbound の `traceparent` は**親として信頼**するため、web アプリから API、その先の DB クエリまでが 1 トレースに繋がります。信頼してよいのは gateway が外来のヘッダを落としているからで、その境界は次節のとおりです。
+
+### 外部から届く trace context
+
+`traceparent` を親として信頼するサーバーは、そのヘッダを設定できる相手にトレース ID と `sampled` フラグを預けることになります。だから**信頼境界は gateway に置き**、公開エントリポイントを通ったリクエストからは `traceparent` / `tracestate` / `baggage` を除去します。除去はエントリポイントの既定ミドルウェアとして掛けるので、ルーターを増やしても付け忘れが起きません。
+
+| 環境 | どこで落とすか |
+| --- | --- |
+| 開発 | `.devcontainer/compose.yaml` の Traefik。`web` エントリポイントに `strip-trace-context` ミドルウェア（`headers.customRequestHeaders` の空値）を既定で付ける |
+| 本番 | gateway の外部エントリポイントで同じ 3 ヘッダを除去してから backend へ渡す |
+
+ヘッダを落とした結果、API 側ではその RPC が**新しい root span** になります。呼び出し元が指定した trace ID は採用されず、`sampled=01` を付けられても production の 10% サンプリングは上書きされません。トレースが 1 本に繋がるのは gateway より内側だけです。
+
+第一者のサーバー間通信は gateway を通らないので、この除去の影響を受けません。SSR（web-host / web-admin / web-platform）は API の gRPC ポートへ直接繋ぎ、Go の API から Next.js の再検証エンドポイントへは `PUBLIRA_WEB_*_INTERNAL_URL` で直接呼びます。どちらも `traceparent` がそのまま通るため、「web アプリ → API → DB クエリ」は 1 本のトレースのままです。
+
+モバイルアプリとブラウザは利用者の端末で動くので第一者ではなく、gateway で trace context を落とす対象です。
+
+開発環境 Traefik の除去は、[`../e2e/routing/README.md`](../e2e/routing/README.md) の疎通チェックが実際にヘッダを付けたリクエストで検証します。
 
 ### 非同期監査ログの運用監視
 

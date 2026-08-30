@@ -207,13 +207,13 @@ func Setup(ctx context.Context, serviceName string) (func(context.Context) error
 // request cannot be followed from the web app through the API into the
 // queries it issues, which is the whole point of the instrumentation.
 //
-// Every one of these servers is reachable through the gateway, so this
-// trusts a header an outside caller can set: a forged traceparent can
-// pollute a trace, and a forged sampled flag can force export past the
-// production sampling ratio. The gateway is where that header has to be
-// normalised, which is https://github.com/publira/publira/issues/1036 —
-// and it has to land before this option comes off, or the trace breaks
-// in two at the API boundary.
+// Trusting that header is only safe because the gateway is the trust
+// boundary: it drops traceparent / tracestate / baggage from every
+// request that arrives on an external entrypoint, so what reaches these
+// servers is first-party trace context or none at all. A forged
+// traceparent would otherwise graft spans onto someone else's trace, and
+// a forged sampled flag would force export past the production sampling
+// ratio.
 //
 // Pass the option unconditionally: with tracing disabled the interceptors
 // record into the no-op TracerProvider.

@@ -1,6 +1,6 @@
 # ホストベースルーティング疎通チェック
 
-開発環境 Traefik（`.devcontainer/compose.yaml` の Docker labels）のルーティング退行を、実アプリを起動せずに検知する。
+開発環境 Traefik（`.devcontainer/compose.yaml` の Docker labels と静的設定）のルーティング退行を、実アプリを起動せずに検知する。外来 trace context の除去も同じ経路の設定なのでここで見る。
 
 関連: [#55](https://github.com/publira/publira/issues/55) / Epic [#512](https://github.com/publira/publira/issues/512)
 
@@ -9,6 +9,8 @@ Playwright E2E（[`../README.md`](../README.md)）はアプリポートへ直結
 ## なぜ必要か
 
 Traefik の振り分けは `.devcontainer/compose.yaml` の `app` labels だけが正である。priority・HostRegexp・`/api` の strip-prefix・`/api/v1/revalidate` の除外・`/images` の admin 分岐は、ラベルを 1 行変えただけで壊れる。その退行は `pnpm preflight` でも Playwright でも bootstrap でも見えない。
+
+`web` エントリポイントの `strip-trace-context` ミドルウェアも同じ立場にある。これは外来の `traceparent` / `tracestate` / `baggage` を落とす信頼境界で、外れても通信は普通に成功するため、検証しなければ誰も気づかない。詳細は [`../../server/README.md`](../../server/README.md#外部から届く-trace-context) を参照。
 
 本チェックは **同じ compose ファイル** を専用 project 名で起動し、`app` のプロセスだけをポート応答用の echo サーバーに差し替える。ラベルはそのままなので、compose 上のルール変更がそのままテストに現れる。
 
@@ -39,13 +41,13 @@ task e2e:routing
 | コマンド | 内容 |
 | --- | --- |
 | `task e2e:routing:up` | `.devcontainer/compose.yaml` + overlay で `traefik` + echo `app` を起動 |
-| `task e2e:routing:wait-ready` | Traefik API に 6 本の labeled router が出るまで待つ |
+| `task e2e:routing:wait-ready` | Traefik API に 6 本の labeled router と 2 本の middleware が出るまで待つ |
 | `task e2e:routing:test` | Host / `/api` / `/images` のプローブ（stack 起動済み前提） |
 | `task e2e:routing:down` | teardown |
 
 ## 検証内容
 
-echo サーバーは受けたリクエストを `{"backend","port","path","host","method"}` で返す。アサーションは **どのバックエンドに届いたか** と **そのバックエンドが見た path**（strip-prefix 後）の両方。
+echo サーバーは受けたリクエストを `{"backend","port","path","host","method"}` と、受け取った `traceparent` / `tracestate` / `baggage` の値で返す。アサーションは **どのバックエンドに届いたか** と **そのバックエンドが見た path**（strip-prefix 後）の両方。
 
 | 系統 | 例 | 期待 |
 | --- | --- | --- |
@@ -64,6 +66,15 @@ echo サーバーは受けたリクエストを `{"backend","port","path","host"
 | `/images` | `GET /images/cover` | `image-server` (`:8200`) |
 | `/images` on platform | `Host: platform.localhost` `/images/cover` | `image-server`（priority 110 > 100） |
 | `/images` on admin | `Host: admin.localhost` `/images/cover` | `admin-image-server` (`:8201`, priority 130） |
+
+外来 trace context の除去は、偽装した `traceparent` / `tracestate` / `baggage` を付けたうえで、上と同じ backend / path のアサーションに **3 ヘッダがどれも届いていないこと** を足して確認する。エントリポイント既定のミドルウェアなので、6 つのバックエンドすべてが対象。
+
+| 系統 | 例 | 期待 |
+| --- | --- | --- |
+| web-host / web-admin / web-platform | `Host: admin.localhost` `/` + 偽装ヘッダ | `web-admin`、3 ヘッダとも空 |
+| `/api` | `GET /api/readyz` + 偽装ヘッダ | `api` path `/readyz`（strip-prefix と同居しても除去される）、3 ヘッダとも空 |
+| revalidate 除外 | `POST /api/v1/revalidate` + 偽装ヘッダ | `web-host`、3 ヘッダとも空 |
+| `/images` | `GET /images/cover`（既定 / admin ホスト） + 偽装ヘッダ | `image-server` / `admin-image-server`、3 ヘッダとも空 |
 
 ## 構成
 
@@ -86,13 +97,15 @@ e2e/routing/
 失敗したメッセージ（`[routing] ERROR: …`）がどのプローブかを示す。
 
 1. **port is already in use** — `13080` / `18080` を空けたか、`ROUTING_TRAEFIK_PORT` を変える
-2. **readiness failed: traefik-routers** — Docker provider が labels を読んでいない。`app` に `traefik.enable=true` があるか、`/var/run/docker.sock` が Traefik から見えるかを確認
+2. **readiness failed: traefik-routers** — Docker provider が labels を読んでいない。`app` に `traefik.enable=true` があるか、`/var/run/docker.sock` が Traefik から見えるかを確認。middleware だけ出ていない場合は `traefik.http.middlewares.*` のラベル名を確認する
 3. **backend / path mismatch** — `.devcontainer/compose.yaml` の該当 router の rule / priority / middleware
+4. **backend saw traceparent … (want it stripped)** — `web` エントリポイントの `--entrypoints.web.http.middlewares` と `strip-trace-context` のラベルを確認。参照名は provider 込みの `strip-trace-context@docker`
 
 `.run/logs/` に次を残す（teardown では消さない）。
 
 - `compose-ps.log` / `compose.log` — 失敗時のみ
 - `traefik-routers.json` — 失敗時のみ。Traefik API の routers 一覧
+- `traefik-middlewares.json` — 失敗時のみ。Traefik API の middlewares 一覧
 
 ## CI
 
