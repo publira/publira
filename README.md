@@ -22,6 +22,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 │   │   ├── api-server/       # ConnectRPC API サーバー
 │   │   ├── aggregate-content-stats/ # 日次コンテンツ統計の完全再集計バッチ
 │   │   ├── publish-episodes/ # 予約公開バッチ
+│   │   ├── purge-content-events/ # 閲覧イベントの保持期限パージバッチ
 │   │   └── outbox-worker/    # Outbox + River 常駐ワーカー
 │   ├── gen/            # buf 自動生成コード (Go)
 │   └── internal/

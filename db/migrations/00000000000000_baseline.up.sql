@@ -1194,6 +1194,11 @@ CREATE UNIQUE INDEX idx_content_daily_stats_unique ON content_daily_stats USING 
 -- Fixed 30-minute epoch bucket; same actor + episode + bucket collapses to one row.
 CREATE UNIQUE INDEX idx_content_events_episode_view_debounce ON content_events USING btree (tenant_id, event_type, episode_id, actor_key, debounce_bucket) WHERE ((event_type)::text = 'episode_view'::text);
 
+-- INDEX: idx_content_events_occurred_at
+-- Retention purge (cmd/purge-content-events) walks the oldest rows across every
+-- tenant at once, so none of the tenant-leading indexes here can serve it.
+CREATE INDEX idx_content_events_occurred_at ON content_events USING btree (occurred_at);
+
 -- INDEX: idx_content_events_series_view_debounce
 CREATE UNIQUE INDEX idx_content_events_series_view_debounce ON content_events USING btree (tenant_id, event_type, series_id, actor_key, debounce_bucket) WHERE ((event_type)::text = 'series_view'::text);
 
