@@ -14,12 +14,32 @@ import { simpleMessageSyntaxError } from "../packages/i18n/src/mf2.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const indexPath = path.resolve(root, "locales/index.json");
+const i18nPackagePath = path.resolve(root, "packages/i18n/package.json");
 const newline = "\n";
 const check = process.argv.at(2) === "--check";
+const catalogTypePath = "./src/gen/locale-message-types.d.ts";
 
 const fail = (message: string): never => {
   throw new Error(`Invalid locales/index.json: ${message}`);
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const i18nPackage: unknown = JSON.parse(readFileSync(i18nPackagePath, "utf-8"));
+const packageExports =
+  isRecord(i18nPackage) && isRecord(i18nPackage.exports)
+    ? i18nPackage.exports
+    : undefined;
+const catalogExport =
+  packageExports && isRecord(packageExports["./catalog"])
+    ? packageExports["./catalog"]
+    : undefined;
+if (!catalogExport || catalogExport.types !== catalogTypePath) {
+  throw new Error(
+    `packages/i18n/package.json must export ${catalogTypePath} as the @publira/i18n/catalog type entry`
+  );
+}
 
 /**
  * Every leaf is a MessageFormat 2 simple message. `@publira/i18n` formats them

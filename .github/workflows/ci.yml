@@ -360,6 +360,9 @@ jobs:
       - name: Dependencies / Install
         run: task deps
 
+      - name: Validate / Locale Catalog
+        run: pnpm locales:check
+
       - name: Validate / sqlc Generated Diff
         run: sqlc diff
 
