@@ -8692,6 +8692,65 @@ func (q *Queries) MarkPlatformUserPasswordResetTokenCompleted(ctx context.Contex
 	return err
 }
 
+const markPublishedEpisodeAsRead = `-- name: MarkPublishedEpisodeAsRead :one
+INSERT INTO episode_reads (tenant_id, user_id, episode_id)
+SELECT $1, $2, e.id
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND e.public_id = $3
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND (
+        el.price = 0
+        OR EXISTS (
+            SELECT 1
+            FROM purchases p
+            WHERE p.tenant_id = $1
+                AND p.user_id = $2
+                AND p.episode_id = e.id
+                AND (p.expires_at IS NULL OR p.expires_at > NOW())
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM access_tickets at
+            WHERE at.tenant_id = $1
+                AND at.user_id = $2
+                AND at.episode_id = e.id
+                AND at.revoked_at IS NULL
+                AND (at.expires_at IS NULL OR at.expires_at > NOW())
+        )
+    )
+ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
+SET read_at = episode_reads.read_at
+RETURNING tenant_id, user_id, episode_id, read_at
+`
+
+type MarkPublishedEpisodeAsReadParams struct {
+	TenantID        uuid.UUID `json:"tenant_id"`
+	UserID          uuid.UUID `json:"user_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+}
+
+// Inserts the first completed read only after checking publication and body
+// access in the same statement. A duplicate returns the preserved read_at.
+func (q *Queries) MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublishedEpisodeAsReadParams) (EpisodeRead, error) {
+	row := q.db.QueryRowContext(ctx, markPublishedEpisodeAsRead, arg.TenantID, arg.UserID, arg.EpisodePublicID)
+	var i EpisodeRead
+	err := row.Scan(
+		&i.TenantID,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.ReadAt,
+	)
+	return i, err
+}
+
 const markTenantAdminInvitationAccepted = `-- name: MarkTenantAdminInvitationAccepted :one
 UPDATE tenant_admin_invitations
 SET accepted_at = COALESCE(accepted_at, NOW()),

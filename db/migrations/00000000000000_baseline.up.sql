@@ -188,6 +188,16 @@ CREATE TABLE episode_follows (
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
+-- TABLE: episode_reads
+-- A member's first completed read of an episode. The composite primary key
+-- makes repeated and concurrent completion notifications idempotent.
+CREATE TABLE episode_reads (
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    episode_id uuid NOT NULL,
+    read_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 -- TABLE: episodes
 CREATE TABLE episodes (
     id uuid NOT NULL,
@@ -844,6 +854,10 @@ ALTER TABLE ONLY episode_listings
 -- CONSTRAINT: episode_follows episode_follows_pkey
 ALTER TABLE ONLY episode_follows
     ADD CONSTRAINT episode_follows_pkey PRIMARY KEY (tenant_id, user_id, episode_id);
+
+-- CONSTRAINT: episode_reads episode_reads_pkey
+ALTER TABLE ONLY episode_reads
+    ADD CONSTRAINT episode_reads_pkey PRIMARY KEY (tenant_id, user_id, episode_id);
 
 -- CONSTRAINT: episodes episodes_pkey
 ALTER TABLE ONLY episodes
@@ -1574,6 +1588,14 @@ ALTER TABLE ONLY episode_follows
 ALTER TABLE ONLY episode_follows
     ADD CONSTRAINT episode_follows_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
 
+-- FK CONSTRAINT: episode_reads episode_reads_tenant_episode_id_fkey
+ALTER TABLE ONLY episode_reads
+    ADD CONSTRAINT episode_reads_tenant_episode_id_fkey FOREIGN KEY (tenant_id, episode_id) REFERENCES episodes(tenant_id, id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: episode_reads episode_reads_tenant_user_id_fkey
+ALTER TABLE ONLY episode_reads
+    ADD CONSTRAINT episode_reads_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
+
 -- FK CONSTRAINT: series_follows series_follows_tenant_series_id_fkey
 ALTER TABLE ONLY series_follows
     ADD CONSTRAINT series_follows_tenant_series_id_fkey FOREIGN KEY (tenant_id, series_id) REFERENCES series(tenant_id, id) ON DELETE CASCADE;
@@ -1929,6 +1951,20 @@ ALTER TABLE episode_follows ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: episode_follows episode_follows_member_isolation
 CREATE POLICY episode_follows_member_isolation ON episode_follows
+    USING (
+        (tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)
+        AND (user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid)
+    )
+    WITH CHECK (
+        (tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)
+        AND (user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid)
+    );
+
+-- ROW SECURITY: episode_reads
+ALTER TABLE episode_reads ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: episode_reads episode_reads_member_isolation
+CREATE POLICY episode_reads_member_isolation ON episode_reads
     USING (
         (tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)
         AND (user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid)

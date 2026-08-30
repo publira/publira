@@ -58,6 +58,7 @@ var publicDataTables = []struct {
 	{name: "series", count: "SELECT count(*) FROM series"},
 	{name: "episodes", count: "SELECT count(*) FROM episodes"},
 	{name: "episode_listings", count: "SELECT count(*) FROM episode_listings"},
+	{name: "episode_reads", count: "SELECT count(*) FROM episode_reads"},
 	{name: "users", count: "SELECT count(*) FROM users"},
 	{name: "purchases", count: "SELECT count(*) FROM purchases"},
 	{name: "pages", count: "SELECT count(*) FROM pages"},
@@ -83,6 +84,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	})
 	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	env.PG.SeedPurchase(t, first.ID, member.ID, episode.ID, episode.Price)
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (tenant_id, user_id, episode_id) VALUES ($1, $2, $3)", first.ID, member.ID, episode.ID); err != nil {
+		t.Fatalf("seed episode read: %v", err)
+	}
 	env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

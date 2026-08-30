@@ -143,6 +143,8 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 
 	path, handler := publirav1connect.NewCatalogServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(path, handler)
+	episodeReadPath, episodeReadHandler := publirav1connect.NewEpisodeReadServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
+	mux.Handle(episodeReadPath, episodeReadHandler)
 	purchasePath, purchaseHandler := publirav1connect.NewPurchaseServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(purchasePath, purchaseHandler)
 	followPath, followHandler := publirav1connect.NewFollowServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))

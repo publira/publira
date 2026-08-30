@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS episode_image_variants CASCADE;
 DROP TABLE IF EXISTS episode_images CASCADE;
 DROP TABLE IF EXISTS episode_listings CASCADE;
 DROP TABLE IF EXISTS episode_follows CASCADE;
+DROP TABLE IF EXISTS episode_reads CASCADE;
 DROP TABLE IF EXISTS episodes CASCADE;
 DROP TABLE IF EXISTS series_follows CASCADE;
 DROP TABLE IF EXISTS item_recommend_features CASCADE;

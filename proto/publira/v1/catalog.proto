@@ -244,6 +244,25 @@ service CatalogService {
   rpc SearchPublishedSeries(SearchPublishedSeriesRequest) returns (SearchPublishedSeriesResponse) {}
 }
 
+message MarkEpisodeAsReadRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The public ID of the episode the signed-in member finished reading.
+  string episode_public_id = 2;
+}
+
+message MarkEpisodeAsReadResponse {
+  // The first time this member marked the episode as read. Repeated calls keep
+  // this value unchanged.
+  string read_at = 1;
+}
+
+service EpisodeReadService {
+  // Idempotently records that the authenticated member finished a currently
+  // published episode they may read. Unpublished, foreign, missing, and
+  // inaccessible episodes are all surfaced as NotFound.
+  rpc MarkEpisodeAsRead(MarkEpisodeAsReadRequest) returns (MarkEpisodeAsReadResponse) {}
+}
+
 // Kinds of public catalog targets a member can follow.
 enum FollowTargetType {
   FOLLOW_TARGET_TYPE_UNSPECIFIED = 0;

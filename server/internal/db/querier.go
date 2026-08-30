@@ -522,6 +522,9 @@ type Querier interface {
 	MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
+	// Inserts the first completed read only after checking publication and body
+	// access in the same statement. A duplicate returns the preserved read_at.
+	MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublishedEpisodeAsReadParams) (EpisodeRead, error)
 	MarkTenantAdminInvitationAccepted(ctx context.Context, arg MarkTenantAdminInvitationAcceptedParams) (TenantAdminInvitation, error)
 	MarkUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
