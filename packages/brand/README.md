@@ -1,21 +1,21 @@
 # brand
 
-Publira のブランドトークンを提供するパッケージです。
+The package that provides Publira's brand tokens.
 
-## 提供物
+## What it provides
 
-- `theme.css`: Tailwind v4 の `@theme` で利用する color / font token
+- `theme.css`: the color and font tokens used from Tailwind v4's `@theme`
 
-## 使い方
+## Usage
 
 ```css
 @import "@publira/brand/theme.css";
 ```
 
-テナントごとの動的テーマは、短い TTL の `GET /theme.css`（`app/[tenant_id]/theme.css/route.ts`）が `--publira-color-*` を返し、root layout の `<link rel="stylesheet" href="/theme.css" />` で読みます。
+The per-tenant dynamic theme comes from a short-TTL `GET /theme.css` (`app/[tenant_id]/theme.css/route.ts`) that returns the `--publira-color-*` values, loaded by the root layout through `<link rel="stylesheet" href="/theme.css" />`.
 
-## 注意点
+## Notes
 
-- トークン名は既存 UI 互換性に影響するため、変更時は `ui-components` と各 web app をあわせて確認してください。
-- ハードコード色より token の利用を優先してください。
-- デフォルト値は `theme.css` と `DEFAULT_TENANT_THEME_COLORS` を同期してください。
+- A token name affects compatibility with the existing UI, so check `ui-components` and every web app together when you change one.
+- Prefer a token over a hard-coded color.
+- Keep the defaults in `theme.css` in sync with `DEFAULT_TENANT_THEME_COLORS`.

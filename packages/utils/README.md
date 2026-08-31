@@ -1,22 +1,22 @@
 # utils
 
-フロントエンド向けの共有ユーティリティを提供するパッケージです。
+The package that provides the shared frontend utilities.
 
-## 提供物
+## What it provides
 
-- `cn`: `clsx` + `tailwind-merge` を使った className 結合ヘルパー
-- `decodeBase64Url`: Base64URL をバイト列に復号するヘルパー（`Uint8Array.fromBase64(..., { alphabet: "base64url" })` を優先し、未対応ブラウザのみ `atob` を利用）
-- `formatDateTime` / `formatDate` / `toDateTimeLocalValue` / `fromDateTimeLocalValue`: テナントタイムゾーン対応の日時・日付表示、`datetime-local` 相互変換（`Temporal` 前提）
-- `parseInstant` / `toInstantIsoString` / `startOfDayIsoString` / `endOfDayIsoString`: 絶対時刻のパース・比較、フォーム値の正規化、date-only フィルタの日境界
-- `listSupportedTimeZones` / `isValidTimeZone`: テナントタイムゾーン設定 UI 向けの IANA タイムゾーン一覧と検証
-- `@publira/utils/search-params`: `searchParams`（`string | string[] | undefined`）を zod で検証するためのスキーマ生成関数
-- `@publira/utils/route-params`: 動的ルートセグメント（`params`）を zod で検証するためのスキーマ生成関数
-- `@publira/utils/form-data`: `FormData` を zod の検証対象オブジェクトへ変換するヘルパー
-- `@publira/utils/field-errors`: `safeParse` の失敗を Server Action の ActionState 形状へ落とすヘルパー。共有バリデーション文言は `validationErrorMessage(locale)`（省略時は日本語の `VALIDATION_ERROR_MESSAGE`）
-- `@publira/utils/cached-read`: `"use cache"` の読み取りで失敗を「値」として返し、その失敗をキャッシュに残さないためのヘルパー
-- `@publira/utils/image-loader`: `next/image` から image-server (Manael) の変換・縮小を使うためのカスタムローダー
+- `cn`: a className-joining helper built on `clsx` and `tailwind-merge`
+- `decodeBase64Url`: decodes Base64URL to bytes (it prefers `Uint8Array.fromBase64(..., { alphabet: "base64url" })` and falls back to `atob` only on browsers that lack it)
+- `formatDateTime` / `formatDate` / `toDateTimeLocalValue` / `fromDateTimeLocalValue`: tenant-time-zone-aware date and time display, and the conversion to and from a `datetime-local` value (all on `Temporal`)
+- `parseInstant` / `toInstantIsoString` / `startOfDayIsoString` / `endOfDayIsoString`: parsing and comparing absolute times, normalizing form values, and the day boundaries of a date-only filter
+- `listSupportedTimeZones` / `isValidTimeZone`: the IANA time zone list and its validation, for the tenant time zone settings UI
+- `@publira/utils/search-params`: the schema builders that validate `searchParams` (`string | string[] | undefined`) with zod
+- `@publira/utils/route-params`: the schema builders that validate a dynamic route segment (`params`) with zod
+- `@publira/utils/form-data`: the helper that turns `FormData` into an object zod can validate
+- `@publira/utils/field-errors`: the helper that maps a `safeParse` failure into a Server Action's ActionState shape. The shared validation copy is `validationErrorMessage(locale)` (omit the locale and you get the Japanese `VALIDATION_ERROR_MESSAGE`)
+- `@publira/utils/cached-read`: the helper that returns a failure as a value from a `"use cache"` read, and keeps that failure out of the cache
+- `@publira/utils/image-loader`: the custom loader that lets `next/image` use the image-server (Manael) for conversion and resizing
 
-## 使い方
+## Usage
 
 ```ts
 import { cn } from "@publira/utils";
@@ -27,9 +27,9 @@ const className = cn(
 );
 ```
 
-### 日時（テナント TZ）
+### Date and time (the tenant's time zone)
 
-実行時に `Temporal` が必要です。各アプリは `temporal-polyfill/global` を instrumentation 等で読み込みます。絶対時刻のパースは `Temporal.Instant.from` のみ（`Z` または数値オフセット必須）。ホストローカルの `Date.parse` は使いません。
+`Temporal` has to exist at runtime; each app loads `temporal-polyfill/global` from its instrumentation or equivalent. An absolute time is parsed only through `Temporal.Instant.from` (a `Z` or a numeric offset is required). We do not use the host-local `Date.parse`.
 
 ```ts
 import {
@@ -39,17 +39,17 @@ import {
   toDateTimeLocalValue,
 } from "@publira/utils";
 
-// 表示（テナント向けは getTenantDisplayTimeZone の値を渡す。省略時は DEFAULT_TIME_ZONE）
-// locale は UI ロケール。省略時は ja（従来の ja-JP 固定と同じ出力）
+// Display (for a tenant, pass the value from getTenantDisplayTimeZone; the default is DEFAULT_TIME_ZONE)
+// locale is the UI locale; omitting it means ja, which matches the old fixed ja-JP output
 formatDateTime(iso, { locale, timeZone: tenantTimeZone, fallback: "-" });
 
-// 絶対時刻 ↔ datetime-local 壁時計（ホストのローカル TZ に依存しない）
+// An absolute time ↔ a datetime-local wall clock (independent of the host's local TZ)
 const local = toDateTimeLocalValue(iso, tenantTimeZone); // "YYYY-MM-DDTHH:mm"
 const absolute = fromDateTimeLocalValue(local, tenantTimeZone); // "...Z"
-// fromDateTimeLocalValue は Z / オフセット / [IANA] 付き文字列を拒否する
+// fromDateTimeLocalValue rejects a string carrying Z, an offset, or [IANA]
 ```
 
-### パース・比較・日境界
+### Parsing, comparing, and day boundaries
 
 ```ts
 import {
@@ -59,48 +59,48 @@ import {
   toInstantIsoString,
 } from "@publira/utils";
 
-// 比較・ソートは Instant で行う（getTime() の連鎖や文字列比較を使わない）
+// Compare and sort on Instant (not by chaining getTime() and not by comparing strings)
 const at = parseInstant(apiTimestamp); // Temporal.Instant | null
 if (at && Temporal.Instant.compare(at, Temporal.Now.instant()) <= 0) {
-  /* 過去 */
+  /* in the past */
 }
 
-// server action の入力（絶対時刻でも datetime-local 壁時計でも受ける）
-toInstantIsoString(formValue, tenantTimeZone); // "...Z" / 解釈できなければ ""
+// A server action's input (it accepts an absolute time or a datetime-local wall clock)
+toInstantIsoString(formValue, tenantTimeZone); // "...Z", or "" when it cannot be interpreted
 
-// date-only フィルタの日境界（UTC 決め打ちにしない）
-startOfDayIsoString("2024-03-10", tenantTimeZone); // その TZ の 00:00
-endOfDayIsoString("2024-03-10", tenantTimeZone); // 同日の終端（inclusive）
+// The day boundaries of a date-only filter (never pinned to UTC)
+startOfDayIsoString("2024-03-10", tenantTimeZone); // 00:00 in that TZ
+endOfDayIsoString("2024-03-10", tenantTimeZone); // the end of the same day (inclusive)
 ```
 
-### タイムゾーンの選択と検証
+### Picking and validating a time zone
 
-テナントタイムゾーン設定（[#565](https://github.com/publira/publira/issues/565)）のように、IANA 名を選ばせて保存する画面向けのヘルパーです。
+These are for a screen that lets someone choose an IANA name and saves it, such as the tenant time zone settings ([#565](https://github.com/publira/publira/issues/565)).
 
 ```ts
 import { isValidTimeZone, listSupportedTimeZones } from "@publira/utils";
 
-// 選択肢（ランタイムの ICU が持つゾーン名 + UTC、名前順・メモ化済み）
+// The options (the zone names the runtime's ICU carries, plus UTC; sorted by name and memoized)
 const items = listSupportedTimeZones().map((zone) => ({
   label: zone,
   value: zone,
 }));
 
-// Server Action の zod スキーマで即時フィードバックに使う
+// Used in a Server Action's zod schema for immediate feedback
 const schema = z.object({
   timezone: z.string().trim().min(1).refine(isValidTimeZone),
 });
 ```
 
-正本は Go サーバ（`server/internal/tenanttz`、埋め込み IANA tzdata で検証）です。`isValidTimeZone` はそこを緩めないための前段チェックで、`Local` とオフセット表記（`+09:00`）は `time.LoadLocation` に合わせて拒否します。列挙されないエイリアス（`Asia/Calcutta`）は有効値として受け付けます。
+The source of truth is the Go server (`server/internal/tenanttz`, which validates against the embedded IANA tzdata). `isValidTimeZone` is the check in front of it and must not be looser: it rejects `Local` and an offset spelling (`+09:00`), matching `time.LoadLocation`. An alias that is not enumerated (`Asia/Calcutta`) is accepted as a valid value.
 
-## 信頼できない入力の検証（zod）
+## Validating untrusted input (zod)
 
-方針は [`apps/AGENTS.md`](../../apps/AGENTS.md) の「Untrusted input」を参照。ここにあるのは、その方針を 3 アプリで同じ書き方にするための共有スキーマです。zod は peerDependency なので、アプリ側の zod がそのまま使われます。
+For the policy, see "Untrusted input" in [`apps/AGENTS.md`](../../apps/AGENTS.md). What lives here are the shared schemas that let all three apps write that policy the same way. zod is a peerDependency, so the app's own zod is what runs.
 
 ### `searchParams`
 
-`fallback` を渡すと「絶対に失敗しないスキーマ」、渡さないと「不正な値で zod エラーになるスキーマ」になります。前者はフィルタ画面の既定表示へのフォールバック、後者は `notFound()` させたい URL 向けです。
+Passing `fallback` gives you a schema that cannot fail; leaving it out gives you a schema that raises a zod error on an invalid value. The former is for falling back to a filter screen's default view, the latter for a URL you want to `notFound()`.
 
 ```ts
 import {
@@ -112,7 +112,7 @@ import {
 import { z } from "zod";
 
 const filtersSchema = z.object({
-  from: searchParamDate({ fallback: "" }), // 暦上ありえない日付は "" に落ちる
+  from: searchParamDate({ fallback: "" }), // a date that cannot exist on the calendar falls back to ""
   limit: searchParamNumber({ clamp: true, fallback: 20, max: 50, min: 1 }),
   q: searchParamString({ fallback: "", maxLength: 255 }),
   sort: searchParamEnum(["asc", "desc"], { fallback: "desc" }),
@@ -121,18 +121,18 @@ const filtersSchema = z.object({
 const filters = filtersSchema.parse(await searchParams);
 ```
 
-- 単一値のスキーマは同じキーが複数回現れた場合、どれか 1 つを選ばず不正扱いにする（`fallback` があればそれに落ちる）
-- 複数値は `searchParamStringArray()`。単一の `?tag=a` も 1 要素の配列として受ける
-- `searchParamNumber` は 10 進の整数・小数だけを受ける（`0x10` / `1e3` / `Infinity` は不正）。`integer` は既定で `true`
-- `maxLength` 超過は既定で不正。`truncate: true` のときだけ切り詰める（サロゲートペアは割らない）
-- `searchParamDate` は `Temporal` で暦の妥当性まで見るため、実行時に polyfill が必要
-- `searchParamEnum` の拒否メッセージは `errors.disallowed_value`。`locale` を渡すとその言語になり、省略時は日本語
+- When the same key appears more than once, a single-value schema treats it as invalid rather than picking one of them (falling back if there is a `fallback`)
+- For several values, use `searchParamStringArray()`. A single `?tag=a` is accepted as a one-element array
+- `searchParamNumber` accepts only decimal integers and decimals (`0x10`, `1e3`, and `Infinity` are invalid). `integer` defaults to `true`
+- Exceeding `maxLength` is invalid by default. Only `truncate: true` truncates, and it never splits a surrogate pair
+- `searchParamDate` checks calendar validity through `Temporal`, so the polyfill has to be present at runtime
+- `searchParamEnum`'s rejection message is `errors.disallowed_value`. Passing `locale` renders it in that language; omitting it gives Japanese
 
-実例: [`web-admin` の監査ログフィルタ](../../apps/web-admin/app/%5Btenant_id%5D/%28protected%29/audit-logs/_lib/search-params.ts)
+A real example: [web-admin's audit log filters](../../apps/web-admin/app/%5Btenant_id%5D/%28protected%29/audit-logs/_lib/search-params.ts)
 
-### 動的ルートセグメント（`params`）
+### Dynamic route segments (`params`)
 
-`fallback` は無い。識別子として成立しない値はリソースが無いのと同じ `notFound()` にする（存在有無を漏らさない）。
+There is no `fallback` here. A value that cannot be an identifier gets the same `notFound()` as a missing resource, so nothing leaks about whether it exists.
 
 ```ts
 import {
@@ -154,15 +154,15 @@ if (!parsed) {
 await getSeries(parsed.series_id);
 ```
 
-- 単一セグメントは `routeParamString()`。trim・空文字拒否・長さ上限（既定 255）・`generateStaticParams` の placeholder 拒否
-- catch-all（`[...slug]`）は `routeParamStringArray()`。空配列・非配列は不正。各要素は `routeParamString()` と同じ規則
-- ページは `params` 全体のスキーマを組み立て、`parseRouteParams` の出力だけを `lib/` へ渡す。失敗は必ず `notFound()`（`safeParse` の `null` を別の既定表示にしない）
+- A single segment is `routeParamString()`: trimmed, empty rejected, length capped (255 by default), and `generateStaticParams`'s placeholder rejected
+- A catch-all (`[...slug]`) is `routeParamStringArray()`. An empty array and a non-array are invalid, and each element follows the same rules as `routeParamString()`
+- A page builds the schema for the whole `params` and passes only the output of `parseRouteParams` to `lib/`. A failure is always `notFound()` — never turn `safeParse`'s `null` into some other default view
 
-実例: [`web-host` のシリーズ詳細](../../apps/web-host/app/%5Btenant_id%5D/%28site%29/series/%5Bseries_id%5D/page.tsx)
+A real example: [web-host's series detail page](../../apps/web-host/app/%5Btenant_id%5D/%28site%29/series/%5Bseries_id%5D/page.tsx)
 
-### `FormData` と Server Action
+### `FormData` and Server Actions
 
-`toFormDataInput` は「テキスト / 繰り返しテキスト / ファイル / 繰り返しファイル」を宣言して読み出すだけで、trim も長さ制限も行いません。フォームが何を受け付けるかは zod スキーマ 1 か所に置きます。
+`toFormDataInput` only declares and reads "text / repeated text / file / repeated file"; it neither trims nor caps lengths. What a form accepts lives in one place, the zod schema.
 
 ```ts
 import {
@@ -188,13 +188,13 @@ if (!parsed.success) {
 }
 ```
 
-- `value` はファイルが送られてきても文字列化せず `undefined`（`String(formData.get(...))` が `"[object File]"` を作る事故を防ぐ）
-- 未入力の `<input type="file">` は 0 バイトのエントリを送るため、ファイル系は空ファイルを落とす
-- ActionState にフィールド単位の枠がない画面は `toFormErrorMessage(parsed.error)` で 1 本のメッセージにする
+- `value` yields `undefined` rather than stringifying a file that was submitted, which prevents `String(formData.get(...))` from producing `"[object File]"`
+- An `<input type="file">` with nothing chosen still submits a 0-byte entry, so the file kinds drop empty files
+- A screen whose ActionState has no per-field slot collapses the errors into one message with `toFormErrorMessage(parsed.error)`
 
-## `"use cache"` の失敗（`cached-read`）
+## A failing `"use cache"` read (`cached-read`)
 
-Cache Components 下の production ビルドで実測（[#672](https://github.com/publira/publira/issues/672)）: **`"use cache"` のキャッシュ充填が throw すると、そのリクエスト自体が失敗する。** 呼び出し側の `try` / `catch` でも、外側のキャッシュ関数で受けても救えず、static shell が commit 済みのときだけクライアント側のエラーバウンダリが拾える。したがって cached read は **throw せず、失敗を値として返す**。
+Measured on a production build under Cache Components ([#672](https://github.com/publira/publira/issues/672)): **when filling a `"use cache"` entry throws, the request itself fails.** Neither a `try` / `catch` at the call site nor an enclosing cache function can save it, and only a committed static shell lets the client error boundary pick it up. So a cached read **returns the failure as a value instead of throwing**.
 
 ```ts
 import {
@@ -216,7 +216,7 @@ export const getSeriesDetail = async (
     return { ok: true, value: toSeriesDetail(response) };
   } catch (error) {
     if (isMissingResourceRpcError(error)) {
-      // 「無い」は答えであり、キャッシュしてよい
+      // "it is not there" is an answer, and may be cached
       return { ok: true, value: null };
     }
     return cachedReadFailure(
@@ -225,7 +225,7 @@ export const getSeriesDetail = async (
   }
 };
 
-// 見せるメッセージが無い chrome 用の読み取りは、既定値に落として entry だけ捨てる
+// A read for chrome with no message to show falls back to a default and only drops the entry
 export const getTenantSiteInfo = async (
   tenantId: string
 ): Promise<TenantSiteInfo | null> => {
@@ -243,14 +243,14 @@ export const getTenantSiteInfo = async (
 };
 ```
 
-- `cachedReadFailure` / `dropFailedCacheEntry` は `cacheLife({ expire: 0, revalidate: 0, stale: 0 })` を設定し、**失敗をキャッシュに載せない**（`@publira/next-cache-handlers` の `set` は `expire === 0` を保存せず、仮に保存されても `revalidate: 0` で次回 miss になる）。復旧後の再読み込みは即座に通常の内容を返す
-- `next.config.ts` の名前付きプロファイルには `expire > revalidate` や `stale` 最小値の検証があるが、`cacheLife()` の**インライン呼び出しには検証がない**（`next/dist/server/use-cache/cache-life.js` は明示値を記録するだけ）。この 3 値の組み合わせは #672 で production ビルド上の実測により、エラーを出さず、失敗が保存されないことを確認している
-- エラーの分類はキャッシュスコープの**内側**で行う。`"use cache"` 境界を越えたエラーは production で message が digest に置き換わり、`Code`（`rpcErrorDisposition()` / `rpcErrorMessage()`）が失われる
-- 呼び出し側は `ok: false` を `SectionError` / `PageLoadError` として描画する。画面側の使い分けは `apps/AGENTS.md`
+- `cachedReadFailure` and `dropFailedCacheEntry` set `cacheLife({ expire: 0, revalidate: 0, stale: 0 })`, which **keeps the failure out of the cache** (`@publira/next-cache-handlers`'s `set` does not store an entry with `expire === 0`, and even if one were stored, `revalidate: 0` makes the next read a miss). Once the API recovers, the next read returns the real content immediately
+- The named profiles in `next.config.ts` are validated for things like `expire > revalidate` and a minimum `stale`, but **an inline `cacheLife()` call is not validated at all** (`next/dist/server/use-cache/cache-life.js` only records the explicit values). This combination of three values was measured on a production build in #672: it raises no error, and the failure is not stored
+- Classify the error **inside** the cache scope. An error that crosses a `"use cache"` boundary has its message replaced by a digest in production, which loses the `Code` (`rpcErrorDisposition()` / `rpcErrorMessage()`)
+- The caller renders `ok: false` as a `SectionError` or a `PageLoadError`. Which one each screen uses is in `apps/AGENTS.md`
 
-## `next/image` のローダー（`image-loader`）
+## The `next/image` loader (`image-loader`)
 
-`imageServerLoader` は `next/image` の custom loader です。`/images/...`（image-server / admin-image-server）を読むときだけ、Manael が解釈するクエリを組み立てます。
+`imageServerLoader` is a custom loader for `next/image`. It builds the query Manael understands, and only when reading `/images/...` (the image-server or the admin-image-server).
 
 ```ts
 // apps/web-host/lib/image-loader.ts
@@ -267,21 +267,21 @@ images: {
 },
 ```
 
-`images.loaderFile` はアプリルートからの相対パスしか受け付けず、`import.meta.resolve` で解決したパッケージを渡せません。各アプリに再エクスポートだけを置き、実装はこのパッケージに置いています。
+`images.loaderFile` accepts only a path relative to the app root, so a package resolved with `import.meta.resolve` cannot be handed to it. Each app holds nothing but a re-export, and the implementation lives in this package.
 
-| 入力 | 出力 |
+| Input | Output |
 | --- | --- |
-| `/images/creators/<uuid>`、幅 96 | `/images/creators/<uuid>?w=96&fit=scale-down` |
-| 同上、`quality={60}` 指定あり | `…?w=96&fit=scale-down&q=60` |
-| `blob:` / `data:` / 絶対 URL / その他のパス | そのまま返す |
+| `/images/creators/<uuid>`, width 96 | `/images/creators/<uuid>?w=96&fit=scale-down` |
+| The same with `quality={60}` | `…?w=96&fit=scale-down&q=60` |
+| `blob:` / `data:` / an absolute URL / any other path | Returned unchanged |
 
-- `fit=scale-down` は原寸より大きくしないための指定です。`next/image` は `deviceSizes` の全幅（最大 3840px）を要求するので、Manael の既定（`contain`、拡大あり）では小さなアイコンが 3840px に引き伸ばされます。
-- `q` は呼び出し側が `quality` を指定したときだけ付けます。`next/image` は `quality` プロップが無いとローダーに `undefined` を渡すので（Next.js 16.3 の `get-img-props`）、無指定のときは Manael のフォーマット別既定（WebP 90 / AVIF 60）が効きます。
-- `quality` を指定する場合は、その値を各アプリの `images.qualities` にも足してください。既定は `[75]` で、外れた値は開発時に警告が出ます（custom loader なので値そのものはローダーまで届きます）。
-- WebP / AVIF の選択はブラウザの `Accept` によるので、ローダーは形式を指定しません。
-- `blob:` の一時プレビューなど image-server を経由しない `<Image>` は、そのまま `unoptimized` を付けたままにします。
+- `fit=scale-down` is what keeps an image from growing past its original size. `next/image` asks for every width in `deviceSizes` (up to 3840px), so Manael's default (`contain`, which upscales) would stretch a small icon to 3840px.
+- `q` is added only when the caller passed `quality`. `next/image` hands the loader `undefined` when there is no `quality` prop (Next.js 16.3's `get-img-props`), so leaving it out lets Manael's per-format defaults apply (WebP 90 / AVIF 60).
+- When you do pass `quality`, add that value to the app's `images.qualities` too. The default is `[75]`, and a value outside it warns in development (the value itself still reaches the loader, since this is a custom loader).
+- The choice between WebP and AVIF follows the browser's `Accept`, so the loader specifies no format.
+- An `<Image>` that does not go through the image-server, such as a temporary `blob:` preview, keeps its `unoptimized`.
 
-## ビルド
+## Build
 
 ```bash
 pnpm --filter @publira/utils build

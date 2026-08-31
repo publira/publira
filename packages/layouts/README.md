@@ -1,13 +1,13 @@
 # layouts
 
-複数の Web アプリで再利用するレイアウトコンポーネントを提供するパッケージです。
+The package that provides the layout components reused across several web apps.
 
-## 提供物
+## What it provides
 
 - `SiteLayout`
 - `styles.css`
 
-## 使い方
+## Usage
 
 ```css
 @import "@publira/layouts/styles.css";
@@ -41,7 +41,7 @@ export default function Page() {
 }
 ```
 
-## ビルド
+## Build
 
 ```bash
 pnpm --filter @publira/layouts build

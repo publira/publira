@@ -107,7 +107,7 @@ Details and env (`PUBLIRA_TRACING_ENABLED`, `OTEL_EXPORTER_OTLP_*`, `NEXT_OTEL_V
 
 Connect errors are classified with `Code` only. `error.message.includes("not found")` breaks silently the day the server rewords its message, so it must not appear in app code (#645).
 
-Helpers and the shared copy live in `@publira/api-client/errors` and `@publira/api-client/error-messages`. Full API list and rationale: the エラー分類 section of `packages/api-client/README.md`.
+Helpers and the shared copy live in `@publira/api-client/errors` and `@publira/api-client/error-messages`. Full API list and rationale: the Error classification section of `packages/api-client/README.md`.
 
 The same rules apply to all three apps:
 

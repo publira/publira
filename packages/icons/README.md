@@ -1,34 +1,34 @@
 # @publira/icons
 
-フロントエンド共通の SVG アイコンコンポーネントを提供するパッケージです。実体は [`lucide-react`](https://lucide.dev/) の薄いラッパーで、**`lucide-react` を直接 import してよいのはこのパッケージだけ**です。アプリ・他パッケージ側の規約は [`apps/AGENTS.md`](../../apps/AGENTS.md) の Icons を参照してください。
+The package that provides the SVG icon components shared across the frontend. It is a thin wrapper around [`lucide-react`](https://lucide.dev/), and **this package is the only one allowed to import `lucide-react` directly**. For the rule the apps and the other packages follow, see Icons in [`apps/AGENTS.md`](../../apps/AGENTS.md).
 
-## 提供物
+## What it provides
 
-`BellIcon` / `CheckIcon` / `ChevronDownIcon` / `ChevronLeftIcon` / `ChevronRightIcon` / `CloseIcon` / `CollectionIcon` / `DashboardIcon` / `ImageIcon` / `LogoutIcon` / `MaximizeIcon` / `MenuIcon` / `MinimizeIcon` / `SettingsIcon` / `UserIcon`、および props 型の `IconProps`。
+`BellIcon` / `CheckIcon` / `ChevronDownIcon` / `ChevronLeftIcon` / `ChevronRightIcon` / `CloseIcon` / `CollectionIcon` / `DashboardIcon` / `ImageIcon` / `LogoutIcon` / `MaximizeIcon` / `MenuIcon` / `MinimizeIcon` / `SettingsIcon` / `UserIcon`, plus the `IconProps` props type.
 
-`IconProps` は `SVGProps<SVGSVGElement>` そのもので、各コンポーネントは受け取った props をラップ先へ透過します。サイズ・色・`aria-*` は呼び出し側が決めます。
+`IconProps` is exactly `SVGProps<SVGSVGElement>`, and every component passes the props it receives straight through to the wrapped icon. Size, color, and `aria-*` are the caller's decision.
 
-## 使い方
+## Usage
 
 ```tsx
-// アプリはバレル import
+// An app imports from the barrel
 import { ImageIcon, UserIcon } from "@publira/icons";
 
-// packages/ui-components は既存の慣習どおりサブパス import
+// packages/ui-components uses a subpath import, as it already does elsewhere
 import { CheckIcon } from "@publira/icons/check-icon";
 
 <UserIcon className="h-6 w-6" />;
 ```
 
-どちらの形式を使うかは新しい規約ではなく既存の揺れなので、周囲のファイルに合わせてください。
+Which form to use is not a new rule but existing variation, so follow the files around you.
 
-lucide のアイコンは `viewBox="0 0 24 24"` / `strokeWidth={2}` 固定です。サイズはレイアウトに合う `size-*` / `h-* w-*` クラスで指定し、それ以外は lucide の既定のままにしてください。
+A lucide icon is fixed at `viewBox="0 0 24 24"` and `strokeWidth={2}`. Set the size with the `size-*` / `h-* w-*` classes that fit the layout, and leave everything else at lucide's defaults.
 
-## アイコンを追加する
+## Adding an icon
 
-lucide にあるアイコンをラップします。必要な変更は 5 箇所で、既存アイコン（`check-icon` など）をそのまま真似れば足ります。
+Wrap an icon that lucide already has. It takes five changes, and copying an existing icon (`check-icon`, for example) is enough.
 
-1. **コンポーネント** — `src/<kebab-name>-icon.tsx` を追加する。
+1. **The component** — add `src/<kebab-name>-icon.tsx`.
 
    ```tsx
    import { ChevronDown } from "lucide-react";
@@ -40,15 +40,15 @@ lucide にあるアイコンをラップします。必要な変更は 5 箇所�
    );
    ```
 
-   命名は既存に合わせて `<Name>Icon`。lucide 側の名前とずらしてよく、むしろずらすべき場合があります（`Image` は `next/image` の `Image` と衝突するため `ImageIcon`、人物アイコンは lucide の `UserRound` を `UserIcon` として公開しています）。
+   Name it `<Name>Icon`, following the existing icons. The name may differ from lucide's, and sometimes it should: `Image` collides with `next/image`'s `Image`, so it is exported as `ImageIcon`, and the person icon is lucide's `UserRound` exported as `UserIcon`.
 
-2. **テスト** — `src/<kebab-name>-icon.test.tsx` を追加する。既存テストと同じ 2 ケース（SVG として描画されること、`className` / `width` / `height` / `strokeWidth` が透過されること）で揃えます。ファイル先頭の `// @vitest-environment jsdom` を忘れないでください。
+2. **The test** — add `src/<kebab-name>-icon.test.tsx`. Match the two cases the existing tests use: that it renders as an SVG, and that `className` / `width` / `height` / `strokeWidth` are passed through. Do not forget the `// @vitest-environment jsdom` on the first line.
 
-3. **バレル** — `src/index.ts` に `export { XxxIcon } from "./xxx-icon";` を追加する（アルファベット順）。
+3. **The barrel** — add `export { XxxIcon } from "./xxx-icon";` to `src/index.ts` (in alphabetical order).
 
-4. **ビルド entry** — `tsdown.config.ts` の `entry` に `src/xxx-icon.tsx` を追加する。
+4. **The build entry** — add `src/xxx-icon.tsx` to `entry` in `tsdown.config.ts`.
 
-5. **`exports` サブパス** — `package.json` の `exports` に追加する。
+5. **The `exports` subpath** — add it to `exports` in `package.json`.
 
    ```json
    "./xxx-icon": {
@@ -57,11 +57,11 @@ lucide にあるアイコンをラップします。必要な変更は 5 箇所�
    }
    ```
 
-4 と 5 のどちらかを忘れるとサブパス import だけが壊れ、バレル import では気付けません。追加後はリポジトリルートで `pnpm preflight` を実行してください。
+Forgetting either 4 or 5 breaks only the subpath import, which a barrel import will not reveal. Run `pnpm preflight` at the repository root once you are done.
 
-## 手書き SVG を禁止する仕組み
+## How hand-written SVG is kept out
 
-- `lucide-react` の直接 import: `oxlint.config.ts` の `no-restricted-imports` で禁止。`packages/icons/src/**` だけ `overrides` で除外しています。
-- JSX への `<svg>` べた書き: CI の `Check` ジョブの `git grep` ステップで検出。
+- Importing `lucide-react` directly: forbidden by `no-restricted-imports` in `oxlint.config.ts`, with an `overrides` exemption for `packages/icons/src/**` alone.
+- Writing `<svg>` into JSX: caught by the `git grep` step of CI's `Check` job.
 
-アイコン以外の正当な SVG が必要になった場合は、`.github/workflows/ci.yml` の grep の除外に理由つきで追加します。
+If you ever need a legitimate SVG that is not an icon, add it to the grep's exclusions in `.github/workflows/ci.yml` with a reason.

@@ -1,26 +1,26 @@
 # `@publira/next-cache-handlers`
 
-Redis 上に Next.js の **2 系統**のサーバーキャッシュを載せる共有パッケージです。self-host / multi-instance でキャッシュを共有するための正本です。
+The shared package that puts **both** of Next.js's server caches on Redis. It is the source of truth for sharing a cache across a self-hosted, multi-instance deploy.
 
-| 設定 | 用途 | export |
+| Setting | What it covers | Export |
 | --- | --- | --- |
-| **`cacheHandlers`（複数形）** | `"use cache"` / `"use cache: remote"` | `@publira/next-cache-handlers/use-cache` |
-| **`cacheHandler`（単数）** | ISR・Route Handler・`fetch` / `unstable_cache`・**組み込み最適化を使う `next/image`** | `@publira/next-cache-handlers/incremental` |
+| **`cacheHandlers` (plural)** | `"use cache"` / `"use cache: remote"` | `@publira/next-cache-handlers/use-cache` |
+| **`cacheHandler` (singular)** | ISR, Route Handlers, `fetch` / `unstable_cache`, and **`next/image` when it uses the built-in optimizer** | `@publira/next-cache-handlers/incremental` |
 
-> **混同注意:** `cacheHandlers` だけだと ISR 系はローカルのままです。両方を配線してください。`images.customCacheHandler: true` が効くのは組み込みの `/_next/image` を使うアプリだけで、`images.loader: "custom"` を設定した `web-host` / `web-admin` では `/_next/image` 自体が 404 になります。
+> **Easy to confuse:** with only `cacheHandlers`, the ISR family stays local. Wire both. `images.customCacheHandler: true` matters only to an app that uses the built-in `/_next/image`; in `web-host` and `web-admin`, which set `images.loader: "custom"`, `/_next/image` itself returns a 404.
 
-## 環境変数
+## Environment variables
 
-| 変数 | 説明 |
+| Variable | Description |
 | --- | --- |
-| `PUBLIRA_REDIS_URL` | Redis 接続 URL（既定 `redis://localhost:6379`）。`disabled` / `off` / `false` / 空文字で無効化（常に miss） |
-| `PUBLIRA_CACHE_APP` | キープレフィックスの app 名（既定 `next` → `publira:{app}:`） |
-| `PUBLIRA_CACHE_KEY_PREFIX` | プレフィックス全体を上書き |
-| `PUBLIRA_REDIS_CACHE_TIMEOUT_MS` | コマンドタイムアウト ms（既定 `1000`） |
+| `PUBLIRA_REDIS_URL` | The Redis connection URL (default `redis://localhost:6379`). `disabled` / `off` / `false` / an empty string turns it off (always a miss) |
+| `PUBLIRA_CACHE_APP` | The app name in the key prefix (default `next` → `publira:{app}:`) |
+| `PUBLIRA_CACHE_KEY_PREFIX` | Overrides the whole prefix |
+| `PUBLIRA_REDIS_CACHE_TIMEOUT_MS` | The command timeout in ms (default `1000`) |
 
-`next build` 中（`NEXT_PHASE=phase-production-build`）は Redis に接続しません。
+During `next build` (`NEXT_PHASE=phase-production-build`) it does not connect to Redis.
 
-## next.config 配線例
+## Wiring it in next.config
 
 ```ts
 import type { NextConfig } from "next";
@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
     remote: import.meta.resolve("@publira/next-cache-handlers/use-cache"),
   },
   cacheMaxMemorySize: 0,
-  // 組み込みの `/_next/image` を使うアプリのみ。
+  // Only for an app that uses the built-in `/_next/image`.
   images: {
     customCacheHandler: true,
   },
@@ -43,24 +43,24 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
-アプリごとに `PUBLIRA_CACHE_APP=web-host`（など）を付け、キー空間を分離してください。
+Give each app its own `PUBLIRA_CACHE_APP` (`web-host`, and so on) to separate the key space.
 
-## 障害時の挙動
+## Behavior on failure
 
-- Redis 未起動・タイムアウト: **warn を一度出し、get は miss / set は no-op**（アプリ起動は継続）
-- 本番 multi-instance では Redis 必須。devcontainer の `redis` サービスを利用する
+- Redis down or timing out: **one warning, then a miss on get and a no-op on set** (the app keeps running)
+- Redis is required for a multi-instance production deploy. In the Dev Container, use the `redis` service
 
-## `"use cache"` の使い分け
+## Choosing a `"use cache"` directive
 
-| ディレクティブ | ハンドラ | 用途 |
+| Directive | Handler | What it is for |
 | --- | --- | --- |
-| `"use cache"` | `cacheHandlers.default` | 通常の共有 data cache（本パッケージでは Redis） |
-| `"use cache: remote"` | `cacheHandlers.remote` | 同上（本リポジトリでは default と同じ Redis） |
-| `"use cache: private"` | 設定不可 | リクエスト固有。ハンドラ対象外 |
+| `"use cache"` | `cacheHandlers.default` | The ordinary shared data cache (Redis, in this package) |
+| `"use cache: remote"` | `cacheHandlers.remote` | The same (in this repository, the same Redis as default) |
+| `"use cache: private"` | Not configurable | Request-specific; no handler applies |
 
-公開データの multi-instance ヒット率を上げたい場合は `"use cache: remote"` を優先する（handler が Redis のとき意味がある）。
+To raise the multi-instance hit rate for public data, prefer `"use cache: remote"` (it means something once the handler is Redis).
 
-## 関連
+## References
 
 - [cacheHandler (singular)](https://nextjs.org/docs/app/api-reference/config/next-config-js/incrementalCacheHandlerPath)
 - [cacheHandlers (plural)](https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheHandlers)

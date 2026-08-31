@@ -1,12 +1,12 @@
 # api-client
 
-ConnectRPC の TypeScript API クライアントを提供するパッケージです。
+The package that provides the ConnectRPC TypeScript API clients.
 
-## 使い方
+## Usage
 
-`baseUrl` はクライアント公開用環境変数 (`NEXT_PUBLIC_*`) ではなく、サーバー専用の環境変数から読み込んでください。
+Read `baseUrl` from a server-only environment variable, not from a client-exposed one (`NEXT_PUBLIC_*`).
 
-公開 API クライアント:
+The public API client:
 
 ```ts
 import { createPublicApiClient } from "@publira/api-client/public/client";
@@ -22,7 +22,7 @@ await client.catalog.getSeriesDetail({
 });
 ```
 
-管理 API クライアント:
+The admin API client:
 
 ```ts
 import { createAdminApiClient } from "@publira/api-client/admin/client";
@@ -38,9 +38,9 @@ await client.auth.getMe({
 });
 ```
 
-型だけ使う場合:
+Using the types alone:
 
-`@publira/api-client/admin/types` は共有の `publira.types.v1` メッセージに加え、web-admin のマッパーが `Pick` する admin.v1 のエンティティも再エクスポートする。`@publira/api-client/public/types` は同じ共有メッセージに web-host が `Pick` する publira.v1 のエンティティを、`@publira/api-client/platform/types` は platform.v1 のエンティティを、それぞれ並べて再エクスポートする。いずれもリクエスト / レスポンス型はサービスごとのモジュールに残す。
+`@publira/api-client/admin/types` re-exports the shared `publira.types.v1` messages plus the admin.v1 entities that web-admin's mappers `Pick` from. `@publira/api-client/public/types` puts the same shared messages next to the publira.v1 entities web-host `Pick`s from, and `@publira/api-client/platform/types` does the same for the platform.v1 entities. In all three, the request and response types stay on the per-service modules.
 
 ```ts
 import type {
@@ -53,17 +53,17 @@ import type { CreateSessionRequest } from "@publira/api-client/public/auth";
 import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/auth";
 ```
 
-## cursor 一覧の走査
+## Walking a cursor list
 
-cursor 一覧 RPC をアプリ側で順に辿るときは、共有 helper を使います。ページは token の依存関係に従って逐次取得し、同じ token の再出現とページ数・行数の上限で不正なレスポンスによる無限走査を防ぎます。
+Use the shared helpers to walk a cursor list RPC page by page from an app. Pages are fetched one after another because each token depends on the previous response, and a repeated token plus the page and row limits keep a malformed response from looping forever.
 
-既定の上限は `pageSize = 100`、`maxPages = 100`、`maxRows = 10_000` です。上限や繰り返し token に達すると例外は出さず静かに止まります。`findByPublicIdWithToken` はその場合も `null` を返すため、「レコードが無い」と区別できません。単体取得の正規手段はサーバー側の `Get*` RPC です（#799）。
+The defaults are `pageSize = 100`, `maxPages = 100`, and `maxRows = 10_000`. Hitting a limit or a repeated token stops the walk quietly rather than throwing. `findByPublicIdWithToken` returns `null` in that case too, so it cannot be told apart from "no such record". The proper way to fetch one record is the server's `Get*` RPC (#799).
 
-`forEachPageWithToken` は停止理由を返します: `completed` / `stopped-by-callback` / `max-pages` / `max-rows` / `repeated-token`。
+`forEachPageWithToken` returns why it stopped: `completed` / `stopped-by-callback` / `max-pages` / `max-rows` / `repeated-token`.
 
-### 単体検索
+### Looking one record up
 
-単体取得 RPC がないリソースを `publicId` で探す場合:
+To find a resource by `publicId` when it has no single-record RPC:
 
 ```ts
 import { findByPublicIdWithToken } from "@publira/api-client/pagination";
@@ -72,12 +72,12 @@ const item = await findByPublicIdWithToken(publicId, async (token, limit) => {
   const response = await client.listItems({ limit, token });
   return { items: response.items, nextToken: response.nextToken };
 });
-// item が null でも「未存在」とは限らない（走査上限の可能性）
+// A null item does not prove the record is absent (the walk may have hit a limit)
 ```
 
-### 集約・途中打ち切り
+### Aggregating, and stopping early
 
-一覧を集約する、または十分な件数で打ち切る場合は `forEachPageWithToken` を使います。`onPage` が `false` を返すと次ページを取りません。
+Use `forEachPageWithToken` to aggregate a list or to stop once you have enough. Returning `false` from `onPage` skips the next page.
 
 ```ts
 import { forEachPageWithToken } from "@publira/api-client/pagination";
@@ -88,34 +88,34 @@ const stop = await forEachPageWithToken(
     return { items: response.items, nextToken: response.nextToken };
   },
   (items) => {
-    // items を集約する
-    return collected.size < needed; // false で打ち切り
+    // aggregate items
+    return collected.size < needed; // false stops the walk
   },
   { pageSize: 50 }
 );
-// stop === "max-pages" | "max-rows" なら一覧が途中までしか読めていない
+// stop === "max-pages" | "max-rows" | "repeated-token" means the list was only read partway
 ```
 
-## テナントヘッダー
+## The tenant header
 
-`tenantPublicId` を指定すると、すべての API リクエストに `X-Publira-Tenant-Public-Id` ヘッダーが自動で付与されます。
+With `tenantPublicId` set, every API request automatically carries the `X-Publira-Tenant-Public-Id` header.
 
-- 固定値: `tenantPublicId: "TENANT001"`
-- 動的値: `tenantPublicId: () => selectedTenantPublicId`
+- A fixed value: `tenantPublicId: "TENANT001"`
+- A dynamic value: `tenantPublicId: () => selectedTenantPublicId`
 
-## 分散トレーシング
+## Distributed tracing
 
-`createPublicApiClient` / `createAdminApiClient` / `createPlatformApiClient` は、RPC ごとに client span を開き W3C Trace Context (`traceparent`) を送出する interceptor を常に組み込みます。設定項目はありません。
+`createPublicApiClient`, `createAdminApiClient`, and `createPlatformApiClient` always install an interceptor that opens a client span per RPC and sends W3C Trace Context (`traceparent`). There is nothing to configure.
 
-- span 名は proto パッケージを落とした `AdminSeriesService/ListSeries`。Go 側の server span と同じ命名です
-- 属性は `rpc.system` / `rpc.service` / `rpc.method` と `server.address` / `server.port`。失敗時は span status を error にし、gRPC トランスポートでは `rpc.grpc.status_code` を付けます
-- TracerProvider が登録されていなければ no-op になり、ヘッダーも足しません。ブラウザ向けの利用でも余計なヘッダーは出ません
+- The span name drops the proto package: `AdminSeriesService/ListSeries`. It matches how the Go server names its server spans
+- The attributes are `rpc.system` / `rpc.service` / `rpc.method` and `server.address` / `server.port`. A failure sets the span status to error, and the gRPC transport adds `rpc.grpc.status_code`
+- With no TracerProvider registered it becomes a no-op and adds no header either, so browser usage emits no stray headers
 
-Go の Connect ハンドラは inbound の `traceparent` を親として信頼するため、SSR → API → DB クエリが 1 本のトレースになります。Next.js アプリ側の SDK 登録は [`@publira/tracing`](../tracing) を参照してください。
+The Go Connect handlers trust an inbound `traceparent` as the parent, so SSR → API → the DB query lands in a single trace. For registering the SDK on the Next.js side, see [`@publira/tracing`](../tracing).
 
-## エラー分類
+## Error classification
 
-RPC エラーの分類は **必ず Connect の `Code`** で行います。`error.message.includes("not found")` のようなメッセージ文字列マッチは、サーバー側の文言変更で静かに壊れるため禁止です (#645)。
+Classify an RPC error **by Connect's `Code`, always**. Matching on the message string, as in `error.message.includes("not found")`, breaks silently when the server's wording changes, and is forbidden (#645).
 
 ```ts
 import {
@@ -126,27 +126,27 @@ import {
 } from "@publira/api-client/errors";
 ```
 
-| API | 用途 |
+| API | What it is for |
 | --- | --- |
-| `rpcErrorCode(error)` | `Code \| null`。RPC 由来でなければ `null` |
-| `isRpcError(error, ...codes)` | 指定した `Code` のいずれかに一致するか |
-| `rpcErrorDisposition(error)` | `Code` をまとめた処理カテゴリ (`not-found` / `forbidden` / `unauthenticated` / `invalid-argument` / `conflict` / `precondition` / `unavailable` / `unexpected`) |
-| `isMissingResourceRpcError(error)` | `not_found` または `permission_denied`。「表示するものが無い」= 404 相当 |
-| `isUnauthenticatedRpcError(error)` | `unauthenticated`。再認証導線へ |
-| `isExpectedNullableRpcError(error)` | 上記 2 つの合併。セッション付き読み取りが `null` を返してよい範囲 |
-| `isRejectedRequestRpcError(error)` | サーバーがリクエスト自体を拒否した範囲。フォームがメッセージとして出してよい |
-| `rethrowUnclassifiedRpcError(error)` | 分類できないものだけ再 throw。メッセージ化する `catch` の先頭で呼ぶ |
-| `rpcErrorRawMessage(error)` | `[code]` 接頭辞を除いたサーバー本文。**運用者向けに書かれた文言を通す用途のみ** |
-| `rpcErrorHasFieldViolation(error, field)` | `google.rpc.BadRequest` の request field を型付きで判定する |
-| `rpcErrorHasReason(error, reason)` | Publira の `google.rpc.ErrorInfo` reason を型付きで判定する |
-| `RPC_ERROR_REASON` | Publira が送る `ErrorInfo` reason の定数 |
+| `rpcErrorCode(error)` | `Code \| null`; `null` when the error did not come from an RPC |
+| `isRpcError(error, ...codes)` | Whether it matches any of the given `Code`s |
+| `rpcErrorDisposition(error)` | The handling category the `Code`s roll up into (`not-found` / `forbidden` / `unauthenticated` / `invalid-argument` / `conflict` / `precondition` / `unavailable` / `unexpected`) |
+| `isMissingResourceRpcError(error)` | `not_found` or `permission_denied`; "there is nothing to show", the equivalent of a 404 |
+| `isUnauthenticatedRpcError(error)` | `unauthenticated`; send the user to re-authenticate |
+| `isExpectedNullableRpcError(error)` | The union of the two above: where a read with a session may return `null` |
+| `isRejectedRequestRpcError(error)` | The range where the server rejected the request itself; a form may show it as a message |
+| `rethrowUnclassifiedRpcError(error)` | Rethrows only what cannot be classified. Call it first in a `catch` that turns errors into messages |
+| `rpcErrorRawMessage(error)` | The server's body with the `[code]` prefix stripped. **Only for passing through wording written for an operator** |
+| `rpcErrorHasFieldViolation(error, field)` | Type-safe check for a `google.rpc.BadRequest` request field |
+| `rpcErrorHasReason(error, reason)` | Type-safe check for a Publira `google.rpc.ErrorInfo` reason |
+| `RPC_ERROR_REASON` | The constants for the `ErrorInfo` reasons Publira sends |
 
-方針:
+The rules:
 
-- `not_found` と `permission_denied` は区別しない。区別するとレコードの存在有無が漏れる。サーバーは他テナントの行や未公開コンテンツにも `permission_denied` を返す
-- `unauthenticated` はセッションの問題なので再ログイン導線に振り分ける
-- 分類できないもの (`internal` / `unimplemented` / RPC 由来でない例外) は **握りつぶさず** エラーバウンダリまで伝播させる
-- 同じ `Code` の中で文言を選ぶ必要がある場合は、サーバーが付けた `BadRequest` field violation または `ErrorInfo` reason を使う。サーバー本文は読まない
+- Do not distinguish `not_found` from `permission_denied`. Distinguishing them leaks whether a record exists. The server returns `permission_denied` for another tenant's rows and for unpublished content as well
+- `unauthenticated` is a session problem, so route it to the re-login path
+- Anything unclassifiable (`internal`, `unimplemented`, an exception that did not come from an RPC) propagates to the error boundary **rather than being swallowed**
+- When the wording has to differ within a single `Code`, use the `BadRequest` field violation or the `ErrorInfo` reason the server attached. Do not read the server's body
 
 ```ts
 try {
@@ -157,7 +157,7 @@ try {
 }
 ```
 
-文言は `@publira/api-client/error-messages` の `rpcErrorMessage(error, fallback, options?)` に集約しています。3 アプリで同じ RPC エラーが同じ文言になるよう、共通表をルートの `locales/*.json`（`errors.rpc.*`）に置いています。`locale` を省略すると従来どおり日本語です。
+The copy is collected in `rpcErrorMessage(error, fallback, options?)` from `@publira/api-client/error-messages`. So that the same RPC error reads the same across all three apps, the shared table lives in the repo-root `locales/*.json` (`errors.rpc.*`). Omitting `locale` keeps the previous behavior of Japanese.
 
 ```ts
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
@@ -177,13 +177,13 @@ return {
 };
 ```
 
-### メッセージ本文を分類に使う唯一の箇所
+### The one place the message body is used to classify
 
-`rpcErrorCode()` は、`ConnectError` の `code` が失われた場合のみ Connect 自身が付ける `[not_found]` 接頭辞を読む。`"use cache"` スコープで投げたエラーは Next.js が `name` と `message` だけから再生成するため、`instanceof` も `code` も残らない。
+`rpcErrorCode()` reads the `[not_found]` prefix Connect itself attaches, and only when the `ConnectError`'s `code` has been lost. Next.js rebuilds an error thrown inside a `"use cache"` scope from its `name` and `message` alone, so neither `instanceof` nor `code` survives.
 
-`rpcErrorHasFieldViolation()` と `rpcErrorHasReason()` は original の `ConnectError` から details を読むため、キャッシュ境界を越えた再生成エラーには `false` を返します。details が必要な分類は、必ず `"use cache"` 境界の内側で完了させます。RPC 由来でない `Error` はいずれの helper にも一致せず、`new Error("[not_found] …")` のような値が `rethrowUnclassifiedRpcError()` をすり抜けることはありません。
+`rpcErrorHasFieldViolation()` and `rpcErrorHasReason()` read the details off the original `ConnectError`, so they return `false` for an error rebuilt across a cache boundary. Any classification that needs the details must finish inside the `"use cache"` boundary. An `Error` that did not come from an RPC matches none of these helpers, so a value such as `new Error("[not_found] …")` cannot slip past `rethrowUnclassifiedRpcError()`.
 
-## 運用ルール
+## Working rules
 
-- `src/gen/` 以下は自動生成物 (直接編集しない)
-- API 仕様の変更は `proto/` を起点に行い、`make gen` で再生成する
+- Everything under `src/gen/` is generated; never edit it by hand
+- An API change starts in `proto/`, then `make gen` regenerates the client
