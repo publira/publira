@@ -11,8 +11,9 @@ tone_instructions: >-
 reviews:
   # Org sets assertive / auto_review off / noise flags. Repo-specific only below.
   path_filters:
-    # The schema default is [] and CodeRabbit publishes no list of what it skips on
-    # its own, so every generated / vendored path is excluded explicitly here.
+    # Repository-specific exclusions. CodeRabbit's own built-in ignored paths still
+    # apply on top of these, but that list is not published, so nothing here leans on
+    # it: every generated / vendored path is named even when a default may cover it.
     - "!**/gen/**"
     - "!server/internal/db/*.sql.go"
     - "!server/internal/db/db.go"
