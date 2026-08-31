@@ -7,7 +7,7 @@ task server:build
 ./server/bin/batch aggregate-content-stats
 ```
 
-Without an argument, or with a name that is not one of the five below, the binary prints its usage to stderr and exits non-zero.
+Without an argument, or with a name that is not one of the six below, the binary prints its usage to stderr and exits non-zero.
 
 | Subcommand | Lifetime | What it does |
 | --- | --- | --- |
@@ -15,6 +15,7 @@ Without an argument, or with a name that is not one of the five below, the binar
 | `aggregate-content-stats` | One-shot | Rebuilds one UTC day of `content_daily_stats` |
 | `aggregate-rankings` | One-shot | Rebuilds the daily and weekly `content_ranking_snapshots` |
 | `purge-content-events` | One-shot | Deletes `content_events` rows past their retention window |
+| `purge-ranking-snapshots` | One-shot | Deletes `content_ranking_snapshots` rows past their retention window |
 | `build-recommend-features` | One-shot | Rebuilds the daily user and item recommend feature snapshots |
 
 Each subcommand reads its own environment variables — the prefixes do not overlap — and owns its own lifecycle, so the ticker and the one-shot jobs stay as different as they were as separate binaries. OpenTelemetry reports `service.name` as `publira-<subcommand>`, still overridable with `OTEL_SERVICE_NAME`.
@@ -141,6 +142,7 @@ Each entry of `items`:
 - **An empty leaderboard is the normal case, not an error.** A tenant with no traffic in the period, and every tenant before the first run, has nothing to show. Fall back to new releases.
 - **A snapshot only holds the top `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT` entities.** An entity's absence means it did not place, not that it saw no engagement.
 - **The entity may be gone.** `items` stores ids, and nothing keeps a snapshot in step with an unpublished or deleted series. Resolve the ids and drop what no longer exists.
+- **A past period may be gone.** Retention keeps a bounded history — 90 days of daily snapshots and 400 of weekly ones by default — so a period further back than that has been purged. Only the newest period of a ranking key is guaranteed to be there.
 - **The snapshot is up to a day stale**, and only as good as its input: a period whose `aggregate-content-stats` run never happened ranks the days that did run.
 - **`algorithm_version` may not be the one you compiled against.** Scores are only comparable inside one row, so never compare a score across two snapshots or two versions.
 
@@ -148,7 +150,7 @@ Each entry of `items`:
 
 Each snapshot scans one tenant's `content_daily_stats` for its window and groups by entity. Every index on that table leads with `tenant_id`, so `idx_content_daily_stats_tenant_date`, `idx_content_daily_stats_tenant_entity`, and `idx_content_daily_stats_unique` are all eligible; which one the planner picks depends on how much data the table holds. On small data sets PostgreSQL may pick a sequential scan anyway, so add `SET enable_seqscan = off` when checking index eligibility with `EXPLAIN`.
 
-Every run keeps its four snapshots per tenant, including the empty ones a silent tenant produces: an empty leaderboard is the answer that a run happened and found nothing, which a missing row cannot say. Nothing deletes an old snapshot, and each new period adds four rows per tenant — as does each new `algorithm_version`, which writes alongside the rows the previous one left. Re-running a period already covered replaces its rows instead of adding to them.
+Every run keeps its four snapshots per tenant, including the empty ones a silent tenant produces: an empty leaderboard is the answer that a run happened and found nothing, which a missing row cannot say. Each new period adds four rows per tenant — as does each new `algorithm_version`, which writes alongside the rows the previous one left. Re-running a period already covered replaces its rows instead of adding to them, and [`purge-ranking-snapshots`](#purge-ranking-snapshots) drops the periods that have outlived their retention window.
 
 The work is bounded by the daily rows a tenant produced over the window — at most one row per entity per day, capped by the size of the catalogue — not by raw event volume, so the eight window scans behind one tenant's four snapshots stay small next to the `aggregate-content-stats` run that feeds them. The budget is the daily cron interval, shared with the batches that must run before and after it; judge one run from the elapsed time in its completion log. If a run stops fitting, the fix is upstream of the scan — fewer tenants per invocation, or a materialised per-entity window rollup — because the item limit bounds only what is written, not what is read.
 
@@ -186,6 +188,52 @@ The initial scope is a single table plus chunked `DELETE`s. Observing either of 
 
 - One purge no longer fits in the cron interval (judge from the elapsed-time log)
 - Table and index size clearly outgrows what `VACUUM` / autovacuum keeps up with (bloat does not come back down after a delete)
+
+## purge-ranking-snapshots
+
+Deletes `content_ranking_snapshots` rows whose period fell out of its retention window, across every tenant, in chunked `DELETE`s.
+
+`aggregate-rankings` writes four snapshots per tenant per run — daily and weekly, each for series and for episodes — and a new day is a new period rather than a replacement, so the table grows by four rows per tenant per day forever. A tenant with no traffic grows at the same rate, because an empty leaderboard is still the answer that a run happened. Only the newest period is ever rendered; the rest exist for trend analysis, which is what the retention windows are sized for.
+
+Retention is per `ranking_key`. A weekly snapshot compresses seven days into one row, so it earns a much longer window than a daily one:
+
+| Ranking key | Default retention | What the window buys |
+| --- | --- | --- |
+| `daily` | 90 days | A quarter of day-over-day movement |
+| `weekly` | 400 days | A year, plus the margin to compare a week against the same week a year earlier |
+
+A snapshot expires when its `period_end` is before the cutoff for its `ranking_key` — the run's UTC date minus that key's retention, compared exclusively. `period_end` rather than `computed_at`: re-running an old period is a repair, and it must not buy that period another full window of life.
+
+**The newest period always survives, whatever the retention says.** Per `(tenant_id, ranking_key, entity_type)`, the row with the greatest `period_end` is never a candidate. That row is the one the public site reads, so a tenant whose cron has been stopped for longer than its retention window keeps serving a stale ranking instead of losing it entirely.
+
+A `ranking_key` this build does not configure — anything but `daily` and `weekly` — is never deleted. Retention is a decision about a particular kind of leaderboard, so an unrecognised one is left to the build that knows what it is.
+
+An `algorithm_version` bump needs nothing special. The new version starts writing the periods the old one no longer does, so the old rows stop being anyone's newest period and age out on the ordinary schedule.
+
+Expired rows are taken oldest period first with a `LIMIT`, one chunk per transaction. Because each chunk commits on its own, an interrupted run keeps the work it finished and the next run picks up where it stopped. Deleting is idempotent: a second run over the same cutoffs finds nothing left.
+
+The role needs `BYPASSRLS` (or superuser). For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
+
+```bash
+eval "$(task --silent dev-env:env)"
+PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-ranking-snapshots
+```
+
+Environment variables:
+
+- `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated BYPASSRLS connection URL, shared with `aggregate-rankings`. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_RANKING_DAILY_RETENTION_DAYS`: retention for `daily` snapshots. Defaults to `90`. Anything below `1` fails at startup.
+- `PUBLIRA_CONTENT_RANKING_WEEKLY_RETENTION_DAYS`: retention for `weekly` snapshots. Defaults to `400`. Anything below `1` fails at startup.
+- `PUBLIRA_CONTENT_RANKING_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `1000`, an order of magnitude below the `content_events` chunk because a snapshot row carries a whole leaderboard.
+- `PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
+
+The structured log records both cutoffs and retentions, the chunk size, the rows deleted, the chunk count, and the elapsed time.
+
+### Query plan
+
+Every index on this table leads with `tenant_id`, so nothing indexes a scan for expired periods across every tenant, and each chunk also re-derives the newest period per `(tenant_id, ranking_key, entity_type)` — a grouping the leading columns of `idx_content_ranking_snapshots_tenant_key_computed` can answer. Both are sequential-scan-sized work on a table that retention itself keeps to roughly a thousand rows per tenant, and every write to it goes through the daily `aggregate-rankings` run, so an index for the purge would cost more on that path than it saves here. Judge one run from the elapsed time in its completion log; a purge that stops fitting the cron interval is the trigger to add one.
+
+The first run against a table that has accumulated since before this batch existed deletes a backlog rather than a day, so it takes many chunks. `PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true` reports how large that backlog is before anything is deleted.
 
 ## build-recommend-features
 

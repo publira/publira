@@ -48,6 +48,11 @@ var subcommands = []subcommand{
 		run:     runPurgeContentEvents,
 	},
 	{
+		name:    "purge-ranking-snapshots",
+		summary: "Delete content_ranking_snapshots rows past their retention window",
+		run:     runPurgeRankingSnapshots,
+	},
+	{
 		name:    "build-recommend-features",
 		summary: "Rebuild the daily user and item recommend feature snapshots",
 		run:     runBuildRecommendFeatures,
