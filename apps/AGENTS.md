@@ -95,6 +95,14 @@ All apps wire shared Redis cache via `@publira/next-cache-handlers` in `next.con
 
 Keep **both** enabled. Details and env (`PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP`): `packages/next-cache-handlers/README.md`.
 
+## Tracing: register through `@publira/tracing`
+
+Every app's `instrumentation.ts` `register()` calls `registerTracing("publira-<app>")` after the Temporal polyfill import. Do not call `registerOTel` (or construct an OpenTelemetry SDK) in an app: the opt-in switch, the deployment tier attribute, and the parent-based sampler are one policy shared with the Go processes, and a second copy of it drifts.
+
+Outbound RPC spans and `traceparent` come from `@publira/api-client`, so a call site needs no tracing code. Add a custom span only where a plain `@opentelemetry/api` tracer is genuinely warranted.
+
+Details and env (`PUBLIRA_TRACING_ENABLED`, `OTEL_EXPORTER_OTLP_*`, `NEXT_OTEL_VERBOSE`): `packages/tracing/README.md`.
+
 ## RPC errors: classify by `Code`, never by message text
 
 Connect errors are classified with `Code` only. `error.message.includes("not found")` breaks silently the day the server rewords its message, so it must not appear in app code (#645).

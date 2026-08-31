@@ -9,6 +9,7 @@ Node.js 側で共有するパッケージ群です。
 - `email-templates/`: React Email の共通レイアウトとテンプレート（`email-renderer` が HTML/テキスト化する）
 - `layouts/`: 複数 Web アプリで共有するレイアウトコンポーネント
 - `next-cache-handlers/`: Redis 共有の Next.js `cacheHandler` / `cacheHandlers`（self-host multi-instance 用）
+- `tracing/`: Next.js アプリ共通の OpenTelemetry 登録（`instrumentation.ts` から呼ぶ）
 - `tsconfig/`: ワークスペース共通 TypeScript 設定
 - `ui-components/`: `web-host` / `web-admin` 共有 UI コンポーネント
 - `utils/`: 共有ユーティリティ (`cn` など)

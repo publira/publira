@@ -42,6 +42,12 @@ pnpm dev
 
 - `PUBLIRA_AUTH_SECRET`（32 バイト以上）— 管理画面のセッション Cookie を封じる鍵。フォールバックは無く、未設定・短すぎる場合は例外になります。詳細と払い出し方は [リポジトリ README](../../README.md#セッション-cookie-の暗号鍵-publira_auth_secret) を参照してください
 
+### 分散トレーシング
+
+`instrumentation.ts` が `@publira/tracing` の `registerTracing("publira-web-admin")` を呼び、Next.js の inbound span と SSR からの Connect RPC の client span を出します。既定は無効で、`PUBLIRA_TRACING_ENABLED` を立てたときだけ登録します。Dev Container では Jaeger UI (`http://localhost:16686`) の Service `publira-web-admin` で確認できます。
+
+環境変数と `NEXT_OTEL_VERBOSE` の扱いは [`packages/tracing/README.md`](../../packages/tracing/README.md) を参照してください。
+
 ### 画像配信 (`next/image`)
 
 `next.config.ts` の `images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` で、`next/image` が admin-image-server の Manael 変換を直接使います。`/images/...` を読むときだけ要求幅を `w` として渡し、WebP / AVIF はブラウザの `Accept` で決まります。`blob:` の一時プレビューなど admin-image-server を経由しない `<Image>` は `unoptimized` のままにしてください。ローダーの実装と仕様は [`packages/utils/README.md`](../../packages/utils/README.md) にあります。

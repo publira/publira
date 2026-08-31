@@ -197,7 +197,7 @@ app コンテナに渡す既定値は `.devcontainer/compose.yaml` にありま�
 
 ## 分散トレーシング (Jaeger)
 
-Dev Container 起動時に **Jaeger** コンテナも起動し、Go サーバー群 (`server/cmd/*`) が OpenTelemetry で span を送ります。1 リクエストが Connect の RPC span から DB クエリの子 span まで 1 本のトレースに繋がるので、「どの層で時間を使ったか」を UI 上で追えます。
+Dev Container 起動時に **Jaeger** コンテナも起動し、Go サーバー群 (`server/cmd/*`) と Next.js アプリ (`apps/web-*`) が OpenTelemetry で span を送ります。ブラウザのリクエストが Next.js の root span から SSR の Connect RPC、Go 側の RPC span、DB クエリの子 span まで 1 本のトレースに繋がるので、「どの層で時間を使ったか」を UI 上で追えます。
 
 - Jaeger UI: `http://localhost:16686`
 - OTLP 受信 (コンテナ内から): `http://jaeger:4318`（ホストには公開しません）
@@ -214,6 +214,20 @@ app コンテナに渡す既定値は `.devcontainer/compose.yaml` にありま�
 
 `PUBLIRA_TRACING_ENABLED` 以外は OpenTelemetry SDK 自身が読む変数なので、名前は OpenTelemetry のドキュメントどおりです。トレースは既定で無効で、この dev スタックが明示的に有効化しています。`PUBLIRA_DEPLOYMENT_ENVIRONMENT` は未設定のままなので `development` 扱いになり、root span は全件サンプルされます。
 
-Traefik は `web` エントリポイント（`localhost:3080`）に届いたリクエストから `traceparent` / `tracestate` / `baggage` を落とします。サーバーは inbound の `traceparent` を親として信頼するので、信頼境界を gateway に置くためです。`curl` に自分で `traceparent` を付けて `3080` を叩いてもそのトレース ID にはならず、サーバー側で新しい root span が始まります。
+Traefik は `web` エントリポイント（`localhost:3080`）に届いたリクエストから `traceparent` / `tracestate` / `baggage` を落とします。Go サーバーも Next.js アプリも inbound の `traceparent` を親として信頼するので、信頼境界を gateway に置くためです。`curl` に自分で `traceparent` を付けて `3080` を叩いてもそのトレース ID にはならず、受け側で新しい root span が始まります。
 
-属性・span 命名・サンプリング方針は [#502](https://github.com/publira/publira/issues/502) の設計合意に従います。設定と計装の詳細は [server/README.md](server/README.md#分散トレーシング-opentelemetry) を参照してください。
+### 見かた
+
+1. 有効な dev プロファイルでスタックを起動する（`task dev-env:start`。プロファイルごとの URL が表示されます）
+2. ブラウザで表示された host の URL を開く
+3. Jaeger UI (`http://localhost:16686`) の Service で `publira-web-host` を選び、直近のトレースを開く
+
+`GET /[tenant_id]/[locale]` の root span の下に、SSR が呼んだ `CatalogService/ListPublishedSeries` などの client span、その子として `publira-api-server` の同名 server span、さらに `db.query` が並びます。1 本の中で service が切り替わっていれば、Web → API → DB の伝播が効いています。`proxy.ts` の処理は `middleware GET` を root とする別のトレースになります。
+
+Next.js 自体の内部 span（`BaseServer.renderToResponse` / `Router.executeRoute` など）まで見たいときだけ `NEXT_OTEL_VERBOSE=1` を付けて起動してください。既定で出さないのは、1 リクエストあたりの span 数が大きく増え、アプリのコードでは動かしようのない段階でトレースが埋まるためです。
+
+```bash
+NEXT_OTEL_VERBOSE=1 pnpm --dir apps/web-host dev
+```
+
+属性・span 命名・サンプリング方針は [#502](https://github.com/publira/publira/issues/502) の設計合意に従います。設定と計装の詳細は Go 側が [server/README.md](server/README.md#分散トレーシング-opentelemetry)、Next.js 側が [packages/tracing/README.md](packages/tracing/README.md) です。

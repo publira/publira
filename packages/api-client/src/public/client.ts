@@ -17,8 +17,10 @@ import { PublicPagesService } from "../gen/publira/v1/page_pb.js";
 import { TenantService } from "../gen/publira/v1/tenant_pb.js";
 import { createTenantHeaderInterceptor } from "../tenant-header.js";
 import type { TenantHeaderOptions } from "../tenant-header.js";
+import { createTracingInterceptor } from "../tracing.js";
+import type { TransportType } from "../transport-type.js";
 
-export type TransportType = "connect" | "grpc";
+export type { TransportType } from "../transport-type.js";
 
 export type PublicApiClientOptions = {
   baseUrl: string;
@@ -52,6 +54,7 @@ export const createPublicApiClient = (
     tenantPublicId,
   });
   const interceptors = [
+    createTracingInterceptor(transport),
     ...(tenantHeaderInterceptor ? [tenantHeaderInterceptor] : []),
     ...(transportOptions.interceptors ?? []),
   ];
