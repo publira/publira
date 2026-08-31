@@ -1,8 +1,12 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { MultiCombobox } from "@publira/ui-components/combobox";
 import type { MultiComboboxItem } from "@publira/ui-components/combobox";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
+
+import { AdminLocaleContext } from "#components/admin-locale-context";
 
 interface ActorFilterComboboxProps {
   defaultValue: string;
@@ -13,6 +17,11 @@ export const ActorFilterCombobox = ({
   defaultValue,
   items,
 }: ActorFilterComboboxProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const [selectedValues, setSelectedValues] = useState<string[]>(
     defaultValue ? [defaultValue] : []
   );
@@ -38,10 +47,13 @@ export const ActorFilterCombobox = ({
   return (
     <>
       <MultiCombobox
-        emptyMessage="一致する操作者が見つかりません。"
+        emptyMessage={getMessage(messages, "admin.audit.filter.actor_empty")}
         items={normalizedItems}
         onValueChange={handleValueChange}
-        searchPlaceholder="操作者を検索"
+        searchPlaceholder={getMessage(
+          messages,
+          "admin.audit.filter.actor_placeholder"
+        )}
         value={selectedValues}
       />
       <input name="actor" type="hidden" value={selectedValues[0] ?? ""} />

@@ -1,28 +1,33 @@
 import { DEFAULT_LOCALE } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 
 import { getLocale, loadAdminMessages } from "./locale";
 import type { AdminMessages } from "./locale";
 
 /**
- * Resolve Server Action copy from the submitting tenant and UI locale.
+ * The UI locale a Server Action's response should be worded in.
  *
  * The raw form value only selects a tenant-default fallback locale. `getLocale`
  * validates it before it can reach the admin API; each Action still validates
  * the complete form independently before mutating data.
  */
-export const getActionMessages = async (
-  formData: FormData
-): Promise<AdminMessages> => {
+export const getActionLocale = async (formData: FormData): Promise<Locale> => {
   const tenantId = formData.get("tenant_id");
-  let locale = DEFAULT_LOCALE;
   try {
-    locale = await getLocale(
-      typeof tenantId === "string" ? tenantId : undefined
-    );
+    return await getLocale(typeof tenantId === "string" ? tenantId : undefined);
   } catch {
     // Server Actions always have request storage. The fallback keeps direct
     // callers (for example isolated validation tests) deterministic as well.
+    return DEFAULT_LOCALE;
   }
-
-  return loadAdminMessages(locale);
 };
+
+/**
+ * Shorthand for an Action whose only use of the locale is its own copy. An
+ * Action that also hands the locale to `lib/` — so the wording of an RPC
+ * failure follows the operator's language too — calls {@link getActionLocale}
+ * and resolves the catalog from it.
+ */
+export const getActionMessages = async (
+  formData: FormData
+): Promise<AdminMessages> => loadAdminMessages(await getActionLocale(formData));

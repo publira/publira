@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage, toIntlLocale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { Card, CardContent } from "@publira/ui-components/card";
 import {
@@ -11,8 +13,15 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useMemo, useState } from "react";
+import {
+  useActionState,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type {
@@ -34,14 +43,20 @@ export const AnnouncementForm = ({
   usersErrorMessage,
   action,
 }: AnnouncementFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [audienceType, setAudienceType] = useState<"all" | "selected">("all");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
+  const intlLocale = toIntlLocale(locale);
   const sortedUsers = useMemo(
-    () => users.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
-    [users]
+    () => users.toSorted((a, b) => a.name.localeCompare(b.name, intlLocale)),
+    [intlLocale, users]
   );
   const selectedUserIdSet = useMemo(
     () => new Set(selectedUserIds),
@@ -77,12 +92,17 @@ export const AnnouncementForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel required>タイトル</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.announcements.form.title")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 maxLength={120}
                 name="title"
-                placeholder="例: 重要なお知らせ"
+                placeholder={getMessage(
+                  messages,
+                  "admin.announcements.form.title_placeholder"
+                )}
                 required
                 type="text"
               />
@@ -90,12 +110,17 @@ export const AnnouncementForm = ({
           </Field>
 
           <Field>
-            <FieldLabel required>本文</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.announcements.form.body")}
+            </FieldLabel>
             <FieldContent>
               <Textarea
                 maxLength={2000}
                 name="body"
-                placeholder="お知らせ本文を入力"
+                placeholder={getMessage(
+                  messages,
+                  "admin.announcements.form.body_placeholder"
+                )}
                 required
                 rows={5}
               />
@@ -103,22 +128,31 @@ export const AnnouncementForm = ({
           </Field>
 
           <Field>
-            <FieldLabel>リンク先</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.announcements.form.link")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 name="link_url"
-                placeholder="例: /series/SERIES001"
+                placeholder={getMessage(
+                  messages,
+                  "admin.announcements.form.link_placeholder"
+                )}
                 type="text"
               />
               <FieldDescription>
-                お知らせをタップしたときのリンク先を指定できます。サイト内ページは
-                /...、外部サイトは https:// で入力してください。
+                {getMessage(
+                  messages,
+                  "admin.announcements.form.link_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel required>配信対象</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.announcements.form.audience")}
+            </FieldLabel>
             <FieldContent>
               <div className="grid gap-2">
                 <label className="flex items-center gap-2 text-sm">
@@ -129,7 +163,10 @@ export const AnnouncementForm = ({
                     type="radio"
                     value="all"
                   />
-                  全体配信
+                  {getMessage(
+                    messages,
+                    "admin.announcements.form.audience_all"
+                  )}
                 </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -139,7 +176,10 @@ export const AnnouncementForm = ({
                     type="radio"
                     value="selected"
                   />
-                  指定ユーザー配信
+                  {getMessage(
+                    messages,
+                    "admin.announcements.form.audience_selected"
+                  )}
                 </label>
               </div>
             </FieldContent>
@@ -147,7 +187,9 @@ export const AnnouncementForm = ({
 
           {audienceType === "selected" ? (
             <Field>
-              <FieldLabel>対象ユーザー</FieldLabel>
+              <FieldLabel>
+                {getMessage(messages, "admin.announcements.form.target_users")}
+              </FieldLabel>
               <FieldContent>
                 {usersErrorMessage ? (
                   <FormMessage variant="destructive">
@@ -157,7 +199,10 @@ export const AnnouncementForm = ({
 
                 {sortedUsers.length === 0 ? (
                   <FieldDescription>
-                    対象ユーザー一覧を取得できないため、指定ユーザー配信は利用できません。
+                    {getMessage(
+                      messages,
+                      "admin.announcements.form.target_users_unavailable"
+                    )}
                   </FieldDescription>
                 ) : (
                   <div className="max-h-72 overflow-y-auto rounded-lg border border-border/70 p-3">
@@ -173,7 +218,11 @@ export const AnnouncementForm = ({
                             type="checkbox"
                             value={user.publicId}
                           />
-                          {user.name} ({user.publicId})
+                          {getMessage(
+                            messages,
+                            "admin.announcements.form.user_option",
+                            { id: user.publicId, name: user.name }
+                          )}
                         </label>
                       ))}
                     </div>
@@ -200,7 +249,9 @@ export const AnnouncementForm = ({
 
           <div className="flex justify-end">
             <Button disabled={isPending} type="submit">
-              {isPending ? "送信中..." : "お知らせを配信"}
+              {isPending
+                ? getMessage(messages, "admin.announcements.form.submitting")
+                : getMessage(messages, "admin.announcements.form.submit")}
             </Button>
           </div>
         </form>

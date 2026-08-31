@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { z } from "zod";
 
 export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
@@ -48,19 +50,31 @@ export interface NotificationDisplay {
   title: string;
 }
 
-const quoted = (value: string): string => `「${value}」`;
-
-const episodeSubject = (payload: NotificationPayload): string => {
+const episodeSubject = (
+  messages: SharedMessages,
+  payload: NotificationPayload
+): string => {
   if (payload.episode_title && payload.series_title) {
-    return `${quoted(payload.episode_title)}（${payload.series_title}）`;
+    return getMessage(
+      messages,
+      "admin.notifications.events.subject_in_series",
+      {
+        episode: payload.episode_title,
+        series: payload.series_title,
+      }
+    );
   }
   if (payload.episode_title) {
-    return quoted(payload.episode_title);
+    return getMessage(messages, "admin.notifications.events.subject_episode", {
+      episode: payload.episode_title,
+    });
   }
   if (payload.series_title) {
-    return `${quoted(payload.series_title)}のエピソード`;
+    return getMessage(messages, "admin.notifications.events.subject_series", {
+      series: payload.series_title,
+    });
   }
-  return "予約していたエピソード";
+  return getMessage(messages, "admin.notifications.events.subject_unnamed");
 };
 
 export const notificationHref = (
@@ -96,30 +110,45 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
  */
 export const notificationDisplay = (
   notificationType: string,
-  payload: NotificationPayload
+  payload: NotificationPayload,
+  messages: SharedMessages
 ): NotificationDisplay => {
   const href = notificationHref(payload);
   const type = notificationType.trim();
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISHED) {
     return {
-      description: `${episodeSubject(payload)}を公開しました。`,
+      description: getMessage(
+        messages,
+        "admin.notifications.events.published_description",
+        { subject: episodeSubject(messages, payload) }
+      ),
       href,
-      title: "エピソードが公開されました",
+      title: getMessage(messages, "admin.notifications.events.published_title"),
     };
   }
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED) {
     return {
-      description: `${episodeSubject(payload)}を公開できませんでした。`,
+      description: getMessage(
+        messages,
+        "admin.notifications.events.publish_failed_description",
+        { subject: episodeSubject(messages, payload) }
+      ),
       href,
-      title: "エピソードの公開に失敗しました",
+      title: getMessage(
+        messages,
+        "admin.notifications.events.publish_failed_title"
+      ),
     };
   }
 
   return {
-    description: "内容の詳細はありません。",
+    description: getMessage(
+      messages,
+      "admin.notifications.events.unknown_description"
+    ),
     href,
-    title: "通知",
+    title: getMessage(messages, "admin.notifications.events.unknown_title"),
   };
 };

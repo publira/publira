@@ -1,3 +1,6 @@
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -14,51 +17,73 @@ import { TicketFilterActiveSelect } from "./ticket-filter-active-select";
 
 interface TicketFilterFormProps {
   filters: AccessTicketFilters;
+  locale: Locale;
 }
 
-export const TicketFilterForm = ({ filters }: TicketFilterFormProps) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>絞り込み</CardTitle>
-      <CardDescription>
-        ユーザー、エピソード、状態で発行済みチケットを探せます。
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Field>
-          <FieldLabel>ユーザー public_id</FieldLabel>
-          <FieldContent>
-            <Input
-              defaultValue={filters.user}
-              name="user"
-              placeholder="例: SeedMMBRAAA1"
-              type="text"
-            />
-          </FieldContent>
-        </Field>
+export const TicketFilterForm = ({
+  filters,
+  locale,
+}: TicketFilterFormProps) => {
+  const messages = sharedCatalog(locale);
 
-        <Field>
-          <FieldLabel>エピソード public_id</FieldLabel>
-          <FieldContent>
-            <Input
-              defaultValue={filters.episode}
-              name="episode"
-              placeholder="例: SeedEPSDAAA1"
-              type="text"
-            />
-          </FieldContent>
-        </Field>
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          {getMessage(messages, "admin.access_tickets.filter.title")}
+        </CardTitle>
+        <CardDescription>
+          {getMessage(messages, "admin.access_tickets.filter.description")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Field>
+            <FieldLabel>
+              {getMessage(messages, "admin.access_tickets.filter.user")}
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                defaultValue={filters.user}
+                name="user"
+                placeholder={getMessage(
+                  messages,
+                  "admin.access_tickets.filter.user_placeholder"
+                )}
+                type="text"
+              />
+            </FieldContent>
+          </Field>
 
-        <TicketFilterActiveSelect defaultValue={filters.active ? "1" : ""} />
+          <Field>
+            <FieldLabel>
+              {getMessage(messages, "admin.access_tickets.filter.episode")}
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                defaultValue={filters.episode}
+                name="episode"
+                placeholder={getMessage(
+                  messages,
+                  "admin.access_tickets.filter.episode_placeholder"
+                )}
+                type="text"
+              />
+            </FieldContent>
+          </Field>
 
-        <div className="flex items-end gap-2">
-          <Button type="submit">適用</Button>
-          <Button formAction="?" type="submit" variant="outline">
-            リセット
-          </Button>
-        </div>
-      </form>
-    </CardContent>
-  </Card>
-);
+          <TicketFilterActiveSelect defaultValue={filters.active ? "1" : ""} />
+
+          <div className="flex items-end gap-2">
+            <Button type="submit">
+              {getMessage(messages, "admin.access_tickets.filter.apply")}
+            </Button>
+            <Button formAction="?" type="submit" variant="outline">
+              {getMessage(messages, "admin.access_tickets.filter.reset")}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};

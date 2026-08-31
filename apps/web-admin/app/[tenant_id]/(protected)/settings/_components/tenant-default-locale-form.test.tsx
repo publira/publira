@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render as renderBase, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import { TenantDefaultLocaleForm } from "./tenant-default-locale-form";
 
@@ -15,6 +18,13 @@ const options = [
   { label: "日本語", locale: "ja" as const },
   { label: "英語", locale: "en" as const },
 ];
+
+const render = (ui: ReactNode) =>
+  renderBase(ui, {
+    wrapper: ({ children }) => (
+      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+    ),
+  });
 
 afterEach(() => {
   cleanup();

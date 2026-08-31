@@ -4,6 +4,10 @@ import type {
 } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
@@ -69,15 +73,20 @@ export type ListAuditLogsResult =
       requiresSignIn: boolean;
     };
 
-const genericListErrorMessage =
-  "監査ログの取得に失敗しました。時間をおいて再試行してください。";
+const genericListErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.audit.list_failed");
 
-const mapErrorToMessage = (error: unknown): string =>
-  rpcErrorMessage(error, genericListErrorMessage, {
+const mapErrorToMessage = (error: unknown, locale: Locale): string => {
+  const messages = sharedCatalog(locale);
+
+  return rpcErrorMessage(error, genericListErrorMessage(messages), {
+    locale,
     // Every argument this call takes is a filter, so bad input is a bad filter.
-    "invalid-argument":
-      "フィルタ条件に誤りがあります。入力内容を確認してください。",
+    overrides: {
+      "invalid-argument": getMessage(messages, "admin.audit.filter_invalid"),
+    },
   });
+};
 
 /**
  * The `created_from` / `created_to` filters are date-only (`YYYY-MM-DD`) and the
@@ -146,13 +155,14 @@ export const listAuditActorCandidates = async (
   options: {
     limit?: number;
     query?: string;
-  } = {}
+  } = {},
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListAuditActorCandidatesResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       actors: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(sharedCatalog(locale), "errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -178,7 +188,7 @@ export const listAuditActorCandidates = async (
     rethrowUnclassifiedRpcError(error);
     return {
       actors: [],
-      message: mapErrorToMessage(error),
+      message: mapErrorToMessage(error, locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -187,13 +197,14 @@ export const listAuditActorCandidates = async (
 
 export const listAuditLogs = async (
   tenantId: string,
-  filters: AuditLogFilters = {}
+  filters: AuditLogFilters = {},
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListAuditLogsResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       auditLogs: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(sharedCatalog(locale), "errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -226,7 +237,7 @@ export const listAuditLogs = async (
     rethrowUnclassifiedRpcError(error);
     return {
       auditLogs: [],
-      message: mapErrorToMessage(error),
+      message: mapErrorToMessage(error, locale),
       nextToken: "",
       ok: false,
       previousToken: "",

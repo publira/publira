@@ -1,7 +1,9 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, parseLocale } from "@publira/i18n";
+import { DEFAULT_LOCALE, getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -30,11 +32,12 @@ export type UpdateTenantDefaultLocaleResult =
   | { ok: true; defaultLocale: Locale }
   | { ok: false; message: string };
 
-const genericLoadErrorMessage =
-  "既定言語の取得に失敗しました。時間をおいて再試行してください。";
-const genericUpdateErrorMessage =
-  "既定言語の保存に失敗しました。時間をおいて再試行してください。";
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
+const genericLoadErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.default_locale.load_failed");
+const genericUpdateErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.default_locale.save_failed");
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
 
 /**
  * Tag the settings screen's cached read carries, so `updateTag` in the Server
@@ -48,16 +51,18 @@ const resolveDefaultLocale = (value: string | undefined): Locale =>
   parseLocale(value?.trim());
 
 export const getTenantDefaultLocale = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<GetTenantDefaultLocaleResult> => {
   "use cache: private";
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
       defaultLocale: DEFAULT_LOCALE,
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: !sessionId,
     };
@@ -81,7 +86,9 @@ export const getTenantDefaultLocale = async (
     rethrowUnclassifiedRpcError(error);
     return {
       defaultLocale: DEFAULT_LOCALE,
-      message: rpcErrorMessage(error, genericLoadErrorMessage),
+      message: rpcErrorMessage(error, genericLoadErrorMessage(messages), {
+        locale,
+      }),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -105,14 +112,18 @@ export const getTenantDisplayLocale = async (
   return result.defaultLocale;
 };
 
-export const updateTenantDefaultLocale = async (input: {
-  tenantId: string;
-  defaultLocale: Locale;
-}): Promise<UpdateTenantDefaultLocaleResult> => {
+export const updateTenantDefaultLocale = async (
+  input: {
+    tenantId: string;
+    defaultLocale: Locale;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<UpdateTenantDefaultLocaleResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return { message: sessionErrorMessage(messages), ok: false };
   }
 
   try {
@@ -132,7 +143,9 @@ export const updateTenantDefaultLocale = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(error, genericUpdateErrorMessage),
+      message: rpcErrorMessage(error, genericUpdateErrorMessage(messages), {
+        locale,
+      }),
       ok: false,
     };
   }

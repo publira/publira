@@ -1,5 +1,9 @@
 "use server";
 
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { parseInstant } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -8,6 +12,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { issueAccessTicket, revokeAccessTicket } from "#lib/access-ticket";
+import { getActionLocale } from "#lib/action-messages";
 import {
   redirectToLoginIfSessionRejected,
   withAdminSessionReauth,
@@ -25,55 +30,89 @@ import type {
   RevokeAccessTicketActionState,
 } from "../ticket-types";
 
-const issueTicketSchema = z
-  .object({
-    episodePublicId: requiredTrimmedString("エピソード public_id は必須です。"),
-    expiresAt: optionalTrimmedString(),
-    note: optionalTrimmedString(1000),
-    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-    userPublicId: requiredTrimmedString("ユーザー public_id は必須です。"),
-  })
-  .superRefine((value, ctx) => {
-    if (value.expiresAt === "") {
-      return;
-    }
+const issueTicketSchema = (messages: SharedMessages) =>
+  z
+    .object({
+      episodePublicId: requiredTrimmedString(
+        getMessage(
+          messages,
+          "admin.access_tickets.validation.episode_id_required"
+        )
+      ),
+      expiresAt: optionalTrimmedString(),
+      note: optionalTrimmedString(1000),
+      tenantId: requiredTrimmedString(
+        getMessage(messages, "admin.access_tickets.validation.tenant_missing")
+      ),
+      userPublicId: requiredTrimmedString(
+        getMessage(messages, "admin.access_tickets.validation.user_id_required")
+      ),
+    })
+    .superRefine((value, ctx) => {
+      if (value.expiresAt === "") {
+        return;
+      }
 
-    // The form already converted the datetime-local wall clock to an absolute
-    // instant, so anything without `Z` / an offset is rejected here.
-    const parsed = parseInstant(value.expiresAt);
-    if (!parsed) {
-      ctx.addIssue({
-        code: "custom",
-        message: "有効期限の形式が正しくありません。",
-        path: ["expiresAt"],
-      });
-      return;
-    }
-    if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
-      ctx.addIssue({
-        code: "custom",
-        message: "有効期限は未来の日時を指定してください。",
-        path: ["expiresAt"],
-      });
-    }
+      // The form already converted the datetime-local wall clock to an absolute
+      // instant, so anything without `Z` / an offset is rejected here.
+      const parsed = parseInstant(value.expiresAt);
+      if (!parsed) {
+        ctx.addIssue({
+          code: "custom",
+          message: getMessage(
+            messages,
+            "admin.access_tickets.validation.expires_at_invalid"
+          ),
+          path: ["expiresAt"],
+        });
+        return;
+      }
+      if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
+        ctx.addIssue({
+          code: "custom",
+          message: getMessage(
+            messages,
+            "admin.access_tickets.validation.expires_at_past"
+          ),
+          path: ["expiresAt"],
+        });
+      }
+    });
+
+const revokeTicketSchema = (messages: SharedMessages) =>
+  z.object({
+    publicId: requiredTrimmedString(
+      getMessage(messages, "admin.access_tickets.validation.revoke_target")
+    ),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.access_tickets.validation.revoke_target")
+    ),
   });
 
-const revokeTicketSchema = z.object({
-  publicId: requiredTrimmedString("失効対象が不正です。"),
-  tenantId: requiredTrimmedString("失効対象が不正です。"),
-});
+const listEpisodeOptionsSchema = (messages: SharedMessages) =>
+  z.object({
+    seriesPublicId: requiredTrimmedString(
+      getMessage(messages, "admin.access_tickets.validation.series_required")
+    ),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.access_tickets.validation.tenant_missing")
+    ),
+  });
 
-const listEpisodeOptionsSchema = z.object({
-  seriesPublicId: requiredTrimmedString("シリーズを選択してください。"),
-  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-});
-
-const existingNonActiveTicketMessage = (publicId: string, status: string) => {
+const existingNonActiveTicketMessage = (
+  publicId: string,
+  status: string,
+  messages: SharedMessages
+): string => {
   if (status === "expired") {
-    return `同じユーザー・エピソードの期限切れチケット（${publicId}）が未失効のまま残っています。期限を付け直すには、先に一覧から失効してください。`;
+    return getMessage(messages, "admin.access_tickets.existing_expired", {
+      id: publicId,
+    });
   }
 
-  return `同じユーザー・エピソードのチケット（${publicId}）を発行できません。一覧を確認してください。`;
+  return getMessage(messages, "admin.access_tickets.existing_ticket", {
+    id: publicId,
+  });
 };
 
 export const issueAccessTicketAction = async (
@@ -81,7 +120,9 @@ export const issueAccessTicketAction = async (
   formData: FormData
 ): Promise<IssueAccessTicketActionState> => {
   await assertSameOrigin();
-  const parsed = issueTicketSchema.safeParse(
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
+  const parsed = issueTicketSchema(messages).safeParse(
     toFormDataInput(formData, {
       episodePublicId: { kind: "value", name: "episode_public_id" },
       expiresAt: { kind: "value", name: "expires_at" },
@@ -92,19 +133,22 @@ export const issueAccessTicketAction = async (
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    issueAccessTicket({
-      episodePublicId: parsed.data.episodePublicId,
-      expiresAt: parsed.data.expiresAt,
-      note: parsed.data.note,
-      tenantId: parsed.data.tenantId,
-      userPublicId: parsed.data.userPublicId,
-    })
+    issueAccessTicket(
+      {
+        episodePublicId: parsed.data.episodePublicId,
+        expiresAt: parsed.data.expiresAt,
+        note: parsed.data.note,
+        tenantId: parsed.data.tenantId,
+        userPublicId: parsed.data.userPublicId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -120,7 +164,8 @@ export const issueAccessTicketAction = async (
     return {
       message: existingNonActiveTicketMessage(
         result.ticket.publicId,
-        result.ticket.status
+        result.ticket.status,
+        messages
       ),
       ok: false,
     };
@@ -132,17 +177,18 @@ export const issueAccessTicketAction = async (
 
 export const listEpisodeOptionsAction = async (
   tenantId: string,
-  seriesPublicId: string
+  seriesPublicId: string,
+  locale: Locale
 ): Promise<ListTicketEpisodeOptionsResult> => {
   // This Server Action only reads episode options; #600 applies to mutations.
-  const parsed = listEpisodeOptionsSchema.safeParse({
+  const parsed = listEpisodeOptionsSchema(sharedCatalog(locale)).safeParse({
     seriesPublicId,
     tenantId,
   });
   if (!parsed.success) {
     return {
       episodes: [],
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
@@ -174,23 +220,24 @@ export const revokeAccessTicketAction = async (
   formData: FormData
 ): Promise<RevokeAccessTicketActionState> => {
   await assertSameOrigin();
+  const locale = await getActionLocale(formData);
   const input = toFormDataInput(formData, {
     publicId: { kind: "value", name: "public_id" },
     tenantId: { kind: "value", name: "tenant_id" },
   });
-  const parsed = revokeTicketSchema.safeParse(input);
+  const parsed = revokeTicketSchema(sharedCatalog(locale)).safeParse(input);
   const publicId =
     typeof input.publicId === "string" ? input.publicId.trim() : "";
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
       publicId,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    revokeAccessTicket(parsed.data.tenantId, parsed.data.publicId)
+    revokeAccessTicket(parsed.data.tenantId, parsed.data.publicId, locale)
   );
   if (!result.ok) {
     return {
@@ -202,7 +249,7 @@ export const revokeAccessTicketAction = async (
 
   updateTag(`access-tickets-${parsed.data.tenantId}`);
   return {
-    message: "チケットを失効しました。",
+    message: getMessage(sharedCatalog(locale), "admin.access_tickets.revoked"),
     ok: true,
     publicId: parsed.data.publicId,
   };

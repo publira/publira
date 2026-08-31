@@ -1,4 +1,6 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -14,7 +16,9 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { listAllSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -22,8 +26,11 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { TicketForm } from "../_components/ticket-form";
 import { issueAccessTicketAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "アクセスチケット発行",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.access_tickets.new_title") };
 };
 
 export const generateStaticParams = () =>
@@ -66,14 +73,22 @@ const NewAccessTicketPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>チケットを発行</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.access_tickets.new_title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          ユーザーとエピソードを指定して限定閲覧チケットを発行します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+            <Message message="admin.access_tickets.new_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/access-tickets" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.access_tickets.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

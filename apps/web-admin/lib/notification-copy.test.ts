@@ -1,3 +1,4 @@
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -5,6 +6,8 @@ import {
   notificationHref,
   parseNotificationPayload,
 } from "./notification-copy";
+
+const ja = sharedCatalog("ja");
 
 describe("parseNotificationPayload", () => {
   it("既知のフィールドだけを取り出す", () => {
@@ -55,11 +58,15 @@ describe("notificationHref", () => {
 describe("notificationDisplay", () => {
   it("公開成功・失敗は type ごとに文言を組み立てる", () => {
     expect(
-      notificationDisplay("episode_published", {
-        episode_title: "第1話",
-        series_id: "SR01",
-        series_title: "作品A",
-      })
+      notificationDisplay(
+        "episode_published",
+        {
+          episode_title: "第1話",
+          series_id: "SR01",
+          series_title: "作品A",
+        },
+        ja
+      )
     ).toEqual({
       description: "「第1話」（作品A）を公開しました。",
       href: "/series/SR01",
@@ -67,10 +74,14 @@ describe("notificationDisplay", () => {
     });
 
     expect(
-      notificationDisplay("episode_publish_failed", {
-        episode_id: "EP01",
-        series_id: "SR01",
-      })
+      notificationDisplay(
+        "episode_publish_failed",
+        {
+          episode_id: "EP01",
+          series_id: "SR01",
+        },
+        ja
+      )
     ).toEqual({
       description: "予約していたエピソードを公開できませんでした。",
       href: "/series/SR01/episodes/EP01",
@@ -78,9 +89,23 @@ describe("notificationDisplay", () => {
     });
   });
 
+  it("resolves its copy from the catalog it is given", () => {
+    expect(
+      notificationDisplay(
+        "episode_published",
+        { episode_title: "Episode 1", series_title: "Series A" },
+        sharedCatalog("en")
+      )
+    ).toEqual({
+      description: "“Episode 1” (Series A) was published.",
+      href: undefined,
+      title: "An episode was published",
+    });
+  });
+
   it("未知の type は落とさず generic にする", () => {
     expect(
-      notificationDisplay("invite_accepted", { series_id: "SR01" })
+      notificationDisplay("invite_accepted", { series_id: "SR01" }, ja)
     ).toEqual({
       description: "内容の詳細はありません。",
       href: "/series/SR01",

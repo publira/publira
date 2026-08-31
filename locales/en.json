@@ -38,7 +38,107 @@
   },
   "admin": {
     "audit": {
-      "section_error": "Could not display the audit log"
+      "section_error": "Could not display the audit log",
+      "title": "Audit log",
+      "page_description": "Review what happened in this tenant, for tracking changes and for accountability.",
+      "list_title": "Audit log",
+      "list_description": "Who did what, when, and how it turned out.",
+      "empty": "No audit log entry matches these filters.",
+      "pagination_description": "Shows up to {$count} entries per page.",
+      "actor_option": "{$name} ({$id})",
+      "actor_unnamed": "No name set",
+      "actor_id_unknown": "Unknown public ID",
+      "target_type_none": "No target type",
+      "list_failed": "Could not load the audit log. Please try again later.",
+      "filter_invalid": "One of the filters is not valid. Check what you entered.",
+      "columns": {
+        "created_at": "Date and time",
+        "actor": "Actor",
+        "action": "Action",
+        "outcome": "Outcome"
+      },
+      "filter": {
+        "title": "Filters",
+        "description": "Review this tenant's audit log by period, action, or actor. The start and end dates are read as calendar days in the tenant's time zone ({$time_zone}).",
+        "from": "From",
+        "to": "To",
+        "action": "Action",
+        "actor": "Actor",
+        "actor_placeholder": "Search actors",
+        "actor_empty": "No actor matches.",
+        "apply": "Apply",
+        "reset": "Reset"
+      },
+      "actions": {
+        "all": "All",
+        "series_created": "Series created",
+        "series_updated": "Series updated",
+        "episode_created": "Episode created",
+        "episode_publish_schedule_updated": "Publication schedule updated",
+        "creator_created": "Author created",
+        "creator_updated": "Author updated",
+        "label_created": "Label created",
+        "label_updated": "Label updated",
+        "other": "Other action"
+      },
+      "outcome": {
+        "failure": "Failure",
+        "success": "Success",
+        "unknown": "Unknown"
+      }
+    },
+    "announcements": {
+      "title": "Announcements",
+      "page_description": "Review announcements and their delivery audiences.",
+      "new_title": "Create an announcement",
+      "new_description": "Set the body, the link, and the audience, then deliver the announcement.",
+      "back_to_list": "Back to the list",
+      "list_title": "Announcements",
+      "list_description": "Review the announcements you have created and who received them.",
+      "list_error": "Could not display the announcements",
+      "empty_title": "There are no announcements yet.",
+      "empty_description": "Create an announcement to deliver it to your audience.",
+      "new_action": "Create an announcement",
+      "pagination_aria": "Announcements pagination",
+      "pagination_description": "Shows up to {$count} items per page, newest first.",
+      "audience_all": "Everyone",
+      "audience_selected": "Selected",
+      "audience_selected_user": "Selected ({$name})",
+      "list_failed": "Could not load the announcements. Please try again later.",
+      "create_failed": "Could not deliver the announcement. Please try again later.",
+      "target_users_failed": "Could not load the list of target users.",
+      "columns": {
+        "created_at": "Created",
+        "title": "Title",
+        "body": "Body",
+        "audience": "Audience",
+        "link": "Link"
+      },
+      "form": {
+        "title": "Title",
+        "title_placeholder": "e.g. Important notice",
+        "body": "Body",
+        "body_placeholder": "Write the announcement",
+        "link": "Link",
+        "link_placeholder": "e.g. /series/SERIES001",
+        "link_description": "Where the announcement takes the reader. Use /… for a page on this site and https:// for an external one.",
+        "audience": "Audience",
+        "audience_all": "Everyone",
+        "audience_selected": "Selected users",
+        "target_users": "Target users",
+        "target_users_unavailable": "The user list could not be loaded, so delivering to selected users is unavailable.",
+        "user_option": "{$name} ({$id})",
+        "submitting": "Sending…",
+        "submit": "Deliver the announcement"
+      },
+      "validation": {
+        "audience_invalid": "The audience is not valid.",
+        "body_required": "The body is required.",
+        "tenant_missing": "The tenant ID is missing.",
+        "title_required": "The title is required.",
+        "target_users_required": "Select at least one user when delivering to selected users.",
+        "link_invalid": "The link must start with / or http(s)://."
+      }
     },
     "auth": {
       "accept_invite": {
@@ -200,7 +300,25 @@
       "created": "Author created."
     },
     "dashboard": {
-      "section_error": "Could not display the dashboard"
+      "section_error": "Could not display the dashboard",
+      "title": "Dashboard",
+      "load_error": "Could not load the dashboard. Please try again later.",
+      "unset": "Not set",
+      "status_scheduled": "Scheduled",
+      "status_draft": "Draft",
+      "published_series": "Published series",
+      "draft_episodes": "Draft episodes",
+      "scheduled_episodes": "Scheduled releases",
+      "queue_title": "Publishing queue",
+      "queue_description": "Episodes and upcoming releases that need attention.",
+      "queue_empty_title": "The publishing queue is empty",
+      "queue_empty_description": "There are no draft or scheduled episodes.",
+      "columns": {
+        "series": "Series",
+        "episode": "Episode",
+        "status": "Status",
+        "scheduled_at": "Scheduled for"
+      }
     },
     "errors": {
       "console_description": "Please try again later. If it keeps happening, contact an administrator with the error ID.",
@@ -567,16 +685,378 @@
       "email_error": "Could not display the email settings",
       "payment_error": "Could not display the payment settings",
       "section_error": "Could not display the settings",
-      "theme_error": "Could not display the theme"
+      "theme_error": "Could not display the theme",
+      "theme": {
+        "color_picker": "Color picker",
+        "submit": "Save the theme",
+        "colors": {
+          "primary": {
+            "label": "Primary color",
+            "description": "The base color for buttons and other emphasis."
+          },
+          "primary_foreground": {
+            "label": "Primary text color",
+            "description": "Text drawn on the primary color."
+          },
+          "secondary": {
+            "label": "Secondary color",
+            "description": "The color for secondary buttons and elements."
+          },
+          "secondary_foreground": {
+            "label": "Secondary text color",
+            "description": "Text drawn on the secondary color."
+          },
+          "accent": {
+            "label": "Accent color",
+            "description": "The accent color for notices and decoration."
+          },
+          "accent_foreground": {
+            "label": "Accent text color",
+            "description": "Text drawn on the accent color."
+          },
+          "background": {
+            "label": "Background color",
+            "description": "The page's base background color."
+          },
+          "foreground": {
+            "label": "Text color",
+            "description": "Text drawn on the background color."
+          },
+          "surface": {
+            "label": "Surface color",
+            "description": "The surface color of a content area."
+          },
+          "surface_foreground": {
+            "label": "Surface text color",
+            "description": "Text drawn on the surface color."
+          },
+          "card": {
+            "label": "Card color",
+            "description": "The background color of a card."
+          },
+          "card_foreground": {
+            "label": "Card text color",
+            "description": "Text drawn on the card color."
+          },
+          "popover": {
+            "label": "Popover color",
+            "description": "The background color of a popover or dropdown."
+          },
+          "popover_foreground": {
+            "label": "Popover text color",
+            "description": "Text drawn on the popover color."
+          },
+          "muted": {
+            "label": "Muted color",
+            "description": "The color for quiet backgrounds and disabled elements."
+          },
+          "muted_foreground": {
+            "label": "Muted text color",
+            "description": "Text drawn on a muted area."
+          },
+          "border": {
+            "label": "Border color",
+            "description": "The border color of tables and outlines."
+          },
+          "input": {
+            "label": "Input field color",
+            "description": "The background color of a form control."
+          },
+          "ring": {
+            "label": "Focus ring color",
+            "description": "The ring drawn around a focused element."
+          },
+          "success": {
+            "label": "Success color",
+            "description": "The color for a success message or a completed action."
+          },
+          "success_foreground": {
+            "label": "Success text color",
+            "description": "Text drawn on the success color."
+          },
+          "warning": {
+            "label": "Warning color",
+            "description": "The color for a warning message."
+          },
+          "warning_foreground": {
+            "label": "Warning text color",
+            "description": "Text drawn on the warning color."
+          },
+          "destructive": {
+            "label": "Destructive color",
+            "description": "The color for a deletion or an error."
+          },
+          "destructive_foreground": {
+            "label": "Destructive text color",
+            "description": "Text drawn on the destructive color."
+          },
+          "info": {
+            "label": "Info color",
+            "description": "The color for an informational message."
+          },
+          "info_foreground": {
+            "label": "Info text color",
+            "description": "Text drawn on the info color."
+          }
+        },
+        "groups": {
+          "brand": {
+            "title": "Brand colors",
+            "description": "The colors that carry the brand."
+          },
+          "surface": {
+            "title": "Background and text colors",
+            "description": "The background colors and the text drawn on them."
+          },
+          "ui": {
+            "title": "UI element colors",
+            "description": "The colors of UI elements such as borders and inputs."
+          },
+          "status": {
+            "title": "Status colors",
+            "description": "The colors of success, warning, error, and informational notices."
+          }
+        },
+        "saved": "The theme was saved.",
+        "load_failed": "Could not load the theme. Please try again later.",
+        "save_failed": "Could not save the theme. Please try again later.",
+        "validation": {
+          "hex_color": "Enter a color in #RRGGBB form.",
+          "contrast": "The contrast ratio between {$background} and {$foreground} must be at least {$minimum}:1 (currently {$actual}:1).",
+          "contrast_summary": "Check these color pairs so the text stays readable."
+        }
+      },
+      "title": "Settings",
+      "basic_title": "Settings — General",
+      "basic_description": "Manage what this tenant shows on its public site.",
+      "theme_title": "Settings — Theme",
+      "theme_description": "Manage this tenant's theme colors, logo, and icon.",
+      "email_title": "Settings — Email",
+      "email_description": "Manage how this tenant sends email.",
+      "payment_title": "Settings — Payments",
+      "payment_description": "Manage this tenant's Stripe payment settings.",
+      "account_title": "Account settings",
+      "account_description": "Manage the administrator account you are signed in as.",
+      "tenant_missing": "The tenant ID is missing.",
+      "admin_only": "Only a tenant administrator can change this setting. You have read-only access.",
+      "saving": "Saving…",
+      "save": "Save",
+      "delete": "Delete",
+      "delete_action": "Delete",
+      "tabs": {
+        "basic": "General",
+        "theme": "Theme",
+        "email": "Email",
+        "payment": "Payments"
+      },
+      "image": {
+        "file_required": "Select an image file.",
+        "too_large": "The image must be 10MB or smaller.",
+        "unsupported_type": "Select a JPEG, PNG, or WebP image."
+      },
+      "site": {
+        "title": "Public site display",
+        "description": "The copy the public site uses. Any of these may be left empty.",
+        "copyright": "Copyright notice",
+        "copyright_placeholder": "e.g. Copyright © 2026 Acme Inc.",
+        "copyright_description": "The rights notice. It may be left empty.",
+        "tagline": "Site tagline",
+        "tagline_placeholder": "e.g. Read quietly, publish sustainably",
+        "tagline_description": "A short tagline used beside the title and on the sign-in screens.",
+        "site_description": "Site description",
+        "site_description_placeholder": "e.g. News and release announcements for our titles.",
+        "site_description_description": "The site description. It may be left empty.",
+        "submit": "Save the settings",
+        "saved": "The settings were saved.",
+        "load_failed": "Could not load the settings. Please try again later.",
+        "save_failed": "Could not save the settings. Please try again later."
+      },
+      "timezone": {
+        "title": "Time zone",
+        "description": "The zone every date and time in the console and on the public site is shown and entered in.",
+        "label": "Time zone",
+        "placeholder": "e.g. Asia/Tokyo",
+        "empty": "No time zone matches.",
+        "field_description": "Stored as an IANA time zone name (for example Asia/Tokyo). Type a region or a city to narrow the list.",
+        "submit": "Save the time zone",
+        "saved": "The time zone was saved.",
+        "load_failed": "Could not load the time zone. Please try again later.",
+        "save_failed": "Could not save the time zone. Please try again later.",
+        "validation": {
+          "required": "Select a time zone.",
+          "invalid": "Select a valid time zone."
+        }
+      },
+      "default_locale": {
+        "title": "Default language",
+        "description": "The language this console uses for an administrator who has not chosen one. It does not change a language already chosen.",
+        "label": "Default language",
+        "placeholder": "Select a language",
+        "field_description": "Japanese or English. This is the starting point for an administrator who has not chosen a language; it does not change one already stored in the cookie.",
+        "load_error_hint": "Saving now would overwrite the stored setting, so reload the page before changing it.",
+        "submit": "Save the default language",
+        "saved": "The default language was saved.",
+        "load_failed": "Could not load the default language. Please try again later.",
+        "save_failed": "Could not save the default language. Please try again later.",
+        "validation": {
+          "required": "Select a language."
+        }
+      },
+      "icon": {
+        "title": "Icon",
+        "description": "The icon the public site shows in a browser tab and in the address bar.",
+        "current": "Current icon",
+        "unset": "No icon is set.",
+        "file": "Icon image",
+        "file_description": "Choose a JPEG, PNG, or WebP image of at most 10MB and at least 32×32px. It is cropped to a square from the center.",
+        "delete_title": "Delete the icon?",
+        "delete_description": "The public site falls back to the browser's default icon.",
+        "delete_submit": "Delete the icon",
+        "submit": "Save the icon",
+        "saved": "The icon was saved.",
+        "deleted": "The icon was deleted.",
+        "rejected": "The image could not be read. Choose a JPEG, PNG, or WebP of at least 32×32px.",
+        "upload_failed": "Could not upload the icon. Please try again later.",
+        "delete_failed": "Could not delete the icon. Please try again later."
+      },
+      "logo": {
+        "title": "Logo",
+        "description": "The image used for branding. Its aspect ratio is kept as it is.",
+        "current": "Current logo",
+        "unset": "No logo is set.",
+        "file": "Logo image",
+        "file_description": "Choose a JPEG, PNG, or WebP image of at most 10MB, at least 32px on each side. An image whose longer side exceeds 1024px is scaled down.",
+        "delete_title": "Delete the logo?",
+        "delete_description": "Branding falls back to the tenant name.",
+        "delete_submit": "Delete the logo",
+        "submit": "Save the logo",
+        "saved": "The logo was saved.",
+        "deleted": "The logo was deleted.",
+        "rejected": "The image could not be read. Choose a JPEG, PNG, or WebP of at least 32px on each side.",
+        "upload_failed": "Could not upload the logo. Please try again later.",
+        "delete_failed": "Could not delete the logo. Please try again later."
+      },
+      "email": {
+        "title": "Email settings",
+        "description": "Left unset or disabled, mail is sent from the platform's own sender.",
+        "override": "Use this tenant's own SMTP server",
+        "override_checkbox": "Enable the override",
+        "override_description": "Left off, mail is sent with the platform's default SMTP settings.",
+        "host": "Host",
+        "port": "Port",
+        "username": "Username",
+        "password": "Password",
+        "password_change": "Change",
+        "password_change_cancel": "Cancel the change",
+        "encryption": "Encryption",
+        "encryption_none": "None",
+        "from_name": "Sender name (optional)",
+        "from_name_fallback": "Tenant name",
+        "from_name_description": "Left empty, the tenant name is used.",
+        "from_address": "Sender email address",
+        "reply_to": "Reply-to address (optional)",
+        "test": "Test the connection",
+        "test_title": "SMTP connection test",
+        "test_description": "Sends a test message using the values currently in the form.",
+        "test_send_to_self": "Send it to myself",
+        "test_recipient": "Recipient email address",
+        "test_sending": "Sending…",
+        "test_submit": "Run the test",
+        "test_sent": "The test message was sent to {$recipient}.",
+        "close": "Close",
+        "saved": "The email settings were saved.",
+        "failed": "The request failed. Please try again later."
+      },
+      "email_change": {
+        "title": "Change the email address",
+        "description": "Change this administrator account's email address. Both the current and the new address must confirm the change.",
+        "current_email": "Current email address",
+        "new_email": "New email address",
+        "current_password": "Current password",
+        "password_description": "Your password is required for this change.",
+        "submitting": "Sending…",
+        "submit": "Send the confirmation email",
+        "requested": "A confirmation email was sent to both the current and the new address. Open both links to complete the change.",
+        "all_fields_required": "Fill in every field.",
+        "email_taken": "That email address is already in use.",
+        "password_incorrect": "That password is not correct.",
+        "failed": "Could not request the email address change. Please try again later."
+      },
+      "payment": {
+        "title": "Payment settings",
+        "description": "Register, replace, or disable this tenant's Stripe secrets. A secret is write-only: coming back, you see its state and a mask, never the value.",
+        "provider": "Payment provider",
+        "provider_description": "Stripe is the only provider available today.",
+        "enabled": "Enable Stripe payments",
+        "enabled_checkbox": "Enable",
+        "enabled_description": "Left off, Checkout and the webhook for paid episodes do not run for this tenant.",
+        "secret_key": "Secret key",
+        "webhook_secret": "Webhook signing secret",
+        "secret_change": "Change",
+        "secret_change_cancel": "Cancel the change",
+        "secret_description": "A value you enter is never shown again. A stored value appears masked apart from its first and last characters.",
+        "webhook_url": "Webhook URL",
+        "webhook_url_description": "Register this URL in the Stripe dashboard. The signing secret is saved in the field above.",
+        "saved": "The payment settings were saved.",
+        "load_failed": "Could not load the payment settings. Please try again later.",
+        "save_failed": "Could not save the payment settings. Please try again later.",
+        "status": {
+          "disabled": "Disabled",
+          "disabled_description": "The secrets are stored, but payments are off. Checkout and the webhook do not run.",
+          "incomplete": "Incomplete",
+          "incomplete_description": "Payments are on, but a secret is missing, so nothing is charged.",
+          "ready": "Ready",
+          "ready_description": "Checkout and the webhook for paid episodes use this tenant's settings.",
+          "unset": "Not set",
+          "unset_description": "Register the Stripe secrets to start charging for paid episodes."
+        },
+        "validation": {
+          "secret_key_required": "Enter the secret key.",
+          "webhook_secret_required": "Enter the webhook signing secret."
+        }
+      }
     },
     "notifications": {
+      "page_description": "Review operational events addressed to you and mark them as read. Announcement delivery is managed on a separate screen.",
+      "list_title": "Notifications",
+      "list_description": "Operational events addressed to you. Announcement delivery is managed separately.",
+      "list_error": "Could not display notifications",
+      "updating": "Updating…",
+      "mark_read": "Mark as read",
+      "mark_read_success": "Marked as read.",
+      "mark_all_read": "Mark all as read",
+      "mark_all_read_success": "Marked all notifications as read.",
+      "mark_read_aria": "Mark {$label} as read",
+      "pagination_aria": "Notifications pagination",
+      "pagination_description": "Shows up to {$count} items per page, newest first.",
+      "columns": {
+        "status": "Status",
+        "created_at": "Date and time",
+        "content": "Content",
+        "actions": "Actions"
+      },
       "empty_description": "When operational events such as scheduled publication occur, your notifications appear here.",
       "empty_title": "You have no notifications yet.",
       "list_failed": "Could not load your notifications. Please try again later.",
       "menu_more": "View all",
       "read": "Read",
       "title": "Notifications",
-      "unread": "Unread"
+      "unread": "Unread",
+      "count_failed": "Could not load the unread count. Please try again later.",
+      "mark_read_failed": "Could not mark the notification as read. Please try again later.",
+      "mark_all_read_failed": "Could not mark every notification as read. Please try again later.",
+      "events": {
+        "subject_in_series": "“{$episode}” ({$series})",
+        "subject_episode": "“{$episode}”",
+        "subject_series": "an episode of “{$series}”",
+        "subject_unnamed": "the scheduled episode",
+        "published_title": "An episode was published",
+        "published_description": "{$subject} was published.",
+        "publish_failed_title": "An episode could not be published",
+        "publish_failed_description": "{$subject} could not be published.",
+        "unknown_title": "Notification",
+        "unknown_description": "No further details are available."
+      }
     },
     "shell": {
       "account_menu": "Account menu for {$name}",
@@ -592,6 +1072,98 @@
       "status_online": "Online",
       "tenant_title": "{$name} Admin console",
       "title": "Admin console"
+    },
+    "access_tickets": {
+      "title": "Access tickets",
+      "page_description": "Issue and revoke the limited-access tickets that bypass payment.",
+      "new_title": "Issue a ticket",
+      "new_description": "Name a user and an episode to issue a limited-access ticket.",
+      "back_to_list": "Back to the list",
+      "item_label": "tickets",
+      "list_title": "Access tickets",
+      "list_description": "Review the tickets you have issued, and revoke them.",
+      "list_error": "Could not display the access tickets",
+      "empty_title": "There are no tickets yet.",
+      "empty_description": "Issue a ticket to grant a user access to an episode.",
+      "new_action": "Issue a ticket",
+      "pagination_aria": "Access tickets pagination",
+      "pagination_description": "Shows up to {$count} items per page, newest first.",
+      "status_active": "Active",
+      "status_expired": "Expired",
+      "status_revoked": "Revoked",
+      "revoked_at": "Revoked: {$at}",
+      "revoke": "Revoke",
+      "revoking": "Revoking…",
+      "revoked": "The ticket was revoked.",
+      "revoke_confirm_title": "Revoke this ticket?",
+      "revoke_confirm_action": "Revoke",
+      "revoke_confirm_description": "A revoked ticket no longer opens its episode. To grant the same user access again, issue a new ticket after revoking this one.",
+      "issued": "The ticket was issued.",
+      "existing_expired": "An expired ticket for the same user and episode ({$id}) has not been revoked. Revoke it from the list before setting a new expiry.",
+      "existing_ticket": "A ticket for the same user and episode ({$id}) cannot be issued. Check the list.",
+      "user_not_found": "That user was not found.",
+      "episode_not_found": "That episode was not found.",
+      "user_not_active": "That user is not active.",
+      "list_failed": "Could not load the access tickets. Please try again later.",
+      "issue_failed": "Could not issue the access ticket. Please try again later.",
+      "revoke_failed": "Could not revoke the access ticket. Please try again later.",
+      "columns": {
+        "status": "Status",
+        "user": "User",
+        "episode": "Episode",
+        "note": "Note",
+        "expires_at": "Expires",
+        "created_at": "Created",
+        "actions": "Actions"
+      },
+      "filter": {
+        "title": "Filters",
+        "description": "Find issued tickets by user, episode, or status.",
+        "user": "User public_id",
+        "user_placeholder": "e.g. SeedMMBRAAA1",
+        "episode": "Episode public_id",
+        "episode_placeholder": "e.g. SeedEPSDAAA1",
+        "status": "Status",
+        "status_all": "All",
+        "status_active_only": "Active only",
+        "apply": "Apply",
+        "reset": "Reset"
+      },
+      "form": {
+        "option": "{$title} ({$id})",
+        "user": "User public_id",
+        "user_placeholder": "e.g. SeedMMBRAAA1",
+        "user_description": "The public_id of the end user who gets access.",
+        "episode_id": "Episode public_id",
+        "episode_id_placeholder": "e.g. SeedEPSDAAA1",
+        "episode_id_description": "The public_id of the episode to grant.",
+        "episode_id_no_series": "No series is available to pick, so enter the episode's public_id directly.",
+        "series": "Series",
+        "series_placeholder": "Search by series title",
+        "series_empty": "No series matches.",
+        "series_description": "Pick the series the episode belongs to and its episodes appear.",
+        "episode": "Episode",
+        "episode_placeholder": "Search by episode title",
+        "episode_loading": "Loading…",
+        "episode_empty": "No episode matches.",
+        "episode_needs_series": "Pick a series first.",
+        "episode_description": "Pick the episode to grant access to.",
+        "expires_at": "Expiry",
+        "expires_at_description": "Left empty, the ticket never expires. The value is read as a wall clock in the tenant's time zone ({$time_zone}) and converted to an absolute instant on submit. You can revoke the ticket at any time.",
+        "note": "Note",
+        "note_placeholder": "e.g. Review access",
+        "submitting": "Issuing…",
+        "submit": "Issue the ticket"
+      },
+      "validation": {
+        "episode_id_required": "The episode public_id is required.",
+        "user_id_required": "The user public_id is required.",
+        "tenant_missing": "The tenant ID is missing.",
+        "expires_at_invalid": "The expiry is not a valid date and time.",
+        "expires_at_past": "The expiry must be in the future.",
+        "revoke_target": "The ticket to revoke is not valid.",
+        "series_required": "Select a series."
+      }
     }
   },
   "host": {

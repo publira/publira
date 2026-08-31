@@ -4,6 +4,10 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 
 import {
   isUnauthenticatedError,
@@ -62,9 +66,10 @@ export type TenantSmtpTestResult =
   | { ok: true; recipientEmail: string }
   | { ok: false; message: string };
 
-const genericErrorMessage =
-  "処理に失敗しました。時間をおいて再試行してください。";
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
+const genericErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.email.failed");
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
 
 /**
  * SMTP failures carry the detail an operator needs to fix the settings ("dial
@@ -72,12 +77,15 @@ const sessionErrorMessage = "セッションが無効です。再ログインし
  * precondition errors pass the server's own text through. Other categories take
  * the shared copy — a raw `[internal]` message is not something to show.
  */
-const parseErrorMessage = (error: unknown): string => {
-  const serverMessage =
-    rpcErrorRawMessage(error)?.trim() || genericErrorMessage;
-  return rpcErrorMessage(error, genericErrorMessage, {
-    "invalid-argument": serverMessage,
-    precondition: serverMessage,
+const parseErrorMessage = (error: unknown, locale: Locale): string => {
+  const fallback = genericErrorMessage(sharedCatalog(locale));
+  const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+  return rpcErrorMessage(error, fallback, {
+    locale,
+    overrides: {
+      "invalid-argument": serverMessage,
+      precondition: serverMessage,
+    },
   });
 };
 
@@ -115,16 +123,18 @@ const toTenantSmtpSettings = (
 });
 
 export const getTenantEmailSettings = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantSmtpSettingsResult> => {
   "use cache: private";
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: !sessionId,
     };
@@ -142,7 +152,7 @@ export const getTenantEmailSettings = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error),
+      message: parseErrorMessage(error, locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -150,13 +160,15 @@ export const getTenantEmailSettings = async (
 };
 
 export const updateTenantEmailSettings = async (
-  input: UpdateTenantSmtpSettingsInput
+  input: UpdateTenantSmtpSettingsInput,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantSmtpSettingsResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = input.tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return { message: sessionErrorMessage(messages), ok: false };
   }
 
   try {
@@ -181,18 +193,20 @@ export const updateTenantEmailSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    return { message: parseErrorMessage(error), ok: false };
+    return { message: parseErrorMessage(error, locale), ok: false };
   }
 };
 
 export const sendTenantSmtpTestEmail = async (
-  input: SendTenantSmtpTestInput
+  input: SendTenantSmtpTestInput,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantSmtpTestResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = input.tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return { message: sessionErrorMessage(messages), ok: false };
   }
 
   try {
@@ -219,6 +233,6 @@ export const sendTenantSmtpTestEmail = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    return { message: parseErrorMessage(error), ok: false };
+    return { message: parseErrorMessage(error, locale), ok: false };
   }
 };

@@ -3,11 +3,14 @@
 import {
   cleanup,
   fireEvent,
-  render,
+  render as renderBase,
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import { TenantIconForm } from "./tenant-icon-form";
 
@@ -31,6 +34,13 @@ const brandingImage = (url: string) => ({
     },
   ],
 });
+
+const render = (ui: ReactNode) =>
+  renderBase(ui, {
+    wrapper: ({ children }) => (
+      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+    ),
+  });
 
 afterEach(() => {
   cleanup();

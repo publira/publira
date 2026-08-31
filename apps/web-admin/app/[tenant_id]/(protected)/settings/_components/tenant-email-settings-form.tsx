@@ -1,5 +1,8 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -31,8 +34,15 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import type { ChangeEvent } from "react";
-import { useActionState, useCallback, useId, useState } from "react";
+import {
+  useActionState,
+  useCallback,
+  useContext,
+  useId,
+  useState,
+} from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
@@ -47,11 +57,15 @@ import type {
   TenantSmtpTestFormState,
 } from "../settings-types";
 
-const encryptionOptions = [
-  { label: "TLS", value: "tls" },
-  { label: "STARTTLS", value: "starttls" },
-  { label: "なし", value: "none" },
-] as const;
+const encryptionOptions = (messages: SharedMessages) =>
+  [
+    { label: "TLS", value: "tls" },
+    { label: "STARTTLS", value: "starttls" },
+    {
+      label: getMessage(messages, "admin.settings.email.encryption_none"),
+      value: "none",
+    },
+  ] as const;
 
 interface TenantEmailSettingsFormProps {
   initialSettings: TenantSmtpSettings;
@@ -82,65 +96,76 @@ const PasswordFieldSection = ({
   isPasswordEditing,
   onCancelPasswordEdit,
   onStartPasswordEdit,
-}: PasswordFieldSectionProps) => (
-  <Field>
-    <FieldLabel required={fieldsInteractive && isPasswordEditing}>
-      パスワード
-    </FieldLabel>
-    <FieldContent>
-      {hasStoredPassword && !isPasswordEditing ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <Input
-            defaultValue="****"
-            disabled
-            key="password-masked"
-            readOnly
-            type="password"
-          />
-          <Button
-            disabled={!fieldsInteractive}
-            onClick={onStartPasswordEdit}
-            type="button"
-            variant="outline"
-          >
-            変更する
-          </Button>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <Input
-            autoComplete="new-password"
-            disabled={!fieldsInteractive}
-            key="password-editable"
-            name="password"
-            required={fieldsInteractive && isPasswordEditing}
-            type="password"
-          />
-          {hasStoredPassword ? (
+}: PasswordFieldSectionProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
+
+  return (
+    <Field>
+      <FieldLabel required={fieldsInteractive && isPasswordEditing}>
+        {getMessage(messages, "admin.settings.email.password")}
+      </FieldLabel>
+      <FieldContent>
+        {hasStoredPassword && !isPasswordEditing ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <Input
+              defaultValue="****"
+              disabled
+              key="password-masked"
+              readOnly
+              type="password"
+            />
             <Button
               disabled={!fieldsInteractive}
-              onClick={onCancelPasswordEdit}
+              onClick={onStartPasswordEdit}
               type="button"
               variant="outline"
             >
-              変更を取り消す
+              {getMessage(messages, "admin.settings.email.password_change")}
             </Button>
-          ) : null}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <Input
+              autoComplete="new-password"
+              disabled={!fieldsInteractive}
+              key="password-editable"
+              name="password"
+              required={fieldsInteractive && isPasswordEditing}
+              type="password"
+            />
+            {hasStoredPassword ? (
+              <Button
+                disabled={!fieldsInteractive}
+                onClick={onCancelPasswordEdit}
+                type="button"
+                variant="outline"
+              >
+                {getMessage(
+                  messages,
+                  "admin.settings.email.password_change_cancel"
+                )}
+              </Button>
+            ) : null}
+          </div>
+        )}
 
-      <input
-        name="password_update_mode"
-        type="hidden"
-        value={
-          hasStoredPassword && !isPasswordEditing
-            ? String(SECRET_UPDATE_MODE_UNCHANGED)
-            : String(SECRET_UPDATE_MODE_REPLACE)
-        }
-      />
-    </FieldContent>
-  </Field>
-);
+        <input
+          name="password_update_mode"
+          type="hidden"
+          value={
+            hasStoredPassword && !isPasswordEditing
+              ? String(SECRET_UPDATE_MODE_UNCHANGED)
+              : String(SECRET_UPDATE_MODE_REPLACE)
+          }
+        />
+      </FieldContent>
+    </Field>
+  );
+};
 
 interface SmtpTestDialogProps {
   dialogOpen: boolean;
@@ -165,6 +190,11 @@ const SmtpTestDialog = ({
   testState,
   canEdit,
 }: SmtpTestDialogProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const handleSendToSelfChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onSendToSelfChange(event.target.checked);
@@ -177,7 +207,7 @@ const SmtpTestDialog = ({
       <DialogTrigger
         render={
           <Button disabled={!canEdit} type="button" variant="outline">
-            接続テスト
+            {getMessage(messages, "admin.settings.email.test")}
           </Button>
         }
       />
@@ -186,9 +216,11 @@ const SmtpTestDialog = ({
         <DialogViewport>
           <DialogPopup>
             <DialogHeader>
-              <DialogTitle>SMTP 接続テスト</DialogTitle>
+              <DialogTitle>
+                {getMessage(messages, "admin.settings.email.test_title")}
+              </DialogTitle>
               <DialogDescription>
-                現在のフォーム入力値でテストメールを送信します。
+                {getMessage(messages, "admin.settings.email.test_description")}
               </DialogDescription>
             </DialogHeader>
 
@@ -199,7 +231,7 @@ const SmtpTestDialog = ({
                   onChange={handleSendToSelfChange}
                   type="checkbox"
                 />
-                自分に送信する
+                {getMessage(messages, "admin.settings.email.test_send_to_self")}
               </label>
               <input
                 form={formId}
@@ -214,7 +246,12 @@ const SmtpTestDialog = ({
 
               {sendToSelf ? null : (
                 <Field>
-                  <FieldLabel required>送信先メールアドレス</FieldLabel>
+                  <FieldLabel required>
+                    {getMessage(
+                      messages,
+                      "admin.settings.email.test_recipient"
+                    )}
+                  </FieldLabel>
                   <FieldContent>
                     <Input
                       form={formId}
@@ -238,7 +275,7 @@ const SmtpTestDialog = ({
               <DialogClose
                 render={
                   <Button type="button" variant="outline">
-                    閉じる
+                    {getMessage(messages, "admin.settings.email.close")}
                   </Button>
                 }
               />
@@ -249,7 +286,9 @@ const SmtpTestDialog = ({
                 type="submit"
                 variant="outline"
               >
-                {isTesting ? "送信中..." : "テストを実行"}
+                {isTesting
+                  ? getMessage(messages, "admin.settings.email.test_sending")
+                  : getMessage(messages, "admin.settings.email.test_submit")}
               </Button>
             </DialogFooter>
           </DialogPopup>
@@ -267,6 +306,11 @@ export const TenantEmailSettingsForm = ({
   saveAction,
   testAction,
 }: TenantEmailSettingsFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const formId = useId();
   const smtpOverrideId = useId();
@@ -338,9 +382,11 @@ export const TenantEmailSettingsForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>メール設定</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.settings.email.title")}
+        </CardTitle>
         <CardDescription>
-          未設定または無効時はプラットフォームで設定された送信元で送信されます。
+          {getMessage(messages, "admin.settings.email.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -353,7 +399,7 @@ export const TenantEmailSettingsForm = ({
 
           <Field>
             <FieldLabel htmlFor={smtpOverrideId}>
-              テナントSMTP上書きを有効にする
+              {getMessage(messages, "admin.settings.email.override")}
             </FieldLabel>
             <FieldContent>
               <label className="inline-flex items-center gap-2 text-sm text-foreground">
@@ -365,16 +411,21 @@ export const TenantEmailSettingsForm = ({
                   onChange={handleOverrideChange}
                   type="checkbox"
                 />
-                上書きを有効化
+                {getMessage(messages, "admin.settings.email.override_checkbox")}
               </label>
               <FieldDescription>
-                OFF の場合はプラットフォーム既定の SMTP 設定で送信されます。
+                {getMessage(
+                  messages,
+                  "admin.settings.email.override_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel required={fieldsInteractive}>ホスト</FieldLabel>
+            <FieldLabel required={fieldsInteractive}>
+              {getMessage(messages, "admin.settings.email.host")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.host}
@@ -388,7 +439,9 @@ export const TenantEmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel required={fieldsInteractive}>ポート</FieldLabel>
+            <FieldLabel required={fieldsInteractive}>
+              {getMessage(messages, "admin.settings.email.port")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={String(initialSettings.port || 587)}
@@ -403,7 +456,9 @@ export const TenantEmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel required={fieldsInteractive}>ユーザー名</FieldLabel>
+            <FieldLabel required={fieldsInteractive}>
+              {getMessage(messages, "admin.settings.email.username")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.username}
@@ -424,12 +479,14 @@ export const TenantEmailSettingsForm = ({
           />
 
           <Field>
-            <FieldLabel required={fieldsInteractive}>暗号化方式</FieldLabel>
+            <FieldLabel required={fieldsInteractive}>
+              {getMessage(messages, "admin.settings.email.encryption")}
+            </FieldLabel>
             <FieldContent>
               <Select
                 defaultValue={initialSettings.encryption || "starttls"}
                 disabled={!fieldsInteractive}
-                items={encryptionOptions}
+                items={encryptionOptions(messages)}
                 name="encryption"
                 required={fieldsInteractive}
               />
@@ -437,24 +494,35 @@ export const TenantEmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel>送信者名（任意）</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.settings.email.from_name")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.fromName}
                 disabled={!fieldsInteractive}
                 name="from_name"
-                placeholder={tenantName || "テナント名"}
+                placeholder={
+                  tenantName ||
+                  getMessage(
+                    messages,
+                    "admin.settings.email.from_name_fallback"
+                  )
+                }
                 type="text"
               />
               <FieldDescription>
-                未入力時はテナント名が利用されます。
+                {getMessage(
+                  messages,
+                  "admin.settings.email.from_name_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
             <FieldLabel required={fieldsInteractive}>
-              送信者メールアドレス
+              {getMessage(messages, "admin.settings.email.from_address")}
             </FieldLabel>
             <FieldContent>
               <Input
@@ -469,7 +537,9 @@ export const TenantEmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel>返信先メールアドレス（任意）</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.settings.email.reply_to")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.replyTo}
@@ -483,7 +553,7 @@ export const TenantEmailSettingsForm = ({
 
           {canEdit ? null : (
             <FormMessage variant="destructive">
-              この設定はテナント管理者のみ編集できます。現在は閲覧専用です。
+              {getMessage(messages, "admin.settings.admin_only")}
             </FormMessage>
           )}
 
@@ -511,7 +581,9 @@ export const TenantEmailSettingsForm = ({
             />
 
             <Button disabled={!canEdit || isSaving} type="submit">
-              {isSaving ? "保存中..." : "保存"}
+              {isSaving
+                ? getMessage(messages, "admin.settings.saving")
+                : getMessage(messages, "admin.settings.save")}
             </Button>
           </div>
         </form>

@@ -62,10 +62,13 @@ describe("notification actions", () => {
     );
 
     expect(result).toEqual({ message: "既読にしました。", ok: true });
-    expect(mockMarkNotificationAsRead).toHaveBeenCalledWith({
-      notificationId,
-      tenantId: "TENANT001",
-    });
+    expect(mockMarkNotificationAsRead).toHaveBeenCalledWith(
+      {
+        notificationId,
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith("notifications-TENANT001");
   });
 
@@ -103,7 +106,10 @@ describe("notification actions", () => {
       message: "未読をすべて既読にしました。",
       ok: true,
     });
-    expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith("TENANT001");
+    expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(
+      "TENANT001",
+      "ja"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith("notifications-TENANT001");
   });
 

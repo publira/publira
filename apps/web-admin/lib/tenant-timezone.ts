@@ -3,6 +3,10 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { cacheTag } from "next/cache";
 
@@ -32,11 +36,12 @@ export type UpdateTenantTimezoneResult =
   | { ok: true; timezone: string }
   | { ok: false; message: string };
 
-const genericLoadErrorMessage =
-  "タイムゾーンの取得に失敗しました。時間をおいて再試行してください。";
-const genericUpdateErrorMessage =
-  "タイムゾーンの保存に失敗しました。時間をおいて再試行してください。";
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
+const genericLoadErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.timezone.load_failed");
+const genericUpdateErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.timezone.save_failed");
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
 
 /**
  * Tag the settings screen's cached read carries, so `updateTag` in the Server
@@ -51,23 +56,30 @@ export const tenantTimezoneCacheTag = (tenantId: string): string =>
  * field ("timezone must be a valid IANA time zone name"), which is more useful
  * to the operator than the generic wording. Everything else takes the shared copy.
  */
-const parseErrorMessage = (error: unknown, fallback: string): string => {
+const parseErrorMessage = (
+  error: unknown,
+  fallback: string,
+  locale: Locale
+): string => {
   const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
   return rpcErrorMessage(error, fallback, {
-    "invalid-argument": serverMessage,
+    locale,
+    overrides: { "invalid-argument": serverMessage },
   });
 };
 
 export const getTenantTimezone = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<GetTenantTimezoneResult> => {
   "use cache: private";
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: !sessionId,
       timezone: DEFAULT_TIME_ZONE,
@@ -93,7 +105,11 @@ export const getTenantTimezone = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, genericLoadErrorMessage),
+      message: parseErrorMessage(
+        error,
+        genericLoadErrorMessage(messages),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       timezone: DEFAULT_TIME_ZONE,
@@ -120,14 +136,18 @@ export const getTenantDisplayTimeZone = async (
   return result.timezone;
 };
 
-export const updateTenantTimezone = async (input: {
-  tenantId: string;
-  timezone: string;
-}): Promise<UpdateTenantTimezoneResult> => {
+export const updateTenantTimezone = async (
+  input: {
+    tenantId: string;
+    timezone: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<UpdateTenantTimezoneResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return { message: sessionErrorMessage(messages), ok: false };
   }
 
   try {
@@ -147,7 +167,11 @@ export const updateTenantTimezone = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, genericUpdateErrorMessage),
+      message: parseErrorMessage(
+        error,
+        genericUpdateErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }

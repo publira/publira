@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -11,6 +13,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { listAnnouncements } from "#lib/announcement";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
@@ -18,6 +21,7 @@ import {
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -25,8 +29,11 @@ import { AnnouncementManager } from "./_components/announcement-manager";
 
 type AnnouncementsPageProps = PageProps<"/[tenant_id]/announcements">;
 
-export const metadata: Metadata = {
-  title: "お知らせ",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.announcements.title") };
 };
 
 export const generateStaticParams = () =>
@@ -48,8 +55,9 @@ const AnnouncementManagerData = async ({
 }: Pick<AnnouncementsPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
+  const locale = await getLocale(tenantId);
   const [listResult, timeZone] = await Promise.all([
-    listAnnouncements(tenantId, { token }),
+    listAnnouncements(tenantId, { token }, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -60,6 +68,7 @@ const AnnouncementManagerData = async ({
       {...cursorPageHrefs(listResult)}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       announcements={listResult.announcements}
+      locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
       timeZone={timeZone}
     />
@@ -71,9 +80,15 @@ const AnnouncementsPage = ({ searchParams }: AnnouncementsPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>お知らせ</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
+            <Message message="admin.announcements.title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          お知らせの作成状況と配信対象を確認できます。
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.announcements.page_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

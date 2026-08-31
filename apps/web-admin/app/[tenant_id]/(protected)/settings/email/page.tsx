@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -18,6 +19,7 @@ import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantEmailSettings } from "#lib/email-settings";
 import type { TenantSmtpSettings } from "#lib/email-settings";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -28,8 +30,11 @@ import {
   updateTenantEmailSettingsAction,
 } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "設定 - メール情報",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.settings.email_title") };
 };
 
 export const generateStaticParams = () =>
@@ -61,10 +66,11 @@ const SettingsEmailFormSkeleton = () => (
 
 const SettingsEmailForm = async () => {
   const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
 
   const [emailSettingsResult, currentUserResult, tenantResult] =
     await Promise.all([
-      getTenantEmailSettings(tenantId),
+      getTenantEmailSettings(tenantId, locale),
       getAdminCurrentUser(tenantId),
       getTenantForSession(tenantId),
     ]);
@@ -98,9 +104,15 @@ const SettingsEmailPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>設定</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
+            <Message message="admin.settings.title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          テナントごとのメール送信設定を管理します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.settings.email_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -36,6 +38,7 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -58,8 +61,11 @@ const pageSize = 20;
 
 type AuditLogsPageProps = PageProps<"/[tenant_id]/audit-logs">;
 
-export const metadata: Metadata = {
-  title: "監査ログ",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.audit.title") };
 };
 
 export const generateStaticParams = () =>
@@ -90,10 +96,18 @@ const AuditLogsSkeleton = () => (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>日時</TableHead>
-              <TableHead>操作者</TableHead>
-              <TableHead>アクション</TableHead>
-              <TableHead>結果</TableHead>
+              <TableHead>
+                <SkeletonLine className="h-4 w-16" />
+              </TableHead>
+              <TableHead>
+                <SkeletonLine className="h-4 w-20" />
+              </TableHead>
+              <TableHead>
+                <SkeletonLine className="h-4 w-24" />
+              </TableHead>
+              <TableHead>
+                <SkeletonLine className="h-4 w-12" />
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -110,20 +124,30 @@ const AuditLogsContent = async ({
 }: Pick<AuditLogsPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parseAuditLogFilters(sp, allowedActionValues);
+  const locale = await getLocale(tenantId);
+  const messages = sharedCatalog(locale);
 
   const [result, actorCandidatesResult, timeZone] = await Promise.all([
-    listAuditLogs(tenantId, {
-      action: filters.action,
-      actorUserPublicId: filters.actor,
-      createdFrom: filters.from,
-      createdTo: filters.to,
-      limit: pageSize,
-      token: filters.token,
-    }),
-    listAuditActorCandidates(tenantId, {
-      limit: 100,
-      query: filters.actor,
-    }),
+    listAuditLogs(
+      tenantId,
+      {
+        action: filters.action,
+        actorUserPublicId: filters.actor,
+        createdFrom: filters.from,
+        createdTo: filters.to,
+        limit: pageSize,
+        token: filters.token,
+      },
+      locale
+    ),
+    listAuditActorCandidates(
+      tenantId,
+      {
+        limit: 100,
+        query: filters.actor,
+      },
+      locale
+    ),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -152,7 +176,10 @@ const AuditLogsContent = async ({
   const actorItems = actorCandidatesResult.ok
     ? actorCandidatesResult.actors.map((actor) => ({
         label: actor.name
-          ? `${actor.name} (${actor.publicId})`
+          ? getMessage(messages, "admin.audit.actor_option", {
+              id: actor.publicId,
+              name: actor.name,
+            })
           : actor.publicId,
         value: actor.publicId,
       }))
@@ -162,23 +189,30 @@ const AuditLogsContent = async ({
     <div className="grid gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>絞り込み</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.audit.filter.title")}
+          </CardTitle>
           <CardDescription>
-            期間、アクション種別、操作者で自テナントの監査ログを確認します。開始日・終了日はテナントのタイムゾーン（
-            {timeZone}）の暦日として解釈します。
+            {getMessage(messages, "admin.audit.filter.description", {
+              time_zone: timeZone,
+            })}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <Field>
-              <FieldLabel>開始日</FieldLabel>
+              <FieldLabel>
+                {getMessage(messages, "admin.audit.filter.from")}
+              </FieldLabel>
               <FieldContent>
                 <Input defaultValue={filters.from} name="from" type="date" />
               </FieldContent>
             </Field>
 
             <Field>
-              <FieldLabel>終了日</FieldLabel>
+              <FieldLabel>
+                {getMessage(messages, "admin.audit.filter.to")}
+              </FieldLabel>
               <FieldContent>
                 <Input defaultValue={filters.to} name="to" type="date" />
               </FieldContent>
@@ -186,11 +220,16 @@ const AuditLogsContent = async ({
 
             <AuditActionSelect
               defaultValue={filters.action}
-              options={auditActionOptions}
+              options={auditActionOptions.map((option) => ({
+                label: getMessage(messages, option.messageKey),
+                value: option.value,
+              }))}
             />
 
             <Field>
-              <FieldLabel>操作者</FieldLabel>
+              <FieldLabel>
+                {getMessage(messages, "admin.audit.filter.actor")}
+              </FieldLabel>
               <FieldContent>
                 <ActorFilterCombobox
                   defaultValue={filters.actor}
@@ -200,13 +239,15 @@ const AuditLogsContent = async ({
             </Field>
 
             <div className="flex items-end gap-2">
-              <Button type="submit">適用</Button>
+              <Button type="submit">
+                {getMessage(messages, "admin.audit.filter.apply")}
+              </Button>
               <Button
                 formAction={resetHref || "?"}
                 type="submit"
                 variant="outline"
               >
-                リセット
+                {getMessage(messages, "admin.audit.filter.reset")}
               </Button>
             </div>
           </form>
@@ -215,9 +256,11 @@ const AuditLogsContent = async ({
 
       <Card>
         <CardHeader>
-          <CardTitle>監査ログ一覧</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.audit.list_title")}
+          </CardTitle>
           <CardDescription>
-            誰が、いつ、何を行い、どの結果になったかを確認できます。
+            {getMessage(messages, "admin.audit.list_description")}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -226,16 +269,24 @@ const AuditLogsContent = async ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-44">日時</TableHead>
-                    <TableHead className="w-56">操作者</TableHead>
-                    <TableHead>アクション</TableHead>
-                    <TableHead className="w-32">結果</TableHead>
+                    <TableHead className="w-44">
+                      {getMessage(messages, "admin.audit.columns.created_at")}
+                    </TableHead>
+                    <TableHead className="w-56">
+                      {getMessage(messages, "admin.audit.columns.actor")}
+                    </TableHead>
+                    <TableHead>
+                      {getMessage(messages, "admin.audit.columns.action")}
+                    </TableHead>
+                    <TableHead className="w-32">
+                      {getMessage(messages, "admin.audit.columns.outcome")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {result.auditLogs.length === 0 ? (
                     <TableEmptyRow colSpan={4}>
-                      条件に一致する監査ログはありません。
+                      {getMessage(messages, "admin.audit.empty")}
                     </TableEmptyRow>
                   ) : (
                     result.auditLogs.map((item) => (
@@ -244,20 +295,26 @@ const AuditLogsContent = async ({
                       >
                         <AuditLogDateCell
                           createdAt={item.createdAt}
+                          locale={locale}
                           timeZone={timeZone}
                         />
                         <AuditLogActorCell
                           actorName={item.actorName}
                           actorRole={item.actorRole}
                           actorUserPublicId={item.actorUserPublicId}
+                          locale={locale}
                         />
                         <AuditLogActionCell
                           action={item.action}
+                          locale={locale}
                           reason={item.reason}
                           targetId={item.targetId}
                           targetType={item.targetType}
                         />
-                        <AuditLogOutcomeCell outcome={item.outcome} />
+                        <AuditLogOutcomeCell
+                          locale={locale}
+                          outcome={item.outcome}
+                        />
                       </TableRow>
                     ))
                   )}
@@ -266,17 +323,19 @@ const AuditLogsContent = async ({
 
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">
-                  1ページあたり {pageSize} 件まで表示します。
+                  {getMessage(messages, "admin.audit.pagination_description", {
+                    count: pageSize,
+                  })}
                 </p>
                 <div className="flex gap-2">
                   {previousHref ? (
                     <LinkButton href={previousHref} variant="outline">
-                      前へ
+                      {getMessage(messages, "admin.common.previous")}
                     </LinkButton>
                   ) : null}
                   {nextHref ? (
                     <LinkButton href={nextHref} variant="outline">
-                      次へ
+                      {getMessage(messages, "admin.common.next")}
                     </LinkButton>
                   ) : null}
                 </div>
@@ -285,7 +344,7 @@ const AuditLogsContent = async ({
           ) : (
             <SectionError
               description={result.message}
-              title="監査ログを表示できませんでした"
+              title={getMessage(messages, "admin.audit.section_error")}
             />
           )}
         </CardContent>
@@ -299,9 +358,15 @@ const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>監査ログ</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
+            <Message message="admin.audit.title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          テナント内の操作履歴を確認し、変更の追跡や説明責任に利用します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+            <Message message="admin.audit.page_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

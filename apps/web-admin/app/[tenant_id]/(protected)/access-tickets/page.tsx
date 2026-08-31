@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -12,9 +14,11 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
+import { Message } from "#components/message";
 import { listAccessTickets } from "#lib/access-ticket";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -25,8 +29,11 @@ import { parseAccessTicketFilters } from "./_lib/search-params";
 
 type AccessTicketsPageProps = PageProps<"/[tenant_id]/access-tickets">;
 
-export const metadata: Metadata = {
-  title: "アクセスチケット",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.access_tickets.title") };
 };
 
 export const generateStaticParams = () =>
@@ -59,13 +66,18 @@ const TicketManagerData = async ({
 }: Pick<AccessTicketsPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parseAccessTicketFilters(sp);
+  const locale = await getLocale(tenantId);
   const [listResult, timeZone] = await Promise.all([
-    listAccessTickets(tenantId, {
-      activeOnly: filters.active,
-      episodePublicId: filters.episode,
-      token: filters.token,
-      userPublicId: filters.user,
-    }),
+    listAccessTickets(
+      tenantId,
+      {
+        activeOnly: filters.active,
+        episodePublicId: filters.episode,
+        token: filters.token,
+        userPublicId: filters.user,
+      },
+      locale
+    ),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -73,9 +85,10 @@ const TicketManagerData = async ({
 
   return (
     <div className="grid gap-6">
-      <TicketFilterForm filters={filters} />
+      <TicketFilterForm filters={filters} locale={locale} />
       <TicketManager
         listErrorMessage={listResult.ok ? undefined : listResult.message}
+        locale={locale}
         nextHref={
           listResult.nextToken
             ? accessTicketFilterQuery(filters, listResult.nextToken)
@@ -99,14 +112,20 @@ const AccessTicketsPage = ({ searchParams }: AccessTicketsPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>アクセスチケット</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.access_tickets.title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          決済を経由しない限定閲覧チケットの発行と失効を管理します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+            <Message message="admin.access_tickets.page_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <FlashToast title="チケットを発行しました。" />
+      <FlashToast message="admin.access_tickets.issued" />
       <Suspense fallback={<TicketManagerSkeleton />}>
         <TicketManagerData searchParams={searchParams} />
       </Suspense>

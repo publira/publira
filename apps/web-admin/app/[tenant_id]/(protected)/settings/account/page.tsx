@@ -1,5 +1,8 @@
+import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import {
   AdminPage,
@@ -10,12 +13,17 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 
 import { EmailChangeForm } from "../_components/email-change-form";
 import { requestEmailChangeAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "アカウント設定",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.settings.account_title") };
 };
 
 export const generateStaticParams = () =>
@@ -26,9 +34,15 @@ const AccountSettingsPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>アカウント設定</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+            <Message message="admin.settings.account_title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          ログイン中の管理者アカウントの情報を管理します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.settings.account_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

@@ -3,12 +3,14 @@
 import {
   cleanup,
   fireEvent,
-  render,
+  render as renderBase,
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 import { emptyTenantPaymentSettings } from "#lib/payment-settings-shared";
 import type { TenantPaymentSettings } from "#lib/payment-settings-shared";
 
@@ -44,6 +46,13 @@ const disabledSettings: TenantPaymentSettings = {
 
 const noopAction = (): Promise<TenantPaymentSettingsFormState> =>
   Promise.resolve(null);
+
+const render = (ui: ReactNode) =>
+  renderBase(ui, {
+    wrapper: ({ children }) => (
+      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+    ),
+  });
 
 afterEach(() => {
   cleanup();

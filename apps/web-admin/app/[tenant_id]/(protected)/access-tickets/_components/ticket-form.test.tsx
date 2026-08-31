@@ -3,12 +3,15 @@
 import {
   cleanup,
   fireEvent,
-  render,
+  render as renderBase,
   screen,
   waitFor,
 } from "@testing-library/react";
 import React from "react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import { listEpisodeOptionsAction } from "../_lib/actions";
 import { TicketForm } from "./ticket-form";
@@ -67,6 +70,13 @@ const selectSeries = (item: { publicId: string; title: string }) => {
     target: { value: item.publicId },
   });
 };
+
+const render = (ui: ReactNode) =>
+  renderBase(ui, {
+    wrapper: ({ children }) => (
+      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+    ),
+  });
 
 afterEach(() => {
   cleanup();
@@ -135,7 +145,8 @@ describe("TicketForm", () => {
     await waitFor(() => {
       expect(mockListEpisodeOptionsAction).toHaveBeenCalledWith(
         "TENANT001",
-        "SERIES001"
+        "SERIES001",
+        "ja"
       );
     });
 

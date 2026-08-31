@@ -4,6 +4,10 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -19,13 +23,14 @@ import {
 } from "./cursor-page";
 import { getAccessToken } from "./session";
 
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
-const listErrorMessage =
-  "アクセスチケット一覧の取得に失敗しました。時間をおいて再試行してください。";
-const issueErrorMessage =
-  "アクセスチケットの発行に失敗しました。時間をおいて再試行してください。";
-const revokeErrorMessage =
-  "アクセスチケットの失効に失敗しました。時間をおいて再試行してください。";
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
+const listErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.access_tickets.list_failed");
+const issueErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.access_tickets.issue_failed");
+const revokeErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.access_tickets.revoke_failed");
 
 export type AccessTicketStatus = "active" | "expired" | "revoked" | string;
 
@@ -76,25 +81,41 @@ export type RevokeAccessTicketResult =
   | { message: string; ok: false };
 
 /**
- * A ticket names both a user and an episode, so "対象が見つかりません。" is not
- * actionable. The code says only `not_found`, while the server identifies the
- * missing request field with `google.rpc.BadRequest` details.
+ * A ticket names both a user and an episode, so the shared `not-found` wording
+ * is not actionable. The code says only `not_found`, while the server
+ * identifies the missing request field with `google.rpc.BadRequest` details.
  */
-const missingTargetMessage = (error: unknown): string => {
+const missingTargetMessage = (
+  error: unknown,
+  messages: SharedMessages
+): string => {
   if (rpcErrorHasFieldViolation(error, "user_public_id")) {
-    return "指定したユーザーが見つかりません。";
+    return getMessage(messages, "admin.access_tickets.user_not_found");
   }
   if (rpcErrorHasFieldViolation(error, "episode_public_id")) {
-    return "指定したエピソードが見つかりません。";
+    return getMessage(messages, "admin.access_tickets.episode_not_found");
   }
-  return "対象が見つかりません。";
+  return getMessage(messages, "errors.rpc.not-found");
 };
 
-const mapErrorMessage = (error: unknown, fallback: string): string =>
-  rpcErrorMessage(error, fallback, {
-    "not-found": missingTargetMessage(error),
-    precondition: "対象ユーザーが有効ではありません。",
+const mapErrorMessage = (
+  error: unknown,
+  fallback: string,
+  locale: Locale
+): string => {
+  const messages = sharedCatalog(locale);
+
+  return rpcErrorMessage(error, fallback, {
+    locale,
+    overrides: {
+      "not-found": missingTargetMessage(error, messages),
+      precondition: getMessage(
+        messages,
+        "admin.access_tickets.user_not_active"
+      ),
+    },
   });
+};
 
 /** The generated `AdminAccessTicket` fields {@link mapTicket} reads (see `series.ts`). */
 type RawAccessTicket = Pick<
@@ -139,16 +160,18 @@ const mapTicket = (item: RawAccessTicket): AccessTicketItem => ({
  */
 export const listAccessTickets = async (
   tenantId: string,
-  options: ListAccessTicketsOptions = {}
+  options: ListAccessTicketsOptions = {},
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListAccessTicketsResult> => {
   "use cache: private";
   cacheTag(`access-tickets-${tenantId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
       tickets: [],
@@ -176,7 +199,7 @@ export const listAccessTickets = async (
     rethrowUnclassifiedRpcError(error);
     return {
       ...emptyCursorPageTokens,
-      message: mapErrorMessage(error, listErrorMessage),
+      message: mapErrorMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       tickets: [],
@@ -185,12 +208,14 @@ export const listAccessTickets = async (
 };
 
 export const issueAccessTicket = async (
-  input: IssueAccessTicketInput
+  input: IssueAccessTicketInput,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<IssueAccessTicketResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -209,7 +234,7 @@ export const issueAccessTicket = async (
 
     if (!response.ticket) {
       return {
-        message: issueErrorMessage,
+        message: issueErrorMessage(messages),
         ok: false,
       };
     }
@@ -222,7 +247,7 @@ export const issueAccessTicket = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorMessage(error, issueErrorMessage),
+      message: mapErrorMessage(error, issueErrorMessage(messages), locale),
       ok: false,
     };
   }
@@ -230,12 +255,14 @@ export const issueAccessTicket = async (
 
 export const revokeAccessTicket = async (
   tenantId: string,
-  publicId: string
+  publicId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<RevokeAccessTicketResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -251,7 +278,7 @@ export const revokeAccessTicket = async (
 
     if (!response.ticket) {
       return {
-        message: revokeErrorMessage,
+        message: revokeErrorMessage(messages),
         ok: false,
       };
     }
@@ -264,7 +291,7 @@ export const revokeAccessTicket = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorMessage(error, revokeErrorMessage),
+      message: mapErrorMessage(error, revokeErrorMessage(messages), locale),
       ok: false,
     };
   }
