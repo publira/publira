@@ -76,7 +76,7 @@ To check it by hand, save a theme color and then request `GET /theme.css` on the
 - A response carrying `X-Publira-Image-Encryption: xor-hmac-sha256-v1` is decrypted in the browser by rebuilding the same stream from the short-lived media JWT in the URL (`t`), its `sub`, and `X-Publira-Image-Key-Id`. The MIME type after decryption comes from `X-Publira-Image-Content-Type`, and the result is handed only to the Canvas pipeline of `@publira/comic-viewer`. An unencrypted public image is still drawn as it is
 - The only on-screen controls are paging and full screen. Both live on the viewer's own toolbar and hide themselves once the reader stops interacting. Zooming is a pinch and resetting is a one-finger double tap; both are gestures of the library
 - The binding direction is the library's default, right to left. Spreads set `spreadStartIndex` to `1`, so the cover is shown on its own and pages 2 and 3 onward are paired
-- A page that fails to load shows 再読み込み inside the viewer and retries that page alone. The episode as a whole is not dropped
+- A page that fails to load shows a reload control inside the viewer and retries that page alone. The episode as a whole is not dropped
 - The viewer's height is owned by `VIEWER_HEIGHT_CLASS` in `_lib/viewer-layout.ts`, and the body skeleton reserves the same box. The episode information below it does not move after the first paint
 
 ### Site icon (`rel="icon"` / apple-touch-icon)
@@ -89,7 +89,7 @@ When a tenant logo is set, the brand area of the public site header shows its de
 
 ### Episode purchase
 
-The 購入手続きへ button on a paid episode leads to Stripe Checkout. After the reader comes back from Stripe, the purchase recorded by the `checkout.session.completed` webhook grants access to the body images. web-host itself holds no Stripe secret key. The return URL and the webhook are received on the tenant's public domain; for the procedure, see the [server README](../../server/README.md#stripe-checkoutエピソード購入).
+The checkout button on a paid episode leads to Stripe Checkout. After the reader comes back from Stripe, the purchase recorded by the `checkout.session.completed` webhook grants access to the body images. web-host itself holds no Stripe secret key. The return URL and the webhook are received on the tenant's public domain; for the procedure, see the [server README](../../server/README.md#stripe-checkoutエピソード購入).
 
 ## What it covers
 
