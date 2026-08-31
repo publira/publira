@@ -14,8 +14,11 @@ The web frontends. Turborepo manages one Next.js app per host.
 ## Development commands
 
 ```bash
-# Start every app
-task server:dev-web
+# Start every app, including email-renderer (Turbo runs each app's dev script)
+pnpm dev
+
+# Start every app together with the Go server
+task dev
 
 # Start one app
 cd apps/web-host     && pnpm dev
