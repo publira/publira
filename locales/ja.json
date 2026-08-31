@@ -200,7 +200,26 @@
       "created": "著者を作成しました。"
     },
     "dashboard": {
-      "section_error": "ダッシュボードを表示できませんでした"
+      "section_error": "ダッシュボードを表示できませんでした",
+      "title": "ダッシュボード",
+      "load_error": "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。",
+      "session_invalid": "セッションが無効です。再ログインしてください。",
+      "unset": "未設定",
+      "status_scheduled": "予約済み",
+      "status_draft": "下書き",
+      "published_series": "公開中シリーズ",
+      "draft_episodes": "下書きエピソード",
+      "scheduled_episodes": "予約公開",
+      "queue_title": "公開キュー",
+      "queue_description": "直近で確認が必要なエピソードと公開予定です。",
+      "queue_empty_title": "公開キューは空です",
+      "queue_empty_description": "現在、下書きまたは予約済みのエピソードはありません。",
+      "columns": {
+        "series": "シリーズ",
+        "episode": "エピソード",
+        "status": "状態",
+        "scheduled_at": "予定"
+      }
     },
     "errors": {
       "console_description": "時間をおいて再試行してください。繰り返す場合は、エラー ID を添えて管理者に連絡してください。",

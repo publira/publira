@@ -200,7 +200,26 @@
       "created": "Author created."
     },
     "dashboard": {
-      "section_error": "Could not display the dashboard"
+      "section_error": "Could not display the dashboard",
+      "title": "Dashboard",
+      "load_error": "Could not load the dashboard. Please try again later.",
+      "session_invalid": "Your session is invalid. Please sign in again.",
+      "unset": "Not set",
+      "status_scheduled": "Scheduled",
+      "status_draft": "Draft",
+      "published_series": "Published series",
+      "draft_episodes": "Draft episodes",
+      "scheduled_episodes": "Scheduled releases",
+      "queue_title": "Publishing queue",
+      "queue_description": "Episodes and upcoming releases that need attention.",
+      "queue_empty_title": "The publishing queue is empty",
+      "queue_empty_description": "There are no draft or scheduled episodes.",
+      "columns": {
+        "series": "Series",
+        "episode": "Episode",
+        "status": "Status",
+        "scheduled_at": "Scheduled for"
+      }
     },
     "errors": {
       "console_description": "Please try again later. If it keeps happening, contact an administrator with the error ID.",

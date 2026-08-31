@@ -1,5 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
@@ -29,21 +32,25 @@ export type GetDashboardResult =
       requiresSignIn: boolean;
     };
 
-const genericErrorMessage =
-  "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。";
-
-const mapErrorToMessage = (error: unknown): string =>
-  rpcErrorMessage(error, genericErrorMessage);
+const mapErrorToMessage = (error: unknown, locale: Locale): string =>
+  rpcErrorMessage(
+    error,
+    getMessage(sharedCatalog(locale), "admin.dashboard.load_error")
+  );
 
 export const getDashboard = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<GetDashboardResult> => {
   "use cache: private";
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(
+        sharedCatalog(locale),
+        "admin.dashboard.session_invalid"
+      ),
       ok: false,
       requiresSignIn: true,
     };
@@ -74,7 +81,7 @@ export const getDashboard = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error),
+      message: mapErrorToMessage(error, locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
