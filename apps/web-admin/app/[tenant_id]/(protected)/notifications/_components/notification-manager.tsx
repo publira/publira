@@ -42,8 +42,11 @@ type NotificationManagerProps = CursorPageHrefs & {
   unreadCount: number;
 };
 
-const formatNotificationDateTime = (value: string, timeZone: string): string =>
-  value ? formatDateTime(value, { timeZone }) : "—";
+const formatNotificationDateTime = (
+  value: string,
+  locale: Locale,
+  timeZone: string
+): string => (value ? formatDateTime(value, { locale, timeZone }) : "—");
 
 const NotificationTitle = ({ item }: { item: NotificationItem }) => {
   if (item.href) {
@@ -134,7 +137,7 @@ const NotificationListBody = ({
               )}
             </TableCell>
             <TableCell>
-              {formatNotificationDateTime(item.createdAt, timeZone)}
+              {formatNotificationDateTime(item.createdAt, locale, timeZone)}
             </TableCell>
             <TableCell>
               <div className="grid gap-1">
