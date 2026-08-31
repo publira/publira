@@ -855,7 +855,7 @@ WITH ranked AS (
 candidate AS (
     SELECT s.id,
         s.published_at,
-        COALESCE(r.rank, 2147483647) AS sort_rank
+        COALESCE(r.rank, 2147483647)::int AS sort_rank
     FROM series s
         LEFT JOIN ranked r ON r.entity_id = s.id
     WHERE s.tenant_id = $7
@@ -863,7 +863,7 @@ candidate AS (
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
 )
-SELECT id
+SELECT id, sort_rank
 FROM candidate
 WHERE (
         $1::uuid IS NULL
@@ -904,6 +904,11 @@ type ListRecommendedSeriesIDsParams struct {
 	TenantID          uuid.UUID       `json:"tenant_id"`
 }
 
+type ListRecommendedSeriesIDsRow struct {
+	ID       uuid.UUID `json:"id"`
+	SortRank int32     `json:"sort_rank"`
+}
+
 // The keyset scan behind the storefront recommendation list. It takes one
 // ranking snapshot's items as they are stored and puts the ranked series first,
 // then every other published series newest first.
@@ -913,12 +918,17 @@ type ListRecommendedSeriesIDsParams struct {
 // below it. Ties are impossible: a rank is unique within a snapshot, and the
 // unranked share one sort_rank that id breaks.
 //
+// sort_rank comes back with each row because the cursor is built from it. A
+// caller that recomputed the rank from the same JSON would have to fold
+// duplicates and missing ranks exactly the way min() and COALESCE do here, and
+// a token built on a value this query never sorted by points at the wrong page.
+//
 // This is the one list query here that no index can serve. Its first sort key
 // comes from the snapshot's JSONB rather than from a column of series, so the
 // scan reads the tenant's published series and sorts them. That is bounded by
 // one tenant's catalogue, and ranking_items is one snapshot (50 items by
 // default), folded per entity_id so the LEFT JOIN cannot multiply rows.
-func (q *Queries) ListRecommendedSeriesIDs(ctx context.Context, arg ListRecommendedSeriesIDsParams) ([]uuid.UUID, error) {
+func (q *Queries) ListRecommendedSeriesIDs(ctx context.Context, arg ListRecommendedSeriesIDsParams) ([]ListRecommendedSeriesIDsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRecommendedSeriesIDs,
 		arg.CursorID,
 		arg.CursorRank,
@@ -932,13 +942,13 @@ func (q *Queries) ListRecommendedSeriesIDs(ctx context.Context, arg ListRecommen
 		return nil, err
 	}
 	defer rows.Close()
-	var items []uuid.UUID
+	var items []ListRecommendedSeriesIDsRow
 	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
+		var i ListRecommendedSeriesIDsRow
+		if err := rows.Scan(&i.ID, &i.SortRank); err != nil {
 			return nil, err
 		}
-		items = append(items, id)
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -959,7 +969,7 @@ WITH ranked AS (
 candidate AS (
     SELECT s.id,
         s.published_at,
-        COALESCE(r.rank, 2147483647) AS sort_rank
+        COALESCE(r.rank, 2147483647)::int AS sort_rank
     FROM series s
         LEFT JOIN ranked r ON r.entity_id = s.id
     WHERE s.tenant_id = $7
@@ -967,7 +977,7 @@ candidate AS (
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
 )
-SELECT id
+SELECT id, sort_rank
 FROM candidate
 WHERE (
         $1::uuid IS NULL
@@ -1008,9 +1018,14 @@ type ListRecommendedSeriesIDsReversedParams struct {
 	TenantID          uuid.UUID       `json:"tenant_id"`
 }
 
+type ListRecommendedSeriesIDsReversedRow struct {
+	ID       uuid.UUID `json:"id"`
+	SortRank int32     `json:"sort_rank"`
+}
+
 // ListRecommendedSeriesIDs walked the other way. It exists only to build a
 // previous page; the order it describes is the same one.
-func (q *Queries) ListRecommendedSeriesIDsReversed(ctx context.Context, arg ListRecommendedSeriesIDsReversedParams) ([]uuid.UUID, error) {
+func (q *Queries) ListRecommendedSeriesIDsReversed(ctx context.Context, arg ListRecommendedSeriesIDsReversedParams) ([]ListRecommendedSeriesIDsReversedRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRecommendedSeriesIDsReversed,
 		arg.CursorID,
 		arg.CursorRank,
@@ -1024,13 +1039,13 @@ func (q *Queries) ListRecommendedSeriesIDsReversed(ctx context.Context, arg List
 		return nil, err
 	}
 	defer rows.Close()
-	var items []uuid.UUID
+	var items []ListRecommendedSeriesIDsReversedRow
 	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
+		var i ListRecommendedSeriesIDsReversedRow
+		if err := rows.Scan(&i.ID, &i.SortRank); err != nil {
 			return nil, err
 		}
-		items = append(items, id)
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"math"
 	"strconv"
 	"time"
 
@@ -33,51 +32,30 @@ const recommendedRankingEntityType = "series"
 // happened to hold.
 const recommendedRankingKey = contentranking.WeeklyRankingKey
 
-// unrankedSortRank is the sort key a series gets when the snapshot does not
-// name it, so the unranked follow the ranked. It matches the literal the query
-// coalesces to; every rank a snapshot can hold is below it.
-const unrankedSortRank = int32(math.MaxInt32)
-
-// emptyRankingItems stands in for a tenant with no snapshot. The query takes
-// the items array as they are stored, and an empty array simply leaves every
+// emptyRankingItems stands in for a tenant with no usable snapshot. The query
+// takes the items array as it is stored, and an empty array simply leaves every
 // series unranked — which is the cold-start list, newest first.
 var emptyRankingItems = json.RawMessage("[]")
 
-// rankingSnapshotItem is the part of one content_ranking_snapshots item this
-// handler reads. The snapshot also carries the score and the counts behind it;
-// the order is decided in SQL from the same JSON, so only the rank of a row
-// already on the page has to be recovered here.
-type rankingSnapshotItem struct {
-	EntityID string `json:"entity_id"`
-	Rank     int32  `json:"rank"`
-}
-
-// seriesRanking is one tenant's latest ranking: the snapshot items exactly as
-// the query wants them, plus the rank of each entity for building a token out
-// of a row the query returned.
+// seriesRanking is the tenant's latest ranking as this list needs it: the
+// snapshot items exactly as the query wants them, and whether they say anything
+// at all. Nothing is decoded out of the items here — the query owns how a rank
+// is read, and the ranks it sorted by come back with its rows.
 type seriesRanking struct {
-	items    json.RawMessage
-	rankByID map[uuid.UUID]int32
-}
-
-// ranked reports whether behavioural signals are behind this list at all. It
-// is a fact about the tenant, not about the page: a later page of a ranked
-// list is all new arrivals and still comes from a ranked tenant.
-func (r seriesRanking) ranked() bool {
-	return len(r.rankByID) > 0
-}
-
-// sortRank is the first sort key of the row with this id.
-func (r seriesRanking) sortRank(seriesID uuid.UUID) int32 {
-	if rank, ok := r.rankByID[seriesID]; ok {
-		return rank
-	}
-	return unrankedSortRank
+	items json.RawMessage
+	// ranked reports whether behavioural signals are behind this list. It is a
+	// fact about the tenant, not about the page: a later page of a ranked list
+	// is all new arrivals and still comes from a ranked tenant.
+	ranked bool
 }
 
 // latestSeriesRanking reads the snapshot the recommendation order is built on.
+//
 // A tenant that has never been ranked is not an error: it is the cold start
-// this list falls back for, and it comes back as an empty ranking.
+// this list falls back for. Neither is a snapshot whose items are not an array
+// — the ordering is advisory, and the same series in publication order beats
+// failing the storefront over a row this repository's own batch wrote wrong.
+// It is logged, because nothing else would notice.
 func (s *apiServer) latestSeriesRanking(ctx context.Context, tenantID uuid.UUID) (seriesRanking, error) {
 	snapshot, err := s.queriesFor(ctx).GetLatestContentRankingSnapshot(ctx, dbmodels.GetLatestContentRankingSnapshotParams{
 		TenantID:   tenantID,
@@ -91,36 +69,36 @@ func (s *apiServer) latestSeriesRanking(ctx context.Context, tenantID uuid.UUID)
 		return seriesRanking{}, err
 	}
 
-	var items []rankingSnapshotItem
+	var items []json.RawMessage
 	if err := json.Unmarshal(snapshot.Items, &items); err != nil {
-		return seriesRanking{}, err
-	}
-
-	rankByID := make(map[uuid.UUID]int32, len(items))
-	for _, item := range items {
-		id, err := uuid.Parse(item.EntityID)
-		if err != nil {
-			return seriesRanking{}, err
-		}
-		rankByID[id] = item.Rank
-	}
-	if len(rankByID) == 0 {
+		s.logger.ErrorContext(ctx, "ranking snapshot items are not an array; falling back to new arrivals",
+			"tenant_id", tenantID.String(),
+			"snapshot_id", snapshot.ID.String(),
+			"error", err,
+		)
 		return seriesRanking{items: emptyRankingItems}, nil
 	}
-	return seriesRanking{items: snapshot.Items, rankByID: rankByID}, nil
+	if len(items) == 0 {
+		return seriesRanking{items: emptyRankingItems}, nil
+	}
+	return seriesRanking{items: snapshot.Items, ranked: true}, nil
 }
 
 // The ListRecommendedSeries cursor carries the sort keys of the query in
-// order: the rank the row sorts under, then the publication date and the id
+// order: the rank the row sorted under, then the publication date and the id
 // that order the unranked. Token rules: proto/README.md.
+//
+// The rank is the one the query reported for that row, never one recomputed
+// from the snapshot here: a token built on a value the scan did not sort by
+// points at a page that does not exist.
 func encodeRecommendedCursor(
 	direction pagination.Direction,
-	ranking seriesRanking,
+	sortRank int32,
 	row dbmodels.ListActiveSeriesByIDsRow,
 ) string {
 	return pagination.Encode(
 		direction,
-		strconv.FormatInt(int64(ranking.sortRank(row.ID)), 10),
+		strconv.FormatInt(int64(sortRank), 10),
 		row.PublishedAt.Time.UTC().Format(time.RFC3339Nano),
 		row.ID.String(),
 	)
@@ -177,18 +155,25 @@ func decodeRecommendedCursorKeys(cursor pagination.Cursor) (recommendedCursorKey
 	}, nil
 }
 
-func (s *apiServer) recommendedSeriesPageIDs(
+// recommendedSeriesPageRow is one row of the keyset scan: the series, and the
+// rank it sorted under.
+type recommendedSeriesPageRow struct {
+	id       uuid.UUID
+	sortRank int32
+}
+
+func (s *apiServer) recommendedSeriesPageRows(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	ranking seriesRanking,
 	reversed bool,
 	keys recommendedCursorKeys,
 	limit int32,
-) ([]uuid.UUID, error) {
+) ([]recommendedSeriesPageRow, error) {
 	queries := s.queriesFor(ctx)
 
 	if reversed {
-		return queries.ListRecommendedSeriesIDsReversed(ctx, dbmodels.ListRecommendedSeriesIDsReversedParams{
+		rows, err := queries.ListRecommendedSeriesIDsReversed(ctx, dbmodels.ListRecommendedSeriesIDsReversedParams{
 			CursorID:          keys.id,
 			CursorInclusive:   keys.inclusive,
 			CursorPublishedAt: keys.publishedAt,
@@ -197,8 +182,17 @@ func (s *apiServer) recommendedSeriesPageIDs(
 			RankingItems:      ranking.items,
 			TenantID:          tenantID,
 		})
+		if err != nil {
+			return nil, err
+		}
+		page := make([]recommendedSeriesPageRow, 0, len(rows))
+		for _, row := range rows {
+			page = append(page, recommendedSeriesPageRow{id: row.ID, sortRank: row.SortRank})
+		}
+		return page, nil
 	}
-	return queries.ListRecommendedSeriesIDs(ctx, dbmodels.ListRecommendedSeriesIDsParams{
+
+	rows, err := queries.ListRecommendedSeriesIDs(ctx, dbmodels.ListRecommendedSeriesIDsParams{
 		CursorID:          keys.id,
 		CursorInclusive:   keys.inclusive,
 		CursorPublishedAt: keys.publishedAt,
@@ -207,6 +201,14 @@ func (s *apiServer) recommendedSeriesPageIDs(
 		RankingItems:      ranking.items,
 		TenantID:          tenantID,
 	})
+	if err != nil {
+		return nil, err
+	}
+	page := make([]recommendedSeriesPageRow, 0, len(rows))
+	for _, row := range rows {
+		page = append(page, recommendedSeriesPageRow{id: row.ID, sortRank: row.SortRank})
+	}
+	return page, nil
 }
 
 // ListRecommendedSeries orders a tenant's published series by the latest
@@ -244,8 +246,8 @@ func (s *apiServer) ListRecommendedSeries(
 		return nil, s.internalDBError(ctx, "failed to read the ranking snapshot", err, "tenant_id", tenant.ID.String())
 	}
 
-	// One id past the page: its presence is what says another page exists.
-	ids, err := s.recommendedSeriesPageIDs(
+	// One row past the page: its presence is what says another page exists.
+	pageRows, err := s.recommendedSeriesPageRows(
 		ctx,
 		tenant.ID,
 		ranking,
@@ -256,7 +258,15 @@ func (s *apiServer) ListRecommendedSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recommended series", err, "tenant_id", tenant.ID.String())
 	}
-	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
+	pageRows, hasMore := pagination.Page(pageRows, limit, cursor.Direction)
+
+	ids := make([]uuid.UUID, 0, len(pageRows))
+	sortRankByID := make(map[uuid.UUID]int32, len(pageRows))
+	for _, pageRow := range pageRows {
+		ids = append(ids, pageRow.id)
+		sortRankByID[pageRow.id] = pageRow.sortRank
+	}
+
 	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recommended series", err, "tenant_id", tenant.ID.String())
@@ -270,17 +280,19 @@ func (s *apiServer) ListRecommendedSeries(
 		Series: items,
 		Source: publirav1.RecommendationSource_RECOMMENDATION_SOURCE_NEW_ARRIVALS,
 	}
-	if ranking.ranked() {
+	if ranking.ranked {
 		res.Source = publirav1.RecommendationSource_RECOMMENDATION_SOURCE_RANKING
 	}
 	switch {
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = encodeRecommendedCursor(pagination.Backward, ranking, rows[0])
+			first := rows[0]
+			res.PreviousToken = encodeRecommendedCursor(pagination.Backward, sortRankByID[first.ID], first)
 		}
 		if hasNext {
-			res.NextToken = encodeRecommendedCursor(pagination.Forward, ranking, rows[len(rows)-1])
+			last := rows[len(rows)-1]
+			res.NextToken = encodeRecommendedCursor(pagination.Forward, sortRankByID[last.ID], last)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way

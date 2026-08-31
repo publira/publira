@@ -463,15 +463,20 @@ type Querier interface {
 	// below it. Ties are impossible: a rank is unique within a snapshot, and the
 	// unranked share one sort_rank that id breaks.
 	//
+	// sort_rank comes back with each row because the cursor is built from it. A
+	// caller that recomputed the rank from the same JSON would have to fold
+	// duplicates and missing ranks exactly the way min() and COALESCE do here, and
+	// a token built on a value this query never sorted by points at the wrong page.
+	//
 	// This is the one list query here that no index can serve. Its first sort key
 	// comes from the snapshot's JSONB rather than from a column of series, so the
 	// scan reads the tenant's published series and sorts them. That is bounded by
 	// one tenant's catalogue, and ranking_items is one snapshot (50 items by
 	// default), folded per entity_id so the LEFT JOIN cannot multiply rows.
-	ListRecommendedSeriesIDs(ctx context.Context, arg ListRecommendedSeriesIDsParams) ([]uuid.UUID, error)
+	ListRecommendedSeriesIDs(ctx context.Context, arg ListRecommendedSeriesIDsParams) ([]ListRecommendedSeriesIDsRow, error)
 	// ListRecommendedSeriesIDs walked the other way. It exists only to build a
 	// previous page; the order it describes is the same one.
-	ListRecommendedSeriesIDsReversed(ctx context.Context, arg ListRecommendedSeriesIDsReversedParams) ([]uuid.UUID, error)
+	ListRecommendedSeriesIDsReversed(ctx context.Context, arg ListRecommendedSeriesIDsReversedParams) ([]ListRecommendedSeriesIDsReversedRow, error)
 	ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error)
 	// Admin ListSeries は (created_at, id) の降順で表示する。
 	// 次ページは降順、前ページは昇順のクエリで idx_series_tenant_created_at を

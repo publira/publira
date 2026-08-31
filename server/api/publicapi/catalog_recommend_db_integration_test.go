@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -36,6 +37,13 @@ func (e *publicDBEnv) seedRankingSnapshot(t *testing.T, tenantID uuid.UUID, seri
 		items += fmt.Sprintf(`{"rank":%d,"entity_id":%q,"score":%d}`, i+1, seriesID, len(seriesIDs)-i)
 	}
 	items += "]"
+	e.seedRawRankingSnapshot(t, tenantID, items)
+}
+
+// seedRawRankingSnapshot files an items array verbatim, so a test can seed one
+// the batch would never write.
+func (e *publicDBEnv) seedRawRankingSnapshot(t *testing.T, tenantID uuid.UUID, items string) {
+	t.Helper()
 
 	e.withTenantConn(t, tenantID, func(ctx context.Context, conn *sql.Conn) {
 		_, err := conn.ExecContext(ctx, `
@@ -189,6 +197,64 @@ func TestDBListRecommendedSeriesPagesFromRankedIntoNewArrivals(t *testing.T) {
 		Token:  third.PreviousToken,
 	})
 	assertSeriesPublicIDs(t, back.Series, "SERIESAOLD01", "SERIESAUNR02")
+}
+
+// The query decides a rank by folding the snapshot with min() per entity_id and
+// coalescing a missing one to the unranked sentinel. The cursor has to agree
+// with that exactly, which is why the rank travels back with each row instead of
+// being recomputed from the same JSON. A snapshot that folds ambiguously is what
+// tells the two apart.
+func TestDBListRecommendedSeriesPagesConsistentlyOverAnAmbiguousSnapshot(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+
+	duplicated := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESADUP01",
+		Title:       "Named Twice",
+		Published:   true,
+		PublishedAt: time.Now().Add(-72 * time.Hour),
+	})
+	rankless := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESANOR01",
+		Title:       "Named Without A Rank",
+		Published:   true,
+		PublishedAt: time.Now().Add(-48 * time.Hour),
+	})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESANEW01",
+		Title:       "Not Named At All",
+		Published:   true,
+		PublishedAt: time.Now().Add(-2 * time.Hour),
+	})
+
+	// One series named twice, with the lower rank second, and one named with no
+	// rank at all. min() takes the 1, and the rankless one joins the unranked.
+	env.seedRawRankingSnapshot(t, tenant.ID, fmt.Sprintf(
+		`[{"rank":3,"entity_id":%q},{"rank":1,"entity_id":%q},{"entity_id":%q}]`,
+		duplicated.ID, duplicated.ID, rankless.ID,
+	))
+
+	// Walking one page at a time is what exposes a token built on a rank the
+	// scan never used: the second page would start in the wrong place.
+	var got []string
+	token := ""
+	for range 3 {
+		page := env.listRecommendedSeries(t, &publirav1.ListRecommendedSeriesRequest{
+			Limit:  1,
+			Tenant: tenantContext(tenant),
+			Token:  token,
+		})
+		got = append(got, seriesPublicIDs(page.Series)...)
+		token = page.NextToken
+	}
+	if token != "" {
+		t.Fatalf("next_token = %q, want empty after the whole list", token)
+	}
+
+	want := []string{"SERIESADUP01", "SERIESANEW01", "SERIESANOR01"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("series = %v, want %v (min rank first, then the unranked newest first)", got, want)
+	}
 }
 
 func TestDBListRecommendedSeriesFallsBackToNewArrivalsWithoutSignals(t *testing.T) {

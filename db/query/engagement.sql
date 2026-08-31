@@ -434,6 +434,11 @@ LIMIT 1;
 -- below it. Ties are impossible: a rank is unique within a snapshot, and the
 -- unranked share one sort_rank that id breaks.
 --
+-- sort_rank comes back with each row because the cursor is built from it. A
+-- caller that recomputed the rank from the same JSON would have to fold
+-- duplicates and missing ranks exactly the way min() and COALESCE do here, and
+-- a token built on a value this query never sorted by points at the wrong page.
+--
 -- This is the one list query here that no index can serve. Its first sort key
 -- comes from the snapshot's JSONB rather than from a column of series, so the
 -- scan reads the tenant's published series and sorts them. That is bounded by
@@ -449,7 +454,7 @@ WITH ranked AS (
 candidate AS (
     SELECT s.id,
         s.published_at,
-        COALESCE(r.rank, 2147483647) AS sort_rank
+        COALESCE(r.rank, 2147483647)::int AS sort_rank
     FROM series s
         LEFT JOIN ranked r ON r.entity_id = s.id
     WHERE s.tenant_id = sqlc.arg('tenant_id')
@@ -457,7 +462,7 @@ candidate AS (
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
 )
-SELECT id
+SELECT id, sort_rank
 FROM candidate
 WHERE (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -499,7 +504,7 @@ WITH ranked AS (
 candidate AS (
     SELECT s.id,
         s.published_at,
-        COALESCE(r.rank, 2147483647) AS sort_rank
+        COALESCE(r.rank, 2147483647)::int AS sort_rank
     FROM series s
         LEFT JOIN ranked r ON r.entity_id = s.id
     WHERE s.tenant_id = sqlc.arg('tenant_id')
@@ -507,7 +512,7 @@ candidate AS (
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
 )
-SELECT id
+SELECT id, sort_rank
 FROM candidate
 WHERE (
         sqlc.narg('cursor_id')::uuid IS NULL

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"strconv"
 	"testing"
 	"time"
 
@@ -30,6 +31,28 @@ func rankingItemsJSON(ids ...uuid.UUID) []byte {
 		items += fmt.Sprintf(`{"rank":%d,"entity_id":%q,"score":%d}`, i+1, id, len(ids)-i)
 	}
 	return []byte(items + "]")
+}
+
+// unrankedSortRank is the sort key the query gives a series the snapshot does
+// not name. The tests spell it out rather than importing it, because the value
+// belongs to the SQL: a token carries whatever that query reported.
+const unrankedSortRank = int32(2147483647)
+
+// rankedID is one row of the keyset scan: a series and the rank it sorted
+// under.
+type rankedID struct {
+	id   uuid.UUID
+	rank int32
+}
+
+// recommendedSeriesIDRows is what the keyset half of a page returns, already in
+// the order the scan decided.
+func recommendedSeriesIDRows(rows ...rankedID) *sqlmock.Rows {
+	result := sqlmock.NewRows([]string{"id", "sort_rank"})
+	for _, row := range rows {
+		result.AddRow(row.id, row.rank)
+	}
+	return result
 }
 
 // recommendedSeriesRow is one row of the display query, with no eye catch
@@ -63,7 +86,12 @@ func TestCatalogListRecommendedSeriesLeadsWithTheRanking(t *testing.T) {
 	// over-fetched one that says another page exists.
 	mock.ExpectQuery(regexp.QuoteMeta(listRecommendedSeriesIDsQuery)).
 		WithArgs(nil, nil, false, nil, int32(4), rankingItemsJSON(rankedFirst, rankedSecond), tenantID).
-		WillReturnRows(seriesIDRows(rankedFirst, rankedSecond, newest, older))
+		WillReturnRows(recommendedSeriesIDRows(
+			rankedID{id: rankedFirst, rank: 1},
+			rankedID{id: rankedSecond, rank: 2},
+			rankedID{id: newest, rank: unrankedSortRank},
+			rankedID{id: older, rank: unrankedSortRank},
+		))
 	// The display query is unordered; the handler puts the rows back in the
 	// order the keyset scan decided.
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
@@ -109,7 +137,7 @@ func TestCatalogListRecommendedSeriesPagesPastTheRanking(t *testing.T) {
 	// under the rank the query gives every series the snapshot does not name.
 	token := pagination.Encode(
 		pagination.Forward,
-		"2147483647",
+		strconv.FormatInt(int64(unrankedSortRank), 10),
 		publishedAt.Format(time.RFC3339Nano),
 		boundary.String(),
 	)
@@ -117,8 +145,8 @@ func TestCatalogListRecommendedSeriesPagesPastTheRanking(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectRankingSnapshotLookup(mock, tenantID, now, rankingItemsJSON(ranked))
 	mock.ExpectQuery(regexp.QuoteMeta(listRecommendedSeriesIDsQuery)).
-		WithArgs(boundary, int32(2147483647), false, sqlmock.AnyArg(), int32(3), rankingItemsJSON(ranked), tenantID).
-		WillReturnRows(seriesIDRows(older))
+		WithArgs(boundary, unrankedSortRank, false, sqlmock.AnyArg(), int32(3), rankingItemsJSON(ranked), tenantID).
+		WillReturnRows(recommendedSeriesIDRows(rankedID{id: older, rank: unrankedSortRank}))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), older, "OLDER", "Older", publishedAt.Add(-time.Hour)))
@@ -163,7 +191,41 @@ func TestCatalogListRecommendedSeriesFallsBackToNewArrivals(t *testing.T) {
 	// newest-first list.
 	mock.ExpectQuery(regexp.QuoteMeta(listRecommendedSeriesIDsQuery)).
 		WithArgs(nil, nil, false, nil, int32(3), []byte("[]"), tenantID).
-		WillReturnRows(seriesIDRows(seriesID))
+		WillReturnRows(recommendedSeriesIDRows(rankedID{id: seriesID, rank: unrankedSortRank}))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "NEWEST", "Newest", now))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListRecommendedSeries(context.Background(), connect.NewRequest(&publirav1.ListRecommendedSeriesRequest{
+		Limit:  2,
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("ListRecommendedSeries: %v", err)
+	}
+
+	assertSeriesPublicIDs(t, resp.Msg.Series, "NEWEST")
+	if resp.Msg.Source != publirav1.RecommendationSource_RECOMMENDATION_SOURCE_NEW_ARRIVALS {
+		t.Fatalf("source = %v, want NEW_ARRIVALS", resp.Msg.Source)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListRecommendedSeriesFallsBackWhenTheSnapshotIsMalformed(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	// An object where the batch writes an array. The order is advisory, so the
+	// storefront gets the same series in publication order rather than a 500.
+	expectRankingSnapshotLookup(mock, tenantID, now, []byte(`{"broken":true}`))
+	mock.ExpectQuery(regexp.QuoteMeta(listRecommendedSeriesIDsQuery)).
+		WithArgs(nil, nil, false, nil, int32(3), []byte("[]"), tenantID).
+		WillReturnRows(recommendedSeriesIDRows(rankedID{id: seriesID, rank: unrankedSortRank}))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "NEWEST", "Newest", now))
@@ -202,7 +264,7 @@ func TestCatalogListRecommendedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	// Everything past the boundary was unpublished after the token was issued.
 	mock.ExpectQuery(regexp.QuoteMeta(listRecommendedSeriesIDsQuery)).
 		WithArgs(boundary, int32(1), false, sqlmock.AnyArg(), int32(3), sqlmock.AnyArg(), tenantID).
-		WillReturnRows(seriesIDRows())
+		WillReturnRows(recommendedSeriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListRecommendedSeries(context.Background(), connect.NewRequest(&publirav1.ListRecommendedSeriesRequest{
