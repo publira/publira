@@ -70,8 +70,8 @@ const readStoredViewActorId = (raw: string | undefined): string => {
 /**
  * The signed-out reader's actor, minting one on first view.
  *
- * **Server Actions only.** Minting writes a cookie, which needs a response
- * whose headers are still open.
+ * **Route Handlers and Server Actions only.** Minting writes a cookie, which
+ * needs a response whose headers are still open.
  */
 const resolveAnonymousViewActorId = async (): Promise<string> => {
   const cookieStore = await cookies();
@@ -116,9 +116,9 @@ const buildViewActorHeaders = async (): Promise<Record<string, string>> => {
  * The API records the view as a side effect of the detail RPC, and this app's
  * `getEpisodeDetail` / `getSeriesDetail` are `"use cache"`: a cache hit never
  * reaches the API at all, and a cache fill reaches it without the reader
- * attached. This call is the reader's own — it runs from a Server Action,
+ * attached. This call is the reader's own — it runs from the beacon endpoint,
  * outside every cache, once per page actually opened, and never on a prefetch
- * because a prefetch renders nothing that could invoke it.
+ * because a prefetch renders nothing that could send a beacon.
  *
  * Nothing is reported back. A page must not fail, change, or slow down over
  * its own instrumentation, so an unreachable API or a rejected read is

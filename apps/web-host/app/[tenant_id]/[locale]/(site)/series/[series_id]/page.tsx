@@ -85,11 +85,7 @@ const SeriesDetailContent = async (
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
-      <ContentViewTracker
-        kind="series"
-        publicId={series.publicId}
-        tenantId={tenantId}
-      />
+      <ContentViewTracker kind="series" publicId={series.publicId} />
       <nav className="mb-8">
         <LocaleLink
           href="/series"

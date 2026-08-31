@@ -1,81 +1,60 @@
 // @vitest-environment jsdom
 
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ContentViewTracker } from "./content-view-tracker";
 
-const { mockRecordContentViewAction } = vi.hoisted(() => ({
-  mockRecordContentViewAction: vi.fn(),
-}));
+const sendBeacon = vi.fn((_url: string, _body: Blob) => true);
 
-vi.mock("#lib/view-event-actions", () => ({
-  recordContentViewAction: mockRecordContentViewAction,
-}));
+beforeEach(() => {
+  vi.stubGlobal("navigator", { ...navigator, sendBeacon });
+});
 
-const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
-afterEach(cleanup);
+const sentBody = async (call: number): Promise<unknown> => {
+  const [, blob] = sendBeacon.mock.calls[call];
+  return JSON.parse(await blob.text());
+};
 
 describe("ContentViewTracker", () => {
-  it("開かれたページの閲覧を 1 度だけ報告する", () => {
-    mockRecordContentViewAction.mockReturnValue(Promise.resolve());
-
+  it("開かれたページの閲覧を 1 度だけ報告する", async () => {
     const { rerender } = render(
-      <ContentViewTracker
-        kind="episode"
-        publicId="EP_001"
-        tenantId={TENANT_ID}
-      />
+      <ContentViewTracker kind="episode" publicId="EP_001" />
     );
-    rerender(
-      <ContentViewTracker
-        kind="episode"
-        publicId="EP_001"
-        tenantId={TENANT_ID}
-      />
-    );
+    rerender(<ContentViewTracker kind="episode" publicId="EP_001" />);
 
-    expect(mockRecordContentViewAction).toHaveBeenCalledTimes(1);
-    expect(mockRecordContentViewAction).toHaveBeenCalledWith({
+    expect(sendBeacon).toHaveBeenCalledTimes(1);
+    // テナントは proxy が書き換えたセグメントから決まるので、本文には載せない。
+    expect(sendBeacon.mock.calls[0][0]).toBe("/api/v1/views");
+    await expect(sentBody(0)).resolves.toEqual({
       kind: "episode",
       publicId: "EP_001",
-      tenantId: TENANT_ID,
     });
   });
 
-  it("別のエピソードへ移ったら改めて報告する", () => {
-    mockRecordContentViewAction.mockReturnValue(Promise.resolve());
-
+  it("別のエピソードへ移ったら改めて報告する", async () => {
     const { rerender } = render(
-      <ContentViewTracker
-        kind="episode"
-        publicId="EP_001"
-        tenantId={TENANT_ID}
-      />
+      <ContentViewTracker kind="episode" publicId="EP_001" />
     );
-    rerender(
-      <ContentViewTracker
-        kind="episode"
-        publicId="EP_002"
-        tenantId={TENANT_ID}
-      />
-    );
+    rerender(<ContentViewTracker kind="episode" publicId="EP_002" />);
 
-    expect(mockRecordContentViewAction).toHaveBeenCalledTimes(2);
+    expect(sendBeacon).toHaveBeenCalledTimes(2);
+    await expect(sentBody(1)).resolves.toEqual({
+      kind: "episode",
+      publicId: "EP_002",
+    });
   });
 
-  it("報告が失敗してもページを壊さない", () => {
-    mockRecordContentViewAction.mockRejectedValue(new Error("unavailable"));
+  it("ブラウザがキューに載せられなくてもページを壊さない", () => {
+    sendBeacon.mockReturnValueOnce(false);
 
     expect(() =>
-      render(
-        <ContentViewTracker
-          kind="series"
-          publicId="SR_001"
-          tenantId={TENANT_ID}
-        />
-      )
+      render(<ContentViewTracker kind="series" publicId="SR_001" />)
     ).not.toThrow();
   });
 });

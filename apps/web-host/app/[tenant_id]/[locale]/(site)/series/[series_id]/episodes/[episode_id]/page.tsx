@@ -100,11 +100,7 @@ const EpisodeContent = async (
 
   return (
     <main>
-      <ContentViewTracker
-        kind="episode"
-        publicId={episode.publicId}
-        tenantId={tenantId}
-      />
+      <ContentViewTracker kind="episode" publicId={episode.publicId} />
       {/* The reader opens the page: everything else is what the reader may
           want after finishing, so it sits below the pages rather than above
           them. */}
