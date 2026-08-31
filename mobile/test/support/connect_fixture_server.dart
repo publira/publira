@@ -22,6 +22,7 @@ class ConnectFixtureServer {
     this.listResponse,
     this.detailResponse,
     this.episodeResponse,
+    this.tenantResponse,
   });
 
   static const defaultTenantId = '018f0e6a-1000-7000-8000-000000000001';
@@ -181,6 +182,10 @@ class ConnectFixtureServer {
   Object? detailResponse;
   Object? episodeResponse;
 
+  /// Replaces the whole `GetTenantByDomain` body, so a test can answer with a
+  /// shape the client is not expecting.
+  Object? tenantResponse;
+
   /// Headers of the last `GET /images/...` request, so a test can assert what
   /// the reader sends to image-server.
   HttpHeaders? lastImageRequestHeaders;
@@ -222,11 +227,16 @@ class ConnectFixtureServer {
     }
 
     if (path.endsWith('/GetTenantByDomain')) {
-      await _write(request, tenantStatus, {
-        if (tenantStatus == HttpStatus.ok) 'tenantId': tenantId,
-        if (tenantStatus != HttpStatus.ok) 'code': 'not_found',
-        if (tenantStatus != HttpStatus.ok) 'message': 'tenant not found',
-      });
+      await _write(
+        request,
+        tenantStatus,
+        tenantResponse ??
+            {
+              if (tenantStatus == HttpStatus.ok) 'tenantId': tenantId,
+              if (tenantStatus != HttpStatus.ok) 'code': 'not_found',
+              if (tenantStatus != HttpStatus.ok) 'message': 'tenant not found',
+            },
+      );
       return;
     }
 

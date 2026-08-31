@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
@@ -9,15 +11,22 @@ import 'package:publira/auth/session_store.dart';
 /// `flutter test` has no platform keychain behind `SecureSessionStore`, and a
 /// widget test wants to seed the stored session anyway.
 class InMemorySessionStore implements SessionStore {
-  InMemorySessionStore({this.session});
+  InMemorySessionStore({this.session, this.writeError});
 
   AuthSession? session;
+
+  /// Thrown by [write], standing in for a keychain that refuses one.
+  Object? writeError;
 
   @override
   Future<AuthSession?> read() async => session;
 
   @override
   Future<void> write(AuthSession session) async {
+    final error = writeError;
+    if (error != null) {
+      throw error;
+    }
     this.session = session;
   }
 
@@ -40,6 +49,9 @@ class FakeAuthRepository implements AuthRepository {
   AuthFailure? signInFailure;
   AuthFailure? refreshFailure;
 
+  /// Held open by a test that needs to act while [refresh] is still in flight.
+  Completer<void>? refreshGate;
+
   String? lastEmail;
   String? lastPassword;
   var refreshCount = 0;
@@ -61,6 +73,7 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<AuthSession> refresh(AuthSession session) async {
     refreshCount++;
+    await refreshGate?.future;
     final failure = refreshFailure;
     if (failure != null) {
       throw failure;
@@ -83,10 +96,11 @@ AuthController fakeAuthController({
   AuthSession? session,
   AuthSession? storedSession,
   FakeAuthRepository? repository,
+  InMemorySessionStore? store,
 }) {
   return AuthController(
     repository: repository ?? FakeAuthRepository(),
-    store: InMemorySessionStore(session: storedSession),
+    store: store ?? InMemorySessionStore(session: storedSession),
     session: session,
   );
 }

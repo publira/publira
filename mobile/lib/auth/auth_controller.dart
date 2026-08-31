@@ -23,6 +23,12 @@ class AuthController extends ChangeNotifier {
   final SessionStore _store;
 
   AuthSession? _session;
+
+  /// Bumped by every change to [_session]. An in-flight call compares it
+  /// against what it read before its await to tell whether the session it was
+  /// working on is still the one in hand — two sessions can be equal, or even
+  /// the same object, so the count is what makes the check reliable.
+  var _revision = 0;
   var _expired = false;
 
   AuthSession? get session => _session;
@@ -42,6 +48,11 @@ class AuthController extends ChangeNotifier {
   /// A rejected token is dropped, but an unreachable API is not treated as a
   /// rejection: a launch without a network keeps the session so the reader is
   /// still signed in once they are back on one.
+  ///
+  /// The app is already interactive while the check is in flight, so its
+  /// answer only counts as long as [stored] is still the session in hand. A
+  /// reader who signs out or signs in again in the meantime has said something
+  /// newer than the API has, and the late answer is dropped.
   Future<void> restore() async {
     final stored = await _store.read();
     if (stored == null) {
@@ -51,15 +62,20 @@ class AuthController extends ChangeNotifier {
       await _expire();
       return;
     }
-    _session = stored;
+    _setSession(stored);
+    final revision = _revision;
     notifyListeners();
     try {
       final refreshed = await _repository.refresh(stored);
-      _session = refreshed;
+      if (_revision != revision) {
+        return;
+      }
+      _setSession(refreshed);
       await _store.write(refreshed);
       notifyListeners();
     } on AuthFailure catch (failure) {
-      if (failure.kind == AuthFailureKind.sessionExpired) {
+      if (failure.kind == AuthFailureKind.sessionExpired &&
+          _revision == revision) {
         await _expire();
       }
     }
@@ -70,14 +86,14 @@ class AuthController extends ChangeNotifier {
   Future<void> signIn({required String email, required String password}) async {
     final session = await _repository.signIn(email: email, password: password);
     await _store.write(session);
-    _session = session;
+    _setSession(session);
     _expired = false;
     notifyListeners();
   }
 
   Future<void> signOut() async {
     await _store.clear();
-    _session = null;
+    _setSession(null);
     _expired = false;
     notifyListeners();
   }
@@ -92,8 +108,13 @@ class AuthController extends ChangeNotifier {
 
   Future<void> _expire() async {
     await _store.clear();
-    _session = null;
+    _setSession(null);
     _expired = true;
     notifyListeners();
+  }
+
+  void _setSession(AuthSession? session) {
+    _session = session;
+    _revision++;
   }
 }

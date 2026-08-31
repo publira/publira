@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
@@ -100,6 +102,45 @@ void main() {
     await controller.restore();
 
     expect(controller.isSignedIn, isTrue);
+    expect(store.session?.accessToken, fakeSession.accessToken);
+    expect(controller.expired, isFalse);
+  });
+
+  test('a sign-out during restore is not undone by the check', () async {
+    repository.refreshGate = Completer<void>();
+    final controller = controllerFor(stored: fakeSession);
+    final restoring = controller.restore();
+    await pumpEventQueue();
+    expect(controller.isSignedIn, isTrue);
+
+    // The reader signs out while `GetMe` is still in flight, so its answer is
+    // older than what they have just said.
+    await controller.signOut();
+    repository.refreshGate!.complete();
+    await restoring;
+
+    expect(controller.isSignedIn, isFalse);
+    expect(controller.accessToken, isEmpty);
+    expect(store.session, isNull);
+  });
+
+  test('a sign-in during restore survives a rejected stored token', () async {
+    repository
+      ..refreshGate = Completer<void>()
+      ..refreshFailure = const AuthFailure(AuthFailureKind.sessionExpired);
+    final controller = controllerFor(stored: fakeSession);
+    final restoring = controller.restore();
+    await pumpEventQueue();
+
+    await controller.signIn(
+      email: 'member@example.com',
+      password: 'memberpass',
+    );
+    repository.refreshGate!.complete();
+    await restoring;
+
+    expect(controller.isSignedIn, isTrue);
+    expect(controller.accessToken, fakeSession.accessToken);
     expect(store.session?.accessToken, fakeSession.accessToken);
     expect(controller.expired, isFalse);
   });

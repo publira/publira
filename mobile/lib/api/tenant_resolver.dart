@@ -33,11 +33,15 @@ class TenantResolver {
       final body = await _client.unary(_procedure, {
         'domains': [tenantHost],
       });
-      final tenantId = (body['tenantId'] as String?)?.trim() ?? '';
+      // A value of another type is as unusable as a missing one, and reaches
+      // the caller as the same Connect error rather than as a cast that no
+      // repository is catching.
+      final rawTenantId = body['tenantId'];
+      final tenantId = rawTenantId is String ? rawTenantId.trim() : '';
       if (tenantId.isEmpty) {
         throw const ConnectException(
           code: 'internal',
-          message: 'GetTenantByDomain returned an empty tenantId',
+          message: 'GetTenantByDomain returned no usable tenantId',
         );
       }
       _tenantId = tenantId;

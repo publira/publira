@@ -53,6 +53,18 @@ class _SignInScreenState extends State<SignInScreen> {
         _error = _failureCopy(failure);
       });
       return;
+    } catch (_) {
+      // Anything the API did not classify — a keychain that refused the write,
+      // say. The form has to come back either way, or the button stays
+      // disabled and the reader cannot try again.
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _submitting = false;
+        _error = _unexpectedCopy;
+      });
+      return;
     }
     if (!mounted) {
       return;
@@ -145,6 +157,8 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
+  static const _unexpectedCopy = 'サインインできませんでした';
+
   String _failureCopy(AuthFailure failure) {
     return switch (failure.kind) {
       AuthFailureKind.invalidCredentials => 'メールアドレスまたはパスワードが正しくありません',
@@ -152,7 +166,7 @@ class _SignInScreenState extends State<SignInScreen> {
         'メールアドレスの確認が完了していません。確認メールのリンクを開いてください。',
       AuthFailureKind.network => 'サインインできませんでした。通信状況を確認して再試行してください。',
       AuthFailureKind.sessionExpired ||
-      AuthFailureKind.unexpected => 'サインインできませんでした',
+      AuthFailureKind.unexpected => _unexpectedCopy,
     };
   }
 }

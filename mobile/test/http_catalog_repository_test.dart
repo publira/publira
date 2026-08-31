@@ -237,6 +237,24 @@ void main() {
     );
   });
 
+  test(
+    'a tenant lookup answering with a non-string id is unexpected',
+    () async {
+      server.tenantResponse = const {'tenantId': 1};
+
+      expect(
+        catalog.listSeries(),
+        throwsA(
+          isA<CatalogFailure>().having(
+            (error) => error.kind,
+            'kind',
+            CatalogFailureKind.unexpected,
+          ),
+        ),
+      );
+    },
+  );
+
   test('getEpisode carries the tenant host on the image request', () async {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,

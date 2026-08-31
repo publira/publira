@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
@@ -100,6 +101,32 @@ void main() {
     expect(find.text('メールアドレスまたはパスワードが正しくありません'), findsOneWidget);
     expect(auth.isSignedIn, isFalse);
     expect(find.byKey(const ValueKey('sign-in-submit')), findsOneWidget);
+  });
+
+  testWidgets('a store that refuses the session leaves the form usable', (
+    tester,
+  ) async {
+    // A keychain write can fail on its own terms, and the API never gets to
+    // classify that, so the form has to come back from an error it has no
+    // copy for.
+    auth = fakeAuthController(
+      repository: repository,
+      store: InMemorySessionStore(
+        writeError: PlatformException(code: 'Storage error'),
+      ),
+    );
+    await pumpApp(tester, initialLocation: AppRoutes.signIn);
+
+    await submitCredentials(tester);
+    await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-error')));
+
+    expect(find.text('サインインできませんでした'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const ValueKey('sign-in-submit')))
+          .onPressed,
+      isNotNull,
+    );
   });
 
   testWidgets('an empty form reports which field is missing', (tester) async {

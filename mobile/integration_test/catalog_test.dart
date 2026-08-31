@@ -263,52 +263,46 @@ void main() {
 
     testWidgets('signing out locks the paid episode again', (tester) async {
       await withFailureScreenshot(tester, 'fixture-sign-out-lock', () async {
+        final seriesTile = find.byKey(
+          const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+        );
         final paidEpisode = find.byKey(
           const ValueKey('episode-tile-${ConnectFixtureServer.paidEpisodeId}'),
         );
 
+        // The catalog list is still in flight when its app bar arrives, and a
+        // route below the one on screen stays in the tree, so each step waits
+        // for the widget it is about to tap and then for the transition around
+        // it to finish.
+        Future<void> settleOn(Finder finder) async {
+          await pumpUntilFound(tester, finder);
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        }
+
         await pumpApp(tester, initialLocation: AppRoutes.signIn);
-        await pumpUntilFound(
-          tester,
-          find.byKey(const ValueKey('sign-in-submit')),
-        );
+        await settleOn(find.byKey(const ValueKey('sign-in-submit')));
         await signIn(tester);
-        await pumpUntilFound(tester, find.text('Publira'));
+        await settleOn(seriesTile);
 
-        await tester.tap(
-          find.byKey(
-            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
-          ),
-        );
-        await pumpUntilFound(tester, paidEpisode);
+        await tester.tap(seriesTile);
+        await settleOn(paidEpisode);
         await tester.tap(paidEpisode);
-        await pumpUntilFound(
-          tester,
-          find.byKey(const ValueKey('episode-page-view')),
-        );
-        await pumpUntilNoPendingFrameCallbacks(tester);
+        await settleOn(find.byKey(const ValueKey('episode-page-view')));
 
         await tester.pageBack();
-        await pumpUntilFound(tester, paidEpisode);
+        await settleOn(paidEpisode);
         await tester.pageBack();
-        await pumpUntilFound(tester, find.text('Publira'));
+        await settleOn(find.byKey(const ValueKey('catalog-account')));
 
         await tester.tap(find.byKey(const ValueKey('catalog-account')));
-        await pumpUntilFound(
-          tester,
-          find.byKey(const ValueKey('account-sign-out')),
-        );
+        await settleOn(find.byKey(const ValueKey('account-sign-out')));
         await tester.tap(find.byKey(const ValueKey('account-sign-out')));
-        await pumpUntilFound(tester, find.text('サインインしていません'));
+        await settleOn(find.text('サインインしていません'));
         await tester.pageBack();
-        await pumpUntilFound(tester, find.text('Publira'));
+        await settleOn(seriesTile);
 
-        await tester.tap(
-          find.byKey(
-            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
-          ),
-        );
-        await pumpUntilFound(tester, paidEpisode);
+        await tester.tap(seriesTile);
+        await settleOn(paidEpisode);
         await tester.tap(paidEpisode);
         await pumpUntilFound(
           tester,
