@@ -362,7 +362,7 @@ The detail RPCs deliberately record nothing. Their callers cache them (`"use cac
 | actor | `user_id` while signed in, otherwise the `anonymous_id` from the `publira_aid` cookie (`content_events.actor_key` unifies them with `COALESCE`) |
 | Debounce | Fixed 30-minute epoch buckets (`floor(unix / 1800)`) plus `ON CONFLICT DO NOTHING` against a partial UNIQUE index. It is not a sliding window |
 | `series_id` | Resolved from `episodes` rather than taken from client input |
-| Authentication | Optional. A rejected or unverifiable bearer attributes the view anonymously rather than failing it |
+| Authentication | Optional. A rejected or unverifiable bearer does not fail the call; the view falls back to the `publira_aid` cookie, and is recorded only if the request carried one. No identifier is minted for a caller that presented a session |
 | Prefetch | Nothing is recorded when `Sec-Purpose` / `Purpose` / `X-Purpose` / `X-Moz` / `Next-Router-Prefetch` indicate a speculative request |
 | Payload | `{"pv_kind":"soft"}` only. No personal data such as an IP address, a User-Agent, or an email address is stored |
 

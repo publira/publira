@@ -56,16 +56,28 @@ func (a viewActor) resolved() bool {
 	return a.userID.Valid || a.anonymousID.Valid
 }
 
-// resolveViewActor picks the actor for a view and, for a signed-out reader
-// without a usable cookie, mints one. The returned cookie is non-nil only when
-// it was minted; the caller puts it on the response so the reader's next
-// request resolves to the same anonymous_id.
+// resolveViewActor picks the actor for a view and, for a reader who has never
+// been identified, mints one. The returned cookie is non-nil only when it was
+// minted; the caller puts it on the response so the reader's next request
+// resolves to the same anonymous_id.
+//
+// A caller whose bearer was rejected gets no minted identifier. userID is unset
+// for it the same way it is for a signed-out reader, but the two are not the
+// same case: a rejected bearer usually comes from a caller that cannot keep the
+// cookie either — web-host sends one or the other and never relays the
+// Set-Cookie — so minting would open a new actor on every request and put back
+// exactly the unbounded actor growth this instrumentation was moved out of the
+// detail reads to stop. Such a view is attributed to a cookie when one came
+// with it, and otherwise not recorded at all.
 func resolveViewActor(userID uuid.NullUUID, header http.Header) (viewActor, *http.Cookie) {
 	if userID.Valid {
 		return viewActor{userID: userID}, nil
 	}
 	if id, ok := anonymousIDFromCookie(header); ok {
 		return viewActor{anonymousID: uuid.NullUUID{UUID: id, Valid: true}}, nil
+	}
+	if _, hasBearer := auth.BearerTokenFromHeader(header); hasBearer {
+		return viewActor{}, nil
 	}
 	minted, err := uuid.NewV7()
 	if err != nil {
@@ -142,10 +154,10 @@ func isPrefetchRequest(header http.Header) bool {
 }
 
 // viewerUserID resolves an optional bearer for attribution only. Every failure
-// is anonymous: a public read gates nothing on the session, so a rejected or
-// unverifiable one must leave the read untouched and fall back to the cookie.
-// Handlers that already authenticate for an access decision reuse that session
-// instead of calling this.
+// is anonymous: recording a view gates nothing on the session, so a rejected or
+// unverifiable one must leave the request untouched and fall back to the
+// cookie. Handlers that already authenticate for an access decision reuse that
+// session instead of calling this.
 func (s *apiServer) viewerUserID(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,

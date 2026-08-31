@@ -108,6 +108,13 @@ const resolveAnonymousViewActorId = async (): Promise<string> => {
  * attributed to the anonymous actor. The API decides between the two the same
  * way; sending both would only leave a second identifier on a reader who does
  * not need one.
+ *
+ * A bearer the API rejects — a session revoked since this app last sealed the
+ * cookie — therefore arrives with nothing to attribute the view to, and the API
+ * records nothing rather than minting an actor of its own. That is deliberate:
+ * the identifier it minted would ride back on a `Set-Cookie` addressed to the
+ * API's host, which the reader never talks to, so every later beacon would open
+ * another single-use actor.
  */
 const buildViewActorHeaders = async (): Promise<Record<string, string>> => {
   const accessToken = await resolveAccessToken();

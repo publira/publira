@@ -228,6 +228,56 @@ func TestRecordContentViewRecordsASeriesViewForASeriesTarget(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
+// A bearer this server cannot verify leaves the view anonymous, and an
+// anonymous view with nothing to identify it is not recorded. web-host sends
+// the cookie or the bearer and never both, and it cannot relay the API's
+// Set-Cookie back to the reader, so minting here would open a fresh actor on
+// every beacon a stale session sends — the unbounded actor growth this RPC
+// exists to stop.
+func TestRecordContentViewMintsNoActorForARejectedBearer(t *testing.T) {
+	fixture := newContentViewFixture(t)
+	// authenticateAccessToken re-reads the tenant before it verifies the token.
+	expectTenantLookup(fixture.mock, fixture.tenantID, "TENANT", time.Now())
+	recorded := forbidEpisodeViewEventInsert(fixture.mock)
+
+	req := newContentViewRequest(fixture.tenantID, "")
+	req.Header().Set("Authorization", "Bearer not-a-token")
+	resp, err := fixture.client.RecordContentView(context.Background(), req)
+	if err != nil {
+		t.Fatalf("RecordContentView: %v", err)
+	}
+
+	if recorded.value != nil {
+		t.Fatalf("recorded event id = %v, want a rejected bearer to record nothing", recorded.value)
+	}
+	if got := resp.Header().Values("Set-Cookie"); len(got) != 0 {
+		t.Fatalf("Set-Cookie = %v, want no identifier minted for a rejected bearer", got)
+	}
+	// The registered insert stays deliberately unfulfilled, so the shared
+	// expectation assertion does not apply here.
+}
+
+// The cookie is still the fallback: a caller that kept one is attributable even
+// when the session it also sent is no longer good.
+func TestRecordContentViewFallsBackToTheCookieForARejectedBearer(t *testing.T) {
+	fixture := newContentViewFixture(t)
+	expectTenantLookup(fixture.mock, fixture.tenantID, "TENANT", time.Now())
+	existing := uuid.Must(uuid.NewV7())
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedEpisodeViewEventQuery)).
+		WithArgs(
+			sqlmock.AnyArg(), fixture.tenantID, nil, existing,
+			fixture.seriesID, fixture.episodeID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+		).
+		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
+
+	req := newContentViewRequest(fixture.tenantID, existing.String())
+	req.Header().Set("Authorization", "Bearer not-a-token")
+	if _, err := fixture.client.RecordContentView(context.Background(), req); err != nil {
+		t.Fatalf("RecordContentView: %v", err)
+	}
+	assertPublicExpectations(t, fixture.mock)
+}
+
 func TestRecordContentViewSkipsTheViewEventForAPrefetch(t *testing.T) {
 	fixture := newContentViewFixture(t)
 	// The insert is registered so the matcher can observe whether it ran:
@@ -316,6 +366,40 @@ func TestRecordContentViewRejectsUnknownTarget(t *testing.T) {
 	}
 }
 
+// forbidEpisodeViewEventInsert registers the episode view-event insert as an
+// observer of a write that must not happen, rather than as an expectation to
+// fulfil.
+//
+// assertPublicExpectations cannot stand in for this. It reports only
+// expectations that went unmet, and a query nobody registered fails inside
+// sqlmock — where recordViewEvent logs the error and swallows it, because
+// instrumentation must never fail the request it instruments. So an
+// unregistered insert would run, be rejected, be swallowed, and leave the test
+// green. Registering it means the write has somewhere to land where the test
+// can see it.
+func forbidEpisodeViewEventInsert(mock sqlmock.Sqlmock) *capturedArg {
+	recorded := &capturedArg{}
+	mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedEpisodeViewEventQuery)).
+		WithArgs(
+			recorded, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+		).
+		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
+	return recorded
+}
+
+// forbidSeriesViewEventInsert is the series counterpart.
+func forbidSeriesViewEventInsert(mock sqlmock.Sqlmock) *capturedArg {
+	recorded := &capturedArg{}
+	mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedSeriesViewEventQuery)).
+		WithArgs(
+			recorded, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+		).
+		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
+	return recorded
+}
+
 // The detail reads are cached by their callers, so a fill of that cache carries
 // no reader at all. Instrumenting them would mint a fresh actor per fill and
 // leave a row behind for a page nobody opened (#1276). The unmet-expectation
@@ -344,6 +428,7 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 			"id", "tenant_id", "episode_id", "display_order", "created_at",
 			"content_type", "file_size_bytes", "width", "height",
 		}))
+	recorded := forbidEpisodeViewEventInsert(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
@@ -353,12 +438,23 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
+
+	if recorded.value != nil {
+		t.Fatalf("recorded event id = %v, want a detail read to record nothing", recorded.value)
+	}
 	// No actor is minted either: a fill that was handed one would hand it on to
 	// whichever reader the cached response is later served to.
 	if got := resp.Header().Values("Set-Cookie"); len(got) != 0 {
 		t.Fatalf("Set-Cookie = %v, want a cached read to mint no actor", got)
 	}
-	assertPublicExpectations(t, mock)
+	// The registered insert stays deliberately unfulfilled, so the shared
+	// expectation assertion does not apply; the body proves the reads ran.
+	if got := resp.Msg.Episode.GetTitle(); got != "Episode Title" {
+		t.Fatalf("episode title = %q, want the row the read returned", got)
+	}
+	if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
+		t.Fatalf("access = %v, want the free body to be served", resp.Msg.Access)
+	}
 }
 
 func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
@@ -378,6 +474,7 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 			seriesID, "SERIES001", "Series Title", nil, nil, nil, nil,
 			"Synopsis", true, now.UTC(), []byte(`[]`), []byte(`[]`),
 		))
+	recorded := forbidSeriesViewEventInsert(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
@@ -387,8 +484,14 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
+
+	if recorded.value != nil {
+		t.Fatalf("recorded event id = %v, want a detail read to record nothing", recorded.value)
+	}
 	if got := resp.Header().Values("Set-Cookie"); len(got) != 0 {
 		t.Fatalf("Set-Cookie = %v, want a cached read to mint no actor", got)
 	}
-	assertPublicExpectations(t, mock)
+	if got := resp.Msg.Series.GetTitle(); got != "Series Title" {
+		t.Fatalf("series title = %q, want the row the read returned", got)
+	}
 }
