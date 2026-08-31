@@ -26,7 +26,7 @@ const props = {
 };
 
 describe("EpisodeAccessGate", () => {
-  it("決済設定が無効なら購入 CTA を表示しない", () => {
+  it("Do not display purchase CTA if payment settings are disabled", () => {
     render(<EpisodeAccessGate {...props} acceptsPayments={false} />);
 
     expect(
@@ -42,7 +42,7 @@ describe("EpisodeAccessGate", () => {
     ).toBeDefined();
   });
 
-  it("決済設定が有効なら購入 CTA を表示する", () => {
+  it("Show purchase CTA if payment settings are enabled", () => {
     render(<EpisodeAccessGate {...props} acceptsPayments />);
 
     expect(

@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 describe("decryptImageBuffer", () => {
-  it("image-server と同じ xor-hmac-sha256-v1 ベクトルを復号する", async () => {
+  it("Decrypt the same xor-hmac-sha256-v1 vector as image-server", async () => {
     await expect(
       decryptImageBuffer(ciphertext.buffer, keyID, subject, token)
     ).resolves.toEqual(plaintext.buffer);
@@ -40,7 +40,7 @@ describe("decryptImageBuffer", () => {
 });
 
 describe("acceptNegotiatedImages", () => {
-  it("暗号化済みのレスポンスを復号し、Manael の MIME type をページへ反映する", async () => {
+  it("Decrypt the encrypted response and preserve its MIME type on the page", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(ciphertext, {
         headers: {
@@ -69,7 +69,7 @@ describe("acceptNegotiatedImages", () => {
     );
   });
 
-  it("公開画像の非暗号化レスポンスはそのまま渡す", async () => {
+  it("Pass unencrypted response of public image as is", async () => {
     const imageBuffer = Uint8Array.from([1, 2, 3]).buffer;
     vi.stubGlobal(
       "fetch",
@@ -87,7 +87,7 @@ describe("acceptNegotiatedImages", () => {
     expect(viewerPage.mimeType).toBe("image/jpeg");
   });
 
-  it("未対応の暗号方式はページを復号せず失敗させる", async () => {
+  it("Unsupported encryption methods will fail without decrypting the page.", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(

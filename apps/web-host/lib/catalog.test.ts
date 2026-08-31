@@ -25,18 +25,18 @@ vi.mock("./api-client", () => ({
 }));
 
 describe("toEpisodeAccessState", () => {
-  it("RPC の enum をそのまま写す", () => {
+  it("Copy RPC enum as is", () => {
     expect(toEpisodeAccessState(EpisodeAccess.FREE, 0)).toBe("free");
     expect(toEpisodeAccessState(EpisodeAccess.LOCKED, 500)).toBe("locked");
     expect(toEpisodeAccessState(EpisodeAccess.ENTITLED, 500)).toBe("entitled");
   });
 
-  it("未指定は価格でフォールバックする", () => {
+  it("If not specified, fall back to price", () => {
     expect(toEpisodeAccessState(EpisodeAccess.UNSPECIFIED, 0)).toBe("free");
     expect(toEpisodeAccessState(undefined, 500)).toBe("locked");
   });
 
-  it("無料本文だけ公開表示する", () => {
+  it("Publicly display only the free text", () => {
     expect(isPublicEpisodeBody("free")).toBe(true);
     expect(isPublicEpisodeBody("locked")).toBe(false);
     expect(isPublicEpisodeBody("entitled")).toBe(false);
@@ -48,7 +48,7 @@ describe("catalog.getEpisodeDetail", () => {
     mockGetEpisodeDetail.mockReset();
   });
 
-  it("エピソード詳細と画像を整形して返す", async () => {
+  it("Format and return episode details and images", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       access: EpisodeAccess.LOCKED,
       episode: {
@@ -109,7 +109,7 @@ describe("catalog.getEpisodeDetail", () => {
     expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
   });
 
-  it("episode が欠けている場合は null", async () => {
+  it("null if episode is missing", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       episode: undefined,
       images: [],
@@ -124,7 +124,7 @@ describe("catalog.getEpisodeDetail", () => {
     ).resolves.toEqual({ ok: true, value: null });
   });
 
-  it("URL の series_id とレスポンスが不一致なら null", async () => {
+  it("null if the series_id of the URL and the response do not match", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       episode: {
         orderIndex: 1,
@@ -148,7 +148,7 @@ describe("catalog.getEpisodeDetail", () => {
     ).resolves.toEqual({ ok: true, value: null });
   });
 
-  it("API が not_found を返したら null", async () => {
+  it("null if the API returns not_found", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
       new ConnectError("episode not found", Code.NotFound)
     );
@@ -160,7 +160,7 @@ describe("catalog.getEpisodeDetail", () => {
 
   // `"use cache"` re-creates a thrown error from name + message, dropping
   // `code`; classification has to survive on the message prefix alone.
-  it("キャッシュ境界で再生成された ConnectError も null になる", async () => {
+  it("ConnectError regenerated at cache boundaries will also be null", async () => {
     const rehydrated = new Error("[not_found] episode not found");
     rehydrated.name = "ConnectError";
     mockGetEpisodeDetail.mockRejectedValueOnce(rehydrated);
@@ -171,7 +171,7 @@ describe("catalog.getEpisodeDetail", () => {
   });
 
   // Another tenant's episode comes back as permission_denied, not not_found.
-  it("API が permission_denied を返したら null", async () => {
+  it("null if the API returns permission_denied", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
       new ConnectError("episode is not published", Code.PermissionDenied)
     );
@@ -181,7 +181,7 @@ describe("catalog.getEpisodeDetail", () => {
     ).resolves.toEqual({ ok: true, value: null });
   });
 
-  it("識別子の前後空白を除去して API に渡し所属判定する", async () => {
+  it("Remove leading and trailing spaces from the identifier and pass it to the API to determine affiliation", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       access: EpisodeAccess.FREE,
       episode: {
@@ -214,7 +214,7 @@ describe("catalog.getEpisodeDetail", () => {
 
   // A `"use cache"` function must not throw: the fill would fail the whole
   // request instead of reaching the awaiting page (#672).
-  it("not_found 以外のエラーは throw せず失敗の値を返す", async () => {
+  it("Errors other than not_found are not thrown and return a failure value.", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );
@@ -234,7 +234,7 @@ describe("catalog.getEpisodeViewer", () => {
     mockGetEpisodeDetail.mockReset();
   });
 
-  it("セッションが無いときは RPC せず locked を返す", async () => {
+  it("If there is no session, return locked without RPC", async () => {
     await expect(
       getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "", "ja")
     ).resolves.toEqual({
@@ -244,7 +244,7 @@ describe("catalog.getEpisodeViewer", () => {
     expect(mockGetEpisodeDetail).not.toHaveBeenCalled();
   });
 
-  it("有効チケットはセッション付きで entitled 画像を返す", async () => {
+  it("Valid ticket returns entitled image with session", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       access: EpisodeAccess.ENTITLED,
       episode: {
@@ -305,7 +305,7 @@ describe("catalog.getEpisodeViewer", () => {
     });
   });
 
-  it("ログイン済みでも権限が無ければ locked", async () => {
+  it("Locked if you are logged in but do not have permissions", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       access: EpisodeAccess.LOCKED,
       episode: {
@@ -336,7 +336,7 @@ describe("catalog.getEpisodeViewer", () => {
     });
   });
 
-  it("permission_denied は locked にする", async () => {
+  it("permission_denied should be locked", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
       new ConnectError("episode is not published", Code.PermissionDenied)
     );
@@ -355,7 +355,7 @@ describe("catalog.getEpisodeViewer", () => {
     });
   });
 
-  it("not_found は null", async () => {
+  it("not_found is null", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
       new ConnectError("episode not found", Code.NotFound)
     );
@@ -371,7 +371,7 @@ describe("catalog.getEpisodeViewer", () => {
     ).resolves.toEqual({ ok: true, value: null });
   });
 
-  it("URL の series_id とレスポンスが不一致なら null", async () => {
+  it("null if the series_id of the URL and the response do not match", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       access: EpisodeAccess.ENTITLED,
       episode: {
@@ -399,7 +399,7 @@ describe("catalog.getEpisodeViewer", () => {
     ).resolves.toEqual({ ok: true, value: null });
   });
 
-  it("not_found 以外のエラーは throw せず失敗の値を返す", async () => {
+  it("Errors other than not_found are not thrown and return a failure value.", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );

@@ -40,7 +40,7 @@ describe("web-host auth-session", () => {
     mockGetTenantDefaultLocale.mockResolvedValue("ja");
   });
 
-  it("redirectToLogin は sanitize した returnTo と失効理由を付けて /login へ送る", async () => {
+  it("redirectToLogin sends sanitized returnTo and revocation reason to /login", async () => {
     const { redirectToLogin } = await importAuthSession();
 
     await expect(redirectToLogin("ja", "/settings", tenantId)).rejects.toThrow(
@@ -51,7 +51,7 @@ describe("web-host auth-session", () => {
     );
   });
 
-  it("redirectToLogin は外部 URL を返送先にしない", async () => {
+  it("redirectToLogin does not return to external URL", async () => {
     const { redirectToLogin } = await importAuthSession();
 
     await expect(
@@ -62,7 +62,7 @@ describe("web-host auth-session", () => {
     );
   });
 
-  it("requirePublicSession はトークンがあればそれを返す", async () => {
+  it("requirePublicSession returns the token if available", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("session-token");
     const { requirePublicSession } = await importAuthSession();
 
@@ -72,7 +72,7 @@ describe("web-host auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("requirePublicSession はトークンが無ければ再ログインへ送る", async () => {
+  it("requirePublicSession sends you to re-login if there is no token", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
     const { requirePublicSession } = await importAuthSession();
 
@@ -84,7 +84,7 @@ describe("web-host auth-session", () => {
     );
   });
 
-  it("withPublicSessionReauth は成功値をそのまま返す", async () => {
+  it("withPublicSessionReauth returns the success value as is", async () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
     await expect(
@@ -98,7 +98,7 @@ describe("web-host auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("withPublicSessionReauth は Unauthenticated のときだけ再ログインへ送る", async () => {
+  it("withPublicSessionReauth sends re-login only when Unauthenticated", async () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
     await expect(
@@ -117,7 +117,7 @@ describe("web-host auth-session", () => {
     );
   });
 
-  it("withPublicSessionReauth はビジネスエラーを再認証扱いにしない", async () => {
+  it("withPublicSessionReauth does not treat business errors as re-authentication", async () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
     // A wrong password reaches the client as invalid_argument (#679); turning it
@@ -136,7 +136,7 @@ describe("web-host auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("withPublicSessionReauth は RPC 以外の失敗も伝播する", async () => {
+  it("withPublicSessionReauth also propagates non-RPC failures", async () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
     await expect(

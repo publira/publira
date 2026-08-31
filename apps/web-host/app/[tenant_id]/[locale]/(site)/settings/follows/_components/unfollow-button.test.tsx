@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 describe("UnfollowButton", () => {
-  it("一覧からの解除操作だけを出す", () => {
+  it("Displays only the release operation from the list", () => {
     render(
       <UnfollowButton
         copy={{

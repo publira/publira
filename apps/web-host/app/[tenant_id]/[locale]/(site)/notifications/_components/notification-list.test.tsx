@@ -75,7 +75,7 @@ afterEach(() => {
 });
 
 describe("NotificationList", () => {
-  it("最初のページが空なら未着として案内する", async () => {
+  it("The empty notification state is displayed when the first page is empty.", async () => {
     await renderList();
 
     expect(screen.getByText("通知はまだありません。")).toBeDefined();
@@ -83,7 +83,7 @@ describe("NotificationList", () => {
     expect(screen.queryByText(`すべて既読にする ${tenantId}`)).toBeNull();
   });
 
-  it("ページ送りの先が空でも一覧全体が空だとは案内しない", async () => {
+  it("Even if the destination of the page is empty, it will not notify you that the entire list is empty.", async () => {
     await renderList({ previousToken: "previous", token: "current" });
 
     expect(
@@ -93,7 +93,7 @@ describe("NotificationList", () => {
     expect(previous.getAttribute("href")).toBe("/notifications?token=previous");
   });
 
-  it("未読行とリンク、既読ボタンを描画する", async () => {
+  it("Draw unread lines, links, and read buttons", async () => {
     await renderList({
       nextToken: "next",
       notifications: [
@@ -127,7 +127,7 @@ describe("NotificationList", () => {
     ).toBe("/notifications?token=next");
   });
 
-  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", async () => {
+  it("If acquisition fails, only an error will be displayed and an empty list will not be displayed.", async () => {
     await renderList({
       listErrorMessage: "通知一覧を取得できませんでした。",
       nextToken: "next",
@@ -147,7 +147,7 @@ describe("NotificationList", () => {
     expect(screen.queryByText(`すべて既読にする ${tenantId}`)).toBeNull();
   });
 
-  it("作成日時をテナントタイムゾーンの壁時計で表示する", async () => {
+  it("Display the creation date and time on the tenant time zone wall clock", async () => {
     await renderList({
       notifications: [notification("n1")],
       timeZone: "America/Los_Angeles",

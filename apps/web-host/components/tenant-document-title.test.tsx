@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { TenantDocumentTitle } from "./tenant-document-title";
 
 describe("TenantDocumentTitle", () => {
-  it("ページタイトルとサイト名から document.title を組み立てる", () => {
+  it("Assemble document.title from page title and site name", () => {
     render(
       <TenantDocumentTitle pageTitle="ダッシュボード" siteLabel="Publira" />
     );
@@ -14,13 +14,13 @@ describe("TenantDocumentTitle", () => {
     expect(document.title).toBe("ダッシュボード | Publira");
   });
 
-  it("pageTitle が空ならサイト名のみを設定する", () => {
+  it("If pageTitle is empty, set only the site name", () => {
     render(<TenantDocumentTitle pageTitle="   " siteLabel="Publira" />);
 
     expect(document.title).toBe("Publira");
   });
 
-  it("siteLabel が空白ならページタイトルのみを設定する", () => {
+  it("If siteLabel is blank, set only the page title", () => {
     render(<TenantDocumentTitle pageTitle="ログイン" siteLabel="  " />);
 
     expect(document.title).toBe("ログイン");

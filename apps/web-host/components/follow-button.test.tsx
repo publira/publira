@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 describe("FollowLoginLink", () => {
-  it("現在の詳細ページへ戻る returnTo 付きでログインへ誘導する", () => {
+  it("Return to current details page Guide to login with returnTo", () => {
     render(
       <FollowLoginLink
         ariaLabel="ログインして「公開シリーズ」をフォローする"
@@ -56,7 +56,7 @@ describe("FollowLoginLink", () => {
 });
 
 describe("FollowButton", () => {
-  it("未フォローならフォロー操作を出す", () => {
+  it("If you are not following, issue a follow operation.", () => {
     render(
       <FollowButton
         copy={copy("公開シリーズ")}
@@ -74,7 +74,7 @@ describe("FollowButton", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("フォロー中なら解除操作を出す", () => {
+  it("If you are following, issue an unsubscribe operation", () => {
     render(
       <FollowButton
         copy={copy("公開著者")}
@@ -94,7 +94,7 @@ describe("FollowButton", () => {
 });
 
 describe("FollowControlSkeleton", () => {
-  it("ボタン相当の大きさのプレースホルダを出す", () => {
+  it("Display a placeholder the size of a button", () => {
     const { container } = render(<FollowControlSkeleton />);
     expect(container.querySelector("[aria-hidden='true']")).toBeTruthy();
   });

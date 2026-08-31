@@ -10,7 +10,7 @@ import {
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 describe("splitLocalePathname", () => {
-  it("先頭のロケールを切り離す", () => {
+  it("Detach the first locale", () => {
     expect(splitLocalePathname("/ja/series/SR01")).toEqual({
       locale: "ja",
       pathname: "/series/SR01",
@@ -21,7 +21,7 @@ describe("splitLocalePathname", () => {
     });
   });
 
-  it("ロケールが無いパスは locale を null にして丸ごと返す", () => {
+  it("For paths with no locale, set locale to null and return the entire path.", () => {
     expect(splitLocalePathname("/series/SR01")).toEqual({
       locale: null,
       pathname: "/series/SR01",
@@ -36,7 +36,7 @@ describe("splitLocalePathname", () => {
 });
 
 describe("withLocalePrefix", () => {
-  it("既定 locale の接頭辞を省略し、非既定 locale だけを付ける", () => {
+  it("Omit the prefix of the default locale and add only the non-default locale", () => {
     expect(withLocalePrefix("ja", "ja", "/series")).toBe("/series");
     expect(withLocalePrefix("en", "ja", "/")).toBe("/en");
     expect(withLocalePrefix("ja", "ja", "/settings?tab=1#top")).toBe(
@@ -45,7 +45,7 @@ describe("withLocalePrefix", () => {
     expect(withLocalePrefix("ja", "en", "/settings")).toBe("/ja/settings");
   });
 
-  it("アプリ外へ出る href はそのまま返す", () => {
+  it("Return hrefs that go outside the app as is", () => {
     expect(withLocalePrefix("ja", "ja", "https://example.com/series")).toBe(
       "https://example.com/series"
     );
@@ -55,7 +55,7 @@ describe("withLocalePrefix", () => {
 });
 
 describe("toBarePathname", () => {
-  it("rewrite 後と公開 URL のどちらからも同じ素のパスを得る", () => {
+  it("Get the same raw path both after rewrite and from public URL", () => {
     expect(toBarePathname(`/${TENANT_ID}/ja/settings/follows`)).toBe(
       "/settings/follows"
     );
@@ -65,7 +65,7 @@ describe("toBarePathname", () => {
 });
 
 describe("isLocaleExemptPathname", () => {
-  it("ロケールの外で処理するパスだけを真とする", () => {
+  it("Only paths that process outside the locale are true", () => {
     expect(isLocaleExemptPathname("/theme.css")).toBe(true);
     expect(isLocaleExemptPathname("/api/v1/revalidate")).toBe(true);
     expect(isLocaleExemptPathname("/ja/series")).toBe(false);

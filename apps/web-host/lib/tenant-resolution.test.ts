@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createTenantResolver } from "./tenant-resolution";
 
 describe("createTenantResolver", () => {
-  it("候補が空なら API を呼ばず null を返す", async () => {
+  it("If the candidate is empty, do not call the API and return null", async () => {
     const getTenantByDomain = vi.fn();
     const resolver = createTenantResolver(
       { domain: { getTenantByDomain } } as never,
@@ -15,7 +15,7 @@ describe("createTenantResolver", () => {
     expect(getTenantByDomain).not.toHaveBeenCalled();
   });
 
-  it("テナント既定ロケールを同じ応答から取り出す", async () => {
+  it("Retrieve tenant default locale from same response", async () => {
     const getTenantByDomain = vi.fn().mockResolvedValue({
       defaultLocale: "en",
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
@@ -31,7 +31,7 @@ describe("createTenantResolver", () => {
     });
   });
 
-  it("このビルドが配信しないロケールだけ ja に落とす", async () => {
+  it("Only locales that this build does not distribute are reduced to ja", async () => {
     const getTenantByDomain = vi.fn().mockResolvedValue({
       defaultLocale: "fr",
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
@@ -47,7 +47,7 @@ describe("createTenantResolver", () => {
     });
   });
 
-  it("解決結果をキャッシュし同一キーの2回目呼び出しで再取得しない", async () => {
+  it("Cache the resolution result and do not retrieve it again on the second call with the same key", async () => {
     const getTenantByDomain = vi.fn().mockResolvedValue({
       defaultLocale: "ja",
       tenantId: " 018f0e6a-1000-7000-8000-000000000001 ",
@@ -69,7 +69,7 @@ describe("createTenantResolver", () => {
     expect(getTenantByDomain).toHaveBeenCalledOnce();
   });
 
-  it("not_found エラーは null としてキャッシュする", async () => {
+  it("Cache not_found errors as null", async () => {
     const getTenantByDomain = vi
       .fn()
       .mockRejectedValue(new ConnectError("tenant not found", Code.NotFound));
@@ -84,7 +84,7 @@ describe("createTenantResolver", () => {
     expect(getTenantByDomain).toHaveBeenCalledOnce();
   });
 
-  it("分類できないエラーは伝播し null をキャッシュしない", async () => {
+  it("Propagate unclassifiable errors and do not cache nulls", async () => {
     const getTenantByDomain = vi
       .fn()
       .mockRejectedValue(new ConnectError("upstream down", Code.Unavailable));

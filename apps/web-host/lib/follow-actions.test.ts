@@ -53,7 +53,7 @@ describe("toggleFollowAction", () => {
     mockRequirePublicSession.mockResolvedValue("session-token");
   });
 
-  it("フォロー成功後に会員のフォローキャッシュだけを更新する", async () => {
+  it("Update only the member's follow cache after a successful follow", async () => {
     mockFollowTarget.mockResolvedValueOnce({ isFollowing: true, ok: true });
 
     const { toggleFollowAction } = await import("./follow-actions");
@@ -89,7 +89,7 @@ describe("toggleFollowAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);
   });
 
-  it("解除成功後に会員のフォローキャッシュだけを更新する", async () => {
+  it("Update only the member's follow cache after successful cancellation", async () => {
     mockUnfollowTarget.mockResolvedValueOnce({ isFollowing: false, ok: true });
 
     const { toggleFollowAction } = await import("./follow-actions");
@@ -118,7 +118,7 @@ describe("toggleFollowAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);
   });
 
-  it("一覧からの解除も同じ Action で会員のフォローキャッシュだけを更新する", async () => {
+  it("Update only the member's follow cache using the same Action to remove from the list.", async () => {
     mockUnfollowTarget.mockResolvedValueOnce({ isFollowing: false, ok: true });
 
     const { toggleFollowAction } = await import("./follow-actions");
@@ -147,7 +147,7 @@ describe("toggleFollowAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledTimes(1);
   });
 
-  it("不正な対象種別は API を呼ばない", async () => {
+  it("Invalid target type does not call API", async () => {
     const { toggleFollowAction } = await import("./follow-actions");
     const result = await toggleFollowAction(
       null,
@@ -168,7 +168,7 @@ describe("toggleFollowAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
-  it("API が拒否したらメッセージを返し、タグは更新しない", async () => {
+  it("If the API rejects, return a message and do not update the tag.", async () => {
     mockFollowTarget.mockResolvedValueOnce({
       message: "対象が見つかりません。",
       ok: false,

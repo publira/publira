@@ -23,14 +23,14 @@ vi.mock("./api-client", () => ({
 }));
 
 describe("normalizePublishedPageSlug", () => {
-  it("空や / は空文字にする", () => {
+  it("Empty input and / normalize to an empty string", () => {
     expect(normalizePublishedPageSlug("")).toBe("");
     expect(normalizePublishedPageSlug(" / ")).toBe("");
     expect(normalizePublishedPageSlug("/")).toBe("");
     expect(normalizePublishedPageSlug("//")).toBe("");
   });
 
-  it("先頭スラッシュを正規化し、二重スラッシュを潰す", () => {
+  it("Normalize leading slashes and crush double slashes", () => {
     expect(normalizePublishedPageSlug("privacy")).toBe("/privacy");
     expect(normalizePublishedPageSlug("/terms")).toBe("/terms");
     expect(normalizePublishedPageSlug("  /privacy  ")).toBe("/privacy");
@@ -41,7 +41,7 @@ describe("normalizePublishedPageSlug", () => {
 });
 
 describe("publishedPageHrefFromSlug", () => {
-  it("公開 URL は storage slug と同じパスになる", () => {
+  it("The public URL will be the same path as the storage slug", () => {
     expect(publishedPageHrefFromSlug("/privacy")).toBe("/privacy");
     expect(publishedPageHrefFromSlug("legal/terms")).toBe("/legal/terms");
     expect(publishedPageHrefFromSlug("")).toBe("/");
@@ -53,7 +53,7 @@ describe("listPublishedPageLinks", () => {
     mockListPublishedPages.mockReset();
   });
 
-  it("公開ページリンクを title と href に整形する", async () => {
+  it("Format public page links into title and href", async () => {
     mockListPublishedPages.mockResolvedValueOnce({
       pages: [
         {
@@ -92,7 +92,7 @@ describe("listPublishedPageLinks", () => {
     ]);
   });
 
-  it("空テナントや API 失敗時は空配列を返す（失敗はキャッシュされない想定）", async () => {
+  it("Returns an empty array in case of empty tenant or API failure (assuming failure is not cached)", async () => {
     expect(await listPublishedPageLinks("")).toEqual([]);
     expect(mockListPublishedPages).not.toHaveBeenCalled();
 
@@ -129,7 +129,7 @@ describe("getPublishedPage", () => {
     mockGetPublishedPage.mockReset();
   });
 
-  it("公開ページを整形して返す", async () => {
+  it("Format and return public pages", async () => {
     mockGetPublishedPage.mockResolvedValueOnce({
       page: {
         id: "page-1",
@@ -164,7 +164,7 @@ describe("getPublishedPage", () => {
     });
   });
 
-  it("API not_found は null（呼び出し側が notFound() に倒す）", async () => {
+  it("API not_found is null (caller throws it to notFound())", async () => {
     mockGetPublishedPage.mockRejectedValue(
       new ConnectError("page not found", Code.NotFound)
     );
@@ -187,7 +187,7 @@ describe("getPublishedPage", () => {
     });
   });
 
-  it("先頭スラッシュ付きで not_found のとき legacy slug を試す", async () => {
+  it("Try legacy slug when not_found with leading slash", async () => {
     mockGetPublishedPage
       .mockRejectedValueOnce(new ConnectError("page not found", Code.NotFound))
       .mockResolvedValueOnce({
@@ -216,7 +216,7 @@ describe("getPublishedPage", () => {
     });
   });
 
-  it("version が欠けている場合は null", async () => {
+  it("null if version is missing", async () => {
     mockGetPublishedPage.mockResolvedValueOnce({
       page: { id: "page-1", slug: "/privacy", title: "P" },
       version: undefined,
@@ -230,7 +230,7 @@ describe("getPublishedPage", () => {
     });
   });
 
-  it("page.id が欠けている場合は null", async () => {
+  it("null if page.id is missing", async () => {
     mockGetPublishedPage.mockResolvedValueOnce({
       page: { slug: "/privacy", title: "P" },
       version: { contentMarkdown: "body", id: "ver-1", versionNumber: 1 },
@@ -244,7 +244,7 @@ describe("getPublishedPage", () => {
     });
   });
 
-  it("ルート slug は null", async () => {
+  it("root slug is null", async () => {
     await expect(getPublishedPage("tenant-uuid", "/", "ja")).resolves.toEqual({
       ok: true,
       value: null,
@@ -252,7 +252,7 @@ describe("getPublishedPage", () => {
     expect(mockGetPublishedPage).not.toHaveBeenCalled();
   });
 
-  it("空テナント ID は API を呼ばずに null", async () => {
+  it("Empty tenant ID is null without calling API.", async () => {
     await expect(getPublishedPage("  ", "privacy", "ja")).resolves.toEqual({
       ok: true,
       value: null,
@@ -265,7 +265,7 @@ describe("getPublishedPage", () => {
    * not a 404. It comes back as a value because a `"use cache"` fill that
    * throws fails the whole request before the page can render either (#672).
    */
-  it("分類できない RPC エラーは throw せず失敗の値を返す", async () => {
+  it("Unclassified RPC errors are not thrown but return a failure value.", async () => {
     mockGetPublishedPage.mockRejectedValue(
       new ConnectError("boom", Code.Internal)
     );

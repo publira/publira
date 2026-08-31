@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseSearchPageSearchParams, searchPageHref } from "./search-params";
 
 describe("parseSearchPageSearchParams", () => {
-  it("q と token を正規化する", () => {
+  it("Normalize q and token", () => {
     expect(
       parseSearchPageSearchParams({ q: "  Seed  ", token: " djF8Zg-_ " })
     ).toEqual({
@@ -12,14 +12,14 @@ describe("parseSearchPageSearchParams", () => {
     });
   });
 
-  it("q が無ければ空の検索画面にする", () => {
+  it("If q is missing, the search screen will be empty.", () => {
     expect(parseSearchPageSearchParams({})).toEqual({
       query: "",
       token: "",
     });
   });
 
-  it("長すぎる q は上限で切る", () => {
+  it("Cut q that is too long at the upper limit", () => {
     const longQuery = "あ".repeat(120);
     expect(parseSearchPageSearchParams({ q: longQuery })).toEqual({
       query: "あ".repeat(100),
@@ -27,7 +27,7 @@ describe("parseSearchPageSearchParams", () => {
     });
   });
 
-  it("base64url 以外の token は捨てる", () => {
+  it("Discard tokens other than base64url", () => {
     expect(
       parseSearchPageSearchParams({ q: "Seed", token: "djF8Zg==" })
     ).toEqual({
@@ -38,17 +38,17 @@ describe("parseSearchPageSearchParams", () => {
 });
 
 describe("searchPageHref", () => {
-  it("q と token をクエリに載せる", () => {
+  it("Put q and token in the query", () => {
     expect(searchPageHref("Seed Series", "djF8Zg")).toBe(
       "/search?q=Seed+Series&token=djF8Zg"
     );
   });
 
-  it("token が空なら q だけ残す", () => {
+  it("If token is empty, leave only q", () => {
     expect(searchPageHref("Seed", "")).toBe("/search?q=Seed");
   });
 
-  it("両方空なら先頭の検索画面へ戻す", () => {
+  it("If both are empty, return to the top search screen", () => {
     expect(searchPageHref("", "")).toBe("/search");
   });
 });

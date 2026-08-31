@@ -22,7 +22,7 @@ const image = (
 });
 
 describe("toViewerPages", () => {
-  it("配信順のまま連番のページ名を付ける", () => {
+  it("Assign sequential page names to the distribution order", () => {
     const pages = toViewerPages(
       "第1話",
       [image({ id: "IMG_001" }), image({ displayOrder: 2, id: "IMG_002" })],
@@ -36,7 +36,7 @@ describe("toViewerPages", () => {
     ]);
   });
 
-  it("本文画像の URL と寸法をそのまま渡す", () => {
+  it("Pass the URL and dimensions of the body image as is", () => {
     const [page] = toViewerPages("第1話", [image()], formatPageTitle);
 
     expect(page?.src).toBe("/images/episodes/IMG_001?token=abc");
@@ -45,13 +45,13 @@ describe("toViewerPages", () => {
     expect(page?.height).toBe(1800);
   });
 
-  it("プレースホルダーは持たせない", () => {
+  it("Does not have placeholders", () => {
     const [page] = toViewerPages("第1話", [image()], formatPageTitle);
 
     expect(page?.placeholder).toBeUndefined();
   });
 
-  it("寸法が記録されていない画像は寸法を伏せる", () => {
+  it("For images that do not have dimensions recorded, hide the dimensions.", () => {
     const [page] = toViewerPages(
       "第1話",
       [image({ height: 0, width: 0 })],
@@ -62,7 +62,7 @@ describe("toViewerPages", () => {
     expect(page?.height).toBeUndefined();
   });
 
-  it("Content-Type が空の画像は mimeType を伏せる", () => {
+  it("Images with empty Content-Type hide mimeType", () => {
     const [page] = toViewerPages(
       "第1話",
       [image({ contentType: "" })],

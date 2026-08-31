@@ -16,7 +16,7 @@ describe("GET /theme.css", () => {
     mockGetTenantTheme.mockReset();
   });
 
-  it("専用テーマ読取の色と短期キャッシュヘッダーを返す", async () => {
+  it("Return dedicated theme read colors and short-term cache headers", async () => {
     mockGetTenantTheme.mockResolvedValueOnce({ primaryColor: "#112233" });
 
     const response = await GET(
@@ -42,7 +42,7 @@ describe("GET /theme.css", () => {
     );
   });
 
-  it("proxy を通らない不正なテナント ID では既定テーマを返す", async () => {
+  it("Returns default theme for invalid tenant ID that does not pass through proxy", async () => {
     const response = await GET(
       new NextRequest("https://shop.example.test/theme.css"),
       { params: Promise.resolve({ tenant_id: "not-a-tenant" }) }

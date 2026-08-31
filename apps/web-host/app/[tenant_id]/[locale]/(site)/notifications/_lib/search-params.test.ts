@@ -6,17 +6,17 @@ import {
 } from "./search-params";
 
 describe("parseNotificationsSearchParams", () => {
-  it("base64url の token は前後の空白だけ落として通す", () => {
+  it("The base64url token is passed by removing only the leading and trailing spaces.", () => {
     expect(parseNotificationsSearchParams({ token: " djF8Zg-_ " })).toEqual({
       token: "djF8Zg-_",
     });
   });
 
-  it("token が無ければ先頭ページ扱いにする", () => {
+  it("If there is no token, treat it as the first page", () => {
     expect(parseNotificationsSearchParams({})).toEqual({ token: "" });
   });
 
-  it("base64url 以外の token は捨てる", () => {
+  it("Discard tokens other than base64url", () => {
     expect(parseNotificationsSearchParams({ token: "djF8Zg==" })).toEqual({
       token: "",
     });
@@ -27,13 +27,13 @@ describe("parseNotificationsSearchParams", () => {
 });
 
 describe("notificationsListHref", () => {
-  it("token 付きのクエリを組み立てる", () => {
+  it("Construct a query with token", () => {
     expect(notificationsListHref("next/page")).toBe(
       "/notifications?token=next%2Fpage"
     );
   });
 
-  it("token が空なら先頭ページへ戻す", () => {
+  it("If token is empty, return to first page", () => {
     expect(notificationsListHref("")).toBe("/notifications");
   });
 });

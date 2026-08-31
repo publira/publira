@@ -24,7 +24,7 @@ const iconVariant = (url: string) => ({
 });
 
 describe("resolveTenantIcons", () => {
-  it("icon が設定されていれば配信 URL を指す", () => {
+  it("If icon is set, it points to the delivery URL", () => {
     const icons = resolveTenantIcons(
       siteInfo({
         iconImageVariants: [iconVariant("/images/tenants/icon-1")],
@@ -37,12 +37,12 @@ describe("resolveTenantIcons", () => {
     });
   });
 
-  it("icon が未設定ならアイコンを宣言しない", () => {
+  it("Do not declare an icon if icon is not set", () => {
     expect(resolveTenantIcons(siteInfo({}))).toBeUndefined();
     expect(resolveTenantIcons(null)).toBeUndefined();
   });
 
-  it("空白だけの値は未設定として扱う", () => {
+  it("Values ​​containing only blank spaces are treated as unset.", () => {
     expect(
       resolveTenantIcons(siteInfo({ iconImageVariants: [iconVariant("  ")] }))
     ).toBeUndefined();

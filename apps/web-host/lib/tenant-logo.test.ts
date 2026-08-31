@@ -27,7 +27,7 @@ const logoVariant = (
 });
 
 describe("resolveTenantLogoVariant", () => {
-  it("ロゴが設定されていれば先頭のバリアントを返す", () => {
+  it("Returns the first variant if a logo is set", () => {
     const variant = logoVariant();
 
     expect(
@@ -35,12 +35,12 @@ describe("resolveTenantLogoVariant", () => {
     ).toEqual(variant);
   });
 
-  it("ロゴが未設定なら null", () => {
+  it("null if no logo is set", () => {
     expect(resolveTenantLogoVariant(siteInfo({}))).toBeNull();
     expect(resolveTenantLogoVariant(null)).toBeNull();
   });
 
-  it("空白だけの URL は未設定として扱う", () => {
+  it("URLs containing only blank spaces are treated as unconfigured.", () => {
     expect(
       resolveTenantLogoVariant(
         siteInfo({ logoImageVariants: [logoVariant({ url: "  " })] })
@@ -48,7 +48,7 @@ describe("resolveTenantLogoVariant", () => {
     ).toBeNull();
   });
 
-  it("幅または高さが 0 のバリアントは未設定として扱う", () => {
+  it("Treat variants with zero width or height as unset", () => {
     expect(
       resolveTenantLogoVariant(
         siteInfo({ logoImageVariants: [logoVariant({ width: 0 })] })

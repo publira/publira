@@ -47,7 +47,7 @@ describe("web-host auth", () => {
     mockResolveAccessToken.mockResolvedValue("sid_001");
   });
 
-  it("loginPublic: セッション情報が欠けると null を返す", async () => {
+  it("loginPublic: Returns null if session information is missing", async () => {
     const { loginPublic } = await importAuth();
     mockLogin.mockResolvedValueOnce({
       accessToken: {},
@@ -56,7 +56,7 @@ describe("web-host auth", () => {
     await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
   });
 
-  it("loginPublic: expected error は null を返す", async () => {
+  it("loginPublic: expected error returns null", async () => {
     const { loginPublic } = await importAuth();
     mockLogin.mockRejectedValueOnce(
       new ConnectError("invalid credentials", Code.Unauthenticated)
@@ -65,14 +65,14 @@ describe("web-host auth", () => {
     await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
   });
 
-  it("logoutPublic: accessToken 空なら API を呼ばない", async () => {
+  it("logoutPublic: accessToken If empty, do not call API", async () => {
     const { logoutPublic } = await importAuth();
     await logoutPublic("   ", "TENANT001");
 
     expect(mockLogout).not.toHaveBeenCalled();
   });
 
-  it("getPublicCurrentUser: session 解決不可なら null", async () => {
+  it("getPublicCurrentUser: session null if unresolvable", async () => {
     const { getPublicCurrentUser } = await importAuth();
     mockResolveAccessToken.mockResolvedValueOnce("");
 
@@ -80,7 +80,7 @@ describe("web-host auth", () => {
     expect(mockGetMe).not.toHaveBeenCalled();
   });
 
-  it("getPublicCurrentUser: expected error は null", async () => {
+  it("getPublicCurrentUser: expected error is null", async () => {
     const { getPublicCurrentUser } = await importAuth();
     mockGetMe.mockRejectedValueOnce(
       new ConnectError("forbidden", Code.PermissionDenied)
@@ -89,14 +89,14 @@ describe("web-host auth", () => {
     await expect(getPublicCurrentUser("TENANT001")).resolves.toBeNull();
   });
 
-  it("getPublicCurrentUser: 分類できない RPC エラーは伝播する", async () => {
+  it("getPublicCurrentUser: Uncategorized RPC errors propagate", async () => {
     const { getPublicCurrentUser } = await importAuth();
     mockGetMe.mockRejectedValueOnce(new ConnectError("boom", Code.Internal));
 
     await expect(getPublicCurrentUser("TENANT001")).rejects.toThrow("boom");
   });
 
-  it("getPublicCurrentUser: 正常時はユーザー情報を返す", async () => {
+  it("getPublicCurrentUser: Returns user information when normal", async () => {
     const { getPublicCurrentUser } = await importAuth();
     mockGetMe.mockResolvedValueOnce({
       user: { name: "Alice", publicId: "U001" },
@@ -108,7 +108,7 @@ describe("web-host auth", () => {
     });
   });
 
-  it("requestPublicEmailChange: session が無ければ false", async () => {
+  it("requestPublicEmailChange: false if no session", async () => {
     const { requestPublicEmailChange } = await importAuth();
     mockResolveAccessToken.mockResolvedValueOnce("");
 
@@ -122,7 +122,7 @@ describe("web-host auth", () => {
     ).resolves.toBe(false);
   });
 
-  it("getMe: 未認証は再試行せず呼び出し元へ伝播する", async () => {
+  it("getMe: Unauthenticated cases are propagated to the caller without retrying.", async () => {
     const { getMe } = await importAuth();
     mockGetMe.mockRejectedValueOnce(
       new ConnectError("invalid credentials", Code.Unauthenticated)
@@ -134,7 +134,7 @@ describe("web-host auth", () => {
     expect(mockGetMe).toHaveBeenCalledOnce();
   });
 
-  it("getMe: expected error が続く場合は null", async () => {
+  it("getMe: null if followed by expected error", async () => {
     const { getMe } = await importAuth();
     mockGetMe
       .mockRejectedValueOnce(
@@ -148,7 +148,7 @@ describe("web-host auth", () => {
     expect(mockGetMe).toHaveBeenCalledTimes(2);
   });
 
-  it("getMe: 直後の read に見えなかったセッションは再試行で解決する", async () => {
+  it("getMe: Sessions that are not visible to the immediate read will be resolved by retrying.", async () => {
     const { getMe } = await importAuth();
     mockGetMe
       .mockRejectedValueOnce(new ConnectError("not found", Code.NotFound))
@@ -164,7 +164,7 @@ describe("web-host auth", () => {
     expect(mockGetMe).toHaveBeenCalledTimes(2);
   });
 
-  it("getMe: 分類できない RPC エラーは再試行せずそのまま伝播する", async () => {
+  it("getMe: Uncategorized RPC errors are propagated without retrying.", async () => {
     const { getMe } = await importAuth();
     const thrown = new ConnectError("boom", Code.Internal);
     mockGetMe.mockRejectedValueOnce(thrown);
@@ -173,7 +173,7 @@ describe("web-host auth", () => {
     expect(mockGetMe).toHaveBeenCalledOnce();
   });
 
-  it("updateMe: expected error は null", async () => {
+  it("updateMe: expected error is null", async () => {
     const { updateMe } = await importAuth();
     mockUpdateMe.mockRejectedValueOnce(
       new ConnectError("name too long", Code.InvalidArgument)
@@ -182,7 +182,7 @@ describe("web-host auth", () => {
     await expect(updateMe("TENANT001", "NewName")).resolves.toBeNull();
   });
 
-  it("deleteMe: 未認証は再ログインへ誘導できるよう伝播する", async () => {
+  it("deleteMe: Propagate unauthenticated users to prompt them to log in again", async () => {
     const { deleteMe } = await importAuth();
     mockDeleteMe.mockRejectedValueOnce(
       new ConnectError("invalid credentials", Code.Unauthenticated)
@@ -193,14 +193,14 @@ describe("web-host auth", () => {
     });
   });
 
-  it("deleteMe: 分類できないエラーは伝播する", async () => {
+  it("deleteMe: Unclassifiable errors are propagated", async () => {
     const { deleteMe } = await importAuth();
     mockDeleteMe.mockRejectedValueOnce(new Error("network"));
 
     await expect(deleteMe("TENANT001", "pw")).rejects.toThrow("network");
   });
 
-  it("getNotificationSettings: session 無しなら null", async () => {
+  it("getNotificationSettings: null if no session", async () => {
     const { getNotificationSettings } = await importAuth();
     mockResolveAccessToken.mockResolvedValueOnce("");
 

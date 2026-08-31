@@ -7,7 +7,7 @@ import {
 } from "./published-page-path";
 
 describe("isReservedTopLevelSegment", () => {
-  it("アプリ固定ルートを予約扱いする", () => {
+  it("Treat app-fixed routes as reservations", () => {
     expect(isReservedTopLevelSegment("search")).toBe(true);
     expect(isReservedTopLevelSegment("series")).toBe(true);
     expect(isReservedTopLevelSegment("announcements")).toBe(true);
@@ -20,14 +20,14 @@ describe("isReservedTopLevelSegment", () => {
   // `/api`, `/theme.css`, `/livez`, `/readyz` never reach this set: they are
   // served outside the locale tree and settled in `lib/locale-path.ts` and
   // `@publira/utils/health` before a pathname is classified here.
-  it("ロケール外で処理されるパスは予約に含めない", () => {
+  it("Do not include paths that are processed outside the locale in the reservation", () => {
     expect(isReservedTopLevelSegment("api")).toBe(false);
     expect(isReservedTopLevelSegment("theme.css")).toBe(false);
     expect(isReservedTopLevelSegment("livez")).toBe(false);
     expect(isReservedTopLevelSegment("readyz")).toBe(false);
   });
 
-  it("コンテンツ用 slug は予約ではない", () => {
+  it("Content slug is not reserved", () => {
     expect(isReservedTopLevelSegment("privacy")).toBe(false);
     expect(isReservedTopLevelSegment("terms")).toBe(false);
     expect(isReservedTopLevelSegment("about")).toBe(false);
@@ -35,7 +35,7 @@ describe("isReservedTopLevelSegment", () => {
 });
 
 describe("getPublishedPageSlugFromPathname", () => {
-  it("単一・複数セグメントの公開ページ候補を返す", () => {
+  it("Return public page suggestions for single/multiple segments", () => {
     expect(getPublishedPageSlugFromPathname("/logout")).toBe("logout");
     expect(getPublishedPageSlugFromPathname("/privacy")).toBe("privacy");
     expect(getPublishedPageSlugFromPathname("/terms-of-service")).toBe(
@@ -48,7 +48,7 @@ describe("getPublishedPageSlugFromPathname", () => {
     expect(getPublishedPageSlugFromPathname("//privacy//")).toBe("privacy");
   });
 
-  it("ルート・予約・不正文字は null", () => {
+  it("Root/reserved/invalid characters are null", () => {
     expect(getPublishedPageSlugFromPathname("/")).toBeNull();
     expect(getPublishedPageSlugFromPathname("")).toBeNull();
     expect(getPublishedPageSlugFromPathname("/search")).toBeNull();
@@ -62,7 +62,7 @@ describe("getPublishedPageSlugFromPathname", () => {
 });
 
 describe("buildTenantRewritePathname", () => {
-  it("公開ページ候補は /page/[...slug] へ rewrite する", () => {
+  it("Rewrite public page candidates to /page/[...slug]", () => {
     expect(buildTenantRewritePathname("tenant-1", "ja", "/logout")).toBe(
       "/tenant-1/ja/page/logout"
     );
@@ -77,7 +77,7 @@ describe("buildTenantRewritePathname", () => {
     );
   });
 
-  it("予約パスとルートはそのまま tenant / locale 配下へ", () => {
+  it("Keep root and reserved routes under the tenant/locale path", () => {
     expect(buildTenantRewritePathname("tenant-1", "ja", "/")).toBe(
       "/tenant-1/ja"
     );
@@ -100,7 +100,7 @@ describe("buildTenantRewritePathname", () => {
 
   // The locale is stripped before the reserved-segment check, so a published
   // page whose slug happens to be a locale code still resolves as a page.
-  it("ロケール名と同じ slug の公開ページも /page へ載る", () => {
+  it("Public pages with the same slug as the locale name are also listed on /page.", () => {
     expect(buildTenantRewritePathname("tenant-1", "en", "/ja")).toBe(
       "/tenant-1/en/page/ja"
     );

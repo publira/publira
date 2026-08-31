@@ -63,7 +63,7 @@ describe("getMyFollowStatus", () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
   });
 
-  it("ゲストは RPC を呼ばず未ログインとして返す", async () => {
+  it("Guest does not call RPC and returns as not logged in", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
     const result = await getMyFollowStatus(
@@ -81,7 +81,7 @@ describe("getMyFollowStatus", () => {
     expect(mockGetMyFollowStatus).not.toHaveBeenCalled();
   });
 
-  it("会員のフォロー状態を返す", async () => {
+  it("Returns member's follow status", async () => {
     mockGetMyFollowStatus.mockResolvedValueOnce({ isFollowing: true });
 
     const result = await getMyFollowStatus(
@@ -105,7 +105,7 @@ describe("getMyFollowStatus", () => {
     });
   });
 
-  it("失効セッションは未ログインとして扱い、存在は漏らさない", async () => {
+  it("Treat expired sessions as non-logged-in sessions and do not reveal their existence", async () => {
     mockGetMyFollowStatus.mockRejectedValueOnce(
       new ConnectError("expired", Code.Unauthenticated)
     );
@@ -124,7 +124,7 @@ describe("getMyFollowStatus", () => {
     });
   });
 
-  it("非公開・不存在は共通の not-found 文言にする", async () => {
+  it("Use a common not-found wording for non-disclosure/non-existence", async () => {
     mockGetMyFollowStatus.mockRejectedValueOnce(
       new ConnectError("missing", Code.NotFound)
     );
@@ -149,7 +149,7 @@ describe("followTarget / unfollowTarget", () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
   });
 
-  it("フォロー成功を返す", async () => {
+  it("Return follow success", async () => {
     mockFollow.mockResolvedValueOnce({ isFollowing: true });
 
     await expect(
@@ -169,7 +169,7 @@ describe("followTarget / unfollowTarget", () => {
     );
   });
 
-  it("解除成功を返す", async () => {
+  it("Return successful release", async () => {
     mockUnfollow.mockResolvedValueOnce({ isFollowing: false });
 
     await expect(
@@ -182,7 +182,7 @@ describe("followTarget / unfollowTarget", () => {
     ).resolves.toEqual({ isFollowing: false, ok: true });
   });
 
-  it("Unauthenticated は再認証のために再 throw する", async () => {
+  it("Unauthenticated rethrows for reauthentication", async () => {
     mockFollow.mockRejectedValueOnce(
       new ConnectError("expired", Code.Unauthenticated)
     );
