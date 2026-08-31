@@ -124,7 +124,11 @@ describe("catalog-top section loaders", () => {
     // the behavioural signal away.
     mockListRecommendedSeries.mockResolvedValue({
       ok: true,
-      value: [seriesFixture[1], seriesFixture[0]],
+      value: {
+        nextToken: "NEXT",
+        previousToken: "",
+        series: [seriesFixture[1], seriesFixture[0]],
+      },
     });
 
     const result = await getCatalogTopRecommendedSeries("TENANT_001", {

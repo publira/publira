@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"slices"
 	"testing"
 	"time"
 
@@ -16,10 +15,12 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// The recommendation slot is the one read whose order comes from another
-// tenant-scoped table. The sqlmock tests hand the snapshot straight to the
-// handler, so only these cases show that RLS keeps one tenant's ranking out of
-// another tenant's storefront.
+// The recommendation list is the one catalogue read whose order comes from
+// another tenant-scoped table, and the only one whose sort key is derived from
+// JSONB rather than from a column. The sqlmock tests hand the ordered ids
+// straight to the handler, so only these cases show that the SQL orders and
+// pages the way the RPC promises, and that RLS keeps one tenant's ranking out
+// of another tenant's storefront.
 
 // seedRankingSnapshot files one weekly series ranking for the tenant, in the
 // order the ids are given. It writes through a tenant-scoped connection, so a
@@ -52,12 +53,25 @@ func (e *publicDBEnv) seedRankingSnapshot(t *testing.T, tenantID uuid.UUID, seri
 	})
 }
 
+func (e *publicDBEnv) listRecommendedSeries(
+	t *testing.T,
+	req *publirav1.ListRecommendedSeriesRequest,
+) *publirav1.ListRecommendedSeriesResponse {
+	t.Helper()
+
+	resp, err := e.catalogClient().ListRecommendedSeries(context.Background(), connect.NewRequest(req))
+	if err != nil {
+		t.Fatalf("ListRecommendedSeries: %v", err)
+	}
+	return resp.Msg
+}
+
 func TestDBListRecommendedSeriesOrdersBySignalsAndKeepsTenantsApart(t *testing.T) {
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
 	// Newest last, so a ranking that puts the oldest series first cannot be
-	// mistaken for the new-arrival order the slot fell back on before.
+	// mistaken for the new-arrival order the list falls back on.
 	oldest := env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{
 		PublicID:    "SERIESAOLD01",
 		Title:       "Read By Everyone",
@@ -85,40 +99,96 @@ func TestDBListRecommendedSeriesOrdersBySignalsAndKeepsTenantsApart(t *testing.T
 
 	env.seedRankingSnapshot(t, first.ID, oldest.ID, middle.ID)
 	// The second tenant's ranking names a series it does not own. RLS keeps the
-	// snapshot itself tenant-scoped; the display query is what has to refuse the
-	// series behind it.
+	// snapshot itself tenant-scoped; the scan behind the list is what has to
+	// refuse the series the rank points at.
 	env.seedRankingSnapshot(t, second.ID, newest.ID)
 
-	ranked, err := env.catalogClient().ListRecommendedSeries(context.Background(), connect.NewRequest(&publirav1.ListRecommendedSeriesRequest{
+	ranked := env.listRecommendedSeries(t, &publirav1.ListRecommendedSeriesRequest{
 		Tenant: tenantContext(first),
-	}))
-	if err != nil {
-		t.Fatalf("ListRecommendedSeries: %v", err)
-	}
-	got := seriesPublicIDs(ranked.Msg.Series)
-	want := []string{"SERIESAOLD01", "SERIESAMID01", "SERIESANEW01"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("series = %v, want %v (ranked first, then the new arrival that tops the slot up)", got, want)
-	}
-	if ranked.Msg.Source != publirav1.RecommendationSource_RECOMMENDATION_SOURCE_RANKING {
-		t.Fatalf("source = %v, want RANKING", ranked.Msg.Source)
+	})
+	assertSeriesPublicIDs(t, ranked.Series, "SERIESAOLD01", "SERIESAMID01", "SERIESANEW01")
+	if ranked.Source != publirav1.RecommendationSource_RECOMMENDATION_SOURCE_RANKING {
+		t.Fatalf("source = %v, want RANKING", ranked.Source)
 	}
 
-	crossTenant, err := env.catalogClient().ListRecommendedSeries(context.Background(), connect.NewRequest(&publirav1.ListRecommendedSeriesRequest{
+	crossTenant := env.listRecommendedSeries(t, &publirav1.ListRecommendedSeriesRequest{
 		Tenant: tenantContext(second),
-	}))
-	if err != nil {
-		t.Fatalf("ListRecommendedSeries for the second tenant: %v", err)
+	})
+	// The rank the second tenant's snapshot carries points at a series the scan
+	// will not return, so it changes nothing about the list — its own series is
+	// all there is.
+	assertSeriesPublicIDs(t, crossTenant.Series, other.PublicID)
+}
+
+func TestDBListRecommendedSeriesPagesFromRankedIntoNewArrivals(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+
+	// Ranked oldest-first and published oldest-last, so every page boundary
+	// tells the two orders apart.
+	rankedSecond := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESAOLD01",
+		Title:       "Ranked Second",
+		Published:   true,
+		PublishedAt: time.Now().Add(-96 * time.Hour),
+	})
+	rankedFirst := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESAMID01",
+		Title:       "Ranked First",
+		Published:   true,
+		PublishedAt: time.Now().Add(-72 * time.Hour),
+	})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESAUNR01",
+		Title:       "Unranked, Older",
+		Published:   true,
+		PublishedAt: time.Now().Add(-48 * time.Hour),
+	})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESAUNR02",
+		Title:       "Unranked, Newer",
+		Published:   true,
+		PublishedAt: time.Now().Add(-2 * time.Hour),
+	})
+
+	env.seedRankingSnapshot(t, tenant.ID, rankedFirst.ID, rankedSecond.ID)
+
+	// Page 1 stops inside the ranked run, page 2 crosses out of it, and page 3
+	// is entirely new arrivals — the "see more" path.
+	first := env.listRecommendedSeries(t, &publirav1.ListRecommendedSeriesRequest{
+		Limit:  1,
+		Tenant: tenantContext(tenant),
+	})
+	assertSeriesPublicIDs(t, first.Series, "SERIESAMID01")
+	if first.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", first.PreviousToken)
 	}
-	got = seriesPublicIDs(crossTenant.Msg.Series)
-	if !slices.Equal(got, []string{other.PublicID}) {
-		t.Fatalf("series = %v, want only the second tenant's own series", got)
+
+	second := env.listRecommendedSeries(t, &publirav1.ListRecommendedSeriesRequest{
+		Limit:  2,
+		Tenant: tenantContext(tenant),
+		Token:  first.NextToken,
+	})
+	assertSeriesPublicIDs(t, second.Series, "SERIESAOLD01", "SERIESAUNR02")
+
+	third := env.listRecommendedSeries(t, &publirav1.ListRecommendedSeriesRequest{
+		Limit:  2,
+		Tenant: tenantContext(tenant),
+		Token:  second.NextToken,
+	})
+	assertSeriesPublicIDs(t, third.Series, "SERIESAUNR01")
+	if third.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", third.NextToken)
 	}
-	// Nothing in the first tenant's ranking survived the display query, so the
-	// slot is what it would have been with no signals at all.
-	if crossTenant.Msg.Source != publirav1.RecommendationSource_RECOMMENDATION_SOURCE_NEW_ARRIVALS {
-		t.Fatalf("source = %v, want NEW_ARRIVALS", crossTenant.Msg.Source)
-	}
+
+	// Walking back over the same boundary has to land on the page that was
+	// just left, ranked run included.
+	back := env.listRecommendedSeries(t, &publirav1.ListRecommendedSeriesRequest{
+		Limit:  2,
+		Tenant: tenantContext(tenant),
+		Token:  third.PreviousToken,
+	})
+	assertSeriesPublicIDs(t, back.Series, "SERIESAOLD01", "SERIESAUNR02")
 }
 
 func TestDBListRecommendedSeriesFallsBackToNewArrivalsWithoutSignals(t *testing.T) {
@@ -144,18 +214,11 @@ func TestDBListRecommendedSeriesFallsBackToNewArrivalsWithoutSignals(t *testing.
 		Title:    "Still A Draft",
 	})
 
-	resp, err := env.catalogClient().ListRecommendedSeries(context.Background(), connect.NewRequest(&publirav1.ListRecommendedSeriesRequest{
+	resp := env.listRecommendedSeries(t, &publirav1.ListRecommendedSeriesRequest{
 		Tenant: tenantContext(tenant),
-	}))
-	if err != nil {
-		t.Fatalf("ListRecommendedSeries: %v", err)
-	}
-	got := seriesPublicIDs(resp.Msg.Series)
-	want := []string{"SERIESANEW01", "SERIESAOLD01"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("series = %v, want %v (newest first, drafts excluded)", got, want)
-	}
-	if resp.Msg.Source != publirav1.RecommendationSource_RECOMMENDATION_SOURCE_NEW_ARRIVALS {
-		t.Fatalf("source = %v, want NEW_ARRIVALS", resp.Msg.Source)
+	})
+	assertSeriesPublicIDs(t, resp.Series, "SERIESANEW01", "SERIESAOLD01")
+	if resp.Source != publirav1.RecommendationSource_RECOMMENDATION_SOURCE_NEW_ARRIVALS {
+		t.Fatalf("source = %v, want NEW_ARRIVALS", resp.Source)
 	}
 }

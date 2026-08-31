@@ -299,20 +299,26 @@ export const listPublishedSeries = async (
 };
 
 /**
- * The series for the storefront recommendation slot, best first.
+ * Published series in recommendation order: the ones the ranking snapshot names
+ * first, then everything else newest first.
  *
- * The order comes from the ranking snapshot the engagement batch builds out of
- * reading, purchase and rating signals. A tenant whose signals have not
- * produced one yet gets the newest published series instead — what the slot
- * showed before rankings existed — and the server tops a short ranked list up
- * with new arrivals, so the slot is never emptier than the catalogue is.
+ * The ranking is what the engagement batch builds out of reading, purchase and
+ * rating signals. A tenant whose signals have not produced a snapshot yet gets
+ * the newest published series alone, which is what the storefront slot showed
+ * before rankings existed.
  *
- * Not paginated: the response is the whole slot.
+ * Cursor pagination: `token` is whatever the previous response returned as
+ * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
+ * `proto/README.md`.
  */
 export const listRecommendedSeries = async (
   tenantId: string,
-  { limit = 6, locale }: { limit?: number; locale: Locale }
-): Promise<CachedReadResult<SeriesListItem[]>> => {
+  {
+    limit = 6,
+    locale,
+    token = "",
+  }: { limit?: number; locale: Locale; token?: string }
+): Promise<CachedReadResult<SeriesListPage>> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
@@ -328,12 +334,20 @@ export const listRecommendedSeries = async (
     response = await apiClient.catalog.listRecommendedSeries({
       limit,
       tenant: { tenantId: normalizedTenantId },
+      token,
     });
   } catch (error) {
     return localizedReadFailure(error, locale, "host.top.recommended_failed");
   }
 
-  return { ok: true, value: (response.series ?? []).map(toSeriesListItem) };
+  return {
+    ok: true,
+    value: {
+      nextToken: response.nextToken ?? "",
+      previousToken: response.previousToken ?? "",
+      series: (response.series ?? []).map(toSeriesListItem),
+    },
+  };
 };
 
 export interface LabelListPage {

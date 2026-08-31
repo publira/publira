@@ -139,17 +139,18 @@ func (EpisodeAccess) EnumDescriptor() ([]byte, []int) {
 	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{1}
 }
 
-// Where the order of a recommendation list came from. The list itself never
-// says: a ranked list and its fallback are both just series, so a caller that
-// wants to label the slot (or a test that wants to prove the ranking is being
-// read) needs this stated rather than inferred.
+// Whether behavioural signals are behind a recommendation list at all. It
+// describes the tenant rather than the page: a later page of a ranked list is
+// all new arrivals, and still says RANKING. The list itself cannot be read for
+// this — a ranked list and its fallback are both just series.
 type RecommendationSource int32
 
 const (
 	RecommendationSource_RECOMMENDATION_SOURCE_UNSPECIFIED RecommendationSource = 0
-	// At least one series in the list came from the ranking snapshot.
+	// A ranking snapshot decided the front of the list.
 	RecommendationSource_RECOMMENDATION_SOURCE_RANKING RecommendationSource = 1
-	// The tenant has no usable ranking snapshot, so the list is new arrivals.
+	// The tenant has no usable ranking snapshot, so the whole list is ordered
+	// newest first.
 	RecommendationSource_RECOMMENDATION_SOURCE_NEW_ARRIVALS RecommendationSource = 2
 )
 
@@ -1519,15 +1520,16 @@ func (x *SearchPublishedSeriesResponse) GetNextToken() string {
 	return ""
 }
 
-// Not paginated, unlike the other list RPCs here. A storefront recommendation
-// slot shows one fixed-size list and never asks for a second page, and a
-// ranking snapshot is replaced wholesale by every batch run, so a cursor into
-// one would point at an order that no longer exists.
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// There is no order field: the recommendation order is the one this RPC exists
+// to produce.
 type ListRecommendedSeriesRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	// Max items in the list. <= 0 or > 100 falls back to 20.
-	Limit         int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1576,12 +1578,23 @@ func (x *ListRecommendedSeriesRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListRecommendedSeriesRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 type ListRecommendedSeriesResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Ranked series first, in ranking order, followed by the newest published
-	// series the ranking did not already name, up to `limit`.
-	Series        []*v1.Series         `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
-	Source        RecommendationSource `protobuf:"varint,2,opt,name=source,proto3,enum=publira.v1.RecommendationSource" json:"source,omitempty"`
+	// Ranked series first, in ranking order, then every other published series
+	// newest first.
+	Series []*v1.Series `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string               `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
+	Source        RecommendationSource `protobuf:"varint,4,opt,name=source,proto3,enum=publira.v1.RecommendationSource" json:"source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1621,6 +1634,20 @@ func (x *ListRecommendedSeriesResponse) GetSeries() []*v1.Series {
 		return x.Series
 	}
 	return nil
+}
+
+func (x *ListRecommendedSeriesResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListRecommendedSeriesResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 func (x *ListRecommendedSeriesResponse) GetSource() RecommendationSource {
@@ -2940,13 +2967,17 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"m\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x83\x01\n" +
 	"\x1cListRecommendedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\x8b\x01\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\"\xd1\x01\n" +
 	"\x1dListRecommendedSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x128\n" +
-	"\x06source\x18\x02 \x01(\x0e2 .publira.v1.RecommendationSourceR\x06source\"\x7f\n" +
+	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\x128\n" +
+	"\x06source\x18\x04 \x01(\x0e2 .publira.v1.RecommendationSourceR\x06source\"\x7f\n" +
 	"\x18MarkEpisodeAsReadRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\"4\n" +

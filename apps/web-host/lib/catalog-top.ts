@@ -141,9 +141,12 @@ const loadSeriesDetailRows = async (
 };
 
 /**
- * The recommendation slot. `seriesLimit` is not part of this read: the server
- * decides which series are worth recommending out of the whole catalogue, so
- * there is no local page to slice.
+ * The recommendation slot: the first page of the recommendation order.
+ *
+ * `seriesLimit` is not part of this read. The server orders the whole
+ * catalogue, so the slot asks for one page of it rather than slicing a list
+ * fetched here, and a screen that wants more keeps paging with the tokens
+ * {@link listRecommendedSeries} returns.
  */
 export const getCatalogTopRecommendedSeries = async (
   tenantId: string,
@@ -151,10 +154,15 @@ export const getCatalogTopRecommendedSeries = async (
 ): Promise<CachedReadResult<SeriesListItem[]>> => {
   "use cache";
 
-  return await listRecommendedSeries(tenantId, {
+  const page = await listRecommendedSeries(tenantId, {
     limit: maxRecommended,
     locale,
   });
+  if (!page.ok) {
+    return cachedReadFailure(page.message);
+  }
+
+  return { ok: true, value: page.value.series };
 };
 
 export const getCatalogTopNewEpisodes = async (

@@ -119,11 +119,13 @@ type CatalogServiceClient interface {
 	// built for; sending it with a query that lowers to a different string is
 	// invalid_argument.
 	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
-	// Series for the storefront recommendation slot, built from the latest
-	// ranking snapshot of behavioural signals and topped up with the newest
-	// published series so the slot is never short of `limit`. A tenant whose
-	// signals have not produced a snapshot yet gets the new arrivals alone,
-	// which is what the slot showed before rankings existed.
+	// Every published series, ordered by the latest ranking snapshot of
+	// behavioural signals and then by publication date, so a storefront slot can
+	// take the first page and a "see more" view can keep paging into the rest.
+	// A tenant whose signals have not produced a snapshot yet gets the new
+	// arrivals alone, which is what the slot showed before rankings existed.
+	// A ranking rebuilt between two pages moves the boundary the same way an
+	// unpublished series does; the token names a position, not a snapshot.
 	ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error)
 }
 
@@ -277,11 +279,13 @@ type CatalogServiceHandler interface {
 	// built for; sending it with a query that lowers to a different string is
 	// invalid_argument.
 	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
-	// Series for the storefront recommendation slot, built from the latest
-	// ranking snapshot of behavioural signals and topped up with the newest
-	// published series so the slot is never short of `limit`. A tenant whose
-	// signals have not produced a snapshot yet gets the new arrivals alone,
-	// which is what the slot showed before rankings existed.
+	// Every published series, ordered by the latest ranking snapshot of
+	// behavioural signals and then by publication date, so a storefront slot can
+	// take the first page and a "see more" view can keep paging into the rest.
+	// A tenant whose signals have not produced a snapshot yet gets the new
+	// arrivals alone, which is what the slot showed before rankings existed.
+	// A ranking rebuilt between two pages moves the boundary the same way an
+	// unpublished series does; the token names a position, not a snapshot.
 	ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error)
 }
 
