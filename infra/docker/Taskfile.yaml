@@ -137,6 +137,8 @@ tasks:
         vars: { CMD_NAME: aggregate-content-stats }
       - task: build:batch
         vars: { CMD_NAME: purge-content-events }
+      - task: build:batch
+        vars: { CMD_NAME: build-recommend-features }
       - task: build:node
         vars: { APP_NAME: email-renderer, PORT: "8080" }
       - task: build:image

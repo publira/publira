@@ -152,6 +152,10 @@ docker build -f infra/docker/batch/Dockerfile \
   --build-arg CMD_NAME=purge-content-events \
   -t publira/purge-content-events:local .
 
+docker build -f infra/docker/batch/Dockerfile \
+  --build-arg CMD_NAME=build-recommend-features \
+  -t publira/build-recommend-features:local .
+
 # Node
 docker build -f infra/docker/node/Dockerfile \
   --build-arg APP_NAME=email-renderer --build-arg PORT=8080 \
