@@ -12,12 +12,16 @@
 --     -> idx_content_daily_stats_unique / idx_content_daily_stats_tenant_entity
 --   GetContentRankingSnapshot
 --     -> idx_content_ranking_snapshots_unique
+--   GetLatestContentRankingSnapshot
+--     -> idx_content_ranking_snapshots_tenant_key_computed
 --   InsertDebouncedEpisodeViewEvent
 --     -> idx_content_events_episode_view_debounce
 --   InsertProjectedSourceEvent
 --     -> idx_content_events_source_unique
 --   ListLatestContentRatingsByEntity
 --     -> idx_content_events_tenant_series_occurred_at
+--   ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
+--     -> no index; sorts one tenant's published series (see the note there)
 
 -- name: InsertContentEvent :one
 INSERT INTO content_events (
@@ -405,3 +409,135 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND period_end = sqlc.arg('period_end')
     AND entity_type = sqlc.arg('entity_type')
     AND algorithm_version = sqlc.arg('algorithm_version');
+
+-- The newest snapshot for one ranking key and entity type, whichever period
+-- and algorithm version produced it. A reader on a request path cannot know
+-- which day the last batch run covered, so it asks for the most recently
+-- computed row instead of naming period bounds. A bumped algorithm_version
+-- files its snapshots beside the old ones rather than replacing them, and wins
+-- here because it was computed later.
+-- name: GetLatestContentRankingSnapshot :one
+SELECT *
+FROM content_ranking_snapshots
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND ranking_key = sqlc.arg('ranking_key')
+    AND entity_type = sqlc.arg('entity_type')
+ORDER BY computed_at DESC
+LIMIT 1;
+
+-- The keyset scan behind the storefront recommendation list. It takes one
+-- ranking snapshot's items as they are stored and puts the ranked series first,
+-- then every other published series newest first.
+--
+-- The sort key is (sort_rank, published_at, id). A series the snapshot does not
+-- name borrows int4's maximum and sorts last; every rank a snapshot can hold is
+-- below it. Ties are impossible: a rank is unique within a snapshot, and the
+-- unranked share one sort_rank that id breaks.
+--
+-- sort_rank comes back with each row because the cursor is built from it. A
+-- caller that recomputed the rank from the same JSON would have to fold
+-- duplicates and missing ranks exactly the way min() and COALESCE do here, and
+-- a token built on a value this query never sorted by points at the wrong page.
+--
+-- This is the one list query here that no index can serve. Its first sort key
+-- comes from the snapshot's JSONB rather than from a column of series, so the
+-- scan reads the tenant's published series and sorts them. That is bounded by
+-- one tenant's catalogue, and ranking_items is one snapshot (50 items by
+-- default), folded per entity_id so the LEFT JOIN cannot multiply rows.
+-- name: ListRecommendedSeriesIDs :many
+WITH ranked AS (
+    SELECT (item->>'entity_id')::uuid AS entity_id,
+        min((item->>'rank')::int) AS rank
+    FROM jsonb_array_elements(sqlc.arg('ranking_items')::jsonb) AS item
+    GROUP BY (item->>'entity_id')::uuid
+),
+candidate AS (
+    SELECT s.id,
+        s.published_at,
+        COALESCE(r.rank, 2147483647)::int AS sort_rank
+    FROM series s
+        LEFT JOIN ranked r ON r.entity_id = s.id
+    WHERE s.tenant_id = sqlc.arg('tenant_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+)
+SELECT id, sort_rank
+FROM candidate
+WHERE (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR sort_rank > sqlc.narg('cursor_rank')::int
+        OR (
+            sort_rank = sqlc.narg('cursor_rank')::int
+            AND (
+                (
+                    sqlc.arg('cursor_inclusive')::boolean
+                    AND (published_at, id) <= (
+                        sqlc.narg('cursor_published_at')::timestamptz,
+                        sqlc.narg('cursor_id')::uuid
+                    )
+                )
+                OR (
+                    NOT sqlc.arg('cursor_inclusive')::boolean
+                    AND (published_at, id) < (
+                        sqlc.narg('cursor_published_at')::timestamptz,
+                        sqlc.narg('cursor_id')::uuid
+                    )
+                )
+            )
+        )
+    )
+ORDER BY sort_rank ASC,
+    published_at DESC,
+    id DESC
+LIMIT sqlc.arg('limit');
+
+-- ListRecommendedSeriesIDs walked the other way. It exists only to build a
+-- previous page; the order it describes is the same one.
+-- name: ListRecommendedSeriesIDsReversed :many
+WITH ranked AS (
+    SELECT (item->>'entity_id')::uuid AS entity_id,
+        min((item->>'rank')::int) AS rank
+    FROM jsonb_array_elements(sqlc.arg('ranking_items')::jsonb) AS item
+    GROUP BY (item->>'entity_id')::uuid
+),
+candidate AS (
+    SELECT s.id,
+        s.published_at,
+        COALESCE(r.rank, 2147483647)::int AS sort_rank
+    FROM series s
+        LEFT JOIN ranked r ON r.entity_id = s.id
+    WHERE s.tenant_id = sqlc.arg('tenant_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+)
+SELECT id, sort_rank
+FROM candidate
+WHERE (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR sort_rank < sqlc.narg('cursor_rank')::int
+        OR (
+            sort_rank = sqlc.narg('cursor_rank')::int
+            AND (
+                (
+                    sqlc.arg('cursor_inclusive')::boolean
+                    AND (published_at, id) >= (
+                        sqlc.narg('cursor_published_at')::timestamptz,
+                        sqlc.narg('cursor_id')::uuid
+                    )
+                )
+                OR (
+                    NOT sqlc.arg('cursor_inclusive')::boolean
+                    AND (published_at, id) > (
+                        sqlc.narg('cursor_published_at')::timestamptz,
+                        sqlc.narg('cursor_id')::uuid
+                    )
+                )
+            )
+        )
+    )
+ORDER BY sort_rank DESC,
+    published_at ASC,
+    id ASC
+LIMIT sqlc.arg('limit');

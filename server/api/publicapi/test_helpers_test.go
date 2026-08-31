@@ -4,12 +4,14 @@ import (
 	"context"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
@@ -90,6 +92,28 @@ func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
 			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, defaultLocale))
+}
+
+const (
+	getLatestContentRankingSnapshotQuery  = "-- name: GetLatestContentRankingSnapshot :one\n"
+	listRecommendedSeriesIDsQuery         = "-- name: ListRecommendedSeriesIDs :many\n"
+	listRecommendedSeriesIDsReversedQuery = "-- name: ListRecommendedSeriesIDsReversed :many\n"
+)
+
+// assertSeriesPublicIDs compares a series list against the public ids it should
+// hold, in order. Order is the assertion in most of these cases, so a mismatch
+// prints both lists rather than the first index that differs.
+func assertSeriesPublicIDs(t *testing.T, items []*publirattypesv1.Series, want ...string) {
+	t.Helper()
+
+	got := seriesPublicIDs(items)
+	if !slices.Equal(got, want) {
+		t.Fatalf("series = %v, want %v", got, want)
+	}
+}
+
+func contentRankingSnapshotColumns() []string {
+	return []string{"id", "tenant_id", "ranking_key", "period_start", "period_end", "entity_type", "items", "algorithm_version", "computed_at"}
 }
 
 const getPlatformConfigQuery = "-- name: GetPlatformConfig :one\n"

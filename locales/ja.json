@@ -1577,6 +1577,7 @@
       "published_on": "公開日 {$date}",
       "recommended_empty": "公開中のシリーズはまだありません。",
       "recommended_error": "おすすめ作品を表示できませんでした",
+      "recommended_failed": "おすすめ作品を取得できませんでした。時間をおいて再試行してください。",
       "recommended_heading": "おすすめ作品",
       "title": "カタログトップ",
       "to_authors": "著者一覧へ",

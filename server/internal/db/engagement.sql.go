@@ -156,6 +156,45 @@ func (q *Queries) GetItemRecommendFeatures(ctx context.Context, arg GetItemRecom
 	return i, err
 }
 
+const getLatestContentRankingSnapshot = `-- name: GetLatestContentRankingSnapshot :one
+SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
+FROM content_ranking_snapshots
+WHERE tenant_id = $1
+    AND ranking_key = $2
+    AND entity_type = $3
+ORDER BY computed_at DESC
+LIMIT 1
+`
+
+type GetLatestContentRankingSnapshotParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	RankingKey string    `json:"ranking_key"`
+	EntityType string    `json:"entity_type"`
+}
+
+// The newest snapshot for one ranking key and entity type, whichever period
+// and algorithm version produced it. A reader on a request path cannot know
+// which day the last batch run covered, so it asks for the most recently
+// computed row instead of naming period bounds. A bumped algorithm_version
+// files its snapshots beside the old ones rather than replacing them, and wins
+// here because it was computed later.
+func (q *Queries) GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error) {
+	row := q.db.QueryRowContext(ctx, getLatestContentRankingSnapshot, arg.TenantID, arg.RankingKey, arg.EntityType)
+	var i ContentRankingSnapshot
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.RankingKey,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.EntityType,
+		&i.Items,
+		&i.AlgorithmVersion,
+		&i.ComputedAt,
+	)
+	return i, err
+}
+
 const getUserRecommendFeatures = `-- name: GetUserRecommendFeatures :one
 SELECT tenant_id, user_id, features, feature_version, computed_at
 FROM user_recommend_features
@@ -246,12 +285,16 @@ type InsertContentEventParams struct {
 //	  -> idx_content_daily_stats_unique / idx_content_daily_stats_tenant_entity
 //	GetContentRankingSnapshot
 //	  -> idx_content_ranking_snapshots_unique
+//	GetLatestContentRankingSnapshot
+//	  -> idx_content_ranking_snapshots_tenant_key_computed
 //	InsertDebouncedEpisodeViewEvent
 //	  -> idx_content_events_episode_view_debounce
 //	InsertProjectedSourceEvent
 //	  -> idx_content_events_source_unique
 //	ListLatestContentRatingsByEntity
 //	  -> idx_content_events_tenant_series_occurred_at
+//	ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
+//	  -> no index; sorts one tenant's published series (see the note there)
 func (q *Queries) InsertContentEvent(ctx context.Context, arg InsertContentEventParams) (ContentEvent, error) {
 	row := q.db.QueryRowContext(ctx, insertContentEvent,
 		arg.ID,
@@ -789,6 +832,217 @@ func (q *Queries) ListLatestContentRatingsByEntity(ctx context.Context, arg List
 	for rows.Next() {
 		var i ListLatestContentRatingsByEntityRow
 		if err := rows.Scan(&i.ActorKey, &i.RatingScore, &i.OccurredAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecommendedSeriesIDs = `-- name: ListRecommendedSeriesIDs :many
+WITH ranked AS (
+    SELECT (item->>'entity_id')::uuid AS entity_id,
+        min((item->>'rank')::int) AS rank
+    FROM jsonb_array_elements($6::jsonb) AS item
+    GROUP BY (item->>'entity_id')::uuid
+),
+candidate AS (
+    SELECT s.id,
+        s.published_at,
+        COALESCE(r.rank, 2147483647)::int AS sort_rank
+    FROM series s
+        LEFT JOIN ranked r ON r.entity_id = s.id
+    WHERE s.tenant_id = $7
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+)
+SELECT id, sort_rank
+FROM candidate
+WHERE (
+        $1::uuid IS NULL
+        OR sort_rank > $2::int
+        OR (
+            sort_rank = $2::int
+            AND (
+                (
+                    $3::boolean
+                    AND (published_at, id) <= (
+                        $4::timestamptz,
+                        $1::uuid
+                    )
+                )
+                OR (
+                    NOT $3::boolean
+                    AND (published_at, id) < (
+                        $4::timestamptz,
+                        $1::uuid
+                    )
+                )
+            )
+        )
+    )
+ORDER BY sort_rank ASC,
+    published_at DESC,
+    id DESC
+LIMIT $5
+`
+
+type ListRecommendedSeriesIDsParams struct {
+	CursorID          uuid.NullUUID   `json:"cursor_id"`
+	CursorRank        sql.NullInt32   `json:"cursor_rank"`
+	CursorInclusive   bool            `json:"cursor_inclusive"`
+	CursorPublishedAt sql.NullTime    `json:"cursor_published_at"`
+	Limit             int32           `json:"limit"`
+	RankingItems      json.RawMessage `json:"ranking_items"`
+	TenantID          uuid.UUID       `json:"tenant_id"`
+}
+
+type ListRecommendedSeriesIDsRow struct {
+	ID       uuid.UUID `json:"id"`
+	SortRank int32     `json:"sort_rank"`
+}
+
+// The keyset scan behind the storefront recommendation list. It takes one
+// ranking snapshot's items as they are stored and puts the ranked series first,
+// then every other published series newest first.
+//
+// The sort key is (sort_rank, published_at, id). A series the snapshot does not
+// name borrows int4's maximum and sorts last; every rank a snapshot can hold is
+// below it. Ties are impossible: a rank is unique within a snapshot, and the
+// unranked share one sort_rank that id breaks.
+//
+// sort_rank comes back with each row because the cursor is built from it. A
+// caller that recomputed the rank from the same JSON would have to fold
+// duplicates and missing ranks exactly the way min() and COALESCE do here, and
+// a token built on a value this query never sorted by points at the wrong page.
+//
+// This is the one list query here that no index can serve. Its first sort key
+// comes from the snapshot's JSONB rather than from a column of series, so the
+// scan reads the tenant's published series and sorts them. That is bounded by
+// one tenant's catalogue, and ranking_items is one snapshot (50 items by
+// default), folded per entity_id so the LEFT JOIN cannot multiply rows.
+func (q *Queries) ListRecommendedSeriesIDs(ctx context.Context, arg ListRecommendedSeriesIDsParams) ([]ListRecommendedSeriesIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRecommendedSeriesIDs,
+		arg.CursorID,
+		arg.CursorRank,
+		arg.CursorInclusive,
+		arg.CursorPublishedAt,
+		arg.Limit,
+		arg.RankingItems,
+		arg.TenantID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRecommendedSeriesIDsRow
+	for rows.Next() {
+		var i ListRecommendedSeriesIDsRow
+		if err := rows.Scan(&i.ID, &i.SortRank); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecommendedSeriesIDsReversed = `-- name: ListRecommendedSeriesIDsReversed :many
+WITH ranked AS (
+    SELECT (item->>'entity_id')::uuid AS entity_id,
+        min((item->>'rank')::int) AS rank
+    FROM jsonb_array_elements($6::jsonb) AS item
+    GROUP BY (item->>'entity_id')::uuid
+),
+candidate AS (
+    SELECT s.id,
+        s.published_at,
+        COALESCE(r.rank, 2147483647)::int AS sort_rank
+    FROM series s
+        LEFT JOIN ranked r ON r.entity_id = s.id
+    WHERE s.tenant_id = $7
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+)
+SELECT id, sort_rank
+FROM candidate
+WHERE (
+        $1::uuid IS NULL
+        OR sort_rank < $2::int
+        OR (
+            sort_rank = $2::int
+            AND (
+                (
+                    $3::boolean
+                    AND (published_at, id) >= (
+                        $4::timestamptz,
+                        $1::uuid
+                    )
+                )
+                OR (
+                    NOT $3::boolean
+                    AND (published_at, id) > (
+                        $4::timestamptz,
+                        $1::uuid
+                    )
+                )
+            )
+        )
+    )
+ORDER BY sort_rank DESC,
+    published_at ASC,
+    id ASC
+LIMIT $5
+`
+
+type ListRecommendedSeriesIDsReversedParams struct {
+	CursorID          uuid.NullUUID   `json:"cursor_id"`
+	CursorRank        sql.NullInt32   `json:"cursor_rank"`
+	CursorInclusive   bool            `json:"cursor_inclusive"`
+	CursorPublishedAt sql.NullTime    `json:"cursor_published_at"`
+	Limit             int32           `json:"limit"`
+	RankingItems      json.RawMessage `json:"ranking_items"`
+	TenantID          uuid.UUID       `json:"tenant_id"`
+}
+
+type ListRecommendedSeriesIDsReversedRow struct {
+	ID       uuid.UUID `json:"id"`
+	SortRank int32     `json:"sort_rank"`
+}
+
+// ListRecommendedSeriesIDs walked the other way. It exists only to build a
+// previous page; the order it describes is the same one.
+func (q *Queries) ListRecommendedSeriesIDsReversed(ctx context.Context, arg ListRecommendedSeriesIDsReversedParams) ([]ListRecommendedSeriesIDsReversedRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRecommendedSeriesIDsReversed,
+		arg.CursorID,
+		arg.CursorRank,
+		arg.CursorInclusive,
+		arg.CursorPublishedAt,
+		arg.Limit,
+		arg.RankingItems,
+		arg.TenantID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRecommendedSeriesIDsReversedRow
+	for rows.Next() {
+		var i ListRecommendedSeriesIDsReversedRow
+		if err := rows.Scan(&i.ID, &i.SortRank); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

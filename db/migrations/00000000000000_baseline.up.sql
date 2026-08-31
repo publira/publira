@@ -1230,7 +1230,7 @@ CREATE INDEX idx_content_events_tenant_type_occurred_at ON content_events USING 
 CREATE INDEX idx_content_events_tenant_user_occurred_at ON content_events USING btree (tenant_id, user_id, occurred_at DESC) WHERE (user_id IS NOT NULL);
 
 -- INDEX: idx_content_ranking_snapshots_tenant_key_computed
-CREATE INDEX idx_content_ranking_snapshots_tenant_key_computed ON content_ranking_snapshots USING btree (tenant_id, ranking_key, computed_at DESC);
+CREATE INDEX idx_content_ranking_snapshots_tenant_key_computed ON content_ranking_snapshots USING btree (tenant_id, ranking_key, entity_type, computed_at DESC);
 
 -- INDEX: idx_content_ranking_snapshots_unique
 CREATE UNIQUE INDEX idx_content_ranking_snapshots_unique ON content_ranking_snapshots USING btree (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version);

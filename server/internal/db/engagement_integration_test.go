@@ -410,6 +410,78 @@ func TestContentEventsExplainUsesExpectedIndexes(t *testing.T) {
 	}
 }
 
+// The public recommendation list asks for the newest snapshot of one ranking
+// key and entity type, so all three columns have to be in the index ahead of
+// computed_at. With entity_type left out, the scan walks past every other
+// entity type's snapshots before it can honour LIMIT 1.
+func TestContentRankingSnapshotExplainUsesTenantKeyEntityIndex(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "EXPRNK01")
+	statDate := time.Now().UTC().Truncate(24 * time.Hour)
+	if _, err := dbmodels.New(pg.DB).UpsertContentRankingSnapshot(ctx, dbmodels.UpsertContentRankingSnapshotParams{
+		ID:               uuid.Must(uuid.NewV7()),
+		TenantID:         seed.tenantID,
+		RankingKey:       "weekly",
+		PeriodStart:      statDate,
+		PeriodEnd:        statDate.Add(6 * 24 * time.Hour),
+		EntityType:       "series",
+		Items:            json.RawMessage(`[{"entity_id":"` + seed.seriesID.String() + `","score":1,"rank":1}]`),
+		AlgorithmVersion: 1,
+		ComputedAt:       time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("seed snapshot for explain: %v", err)
+	}
+
+	tx, err := pg.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, "SET LOCAL enable_seqscan = off"); err != nil {
+		t.Fatalf("disable seqscan: %v", err)
+	}
+
+	rows, err := tx.QueryContext(ctx, `
+		EXPLAIN SELECT * FROM content_ranking_snapshots
+		WHERE tenant_id = $1 AND ranking_key = 'weekly' AND entity_type = 'series'
+		ORDER BY computed_at DESC LIMIT 1
+	`, seed.tenantID)
+	if err != nil {
+		t.Fatalf("explain: %v", err)
+	}
+	var plan strings.Builder
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err != nil {
+			t.Fatalf("scan explain: %v", err)
+		}
+		plan.WriteString(line)
+		plan.WriteByte('\n')
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("explain rows: %v", err)
+	}
+	if err := rows.Close(); err != nil {
+		t.Fatalf("close explain: %v", err)
+	}
+
+	const index = "idx_content_ranking_snapshots_tenant_key_computed"
+	if !strings.Contains(plan.String(), index) {
+		t.Fatalf("plan did not use %s:\n%s", index, plan.String())
+	}
+	// An index that stops before entity_type still shows up in the plan, so the
+	// filter has to be gone from it too: a Filter line means rows are read and
+	// discarded before LIMIT 1.
+	if strings.Contains(plan.String(), "Filter:") {
+		t.Fatalf("plan filters rows the index should have excluded:\n%s", plan.String())
+	}
+}
+
 func TestContentEventsCompositeFKUsesSeriesTenantUnique(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

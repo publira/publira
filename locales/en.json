@@ -1577,6 +1577,7 @@
       "published_on": "Published {$date}",
       "recommended_empty": "There are no published series yet.",
       "recommended_error": "Could not show the recommended works",
+      "recommended_failed": "Could not load the recommended works. Please try again later.",
       "recommended_heading": "Recommended",
       "title": "Catalog",
       "to_authors": "Browse authors",

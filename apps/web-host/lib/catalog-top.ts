@@ -8,6 +8,7 @@ import {
   getSeriesDetail,
   listPublishedLabels,
   listPublishedSeries,
+  listRecommendedSeries,
 } from "./catalog";
 import type {
   EyeCatchImageVariant,
@@ -139,21 +140,29 @@ const loadSeriesDetailRows = async (
   return { ok: true, value: rows };
 };
 
+/**
+ * The recommendation slot: the first page of the recommendation order.
+ *
+ * `seriesLimit` is not part of this read. The server orders the whole
+ * catalogue, so the slot asks for one page of it rather than slicing a list
+ * fetched here, and a screen that wants more keeps paging with the tokens
+ * {@link listRecommendedSeries} returns.
+ */
 export const getCatalogTopRecommendedSeries = async (
   tenantId: string,
-  { locale, maxRecommended = 6, seriesLimit = 24 }: CatalogTopDataOptions
+  { locale, maxRecommended = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<SeriesListItem[]>> => {
   "use cache";
 
-  const seriesPage = await listPublishedSeries(tenantId, {
-    limit: seriesLimit,
+  const page = await listRecommendedSeries(tenantId, {
+    limit: maxRecommended,
     locale,
   });
-  if (!seriesPage.ok) {
-    return cachedReadFailure(seriesPage.message);
+  if (!page.ok) {
+    return cachedReadFailure(page.message);
   }
 
-  return { ok: true, value: seriesPage.value.series.slice(0, maxRecommended) };
+  return { ok: true, value: page.value.series };
 };
 
 export const getCatalogTopNewEpisodes = async (

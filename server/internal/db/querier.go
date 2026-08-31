@@ -124,6 +124,13 @@ type Querier interface {
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
+	// The newest snapshot for one ranking key and entity type, whichever period
+	// and algorithm version produced it. A reader on a request path cannot know
+	// which day the last batch run covered, so it asks for the most recently
+	// computed row instead of naming period bounds. A bumped algorithm_version
+	// files its snapshots beside the old ones rather than replacing them, and wins
+	// here because it was computed later.
+	GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
 	GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error)
 	// ページの最大バージョン番号を取得する（次バージョン番号算出用）
@@ -205,12 +212,16 @@ type Querier interface {
 	//     -> idx_content_daily_stats_unique / idx_content_daily_stats_tenant_entity
 	//   GetContentRankingSnapshot
 	//     -> idx_content_ranking_snapshots_unique
+	//   GetLatestContentRankingSnapshot
+	//     -> idx_content_ranking_snapshots_tenant_key_computed
 	//   InsertDebouncedEpisodeViewEvent
 	//     -> idx_content_events_episode_view_debounce
 	//   InsertProjectedSourceEvent
 	//     -> idx_content_events_source_unique
 	//   ListLatestContentRatingsByEntity
 	//     -> idx_content_events_tenant_series_occurred_at
+	//   ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
+	//     -> no index; sorts one tenant's published series (see the note there)
 	InsertContentEvent(ctx context.Context, arg InsertContentEventParams) (ContentEvent, error)
 	// Fixed 30-minute epoch bucket. Same actor + episode + bucket is a no-op.
 	// :one returns no rows on conflict (same as CreateNotification).
@@ -443,6 +454,29 @@ type Querier interface {
 	// ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
 	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
 	ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error)
+	// The keyset scan behind the storefront recommendation list. It takes one
+	// ranking snapshot's items as they are stored and puts the ranked series first,
+	// then every other published series newest first.
+	//
+	// The sort key is (sort_rank, published_at, id). A series the snapshot does not
+	// name borrows int4's maximum and sorts last; every rank a snapshot can hold is
+	// below it. Ties are impossible: a rank is unique within a snapshot, and the
+	// unranked share one sort_rank that id breaks.
+	//
+	// sort_rank comes back with each row because the cursor is built from it. A
+	// caller that recomputed the rank from the same JSON would have to fold
+	// duplicates and missing ranks exactly the way min() and COALESCE do here, and
+	// a token built on a value this query never sorted by points at the wrong page.
+	//
+	// This is the one list query here that no index can serve. Its first sort key
+	// comes from the snapshot's JSONB rather than from a column of series, so the
+	// scan reads the tenant's published series and sorts them. That is bounded by
+	// one tenant's catalogue, and ranking_items is one snapshot (50 items by
+	// default), folded per entity_id so the LEFT JOIN cannot multiply rows.
+	ListRecommendedSeriesIDs(ctx context.Context, arg ListRecommendedSeriesIDsParams) ([]ListRecommendedSeriesIDsRow, error)
+	// ListRecommendedSeriesIDs walked the other way. It exists only to build a
+	// previous page; the order it describes is the same one.
+	ListRecommendedSeriesIDsReversed(ctx context.Context, arg ListRecommendedSeriesIDsReversedParams) ([]ListRecommendedSeriesIDsReversedRow, error)
 	ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error)
 	// Admin ListSeries は (created_at, id) の降順で表示する。
 	// 次ページは降順、前ページは昇順のクエリで idx_series_tenant_created_at を
