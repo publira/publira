@@ -31,6 +31,10 @@
       "types": "./dist/theme-css-variables.d.mts",
       "default": "./dist/theme-css-variables.mjs"
     },
+    "./theme-contrast": {
+      "types": "./dist/theme-contrast.d.mts",
+      "default": "./dist/theme-contrast.mjs"
+    },
     "./health": {
       "types": "./dist/health.d.mts",
       "default": "./dist/health.mjs"

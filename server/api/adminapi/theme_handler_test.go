@@ -10,6 +10,7 @@ import (
 	"image/color"
 	"image/png"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -370,6 +371,46 @@ func TestUpsertTenantThemeValidatesColorCode(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestNormalizeTenantThemeRejectsInsufficientContrast(t *testing.T) {
+	theme := &publirattypesv1.TenantTheme{
+		PrimaryColor:               "#0f7c82",
+		SecondaryColor:             "#b35235",
+		AccentColor:                "#7aae90",
+		BackgroundColor:            "#f6f2e9",
+		ForegroundColor:            "#1e2b38",
+		SurfaceColor:               "#fbf8f2",
+		SurfaceForegroundColor:     "#1e2b38",
+		CardColor:                  "#fffdf8",
+		CardForegroundColor:        "#1e2b38",
+		PopoverColor:               "#fffdf8",
+		PopoverForegroundColor:     "#1e2b38",
+		PrimaryForegroundColor:     "#0f7c82",
+		SecondaryForegroundColor:   "#fff6f1",
+		AccentForegroundColor:      "#0f2a1f",
+		MutedColor:                 "#e9e1d3",
+		MutedForegroundColor:       "#56616e",
+		BorderColor:                "#d7ccba",
+		InputColor:                 "#e3d8c7",
+		RingColor:                  "#2d8d93",
+		SuccessColor:               "#247542",
+		SuccessForegroundColor:     "#f3fcf7",
+		WarningColor:               "#9b6217",
+		WarningForegroundColor:     "#fff8ea",
+		DestructiveColor:           "#b54444",
+		DestructiveForegroundColor: "#fff4f4",
+		InfoColor:                  "#2b5e9f",
+		InfoForegroundColor:        "#f3f8ff",
+	}
+
+	_, err := normalizeTenantTheme(theme)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("normalizeTenantTheme code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	if !strings.Contains(err.Error(), "theme.primary_color and theme.primary_foreground_color") {
+		t.Fatalf("normalizeTenantTheme error = %q, want named contrast pair", err)
+	}
+}
+
 func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()
@@ -392,22 +433,22 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 			"#1e2b38",
 			"#0f7c82",
 			"#f4fbfb",
-			"#d96f4a",
+			"#b35235",
 			"#fff6f1",
 			"#7aae90",
 			"#0f2a1f",
 			"#e9e1d3",
-			"#5c6773",
+			"#56616e",
 			"#d7ccba",
 			"#e3d8c7",
 			"#2d8d93",
-			"#2f8f5b",
+			"#247542",
 			"#f3fcf7",
-			"#c4872a",
+			"#9b6217",
 			"#fff8ea",
 			"#b54444",
 			"#fff4f4",
-			"#3c78c2",
+			"#2b5e9f",
 			"#f3f8ff",
 		).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
@@ -419,7 +460,7 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Theme: &publirattypesv1.TenantTheme{
 			PrimaryColor:               "  #0F7C82 ",
-			SecondaryColor:             "#D96F4A",
+			SecondaryColor:             "#B35235",
 			AccentColor:                "#7AAE90",
 			BackgroundColor:            "#F6F2E9",
 			ForegroundColor:            "#1E2B38",
@@ -433,17 +474,17 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 			SecondaryForegroundColor:   "#FFF6F1",
 			AccentForegroundColor:      "#0F2A1F",
 			MutedColor:                 "#E9E1D3",
-			MutedForegroundColor:       "#5C6773",
+			MutedForegroundColor:       "#56616E",
 			BorderColor:                "#D7CCBA",
 			InputColor:                 "#E3D8C7",
 			RingColor:                  "#2D8D93",
-			SuccessColor:               "#2F8F5B",
+			SuccessColor:               "#247542",
 			SuccessForegroundColor:     "#F3FCF7",
-			WarningColor:               "#C4872A",
+			WarningColor:               "#9B6217",
 			WarningForegroundColor:     "#FFF8EA",
 			DestructiveColor:           "#B54444",
 			DestructiveForegroundColor: "#FFF4F4",
-			InfoColor:                  "#3C78C2",
+			InfoColor:                  "#2B5E9F",
 			InfoForegroundColor:        "#F3F8FF",
 		},
 	})

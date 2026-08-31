@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -22,12 +24,38 @@ import (
 
 var hexColorCodePattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
+// WCAG AA requires 4.5:1 contrast for normal text. Theme foreground tokens
+// are used for text, including compact labels, so the stricter text threshold
+// protects each rendered pair rather than relying on a component's size.
+const minimumThemeTextContrastRatio = 4.5
+
 func validateHexColorCode(value string, fieldName string) (string, error) {
 	trimmed := strings.TrimSpace(value)
 	if !hexColorCodePattern.MatchString(trimmed) {
 		return "", connect.NewError(connect.CodeInvalidArgument, errors.New(fieldName+" must be a hex color code in #RRGGBB format"))
 	}
 	return strings.ToLower(trimmed), nil
+}
+
+func themeColorRelativeLuminance(color string) float64 {
+	value, _ := strconv.ParseUint(color[1:], 16, 32)
+	linearize := func(component uint64) float64 {
+		normalized := float64(component) / 255
+		if normalized <= 0.03928 {
+			return normalized / 12.92
+		}
+		return math.Pow((normalized+0.055)/1.055, 2.4)
+	}
+
+	return 0.2126*linearize((value>>16)&0xff) +
+		0.7152*linearize((value>>8)&0xff) +
+		0.0722*linearize(value&0xff)
+}
+
+func themeColorContrastRatio(firstColor string, secondColor string) float64 {
+	first := themeColorRelativeLuminance(firstColor)
+	second := themeColorRelativeLuminance(secondColor)
+	return (math.Max(first, second) + 0.05) / (math.Min(first, second) + 0.05)
 }
 
 func normalizeTenantTheme(theme *publirattypesv1.TenantTheme) (dbmodels.UpsertTenantThemeParams, error) {
@@ -65,12 +93,40 @@ func normalizeTenantTheme(theme *publirattypesv1.TenantTheme) (dbmodels.UpsertTe
 		{theme.InfoForegroundColor, "theme.info_foreground_color"},
 	}
 	normalized := make([]string, len(fields))
+	byName := make(map[string]string, len(fields))
 	for i, f := range fields {
 		v, err := validateHexColorCode(f.value, f.name)
 		if err != nil {
 			return dbmodels.UpsertTenantThemeParams{}, err
 		}
 		normalized[i] = v
+		byName[f.name] = v
+	}
+	for _, pair := range []struct {
+		background string
+		foreground string
+	}{
+		{"theme.primary_color", "theme.primary_foreground_color"},
+		{"theme.secondary_color", "theme.secondary_foreground_color"},
+		{"theme.accent_color", "theme.accent_foreground_color"},
+		{"theme.background_color", "theme.foreground_color"},
+		{"theme.surface_color", "theme.surface_foreground_color"},
+		{"theme.card_color", "theme.card_foreground_color"},
+		{"theme.popover_color", "theme.popover_foreground_color"},
+		{"theme.muted_color", "theme.muted_foreground_color"},
+		{"theme.success_color", "theme.success_foreground_color"},
+		{"theme.warning_color", "theme.warning_foreground_color"},
+		{"theme.destructive_color", "theme.destructive_foreground_color"},
+		{"theme.info_color", "theme.info_foreground_color"},
+	} {
+		ratio := themeColorContrastRatio(byName[pair.background], byName[pair.foreground])
+		if ratio < minimumThemeTextContrastRatio {
+			return dbmodels.UpsertTenantThemeParams{}, rpcerrors.NewFieldViolationError(
+				connect.CodeInvalidArgument,
+				fmt.Errorf("%s and %s must have a contrast ratio of at least %.1f:1 (got %.2f:1)", pair.background, pair.foreground, minimumThemeTextContrastRatio, ratio),
+				pair.background,
+			)
+		}
 	}
 	return dbmodels.UpsertTenantThemeParams{
 		PrimaryColor:               normalized[0],

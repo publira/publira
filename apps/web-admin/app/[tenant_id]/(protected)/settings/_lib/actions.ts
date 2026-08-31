@@ -8,6 +8,10 @@ import {
   VALIDATION_ERROR_MESSAGE,
 } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import {
+  findThemeTextContrastIssues,
+  THEME_TEXT_CONTRAST_MIN_RATIO,
+} from "@publira/utils/theme-contrast";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
@@ -116,6 +120,39 @@ const tenantThemeSchema = z.object({
   warningColor: hexColorCodeSchema,
   warningForegroundColor: hexColorCodeSchema,
 });
+
+const themeColorLabels: Record<
+  keyof z.output<typeof tenantThemeSchema>,
+  string
+> = {
+  accentColor: "アクセントカラー",
+  accentForegroundColor: "アクセントテキストカラー",
+  backgroundColor: "デフォルトカラー",
+  borderColor: "ボーダーカラー",
+  cardColor: "カードカラー",
+  cardForegroundColor: "カードテキストカラー",
+  destructiveColor: "危険カラー",
+  destructiveForegroundColor: "危険テキストカラー",
+  foregroundColor: "テキストカラー",
+  infoColor: "情報カラー",
+  infoForegroundColor: "情報テキストカラー",
+  inputColor: "入力フィールドカラー",
+  mutedColor: "ミュートカラー",
+  mutedForegroundColor: "ミュートテキストカラー",
+  popoverColor: "ポップオーバーカラー",
+  popoverForegroundColor: "ポップオーバーテキストカラー",
+  primaryColor: "プライマリーカラー",
+  primaryForegroundColor: "プライマリーテキストカラー",
+  ringColor: "フォーカスリングカラー",
+  secondaryColor: "セカンダリーカラー",
+  secondaryForegroundColor: "セカンダリーテキストカラー",
+  successColor: "成功カラー",
+  successForegroundColor: "成功テキストカラー",
+  surfaceColor: "サーフェースカラー",
+  surfaceForegroundColor: "サーフェーステキストカラー",
+  warningColor: "警告カラー",
+  warningForegroundColor: "警告テキストカラー",
+};
 
 /**
  * The icon and the logo accept the same file. They differ in how the server
@@ -249,6 +286,19 @@ const mapThemeFieldErrors = (
     tenantThemeFormFieldMap.map(([field]) => [field, fieldErrors[field]?.[0]])
   ) as ThemeSettingsFieldErrors;
 
+const mapThemeContrastFieldErrors = (
+  issues: ReturnType<typeof findThemeTextContrastIssues>
+): ThemeSettingsFieldErrors =>
+  Object.fromEntries(
+    issues.flatMap((issue) => {
+      const message = `${themeColorLabels[issue.background]}と${themeColorLabels[issue.foreground]}のコントラスト比は ${THEME_TEXT_CONTRAST_MIN_RATIO}:1 以上にしてください（現在 ${issue.ratio.toFixed(2)}:1）。`;
+      return [
+        [issue.background, message],
+        [issue.foreground, message],
+      ];
+    })
+  ) as ThemeSettingsFieldErrors;
+
 const parseIntOrFallback = (value: string, fallback: number): number => {
   const parsed = Math.trunc(Number(value));
   if (!Number.isFinite(parsed)) {
@@ -360,6 +410,16 @@ export const updateTenantThemeSettingsAction = async (
     return {
       fieldErrors: mapThemeFieldErrors(parsed.error.flatten().fieldErrors),
       message: "入力内容を確認してください。",
+      ok: false,
+    };
+  }
+
+  const contrastIssues = findThemeTextContrastIssues(parsed.data);
+  if (contrastIssues.length > 0) {
+    return {
+      fieldErrors: mapThemeContrastFieldErrors(contrastIssues),
+      message:
+        "テキストを読みやすくするため、色の組み合わせを確認してください。",
       ok: false,
     };
   }
