@@ -7,13 +7,18 @@ import { VIEWER_HEIGHT_CLASS } from "../_lib/viewer-layout";
 import { toViewerPages } from "../_lib/viewer-pages";
 import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeComicViewer } from "./episode-comic-viewer";
+import { EpisodeReadRecorder } from "./episode-read-recorder";
 
 export const EpisodeViewer = async ({
+  episodePublicId,
   episodeTitle,
   images,
+  tenantId,
 }: {
+  episodePublicId: string;
   episodeTitle: string;
   images: EpisodeImageItem[];
+  tenantId: string;
 }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
@@ -57,7 +62,12 @@ export const EpisodeViewer = async ({
         pages={toViewerPages(episodeTitle, images, (values) =>
           getMessage(messages, "host.episode.viewer.page_title", values)
         )}
-      />
+      >
+        <EpisodeReadRecorder
+          episodePublicId={episodePublicId}
+          tenantId={tenantId}
+        />
+      </EpisodeComicViewer>
     </div>
   );
 };

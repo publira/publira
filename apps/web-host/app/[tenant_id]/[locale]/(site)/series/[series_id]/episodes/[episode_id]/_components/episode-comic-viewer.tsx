@@ -32,6 +32,7 @@ import {
   useRef,
   useSyncExternalStore,
 } from "react";
+import type { ReactNode } from "react";
 
 import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
 
@@ -209,11 +210,18 @@ const ViewerPageNavigation = () => {
  * `@publira/comic-viewer`, so the body images never become an `<img>` a reader
  * can drag out of the page, and a later encrypted delivery can be dropped in as
  * a plugin hook without changing this layout (#356 / #357).
+ *
+ * `children` are mounted inside the viewer root, for the components that read
+ * the reader's progress but draw nothing — the read recorder today. They sit
+ * here rather than arriving as ids on this component so the reader itself
+ * stays about reading.
  */
 export const EpisodeComicViewer = ({
+  children,
   copy,
   pages,
 }: {
+  children?: ReactNode;
   copy: EpisodeComicViewerCopy;
   pages: ViewerPage[];
 }) => {
@@ -261,6 +269,7 @@ export const EpisodeComicViewer = ({
             <FullscreenButton onToggle={toggleFullscreen} />
           </Toolbar>
           <ViewerPageNavigation />
+          {children}
         </ComicViewerRoot>
       </div>
     </CopyContext>

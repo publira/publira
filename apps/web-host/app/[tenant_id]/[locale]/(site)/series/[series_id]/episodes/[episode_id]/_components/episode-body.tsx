@@ -31,7 +31,14 @@ export const EpisodeBody = async ({
   tenantId: string;
 }) => {
   if (isPublicEpisodeBody(access)) {
-    return <EpisodeViewer episodeTitle={episodeTitle} images={images} />;
+    return (
+      <EpisodeViewer
+        episodePublicId={episodePublicId}
+        episodeTitle={episodeTitle}
+        images={images}
+        tenantId={tenantId}
+      />
+    );
   }
 
   const [locale, sessionId] = await Promise.all([
@@ -76,7 +83,12 @@ export const EpisodeBody = async ({
   }
   if (viewer.value.access === "entitled") {
     return (
-      <EpisodeViewer episodeTitle={episodeTitle} images={viewer.value.images} />
+      <EpisodeViewer
+        episodePublicId={episodePublicId}
+        episodeTitle={episodeTitle}
+        images={viewer.value.images}
+        tenantId={tenantId}
+      />
     );
   }
 
