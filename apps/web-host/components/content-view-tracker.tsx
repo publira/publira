@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import type { ContentViewKind } from "#lib/view-events";
 
@@ -28,6 +28,11 @@ const VIEW_BEACON_PATH = "/api/v1/views";
  * after. There is nothing to await and nothing to fail: a view the browser
  * could not queue is a view lost, which is a better outcome than a page that
  * stalls or errors over its own instrumentation.
+ *
+ * Strict Mode sends this twice in development. Nothing guards against that:
+ * the API collapses repeats from one actor into a single row for the whole
+ * half-hour bucket, so the duplicate costs one 204 and changes no data, and a
+ * ref that suppressed it would only be suppressing it in development.
  */
 export const ContentViewTracker = ({
   kind,
@@ -36,17 +41,7 @@ export const ContentViewTracker = ({
   kind: ContentViewKind;
   publicId: string;
 }) => {
-  // Strict Mode mounts twice in development, and a soft navigation back to the
-  // same page remounts as well. The API debounces repeats into one row either
-  // way; this keeps the redundant round trips off the network.
-  const reportedRef = useRef("");
-
   useEffect(() => {
-    const view = `${kind}/${publicId}`;
-    if (reportedRef.current === view) {
-      return;
-    }
-    reportedRef.current = view;
     // A JSON body is not a CORS-safelisted content type, so a cross-origin
     // page cannot send this beacon at all — the same-origin check on the
     // endpoint is the guard, and this is the layer above it.
