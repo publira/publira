@@ -49,7 +49,7 @@ test.describe("web-platform console error boundary", () => {
     runPlatformApiServerScript("start-wait");
   });
 
-  test("platform API 停止中の直接アクセスでエラー画面を出し、再試行で復旧できる", async ({
+  test("a direct visit while the platform API is down shows the error screen, and retry recovers", async ({
     page,
   }) => {
     // Sign in while the API is up: the outage below must be the thing that
@@ -87,7 +87,9 @@ test.describe("web-platform console error boundary", () => {
     ).toHaveCount(0);
   });
 
-  test("platform API 停止中でもログイン画面が表示される", async ({ page }) => {
+  test("the login screen still renders while the platform API is down", async ({
+    page,
+  }) => {
     try {
       runPlatformApiServerScript("stop");
 
@@ -102,7 +104,7 @@ test.describe("web-platform console error boundary", () => {
     }
   });
 
-  test("platform API 停止中の /setup は接続エラーを表示し、フォームを出さない", async ({
+  test("/setup shows the connection error and no form while the platform API is down", async ({
     page,
   }) => {
     try {

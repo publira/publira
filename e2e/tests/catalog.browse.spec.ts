@@ -15,9 +15,7 @@ const SERIES_PAGE_SIZE = 24;
  * resolved content rather than the skeletons.
  */
 test.describe("web-host catalog browsing", () => {
-  test("カタログトップの各セクションが公開データを表示する", async ({
-    page,
-  }) => {
+  test("every catalog top section shows published data", async ({ page }) => {
     const response = await page.goto(hostPath("/"));
     expect(response?.status(), await page.content()).toBe(200);
 
@@ -55,7 +53,7 @@ test.describe("web-host catalog browsing", () => {
     await expect(page.getByText(/を表示できませんでした/u)).toHaveCount(0);
   });
 
-  test("シリーズ一覧からシリーズ詳細とエピソードまで辿れる", async ({
+  test("the series list leads through series detail to an episode", async ({
     page,
   }) => {
     await page.goto(hostPath("/"));
@@ -109,7 +107,7 @@ test.describe("web-host catalog browsing", () => {
     ).toBeVisible();
   });
 
-  test("シリーズ一覧を cursor でページ送りできる", async ({ page }) => {
+  test("the series list pages through with a cursor", async ({ page }) => {
     const response = await page.goto(hostPath("/series"));
     expect(response?.status(), await page.content()).toBe(200);
 
@@ -164,7 +162,7 @@ test.describe("web-host catalog browsing", () => {
     ).resolves.toEqual(firstPageHrefs);
   });
 
-  test("レーベル一覧からレーベル詳細に辿れる", async ({ page }) => {
+  test("the label list leads to label detail", async ({ page }) => {
     const response = await page.goto(hostPath("/labels"));
     expect(response?.status(), await page.content()).toBe(200);
 
@@ -199,7 +197,9 @@ test.describe("web-host catalog browsing", () => {
     ).toBeVisible();
   });
 
-  test("代表キーワードで期待シリーズがヒットする", async ({ page }) => {
+  test("a representative keyword hits the expected series", async ({
+    page,
+  }) => {
     const response = await page.goto(hostPath("/search"));
     expect(response?.status(), await page.content()).toBe(200);
 
@@ -223,7 +223,7 @@ test.describe("web-host catalog browsing", () => {
     ).toBeVisible();
   });
 
-  test("著者一覧から著者詳細に辿れる", async ({ page }) => {
+  test("the author list leads to author detail", async ({ page }) => {
     const response = await page.goto(hostPath("/authors"));
     expect(response?.status(), await page.content()).toBe(200);
 

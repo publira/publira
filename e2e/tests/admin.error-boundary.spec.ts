@@ -45,7 +45,7 @@ test.describe("web-admin console error boundary", () => {
     runAdminApiServerScript("start-wait");
   });
 
-  test("管理 API 停止中の直接アクセスでエラー画面を出し、再試行で復旧できる", async ({
+  test("a direct visit while the admin API is down shows the error screen, and retry recovers", async ({
     page,
   }) => {
     // Sign in while the API is up: the outage below must be the thing that

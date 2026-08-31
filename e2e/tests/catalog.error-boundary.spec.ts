@@ -59,7 +59,7 @@ test.describe("web-host site error boundary", () => {
    */
   const uncachedSeriesId = `RETRY${randomUUID().replaceAll("-", "").slice(0, 11)}`;
 
-  test("直接アクセスで失敗した画面から再試行して復旧できる", async ({
+  test("retry recovers a screen that failed on a direct visit", async ({
     page,
   }) => {
     // Tenant resolution is the one thing that must survive the outage: `proxy`

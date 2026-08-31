@@ -23,7 +23,9 @@ const currentSession = async (
  * proxy answers 404 and leaves the session cookie alone (#655).
  */
 test.describe("platform GET /logout", () => {
-  test("認証済み GET は 404 でセッションを維持する", async ({ page }) => {
+  test("an authenticated GET is a 404 and keeps the session", async ({
+    page,
+  }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");
 
     const before = await currentSession(page);
@@ -43,7 +45,9 @@ test.describe("platform GET /logout", () => {
     ).toBeVisible();
   });
 
-  test("未認証 GET は 404 で Cookie を発行しない", async ({ request }) => {
+  test("an unauthenticated GET is a 404 and issues no cookie", async ({
+    request,
+  }) => {
     const response = await request.get(platformUrl("/logout"));
     expect(response.status()).toBe(404);
     expect(response.headers()["set-cookie"] ?? "").not.toContain(
@@ -51,7 +55,9 @@ test.describe("platform GET /logout", () => {
     );
   });
 
-  test("クロスサイト GET でもセッションを消さない", async ({ page }) => {
+  test("a cross-site GET does not clear the session either", async ({
+    page,
+  }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");
 
     const before = await currentSession(page);

@@ -16,7 +16,7 @@ import { hostPath } from "../src/urls";
  * mechanism that decides it before the first byte.
  */
 test.describe("web-host catalog not found", () => {
-  test("存在しないシリーズはサイト UI を保った案内を表示する", async ({
+  test("a missing series shows the not-found page with the site UI intact", async ({
     page,
   }) => {
     const response = await page.goto(hostPath(`/series/${MISSING_PUBLIC_ID}`));
@@ -34,7 +34,7 @@ test.describe("web-host catalog not found", () => {
     ).toBeVisible();
   });
 
-  test("存在しないエピソードは見つからない案内を表示する", async ({ page }) => {
+  test("a missing episode shows the not-found page", async ({ page }) => {
     const response = await page.goto(
       hostPath(
         `/series/${SEED_TENANT.series.publicId}/episodes/${MISSING_PUBLIC_ID}`
@@ -47,7 +47,7 @@ test.describe("web-host catalog not found", () => {
     ).toBeVisible();
   });
 
-  test("別シリーズのエピソード ID は見つからない", async ({ page }) => {
+  test("an episode id from another series is not found", async ({ page }) => {
     const response = await page.goto(
       hostPath(
         `/series/${MISSING_PUBLIC_ID}/episodes/${SEED_TENANT.series.freeEpisodeId}`
@@ -60,7 +60,7 @@ test.describe("web-host catalog not found", () => {
     ).toHaveCount(0);
   });
 
-  test("public_id は大文字小文字を区別する", async ({ page }) => {
+  test("public_id is case-sensitive", async ({ page }) => {
     // Base58 uses both cases, so a case-folded lookup would resolve two
     // different IDs to the same record (#673).
     const response = await page.goto(
@@ -71,7 +71,7 @@ test.describe("web-host catalog not found", () => {
     await expect(page.getByText(SEED_TENANT.series.title)).toHaveCount(0);
   });
 
-  test("存在しないレーベルは見つからない案内を表示する", async ({ page }) => {
+  test("a missing label shows the not-found page", async ({ page }) => {
     const response = await page.goto(hostPath(`/labels/${MISSING_PUBLIC_ID}`));
 
     expect(response?.status(), await page.content()).toBe(200);
@@ -80,7 +80,7 @@ test.describe("web-host catalog not found", () => {
     ).toBeVisible();
   });
 
-  test("存在しない著者は見つからない案内を表示する", async ({ page }) => {
+  test("a missing author shows the not-found page", async ({ page }) => {
     const response = await page.goto(hostPath(`/authors/${MISSING_PUBLIC_ID}`));
 
     expect(response?.status(), await page.content()).toBe(200);
@@ -89,7 +89,9 @@ test.describe("web-host catalog not found", () => {
     ).toBeVisible();
   });
 
-  test("存在しない公開ページは見つからない案内を表示する", async ({ page }) => {
+  test("a missing published page shows the not-found page", async ({
+    page,
+  }) => {
     const response = await page.goto(hostPath("/page/no-such-published-page"));
 
     expect(response?.status(), await page.content()).toBe(200);

@@ -8,7 +8,9 @@ import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
  * can assert without waiting on #861.
  */
 test.describe("web-platform notification bell", () => {
-  test("空の通知メニューを開き、通知一覧へ移動する", async ({ page }) => {
+  test("opens the empty notification menu and moves to the notification list", async ({
+    page,
+  }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/");
 
     const bell = page.getByRole("button", {

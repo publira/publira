@@ -12,7 +12,7 @@ const adminUrl = (pathname: string): string =>
  * path this suite can assert without waiting on #862.
  */
 test.describe("web-admin notification bell", () => {
-  test("空のベルメニューと通知一覧を出し、お知らせ画面は回帰しない", async ({
+  test("shows the empty bell menu and notification list, leaving the announcements screen intact", async ({
     page,
   }) => {
     await signInAsSeedAdmin(page, "/");

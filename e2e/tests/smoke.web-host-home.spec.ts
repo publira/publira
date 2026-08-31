@@ -24,7 +24,9 @@ test.describe("web-host catalog top", () => {
     ).toBeVisible();
   });
 
-  test("locale の無い URL は既定 locale として配信される", async ({ page }) => {
+  test("a URL without a locale is served as the default locale", async ({
+    page,
+  }) => {
     const response = await page.goto("/series");
     const content = await page.content();
 

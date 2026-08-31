@@ -40,7 +40,7 @@ const currentSession = async (
  * dedicated member so they cannot invalidate `host.notifications` mid-run.
  */
 test.describe("web-host auth", () => {
-  test("正しい資格情報で My Page へ戻る", async ({ page }) => {
+  test("valid credentials return to My Page", async ({ page }) => {
     await signInAsSeedMember(page, "/my");
 
     await expect(page).toHaveURL(/\/my\/?$/u);
@@ -50,7 +50,7 @@ test.describe("web-host auth", () => {
     expect(await currentSession(page)).toBeTruthy();
   });
 
-  test("誤ったパスワードではログインできず Cookie も出さない", async ({
+  test("a wrong password neither signs in nor issues a cookie", async ({
     page,
   }) => {
     await page.goto(hostUrl("/login?returnTo=%2Fmy"));
@@ -64,7 +64,7 @@ test.describe("web-host auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("未認証の会員ページは returnTo 付きでログインへ送り、成功後に戻す", async ({
+  test("an unauthenticated member page sends to login with returnTo and comes back on success", async ({
     page,
   }) => {
     await page.goto(hostUrl("/announcements"));
@@ -79,7 +79,7 @@ test.describe("web-host auth", () => {
     ).toBeVisible();
   });
 
-  test("未認証でもカタログトップは読める", async ({ page }) => {
+  test("the catalog top is readable without signing in", async ({ page }) => {
     await page.goto(hostUrl("/"));
 
     await expect(page).not.toHaveURL(/\/login/u);
@@ -87,7 +87,9 @@ test.describe("web-host auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("外部 URL の returnTo は捨ててサイトトップへ送る", async ({ page }) => {
+  test("an external returnTo is dropped and the site top is served", async ({
+    page,
+  }) => {
     await page.goto(
       hostUrl(`/login?returnTo=${encodeURIComponent("//evil.example")}`)
     );
@@ -96,14 +98,16 @@ test.describe("web-host auth", () => {
     await expectSameOriginPath(page, WEB_HOST_BASE_URL, hostPath("/"));
   });
 
-  test("ログイン済みで /login を開くと My Page へ送る", async ({ page }) => {
+  test("opening /login while signed in sends to My Page", async ({ page }) => {
     await signInAsSeedMember(page, "/my");
     await page.goto(hostUrl("/login?returnTo=%2Fannouncements"));
 
     await expect(page).toHaveURL(/\/my\/?$/u);
   });
 
-  test("ログアウトすると Cookie を消しログインへ戻す", async ({ page }) => {
+  test("signing out clears the cookie and returns to login", async ({
+    page,
+  }) => {
     await signInAsSeedMember(page, "/my");
     expect(await currentSession(page)).toBeTruthy();
 
@@ -116,7 +120,7 @@ test.describe("web-host auth", () => {
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
   });
 
-  test("Cookie が無い会員ページはログインへ送る", async ({ page }) => {
+  test("a member page without a cookie sends to login", async ({ page }) => {
     await signInAsSeedMember(page, "/my");
     await page.context().clearCookies({ name: HOST_SESSION_COOKIE_NAME });
 
@@ -125,7 +129,7 @@ test.describe("web-host auth", () => {
     await expect(page).not.toHaveURL(/reason=session_revoked/u);
   });
 
-  test("Cookie の期限切れはログインへ送り session_revoked にはしない", async ({
+  test("an expired cookie sends to login without session_revoked", async ({
     page,
   }) => {
     await signInAsSeedMember(page, "/my");
@@ -142,7 +146,7 @@ test.describe("web-host auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("期限切れ JWT は再ログイン案内を出す", async ({ page }) => {
+  test("an expired JWT shows the sign-in-again notice", async ({ page }) => {
     await signInAsSeedMember(page, "/my");
     await plantExpiredAccessTokenCookie(
       page,
@@ -163,7 +167,9 @@ test.describe("web-host auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("credentials_version 失効は再ログイン案内を出す", async ({ page }) => {
+  test("a credentials_version revocation shows the sign-in-again notice", async ({
+    page,
+  }) => {
     applyScenarioSql(AUTH_E2E_SCENARIO);
     await signInAsMember(page, SCENARIO_AUTH_MEMBER, "/my");
     await expect(
@@ -177,7 +183,9 @@ test.describe("web-host auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("GET /logout はログアウトせずセッションを維持する", async ({ page }) => {
+  test("GET /logout keeps the session instead of signing out", async ({
+    page,
+  }) => {
     await signInAsSeedMember(page, "/my");
 
     const before = await currentSession(page);

@@ -61,7 +61,9 @@ test.describe("web-host member announcements", () => {
     applyScenarioSql(MEMBER_ANNOUNCEMENTS_SCENARIO);
   });
 
-  test("お知らせ一覧を cursor でページ送りできる", async ({ page }) => {
+  test("the announcement list pages through with a cursor", async ({
+    page,
+  }) => {
     await signIn(page);
     await expect(page).toHaveURL(/\/announcements/u);
 
@@ -111,7 +113,7 @@ test.describe("web-host member announcements", () => {
     await expect(noticeTitles(page)).resolves.toEqual(firstPage);
   });
 
-  test("先頭以外のページから遷移先を開いて既読にできる", async ({ page }) => {
+  test("opening a notice from a later page marks it read", async ({ page }) => {
     await signIn(page);
     await expect(page).toHaveURL(/\/announcements/u);
 
@@ -137,7 +139,7 @@ test.describe("web-host member announcements", () => {
     await expect(readNotice.getByText("既読")).toBeVisible();
   });
 
-  test("壊れた token は先頭ページに落とす", async ({ page }) => {
+  test("a broken token falls back to the first page", async ({ page }) => {
     await signIn(page);
     await expect(page).toHaveURL(/\/announcements/u);
     await expect(page.locator("article h3")).toHaveCount(
