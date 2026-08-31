@@ -173,7 +173,7 @@ start_profile() {
     PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
-    "${REPO_ROOT}/server/bin/publish-episodes"
+    "${REPO_ROOT}/server/bin/batch" publish-episodes
   start_background "${run_dir}" email-renderer env PORT="${PUBLIRA_EMAIL_RENDERER_PORT}" \
     pnpm --dir "${REPO_ROOT}/apps/email-renderer" dev
   start_background "${run_dir}" web-host env PORT="${PUBLIRA_WEB_HOST_PORT}" \

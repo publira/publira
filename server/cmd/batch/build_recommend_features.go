@@ -1,4 +1,3 @@
-// build-recommend-features rebuilds the daily user and item feature snapshots.
 package main
 
 import (
@@ -11,53 +10,31 @@ import (
 	"time"
 
 	"github.com/publira/publira/server/config"
-	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/recommendfeatures"
 	"github.com/publira/publira/server/internal/sqldb"
-	"github.com/publira/publira/server/internal/tracing"
 )
 
-const serviceName = "publira-build-recommend-features"
-
-func main() {
-	logger := logging.New(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-	slog.SetDefault(logger)
-
-	shutdownTracing, err := tracing.Setup(context.Background(), serviceName)
-	if err != nil {
-		logger.Error("failed to initialize tracing", "error", err)
-	}
-	defer func() {
-		if err := shutdownTracing(context.Background()); err != nil {
-			logger.Error("failed to flush pending spans", "error", err)
-		}
-	}()
-
+func runBuildRecommendFeatures(ctx context.Context, logger *slog.Logger, cfg *config.Config) error {
 	referenceDate, err := resolveReferenceDate()
 	if err != nil {
 		logger.Error("invalid reference date", "error", err)
-		os.Exit(1)
+		return err
 	}
 	windowDays, err := resolveWindowDays()
 	if err != nil {
 		logger.Error("invalid feature window", "error", err)
-		os.Exit(1)
-	}
-	cfg, err := config.New()
-	if err != nil {
-		logger.Error("failed to load config", "error", err)
-		os.Exit(1)
+		return err
 	}
 
-	db, err := sqldb.Open(resolveDBURL(cfg.DB.URL))
+	db, err := sqldb.Open(resolveRecommendFeaturesDBURL(cfg.DB.URL))
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
-		os.Exit(1)
+		return err
 	}
 	defer db.Close() //nolint:errcheck
 
 	started := time.Now()
-	result, err := recommendfeatures.New(db).Run(context.Background(), recommendfeatures.Options{
+	result, err := recommendfeatures.New(db).Run(ctx, recommendfeatures.Options{
 		ReferenceDate: referenceDate,
 		WindowDays:    windowDays,
 	})
@@ -70,7 +47,7 @@ func main() {
 			"item_row_count", result.ItemRowCount,
 			"error", err,
 		)
-		os.Exit(1)
+		return err
 	}
 	logger.Info("recommend feature build completed",
 		"reference_date", referenceDate.Format(time.DateOnly),
@@ -81,19 +58,15 @@ func main() {
 		"item_row_count", result.ItemRowCount,
 		"duration", time.Since(started),
 	)
+	return nil
 }
 
-func resolveDBURL(fallback string) string {
-	for _, name := range []string{
+func resolveRecommendFeaturesDBURL(fallback string) string {
+	return resolveDBURL(fallback,
 		"PUBLIRA_RECOMMEND_FEATURES_DB_URL",
 		"PUBLIRA_CONTENT_STATS_DB_URL",
 		"PUBLIRA_WORKER_DB_URL",
-	} {
-		if url := strings.TrimSpace(os.Getenv(name)); url != "" {
-			return url
-		}
-	}
-	return fallback
+	)
 }
 
 func resolveReferenceDate() (time.Time, error) {

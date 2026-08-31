@@ -1,4 +1,3 @@
-// purge-content-events deletes content_events rows past their retention window.
 package main
 
 import (
@@ -13,62 +12,38 @@ import (
 
 	"github.com/publira/publira/server/config"
 	"github.com/publira/publira/server/internal/contentevents"
-	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/sqldb"
-	"github.com/publira/publira/server/internal/tracing"
 )
 
-const (
-	serviceName = "publira-purge-content-events"
+const defaultRetentionDays = 90
 
-	defaultRetentionDays = 90
-)
-
-func main() {
-	logger := logging.New(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-	slog.SetDefault(logger)
-
-	shutdownTracing, err := tracing.Setup(context.Background(), serviceName)
-	if err != nil {
-		logger.Error("failed to initialize tracing", "error", err)
-	}
-	defer func() {
-		if err := shutdownTracing(context.Background()); err != nil {
-			logger.Error("failed to flush pending spans", "error", err)
-		}
-	}()
-
+func runPurgeContentEvents(ctx context.Context, logger *slog.Logger, cfg *config.Config) error {
 	retentionDays, err := resolveRetentionDays()
 	if err != nil {
 		logger.Error("invalid retention window", "error", err)
-		os.Exit(1)
+		return err
 	}
 	chunkSize, err := resolveChunkSize()
 	if err != nil {
 		logger.Error("invalid chunk size", "error", err)
-		os.Exit(1)
+		return err
 	}
 	dryRun, err := resolveDryRun()
 	if err != nil {
 		logger.Error("invalid dry-run flag", "error", err)
-		os.Exit(1)
-	}
-	cfg, err := config.New()
-	if err != nil {
-		logger.Error("failed to load config", "error", err)
-		os.Exit(1)
+		return err
 	}
 
-	db, err := sqldb.Open(resolveDBURL(cfg.DB.URL))
+	db, err := sqldb.Open(resolveContentEventsDBURL(cfg.DB.URL))
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
-		os.Exit(1)
+		return err
 	}
 	defer db.Close() //nolint:errcheck
 
 	cutoff := time.Now().UTC().AddDate(0, 0, -retentionDays)
 	started := time.Now()
-	result, err := contentevents.New(db).Run(context.Background(), contentevents.Options{
+	result, err := contentevents.New(db).Run(ctx, contentevents.Options{
 		Cutoff:    cutoff,
 		ChunkSize: chunkSize,
 		DryRun:    dryRun,
@@ -80,7 +55,7 @@ func main() {
 			"row_count", result.RowCount,
 			"error", err,
 		)
-		os.Exit(1)
+		return err
 	}
 	logger.Info("content events purge completed",
 		"cutoff", cutoff.Format(time.RFC3339),
@@ -91,19 +66,15 @@ func main() {
 		"chunk_count", result.ChunkCount,
 		"duration", time.Since(started),
 	)
+	return nil
 }
 
-func resolveDBURL(fallback string) string {
-	for _, name := range []string{
+func resolveContentEventsDBURL(fallback string) string {
+	return resolveDBURL(fallback,
 		"PUBLIRA_CONTENT_EVENTS_DB_URL",
 		"PUBLIRA_CONTENT_STATS_DB_URL",
 		"PUBLIRA_WORKER_DB_URL",
-	} {
-		if url := strings.TrimSpace(os.Getenv(name)); url != "" {
-			return url
-		}
-	}
-	return fallback
+	)
 }
 
 func resolveRetentionDays() (int, error) {

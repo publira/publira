@@ -6,7 +6,7 @@ version: "3"
 # Examples:
 #   task docker:build:web APP_NAME=web-host PORT=3000
 #   task docker:build:api CMD_NAME=api-server PORT=8000
-#   task docker:build:batch CMD_NAME=publish-episodes
+#   task docker:build:batch
 #   task docker:build:node APP_NAME=email-renderer PORT=8080
 #   task docker:verify
 
@@ -59,18 +59,15 @@ tasks:
           .
 
   build:batch:
-    desc: Build a one-shot Go batch image (CMD_NAME required; VERSION optional)
-    requires:
-      vars: [CMD_NAME]
+    desc: Build the Go batch image that carries every batch subcommand (VERSION optional)
     vars:
       VERSION: '{{.VERSION | default "dev"}}'
     cmds:
       - |
         docker build \
           -f infra/docker/batch/Dockerfile \
-          --build-arg "CMD_NAME={{.CMD_NAME}}" \
           --build-arg "VERSION={{.VERSION}}" \
-          -t "publira/{{.CMD_NAME}}:local" \
+          -t "publira/batch:local" \
           .
 
   build:node:
@@ -91,7 +88,7 @@ tasks:
   # Representative set shared by local checks and CI (path-filtered / PR).
   # Covers each role once: web / api / batch / node / image.
   verify:
-    desc: Build representative images (web-host, api-server, publish-episodes, email-renderer, image-server)
+    desc: Build representative images (web-host, api-server, batch, email-renderer, image-server)
     cmds:
       - task: build:web
         vars:
@@ -102,8 +99,6 @@ tasks:
           CMD_NAME: api-server
           PORT: "8000"
       - task: build:batch
-        vars:
-          CMD_NAME: publish-episodes
       - task: build:node
         vars:
           APP_NAME: email-renderer
@@ -132,13 +127,6 @@ tasks:
       - task: build:api
         vars: { CMD_NAME: outbox-worker, PORT: "8003" }
       - task: build:batch
-        vars: { CMD_NAME: publish-episodes }
-      - task: build:batch
-        vars: { CMD_NAME: aggregate-content-stats }
-      - task: build:batch
-        vars: { CMD_NAME: purge-content-events }
-      - task: build:batch
-        vars: { CMD_NAME: build-recommend-features }
       - task: build:node
         vars: { APP_NAME: email-renderer, PORT: "8080" }
       - task: build:image

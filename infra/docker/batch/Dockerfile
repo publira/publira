@@ -1,14 +1,16 @@
 # syntax=docker/dockerfile:1.26@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 
-# Batch / one-shot job image for server/cmd/* entrypoints.
+# Batch job image for server/cmd/batch. Every batch ships in this one image;
+# the subcommand passed as a container argument selects the job to run.
 #
 # Build from the repository root:
 #
 #   docker build \
 #     -f infra/docker/batch/Dockerfile \
-#     --build-arg CMD_NAME=publish-episodes \
-#     -t publira/publish-episodes:local \
+#     -t publira/batch:local \
 #     .
+#
+#   docker run --rm publira/batch:local publish-episodes
 
 FROM golang:1.27-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452 AS builder
 
@@ -18,9 +20,6 @@ COPY server/go.mod server/go.sum ./
 RUN go mod download
 
 COPY server/ ./
-
-ARG CMD_NAME
-RUN test -n "${CMD_NAME}" || (echo "ERROR: CMD_NAME is required (e.g. publish-episodes)" >&2 && exit 1)
 
 # Inherit BuildKit automatic platform ARGs (do not set defaults — they override --platform).
 ARG TARGETOS
@@ -34,7 +33,7 @@ ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" \
   go build -trimpath \
   -ldflags="-s -w -X github.com/publira/publira/server/internal/buildinfo.version=${VERSION}" \
-  -o /out/job "./cmd/${CMD_NAME}"
+  -o /out/job ./cmd/batch
 
 FROM gcr.io/distroless/static:nonroot@sha256:1c2c046bc09ed40fad370b599a0b1ae7987f55b01e247cf27a7c27cd97e5bbc7
 

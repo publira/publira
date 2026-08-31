@@ -22,7 +22,7 @@ build context は常に **リポジトリルート**（`.`）。
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
 | API (常駐) | [`api/Dockerfile`](./api/Dockerfile) | `server/cmd/*` の HTTP サーバー（CGO なし） | `CMD_NAME`, `PORT` |
 | Image (常駐) | [`image/Dockerfile`](./image/Dockerfile) | `image-server` / `admin-image-server`（Manael / libvips） | `CMD_NAME`, `PORT` |
-| Batch (単発) | [`batch/Dockerfile`](./batch/Dockerfile) | `server/cmd/*` のジョブ | `CMD_NAME` |
+| Batch | [`batch/Dockerfile`](./batch/Dockerfile) | `server/cmd/batch`（全バッチジョブ） | なし |
 | Node (常駐) | [`node/Dockerfile`](./node/Dockerfile) | `apps/*` のうち Next.js でないもの | `APP_NAME`, `PORT` |
 
 Dev Container 用は本番と分離する。
@@ -64,9 +64,9 @@ Dev Container 用は本番と分離する。
 │    → --build-arg CMD_NAME=<name>
 │    → 必要なら PORT（既定 8200）
 │
-├─ Go の単発ジョブ (server/cmd/<name>)
-│    → infra/docker/batch/Dockerfile
-│    → --build-arg CMD_NAME=<name>
+├─ Go のバッチジョブ
+│    → infra/docker/batch/Dockerfile（build ARG は無い）
+│    → ジョブはコンテナ引数で選ぶ: docker run publira/batch:local <サブコマンド>
 │
 ├─ Next.js でない Node.js の常駐サービス (apps/<name>)
 │    → infra/docker/node/Dockerfile
@@ -139,22 +139,11 @@ docker build -f infra/docker/image/Dockerfile \
   --build-arg CMD_NAME=admin-image-server --build-arg PORT=8201 \
   -t publira/admin-image-server:local .
 
-# Batch
+# Batch（全ジョブが 1 イメージ。ジョブはコンテナ引数で選ぶ）
 docker build -f infra/docker/batch/Dockerfile \
-  --build-arg CMD_NAME=publish-episodes \
-  -t publira/publish-episodes:local .
+  -t publira/batch:local .
 
-docker build -f infra/docker/batch/Dockerfile \
-  --build-arg CMD_NAME=aggregate-content-stats \
-  -t publira/aggregate-content-stats:local .
-
-docker build -f infra/docker/batch/Dockerfile \
-  --build-arg CMD_NAME=purge-content-events \
-  -t publira/purge-content-events:local .
-
-docker build -f infra/docker/batch/Dockerfile \
-  --build-arg CMD_NAME=build-recommend-features \
-  -t publira/build-recommend-features:local .
+docker run --rm publira/batch:local publish-episodes
 
 # Node
 docker build -f infra/docker/node/Dockerfile \
@@ -216,13 +205,13 @@ Node ロールは Next.js の standalone 出力に相当する仕組みを持た
 Issue / CI の「主要ビルド経路」は次の 5 本（各ロール 1 つ）とする。
 
 ```bash
-# まとめて（web-host / api-server / publish-episodes / email-renderer / image-server）
+# まとめて（web-host / api-server / batch / email-renderer / image-server）
 task docker:verify
 
 # または個別
 task docker:build:web APP_NAME=web-host PORT=3000
 task docker:build:api CMD_NAME=api-server PORT=8000
-task docker:build:batch CMD_NAME=publish-episodes
+task docker:build:batch
 task docker:build:node APP_NAME=email-renderer PORT=8080
 task docker:build:image CMD_NAME=image-server PORT=8200
 ```
@@ -286,7 +275,7 @@ docker build -f infra/docker/web/Dockerfile \
 | web | `web-host` | `apps/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/web/**` |
 | api | `api-server` | `server/**`, `infra/docker/api/**` |
 | image | `image-server` | `server/**`, `infra/docker/image/**` |
-| batch | `publish-episodes` | `server/**`, `infra/docker/batch/**` |
+| batch | `batch` | `server/**`, `infra/docker/batch/**` |
 | node | `email-renderer` | `apps/email-renderer/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/node/**` |
 
 `server/**` 変更時は api、batch、image の代表をビルドする（共有モジュールのため）。  

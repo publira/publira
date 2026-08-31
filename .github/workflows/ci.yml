@@ -968,11 +968,16 @@ jobs:
           DOCKER_EXTRA: ${{ matrix.extra }}
         run: |
           set -euo pipefail
-          if [ -n "${DOCKER_EXTRA}" ]; then
-            task "${DOCKER_TASK}" "${DOCKER_ARG}" "${DOCKER_EXTRA}"
-          else
-            task "${DOCKER_TASK}" "${DOCKER_ARG}"
+          # The batch role takes no build ARG, so an empty entry must not reach
+          # task as an empty task name.
+          args=()
+          if [ -n "${DOCKER_ARG}" ]; then
+            args+=("${DOCKER_ARG}")
           fi
+          if [ -n "${DOCKER_EXTRA}" ]; then
+            args+=("${DOCKER_EXTRA}")
+          fi
+          task "${DOCKER_TASK}" "${args[@]}"
 
       - name: Smoke / Web /healthz
         if: matrix.role == 'web'

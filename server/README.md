@@ -12,10 +12,7 @@ server/
 │   ├── platform-api-server/ # プラットフォーム管理向け ConnectRPC API サーバー
 │   ├── image-server/      # 公開向け画像配送（Manael 変換）
 │   ├── admin-image-server/ # 管理向け画像配送
-│   ├── aggregate-content-stats/ # 日次コンテンツ統計の完全再集計バッチ
-│   ├── build-recommend-features/ # Daily user/item recommend feature snapshot batch
-│   ├── publish-episodes/  # 予約公開バッチ
-│   ├── purge-content-events/ # 閲覧イベントの保持期限パージバッチ
+│   ├── batch/             # 全バッチジョブを束ねた単一バイナリ（サブコマンドで選択）
 │   └── outbox-worker/     # Outbox + River 常駐ワーカー
 ├── bin/                   # task build で生成されるバイナリ
 ├── gen/                   # buf 自動生成コード (編集禁止)
@@ -37,7 +34,7 @@ server/
 
 1. スキーマ駆動開発: API/DB の変更は `proto/` または `db/migrations/` の golang-migrate 形式 (`.up.sql` / `.down.sql`) を先に変更し、`task gen` を実行する
 2. `cmd/` は薄く保ち、実装は `internal/` に寄せる
-3. `publish-episodes` は予約公開のティック処理。Outbox ワーカー (`cmd/outbox-worker`) は API から分離した常駐プロセスで、River がジョブを実行する
+3. バッチはすべて `cmd/batch` の単一バイナリで、第 1 引数のサブコマンドが実行するジョブを選ぶ。`batch publish-episodes` は予約公開のティック処理。Outbox ワーカー (`cmd/outbox-worker`) は API から分離した常駐プロセスで、River がジョブを実行する
 
 ## 開発コマンド
 
@@ -79,10 +76,7 @@ task server:test
 - プラットフォーム API サーバー: [cmd/platform-api-server/README.md](cmd/platform-api-server/README.md)
 - 公開画像サーバー: [cmd/image-server/README.md](cmd/image-server/README.md)
 - 管理画像サーバー: [cmd/admin-image-server/README.md](cmd/admin-image-server/README.md)
-- 日次コンテンツ統計バッチ: [cmd/aggregate-content-stats/README.md](cmd/aggregate-content-stats/README.md)
-- Recommend feature build batch: [cmd/build-recommend-features/README.md](cmd/build-recommend-features/README.md)
-- 予約公開バッチ: [cmd/publish-episodes/README.md](cmd/publish-episodes/README.md)
-- 閲覧イベントパージバッチ: [cmd/purge-content-events/README.md](cmd/purge-content-events/README.md)
+- バッチ（予約公開 / 日次コンテンツ統計 / 閲覧イベントパージ / Recommend feature build）: [cmd/batch/README.md](cmd/batch/README.md)
 - Outbox ワーカー: [cmd/outbox-worker/README.md](cmd/outbox-worker/README.md)
 
 ## Graceful shutdown
@@ -167,7 +161,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 ## Next.js 再検証の内部 URL
 
-`PUBLIRA_REVALIDATE_TOKEN` を設定すると、admin-api と `publish-episodes` は各 Next.js アプリの内部 Route Handler `POST /api/v1/revalidate` へキャッシュタグを送ります。テナント ID は URL・リクエスト本文・送信時の許可判定には含めず、タグはテナントをまたいでもそのまま再検証されます。3 つの URL はすべて必須です。いずれかが未設定または不正な場合、再検証は無効になり、プロセスは理由をログへ出して通常どおり起動します。
+`PUBLIRA_REVALIDATE_TOKEN` を設定すると、admin-api と `batch publish-episodes` は各 Next.js アプリの内部 Route Handler `POST /api/v1/revalidate` へキャッシュタグを送ります。テナント ID は URL・リクエスト本文・送信時の許可判定には含めず、タグはテナントをまたいでもそのまま再検証されます。3 つの URL はすべて必須です。いずれかが未設定または不正な場合、再検証は無効になり、プロセスは理由をログへ出して通常どおり起動します。
 
 - `PUBLIRA_WEB_HOST_INTERNAL_URL`（例: `http://web-host:3000`）
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL`（例: `http://web-admin:4000`）
@@ -236,7 +230,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 | キー | 値 |
 | --- | --- |
-| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-aggregate-content-stats` / `publira-purge-content-events` / `publira-build-recommend-features` / `publira-publish-episodes` / `publira-outbox-worker`）。`OTEL_SERVICE_NAME` で上書き可能 |
+| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`）。`cmd/batch` はサブコマンドごとに解決するため `publira-publish-episodes` / `publira-aggregate-content-stats` / `publira-purge-content-events` / `publira-build-recommend-features` になる。`OTEL_SERVICE_NAME` で上書き可能 |
 | `service.version` | ビルド時に埋め込んだ version。無ければチェックアウトの VCS リビジョン、それも無ければ `dev`（`internal/buildinfo`） |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`。未設定なら `development` |
 
@@ -420,9 +414,9 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 | admin-api | `publira_admin` | `PUBLIRA_ADMIN_DB_URL` | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable` |
 | api (public) | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
 | outbox-worker | BYPASSRLS 相当（ローカルは superuser） | `PUBLIRA_WORKER_DB_URL`（未設定時 `PUBLIRA_DB_URL`） | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
-| aggregate-content-stats | `publira_content_stats`（BYPASSRLS） | `PUBLIRA_CONTENT_STATS_DB_URL`（未設定時 `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL`） | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| purge-content-events | `publira_content_stats`（BYPASSRLS） | `PUBLIRA_CONTENT_EVENTS_DB_URL`（未設定時 `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL`） | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| batch aggregate-content-stats | `publira_content_stats`（BYPASSRLS） | `PUBLIRA_CONTENT_STATS_DB_URL`（未設定時 `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL`） | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| batch purge-content-events | `publira_content_stats`（BYPASSRLS） | `PUBLIRA_CONTENT_EVENTS_DB_URL`（未設定時 `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL`） | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| batch build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 
 `publira_platform` と `publira_content_stats` は BYPASSRLS 属性を持ち、全テナントのデータに横断アクセスします。 `publira_admin` / `publira_public` は RLS が有効で、テナント ID でスコープされます。
 
