@@ -26,6 +26,12 @@ type RecordState = "idle" | "recorded" | "sending";
  * open, so the next arrival at the last page tries again. The API is the one
  * that guarantees a re-read never writes a second row or moves the first
  * timestamp; this only spares the network what it already knows the answer to.
+ *
+ * An arrival that lands while an attempt is still in flight is remembered and
+ * taken up as soon as that attempt fails, rather than dropped. Without it, a
+ * reader who turned back and returned before a failing request settled would
+ * be left on the last page with the read unrecorded and no page turn left to
+ * re-run the Effect.
  */
 export const EpisodeReadRecorder = ({
   episodePublicId,
@@ -43,14 +49,20 @@ export const EpisodeReadRecorder = ({
     viewMode,
   });
   const recordStateRef = useRef<RecordState>("idle");
+  const hasMissedArrivalRef = useRef(false);
 
   useEffect(() => {
-    if (!isFinished || recordStateRef.current !== "idle") {
+    if (!isFinished || recordStateRef.current === "recorded") {
+      return;
+    }
+    if (recordStateRef.current === "sending") {
+      hasMissedArrivalRef.current = true;
       return;
     }
     recordStateRef.current = "sending";
 
-    const record = async () => {
+    const record = async (): Promise<void> => {
+      hasMissedArrivalRef.current = false;
       let recorded = false;
       try {
         recorded = await markEpisodeAsReadAction({
@@ -60,6 +72,10 @@ export const EpisodeReadRecorder = ({
       } catch {
         // The record is the only thing that failed. Pages keep turning, keep
         // loading, and keep going full screen either way.
+      }
+      if (!recorded && hasMissedArrivalRef.current) {
+        await record();
+        return;
       }
       recordStateRef.current = recorded ? "recorded" : "idle";
     };

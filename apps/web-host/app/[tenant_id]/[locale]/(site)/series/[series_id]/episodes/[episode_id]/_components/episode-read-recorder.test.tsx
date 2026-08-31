@@ -8,7 +8,13 @@ import {
   ViewerProvider,
 } from "@publira/comic-viewer";
 import type { ViewerPage, ViewMode } from "@publira/comic-viewer";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EpisodeReadRecorder } from "./episode-read-recorder";
@@ -170,6 +176,29 @@ describe("EpisodeReadRecorder", () => {
 
     turnPage("Previous page");
     turnPage("Next page");
+
+    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("takes up an arrival that landed while a failing attempt was in flight", async () => {
+    const attempt = Promise.withResolvers<boolean>();
+    mockMarkEpisodeAsReadAction.mockReturnValueOnce(attempt.promise);
+
+    renderViewer({ pageCount: 2 });
+    turnPage("Next page");
+
+    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledOnce();
+
+    // The reader turns back and returns before the first attempt settles.
+    turnPage("Previous page");
+    turnPage("Next page");
+
+    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledOnce();
+
+    attempt.resolve(false);
+    await act(async () => {
+      await attempt.promise;
+    });
 
     expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledTimes(2);
   });
