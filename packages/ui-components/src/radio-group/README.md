@@ -1,8 +1,8 @@
 # RadioGroup
 
-ラジオボタングループコンポーネントです。[Base UI Radio Group](https://base-ui.com/r/components/radio-group) をベースに実装しています。
+A radio button group component, implemented on top of [Base UI Radio Group](https://base-ui.com/r/components/radio-group).
 
-## 使用方法
+## Usage
 
 ```tsx
 import { RadioGroup } from "@publira/ui-components";
@@ -31,4 +31,4 @@ import { RadioGroup } from "@publira/ui-components/radio-group";
 
 ## Props
 
-Base UI Radio Group のプロップに準じます。詳細は [Base UI Radio Group documentation](https://base-ui.com/r/components/radio-group) を参照してください。
+Follows the props of Base UI Radio Group. See the [Base UI Radio Group documentation](https://base-ui.com/r/components/radio-group) for details.

@@ -1,8 +1,8 @@
 # FormMessage
 
-フォーム内のメッセージ（エラー、警告、成功など）を表示するコンポーネントです。
+A component that displays a message within a form, such as an error, a warning, or a success notice.
 
-## 使用方法
+## Usage
 
 ```tsx
 import { FormMessage } from "@publira/ui-components";
@@ -20,4 +20,4 @@ import { FormMessage } from "@publira/ui-components/form-message";
 
 ## Props
 
-FormMessage コンポーネントのプロップについては、実装を参照してください。
+See the implementation for the props of the FormMessage component.

@@ -1,8 +1,8 @@
 # Popover
 
-ヘッダーなどに配置する浮遊面のための合成プリミティブです。`PopoverContent` が Portal、配置、共通の surface スタイルを提供するため、利用側はトリガー、表示位置、内容だけを定義します。
+A compound primitive for the floating surfaces placed in a header and similar places. `PopoverContent` provides the portal, the positioning, and the shared surface styles, so the caller only defines the trigger, where it opens, and its content.
 
-## 使用方法
+## Usage
 
 ```tsx
 import {
@@ -19,7 +19,7 @@ export const LanguageSwitcher = () => (
       <PopoverTitle className="px-2.5 py-2 text-sm font-semibold">
         表示言語
       </PopoverTitle>
-      {/* 言語の選択肢 */}
+      {/* The language options */}
     </PopoverContent>
   </Popover>
 );
@@ -33,4 +33,4 @@ import { Popover, PopoverContent } from "@publira/ui-components/popover";
 
 ## Props
 
-`PopoverContent` は Base UI の Positioner props を受け取ります。`side`、`align`、`sideOffset` などで配置を調整し、`className` で surface の幅などを追加できます。フォーカス移動を調整する場合は `popupProps` に Base UI Popup props を渡します。
+`PopoverContent` takes the Base UI Positioner props. Adjust the placement with `side`, `align`, `sideOffset`, and the like, and use `className` to set things such as the width of the surface. To adjust focus handling, pass Base UI Popup props through `popupProps`.

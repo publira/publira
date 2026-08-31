@@ -1,8 +1,8 @@
 # Button / LinkButton
 
-基本的なボタンコンポーネント群です。[Base UI Button](https://base-ui.com/r/components/button) をベースに実装しています。
+The basic button components, implemented on top of [Base UI Button](https://base-ui.com/r/components/button).
 
-## 使用方法
+## Usage
 
 ### Button
 
@@ -32,4 +32,4 @@ import { Button, LinkButton } from "@publira/ui-components/button";
 
 ## Props
 
-Base UI Button のプロップに準じます。詳細は [Base UI Button documentation](https://base-ui.com/r/components/button) を参照してください。
+Follows the props of Base UI Button. See the [Base UI Button documentation](https://base-ui.com/r/components/button) for details.

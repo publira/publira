@@ -1,10 +1,10 @@
 # Field
 
-フォームフィールドを構成するコンポーネント群です。ラベル、説明文、エラーメッセージ、コンテンツから構成されます。
+The components that make up a form field: a label, a description, an error message, and the content.
 
-`FieldLabel` は同じ `Field` 内のコントロールと `for` / `id` で結びつき、ラベルをクリックするとそのコントロールへフォーカスします。`Input` / `Textarea` / `Select` / `Checkbox` / `Switch` / `RadioGroup` / `Combobox` / `MultiCombobox` は `id` 未指定でも一意な id を採番します。呼び出し側がコントロールに `id` を渡した場合はその id を使います。
+`FieldLabel` is associated with the control in the same `Field` through `for` / `id`, so clicking the label focuses that control. `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`, `RadioGroup`, `Combobox`, and `MultiCombobox` generate a unique id even when none is given. When the caller passes an `id` to the control, that id is used instead.
 
-## 使用方法
+## Usage
 
 ```tsx
 import {
@@ -41,10 +41,10 @@ import {
 } from "@publira/ui-components/field";
 ```
 
-## コンポーネント一覧
+## Components
 
-- `Field` - フィールド全体のコンテナ
-- `FieldLabel` - ラベル
-- `FieldDescription` - 説明文
-- `FieldError` - エラーメッセージ
-- `FieldContent` - 入力フィールドを囲むコンテナ
+- `Field` - The container for the whole field
+- `FieldLabel` - The label
+- `FieldDescription` - The description
+- `FieldError` - The error message
+- `FieldContent` - The container that wraps the input control

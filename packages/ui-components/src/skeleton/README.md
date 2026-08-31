@@ -1,8 +1,8 @@
 # Skeleton
 
-ローディング状態を表示するためのコンポーネントです。
+The components used to show a loading state.
 
-## 使用方法
+## Usage
 
 ```tsx
 import { Skeleton, SkeletonCard, SkeletonText } from "@publira/ui-components";
@@ -18,9 +18,9 @@ export default function Example() {
 }
 ```
 
-### 行内で使う場合は `SkeletonLine`
+### Use `SkeletonLine` inline
 
-`Skeleton` は `<div>` なので、見出しやボタン行の中に差し込むと行内フローが崩れます。`<Suspense>` の fallback を見出しやアクションの位置に置くときは `<span>` ベースの `SkeletonLine` を使ってください。
+`Skeleton` is a `<div>`, so dropping it into a heading or a row of buttons breaks the inline flow. Use the `<span>`-based `SkeletonLine` when the `<Suspense>` fallback sits where a heading or an action goes.
 
 ```tsx
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -46,4 +46,4 @@ import {
 
 ## Props
 
-Skeleton 系コンポーネントの props は実装を参照してください。
+See the implementation for the props of the Skeleton components.

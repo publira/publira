@@ -1,8 +1,8 @@
 # Input
 
-テキスト入力フィールドコンポーネントです。
+A text input field component.
 
-## 使用方法
+## Usage
 
 ```tsx
 import { Input } from "@publira/ui-components";
@@ -20,4 +20,4 @@ import { Input } from "@publira/ui-components/input";
 
 ## Props
 
-Input コンポーネントは HTML の `<input>` 要素と同じプロップをサポートしています。
+The Input component supports the same props as the HTML `<input>` element.
