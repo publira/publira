@@ -49,24 +49,39 @@ func TestDefaultLocaleColumnsHaveNoDefault(t *testing.T) {
 // lives in server/internal/locale, generated from locales/index.json, so
 // repeating it as a CHECK here would be a second copy to widen by hand every
 // time a locale is added.
+//
+// Both columns carry their own constraint, so both are exercised: dropping
+// either one has to fail here.
 func TestDefaultLocaleColumnsRejectBlankValues(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	for _, supported := range locale.Supported {
-		if err := insertTenantWithLocale(ctx, pg.DB, supported); err != nil {
-			t.Fatalf("tenants insert with supported locale %q: %v", supported, err)
-		}
+	tables := []struct {
+		name  string
+		write func(ctx context.Context, db *sql.DB, defaultLocale string) error
+	}{
+		{name: "tenants", write: insertTenantWithLocale},
+		{name: "platform_config", write: upsertPlatformConfigWithLocale},
 	}
 
-	for _, blank := range []string{"", "   "} {
-		err := insertTenantWithLocale(ctx, pg.DB, blank)
-		if !isCheckViolation(err) {
-			t.Fatalf("tenants insert with blank locale %q error = %v, want check_violation", blank, err)
-		}
+	for _, tt := range tables {
+		t.Run(tt.name, func(t *testing.T) {
+			pg := testutil.StartPostgres(t)
+			pg.Reset(t)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			for _, supported := range locale.Supported {
+				if err := tt.write(ctx, pg.DB, supported); err != nil {
+					t.Fatalf("%s write with supported locale %q: %v", tt.name, supported, err)
+				}
+			}
+
+			for _, blank := range []string{"", "   "} {
+				err := tt.write(ctx, pg.DB, blank)
+				if !isCheckViolation(err) {
+					t.Fatalf("%s write with blank locale %q error = %v, want check_violation", tt.name, blank, err)
+				}
+			}
+		})
 	}
 }
 
@@ -80,6 +95,17 @@ func insertTenantWithLocale(ctx context.Context, db *sql.DB, defaultLocale strin
 		INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
 		VALUES ($1, $2, $3, $4, 'Locale Tenant', 'active', $5)
 	`, id, slug, slug+".example.com", "admin-"+slug+".example.com", defaultLocale)
+	return err
+}
+
+// platform_config holds a single row keyed on `singleton`, so repeated writes
+// go through the same upsert the application uses.
+func upsertPlatformConfigWithLocale(ctx context.Context, db *sql.DB, defaultLocale string) error {
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO platform_config (singleton, default_timezone, default_locale)
+		VALUES (TRUE, 'Asia/Tokyo', $1)
+		ON CONFLICT (singleton) DO UPDATE SET default_locale = EXCLUDED.default_locale
+	`, defaultLocale)
 	return err
 }
 
