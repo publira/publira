@@ -74,20 +74,12 @@ describe("generateMetadata", () => {
     const { generateMetadata } = await import("./layout");
 
     await expect(generateMetadata()).resolves.toEqual({ title: "管理画面" });
+    expect(mockGetLocale).not.toHaveBeenCalled();
     expect(mockGetTenantName).not.toHaveBeenCalled();
     expect(mockNotFound).not.toHaveBeenCalled();
   });
 
-  it("resolves no locale for a tenant_id that is not a UUID", async () => {
-    mockTenantId.mockResolvedValueOnce("favicon.ico");
-
-    const { generateMetadata } = await import("./layout");
-
-    await generateMetadata();
-    expect(mockGetLocale).not.toHaveBeenCalled();
-  });
-
-  it("resolves the locale from the trimmed tenant_id", async () => {
+  it("resolves the locale and the tenant name from the trimmed tenant_id", async () => {
     mockTenantId.mockResolvedValueOnce(` ${tenantId} `);
     mockGetTenantName.mockResolvedValueOnce("サンプル出版社");
 
@@ -95,6 +87,7 @@ describe("generateMetadata", () => {
 
     await generateMetadata();
     expect(mockGetLocale).toHaveBeenCalledWith(tenantId);
+    expect(mockGetTenantName).toHaveBeenCalledWith(tenantId);
   });
 
   it("generateStaticParams のプレースホルダでは notFound する", async () => {

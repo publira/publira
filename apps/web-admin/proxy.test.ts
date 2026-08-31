@@ -97,7 +97,13 @@ describe("web-admin proxy", () => {
 
   it("answers GET /favicon.ico with 404 without resolving the tenant", async () => {
     const { NextRequest } = await import("next/server");
-    const { proxy } = await import("./proxy");
+    const { config, proxy } = await import("./proxy");
+
+    // The branch below only runs for a path the matcher covers; excluding
+    // `/favicon.ico` again would send it back into the `[tenant_id]` tree.
+    expect(unstable_doesMiddlewareMatch({ config, url: "/favicon.ico" })).toBe(
+      true
+    );
 
     const response = await proxy(
       new NextRequest("https://admin.example.com/favicon.ico")

@@ -95,7 +95,7 @@ describe("web-admin locale", () => {
       mockGetAccessToken.mockResolvedValue("session-token");
       const { getLocale } = await importLocale();
 
-      await getLocale("favicon.ico");
+      await expect(getLocale("favicon.ico")).resolves.toBe("ja");
       expect(mockGetAccessToken).not.toHaveBeenCalled();
     });
 
