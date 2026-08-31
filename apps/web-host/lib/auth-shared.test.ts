@@ -25,11 +25,11 @@ describe("web-host auth-shared", () => {
     process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
   });
 
-  it("cookie 名は公開セッション用を使う", () => {
+  it("Use the cookie name for public sessions", () => {
     expect(PUBLIC_SESSION_COOKIE_NAME).toBe("publira_web_host_auth");
   });
 
-  it("buildLoginUrl は正規の /login へ returnTo を引き継ぐ", () => {
+  it("buildLoginUrl inherits returnTo to regular /login", () => {
     const url = buildLoginUrl(
       new URL("https://example.com/ja/me?from=settings"),
       "ja",
@@ -41,7 +41,7 @@ describe("web-host auth-shared", () => {
     expect(url.searchParams.get("returnTo")).toBe("/me?from=settings");
   });
 
-  it("sanitizeRedirectPath は外部URLと login パスを拒否し、locale を落とす", () => {
+  it("sanitizeRedirectPath rejects external URLs and login paths and drops locale", () => {
     expect(sanitizeRedirectPath("/dashboard")).toBe("/dashboard");
     expect(sanitizeRedirectPath("/en/dashboard")).toBe("/dashboard");
     expect(sanitizeRedirectPath("https://example.com")).toBe("/");
@@ -53,7 +53,7 @@ describe("web-host auth-shared", () => {
     expect(sanitizeRedirectPath("/\\evil.example.com")).toBe("/");
   });
 
-  it("buildLoginPath は returnTo を sanitize し、失効時だけ理由を付ける", () => {
+  it("buildLoginPath sanitizes returnTo and adds a reason only when it expires", () => {
     expect(buildLoginPath("ja", "ja", "/settings")).toBe(
       "/login?returnTo=%2Fsettings"
     );
@@ -68,7 +68,7 @@ describe("web-host auth-shared", () => {
     );
   });
 
-  it("isSessionRevokedRedirect は失効由来の /login だけを認める", () => {
+  it("isSessionRevokedRedirect only allows /login from revocation", () => {
     expect(
       isSessionRevokedRedirect(
         new URL("https://example.com/login?returnTo=%2Fsettings")
@@ -86,7 +86,7 @@ describe("web-host auth-shared", () => {
     ).toBe(false);
   });
 
-  it("isUnauthenticatedError は Unauthenticated だけを再認証扱いにする", () => {
+  it("isUnauthenticatedError treats only Unauthenticated as re-authentication", () => {
     expect(
       isUnauthenticatedError(new ConnectError("nope", Code.Unauthenticated))
     ).toBe(true);
@@ -98,7 +98,7 @@ describe("web-host auth-shared", () => {
   });
 
   describe("hasActivePublicSessionCookie", () => {
-    it("復号できて期限内の Cookie だけを有効とみなす", async () => {
+    it("Only cookies that can be decrypted and have not expired are considered valid.", async () => {
       const active = await sealedCookie(
         Temporal.Now.instant().add({ minutes: 1 }).toString()
       );
@@ -106,7 +106,7 @@ describe("web-host auth-shared", () => {
       await expect(hasActivePublicSessionCookie(active)).resolves.toBe(true);
     });
 
-    it("期限切れ・復号失敗・空を無効とみなす", async () => {
+    it("Considers expired, decryption failed, and empty as invalid.", async () => {
       const expired = await sealedCookie(
         Temporal.Now.instant().subtract({ minutes: 1 }).toString()
       );

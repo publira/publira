@@ -40,7 +40,7 @@ afterEach(() => {
 });
 
 describe("SettingsTabs", () => {
-  it("フォロー一覧へのナビを出す", () => {
+  it("Provide navigation to follow list", () => {
     mockUsePathname.mockReturnValue("/settings");
     render(<SettingsTabs labels={labels} />);
 
@@ -49,7 +49,7 @@ describe("SettingsTabs", () => {
     ).toBe("/settings/follows");
   });
 
-  it("フォロー一覧ではフォロータブだけを選択中にする", () => {
+  it("Make only the follow tab selected in the follow list", () => {
     mockUsePathname.mockReturnValue("/settings/follows");
     render(<SettingsTabs labels={labels} />);
 
@@ -61,7 +61,7 @@ describe("SettingsTabs", () => {
 
   // A prerendered shell reports the rewritten pathname, so the selected tab
   // must not depend on which of the two shapes `usePathname()` returns.
-  it("rewrite 後のパスでも選択中のタブは変わらない", () => {
+  it("The selected tab does not change even after rewriting the path", () => {
     mockUsePathname.mockReturnValue(
       "/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/ja/settings/follows"
     );

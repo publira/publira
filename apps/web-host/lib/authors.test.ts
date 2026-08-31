@@ -24,7 +24,7 @@ describe("listPublishedAuthors", () => {
     mockListPublishedAuthors.mockReset();
   });
 
-  it("公開著者を整形し cursor トークンを返す", async () => {
+  it("Format public author and return cursor token", async () => {
     mockListPublishedAuthors.mockResolvedValueOnce({
       authors: [
         {
@@ -78,7 +78,7 @@ describe("listPublishedAuthors", () => {
     });
   });
 
-  it("token を省略したら先頭ページを取る", async () => {
+  it("If token is omitted, get the first page", async () => {
     mockListPublishedAuthors.mockResolvedValueOnce({
       authors: [],
       nextToken: "",
@@ -96,7 +96,7 @@ describe("listPublishedAuthors", () => {
 
   // A `"use cache"` function must not throw: the fill would fail the whole
   // request instead of reaching the awaiting page (#672).
-  it("取得に失敗したら throw せず失敗の値を返す", async () => {
+  it("If acquisition fails, return the failure value without throwing", async () => {
     mockListPublishedAuthors.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );
@@ -116,7 +116,7 @@ describe("getPublishedAuthorDetail", () => {
     mockGetPublishedAuthorDetail.mockReset();
   });
 
-  it("著者詳細と関連シリーズの 1 ページを返す", async () => {
+  it("Return 1 page of author details and related series", async () => {
     mockGetPublishedAuthorDetail.mockResolvedValueOnce({
       author: {
         iconImageUrl: "/images/creators/creator-a",
@@ -163,7 +163,7 @@ describe("getPublishedAuthorDetail", () => {
     });
   });
 
-  it("publicId の無いシリーズ行は落とす", async () => {
+  it("Drop series lines without publicId", async () => {
     mockGetPublishedAuthorDetail.mockResolvedValueOnce({
       author: {
         iconImageUrl: "",
@@ -189,7 +189,7 @@ describe("getPublishedAuthorDetail", () => {
     ]);
   });
 
-  it("author が欠けている場合は null", async () => {
+  it("null if author is missing", async () => {
     mockGetPublishedAuthorDetail.mockResolvedValueOnce({
       author: undefined,
       nextToken: "",
@@ -202,7 +202,7 @@ describe("getPublishedAuthorDetail", () => {
     ).resolves.toEqual({ ok: true, value: null });
   });
 
-  it("API が not_found を返したら null", async () => {
+  it("null if the API returns not_found", async () => {
     mockGetPublishedAuthorDetail.mockRejectedValueOnce(
       new ConnectError("author not found", Code.NotFound)
     );
@@ -214,7 +214,7 @@ describe("getPublishedAuthorDetail", () => {
 
   // `"use cache"` re-creates a thrown error from name + message, dropping
   // `code`; classification has to survive on the message prefix alone.
-  it("キャッシュ境界で再生成された ConnectError も null になる", async () => {
+  it("ConnectError regenerated at cache boundaries will also be null", async () => {
     const rehydrated = new Error("[not_found] author not found");
     rehydrated.name = "ConnectError";
     mockGetPublishedAuthorDetail.mockRejectedValueOnce(rehydrated);
@@ -225,7 +225,7 @@ describe("getPublishedAuthorDetail", () => {
   });
 
   // Another tenant's author comes back as permission_denied, not not_found.
-  it("API が permission_denied を返したら null", async () => {
+  it("null if the API returns permission_denied", async () => {
     mockGetPublishedAuthorDetail.mockRejectedValueOnce(
       new ConnectError("author is not published", Code.PermissionDenied)
     );
@@ -235,7 +235,7 @@ describe("getPublishedAuthorDetail", () => {
     ).resolves.toEqual({ ok: true, value: null });
   });
 
-  it("not_found 以外のエラーは throw せず失敗の値を返す", async () => {
+  it("Errors other than not_found are not thrown and return a failure value.", async () => {
     mockGetPublishedAuthorDetail.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );

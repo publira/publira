@@ -65,7 +65,7 @@ describe("web-host proxy session handling", () => {
     });
   });
 
-  it("Cookie が無い会員ページはログインへ送る", async () => {
+  it("Member pages without cookies are sent to login", async () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(request("https://shop.example.com/settings"));
@@ -77,7 +77,7 @@ describe("web-host proxy session handling", () => {
     expect(location.searchParams.get("returnTo")).toBe("/settings");
   });
 
-  it("ログインへの送出はリーダーの locale を保つ", async () => {
+  it("Sending to login keeps reader locale", async () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
@@ -89,7 +89,7 @@ describe("web-host proxy session handling", () => {
     expect(location.searchParams.get("returnTo")).toBe("/settings");
   });
 
-  it("復号できない Cookie は会員ページからの送出時に削除する", async () => {
+  it("Cookies that cannot be decrypted will be deleted when sent from the member page.", async () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
@@ -100,7 +100,7 @@ describe("web-host proxy session handling", () => {
     expect(deletedCookieNames(response)).toContain(COOKIE_NAME);
   });
 
-  it("有効なセッションで /login を開いたら会員ページへ戻す", async () => {
+  it("If you open /login with a valid session, return to member page", async () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().add({ minutes: 1 }).toString()
     );
@@ -121,7 +121,7 @@ describe("web-host proxy session handling", () => {
    * it as active, bounce `/login` back to `/my`, and `/my` would redirect to
    * `/login` again — forever (#603 acceptance criteria).
    */
-  it("失効由来の /login は弾き返さず、Cookie を削除して表示する", async () => {
+  it("Do not bounce /login caused by revocation, delete cookies and display", async () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().add({ minutes: 1 }).toString()
     );
@@ -138,7 +138,7 @@ describe("web-host proxy session handling", () => {
     expect(deletedCookieNames(response)).toContain(COOKIE_NAME);
   });
 
-  it("失効マーカーは会員ページでは効かない", async () => {
+  it("Expiration markers do not work on member pages", async () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().add({ minutes: 1 }).toString()
     );
@@ -169,7 +169,7 @@ describe("web-host proxy locale routing", () => {
     });
   });
 
-  it("locale 付きのパスをテナントと locale の下へ rewrite する", async () => {
+  it("Rewrite path with locale under tenant and locale", async () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
@@ -181,7 +181,7 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
-  it("個別ページの slug は locale の下で /page へ載る", async () => {
+  it("Slugs for individual pages are posted to /page under locale", async () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
@@ -193,7 +193,7 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
-  it("locale の無い URL をテナントの既定 locale の内部ルートへ rewrite する", async () => {
+  it("Rewrite URL without locale to internal route of tenant's default locale", async () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(request("https://shop.example.com/series"));
@@ -206,7 +206,7 @@ describe("web-host proxy locale routing", () => {
 
   // 既定ロケールはこのアプリの定数ではなくテナントの設定なので、`en` の
   // テナントに来た locale 無しの URL が `/ja` へ落ちてはいけない。
-  it("既定 locale が en のテナントでは locale 無し URL を en として rewrite する", async () => {
+  it("For tenants whose default locale is en, rewrite URLs without locale as en.", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
       tenantId: TENANT_ID,
@@ -221,7 +221,7 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
-  it("既定 locale が en のテナントでもトップを en として rewrite する", async () => {
+  it("Rewrite the top as en even if the default locale is en.", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
       tenantId: TENANT_ID,
@@ -236,7 +236,7 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
-  it("既定 locale を明示した URL はパスとクエリを保って正規 URL へ送る", async () => {
+  it("URLs that specify the default locale are sent to the regular URL with the path and query preserved.", async () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
@@ -248,7 +248,7 @@ describe("web-host proxy locale routing", () => {
     expect(location.search).toBe("?source=bookmark");
   });
 
-  it("既定 locale が en のテナントでも /en を正規 URL へ送る", async () => {
+  it("Send /en to the regular URL even if the default locale is en for tenants", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
       tenantId: TENANT_ID,
@@ -265,7 +265,7 @@ describe("web-host proxy locale routing", () => {
   });
 
   // locale を名指しした URL は読者の選択なので、既定ロケールで引き戻さない。
-  it("既定 locale が en でも /ja の URL はそのまま配信する", async () => {
+  it("Even if the default locale is en, /ja URLs are delivered as is.", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
       tenantId: TENANT_ID,
@@ -280,7 +280,7 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
-  it("theme.css と通常の Route Handler は locale を挟まない", async () => {
+  it("theme.css and normal Route Handler do not include locale", async () => {
     const { proxy } = await import("./proxy");
 
     const theme = await proxy(request("https://shop.example.com/theme.css"));
@@ -298,7 +298,7 @@ describe("web-host proxy locale routing", () => {
 });
 
 describe("web-host proxy internal revalidation", () => {
-  it("再検証パスを proxy matcher から除外する", async () => {
+  it("Exclude revalidation paths from proxy matcher", async () => {
     const { config } = await import("./proxy");
 
     expect(

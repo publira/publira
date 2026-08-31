@@ -79,7 +79,7 @@ afterEach(() => {
 });
 
 describe("FollowList", () => {
-  it("最初のページが空なら未フォローとして案内する", async () => {
+  it("If the first page is empty, you will be marked as unfollowed.", async () => {
     await renderList();
 
     expect(
@@ -94,7 +94,7 @@ describe("FollowList", () => {
     ).toBe("/series");
   });
 
-  it("ページ送りの先が空でも一覧全体が空だとは案内しない", async () => {
+  it("Even if the destination of the page is empty, it will not notify you that the entire list is empty.", async () => {
     await renderList({ previousToken: "previous", token: "current" });
 
     expect(
@@ -106,7 +106,7 @@ describe("FollowList", () => {
     );
   });
 
-  it("作品と著者の公開ページへのリンクと解除操作を描画する", async () => {
+  it("Draw links to public pages for works and authors and undo operations", async () => {
     await renderList({
       items: [
         follow(),
@@ -140,7 +140,7 @@ describe("FollowList", () => {
     ).toBe("/settings/follows?token=next");
   });
 
-  it("非公開になった対象はリンクも解除も出さない", async () => {
+  it("Targets that have been made private cannot be linked or deleted.", async () => {
     await renderList({
       items: [
         follow({
@@ -162,7 +162,7 @@ describe("FollowList", () => {
     ).toBeNull();
   });
 
-  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", async () => {
+  it("If acquisition fails, only an error will be displayed and an empty list will not be displayed.", async () => {
     await renderList({
       listErrorMessage: "フォロー一覧を取得できませんでした。",
       nextToken: "next",

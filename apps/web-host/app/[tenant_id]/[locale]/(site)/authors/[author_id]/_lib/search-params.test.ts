@@ -9,17 +9,17 @@ import {
 // only pin down that this detail route is wired to it and points at the
 // author.
 describe("parseAuthorDetailSearchParams", () => {
-  it("base64url の token は前後の空白だけ落として通す", () => {
+  it("The base64url token is passed by removing only the leading and trailing spaces.", () => {
     expect(parseAuthorDetailSearchParams({ token: " djF8Zg-_ " })).toEqual({
       token: "djF8Zg-_",
     });
   });
 
-  it("token が無ければ先頭ページ扱いにする", () => {
+  it("If there is no token, treat it as the first page", () => {
     expect(parseAuthorDetailSearchParams({})).toEqual({ token: "" });
   });
 
-  it("base64url 以外の token は捨てる", () => {
+  it("Discard tokens other than base64url", () => {
     expect(parseAuthorDetailSearchParams({ token: "djF8Zg==" })).toEqual({
       token: "",
     });
@@ -30,13 +30,13 @@ describe("parseAuthorDetailSearchParams", () => {
 });
 
 describe("authorDetailHref", () => {
-  it("token 付きのクエリを組み立てる", () => {
+  it("Construct a query with token", () => {
     expect(authorDetailHref("CREATOR_A", "djF8Zg")).toBe(
       "/authors/CREATOR_A?token=djF8Zg"
     );
   });
 
-  it("token が空なら先頭ページへ戻す", () => {
+  it("If token is empty, return to first page", () => {
     expect(authorDetailHref("CREATOR_A", "")).toBe("/authors/CREATOR_A");
   });
 });

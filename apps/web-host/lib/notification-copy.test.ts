@@ -12,7 +12,7 @@ const JA: HostMessages = sharedCatalog("ja");
 const EN: HostMessages = sharedCatalog("en");
 
 describe("parseNotificationPayload", () => {
-  it("既知のフィールドだけを取り出す", () => {
+  it("Extract only known fields", () => {
     expect(
       parseNotificationPayload(
         JSON.stringify({
@@ -31,7 +31,7 @@ describe("parseNotificationPayload", () => {
     });
   });
 
-  it("空・壊れた JSON・不正な ID は空の payload にする", () => {
+  it("Empty/corrupted JSON/invalid ID should be an empty payload", () => {
     expect(parseNotificationPayload("")).toEqual({});
     expect(parseNotificationPayload("{")).toEqual({});
     expect(parseNotificationPayload("null")).toEqual({});
@@ -47,7 +47,7 @@ describe("parseNotificationPayload", () => {
 });
 
 describe("notificationHref", () => {
-  it("series と episode があれば公開ページへ、series だけならシリーズへ", () => {
+  it("If there are series and episodes, go to the public page, if only series, go to the series.", () => {
     expect(notificationHref({ episode_id: "EP01", series_id: "SR01" })).toBe(
       "/series/SR01/episodes/EP01"
     );
@@ -58,7 +58,7 @@ describe("notificationHref", () => {
 });
 
 describe("notificationDisplay", () => {
-  it("公開通知は会員向けの文言を組み立てる", () => {
+  it("Construct text for members in public notices", () => {
     expect(
       notificationDisplay(
         "episode_published",
@@ -76,7 +76,7 @@ describe("notificationDisplay", () => {
     });
   });
 
-  it("ロケールに合わせて文言を切り替える", () => {
+  it("Switch the wording according to the locale", () => {
     expect(
       notificationDisplay(
         "episode_published",
@@ -94,7 +94,7 @@ describe("notificationDisplay", () => {
     });
   });
 
-  it("未知の type は落とさず generic にする", () => {
+  it("Don't drop unknown types and make them generic", () => {
     expect(
       notificationDisplay("episode_publish_failed", { series_id: "SR01" }, JA)
     ).toEqual({

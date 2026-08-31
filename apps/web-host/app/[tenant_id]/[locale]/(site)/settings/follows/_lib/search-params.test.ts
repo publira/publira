@@ -3,17 +3,17 @@ import { describe, expect, it } from "vitest";
 import { followsListHref, parseFollowsSearchParams } from "./search-params";
 
 describe("parseFollowsSearchParams", () => {
-  it("base64url の token は前後の空白だけ落として通す", () => {
+  it("The base64url token is passed by removing only the leading and trailing spaces.", () => {
     expect(parseFollowsSearchParams({ token: " djF8Zg-_ " })).toEqual({
       token: "djF8Zg-_",
     });
   });
 
-  it("token が無ければ先頭ページ扱いにする", () => {
+  it("If there is no token, treat it as the first page", () => {
     expect(parseFollowsSearchParams({})).toEqual({ token: "" });
   });
 
-  it("base64url 以外の token は捨てる", () => {
+  it("Discard tokens other than base64url", () => {
     expect(parseFollowsSearchParams({ token: "djF8Zg==" })).toEqual({
       token: "",
     });
@@ -24,13 +24,13 @@ describe("parseFollowsSearchParams", () => {
 });
 
 describe("followsListHref", () => {
-  it("token 付きのクエリを組み立てる", () => {
+  it("Construct a query with token", () => {
     expect(followsListHref("next/page")).toBe(
       "/settings/follows?token=next%2Fpage"
     );
   });
 
-  it("token が空なら先頭ページへ戻す", () => {
+  it("If token is empty, return to first page", () => {
     expect(followsListHref("")).toBe("/settings/follows");
   });
 });

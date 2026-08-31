@@ -14,18 +14,18 @@ const encodeLikeServer = (direction: "f" | "b", ...keys: string[]) => {
 };
 
 describe("cursorTokenSchema", () => {
-  it("base64url の token は前後の空白だけ落として通す", () => {
+  it("The base64url token is passed by removing only the leading and trailing spaces.", () => {
     expect(cursorTokenSchema.parse(" djF8Zg-_ ")).toBe("djF8Zg-_");
   });
 
-  it("token が無ければ先頭ページ扱いにする", () => {
+  it("If there is no token, treat it as the first page", () => {
     expect(cursorTokenSchema.parse("")).toBe("");
     expect(z.object({ token: cursorTokenSchema }).parse({})).toEqual({
       token: "",
     });
   });
 
-  it("base64url 以外・複数値・長すぎる token は捨てる", () => {
+  it("Discard tokens other than base64url, multiple values, and too long tokens", () => {
     expect(cursorTokenSchema.parse("djF8Zg==")).toBe("");
     expect(cursorTokenSchema.parse("v1|f|2026")).toBe("");
     expect(cursorTokenSchema.parse("dj F8Zg")).toBe("");
@@ -33,7 +33,7 @@ describe("cursorTokenSchema", () => {
     expect(cursorTokenSchema.parse("a".repeat(8196))).toBe("");
   });
 
-  it("著者名・シリーズタイトル上限から作った正規 token は通す", () => {
+  it("A regular token created from the author name and series title upper limit will be passed.", () => {
     const name = "あ".repeat(255);
     const emojiTitle = "😀".repeat(255);
     const id = "00000000-0000-0000-0000-000000000000";
@@ -46,7 +46,7 @@ describe("cursorTokenSchema", () => {
     expect(cursorTokenSchema.parse(emojiToken)).toBe(emojiToken);
   });
 
-  it("base64url が取り得ない長さの token は捨てる", () => {
+  it("Discard tokens that are too long for base64url", () => {
     // 4 で割った余りが 1 になる長さは、パディング無し base64url では作れない。
     expect(cursorTokenSchema.parse("a")).toBe("");
     expect(cursorTokenSchema.parse("abcde")).toBe("");
@@ -58,15 +58,15 @@ describe("cursorTokenSchema", () => {
 });
 
 describe("cursorPageHref", () => {
-  it("token 付きのクエリを組み立てる", () => {
+  it("Construct a query with token", () => {
     expect(cursorPageHref("/series", "djF8Zg")).toBe("/series?token=djF8Zg");
   });
 
-  it("token が空なら先頭ページへ戻す", () => {
+  it("If token is empty, return to first page", () => {
     expect(cursorPageHref("/series", "")).toBe("/series");
   });
 
-  it("token をクエリ文字列として安全にエスケープする", () => {
+  it("Safely escape token as a query string", () => {
     expect(cursorPageHref("/announcements", "a+b/c")).toBe(
       "/announcements?token=a%2Bb%2Fc"
     );

@@ -31,7 +31,7 @@ vi.mock("./locale-provider", () => ({
 afterEach(cleanup);
 
 describe("LocaleSwitcher", () => {
-  it("現在のページへの実リンクをポップオーバーに表示する", () => {
+  it("Display a real link to the current page in a popover", () => {
     render(<LocaleSwitcher />);
 
     const trigger = screen.getByRole("button", {

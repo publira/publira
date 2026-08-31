@@ -46,7 +46,7 @@ describe("web-host announcements", () => {
     mockResolveAccessToken.mockResolvedValue("sid_001");
   });
 
-  it("listMyAnnouncements: API 応答を画面用に変換する", async () => {
+  it("listMyAnnouncements: Convert API responses for screen", async () => {
     const { listMyAnnouncements } = await importAnnouncements();
 
     mockListAnnouncements.mockResolvedValueOnce({
@@ -83,7 +83,7 @@ describe("web-host announcements", () => {
     });
   });
 
-  it("listMyAnnouncements: token を指定なしなら先頭ページを既定件数で引く", async () => {
+  it("listMyAnnouncements: If token is not specified, pull the first page with the default number of items.", async () => {
     const { listMyAnnouncements } = await importAnnouncements();
     mockListAnnouncements.mockResolvedValueOnce({ announcements: [] });
 
@@ -95,7 +95,7 @@ describe("web-host announcements", () => {
     );
   });
 
-  it("listMyAnnouncements: 渡された cursor と件数をそのまま RPC に載せる", async () => {
+  it("listMyAnnouncements: Post the passed cursor and number as is to RPC", async () => {
     const { listMyAnnouncements } = await importAnnouncements();
     mockListAnnouncements.mockResolvedValueOnce({ announcements: [] });
 
@@ -111,7 +111,7 @@ describe("web-host announcements", () => {
     );
   });
 
-  it("listMyAnnouncements: 分類できない RPC エラーは伝播する", async () => {
+  it("listMyAnnouncements: Uncategorized RPC errors propagate", async () => {
     const { listMyAnnouncements } = await importAnnouncements();
     const error = new ConnectError("boom", Code.Internal);
     mockListAnnouncements.mockRejectedValueOnce(error);
@@ -121,7 +121,7 @@ describe("web-host announcements", () => {
     ).rejects.toBe(error);
   });
 
-  it("getMyAnnouncement: 認可済み 1 件を返す", async () => {
+  it("getMyAnnouncement: Return 1 approved", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
 
     mockGetAnnouncement.mockResolvedValueOnce({
@@ -150,7 +150,7 @@ describe("web-host announcements", () => {
     expect(mockListAnnouncements).not.toHaveBeenCalled();
   });
 
-  it("getMyAnnouncement: 前後の空白を除いて RPC に渡す", async () => {
+  it("getMyAnnouncement: Remove leading and trailing spaces and pass to RPC", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
     mockGetAnnouncement.mockResolvedValueOnce({
       announcement: {
@@ -172,7 +172,7 @@ describe("web-host announcements", () => {
     );
   });
 
-  it("getMyAnnouncement: 不正な入力は RPC を呼ばずに null", async () => {
+  it("getMyAnnouncement: invalid input is null without calling RPC", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
 
     await expect(
@@ -184,7 +184,7 @@ describe("web-host announcements", () => {
     expect(mockResolveAccessToken).not.toHaveBeenCalled();
   });
 
-  it("getMyAnnouncement: session が無ければ null", async () => {
+  it("getMyAnnouncement: null if no session", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
     mockResolveAccessToken.mockResolvedValueOnce("");
 
@@ -194,7 +194,7 @@ describe("web-host announcements", () => {
     expect(mockGetAnnouncement).not.toHaveBeenCalled();
   });
 
-  it("getMyAnnouncement: 見つからない行は null", async () => {
+  it("getMyAnnouncement: null for missing rows", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
     mockGetAnnouncement.mockRejectedValueOnce(
       new ConnectError("announcement not found", Code.NotFound)
@@ -206,7 +206,7 @@ describe("web-host announcements", () => {
     expect(mockListAnnouncements).not.toHaveBeenCalled();
   });
 
-  it("getMyAnnouncement: announcement が欠けている場合は null", async () => {
+  it("getMyAnnouncement: null if announcement is missing", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
     mockGetAnnouncement.mockResolvedValueOnce({});
 
@@ -215,7 +215,7 @@ describe("web-host announcements", () => {
     ).resolves.toBeNull();
   });
 
-  it("getMyAnnouncement: 分類できない RPC エラーは伝播する", async () => {
+  it("getMyAnnouncement: Uncategorized RPC errors propagate", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
     const error = new ConnectError("boom", Code.Internal);
     mockGetAnnouncement.mockRejectedValueOnce(error);
@@ -225,7 +225,7 @@ describe("web-host announcements", () => {
     );
   });
 
-  it("markAnnouncementAsRead: session が無ければ false", async () => {
+  it("markAnnouncementAsRead: false if no session", async () => {
     const { markAnnouncementAsRead } = await importAnnouncements();
     mockResolveAccessToken.mockResolvedValueOnce("");
 
@@ -234,7 +234,7 @@ describe("web-host announcements", () => {
     );
   });
 
-  it("markAnnouncementAsRead: API 成功時は true", async () => {
+  it("markAnnouncementAsRead: true on API success", async () => {
     const { markAnnouncementAsRead } = await importAnnouncements();
     mockMarkAnnouncementAsRead.mockResolvedValueOnce({ marked: true });
 
@@ -243,7 +243,7 @@ describe("web-host announcements", () => {
     );
   });
 
-  it("markAllAnnouncementsAsRead: 件数を返す", async () => {
+  it("markAllAnnouncementsAsRead: Return count", async () => {
     const { markAllAnnouncementsAsRead } = await importAnnouncements();
     mockMarkAllAnnouncementsAsRead.mockResolvedValueOnce({ markedCount: 3 });
 

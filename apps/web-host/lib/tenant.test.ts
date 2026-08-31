@@ -59,7 +59,7 @@ describe("tenant", () => {
     mockGetTenant.mockReset();
   });
 
-  it("theme.css 用のテーマ読取に専用タグを付ける", async () => {
+  it("Add a dedicated tag to theme reading for theme.css", async () => {
     mockGetTenant.mockResolvedValueOnce({
       ...tenantResponse,
       theme: { primaryColor: "#112233" },
@@ -75,7 +75,7 @@ describe("tenant", () => {
     });
   });
 
-  it("公開 API のタイムゾーンをサイト情報に載せる", async () => {
+  it("Add public API time zone to site information", async () => {
     mockGetTenant.mockResolvedValueOnce(tenantResponse);
 
     const info = await getTenantSiteInfo("TENANT_001");
@@ -87,7 +87,7 @@ describe("tenant", () => {
     expect(info?.acceptsPayments).toBe(true);
   });
 
-  it("決済を受け付けられないテナントを false として扱う", async () => {
+  it("Treat tenants that cannot accept payments as false", async () => {
     mockGetTenant.mockResolvedValueOnce({
       ...tenantResponse,
       acceptsPayments: false,
@@ -98,7 +98,7 @@ describe("tenant", () => {
     expect(info?.acceptsPayments).toBe(false);
   });
 
-  it("テナント icon が設定されていればバリアントを取得できる", async () => {
+  it("You can get the variant if the tenant icon is set.", async () => {
     mockGetTenant.mockResolvedValueOnce({
       ...tenantResponse,
       theme: {
@@ -115,7 +115,7 @@ describe("tenant", () => {
     ]);
   });
 
-  it("テナント icon が未設定ならバリアントを持たない", async () => {
+  it("If tenant icon is not set, it does not have a variant.", async () => {
     mockGetTenant.mockResolvedValueOnce(tenantResponse);
 
     const info = await getTenantSiteInfo("TENANT_001");
@@ -123,7 +123,7 @@ describe("tenant", () => {
     expect(info?.iconImageVariants).toBeUndefined();
   });
 
-  it("テナントロゴが設定されていればバリアントを取得できる", async () => {
+  it("Variants can be obtained if the tenant logo is set.", async () => {
     mockGetTenant.mockResolvedValueOnce({
       ...tenantResponse,
       theme: {
@@ -139,7 +139,7 @@ describe("tenant", () => {
     ]);
   });
 
-  it("テナントロゴが未設定ならバリアントを持たない", async () => {
+  it("If the tenant logo is not set, there will be no variant.", async () => {
     mockGetTenant.mockResolvedValueOnce(tenantResponse);
 
     const info = await getTenantSiteInfo("TENANT_001");
@@ -147,7 +147,7 @@ describe("tenant", () => {
     expect(info?.logoImageVariants).toBeUndefined();
   });
 
-  it("フィールドが空のときは既定タイムゾーンにフォールバックする", async () => {
+  it("Fallback to default time zone when field is empty", async () => {
     mockGetTenant.mockResolvedValueOnce({ ...tenantResponse, timezone: "  " });
 
     const info = await getTenantSiteInfo("TENANT_001");
@@ -155,7 +155,7 @@ describe("tenant", () => {
     expect(info?.timeZone).toBe("Asia/Tokyo");
   });
 
-  it("表示タイムゾーンとしてテナントのタイムゾーンを返す", async () => {
+  it("Return tenant timezone as display timezone", async () => {
     mockGetTenant.mockResolvedValueOnce(tenantResponse);
 
     await expect(getTenantDisplayTimeZone("TENANT_001")).resolves.toBe(
@@ -163,7 +163,7 @@ describe("tenant", () => {
     );
   });
 
-  it("テナントを取得できないときも既定タイムゾーンで表示する", async () => {
+  it("Display in default time zone even when tenant cannot be obtained", async () => {
     // Degrading to the host's zone would make the rendered wall clock depend on
     // where the container runs, which is the thing #564 removed.
     mockGetTenant.mockRejectedValueOnce(
@@ -175,12 +175,12 @@ describe("tenant", () => {
     );
   });
 
-  it("テナント ID が空のときも既定タイムゾーンで表示する", async () => {
+  it("Display in default time zone even when tenant ID is empty", async () => {
     await expect(getTenantDisplayTimeZone("  ")).resolves.toBe("Asia/Tokyo");
     expect(mockGetTenant).not.toHaveBeenCalled();
   });
 
-  it("公開 API の既定ロケールをサイト情報に載せる", async () => {
+  it("List the default locale of the public API in the site information", async () => {
     mockGetTenant.mockResolvedValueOnce(tenantResponse);
 
     const info = await getTenantSiteInfo("TENANT_001");
@@ -188,7 +188,7 @@ describe("tenant", () => {
     expect(info?.defaultLocale).toBe("en");
   });
 
-  it("このビルドが配信しないロケールだけ ja に落とす", async () => {
+  it("Only locales that this build does not distribute are reduced to ja", async () => {
     mockGetTenant.mockResolvedValueOnce({
       ...tenantResponse,
       defaultLocale: "fr",
@@ -199,13 +199,13 @@ describe("tenant", () => {
     expect(info?.defaultLocale).toBe("ja");
   });
 
-  it("既定ロケールとしてテナントの設定値を返す", async () => {
+  it("Return tenant settings as default locale", async () => {
     mockGetTenant.mockResolvedValueOnce(tenantResponse);
 
     await expect(getTenantDefaultLocale("TENANT_001")).resolves.toBe("en");
   });
 
-  it("テナントを取得できないときも既定ロケールは ja になる", async () => {
+  it("The default locale is ja even when the tenant cannot be obtained.", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("upstream is down", Code.Unavailable)
     );

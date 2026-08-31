@@ -165,7 +165,7 @@ describe("catalog-top section loaders", () => {
     });
   });
 
-  it("getCatalogTopNewEpisodes は公開日が新しい順に返す", async () => {
+  it("getCatalogTopNewEpisodes returns in descending order of publication date", async () => {
     mockListPublishedSeries.mockResolvedValue({
       ok: true,
       value: { nextToken: "", previousToken: "", series: seriesFixture },
@@ -193,7 +193,7 @@ describe("catalog-top section loaders", () => {
     ]);
   });
 
-  it("getCatalogTopUpdatedSeries は最新エピソード更新順に返す", async () => {
+  it("getCatalogTopUpdatedSeries returns the latest episodes in order of update", async () => {
     mockListPublishedSeries.mockResolvedValue({
       ok: true,
       value: { nextToken: "", previousToken: "", series: seriesFixture },
@@ -220,7 +220,7 @@ describe("catalog-top section loaders", () => {
     ]);
   });
 
-  it("getCatalogTopFeaturedLabels / Authors は公開一覧を返す", async () => {
+  it("getCatalogTopFeaturedLabels / Authors returns public list", async () => {
     mockListPublishedAuthors.mockResolvedValue({
       ok: true,
       value: {
@@ -283,7 +283,7 @@ describe("catalog-top section loaders", () => {
    * The reads below never throw (#672), so a failure has to travel as a value —
    * a section that could not be built must not look like an empty one.
    */
-  it("シリーズ一覧の取得に失敗したらセクションも失敗を返す", async () => {
+  it("If retrieving the series list fails, the section also returns failure.", async () => {
     mockListPublishedSeries.mockResolvedValue({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
@@ -302,7 +302,7 @@ describe("catalog-top section loaders", () => {
     });
   });
 
-  it("シリーズ詳細の取得に失敗したらセクションも失敗を返す", async () => {
+  it("If retrieving series details fails, the section also returns failure.", async () => {
     mockListPublishedSeries.mockResolvedValue({
       ok: true,
       value: { nextToken: "", previousToken: "", series: seriesFixture },
@@ -325,7 +325,7 @@ describe("catalog-top section loaders", () => {
     });
   });
 
-  it("詳細が null のシリーズ (非公開化など) を除外して継続する", async () => {
+  it("Exclude series with null details (e.g. unpublished) and continue", async () => {
     mockListPublishedSeries.mockResolvedValue({
       ok: true,
       value: {

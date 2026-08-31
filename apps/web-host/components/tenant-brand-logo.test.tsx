@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 describe("TenantBrandLogo", () => {
-  it("ロゴ画像を表示する", () => {
+  it("Display logo image", () => {
     render(
       <TenantBrandLogo
         alt="青枝出版のロゴ"
@@ -36,7 +36,7 @@ describe("TenantBrandLogo", () => {
     ).toBe(true);
   });
 
-  it("読み込みに失敗したらサイト名テキストにフォールバックする", () => {
+  it("Fallback to site name text if loading fails", () => {
     render(
       <TenantBrandLogo
         alt="青枝出版のロゴ"

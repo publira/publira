@@ -51,7 +51,7 @@ describe("notification lib", () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+  it("Pass the cursor token and limit as is and return the response token", async () => {
     mockListNotificationsApi.mockResolvedValue({
       nextToken: "next-page",
       notifications: [],
@@ -80,7 +80,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("最初のページは空のトークンと既定 limit で取得する", async () => {
+  it("Get the first page with an empty token and default limit", async () => {
     mockListNotificationsApi.mockResolvedValue({ notifications: [] });
 
     const { listNotifications } = await import("./notification");
@@ -101,7 +101,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("type と payload から表示用の文言とリンクを組み立てる", async () => {
+  it("Assemble display text and links from type and payload", async () => {
     mockListNotificationsApi.mockResolvedValue({
       notifications: [notification("n1", "2026-04-04T00:00:00Z")],
     });
@@ -123,7 +123,7 @@ describe("notification lib", () => {
     ]);
   });
 
-  it("未知 type も generic として残す", async () => {
+  it("Leave unknown types as generic", async () => {
     mockListNotificationsApi.mockResolvedValue({
       notifications: [
         {
@@ -153,7 +153,7 @@ describe("notification lib", () => {
     ]);
   });
 
-  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+  it("Return server keyset order without sorting", async () => {
     mockListNotificationsApi.mockResolvedValue({
       notifications: [
         notification("n2", "2026-04-01T00:00:00Z"),
@@ -167,7 +167,7 @@ describe("notification lib", () => {
     expect(result.notifications.map((item) => item.id)).toEqual(["n2", "n1"]);
   });
 
-  it("権限エラーを分かりやすく返す", async () => {
+  it("Return permission errors in an easy-to-understand manner", async () => {
     mockListNotificationsApi.mockRejectedValue(
       new ConnectError("permission denied", Code.PermissionDenied)
     );
@@ -185,7 +185,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("未認証は再ログインが必要として返す", async () => {
+  it("If unauthenticated, it will be returned as requiring re-login.", async () => {
     mockListNotificationsApi.mockRejectedValue(
       new ConnectError("unauthenticated", Code.Unauthenticated)
     );
@@ -199,7 +199,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("壊れた cursor の InvalidArgument は再ログインにしない", async () => {
+  it("InvalidArgument of broken cursor does not cause re-login", async () => {
     mockListNotificationsApi.mockRejectedValue(
       new ConnectError("invalid cursor", Code.InvalidArgument)
     );
@@ -220,7 +220,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("分類できないエラーはキャッシュ関数から throw せず、呼び出し側で再送出する", async () => {
+  it("Errors that cannot be classified are not thrown from the cache function, but re-thrown by the caller.", async () => {
     mockListNotificationsApi.mockRejectedValue(
       new ConnectError("boom", Code.Internal)
     );
@@ -232,7 +232,7 @@ describe("notification lib", () => {
     ).rejects.toThrow();
   });
 
-  it("セッションが無ければトークンなしの結果を返す", async () => {
+  it("If there is no session, return result without token", async () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     const { listNotifications } = await import("./notification");
@@ -251,7 +251,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("未読件数を返す", async () => {
+  it("Return number of unread items", async () => {
     mockCountUnreadNotificationsApi.mockResolvedValue({ unreadCount: 3 });
 
     const { countUnreadNotifications } = await import("./notification");
@@ -264,7 +264,7 @@ describe("notification lib", () => {
     expect(result).toEqual({ ok: true, unreadCount: 3 });
   });
 
-  it("未読件数の取得失敗は空のベルとして返す", async () => {
+  it("If the number of unread items fails to be retrieved, an empty bell is returned.", async () => {
     mockCountUnreadNotificationsApi.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -280,7 +280,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("未読件数の未分類エラーも呼び出し側で再送出する", async () => {
+  it("The caller also resends unclassified errors for the number of unread items.", async () => {
     mockCountUnreadNotificationsApi.mockRejectedValue(new Error("boom"));
 
     const { countUnreadNotifications } = await import("./notification");
@@ -288,7 +288,7 @@ describe("notification lib", () => {
     await expect(countUnreadNotifications("TENANT001", "ja")).rejects.toThrow();
   });
 
-  it("単件既読に notification_id を渡す", async () => {
+  it("Pass notification_id to single read item", async () => {
     mockMarkNotificationAsReadApi.mockResolvedValue({ marked: true });
 
     const { markNotificationAsRead } = await import("./notification");
@@ -308,7 +308,7 @@ describe("notification lib", () => {
     expect(result).toEqual({ ok: true });
   });
 
-  it("全件既読の件数を返す", async () => {
+  it("Returns the number of all read items", async () => {
     mockMarkAllNotificationsAsReadApi.mockResolvedValue({ markedCount: 4 });
 
     const { markAllNotificationsAsRead } = await import("./notification");
@@ -317,7 +317,7 @@ describe("notification lib", () => {
     expect(result).toEqual({ markedCount: 4, ok: true });
   });
 
-  it("単件既読の権限エラーはメッセージを返す", async () => {
+  it("A message is returned for a single read permission error.", async () => {
     mockMarkNotificationAsReadApi.mockRejectedValue(
       new ConnectError("permission denied", Code.PermissionDenied)
     );
@@ -335,7 +335,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("単件既読の未分類エラーは再送出する", async () => {
+  it("Single read uncategorized errors will be sent again.", async () => {
     mockMarkNotificationAsReadApi.mockRejectedValue(new Error("boom"));
 
     const { markNotificationAsRead } = await import("./notification");
@@ -349,7 +349,7 @@ describe("notification lib", () => {
     ).rejects.toThrow();
   });
 
-  it("セッションが無ければ単件既読の API を呼ばない", async () => {
+  it("If there is no session, do not call the single read API", async () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     const { markNotificationAsRead } = await import("./notification");
@@ -366,7 +366,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("全件既読の権限エラーはメッセージを返す", async () => {
+  it("A message is returned for permission errors when all items have been read.", async () => {
     mockMarkAllNotificationsAsReadApi.mockRejectedValue(
       new ConnectError("permission denied", Code.PermissionDenied)
     );
@@ -380,7 +380,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("全件既読の未分類エラーは再送出する", async () => {
+  it("Resend all uncategorized errors that have already been read.", async () => {
     mockMarkAllNotificationsAsReadApi.mockRejectedValue(new Error("boom"));
 
     const { markAllNotificationsAsRead } = await import("./notification");
@@ -390,7 +390,7 @@ describe("notification lib", () => {
     ).rejects.toThrow();
   });
 
-  it("セッションが無ければ全件既読の API を呼ばない", async () => {
+  it("If there is no session, do not call the all read API", async () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     const { markAllNotificationsAsRead } = await import("./notification");

@@ -20,7 +20,7 @@ describe("searchPublishedSeries", () => {
     mockSearchPublishedSeries.mockReset();
   });
 
-  it("検索ヒットと cursor トークンを整形して返す", async () => {
+  it("Format and return search hits and cursor tokens", async () => {
     mockSearchPublishedSeries.mockResolvedValueOnce({
       nextToken: "NEXT",
       previousToken: "PREV",
@@ -77,7 +77,7 @@ describe("searchPublishedSeries", () => {
     });
   });
 
-  it("token を省略したら先頭ページを取る", async () => {
+  it("If token is omitted, get the first page", async () => {
     mockSearchPublishedSeries.mockResolvedValueOnce({
       nextToken: "",
       previousToken: "",
@@ -94,7 +94,7 @@ describe("searchPublishedSeries", () => {
     });
   });
 
-  it("取得に失敗したら throw せず失敗の値を返す", async () => {
+  it("If acquisition fails, return the failure value without throwing", async () => {
     mockSearchPublishedSeries.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );

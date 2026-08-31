@@ -43,7 +43,7 @@ describe("parseLoginSearchParams", () => {
     });
   });
 
-  it("失効由来の /login だけ再ログイン案内を立てる", () => {
+  it("Set up a re-login guide only for /login due to invalidation", () => {
     expect(
       parseLoginSearchParams({ reason: "session_revoked", returnTo: "/my" })
     ).toEqual({

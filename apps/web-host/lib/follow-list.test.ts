@@ -57,7 +57,7 @@ describe("listMyFollows", () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+  it("Pass the cursor token and limit as is and return the response token", async () => {
     mockListMyFollows.mockResolvedValue({
       follows: [],
       nextToken: "next-page",
@@ -87,7 +87,7 @@ describe("listMyFollows", () => {
     });
   });
 
-  it("最初のページは空のトークンと既定 limit で取得する", async () => {
+  it("Get the first page with an empty token and default limit", async () => {
     mockListMyFollows.mockResolvedValue({ follows: [] });
 
     const { listMyFollows } = await import("./follow-list");
@@ -109,7 +109,7 @@ describe("listMyFollows", () => {
     });
   });
 
-  it("作品と著者を対象種別付きで、サーバーの順のまま返す", async () => {
+  it("Return works and authors with target type in server order", async () => {
     mockListMyFollows.mockResolvedValue({
       follows: [seriesFollow, authorFollow],
       nextToken: "",
@@ -134,7 +134,7 @@ describe("listMyFollows", () => {
     ]);
   });
 
-  it("このアプリが扱わない対象種別は落とす", async () => {
+  it("Drop target types that this app does not handle", async () => {
     mockListMyFollows.mockResolvedValue({
       follows: [
         {
@@ -158,7 +158,7 @@ describe("listMyFollows", () => {
     ]);
   });
 
-  it("ゲストは RPC を呼ばず再ログインが必要として返す", async () => {
+  it("Guest does not call RPC and returns it as requiring re-login", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
     const { listMyFollows } = await import("./follow-list");
@@ -175,7 +175,7 @@ describe("listMyFollows", () => {
     expect(mockListMyFollows).not.toHaveBeenCalled();
   });
 
-  it("未認証は再ログインが必要として返す", async () => {
+  it("If unauthenticated, it will be returned as requiring re-login.", async () => {
     mockListMyFollows.mockRejectedValue(
       new ConnectError("unauthenticated", Code.Unauthenticated)
     );
@@ -189,7 +189,7 @@ describe("listMyFollows", () => {
     });
   });
 
-  it("権限エラーを分かりやすく返す", async () => {
+  it("Return permission errors in an easy-to-understand manner", async () => {
     mockListMyFollows.mockRejectedValue(
       new ConnectError("permission denied", Code.PermissionDenied)
     );
@@ -207,7 +207,7 @@ describe("listMyFollows", () => {
     });
   });
 
-  it("想定外の失敗は throw する", async () => {
+  it("Throw for unexpected failures", async () => {
     mockListMyFollows.mockRejectedValue(
       new ConnectError("boom", Code.Internal)
     );
@@ -238,7 +238,7 @@ describe("resolveFollowListItems", () => {
     },
   ];
 
-  it("公開中の作品・著者のタイトルと公開ページ URL を付ける", async () => {
+  it("Add the title of the published work/author and the published page URL", async () => {
     mockGetSeriesDetail.mockResolvedValueOnce({
       ok: true,
       value: { episodes: [], series: { title: "公開シリーズ" } },
@@ -276,7 +276,7 @@ describe("resolveFollowListItems", () => {
     );
   });
 
-  it("非公開になった対象はリンクせず、公開終了として残す", async () => {
+  it("Do not link to a target that has become private, and leave it as closed.", async () => {
     mockGetSeriesDetail.mockResolvedValueOnce({ ok: true, value: null });
 
     const { resolveFollowListItems } = await import("./follow-list");
@@ -295,7 +295,7 @@ describe("resolveFollowListItems", () => {
     ]);
   });
 
-  it("カタログ取得の失敗では publicId をタイトルにしてリンクは残す", async () => {
+  it("If catalog acquisition fails, use publicId as title and leave link.", async () => {
     mockGetPublishedAuthorDetail.mockResolvedValueOnce({
       message: "著者を取得できませんでした。",
       ok: false,

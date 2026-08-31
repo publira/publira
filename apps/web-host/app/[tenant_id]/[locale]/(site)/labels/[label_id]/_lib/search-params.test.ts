@@ -10,13 +10,13 @@ import {
 // only pin down that this detail route is wired to it and points at the
 // label.
 describe("parseLabelDetailParams", () => {
-  it("12 文字の Base58 public_id を通す", () => {
+  it("Pass 12 character Base58 public_id", () => {
     expect(parseLabelDetailParams({ label_id: " SeedLABLAAA1 " })).toBe(
       "SeedLABLAAA1"
     );
   });
 
-  it("形が違う label_id は null にする", () => {
+  it("Set label_id of different shape to null", () => {
     expect(parseLabelDetailParams({ label_id: "not-a-public-id" })).toBeNull();
     expect(parseLabelDetailParams({ label_id: "0OOOOOOOOOOO" })).toBeNull();
     expect(parseLabelDetailParams({ label_id: "" })).toBeNull();
@@ -24,17 +24,17 @@ describe("parseLabelDetailParams", () => {
 });
 
 describe("parseLabelDetailSearchParams", () => {
-  it("base64url の token は前後の空白だけ落として通す", () => {
+  it("The base64url token is passed by removing only the leading and trailing spaces.", () => {
     expect(parseLabelDetailSearchParams({ token: " djF8Zg-_ " })).toEqual({
       token: "djF8Zg-_",
     });
   });
 
-  it("token が無ければ先頭ページ扱いにする", () => {
+  it("If there is no token, treat it as the first page", () => {
     expect(parseLabelDetailSearchParams({})).toEqual({ token: "" });
   });
 
-  it("base64url 以外の token は捨てる", () => {
+  it("Discard tokens other than base64url", () => {
     expect(parseLabelDetailSearchParams({ token: "djF8Zg==" })).toEqual({
       token: "",
     });
@@ -45,13 +45,13 @@ describe("parseLabelDetailSearchParams", () => {
 });
 
 describe("labelDetailHref", () => {
-  it("token 付きのクエリを組み立てる", () => {
+  it("Construct a query with token", () => {
     expect(labelDetailHref("LABEL_A", "djF8Zg")).toBe(
       "/labels/LABEL_A?token=djF8Zg"
     );
   });
 
-  it("token が空なら先頭ページへ戻す", () => {
+  it("If token is empty, return to first page", () => {
     expect(labelDetailHref("LABEL_A", "")).toBe("/labels/LABEL_A");
   });
 });
