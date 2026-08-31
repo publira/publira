@@ -51,6 +51,12 @@ pnpm dev
 
 公開時の `revalidateTag`（内部専用の `POST /api/v1/revalidate`）は Redis 上のタグ時刻と整合します。`PUBLIRA_REVALIDATE_TOKEN` が共有トークンを認証し、このパスは `proxy.ts` による Host ベースのテナント解決を通りません。タグはテナント ID による制限なしにそのまま再検証され、Go サーバーは `PUBLIRA_WEB_HOST_INTERNAL_URL` でこのアプリへ直接到達します。
 
+### 分散トレーシング
+
+`instrumentation.ts` が `@publira/tracing` の `registerTracing("publira-web-host")` を呼び、Next.js の inbound span と SSR からの Connect RPC の client span を出します。既定は無効で、`PUBLIRA_TRACING_ENABLED` を立てたときだけ登録します。Dev Container では Jaeger UI (`http://localhost:16686`) の Service `publira-web-host` で確認できます。
+
+環境変数と `NEXT_OTEL_VERBOSE` の扱いは [`packages/tracing/README.md`](../../packages/tracing/README.md) を参照してください。
+
 ### テーマ CSS の更新確認
 
 `/theme.css` は `tenant:{id}:theme` を持つ専用の `"use cache"` 読取です。テーマ保存時に admin API がこのタグを再検証するため、公開サイトのテーマ更新が site chrome のキャッシュタグに依存しません。アイコン／ロゴを更新した場合は、テーマタグと `tenant:{id}:site` の両方を再検証します。

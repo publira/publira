@@ -21,8 +21,10 @@ import { TenantThemeService } from "../gen/publira/admin/v1/theme_pb.js";
 import { AdminUserService } from "../gen/publira/admin/v1/user_pb.js";
 import { createTenantHeaderInterceptor } from "../tenant-header.js";
 import type { TenantHeaderOptions } from "../tenant-header.js";
+import { createTracingInterceptor } from "../tracing.js";
+import type { TransportType } from "../transport-type.js";
 
-export type TransportType = "connect" | "grpc";
+export type { TransportType } from "../transport-type.js";
 
 export type AdminApiClientOptions = {
   baseUrl: string;
@@ -62,6 +64,7 @@ export const createAdminApiClient = (
     tenantPublicId,
   });
   const interceptors = [
+    createTracingInterceptor(transport),
     ...(tenantHeaderInterceptor ? [tenantHeaderInterceptor] : []),
     ...(transportOptions.interceptors ?? []),
   ];

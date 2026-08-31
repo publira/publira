@@ -71,6 +71,12 @@ pnpm dev
 
 `POST /api/v1/revalidate` は Go サーバー専用の再検証入口です。`PUBLIRA_REVALIDATE_TOKEN` を `X-Revalidate-Token` ヘッダーで照合し、受け取ったタグをテナント ID による制限なしに `revalidateTag(tag, "max")` します。このパスは `proxy.ts` のセットアップ確認とセッション認証を bypass します。宛先は private network の `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` です。
 
+### 分散トレーシング
+
+`instrumentation.ts` が `@publira/tracing` の `registerTracing("publira-web-platform")` を呼び、Next.js の inbound span と SSR からの Connect RPC の client span を出します。既定は無効で、`PUBLIRA_TRACING_ENABLED` を立てたときだけ登録します。Dev Container では Jaeger UI (`http://localhost:16686`) の Service `publira-web-platform` で確認できます。
+
+環境変数と `NEXT_OTEL_VERBOSE` の扱いは [`packages/tracing/README.md`](../../packages/tracing/README.md) を参照してください。
+
 ### セッション Cookie (JWE)
 
 必須の環境変数:

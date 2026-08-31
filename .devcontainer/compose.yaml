@@ -49,8 +49,9 @@ services:
       # default; point it at the persisted volume so rebuilds don't force
       # re-auth. https://code.claude.com/docs/en/devcontainer
       CLAUDE_CONFIG_DIR: /home/vscode/.claude
-      # Where the Go servers send spans. The OpenTelemetry SDK reads these
-      # names itself, so they keep the spelling its documentation uses.
+      # Where the Go servers and the Next.js apps send spans. The
+      # OpenTelemetry SDK reads these names itself, so they keep the spelling
+      # its documentation uses.
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_TRACES_EXPORTER: otlp

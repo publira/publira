@@ -103,6 +103,16 @@ const stop = await forEachPageWithToken(
 - 固定値: `tenantPublicId: "TENANT001"`
 - 動的値: `tenantPublicId: () => selectedTenantPublicId`
 
+## 分散トレーシング
+
+`createPublicApiClient` / `createAdminApiClient` / `createPlatformApiClient` は、RPC ごとに client span を開き W3C Trace Context (`traceparent`) を送出する interceptor を常に組み込みます。設定項目はありません。
+
+- span 名は proto パッケージを落とした `AdminSeriesService/ListSeries`。Go 側の server span と同じ命名です
+- 属性は `rpc.system` / `rpc.service` / `rpc.method` と `server.address` / `server.port`。失敗時は span status を error にし、gRPC トランスポートでは `rpc.grpc.status_code` を付けます
+- TracerProvider が登録されていなければ no-op になり、ヘッダーも足しません。ブラウザ向けの利用でも余計なヘッダーは出ません
+
+Go の Connect ハンドラは inbound の `traceparent` を親として信頼するため、SSR → API → DB クエリが 1 本のトレースになります。Next.js アプリ側の SDK 登録は [`@publira/tracing`](../tracing) を参照してください。
+
 ## エラー分類
 
 RPC エラーの分類は **必ず Connect の `Code`** で行います。`error.message.includes("not found")` のようなメッセージ文字列マッチは、サーバー側の文言変更で静かに壊れるため禁止です (#645)。

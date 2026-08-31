@@ -22,12 +22,14 @@
     "typegen": "next typegen"
   },
   "dependencies": {
+    "@opentelemetry/api": "catalog:",
     "@publira/api-client": "workspace:*",
     "@publira/brand": "workspace:*",
     "@publira/i18n": "workspace:*",
     "@publira/icons": "workspace:*",
     "@publira/layouts": "workspace:*",
     "@publira/next-cache-handlers": "workspace:*",
+    "@publira/tracing": "workspace:*",
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
     "@publira/web-session": "workspace:*",
