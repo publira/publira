@@ -44,7 +44,7 @@ describe("listPlatformEndUsers", () => {
     mockResolveSessionId.mockResolvedValue("sess_abc");
   });
 
-  it("ListEndUsers の応答をそのまま返し、テナント走査はしない", async () => {
+  it("returns the ListEndUsers response unchanged without scanning tenants", async () => {
     mockListEndUsers.mockResolvedValueOnce({
       users: [
         {
@@ -94,7 +94,7 @@ describe("listPlatformEndUsers", () => {
     expect(mockListTenants).not.toHaveBeenCalled();
   });
 
-  it("テナント絞り込みを ListEndUsers の tenantPublicId に渡す", async () => {
+  it("passes the tenant filter as tenantPublicId to ListEndUsers", async () => {
     mockListEndUsers.mockResolvedValueOnce({
       users: [
         {
@@ -148,7 +148,7 @@ describe("listPlatformEndUsers", () => {
     expect(mockListTenants).not.toHaveBeenCalled();
   });
 
-  it("ページ境界はサーバーへ渡した limit / token のままにする", async () => {
+  it("keeps page boundaries from the limit and token sent to the server", async () => {
     mockListEndUsers.mockResolvedValueOnce({
       users: [
         {
@@ -191,7 +191,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     mockResolveSessionId.mockResolvedValue("sess_abc");
   });
 
-  it("空の検索語では RPC を呼ばない", async () => {
+  it("does not call RPC for an empty search query", async () => {
     await expect(
       searchPlatformTenantFilterOptions("   ", "ja")
     ).resolves.toEqual({
@@ -204,7 +204,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     expect(mockGetTenant).not.toHaveBeenCalled();
   });
 
-  it("ListTenants を 1 回だけ呼び、name で候補を返す", async () => {
+  it("calls ListTenants once and returns name-matched candidates", async () => {
     mockListTenants.mockResolvedValueOnce({
       nextToken: "page-2",
       tenants: [
@@ -238,7 +238,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     expect(mockGetTenant).not.toHaveBeenCalled();
   });
 
-  it("12 文字の検索語は GetTenant も試し、完全一致を先頭に置く", async () => {
+  it("also tries GetTenant for a 12-character query and puts exact matches first", async () => {
     mockListTenants.mockResolvedValueOnce({
       nextToken: "",
       tenants: [
@@ -268,7 +268,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     );
   });
 
-  it("GetTenant が権限不足でも存在しないものとして name 検索の候補は返す", async () => {
+  it("returns name-search candidates when GetTenant is permission denied", async () => {
     mockListTenants.mockResolvedValueOnce({
       nextToken: "",
       tenants: [{ name: "Nearby", publicId: "tenant_near" }],
@@ -286,7 +286,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     });
   });
 
-  it("GetTenant が not found でも name 検索の候補は返す", async () => {
+  it("returns name-search candidates when GetTenant is not found", async () => {
     mockListTenants.mockResolvedValueOnce({
       nextToken: "",
       tenants: [{ name: "Nearby", publicId: "tenant_near" }],
@@ -304,7 +304,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     });
   });
 
-  it("セッションがなければ RPC を呼ばずエラーを返す", async () => {
+  it("returns an error without calling RPC when there is no session", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(
@@ -321,7 +321,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     expect(mockGetTenant).not.toHaveBeenCalled();
   });
 
-  it("locale=en では英語のセッションエラーを返す", async () => {
+  it("returns an English session error for locale=en", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(
@@ -335,7 +335,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     });
   });
 
-  it("ListTenants が拒否されたら候補を返さない", async () => {
+  it("does not return candidates when ListTenants is rejected", async () => {
     mockListTenants.mockRejectedValueOnce(
       new ConnectError("permission denied", Code.PermissionDenied)
     );
@@ -351,7 +351,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     });
   });
 
-  it("GetTenant の接続失敗は候補取得失敗にする", async () => {
+  it("treats a GetTenant connection failure as a candidate-loading failure", async () => {
     mockListTenants.mockResolvedValueOnce({
       nextToken: "",
       tenants: [{ name: "Nearby", publicId: "tenant_near" }],
@@ -372,7 +372,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     });
   });
 
-  it("GetTenant の未分類エラーは再送出する", async () => {
+  it("rethrows unclassified GetTenant errors", async () => {
     mockListTenants.mockResolvedValueOnce({
       nextToken: "",
       tenants: [{ name: "Nearby", publicId: "tenant_near" }],

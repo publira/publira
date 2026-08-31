@@ -91,7 +91,7 @@ const renderBell = ({
   );
 
 describe("NotificationBell", () => {
-  it("0 件なら件数を出さない", () => {
+  it("does not show a count when there are no notifications", () => {
     renderBell();
     const trigger = screen.getByRole("button", {
       name: "通知、未読はありません",
@@ -106,13 +106,13 @@ describe("NotificationBell", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("未読があれば件数を出す", () => {
+  it("shows a count when there are unread notifications", () => {
     renderBell({ unreadCount: 3 });
     expect(screen.getByRole("button", { name: "通知、未読3件" })).toBeDefined();
     expect(screen.getByText("3")).toBeDefined();
   });
 
-  it("99 件を超えたら 99+ と出す", () => {
+  it("shows 99+ when the count exceeds 99", () => {
     renderBell({ unreadCount: 120 });
     expect(
       screen.getByRole("button", { name: "通知、未読120件" })
@@ -120,7 +120,7 @@ describe("NotificationBell", () => {
     expect(screen.getByText("99+")).toBeDefined();
   });
 
-  it("開くと直近の通知から対象コンテンツへ移動できる", () => {
+  it("navigates to the target content from a recent notification when opened", () => {
     renderBell({ state: "notification" });
     fireEvent.click(
       screen.getByRole("button", { name: "通知、未読はありません" })
@@ -144,7 +144,7 @@ describe("NotificationBell", () => {
     expect(screen.getByRole("link", { name: "もっと見る" })).toBeDefined();
   });
 
-  it("Escape で閉じるとトリガーへフォーカスが戻る", () => {
+  it("returns focus to the trigger when closed with Escape", () => {
     renderBell();
     const trigger = screen.getByRole("button", {
       name: "通知、未読はありません",

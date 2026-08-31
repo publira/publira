@@ -5,7 +5,7 @@ import { buildTenantsPath, parseTenantFilters } from "./search-params";
 const allowedStatuses = new Set(["active", "trial", "suspended"]);
 
 describe("parseTenantFilters", () => {
-  it("ページ token とフィルタを正規化する", () => {
+  it("normalizes the page token and filters", () => {
     expect(
       parseTenantFilters(
         {
@@ -22,13 +22,13 @@ describe("parseTenantFilters", () => {
     });
   });
 
-  it("cursor token は長さや前後空白を含めて変更しない", () => {
+  it("keeps the cursor token unchanged including length and whitespace", () => {
     const token = ` ${"x".repeat(256)} `;
 
     expect(parseTenantFilters({ token }, allowedStatuses).token).toBe(token);
   });
 
-  it("複数値や不正な状態を空値にする", () => {
+  it("uses an empty value for multiple values or an invalid status", () => {
     expect(
       parseTenantFilters(
         {
@@ -47,7 +47,7 @@ describe("parseTenantFilters", () => {
 });
 
 describe("buildTenantsPath", () => {
-  it("フィルタとページ token を URL に保持する", () => {
+  it("keeps filters and the page token in the URL", () => {
     expect(
       buildTenantsPath({
         name: "テスト 出版",
@@ -59,7 +59,7 @@ describe("buildTenantsPath", () => {
     );
   });
 
-  it("条件がなければ一覧のルートを返す", () => {
+  it("returns the list root when there are no conditions", () => {
     expect(buildTenantsPath({ name: "", status: "", token: "" })).toBe(
       "/tenants"
     );

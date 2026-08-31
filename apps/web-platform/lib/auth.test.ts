@@ -36,7 +36,7 @@ beforeEach(() => {
 });
 
 describe("loginPlatform", () => {
-  it("API 成功時は accessToken と expiresAt を返す", async () => {
+  it("returns accessToken and expiresAt when the API succeeds", async () => {
     const expiresAt = "2026-03-22T00:00:00Z";
     mockLogin.mockResolvedValueOnce({
       accessToken: { expiresAt, token: "tok_abc" },
@@ -54,13 +54,13 @@ describe("loginPlatform", () => {
     });
   });
 
-  it("API がセッション情報を返さない場合は null を返す", async () => {
+  it("returns null when the API returns no session", async () => {
     mockLogin.mockResolvedValueOnce({ user: {} });
 
     await expect(loginPlatform("a@b.com", "x")).resolves.toBeNull();
   });
 
-  it("認証失敗 (Unauthenticated エラー) は null を返す", async () => {
+  it("returns null for authentication failures", async () => {
     mockLogin.mockRejectedValueOnce(
       new ConnectError("invalid credentials", Code.Unauthenticated)
     );
@@ -68,7 +68,7 @@ describe("loginPlatform", () => {
     await expect(loginPlatform("a@b.com", "wrong")).resolves.toBeNull();
   });
 
-  it("想定外エラー時は再throwする", async () => {
+  it("rethrows unexpected errors", async () => {
     mockLogin.mockRejectedValueOnce(new Error("network error"));
 
     await expect(loginPlatform("a@b.com", "x")).rejects.toThrow(
@@ -78,12 +78,12 @@ describe("loginPlatform", () => {
 });
 
 describe("logoutPlatform", () => {
-  it("accessToken が空文字の場合 API を呼ばない", async () => {
+  it("does not call the API when accessToken is empty", async () => {
     await logoutPlatform("  ");
     expect(mockLogout).not.toHaveBeenCalled();
   });
 
-  it("正常な accessToken で API を呼ぶ", async () => {
+  it("calls the API with a valid accessToken", async () => {
     mockLogout.mockResolvedValueOnce({});
 
     await logoutPlatform("tok_abc");
@@ -93,7 +93,7 @@ describe("logoutPlatform", () => {
     );
   });
 
-  it("API エラー時も例外を投げない", async () => {
+  it("does not throw when the API errors", async () => {
     mockLogout.mockRejectedValueOnce(new Error("network error"));
 
     await expect(logoutPlatform("tok_abc")).resolves.toBeUndefined();
@@ -101,7 +101,7 @@ describe("logoutPlatform", () => {
 });
 
 describe("getPlatformCurrentOperator", () => {
-  it("API 成功時はユーザー情報を返す", async () => {
+  it("returns user information when the API succeeds", async () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "Admin", publicId: "usr_1", role: "platform_super_admin" },
     });
@@ -121,7 +121,7 @@ describe("getPlatformCurrentOperator", () => {
     );
   });
 
-  it("role は API の値をそのまま返す", async () => {
+  it("returns role from the API unchanged", async () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "Admin", publicId: "usr_1", role: "super-admin" },
     });
@@ -133,7 +133,7 @@ describe("getPlatformCurrentOperator", () => {
     });
   });
 
-  it("セッションが解決できない場合は再ログインを求める (API を呼ばない)", async () => {
+  it("requires reauthentication without calling the API when the session cannot be resolved", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     const result = await getPlatformCurrentOperator();
@@ -141,7 +141,7 @@ describe("getPlatformCurrentOperator", () => {
     expect(mockGetMe).not.toHaveBeenCalled();
   });
 
-  it("API がユーザーを返さない場合は再ログインを求めない", async () => {
+  it("does not require reauthentication when the API returns no user", async () => {
     mockGetMe.mockResolvedValueOnce({});
 
     await expect(getPlatformCurrentOperator()).resolves.toEqual({
@@ -150,7 +150,7 @@ describe("getPlatformCurrentOperator", () => {
     });
   });
 
-  it("セッション無効 (Unauthenticated エラー) は再ログインを求める", async () => {
+  it("requires reauthentication for an invalid session", async () => {
     mockGetMe.mockRejectedValueOnce(
       new ConnectError("invalid session", Code.Unauthenticated)
     );

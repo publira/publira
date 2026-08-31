@@ -81,7 +81,7 @@ describe("web-platform proxy session handling", () => {
     mockResolveSetupCompleted.mockResolvedValue(true);
   });
 
-  it("復号できない Cookie は保護ルートへ通さず削除する", async () => {
+  it("clears undecryptable cookies without allowing protected routes", async () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
@@ -93,7 +93,7 @@ describe("web-platform proxy session handling", () => {
     expect(deletedCookieNames(response)).toContain(COOKIE_NAME);
   });
 
-  it("期限切れ Cookie も保護ルートへ通さず削除する", async () => {
+  it("clears expired cookies without allowing protected routes", async () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().subtract({ minutes: 1 }).toString()
     );
@@ -107,7 +107,7 @@ describe("web-platform proxy session handling", () => {
     expect(deletedCookieNames(response)).toContain(COOKIE_NAME);
   });
 
-  it("有効な Cookie の保護ルートには戻り先パスを添えて通す", async () => {
+  it("allows protected routes with valid cookies and adds the return path", async () => {
     const cookie = await activeCookie();
     const { proxy } = await import("./proxy");
 
@@ -128,7 +128,7 @@ describe("web-platform proxy session handling", () => {
    * again (#607 acceptance criteria). The proxy is the only place that can drop
    * it, because a page cannot write cookies while it renders.
    */
-  it("失効由来の /login では Cookie を削除する", async () => {
+  it("clears the cookie for expiry-related /login routes", async () => {
     const cookie = await activeCookie();
     const { proxy } = await import("./proxy");
 
@@ -143,7 +143,7 @@ describe("web-platform proxy session handling", () => {
     expect(deletedCookieNames(response)).toContain(COOKIE_NAME);
   });
 
-  it("マーカーの無い /login では Cookie を残す", async () => {
+  it("keeps the cookie for /login routes without a marker", async () => {
     const cookie = await activeCookie();
     const { proxy } = await import("./proxy");
 
@@ -154,7 +154,7 @@ describe("web-platform proxy session handling", () => {
     expect(deletedCookieNames(response)).toEqual([]);
   });
 
-  it("失効マーカーは保護ルートでは効かない", async () => {
+  it("does not apply the expiry marker to protected routes", async () => {
     const cookie = await activeCookie();
     const { proxy } = await import("./proxy");
 
@@ -169,7 +169,7 @@ describe("web-platform proxy session handling", () => {
     expect(deletedCookieNames(response)).toEqual([]);
   });
 
-  it("セットアップ未完了なら死んだ Cookie を消して /setup へ送る", async () => {
+  it("clears invalid cookies and redirects to /setup when setup is incomplete", async () => {
     mockResolveSetupCompleted.mockResolvedValue(false);
     const { proxy } = await import("./proxy");
 

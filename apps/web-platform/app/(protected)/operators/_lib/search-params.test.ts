@@ -6,13 +6,13 @@ import {
 } from "./search-params";
 
 describe("parseOperatorsSearchParams", () => {
-  it("cursor token を変更せず返す", () => {
+  it("returns the cursor token unchanged", () => {
     const token = ` ${"x".repeat(256)} `;
 
     expect(parseOperatorsSearchParams({ token })).toEqual({ token });
   });
 
-  it("複数値や未指定の token を空値にする", () => {
+  it("uses an empty value for multiple or missing tokens", () => {
     expect(parseOperatorsSearchParams({ token: ["first", "second"] })).toEqual({
       token: "",
     });
@@ -21,13 +21,13 @@ describe("parseOperatorsSearchParams", () => {
 });
 
 describe("buildOperatorsPath", () => {
-  it("ページ token を URL に保持する", () => {
+  it("keeps the page token in the URL", () => {
     expect(buildOperatorsPath({ token: "next/page" })).toBe(
       "/operators?token=next%2Fpage"
     );
   });
 
-  it("token がなければ一覧のルートを返す", () => {
+  it("returns the list root when there is no token", () => {
     expect(buildOperatorsPath({ token: "" })).toBe("/operators");
   });
 });

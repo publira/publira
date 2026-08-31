@@ -72,7 +72,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     mockGetPlatformLocale.mockResolvedValue("ja");
   });
 
-  it("有効な IANA 名を保存し、キャッシュタグを更新する", async () => {
+  it("saves a valid IANA name and updates cache tags", async () => {
     mockUpdatePlatformDefaultTimezone.mockResolvedValueOnce({
       defaultTimezone: "America/Los_Angeles",
       ok: true,
@@ -97,7 +97,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:settings");
   });
 
-  it("列挙されないエイリアスもサーバと同じく保存できる", async () => {
+  it("saves unlisted aliases accepted by the server", async () => {
     mockUpdatePlatformDefaultTimezone.mockResolvedValueOnce({
       defaultTimezone: "Asia/Calcutta",
       ok: true,
@@ -121,7 +121,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     );
   });
 
-  it("不正なタイムゾーンは往復せずに拒否する", async () => {
+  it("rejects invalid time zones without a round trip", async () => {
     const { updatePlatformDefaultTimezoneAction } = await import("./actions");
 
     const result = await updatePlatformDefaultTimezoneAction(
@@ -137,7 +137,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
-  it("オフセット表記はサーバが受け付けないため拒否する", async () => {
+  it("rejects offset notation because the server does not accept it", async () => {
     const { updatePlatformDefaultTimezoneAction } = await import("./actions");
 
     const result = await updatePlatformDefaultTimezoneAction(
@@ -152,7 +152,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     expect(mockUpdatePlatformDefaultTimezone).not.toHaveBeenCalled();
   });
 
-  it("未選択の場合は選択を促す", async () => {
+  it("asks the user to make a selection when none is selected", async () => {
     const { updatePlatformDefaultTimezoneAction } = await import("./actions");
 
     const result = await updatePlatformDefaultTimezoneAction(
@@ -167,7 +167,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     expect(mockUpdatePlatformDefaultTimezone).not.toHaveBeenCalled();
   });
 
-  it("英語ロケールでは英語の成功メッセージを返す", async () => {
+  it("returns an English success message for the English locale", async () => {
     mockGetPlatformLocale.mockResolvedValue("en");
     mockUpdatePlatformDefaultTimezone.mockResolvedValueOnce({
       defaultTimezone: "Europe/Paris",
@@ -188,7 +188,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     });
   });
 
-  it("保存に失敗した場合はキャッシュタグを更新しない", async () => {
+  it("does not update cache tags when saving fails", async () => {
     mockUpdatePlatformDefaultTimezone.mockResolvedValueOnce({
       message: "default_timezone must be a valid IANA time zone name",
       ok: false,
@@ -217,7 +217,7 @@ describe("updatePlatformDefaultLocaleAction", () => {
     mockGetPlatformLocale.mockResolvedValue("ja");
   });
 
-  it("対応するロケールを保存し、キャッシュタグを更新する", async () => {
+  it("saves a supported locale and updates cache tags", async () => {
     mockUpdatePlatformDefaultLocale.mockResolvedValueOnce({
       defaultLocale: "en",
       ok: true,
@@ -258,7 +258,7 @@ describe("updatePlatformDefaultLocaleAction", () => {
     }
   );
 
-  it("保存に失敗した場合はキャッシュタグを更新しない", async () => {
+  it("does not update cache tags when saving fails", async () => {
     mockUpdatePlatformDefaultLocale.mockResolvedValueOnce({
       message: "既定言語の保存に失敗しました。時間をおいて再試行してください。",
       ok: false,

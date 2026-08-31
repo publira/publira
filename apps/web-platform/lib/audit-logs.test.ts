@@ -29,7 +29,7 @@ beforeEach(() => {
 });
 
 describe("listPlatformAuditLogs", () => {
-  it("正常系: 監査ログ一覧を返す", async () => {
+  it("returns audit logs", async () => {
     mockListAuditLogs.mockResolvedValueOnce({
       auditLogs: [
         {
@@ -85,7 +85,7 @@ describe("listPlatformAuditLogs", () => {
     );
   });
 
-  it("応答の previousToken / nextToken をそのまま返す", async () => {
+  it("returns previousToken and nextToken from the response unchanged", async () => {
     mockListAuditLogs.mockResolvedValueOnce({
       auditLogs: [
         {
@@ -145,7 +145,7 @@ describe("listPlatformAuditLogs", () => {
     );
   });
 
-  it("tenant / actor / action フィルターを API に渡す", async () => {
+  it("passes tenant, actor, and action filters to the API", async () => {
     mockListAuditLogs.mockResolvedValueOnce({ auditLogs: [] });
 
     await expect(
@@ -176,7 +176,7 @@ describe("listPlatformAuditLogs", () => {
     );
   });
 
-  it("tenant 情報が空でも監査ログを返せる", async () => {
+  it("returns audit logs when tenant information is empty", async () => {
     mockListAuditLogs.mockResolvedValueOnce({
       auditLogs: [
         {
@@ -221,7 +221,7 @@ describe("listPlatformAuditLogs", () => {
     });
   });
 
-  it("sessionId を解決できない場合は API を呼ばずエラーを返す", async () => {
+  it("returns an error without calling the API when sessionId cannot be resolved", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(listPlatformAuditLogs({ locale: "ja" })).resolves.toEqual({
@@ -236,7 +236,7 @@ describe("listPlatformAuditLogs", () => {
     expect(mockListAuditLogs).not.toHaveBeenCalled();
   });
 
-  it("locale=en では英語のセッションエラーを返す", async () => {
+  it("returns an English session error for locale=en", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(listPlatformAuditLogs({ locale: "en" })).resolves.toEqual({
@@ -249,7 +249,7 @@ describe("listPlatformAuditLogs", () => {
     });
   });
 
-  it("到達不能エラーは共通文言で返す", async () => {
+  it("returns a shared message for unavailable errors", async () => {
     mockListAuditLogs.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -265,7 +265,7 @@ describe("listPlatformAuditLogs", () => {
     });
   });
 
-  it("分類できない RPC エラーは伝播する", async () => {
+  it("propagates unclassified RPC errors", async () => {
     mockListAuditLogs.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );

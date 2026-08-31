@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 describe("getPlatformDashboardSummary", () => {
-  it("正常系: dashboard summary を整形して返す", async () => {
+  it("formats and returns the dashboard summary", async () => {
     mockGetDashboardSummary.mockResolvedValueOnce({
       activeTenants: 10,
       pendingEndUsers: 4,
@@ -81,7 +81,7 @@ describe("getPlatformDashboardSummary", () => {
     );
   });
 
-  it("件数上限外の recentEventsLimit はクランプして渡す", async () => {
+  it("clamps recentEventsLimit outside the allowed range", async () => {
     mockGetDashboardSummary.mockResolvedValueOnce({
       activeTenants: 0,
       pendingEndUsers: 0,
@@ -98,7 +98,7 @@ describe("getPlatformDashboardSummary", () => {
     );
   });
 
-  it("sessionId を解決できない場合は API を呼ばずエラーを返す", async () => {
+  it("returns an error without calling the API when sessionId cannot be resolved", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(
@@ -112,7 +112,7 @@ describe("getPlatformDashboardSummary", () => {
     expect(mockGetDashboardSummary).not.toHaveBeenCalled();
   });
 
-  it("locale=en では英語のセッションエラーを返す", async () => {
+  it("returns an English session error for locale=en", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(
@@ -124,7 +124,7 @@ describe("getPlatformDashboardSummary", () => {
     });
   });
 
-  it("到達不能エラーは共通文言で返す", async () => {
+  it("returns a shared message for unavailable errors", async () => {
     mockGetDashboardSummary.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -139,7 +139,7 @@ describe("getPlatformDashboardSummary", () => {
     });
   });
 
-  it("分類できない RPC エラーは伝播する", async () => {
+  it("propagates unclassified RPC errors", async () => {
     mockGetDashboardSummary.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );

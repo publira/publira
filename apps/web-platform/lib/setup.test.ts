@@ -32,7 +32,7 @@ describe("isSetupCompleted", () => {
     mockDropFailedCacheEntry.mockReset();
   });
 
-  it("API が setup_completed=true を返した場合 true を返す", async () => {
+  it("returns true when the API returns setup_completed=true", async () => {
     mockCheckSetupStatus.mockResolvedValueOnce({ setupCompleted: true });
 
     await expect(isSetupCompleted()).resolves.toEqual({
@@ -41,7 +41,7 @@ describe("isSetupCompleted", () => {
     });
   });
 
-  it("API が setup_completed=false を返した場合 false を返す", async () => {
+  it("returns false when the API returns setup_completed=false", async () => {
     mockCheckSetupStatus.mockResolvedValueOnce({ setupCompleted: false });
 
     await expect(isSetupCompleted()).resolves.toEqual({
@@ -50,7 +50,7 @@ describe("isSetupCompleted", () => {
     });
   });
 
-  it("想定内エラー時は null を返す", async () => {
+  it("returns null for expected errors", async () => {
     mockCheckSetupStatus.mockRejectedValueOnce(
       new ConnectError("setup not initialized", Code.FailedPrecondition)
     );
@@ -61,7 +61,7 @@ describe("isSetupCompleted", () => {
     });
   });
 
-  it("状態を読めないときは利用不可を返す", async () => {
+  it("returns unavailable when it cannot read the status", async () => {
     mockCheckSetupStatus.mockRejectedValueOnce(new Error("network"));
 
     await expect(isSetupCompleted()).resolves.toEqual({ available: false });
@@ -88,14 +88,14 @@ describe("resolveSetupCompleted", () => {
     mockCheckSetupStatus.mockReset();
   });
 
-  it("API が答えた値をそのまま返す", async () => {
+  it("returns the value from the API unchanged", async () => {
     mockCheckSetupStatus.mockResolvedValue({ setupCompleted: false });
     const { resolveSetupCompleted } = await loadSetup();
 
     await expect(resolveSetupCompleted()).resolves.toBe(false);
   });
 
-  it("接続できないときは直近に API が答えた値でルーティングを続ける", async () => {
+  it("continues routing with the most recent API value when the connection fails", async () => {
     mockCheckSetupStatus
       .mockResolvedValueOnce({ setupCompleted: false })
       .mockRejectedValueOnce(unavailable());
@@ -105,7 +105,7 @@ describe("resolveSetupCompleted", () => {
     await expect(resolveSetupCompleted()).resolves.toBe(false);
   });
 
-  it("直近の既知値が null なら接続エラー時も null のままにする", async () => {
+  it("keeps null when the most recent known value is null and the connection fails", async () => {
     mockCheckSetupStatus
       .mockRejectedValueOnce(
         new ConnectError("setup not initialized", Code.FailedPrecondition)
@@ -117,14 +117,14 @@ describe("resolveSetupCompleted", () => {
     await expect(resolveSetupCompleted()).resolves.toBeNull();
   });
 
-  it("API が一度も答えていない状態の接続エラーはセットアップ済みとして扱う", async () => {
+  it("treats connection errors before any API response as setup complete", async () => {
     mockCheckSetupStatus.mockRejectedValue(unavailable());
     const { resolveSetupCompleted } = await loadSetup();
 
     await expect(resolveSetupCompleted()).resolves.toBe(true);
   });
 
-  it("復旧後は API の答えに戻る", async () => {
+  it("uses the API response again after recovery", async () => {
     mockCheckSetupStatus
       .mockResolvedValueOnce({ setupCompleted: false })
       .mockRejectedValueOnce(unavailable())

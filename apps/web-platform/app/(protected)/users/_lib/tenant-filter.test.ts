@@ -5,7 +5,7 @@ import { resolveTenantFilter } from "./tenant-filter";
 const matches = [{ publicId: "tenant_a" }, { publicId: "tenant_b" }] as const;
 
 describe("resolveTenantFilter", () => {
-  it("検索語がなければ URL の tenant_id を使う", () => {
+  it("uses the tenant_id from the URL when there is no query", () => {
     expect(
       resolveTenantFilter({
         matches: [],
@@ -16,7 +16,7 @@ describe("resolveTenantFilter", () => {
     ).toEqual({ kind: "resolved", tenantId: "tenant_a" });
   });
 
-  it("検索語も tenant_id もなければ未選択にする", () => {
+  it("leaves the tenant unselected when there is no query or tenant_id", () => {
     expect(
       resolveTenantFilter({
         matches: [],
@@ -27,7 +27,7 @@ describe("resolveTenantFilter", () => {
     ).toEqual({ kind: "unselected" });
   });
 
-  it("検索に失敗したときは既存の tenant_id を残す", () => {
+  it("keeps the existing tenant_id when searching fails", () => {
     expect(
       resolveTenantFilter({
         matches: [],
@@ -38,7 +38,7 @@ describe("resolveTenantFilter", () => {
     ).toEqual({ kind: "resolved", tenantId: "tenant_a" });
   });
 
-  it("検索結果に含まれる tenant_id を優先する", () => {
+  it("prefers a tenant_id included in the search results", () => {
     expect(
       resolveTenantFilter({
         matches,
@@ -49,7 +49,7 @@ describe("resolveTenantFilter", () => {
     ).toEqual({ kind: "resolved", tenantId: "tenant_b" });
   });
 
-  it("候補が 1 件ならそれを採用する", () => {
+  it("selects the only candidate", () => {
     expect(
       resolveTenantFilter({
         matches: [{ publicId: "tenant_a" }],
@@ -60,7 +60,7 @@ describe("resolveTenantFilter", () => {
     ).toEqual({ kind: "resolved", tenantId: "tenant_a" });
   });
 
-  it("候補が 0 件なら一覧を出さない未解決にする", () => {
+  it("leaves the tenant unresolved without listing candidates when there are none", () => {
     expect(
       resolveTenantFilter({
         matches: [],
@@ -71,7 +71,7 @@ describe("resolveTenantFilter", () => {
     ).toEqual({ kind: "none" });
   });
 
-  it("複数候補で tenant_id が外れたら曖昧な未解決にする", () => {
+  it("leaves the tenant ambiguously unresolved when it is absent from multiple candidates", () => {
     expect(
       resolveTenantFilter({
         matches,
