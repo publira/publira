@@ -1,6 +1,10 @@
 import { getMessage } from "@publira/i18n";
 
-import type { EpisodeDetail, EpisodeImageItem } from "#lib/catalog";
+import type {
+  EpisodeDetail,
+  EpisodeImageItem,
+  EpisodeSeriesSummary,
+} from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 
 import { VIEWER_HEIGHT_CLASS } from "../_lib/viewer-layout";
@@ -12,9 +16,11 @@ import { EpisodeReadRecorder } from "./episode-read-recorder";
 export const EpisodeViewer = async ({
   episode,
   images,
+  series,
 }: {
   episode: EpisodeDetail;
   images: EpisodeImageItem[];
+  series: EpisodeSeriesSummary;
 }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
@@ -59,7 +65,7 @@ export const EpisodeViewer = async ({
           getMessage(messages, "host.episode.viewer.page_title", values)
         )}
       >
-        <EpisodeReadRecorder episode={episode} />
+        <EpisodeReadRecorder episode={episode} series={series} />
       </EpisodeComicViewer>
     </div>
   );

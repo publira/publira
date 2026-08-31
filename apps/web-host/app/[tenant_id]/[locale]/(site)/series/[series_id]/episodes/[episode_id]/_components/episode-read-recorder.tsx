@@ -3,7 +3,7 @@
 import { useViewerContext } from "@publira/comic-viewer";
 import { useEffect, useRef } from "react";
 
-import type { EpisodeDetail } from "#lib/catalog";
+import type { EpisodeDetail, EpisodeSeriesSummary } from "#lib/catalog";
 
 import { isLastPageVisible } from "../_lib/viewer-progress";
 
@@ -12,7 +12,11 @@ import { isLastPageVisible } from "../_lib/viewer-progress";
  * onto the resolved tenant, so the reader's URL carries no tenant and no
  * locale segment.
  */
-const EPISODE_READ_BEACON_PATH = "/api/v1/episode-reads";
+const episodeReadBeaconPath = (
+  seriesPublicId: string,
+  episodePublicId: string
+): string =>
+  `/api/v1/series/${encodeURIComponent(seriesPublicId)}/episodes/${encodeURIComponent(episodePublicId)}/read`;
 
 /**
  * Reports the episode as read once its last page is on screen. Renders
@@ -41,8 +45,10 @@ const EPISODE_READ_BEACON_PATH = "/api/v1/episode-reads";
  */
 export const EpisodeReadRecorder = ({
   episode,
+  series,
 }: {
   episode: EpisodeDetail;
+  series: EpisodeSeriesSummary;
 }) => {
   const { currentIndex, pages, spreadStartIndex, viewMode } =
     useViewerContext();
@@ -53,21 +59,22 @@ export const EpisodeReadRecorder = ({
     viewMode,
   });
   const hasReportedRef = useRef(false);
-  const { publicId } = episode;
+  const beaconPath = episodeReadBeaconPath(series.publicId, episode.publicId);
 
   useEffect(() => {
     if (!isFinished || hasReportedRef.current) {
       return;
     }
 
-    // A JSON body is not a CORS-safelisted content type, so a cross-origin
-    // page cannot send this beacon at all — the same-origin check on the
-    // endpoint is the guard, and this is the layer above it.
+    // The episode is named by the path, so the body carries nothing. The JSON
+    // content type is what keeps the request off the CORS safelist, so a
+    // cross-origin page cannot send this beacon at all — the same-origin check
+    // on the endpoint is the guard, and this is the layer above it.
     hasReportedRef.current = navigator.sendBeacon(
-      EPISODE_READ_BEACON_PATH,
-      new Blob([JSON.stringify({ publicId })], { type: "application/json" })
+      beaconPath,
+      new Blob([], { type: "application/json" })
     );
-  }, [isFinished, publicId]);
+  }, [beaconPath, isFinished]);
 
   return null;
 };

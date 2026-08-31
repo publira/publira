@@ -11,7 +11,7 @@ import type { ViewerPage, ViewMode } from "@publira/comic-viewer";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { EpisodeDetail } from "#lib/catalog";
+import type { EpisodeDetail, EpisodeSeriesSummary } from "#lib/catalog";
 
 import { EpisodeReadRecorder } from "./episode-read-recorder";
 
@@ -29,6 +29,11 @@ const episode: EpisodeDetail = {
   scheduledAt: "",
   status: "published",
   title: "First light",
+};
+
+const series: EpisodeSeriesSummary = {
+  publicId: "SERIES_001",
+  title: "Long nights",
 };
 
 const buildPages = (pageCount: number): ViewerPage[] =>
@@ -75,17 +80,12 @@ const renderViewer = ({
       <NextPageButton>Next</NextPageButton>
       <GestureNavigation />
       <PageStatus />
-      <EpisodeReadRecorder episode={episode} />
+      <EpisodeReadRecorder episode={episode} series={series} />
     </ViewerProvider>
   );
 
 const turnPage = (name: "Next page" | "Previous page" | "Swipe forward") => {
   fireEvent.click(screen.getByRole("button", { name }));
-};
-
-const sentBody = async (call: number): Promise<unknown> => {
-  const [, blob] = sendBeacon.mock.calls[call];
-  return JSON.parse(await blob.text());
 };
 
 beforeEach(() => {
@@ -105,15 +105,17 @@ describe("EpisodeReadRecorder", () => {
     expect(sendBeacon).not.toHaveBeenCalled();
   });
 
-  it("reports the read when the next-page button reaches the last page", async () => {
+  it("reports the read when the next-page button reaches the last page", () => {
     renderViewer({ pageCount: 3 });
     turnPage("Next page");
     turnPage("Next page");
 
     expect(sendBeacon).toHaveBeenCalledOnce();
-    // The tenant comes from the segment the proxy rewrote, never the body.
-    expect(sendBeacon.mock.calls[0][0]).toBe("/api/v1/episode-reads");
-    await expect(sentBody(0)).resolves.toEqual({ publicId: "EPISODE_001" });
+    // The episode is named by the path, and the tenant by the segment the
+    // proxy rewrote in front of it.
+    expect(sendBeacon.mock.calls[0][0]).toBe(
+      "/api/v1/series/SERIES_001/episodes/EPISODE_001/read"
+    );
   });
 
   it("reports the read when a swipe reaches the last page", () => {

@@ -7,6 +7,7 @@ import type {
   EpisodeAccessState,
   EpisodeDetail,
   EpisodeImageItem,
+  EpisodeSeriesSummary,
 } from "#lib/catalog";
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
@@ -21,7 +22,7 @@ export const EpisodeBody = async ({
   checkoutSessionId,
   episode,
   images,
-  seriesPublicId,
+  series,
   tenantId,
 }: {
   acceptsPayments: boolean;
@@ -29,11 +30,11 @@ export const EpisodeBody = async ({
   checkoutSessionId: string;
   episode: EpisodeDetail;
   images: EpisodeImageItem[];
-  seriesPublicId: string;
+  series: EpisodeSeriesSummary;
   tenantId: string;
 }) => {
   if (isPublicEpisodeBody(access)) {
-    return <EpisodeViewer episode={episode} images={images} />;
+    return <EpisodeViewer episode={episode} images={images} series={series} />;
   }
 
   const [locale, sessionId] = await Promise.all([
@@ -46,7 +47,7 @@ export const EpisodeBody = async ({
         <EpisodeAccessGate
           acceptsPayments={acceptsPayments}
           episodePublicId={episode.publicId}
-          seriesPublicId={seriesPublicId}
+          seriesPublicId={series.publicId}
           signedIn={false}
           tenantId={tenantId}
         />
@@ -56,7 +57,7 @@ export const EpisodeBody = async ({
 
   const viewer = await getEpisodeViewer(
     tenantId,
-    seriesPublicId,
+    series.publicId,
     episode.publicId,
     sessionId,
     locale,
@@ -77,7 +78,13 @@ export const EpisodeBody = async ({
     notFound();
   }
   if (viewer.value.access === "entitled") {
-    return <EpisodeViewer episode={episode} images={viewer.value.images} />;
+    return (
+      <EpisodeViewer
+        episode={episode}
+        images={viewer.value.images}
+        series={series}
+      />
+    );
   }
 
   return (
@@ -85,7 +92,7 @@ export const EpisodeBody = async ({
       <EpisodeAccessGate
         acceptsPayments={acceptsPayments}
         episodePublicId={episode.publicId}
-        seriesPublicId={seriesPublicId}
+        seriesPublicId={series.publicId}
         signedIn
         tenantId={tenantId}
       />

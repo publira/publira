@@ -126,7 +126,7 @@ const EpisodeContent = async (
               }
               episode={episode}
               images={images}
-              seriesPublicId={series.publicId}
+              series={series}
               tenantId={tenantId}
             />
           </Suspense>
