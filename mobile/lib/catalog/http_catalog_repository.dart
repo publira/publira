@@ -3,16 +3,24 @@ import 'package:publira/api/connect_exception.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/config.dart';
+import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 
 /// [CatalogRepository] backed by the public Connect API.
 class HttpCatalogRepository implements CatalogRepository {
   HttpCatalogRepository({required this.config, ConnectClient? client})
-    : _client = client ?? ConnectClient(baseUrl: config.apiBaseUrl);
+    : _client =
+          client ??
+          ConnectClient(
+            baseUrl: config.apiBaseUrl,
+            accessToken: config.accessToken,
+          );
 
   static const _listProcedure =
       '/publira.v1.CatalogService/ListPublishedSeries';
   static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
+  static const _episodeProcedure =
+      '/publira.v1.CatalogService/GetEpisodeDetail';
   static const _tenantProcedure = '/publira.v1.DomainService/GetTenantByDomain';
 
   final AppConfig config;
@@ -44,6 +52,26 @@ class HttpCatalogRepository implements CatalogRepository {
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
       return _parseSeriesDetail(body);
+    } on ConnectException catch (error) {
+      if (error.isNotFound) {
+        return null;
+      }
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<EpisodeDetail?> getEpisode(
+    String seriesPublicId,
+    String episodePublicId,
+  ) async {
+    try {
+      final tenantId = await _resolveTenantId();
+      final body = await _client.unary(_episodeProcedure, {
+        'publicId': episodePublicId,
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+      return _parseEpisodeDetail(body, seriesPublicId);
     } on ConnectException catch (error) {
       if (error.isNotFound) {
         return null;
@@ -145,22 +173,84 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     final episodes = _expectList(raw, 'episodes')
         .map((item) => _expectMap(item, 'episodes[]'))
-        .map((json) {
-          return EpisodeItem(
-            id: _readString(
-              json,
-              'publicId',
-              'episodes[]',
-              requiredNonEmpty: true,
-            ),
-            title: _readString(json, 'title', 'episodes[]'),
-            orderIndex: _readInt(json, 'orderIndex', 'episodes[]'),
-            price: _readInt(json, 'price', 'episodes[]'),
-          );
-        })
+        .map((json) => _episodeFromJson(json, 'episodes[]'))
         .toList();
     episodes.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
     return List<EpisodeItem>.unmodifiable(episodes);
+  }
+
+  EpisodeItem _episodeFromJson(Map<String, Object?> json, String path) {
+    return EpisodeItem(
+      id: _readString(json, 'publicId', path, requiredNonEmpty: true),
+      title: _readString(json, 'title', path),
+      orderIndex: _readInt(json, 'orderIndex', path),
+      price: _readInt(json, 'price', path),
+    );
+  }
+
+  /// Builds the reader's view of one episode.
+  ///
+  /// The series is checked here rather than trusted from the route: an episode
+  /// public id addresses the episode alone, so a mismatched pair would
+  /// otherwise render one series' body under another series' URL.
+  EpisodeDetail? _parseEpisodeDetail(
+    Map<String, Object?> body,
+    String seriesPublicId,
+  ) {
+    final rawSeries = _expectMap(body['series'], 'series');
+    final seriesId = _readString(
+      rawSeries,
+      'publicId',
+      'series',
+      requiredNonEmpty: true,
+    );
+    if (seriesId != seriesPublicId) {
+      return null;
+    }
+    return EpisodeDetail(
+      episode: _episodeFromJson(
+        _expectMap(body['episode'], 'episode'),
+        'episode',
+      ),
+      seriesId: seriesId,
+      seriesTitle: _readString(rawSeries, 'title', 'series'),
+      access: _parseAccess(body['access']),
+      images: _parseEpisodeImages(body['images']),
+      imageRequestHeaders: config.imageRequestHeaders,
+    );
+  }
+
+  EpisodeAccess _parseAccess(Object? raw) {
+    // protojson writes an enum as its name, and omits it entirely when it is
+    // the zero value.
+    return switch (raw) {
+      'EPISODE_ACCESS_FREE' => EpisodeAccess.free,
+      'EPISODE_ACCESS_LOCKED' => EpisodeAccess.locked,
+      'EPISODE_ACCESS_ENTITLED' => EpisodeAccess.entitled,
+      _ => EpisodeAccess.unknown,
+    };
+  }
+
+  List<EpisodeImageItem> _parseEpisodeImages(Object? raw) {
+    if (raw == null) {
+      return const [];
+    }
+    final images = _expectList(raw, 'images')
+        .map((item) => _expectMap(item, 'images[]'))
+        .map((json) {
+          return EpisodeImageItem(
+            id: _readString(json, 'id', 'images[]', requiredNonEmpty: true),
+            url: config.imageUri(
+              _readString(json, 'imageUrl', 'images[]', requiredNonEmpty: true),
+            ),
+            displayOrder: _readInt(json, 'displayOrder', 'images[]'),
+            width: _readInt(json, 'width', 'images[]'),
+            height: _readInt(json, 'height', 'images[]'),
+          );
+        })
+        .toList();
+    images.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+    return List<EpisodeImageItem>.unmodifiable(images);
   }
 
   List<Object?> _expectList(Object? value, String path) {

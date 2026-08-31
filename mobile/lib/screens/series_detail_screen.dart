@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/router.dart';
 
 /// Series detail. Loads the published series and its episodes from the API.
 class SeriesDetailScreen extends StatefulWidget {
@@ -153,6 +154,11 @@ class _SeriesDetailBody extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 title: Text(episode.title),
                 trailing: episode.price > 0 ? Text('¥${episode.price}') : null,
+                onTap: () {
+                  context.push(
+                    AppRoutes.episodeViewerPath(series.id, episode.id),
+                  );
+                },
               ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:publira/catalog/catalog_failure.dart';
+import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 
 /// Public catalog reads. Implementations talk to the Connect API or a fake.
@@ -14,6 +15,15 @@ abstract class CatalogRepository {
   /// unpublished, or not in this tenant (same 404 policy as web-host).
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesDetail?> getSeries(String publicId);
+
+  /// Body of [episodePublicId] for the reader. Returns `null` when the episode
+  /// is missing, unpublished, not in this tenant, or belongs to a series other
+  /// than [seriesPublicId] (same 404 policy as web-host).
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<EpisodeDetail?> getEpisode(
+    String seriesPublicId,
+    String episodePublicId,
+  );
 }
 
 /// Looks up the [CatalogRepository] installed by [CatalogScope].

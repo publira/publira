@@ -23,6 +23,7 @@ void main() {
       server = ConnectFixtureServer(
         series: ConnectFixtureServer.populatedSeries(),
         details: ConnectFixtureServer.populatedDetails(),
+        episodes: ConnectFixtureServer.populatedEpisodes(),
       );
       await server.start();
     });
@@ -44,7 +45,13 @@ void main() {
           catalog: HttpCatalogRepository(
             config:
                 config ??
-                AppConfig(apiBaseUrl: server.baseUrl, tenantHost: 'localhost'),
+                AppConfig(
+                  apiBaseUrl: server.baseUrl,
+                  tenantHost: 'localhost',
+                  // The fixture server answers the image routes too, so the
+                  // reader fetches real bytes over a real socket.
+                  imageBaseUrl: server.baseUrl,
+                ),
           ),
         ),
       );
@@ -119,6 +126,80 @@ void main() {
         await tester.pageBack();
         await pumpUntilFound(tester, find.text('Publira'));
         expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsOneWidget);
+      });
+    });
+
+    testWidgets('opens the reader on a free episode body', (tester) async {
+      await withFailureScreenshot(tester, 'fixture-viewer', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+
+        expect(
+          find.text('1 / ${ConnectFixtureServer.seedEpisodePageCount}'),
+          findsOneWidget,
+        );
+        // The page request is issued once the reader is on screen, so wait for
+        // it instead of reading the header on the frame the viewer appears.
+        await pumpUntilTrue(
+          tester,
+          () => server.lastImageRequestHeaders != null,
+          description: 'an image-server request',
+        );
+        expect(
+          server.lastImageRequestHeaders?.value('x-forwarded-host'),
+          'localhost',
+        );
+      });
+    });
+
+    testWidgets('turns to the next page from the reader controls', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-viewer-next', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+        await pumpUntilFound(
+          tester,
+          find.text('2 / ${ConnectFixtureServer.seedEpisodePageCount}'),
+        );
+      });
+    });
+
+    testWidgets('a paid episode stays locked without a purchase', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-viewer-locked', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-locked')),
+        );
       });
     });
 
@@ -222,6 +303,46 @@ void main() {
         expect(
           find.text(ConnectFixtureServer.seedEpisodeTitle),
           findsOneWidget,
+        );
+      });
+    });
+
+    testWidgets('a free seed episode reaches the reader on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-viewer', () async {
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        // The dev seed publishes the episode without body images, so the
+        // reader's empty state is what a working round trip looks like here.
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-empty')),
+          timeout: const Duration(seconds: 20),
+        );
+      });
+    });
+
+    testWidgets('a paid seed episode is locked for an anonymous reader', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-viewer-locked', () async {
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-locked')),
+          timeout: const Duration(seconds: 20),
         );
       });
     });

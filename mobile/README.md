@@ -98,11 +98,12 @@ mobile/
 │   ├── main.dart                 # エントリポイント
 │   ├── app.dart                  # MaterialApp.router + CatalogScope
 │   ├── router.dart               # go_router 定義
-│   ├── config.dart               # --dart-define の API / tenant
+│   ├── config.dart               # --dart-define の API / image / tenant
 │   ├── api/                      # Connect JSON クライアント
 │   ├── catalog/                  # CatalogRepository
-│   ├── models/series_item.dart
-│   └── screens/                  # カタログ / シリーズ詳細
+│   ├── models/                   # シリーズ / エピソード本文
+│   ├── screens/                  # カタログ / シリーズ詳細 / ビューア
+│   └── viewer/                   # ページ送りリーダー
 ├── test/                         # ウィジェット / HTTP fixture
 ├── integration_test/             # デバイス上の画面遷移
 ├── scripts/                      # mobile E2E ライフサイクル
@@ -117,12 +118,22 @@ mobile/
 
 `go_router` で以下を定義しています。カタログは公開 API（Connect JSON）から読みます。
 
-| パス                | 画面         |
-| ------------------- | ------------ |
-| `/`                 | カタログ一覧 |
-| `/series/:seriesId` | シリーズ詳細 |
+| パス                                          | 画面             |
+| --------------------------------------------- | ---------------- |
+| `/`                                           | カタログ一覧     |
+| `/series/:seriesId`                           | シリーズ詳細     |
+| `/series/:seriesId/episodes/:episodeId`       | エピソードビューア |
 
-一覧はローディング / 空 / 通信エラー（再試行）、詳細はローディング / 見つからない / 通信エラーを出します。
+一覧はローディング / 空 / 通信エラー（再試行）、詳細はローディング / 見つからない / 通信エラーを出します。ビューアはこれに加えて、未購入の有料話（`EPISODE_ACCESS_LOCKED`）とページのない話それぞれの案内を出します。
+
+## ビューア
+
+エピソード本文は `GetEpisodeDetail` が返す画像を、右から左へめくるページ送りで表示します（web-host のリーダーと同じ読み方向）。
+
+- 1 画面につき 1 ページ。左半分のタップ・左スワイプ・`次のページ` ボタンで次のページへ進みます
+- ページの箱は API が返す `width` / `height` から先に確保するので、画像が届いてもレイアウトが動きません。サイズを持たない画像はビューポート全体を仮の箱にします
+- ページ単位で読み込み中 / 失敗（再読み込み）を出すため、1 ページの失敗が本文全体を落としません
+- 画像は image-server から取得します。テナントは `X-Forwarded-Host`、読者は `Authorization: Bearer`（`PUBLIRA_ACCESS_TOKEN`）で伝えます。有料話の画像 URL に API が付けたメディアトークンはそのまま使います
 
 ## 公開 API への接続
 
@@ -131,17 +142,21 @@ mobile/
 | 定義 | 既定 | 意味 |
 | --- | --- | --- |
 | `PUBLIRA_API_BASE_URL` | `http://127.0.0.1:8000` | 公開 API の Connect HTTP（`api-server` の 8000。8100 の gRPC ではない） |
-| `PUBLIRA_TENANT_HOST` | `localhost` | `GetTenantByDomain` に渡す host。dev seed は `localhost` |
+| `PUBLIRA_IMAGE_BASE_URL` | `http://127.0.0.1:8200` | エピソード本文画像を返す `image-server` |
+| `PUBLIRA_TENANT_HOST` | `localhost` | `GetTenantByDomain` に渡す host。dev seed は `localhost`。image-server へは `X-Forwarded-Host` として送ります |
+| `PUBLIRA_ACCESS_TOKEN` | 空 | 公開 audience の JWT。空なら匿名で、無料話だけが読めます |
 | `PUBLIRA_LIVE_API` | 未設定 | integration test が実 API の live グループを回すか |
 
 ```bash
 # ローカルの api-server（task dev / e2e スタック）
 flutter run --dart-define=PUBLIRA_API_BASE_URL=http://127.0.0.1:8000 \
+  --dart-define=PUBLIRA_IMAGE_BASE_URL=http://127.0.0.1:8200 \
   --dart-define=PUBLIRA_TENANT_HOST=localhost
 
 # Android エミュレータからホストの api-server へ
 flutter run -d android \
   --dart-define=PUBLIRA_API_BASE_URL=http://10.0.2.2:8000 \
+  --dart-define=PUBLIRA_IMAGE_BASE_URL=http://10.0.2.2:8200 \
   --dart-define=PUBLIRA_TENANT_HOST=localhost
 ```
 
@@ -151,6 +166,8 @@ flutter run -d android \
 
 - アプリ起動とカタログ初期表示
 - 一覧 → 詳細 → 戻る
+- 無料話のビューア表示とページ送り
+- 未購入の有料話のロック表示
 - 存在しないシリーズ
 - 空カタログ
 - 到達できない API

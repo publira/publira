@@ -13,10 +13,16 @@ class ConnectClient {
   ConnectClient({
     required this.baseUrl,
     http.Client? httpClient,
+    this.accessToken = '',
     this.timeout = const Duration(seconds: 10),
   }) : _http = httpClient ?? http.Client();
 
   final String baseUrl;
+
+  /// Public-audience JWT. Empty calls the API anonymously, which the public
+  /// RPCs allow; a body that needs a purchase stays locked without it.
+  final String accessToken;
+
   final Duration timeout;
   final http.Client _http;
 
@@ -35,6 +41,10 @@ class ConnectClient {
     final trimmedTenant = tenantId?.trim() ?? '';
     if (trimmedTenant.isNotEmpty) {
       headers[_tenantHeader] = trimmedTenant;
+    }
+    final trimmedToken = accessToken.trim();
+    if (trimmedToken.isNotEmpty) {
+      headers['authorization'] = 'Bearer $trimmedToken';
     }
 
     late final http.Response response;
