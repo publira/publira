@@ -1,53 +1,53 @@
 # web-admin
 
-出版社・編集者がコンテンツを入稿/運用する管理画面です。
+The console where publishers and editors enter and operate their content.
 
-## 主な責務
+## Responsibilities
 
-- Series / Episode の登録・編集
-- 公開設定 (予約公開を含む)
-- テナントごとのブランド設定 (テーマ・ロゴ等)
-- テナントごとの Stripe 決済設定 (シークレットの登録・更新・無効化)
+- Registering and editing Series / Episode
+- Publication settings (including scheduled publication)
+- Per-tenant brand settings (theme, logo, and so on)
+- Per-tenant Stripe payment settings (registering, updating, and disabling the secret)
 
-## 表示ロケール
+## UI locale
 
-- UI ロケールは Cookie `publira_locale`（`Path=/`、`SameSite=Lax`、`Max-Age` 1 年、`httpOnly` なし）に保存する。URL には出さない。ホストが同じならテナントをまたいでも同じ Cookie を使う
-- 解決順は Cookie → テナント既定言語 → `ja`。対応していない Cookie 値は未設定と同じ扱いでテナント既定言語に落ちる。未認証画面（ログインなど）は admin API を呼べないので Cookie か `ja` のまま
-- 読み取りは `lib/locale.ts` の `getLocale(tenantId?)`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す。テナント既定言語へのフォールバックは `tenantId` を渡したときだけ行い、渡してもセッションが無ければ `ja` に落ちる
-- Server Component はテナント id を `next/root-params` から読む。Server Action ではそれが使えないので、テナント id は自分の入力（フォームの値）から受け取る
-- テナント既定言語は `/settings` の「既定言語」カード。`lib/tenant-default-locale.ts` が `"use cache: private"` で読み、保存時に `updateTag` する
-- メッセージはリポジトリルートの [`locales/*.json`](../../locales/README.md) を `loadAdminMessages(locale)` が動的 `import()` する
-- 画面に文言を出すのは `components/message.tsx` の `<Message>`。呼び出し側が 1 文字列ずつ `<Suspense>` で包み、fallback に `Skeleton` を置く。ロケールとカタログの待ちがこのコンポーネントの中に閉じるので、ナビやページ枠の骨格は静的シェルのまま残る。テナント id はルートセグメントから読むため、Cookie 未設定の操作者にもテナント既定言語で表示される
-- `aria-label` や `alt` のように属性へ入る文言はノードとしてストリームできない。`components/admin-brand-logo.tsx` や `components/notification-bell.tsx` のように値を組み立てる側でカタログを解決し、その 1 つのコントロールだけを自前の `<Suspense>` の後ろで待たせる
-- `error.tsx` は Client Component なので `<Message>` を使えない。`components/client-message.tsx` の `<ClientMessage>` が `document.cookie` から Cookie を読む。admin API に届かない境界なので、Cookie 未設定のときはテナント既定言語ではなく `ja` になる。`<Message>` と同じく呼び出し側で `<Suspense>` に包むこと。エラー境界の上にはもう境界が無いので、フォールバックの無いまま suspend するとエラー画面自体が流せずレスポンスが途中で切れる
-- 文言を受け取る props はカタログのキーではなく `ReactNode` を取る。どの文字列がどの `<Suspense>` の後ろで待つかは渡す側のコードに現れる。`<Suspense>` と `<Message>` を組み立てて返すだけのヘルパーは挟まず、呼び出し側に直接書く。`ErrorScreen` は 4 文言すべてを受け取る（呼び出しは `(protected)/error.tsx` の 1 箇所だけ）
-- props にするのは呼び出し側を名指しする文言だけ。`SectionErrorBoundary` が受け取るのはセクション名を含む `title` の 1 つで、対処の案内・再試行ボタン・エラー ID のラベルはどの境界でも同じ文言＝セクションではなくフレームの持ち物なので `components/section-error-boundary.tsx` が自分でカタログから解決する（`@publira/ui-components` の既定は日本語なので、解決しないままだと英語表示の画面に日本語が出る）。`<Message>` が async な Server Component である以上そこはサーバーコンポーネントになるため、`catchError` の呼び出しだけを `components/section-error-catch.tsx`（`"use client"`）に分けてある
-- 個人の切替は `/settings` の「表示言語」カード。Server Action `setAdminLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
-- `<html lang>` は `[tenant_id]/layout.tsx` の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定
+- The UI locale is stored in the `publira_locale` cookie (`Path=/`, `SameSite=Lax`, `Max-Age` of one year, not `httpOnly`). It never appears in the URL. The same host shares one cookie across tenants
+- The resolution order is cookie → tenant default locale → `ja`. An unsupported cookie value is treated as unset and falls through to the tenant default locale. An unauthenticated screen (login and friends) cannot call the admin API, so it stays on the cookie value or `ja`
+- Read it with `getLocale(tenantId?)` from `lib/locale.ts`. It uses `cookies()`, so call it **only from inside a `<Suspense>` boundary**. Never call it inside `"use cache"`; pass the locale in as an argument instead. The fallback to the tenant default locale happens only when `tenantId` is passed, and even then it lands on `ja` without a session
+- A Server Component reads the tenant id from `next/root-params`. A Server Action cannot, so it takes the tenant id from its own input (a form value)
+- The tenant default locale is the 既定言語 card on `/settings`. `lib/tenant-default-locale.ts` reads it with `"use cache: private"` and calls `updateTag` on save
+- `loadAdminMessages(locale)` dynamically `import()`s the repo-root [`locales/*.json`](../../locales/README.md)
+- Copy reaches the screen through `<Message>` in `components/message.tsx`. The caller wraps each string in its own `<Suspense>` with a `Skeleton` fallback, so the wait on the locale and the catalog stays inside that component and the navigation and page frame remain in the static shell. The tenant id comes from the route segment, so an operator with no cookie still sees the tenant default locale
+- Copy that goes into an attribute such as `aria-label` or `alt` cannot be streamed as a node. The place that assembles the value resolves the catalog itself — as `components/admin-brand-logo.tsx` and `components/notification-bell.tsx` do — and waits behind a `<Suspense>` of its own that covers only that one control
+- `error.tsx` is a Client Component, so it cannot use `<Message>`. `<ClientMessage>` in `components/client-message.tsx` reads the cookie from `document.cookie` instead. That boundary cannot reach the admin API, so with no cookie it falls back to `ja` rather than the tenant default locale. Wrap it in a `<Suspense>` at the call site, just like `<Message>`: there is no boundary above an error boundary, so suspending without a fallback cuts the response off mid-body and the error screen itself never streams
+- A prop that receives copy takes a `ReactNode`, not a catalog key. Which string waits behind which `<Suspense>` then shows up in the calling code. Do not add a helper that only assembles a `<Suspense>` and a `<Message>`; write it at the call site. `ErrorScreen` takes all four strings (its single caller is `(protected)/error.tsx`)
+- A prop is for copy that names the caller. `SectionErrorBoundary` takes one `title` holding the section name; the recovery guidance, the retry button, and the error ID label read the same at every boundary, so they belong to the frame rather than the section and `components/section-error-boundary.tsx` resolves them from the catalog itself (the defaults of `@publira/ui-components` are Japanese, so leaving them unresolved puts Japanese on an English screen). Since `<Message>` is an async Server Component that component has to be a Server Component, so only the `catchError` call is split out into `components/section-error-catch.tsx` (`"use client"`)
+- An individual operator switches locale from the 表示言語 card on `/settings`. The `setAdminLocaleAction` Server Action writes the cookie and the screen re-renders in the same round trip
+- `<html lang>` is resolved by the static attribute in `[tenant_id]/layout.tsx` plus an inline script in `<head>`. For the reasoning and the constraints, see `LOCALE_LANG_SCRIPT` in `packages/utils/README.md`. `global-not-found.tsx` never passes through a layout and its body cannot follow the locale either, so it stays on `lang="ja"`
 
-## 開発
+## Development
 
 ```bash
 cd apps/web-admin
 pnpm dev
 ```
 
-### 内部キャッシュ再検証
+### Internal cache revalidation
 
-`POST /api/v1/revalidate` は Go サーバー専用の再検証入口です。`PUBLIRA_REVALIDATE_TOKEN` を `X-Revalidate-Token` ヘッダーで照合し、受け取ったタグをテナント ID による制限なしに `revalidateTag(tag, "max")` します。このパスは `proxy.ts` の Host によるテナント解決とセッション認証を bypass します。宛先は private network の `PUBLIRA_WEB_ADMIN_INTERNAL_URL` です。
+`POST /api/v1/revalidate` is the revalidation entry point reserved for the Go server. It checks `PUBLIRA_REVALIDATE_TOKEN` against the `X-Revalidate-Token` header and calls `revalidateTag(tag, "max")` on the tags it receives, without restricting them by tenant ID. This path bypasses the Host-based tenant resolution in `proxy.ts` and the session authentication. The destination is `PUBLIRA_WEB_ADMIN_INTERNAL_URL` on the private network.
 
-### セッション Cookie (JWE)
+### Session cookie (JWE)
 
-必須の環境変数:
+Required environment variables:
 
-- `PUBLIRA_AUTH_SECRET`（32 バイト以上）— 管理画面のセッション Cookie を封じる鍵。フォールバックは無く、未設定・短すぎる場合は例外になります。詳細と払い出し方は [リポジトリ README](../../README.md#session-cookie-encryption-key-publira_auth_secret) を参照してください
+- `PUBLIRA_AUTH_SECRET` (32 bytes or more) — the key that seals the console's session cookie. There is no fallback: an unset or too short value raises. For the details and how to issue one, see the [repository README](../../README.md#session-cookie-encryption-key-publira_auth_secret)
 
-### 分散トレーシング
+### Distributed tracing
 
-`instrumentation.ts` が `@publira/tracing` の `registerTracing("publira-web-admin")` を呼び、Next.js の inbound span と SSR からの Connect RPC の client span を出します。既定は無効で、`PUBLIRA_TRACING_ENABLED` を立てたときだけ登録します。Dev Container では Jaeger UI (`http://localhost:16686`) の Service `publira-web-admin` で確認できます。
+`instrumentation.ts` calls `registerTracing("publira-web-admin")` from `@publira/tracing`, which emits Next.js inbound spans and client spans for the Connect RPCs made during SSR. It is off by default and only registers when `PUBLIRA_TRACING_ENABLED` is set. In the Dev Container, look for the `publira-web-admin` service in the Jaeger UI (`http://localhost:16686`).
 
-環境変数と `NEXT_OTEL_VERBOSE` の扱いは [`packages/tracing/README.md`](../../packages/tracing/README.md) を参照してください。
+For the environment variables and how `NEXT_OTEL_VERBOSE` is handled, see [`packages/tracing/README.md`](../../packages/tracing/README.md).
 
-### 画像配信 (`next/image`)
+### Image delivery (`next/image`)
 
-`next.config.ts` の `images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` で、`next/image` が admin-image-server の Manael 変換を直接使います。`/images/...` を読むときだけ要求幅を `w` として渡し、WebP / AVIF はブラウザの `Accept` で決まります。`blob:` の一時プレビューなど admin-image-server を経由しない `<Image>` は `unoptimized` のままにしてください。ローダーの実装と仕様は [`packages/utils/README.md`](../../packages/utils/README.md) にあります。
+`images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` let `next/image` use the Manael conversion of admin-image-server directly. The requested width is passed as `w` only when reading `/images/...`, and WebP / AVIF is decided by the browser's `Accept`. Leave an `<Image>` that does not go through admin-image-server — a temporary `blob:` preview, for instance — `unoptimized`. The loader's implementation and specification are in [`packages/utils/README.md`](../../packages/utils/README.md).

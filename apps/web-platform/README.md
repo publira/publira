@@ -1,84 +1,84 @@
 # web-platform
 
-プラットフォーム運営者向けの横断オペレーション画面です。テナント内運用を担う web-admin とは責務を分離します。
+The cross-tenant operations console for platform operators. Its responsibilities are kept separate from web-admin, which covers operations inside a single tenant.
 
-## 情報設計
+## Information architecture
 
-### ルート構成
+### Routes
 
-| ルート | 画面 | 目的 | 認証 |
+| Route | Screen | Purpose | Authentication |
 | --- | --- | --- | --- |
-| `/login` | ログイン | platform operator の入口 | 不要 |
-| `/` | ダッシュボード | 横断 KPI / 直近イベント確認 | 必須 |
-| `/tenants` | テナント一覧 | テナント横断の状態一覧 | 必須 |
-| `/tenants/new` | テナント作成 | 新規テナント発行 | 必須 |
-| `/tenants/[tenant_id]` | テナント詳細 | 個別テナント状態・契約情報確認 | 必須 |
-| `/operators` | オペレーター管理 | 運用者ロール管理 | 必須 |
-| `/audit-logs` | 監査ログ | 変更履歴の追跡 | 必須 |
+| `/login` | Login | Entry point for a platform operator | Not required |
+| `/` | Dashboard | Cross-tenant KPIs and recent events | Required |
+| `/tenants` | Tenant list | Cross-tenant status list | Required |
+| `/tenants/new` | Tenant creation | Issue a new tenant | Required |
+| `/tenants/[tenant_id]` | Tenant detail | Status and contract information of one tenant | Required |
+| `/operators` | Operator management | Operator role management | Required |
+| `/audit-logs` | Audit logs | Trace the change history | Required |
 
-### 認証・認可の前提
+### Authentication and authorization
 
-- `proxy.ts` で `PUBLIC_PATHS`（`/login`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`）に含まれないパスを保護対象にする
-- `/logout` は廃止済み。GET / POST とも 404 を返し、セッション Cookie は変更しない。ログアウトはヘッダーの Server Action のみ
-- セッション Cookie: `publira_web_platform_auth`
-- 初期ロール定義: `platform_owner`, `platform_operator`, `platform_auditor`
-- 画面ガードは `(protected)/layout.tsx` で行う
+- `proxy.ts` protects every path that is not in `PUBLIC_PATHS` (`/login`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`)
+- `/logout` has been removed. Both GET and POST return 404 and leave the session cookie untouched. Signing out goes through the header's Server Action only
+- Session cookie: `publira_web_platform_auth`
+- Initial role definitions: `platform_owner`, `platform_operator`, `platform_auditor`
+- Screens are guarded in `(protected)/layout.tsx`
 
-### 共通レイアウト (アプリシェル)
+### Shared layout (app shell)
 
-- 左: サイドバー (主要導線 + 責務分離メモ)
-- 上: ヘッダー (現在のオペレーター情報 + 主要アクション)
-- 本文: `PlatformPage` でページヘッダーと本文コンテナを統一
-- モバイル: サイドバーをドロワーとして再利用
+- Left: sidebar (main navigation plus a note on the responsibility split)
+- Top: header (the current operator plus the main actions)
+- Body: `PlatformPage` gives every page the same page header and content container
+- Mobile: the sidebar is reused as a drawer
 
-### 表示ロケール
+### UI locale
 
-- UI ロケールは Cookie `publira_locale`（`Path=/`、`SameSite=Lax`、`Max-Age` 1 年、`httpOnly` なし）に保存する。URL には出さない
-- 解決順は Cookie → プラットフォーム既定言語 → `ja`。対応する Cookie が入っていればそれが常に勝ち、未設定・未知の値だけが既定言語に落ちる。既定言語の読み取り自体が失敗する場合（ログイン画面などセッションがない場合を含む）は `ja`
-- 読み取りは `lib/locale.ts` の `getPlatformLocale()`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す
-- メッセージはリポジトリルートの [`locales/*.json`](../../locales/README.md) を `loadPlatformMessages(locale)` が動的 `import()` する。このアプリの画面文言は `platform.*` 名前空間に置く
-- 画面文言は `components/message.tsx` の `<Message message="platform.auth.login.submit" />` を `<Suspense>` で包んで 1 文字列ずつ描く。fallback はその文字列に合わせた `SkeletonLine` にする。周りのカードや入力欄は静的シェルに残る
-- RPC や `searchParams` の結果で分岐するセクション（`/setup` のゲート、`/confirm-email` の確認結果など）は、分岐で決めるのは `PlatformMessageKey` までにして、描画は `<Message>` に通す。カタログ（`messages`）をプロップで子に渡さない
-- Client Component にはカタログではなく描画済みノードを `copy` プロップ（`LoginFormCopy` など）で渡す。Client 側でカタログを `import()` すると両ロケールがブラウザに載る
-- `placeholder` などの属性はノードにできないので、その属性を持つコントロール自体がカタログを待つ。コントロール 1 つぶんの `<Suspense>` で囲み、fallback はその高さの `Skeleton` にする（`/setup` の `NameInput`）
-- `getMessage` を直に使うのは、ノードにできない値だけ（`generateMetadata` の `title` と Server Action 側）
-- ユーザーに見えるメッセージを持つ zod スキーマは、モジュール定数ではなくカタログを受け取る関数にする（`lib/auth-input.ts` の `emailFormSchema(messages)`）。文言はリクエストのロケールで決まるので、Server Action か Suspense の内側でしか解決できない
-- `Suspense` の fallback は静的シェルの一部なのでロケールに追従できない。fallback に文章を書かず、その文字列に合わせたサイズの `Skeleton` を出す
-- 文言を props にするのは呼び出し側を名指しする文言だけ。`SectionErrorBoundary` が受け取るのはセクション名を含む `title` の 1 つで、対処の案内・再試行ボタン・エラー ID のラベルはどの境界でも同じ文言＝セクションではなくフレームの持ち物なので `components/section-error-boundary.tsx` が自分でカタログから解決する（`@publira/ui-components` の既定は日本語なので、解決しないままだと英語表示の画面に日本語が出る）。`<Message>` が async な Server Component である以上そこはサーバーコンポーネントになるため、`catchError` の呼び出しだけを `components/section-error-catch.tsx`（`"use client"`）に分けてある。`ErrorScreen` は 4 文言すべてを受け取る（呼び出しは `app/error.tsx` と `(protected)/error.tsx` で、どちらも重複していない）
-- 切替は `/settings/general` の「表示言語」カード。Server Action `setPlatformLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
-- プラットフォーム既定言語は同じ画面の「既定言語」カード（`lib/platform-settings.ts` の `getPlatformSettings` / `updatePlatformDefaultLocale`）。新規テナントの初期言語でもある。保存すると Server Action が `platform:settings` タグを `updateTag` するので、同じセッションの Cookie なし表示にも即反映される
-- `<html lang>` はルート layout の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定
+- The UI locale is stored in the `publira_locale` cookie (`Path=/`, `SameSite=Lax`, `Max-Age` of one year, not `httpOnly`). It never appears in the URL
+- The resolution order is cookie → platform default locale → `ja`. A supported cookie value always wins; only an unset or unknown value falls through to the default locale. When the default locale itself cannot be read — including on a screen without a session, such as login — it is `ja`
+- Read it with `getPlatformLocale()` from `lib/locale.ts`. It uses `cookies()`, so call it **only from inside a `<Suspense>` boundary**. Never call it inside `"use cache"`; pass the locale in as an argument instead
+- `loadPlatformMessages(locale)` dynamically `import()`s the repo-root [`locales/*.json`](../../locales/README.md). This app's copy lives in the `platform.*` namespace
+- Copy is rendered one string at a time with `<Message message="platform.auth.login.submit" />` from `components/message.tsx`, wrapped in a `<Suspense>` whose fallback is a `SkeletonLine` sized to that string. The card and the inputs around it stay in the static shell
+- A section that branches on an RPC result or on `searchParams` — the `/setup` gate, the `/confirm-email` outcome, and so on — decides only which `PlatformMessageKey` to use and still renders it through `<Message>`. Never pass the catalog (`messages`) down to a child as a prop
+- Pass rendered nodes to a Client Component through a `copy` prop (`LoginFormCopy` and friends), never the catalog. An `import()` of a catalog from the client ships both locales to the browser
+- An attribute such as `placeholder` cannot be a node, so the control that carries one waits for the catalog itself. Wrap that single control in a `<Suspense>` whose fallback is a `Skeleton` of its height (`NameInput` on `/setup`)
+- `getMessage` is used directly only for values that cannot be nodes: `generateMetadata`'s `title`, and anything on the Server Action side
+- A zod schema carrying user-facing messages is a function of the catalog, not a module constant (`emailFormSchema(messages)` in `lib/auth-input.ts`). The copy depends on the request's locale, so it can only be resolved in a Server Action or inside a `<Suspense>`
+- A `Suspense` fallback is part of the static shell and cannot follow the locale. Never write a sentence into one; render a `Skeleton` sized to the string it stands in for
+- A prop is for copy that names the caller. `SectionErrorBoundary` takes one `title` holding the section name; the recovery guidance, the retry button, and the error ID label read the same at every boundary, so they belong to the frame rather than the section and `components/section-error-boundary.tsx` resolves them from the catalog itself (the defaults of `@publira/ui-components` are Japanese, so leaving them unresolved puts Japanese on an English screen). Since `<Message>` is an async Server Component that component has to be a Server Component, so only the `catchError` call is split out into `components/section-error-catch.tsx` (`"use client"`). `ErrorScreen` takes all four strings (its callers are `app/error.tsx` and `(protected)/error.tsx`, and neither duplicates the other)
+- Switching happens on the 表示言語 card on `/settings/general`. The `setPlatformLocaleAction` Server Action writes the cookie and the screen re-renders in the same round trip
+- The platform default locale is the 既定言語 card on the same screen (`getPlatformSettings` / `updatePlatformDefaultLocale` in `lib/platform-settings.ts`). It is also the initial locale of a new tenant. On save the Server Action calls `updateTag` on `platform:settings`, so even a cookie-less view in the same session picks it up immediately
+- `<html lang>` is resolved by the static attribute in the root layout plus an inline script in `<head>`. For the reasoning and the constraints, see `LOCALE_LANG_SCRIPT` in `packages/utils/README.md`. `global-not-found.tsx` never passes through a layout and its body cannot follow the locale either, so it stays on `lang="ja"`
 
-### web-admin との役割分担
+### Split of responsibilities with web-admin
 
-- web-platform: テナント横断オペレーション
-  - テナント作成/状態管理
-  - オペレーター管理
-  - 監査ログ確認
-- web-admin: テナント内オペレーション
-  - Series / Episode 入稿
-  - 公開設定
-  - テナント内ブランド設定
+- web-platform: cross-tenant operations
+  - Tenant creation and status management
+  - Operator management
+  - Audit log review
+- web-admin: operations inside a tenant
+  - Series / Episode entry
+  - Publication settings
+  - Brand settings within a tenant
 
-## 開発
+## Development
 
 ```bash
 cd apps/web-platform
 pnpm dev
 ```
 
-### 内部キャッシュ再検証
+### Internal cache revalidation
 
-`POST /api/v1/revalidate` は Go サーバー専用の再検証入口です。`PUBLIRA_REVALIDATE_TOKEN` を `X-Revalidate-Token` ヘッダーで照合し、受け取ったタグをテナント ID による制限なしに `revalidateTag(tag, "max")` します。このパスは `proxy.ts` のセットアップ確認とセッション認証を bypass します。宛先は private network の `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` です。
+`POST /api/v1/revalidate` is the revalidation entry point reserved for the Go server. It checks `PUBLIRA_REVALIDATE_TOKEN` against the `X-Revalidate-Token` header and calls `revalidateTag(tag, "max")` on the tags it receives, without restricting them by tenant ID. This path bypasses the setup check and the session authentication in `proxy.ts`. The destination is `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on the private network.
 
-### 分散トレーシング
+### Distributed tracing
 
-`instrumentation.ts` が `@publira/tracing` の `registerTracing("publira-web-platform")` を呼び、Next.js の inbound span と SSR からの Connect RPC の client span を出します。既定は無効で、`PUBLIRA_TRACING_ENABLED` を立てたときだけ登録します。Dev Container では Jaeger UI (`http://localhost:16686`) の Service `publira-web-platform` で確認できます。
+`instrumentation.ts` calls `registerTracing("publira-web-platform")` from `@publira/tracing`, which emits Next.js inbound spans and client spans for the Connect RPCs made during SSR. It is off by default and only registers when `PUBLIRA_TRACING_ENABLED` is set. In the Dev Container, look for the `publira-web-platform` service in the Jaeger UI (`http://localhost:16686`).
 
-環境変数と `NEXT_OTEL_VERBOSE` の扱いは [`packages/tracing/README.md`](../../packages/tracing/README.md) を参照してください。
+For the environment variables and how `NEXT_OTEL_VERBOSE` is handled, see [`packages/tracing/README.md`](../../packages/tracing/README.md).
 
-### セッション Cookie (JWE)
+### Session cookie (JWE)
 
-必須の環境変数:
+Required environment variables:
 
-- `PUBLIRA_AUTH_SECRET`（32 バイト以上）— プラットフォーム管理のセッション Cookie を封じる鍵。フォールバックは無く、未設定・短すぎる場合は例外になります。詳細と払い出し方は [リポジトリ README](../../README.md#session-cookie-encryption-key-publira_auth_secret) を参照してください
+- `PUBLIRA_AUTH_SECRET` (32 bytes or more) — the key that seals the platform console's session cookie. There is no fallback: an unset or too short value raises. For the details and how to issue one, see the [repository README](../../README.md#session-cookie-encryption-key-publira_auth_secret)
