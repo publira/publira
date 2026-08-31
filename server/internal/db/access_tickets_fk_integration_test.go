@@ -66,8 +66,8 @@ func mustInsertTenant(t *testing.T, ctx context.Context, db *sql.DB, publicID, d
 		t.Fatalf("uuid: %v", err)
 	}
 	_, err = db.ExecContext(ctx, `
-		INSERT INTO tenants (id, public_id, domain, admin_domain, name, status)
-		VALUES ($1, $2, $3, $4, $5, 'active')
+		INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
+		VALUES ($1, $2, $3, $4, $5, 'active', 'ja')
 	`, id, publicID, domain, adminDomain, name)
 	if err != nil {
 		t.Fatalf("insert tenant %s: %v", publicID, err)

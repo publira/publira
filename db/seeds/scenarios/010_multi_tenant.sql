@@ -21,20 +21,22 @@
 WITH tenant_seed AS (
     SELECT '018f0f00-0001-7000-8000-000000000001'::uuid AS id
 )
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status)
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
 SELECT
     ts.id,
     'BndrTNNTAAA1',
     'other.localhost',
     'admin.other.localhost',
     'Boundary Tenant',
-    'active'
+    'active',
+    'ja'
 FROM tenant_seed ts
 ON CONFLICT (public_id) DO UPDATE
 SET domain = EXCLUDED.domain,
     admin_domain = EXCLUDED.admin_domain,
     name = EXCLUDED.name,
-    status = EXCLUDED.status;
+    status = EXCLUDED.status,
+    default_locale = EXCLUDED.default_locale;
 
 INSERT INTO tenant_config (
     tenant_id,

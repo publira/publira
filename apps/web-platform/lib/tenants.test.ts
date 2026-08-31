@@ -254,6 +254,7 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        defaultLocale: "ja",
         domain: "example.com",
         initialAdminEmails: ["owner@example.com", ""],
         locale: "ja",
@@ -264,6 +265,7 @@ describe("createPlatformTenant", () => {
     expect(mockCreateTenant).toHaveBeenCalledWith(
       {
         adminDomain: "",
+        defaultLocale: "ja",
         domain: "example.com",
         initialAdminEmails: ["owner@example.com"],
         name: "新規テナント",
@@ -281,6 +283,7 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        defaultLocale: "ja",
         domain: "example.com",
         locale: "ja",
         name: "n",
@@ -300,6 +303,7 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        defaultLocale: "ja",
         domain: "example.com",
         locale: "ja",
         name: "n",
@@ -317,6 +321,7 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        defaultLocale: "ja",
         domain: "example.com",
         locale: "ja",
         name: "n",
@@ -339,6 +344,7 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        defaultLocale: "ja",
         domain: "example.com",
         locale: "ja",
         name: "n",
@@ -361,6 +367,7 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        defaultLocale: "ja",
         domain: "example.com",
         locale: "en",
         name: "n",
@@ -383,6 +390,7 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        defaultLocale: "ja",
         domain: "example.com",
         locale: "ja",
         name: "n",
@@ -400,6 +408,7 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        defaultLocale: "ja",
         domain: "example.com",
         locale: "ja",
         name: "n",
@@ -417,6 +426,7 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        defaultLocale: "ja",
         domain: "example.com",
         locale: "ja",
         name: "n",

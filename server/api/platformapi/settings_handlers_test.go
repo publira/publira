@@ -25,10 +25,6 @@ func newPlatformSettingsActorContext() context.Context {
 	})
 }
 
-func optionalLocale(value string) *string {
-	return &value
-}
-
 func TestGetPlatformSettingsReturnsStoredTimezone(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -70,13 +66,14 @@ func TestUpdatePlatformSettingsPersistsTimezone(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
 	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformSettingsQuery)).
-		WithArgs("America/Los_Angeles", sql.NullString{}).
+		WithArgs("America/Los_Angeles", "ja").
 		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "America/Los_Angeles", "ja", now, now))
 	expectOperatorAuditLogInsert(mock)
 
 	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 		// Surrounding whitespace is normalized away before the value is stored.
 		DefaultTimezone: "  America/Los_Angeles  ",
+		DefaultLocale:   "ja",
 	}))
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
@@ -94,13 +91,13 @@ func TestUpdatePlatformSettingsPersistsLocale(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
 	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformSettingsQuery)).
-		WithArgs("America/Los_Angeles", sql.NullString{String: "en", Valid: true}).
+		WithArgs("America/Los_Angeles", "en").
 		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "America/Los_Angeles", "en", now, now))
 	expectOperatorAuditLogInsert(mock)
 
 	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: "America/Los_Angeles",
-		DefaultLocale:   optionalLocale("  en  "),
+		DefaultLocale:   "  en  ",
 	}))
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
@@ -117,11 +114,12 @@ func TestUpdatePlatformSettingsPersistsLocale(t *testing.T) {
 func TestUpdatePlatformSettingsDatabaseErrorIsHidden(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformSettingsQuery)).
-		WithArgs("America/Los_Angeles", sql.NullString{}).
+		WithArgs("America/Los_Angeles", "ja").
 		WillReturnError(errors.New(`pq: relation "platform_config" does not exist`))
 
 	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: "America/Los_Angeles",
+		DefaultLocale:   "ja",
 	}))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("UpdatePlatformSettings code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
@@ -150,6 +148,7 @@ func TestUpdatePlatformSettingsRejectsInvalidTimezone(t *testing.T) {
 
 			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 				DefaultTimezone: tt.timezone,
+				DefaultLocale:   "ja",
 			}))
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
@@ -179,7 +178,7 @@ func TestUpdatePlatformSettingsRejectsInvalidLocale(t *testing.T) {
 
 			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 				DefaultTimezone: "America/Los_Angeles",
-				DefaultLocale:   optionalLocale(tt.locale),
+				DefaultLocale:   tt.locale,
 			}))
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
@@ -193,7 +192,10 @@ func TestUpdatePlatformSettingsRejectsInvalidLocale(t *testing.T) {
 	}
 }
 
-func TestUpdatePlatformSettingsRejectsBlankLocaleWhenSet(t *testing.T) {
+// The locale is required, so an omitted field arrives as the empty string and
+// is rejected the same way a blank one is: the settings row has no column
+// default left to fall back on.
+func TestUpdatePlatformSettingsRejectsMissingLocale(t *testing.T) {
 	tests := []struct {
 		name   string
 		locale string
@@ -208,7 +210,7 @@ func TestUpdatePlatformSettingsRejectsBlankLocaleWhenSet(t *testing.T) {
 
 			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 				DefaultTimezone: "America/Los_Angeles",
-				DefaultLocale:   optionalLocale(tt.locale),
+				DefaultLocale:   tt.locale,
 			}))
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
@@ -224,12 +226,12 @@ func TestUpdatePlatformSettingsRejectsBlankLocaleWhenSet(t *testing.T) {
 func TestUpdatePlatformSettingsWritesTimezoneAndLocaleAtomically(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformSettingsQuery)).
-		WithArgs("America/Los_Angeles", sql.NullString{String: "en", Valid: true}).
+		WithArgs("America/Los_Angeles", "en").
 		WillReturnError(errors.New(`pq: could not serialize access`))
 
 	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: "America/Los_Angeles",
-		DefaultLocale:   optionalLocale("en"),
+		DefaultLocale:   "en",
 	}))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("UpdatePlatformSettings code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)

@@ -1139,7 +1139,8 @@ type CreateTenantParams struct {
 }
 
 // プラットフォーム管理者向けテナント作成
-// timezone / default_locale は列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
+// default_locale は列 DEFAULT を持たないため、呼び出し側が必ず明示する。timezone も
+// 列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
 func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, createTenant,
 		arg.ID,

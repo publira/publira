@@ -138,8 +138,11 @@ describe("platform-settings", () => {
   });
 
   it("更新に成功した場合は保存された既定タイムゾーンを返す", async () => {
+    mockGetPlatformSettingsApi.mockResolvedValueOnce({
+      settings: { defaultLocale: "en", defaultTimezone: "Asia/Tokyo" },
+    });
     mockUpdatePlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "ja", defaultTimezone: "Europe/Paris" },
+      settings: { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
     });
 
     const { updatePlatformDefaultTimezone } =
@@ -148,14 +151,33 @@ describe("platform-settings", () => {
     const result = await updatePlatformDefaultTimezone("Europe/Paris", "ja");
 
     expect(result).toEqual({ defaultTimezone: "Europe/Paris", ok: true });
-    // `defaultLocale` は presence-aware なので、送らなければサーバ側の既定言語は保たれる。
+    // `default_locale` is required now, so a zone-only save reads the stored
+    // language back and sends it along. Posting back the value the screen holds
+    // would revert a language saved from another session.
     expect(mockUpdatePlatformSettingsApi).toHaveBeenCalledWith(
-      { defaultTimezone: "Europe/Paris" },
+      { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
       { headers: { Authorization: "Bearer session-token" } }
     );
   });
 
+  it("saves nothing when the read before a time zone save fails", async () => {
+    mockGetPlatformSettingsApi.mockRejectedValueOnce(
+      new ConnectError("platform api unavailable", Code.Unavailable)
+    );
+
+    const { updatePlatformDefaultTimezone } =
+      await import("./platform-settings");
+
+    const result = await updatePlatformDefaultTimezone("Europe/Paris", "ja");
+
+    expect(result.ok).toBe(false);
+    expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
+  });
+
   it("更新時の invalid_argument はサーバのメッセージをそのまま返す", async () => {
+    mockGetPlatformSettingsApi.mockResolvedValueOnce({
+      settings: { defaultLocale: "ja", defaultTimezone: "Asia/Tokyo" },
+    });
     mockUpdatePlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError(
         "default_timezone must be a valid IANA time zone name",
@@ -175,6 +197,9 @@ describe("platform-settings", () => {
   });
 
   it("権限がない場合は共通のエラーメッセージを返す", async () => {
+    mockGetPlatformSettingsApi.mockResolvedValueOnce({
+      settings: { defaultLocale: "ja", defaultTimezone: "Asia/Tokyo" },
+    });
     mockUpdatePlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError("platform owner required", Code.PermissionDenied)
     );
@@ -254,5 +279,30 @@ describe("platform-settings", () => {
     });
     expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();
     expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
+  });
+
+  it("returns the stored platform default locale for a write path", async () => {
+    mockGetPlatformSettingsApi.mockResolvedValueOnce({
+      settings: { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
+    });
+
+    const { readPlatformDefaultLocale } = await import("./platform-settings");
+
+    await expect(readPlatformDefaultLocale("ja")).resolves.toEqual({
+      defaultLocale: "en",
+      ok: true,
+    });
+  });
+
+  it("reports a failure instead of guessing the platform default locale", async () => {
+    mockGetPlatformSettingsApi.mockRejectedValueOnce(
+      new ConnectError("platform api unavailable", Code.Unavailable)
+    );
+
+    const { readPlatformDefaultLocale } = await import("./platform-settings");
+
+    const result = await readPlatformDefaultLocale("ja");
+
+    expect(result.ok).toBe(false);
   });
 });

@@ -5,39 +5,18 @@ FROM platform_config
 WHERE singleton = TRUE
 LIMIT 1;
 
--- name: UpsertPlatformDefaultTimezone :one
--- プラットフォーム既定タイムゾーン (IANA 名) を作成または更新する
-INSERT INTO platform_config (singleton, default_timezone, updated_at)
-VALUES (TRUE, sqlc.arg('default_timezone'), NOW()) ON CONFLICT (singleton) DO
-UPDATE
-SET default_timezone = EXCLUDED.default_timezone,
-    updated_at = NOW()
-RETURNING *;
-
--- name: UpsertPlatformDefaultLocale :one
--- プラットフォーム既定ロケールを作成または更新する
-INSERT INTO platform_config (singleton, default_locale, updated_at)
-VALUES (TRUE, sqlc.arg('default_locale'), NOW()) ON CONFLICT (singleton) DO
-UPDATE
-SET default_locale = EXCLUDED.default_locale,
-    updated_at = NOW()
-RETURNING *;
-
 -- name: UpsertPlatformSettings :one
 -- プラットフォーム既定タイムゾーンと既定ロケールを原子的に作成または更新する。
--- default_locale が NULL なら既存値（新規行なら列 DEFAULT の ja）を残す。
+-- default_locale は列 DEFAULT を持たないため、呼び出し側が必ず明示する。
 INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
 VALUES (
         TRUE,
         sqlc.arg('default_timezone'),
-        COALESCE(sqlc.narg('default_locale')::text, 'ja'),
+        sqlc.arg('default_locale'),
         NOW()
     ) ON CONFLICT (singleton) DO
 UPDATE
 SET default_timezone = EXCLUDED.default_timezone,
-    default_locale = COALESCE(
-        sqlc.narg('default_locale')::text,
-        platform_config.default_locale
-    ),
+    default_locale = EXCLUDED.default_locale,
     updated_at = NOW()
 RETURNING *;

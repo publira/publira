@@ -54,6 +54,10 @@ export type UpdatePlatformDefaultLocaleResult =
   | { defaultLocale: Locale; ok: true }
   | { message: string; ok: false };
 
+export type PlatformDefaultLocaleResult =
+  | { defaultLocale: Locale; ok: true }
+  | { message: string; ok: false };
+
 /**
  * Tag the cached read carries, so `updateTag` in the Server Action makes the
  * saved value visible in the same session — both on the settings screen and on
@@ -159,6 +163,82 @@ export const getPlatformDisplayLocale = async (): Promise<Locale> => {
   return settings.defaultLocale;
 };
 
+interface StoredPlatformSettings {
+  defaultLocale: Locale;
+  defaultTimezone: string;
+}
+
+/**
+ * The saved settings row, read straight from the API instead of through the
+ * cached {@link getPlatformSettings}.
+ *
+ * `UpdatePlatformSettings` writes the whole row and requires both fields, so a
+ * save that changes one of them has to name the other. The stored value is the
+ * one to send back: the settings screen's copy can be minutes old, and posting
+ * that back would revert what another session saved in the meantime.
+ */
+const readStoredPlatformSettings = async (
+  sessionId: string
+): Promise<StoredPlatformSettings | null> => {
+  const current = await apiClient.settings.getPlatformSettings(
+    {},
+    buildSessionHeaders(sessionId)
+  );
+  const defaultTimezone = current.settings?.defaultTimezone.trim();
+  const defaultLocale = current.settings?.defaultLocale.trim();
+  if (!(defaultTimezone && defaultLocale)) {
+    return null;
+  }
+
+  return { defaultLocale: parseLocale(defaultLocale), defaultTimezone };
+};
+
+/**
+ * The saved platform default locale, for a write path that has to name one.
+ *
+ * Tenant creation sends it as the new tenant's locale: the API no longer picks
+ * a language when the request omits it. Until the creation screen offers its
+ * own selector (#1246), the platform default is the locale the operator
+ * configured, so it is the value to state explicitly.
+ */
+export const readPlatformDefaultLocale = async (
+  locale: Locale
+): Promise<PlatformDefaultLocaleResult> => {
+  const [messages, sessionId] = await Promise.all([
+    loadPlatformMessages(locale),
+    resolveAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const stored = await readStoredPlatformSettings(sessionId);
+    if (!stored) {
+      return {
+        message: getMessage(messages, "platform.settings.load_failed"),
+        ok: false,
+      };
+    }
+
+    return { defaultLocale: stored.defaultLocale, ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: parseErrorMessage(
+        error,
+        getMessage(messages, "platform.settings.load_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
 export const updatePlatformDefaultTimezone = async (
   defaultTimezone: string,
   locale: Locale
@@ -175,8 +255,16 @@ export const updatePlatformDefaultTimezone = async (
   }
 
   try {
+    const stored = await readStoredPlatformSettings(sessionId);
+    if (!stored) {
+      return {
+        message: getMessage(messages, "platform.settings.timezone_save_failed"),
+        ok: false,
+      };
+    }
+
     const response = await apiClient.settings.updatePlatformSettings(
-      { defaultTimezone },
+      { defaultLocale: stored.defaultLocale, defaultTimezone },
       buildSessionHeaders(sessionId)
     );
 
@@ -203,10 +291,8 @@ export const updatePlatformDefaultTimezone = async (
  * Save the platform-wide default locale.
  *
  * `UpdatePlatformSettings` writes the whole settings row and rejects a blank
- * `default_timezone`, so a locale-only save still has to name a zone. The
- * value is re-read from the API instead of being carried in the form: the
- * settings screen's copy can be minutes old, and posting it back would revert
- * a zone that was saved from another session in the meantime.
+ * `default_timezone`, so a locale-only save still has to name a zone —
+ * {@link readStoredPlatformSettings} supplies the stored one.
  */
 export const updatePlatformDefaultLocale = async (
   defaultLocale: Locale,
@@ -224,12 +310,8 @@ export const updatePlatformDefaultLocale = async (
   }
 
   try {
-    const current = await apiClient.settings.getPlatformSettings(
-      {},
-      buildSessionHeaders(sessionId)
-    );
-    const defaultTimezone = current.settings?.defaultTimezone.trim();
-    if (!defaultTimezone) {
+    const stored = await readStoredPlatformSettings(sessionId);
+    if (!stored) {
       return {
         message: getMessage(messages, "platform.settings.locale_save_failed"),
         ok: false,
@@ -237,7 +319,7 @@ export const updatePlatformDefaultLocale = async (
     }
 
     const response = await apiClient.settings.updatePlatformSettings(
-      { defaultLocale, defaultTimezone },
+      { defaultLocale, defaultTimezone: stored.defaultTimezone },
       buildSessionHeaders(sessionId)
     );
 

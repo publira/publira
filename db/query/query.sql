@@ -42,7 +42,8 @@ ORDER BY created_at ASC, id ASC
 LIMIT sqlc.arg('limit');
 -- name: CreateTenant :one
 -- プラットフォーム管理者向けテナント作成
--- timezone / default_locale は列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
+-- default_locale は列 DEFAULT を持たないため、呼び出し側が必ず明示する。timezone も
+-- 列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
 INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
 VALUES (sqlc.arg('id'), sqlc.arg('public_id'), sqlc.arg('domain'), sqlc.narg('admin_domain'), sqlc.arg('name'), 'active', sqlc.arg('timezone'), sqlc.arg('default_locale'))
 RETURNING *;

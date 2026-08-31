@@ -402,9 +402,11 @@ CREATE TABLE platform_config (
     default_timezone text DEFAULT 'Asia/Tokyo'::text NOT NULL,
     -- Platform-wide default UI locale. New tenants start from this value and
     -- it is the fallback when a tenant row has no usable default_locale.
+    -- No column default: every writer names the locale it means, so a row can
+    -- never be created with an unstated language.
     -- Canonical codes live in locales/*.json (first cut: ja / en).
     -- Strict allow-list validation is enforced at the application/API layer.
-    default_locale text DEFAULT 'ja'::text NOT NULL,
+    default_locale text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT platform_config_default_timezone_not_blank_check CHECK ((btrim(default_timezone) <> '')),
@@ -708,9 +710,11 @@ CREATE TABLE tenants (
     -- Strict allow-list validation is enforced at the application/API layer.
     timezone text DEFAULT 'Asia/Tokyo'::text NOT NULL,
     -- Default UI locale when the user has not chosen one (e.g. ja, en).
+    -- No column default: tenant creation must name the locale it means, so a
+    -- tenant can never be created with an unstated language.
     -- Canonical codes live in locales/*.json (first cut: ja / en).
     -- Strict allow-list validation is enforced at the application/API layer.
-    default_locale text DEFAULT 'ja'::text NOT NULL,
+    default_locale text NOT NULL,
     CONSTRAINT tenants_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'suspended'::character varying])::text[]))),
     CONSTRAINT tenants_timezone_not_blank_check CHECK ((btrim(timezone) <> '')),
     CONSTRAINT tenants_default_locale_not_blank_check CHECK ((btrim(default_locale) <> ''))

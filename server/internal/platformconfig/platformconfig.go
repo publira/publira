@@ -19,8 +19,10 @@ type Querier interface {
 
 // Defaults returns the platform-wide default time zone and locale from a
 // single read of the settings row. A missing or unreadable row (fresh
-// install, DB hiccup) falls back to the column defaults so callers always
-// get usable values instead of an unset state.
+// install, DB hiccup) falls back to tenanttz.Default and locale.Default so
+// read paths always get usable values instead of an unset state. Creation
+// paths must not use the locale half as a stand-in: tenant creation takes the
+// locale from its request.
 func Defaults(ctx context.Context, q Querier) (timezone, defaultLocale string) {
 	timezone, defaultLocale = tenanttz.Default, locale.Default
 	config, err := q.GetPlatformConfig(ctx)
@@ -46,8 +48,8 @@ func DefaultTimeZone(ctx context.Context, q Querier) string {
 }
 
 // DefaultLocale returns the platform-wide default UI locale. The singleton
-// row is the source of truth; a missing or unreadable row falls back to the
-// column default so callers always get a usable locale instead of an unset
+// row is the source of truth; a missing or unreadable row falls back to
+// locale.Default so read paths always get a usable locale instead of an unset
 // state.
 func DefaultLocale(ctx context.Context, q Querier) string {
 	_, defaultLocale := Defaults(ctx, q)

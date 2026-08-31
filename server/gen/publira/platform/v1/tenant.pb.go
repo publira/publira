@@ -351,8 +351,12 @@ type CreateTenantRequest struct {
 	Domain             string                 `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty"`
 	InitialAdminEmails []string               `protobuf:"bytes,4,rep,name=initial_admin_emails,json=initialAdminEmails,proto3" json:"initial_admin_emails,omitempty"`
 	AdminDomain        string                 `protobuf:"bytes,5,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// UI locale code (ja, en) the new tenant starts on. Required: the server
+	// never picks a language on the caller's behalf, so a blank or unsupported
+	// code is rejected instead of falling back to a default.
+	DefaultLocale string `protobuf:"bytes,6,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateTenantRequest) Reset() {
@@ -409,6 +413,13 @@ func (x *CreateTenantRequest) GetInitialAdminEmails() []string {
 func (x *CreateTenantRequest) GetAdminDomain() string {
 	if x != nil {
 		return x.AdminDomain
+	}
+	return ""
+}
+
+func (x *CreateTenantRequest) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
 	}
 	return ""
 }
@@ -1808,12 +1819,13 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x10GetTenantRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"H\n" +
 	"\x11GetTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\x9c\x01\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\xc3\x01\n" +
 	"\x13CreateTenantRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x03 \x01(\tR\x06domain\x120\n" +
 	"\x14initial_admin_emails\x18\x04 \x03(\tR\x12initialAdminEmails\x12!\n" +
-	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomainJ\x04\b\x02\x10\x03\"K\n" +
+	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomain\x12%\n" +
+	"\x0edefault_locale\x18\x06 \x01(\tR\rdefaultLocaleJ\x04\b\x02\x10\x03\"K\n" +
 	"\x14CreateTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"3\n" +
 	"\x14SuspendTenantRequest\x12\x1b\n" +

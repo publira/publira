@@ -2,7 +2,6 @@ package platformapi
 
 import (
 	"context"
-	"database/sql"
 
 	"connectrpc.com/connect"
 
@@ -42,17 +41,15 @@ func (s *platformServer) UpdatePlatformSettings(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-
-	params := dbmodels.UpsertPlatformSettingsParams{DefaultTimezone: timezone}
-	if req.Msg.DefaultLocale != nil {
-		defaultLocale, err := locale.Normalize(*req.Msg.DefaultLocale)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		params.DefaultLocale = sql.NullString{String: defaultLocale, Valid: true}
+	defaultLocale, err := locale.Normalize(req.Msg.DefaultLocale)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	updated, err := s.queriesFor(ctx).UpsertPlatformSettings(ctx, params)
+	updated, err := s.queriesFor(ctx).UpsertPlatformSettings(ctx, dbmodels.UpsertPlatformSettingsParams{
+		DefaultTimezone: timezone,
+		DefaultLocale:   defaultLocale,
+	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update platform settings", err)
 	}
