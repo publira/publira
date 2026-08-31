@@ -19,6 +19,7 @@ import {
 } from "#lib/auth-input";
 import { getPublicSessionCacheTag } from "#lib/auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
+import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 import { localeFormSchema } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
@@ -51,7 +52,8 @@ export const loginAction = async (formData: FormData): Promise<void> => {
   await assertSameOrigin();
   // The locale field falls back rather than failing, so the rejection below can
   // be worded in the reader's language even when the rest of the form is not.
-  const submittedLocale = parseLocale(formData.get("locale"));
+  const submittedLocale =
+    parseLocale(formData.get("locale")) ?? FALLBACK_LOCALE;
   const messages = await loadHostMessages(submittedLocale);
   const loginFailed = getMessage(messages, "host.auth.errors.login_failed");
   const parsed = loginFormSchema(messages).safeParse(

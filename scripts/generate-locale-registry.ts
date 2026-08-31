@@ -189,11 +189,11 @@ const files = new Map([
   ],
   [
     "packages/i18n/src/gen/locale-message-types.d.ts",
-    `${generatedHeader}${newline}${newline}import type { Locale, MessageKey } from "../../dist/index.mjs";${newline}${newline}${typeImports}${newline}${newline}export type SharedMessages = ${catalogTypes};${newline}${newline}export declare const sharedCatalog: (${newline}  locale?: Locale | string${newline}) => SharedMessages;${newline}${newline}export declare const sharedMessage: (${newline}  key: MessageKey<SharedMessages>,${newline}  locale?: Locale | string${newline}) => string;${newline}${newline}export { sharedRpcErrorMessage } from "../../dist/catalog.mjs";${newline}export type { SharedRpcDisposition } from "../../dist/catalog.mjs";${newline}`,
+    `${generatedHeader}${newline}${newline}import type { Locale, MessageKey } from "../../dist/index.mjs";${newline}${newline}${typeImports}${newline}${newline}export type SharedMessages = ${catalogTypes};${newline}${newline}export declare const sharedCatalog: (locale: Locale) => SharedMessages;${newline}${newline}export declare const sharedMessage: (${newline}  key: MessageKey<SharedMessages>,${newline}  locale: Locale${newline}) => string;${newline}${newline}export { sharedRpcErrorMessage } from "../../dist/catalog.mjs";${newline}export type { SharedRpcDisposition } from "../../dist/catalog.mjs";${newline}`,
   ],
   [
     "packages/i18n/src/gen/locale-messages.ts",
-    `${generatedHeader}${newline}${newline}import { loadMessages } from "../i18n";${newline}import type {${newline}  Locale,${newline}  LocaleCatalogImporters,${newline}  MessageTree,${newline}} from "../i18n";${newline}import type { LocaleMessages } from "./locale-catalogs";${newline}${newline}const importers = {${newline}${dynamicImports}${newline}} satisfies LocaleCatalogImporters<LocaleMessages>;${newline}${newline}export const loadLocaleMessages = (${newline}  locale: Locale | string${newline}): Promise<MessageTree> =>${newline}  loadMessages(locale, importers);${newline}`,
+    `${generatedHeader}${newline}${newline}import { loadMessages } from "../i18n";${newline}import type {${newline}  Locale,${newline}  LocaleCatalogImporters,${newline}  MessageTree,${newline}} from "../i18n";${newline}import type { LocaleMessages } from "./locale-catalogs";${newline}${newline}const importers = {${newline}${dynamicImports}${newline}} satisfies LocaleCatalogImporters<LocaleMessages>;${newline}${newline}export const loadLocaleMessages = (${newline}  locale: Locale${newline}): Promise<MessageTree> => loadMessages(locale, importers);${newline}`,
   ],
   [
     "server/internal/locale/gen/locales.go",

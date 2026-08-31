@@ -21,6 +21,7 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 import { localeFormSchema } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
@@ -58,7 +59,8 @@ export const requestEmailChangeAction = async (
   await assertSameOrigin();
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
-  const submittedLocale = parseLocale(formData.get("locale"));
+  const submittedLocale =
+    parseLocale(formData.get("locale")) ?? FALLBACK_LOCALE;
   const messages = await loadHostMessages(submittedLocale);
   const parsed = requestEmailChangeFormSchema(messages).safeParse(
     toFormDataInput(formData, {

@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, getMessage, LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { getMessage, LOCALE_LANG_SCRIPT } from "@publira/i18n";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import { tenant_id } from "next/root-params";
 import type { ReactNode } from "react";
 
+import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantName } from "#lib/public-api";
 import { isTenantIdFormat } from "#lib/tenant-id-format";
@@ -19,7 +20,7 @@ export const generateStaticParams = () =>
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await tenant_id();
   if (typeof tenantId !== "string") {
-    const messages = await loadAdminMessages(DEFAULT_LOCALE);
+    const messages = await loadAdminMessages(FALLBACK_LOCALE);
 
     return { title: getMessage(messages, "admin.shell.title") };
   }
@@ -34,7 +35,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   // Deciding before the read keeps the metadata static instead.
   const normalizedTenantId = tenantId.trim();
   if (!isTenantIdFormat(normalizedTenantId)) {
-    const messages = await loadAdminMessages(DEFAULT_LOCALE);
+    const messages = await loadAdminMessages(FALLBACK_LOCALE);
 
     return { title: getMessage(messages, "admin.shell.title") };
   }
@@ -74,7 +75,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * behind it live in `@publira/i18n`.
  */
 const TenantRootLayout = ({ children }: { children: ReactNode }) => (
-  <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+  <html lang={FALLBACK_LOCALE} suppressHydrationWarning>
     <head>
       <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
       {/* Dynamic per-tenant overrides from GET /theme.css (short Cache-Control). */}

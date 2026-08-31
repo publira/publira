@@ -1,3 +1,4 @@
+import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedRpcErrorMessage } from "@publira/i18n/catalog";
 
@@ -17,6 +18,16 @@ import { rpcErrorDisposition } from "./errors.js";
 export type RpcErrorMessageOverrides = Partial<
   Record<RpcErrorDisposition, string>
 >;
+
+/**
+ * The locale the shared wording falls back to when the caller names none.
+ *
+ * `@publira/i18n` no longer turns a missing or unknown value into a locale, so
+ * this is the last place the previous behaviour of `options.locale` lives.
+ *
+ * Making `locale` required, and deleting this, is #1340.
+ */
+const FALLBACK_LOCALE: Locale = "ja";
 
 export interface RpcErrorMessageOptions {
   /**
@@ -67,7 +78,10 @@ export const rpcErrorMessage = (
 
   return (
     options?.overrides?.[disposition] ??
-    sharedRpcErrorMessage(disposition, options?.locale) ??
+    sharedRpcErrorMessage(
+      disposition,
+      parseLocale(options?.locale) ?? FALLBACK_LOCALE
+    ) ??
     fallback
   );
 };

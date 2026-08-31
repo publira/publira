@@ -391,14 +391,16 @@ No lint covers this. The `*.error-boundary` e2e specs measure it: each stops tha
 
 ## UI locale
 
-The UI renders in `ja` or `en`, defaulting to `ja`; every unknown value falls back to `ja`. No i18n library is added (Epic [#864](https://github.com/publira/publira/issues/864)).
+The UI renders in `ja` or `en`. No i18n library is added (Epic [#864](https://github.com/publira/publira/issues/864)).
+
+**`@publira/i18n` never turns a missing value into a locale.** `parseLocale` and `parseLocaleCookie` answer `undefined` for anything that is not one of `getLocales()`, and every catalog and message API — `loadMessages`, `sharedCatalog`, `sharedMessage`, `sharedRpcErrorMessage` — takes a required `Locale`. What an unset cookie, an unsupported segment, or a failed settings read should mean is the app's decision, made where that value came from. Each app still has one `lib/fallback-locale.ts` holding the `ja` the shared package used to supply; those are being removed path by path under [#1243](https://github.com/publira/publira/issues/1243), so an existing use is a leftover rather than a precedent.
 
 | Layer | Where it lives |
 | --- | --- |
 | Locale parsing, catalog loading, `{$name}` interpolation | `@publira/i18n` (`parseLocale` / `parseLocaleCookie` / `loadMessages` / `getMessage`) |
 | The messages themselves | The repo-root `locales/{locale}.json`, shared with Go and Flutter |
 | Where the locale is resolved from | The `publira_locale` cookie in `web-platform` / `web-admin`; the URL's `locale` segment in `web-host` |
-| What a missing cookie falls through to | The platform default locale in `web-platform` ([#1047](https://github.com/publira/publira/issues/1047)), the tenant default locale in `web-admin` ([#1046](https://github.com/publira/publira/issues/1046)). `ja` only when neither can be read |
+| What a missing cookie falls through to | The platform default locale in `web-platform` ([#1047](https://github.com/publira/publira/issues/1047)), the tenant default locale in `web-admin` ([#1046](https://github.com/publira/publira/issues/1046)). The app's own fallback locale only when neither can be read |
 
 The shared layer never reads request state: `cookies()` and `next/root-params` stay in the app.
 
@@ -407,7 +409,7 @@ The shared layer never reads request state: `cookies()` and `next/root-params` s
 - **Never read the locale inside `"use cache"`.** Pass it in as an argument so it becomes part of the cache key
 - **Waiting on a message means `Suspense` + `Skeleton`.** The static shell is locale-independent
 - **Never build an `import()` path with a template string.** Write one static path per locale (`loadMessages`'s importers)
-- **Cookie apps resolve cookie → console default → `ja`.** A supported cookie always wins, `ja` included; only an unset or unknown value falls through to the default. That default is a setting read over the API, so a screen without a session — login above all — and a failed read both stay on `ja`
+- **Cookie apps resolve cookie → console default → the app's fallback locale.** A supported cookie always wins, `ja` included; only an unset or unknown value falls through to the default. That default is a setting read over the API, so a screen without a session — login above all — and a failed read both stay on the fallback
 
 ### Localizing a screen
 
@@ -442,8 +444,8 @@ The shape a screen takes when its copy moves into the catalog. Worked example: `
 
 The root layout cannot read the cookie: an `<html>` attribute has no child `<Suspense>` boundary to move the read into, and awaiting `cookies()` there costs every route below it its static shell. Three pieces solve it instead.
 
-1. The root layout renders `lang={DEFAULT_LOCALE}` statically, with `suppressHydrationWarning`
-2. `<head>` carries `LOCALE_LANG_SCRIPT` (a constant of `@publira/i18n`) as an inline script. The browser reads the cookie while parsing and replaces the attribute
+1. The root layout renders `lang={FALLBACK_LOCALE}` statically, with `suppressHydrationWarning`
+2. `<head>` carries `LOCALE_LANG_SCRIPT` (a constant of `@publira/i18n`) as an inline script. The browser reads the cookie while parsing and replaces the attribute — but only when the cookie names a supported locale; anything else leaves what the server rendered alone
 3. The switcher writes `document.documentElement.lang` **after its Action resolves**. The script only runs on a full load, and a Server Action's re-render produces the same static attribute value, so React never touches the DOM. Writing it in the click handler would leave the document claiming a language that neither the cookie nor the copy on screen agrees with whenever the Action fails
 
 That third piece is why the cookie is not `httpOnly`. `instant = false` is not an option here (see **Never use `instant = false`**).
@@ -465,10 +467,10 @@ The public site keeps the locale in the path, not in a cookie ([#869](https://gi
 
 The route tree is `app/[tenant_id]/[locale]/...`, and `proxy.ts` rewrites a public `/{locale}{path}` onto it after resolving the tenant from the Host. Three rules follow from that shape:
 
-- **A path with no locale redirects to the tenant's default locale, temporarily.** Bookmarks predate the prefix. `GetTenantByDomain` returns `default_locale` alongside the tenant id precisely so the proxy can pick that redirect in the round trip it already makes — `DEFAULT_LOCALE` is the fallback for a value this build does not serve, never the redirect target. The redirect is 307 rather than 308 so a browser caches neither a change to that setting nor a decision `Accept-Language` negotiation would later have to override
+- **A path with no locale redirects to the tenant's default locale, temporarily.** Bookmarks predate the prefix. `GetTenantByDomain` returns `default_locale` alongside the tenant id precisely so the proxy can pick that redirect in the round trip it already makes — the app's fallback locale covers a value this build does not serve, never the redirect target. The redirect is 307 rather than 308 so a browser caches neither a change to that setting nor a decision `Accept-Language` negotiation would later have to override
 - **`/theme.css` and the Route Handlers stay outside the locale tree.** They answer machines, and a Route Handler cannot read `next/root-params` anyway, so a locale segment there would be a value nothing could use. The exemption lives in `lib/locale-path.ts`
 - **The locale is stripped before a path is classified.** `buildTenantRewritePathname` decides "published page or app route" on the locale-less remainder, so a tenant page whose slug happens to be `ja` still resolves, and a locale code can never collide with a reserved segment
-- **A Server Component that needs the tenant's default reads `getTenantDefaultLocale()`, not `DEFAULT_LOCALE`.** The setting rides on `getTenantSiteInfo`, next to the display time zone and under the same `tenant:<id>:site` tag, so the admin console's save reaches the site. The proxy is the one caller that cannot use it — it runs before any route renders, where a `"use cache"` read is unavailable — which is why the same value also comes back from `GetTenantByDomain`. `generateStaticParams` still emits every supported locale: the default picks a redirect target, it does not narrow what the site serves
+- **A Server Component that needs the tenant's default reads `getTenantDefaultLocale()`, not the fallback constant.** The setting rides on `getTenantSiteInfo`, next to the display time zone and under the same `tenant:<id>:site` tag, so the admin console's save reaches the site. The proxy is the one caller that cannot use it — it runs before any route renders, where a `"use cache"` read is unavailable — which is why the same value also comes back from `GetTenantByDomain`. `generateStaticParams` still emits every supported locale: the default picks a redirect target, it does not narrow what the site serves
 
 Reading the locale, by context:
 

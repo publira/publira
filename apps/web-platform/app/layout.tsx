@@ -1,6 +1,8 @@
 import "./globals.css";
-import { DEFAULT_LOCALE, LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { LOCALE_LANG_SCRIPT } from "@publira/i18n";
 import type { Metadata } from "next";
+
+import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 
 export const metadata: Metadata = {
   title: {
@@ -22,7 +24,7 @@ export const metadata: Metadata = {
  * behind it live in `@publira/i18n`.
  */
 const RootLayout = ({ children }: LayoutProps<"/">) => (
-  <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+  <html lang={FALLBACK_LOCALE} suppressHydrationWarning>
     <head>
       <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
     </head>

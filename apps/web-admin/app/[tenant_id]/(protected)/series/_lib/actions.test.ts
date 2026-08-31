@@ -1,4 +1,3 @@
-import { DEFAULT_LOCALE } from "@publira/i18n";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -93,7 +92,7 @@ describe("series actions", () => {
         tenantId: "TENANT001",
         title: "Title",
       },
-      DEFAULT_LOCALE
+      "ja"
     );
     expect(mockRedirect).toHaveBeenCalledWith("/series/SERIES001?updated=1");
   });
@@ -130,7 +129,7 @@ describe("series actions", () => {
 
     expect(mockUpdateSeries).toHaveBeenCalledWith(
       expect.objectContaining({ publishedAt: "2030-01-01T18:00:00Z" }),
-      DEFAULT_LOCALE
+      "ja"
     );
   });
 
@@ -168,7 +167,7 @@ describe("series actions", () => {
     // PST (UTC-8) in January — 10:00 in Los Angeles is 18:00Z.
     expect(mockUpdateSeries).toHaveBeenCalledWith(
       expect.objectContaining({ publishedAt: "2030-01-01T18:00:00Z" }),
-      DEFAULT_LOCALE
+      "ja"
     );
     expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
   });

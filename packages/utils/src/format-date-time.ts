@@ -13,6 +13,8 @@
 import { parseLocale, toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
+import { FALLBACK_LOCALE } from "./fallback-locale";
+
 /** Default IANA zone when `timeZone` is omitted (gradual migration from fixed JST). */
 export const DEFAULT_TIME_ZONE = "Asia/Tokyo";
 
@@ -71,7 +73,7 @@ const getCachedFormatter = (
 };
 
 const resolveIntlLocale = (locale: Locale | string | undefined): string =>
-  toIntlLocale(parseLocale(locale));
+  toIntlLocale(parseLocale(locale) ?? FALLBACK_LOCALE);
 
 const getDateTimeFormatter = (
   intlLocale: string,

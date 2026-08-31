@@ -9,27 +9,27 @@ import type { ExactCatalog } from "./i18n";
 const enMatchesJa: ExactCatalog<typeof enCatalog, typeof jaCatalog> = enCatalog;
 
 describe("sharedCatalog", () => {
-  it("returns the ja catalog by default", () => {
-    expect(sharedCatalog()).toBe(jaCatalog);
-    expect(sharedCatalog("ja")).toBe(jaCatalog);
-  });
-
-  it("returns the en catalog when asked", () => {
+  it("returns the catalog of the requested locale", () => {
     expect(enMatchesJa).toBe(enCatalog);
+    expect(sharedCatalog("ja")).toBe(jaCatalog);
     expect(sharedCatalog("en")).toBe(enCatalog);
   });
 
-  it("falls back to ja for an unknown locale string", () => {
-    expect(sharedCatalog("fr")).toBe(jaCatalog);
+  it("does not stand in for a missing or unknown locale", () => {
+    // @ts-expect-error the locale argument is required: a caller that cannot
+    // name one has a locale to resolve, not a catalog to read.
+    expect(sharedCatalog()).toBeUndefined();
+    // @ts-expect-error a code this build does not serve is not a Locale.
+    expect(sharedCatalog("fr")).toBeUndefined();
   });
 });
 
 describe("sharedMessage", () => {
-  it("reads a shared key in the default locale", () => {
-    expect(sharedMessage("errors.validation")).toBe(
+  it("reads a shared key in Japanese", () => {
+    expect(sharedMessage("errors.validation", "ja")).toBe(
       "入力内容を確認してください。"
     );
-    expect(sharedMessage("errors.disallowed_value")).toBe(
+    expect(sharedMessage("errors.disallowed_value", "ja")).toBe(
       "許可されていない値です。"
     );
   });
@@ -45,21 +45,23 @@ describe("sharedMessage", () => {
 });
 
 describe("sharedRpcErrorMessage", () => {
-  it("returns the Japanese wording when locale is omitted", () => {
-    expect(sharedRpcErrorMessage("unauthenticated")).toBe(
+  it("returns the Japanese wording when locale is ja", () => {
+    expect(sharedRpcErrorMessage("unauthenticated", "ja")).toBe(
       "セッションが無効です。再ログインしてください。"
     );
-    expect(sharedRpcErrorMessage("forbidden")).toBe(
+    expect(sharedRpcErrorMessage("forbidden", "ja")).toBe(
       "この操作を行う権限がありません。"
     );
-    expect(sharedRpcErrorMessage("invalid-argument")).toBe(
+    expect(sharedRpcErrorMessage("invalid-argument", "ja")).toBe(
       "入力内容に誤りがあります。"
     );
-    expect(sharedRpcErrorMessage("not-found")).toBe("対象が見つかりません。");
-    expect(sharedRpcErrorMessage("conflict")).toBe(
+    expect(sharedRpcErrorMessage("not-found", "ja")).toBe(
+      "対象が見つかりません。"
+    );
+    expect(sharedRpcErrorMessage("conflict", "ja")).toBe(
       "重複するデータがあるため保存できません。"
     );
-    expect(sharedRpcErrorMessage("unavailable")).toBe(
+    expect(sharedRpcErrorMessage("unavailable", "ja")).toBe(
       "サーバーに接続できませんでした。時間をおいて再試行してください。"
     );
   });
@@ -86,8 +88,8 @@ describe("sharedRpcErrorMessage", () => {
   });
 
   it("returns undefined for categories that have no shared copy", () => {
-    expect(sharedRpcErrorMessage("precondition")).toBeUndefined();
-    expect(sharedRpcErrorMessage("unexpected")).toBeUndefined();
+    expect(sharedRpcErrorMessage("precondition", "ja")).toBeUndefined();
+    expect(sharedRpcErrorMessage("unexpected", "ja")).toBeUndefined();
     expect(sharedRpcErrorMessage("precondition", "en")).toBeUndefined();
   });
 });

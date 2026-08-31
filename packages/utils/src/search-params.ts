@@ -18,9 +18,12 @@
  * (see https://github.com/publira/publira/issues/573).
  */
 
+import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
 import { z } from "zod";
+
+import { FALLBACK_LOCALE } from "./fallback-locale";
 
 /** A single entry of Next.js' resolved `searchParams` object. */
 export type SearchParamValue = string | string[] | undefined;
@@ -267,7 +270,10 @@ export const searchParamEnum = <T extends string, F extends string = never>(
   const schema = z.preprocess(
     (value) => normalizeSingle(value, maxLength, false),
     z.string().refine((value): value is T => allowed.has(value), {
-      message: sharedMessage("errors.disallowed_value", options?.locale),
+      message: sharedMessage(
+        "errors.disallowed_value",
+        parseLocale(options?.locale) ?? FALLBACK_LOCALE
+      ),
     })
   );
 

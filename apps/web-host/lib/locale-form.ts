@@ -14,6 +14,8 @@ import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
+import { FALLBACK_LOCALE } from "./fallback-locale";
+
 /** Name of the hidden field the locale travels in. */
 export const LOCALE_FIELD_NAME = "locale";
 
@@ -26,4 +28,4 @@ export const LOCALE_FIELD_NAME = "locale";
  */
 export const localeFormSchema = z
   .unknown()
-  .transform((value): Locale => parseLocale(value));
+  .transform((value): Locale => parseLocale(value) ?? FALLBACK_LOCALE);

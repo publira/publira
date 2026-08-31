@@ -5,7 +5,7 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { DEFAULT_LOCALE, getMessage, toIntlLocale } from "@publira/i18n";
+import { getMessage, toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -22,6 +22,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 export interface CreatorItem {
@@ -110,7 +111,7 @@ const mapCreator = (creator: RawCreator): CreatorItem => ({
 export const listCreators = async (
   tenantId: string,
   options: CursorPageOptions = {},
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListCreatorsResult> => {
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
@@ -167,7 +168,7 @@ export const listCreators = async (
  */
 export const listAllCreators = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListCreatorsResult> => {
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
@@ -247,7 +248,7 @@ export const createCreator = async (
     iconImageContentType?: string;
     iconImageData?: Uint8Array;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<CreateCreatorResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -301,7 +302,7 @@ export const updateCreator = async (
     iconImageContentType?: string;
     iconImageData?: Uint8Array;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<UpdateCreatorResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -352,7 +353,7 @@ export const getCreator = async (
     tenantId: string;
     publicId: string;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<GetCreatorResult> => {
   "use cache: private";
   cacheTag(`creators-${input.tenantId}`);

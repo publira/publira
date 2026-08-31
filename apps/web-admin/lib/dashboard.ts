@@ -1,11 +1,12 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 export interface DashboardStats {
@@ -41,7 +42,7 @@ const mapErrorToMessage = (error: unknown, locale: Locale): string =>
 
 export const getDashboard = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<GetDashboardResult> => {
   "use cache: private";
 

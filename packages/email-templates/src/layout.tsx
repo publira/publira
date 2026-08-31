@@ -12,6 +12,7 @@ import {
 } from "react-email";
 
 import { emailColors, emailFonts } from "./colors";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { emailMessage } from "./messages";
 import type { Messages } from "./messages";
 
@@ -64,7 +65,7 @@ export const EmailLayout = ({
   messages,
   preview,
 }: EmailLayoutProps) => {
-  const resolvedLocale = parseLocale(locale);
+  const resolvedLocale = parseLocale(locale) ?? FALLBACK_LOCALE;
 
   return (
     <Html dir="ltr" lang={resolvedLocale}>

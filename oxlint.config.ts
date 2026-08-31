@@ -118,8 +118,8 @@ export default defineConfig({
       /**
        * The locale Action writes a UI preference, not privileged state: it
        * stores one value from `getLocales()` in `publira_locale`, and every read parses that
-       * cookie again (`parseLocaleCookie`), so a forged or hand-edited value
-       * resolves to `ja` rather than reaching application code. Requiring a
+       * cookie again (`parseLocaleCookie`), so a forged or hand-edited value is
+       * discarded rather than reaching application code. Requiring a
        * session would tie a display setting to sign-in without protecting
        * anything. Every other cookie write in these apps stays covered — the
        * override names this one file per app. See AGENTS.md "UI ロケール"

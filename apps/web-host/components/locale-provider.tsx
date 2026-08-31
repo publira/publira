@@ -1,9 +1,10 @@
 "use client";
 
-import { DEFAULT_LOCALE } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { createContext, use, useMemo } from "react";
 import type { ReactNode } from "react";
+
+import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 
 interface LocaleContextValue {
   defaultLocale: Locale;
@@ -11,8 +12,8 @@ interface LocaleContextValue {
 }
 
 const LocaleContext = createContext<LocaleContextValue>({
-  defaultLocale: DEFAULT_LOCALE,
-  locale: DEFAULT_LOCALE,
+  defaultLocale: FALLBACK_LOCALE,
+  locale: FALLBACK_LOCALE,
 });
 
 /**

@@ -19,16 +19,19 @@
  * Only top-level fields are reported, which is the shape of a form schema.
  */
 
+import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
 import { z } from "zod";
+
+import { FALLBACK_LOCALE } from "./fallback-locale";
 
 /**
  * Shared wording so a rejected form reads the same in all three apps.
  * Omit `locale` (or pass an unknown value) to keep the Japanese default.
  */
 export const validationErrorMessage = (locale?: Locale | string): string =>
-  sharedMessage("errors.validation", locale);
+  sharedMessage("errors.validation", parseLocale(locale) ?? FALLBACK_LOCALE);
 
 /** Japanese default. Prefer {@link validationErrorMessage} when a locale is known. */
 export const VALIDATION_ERROR_MESSAGE = validationErrorMessage();

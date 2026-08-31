@@ -13,6 +13,7 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
@@ -32,7 +33,8 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   await assertSameOrigin();
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
-  const submittedLocale = parseLocale(formData.get("locale"));
+  const submittedLocale =
+    parseLocale(formData.get("locale")) ?? FALLBACK_LOCALE;
   const messages = await loadHostMessages(submittedLocale);
   const parsed = parseDeleteAccountForm(messages, formData);
   if (!parsed.success) {

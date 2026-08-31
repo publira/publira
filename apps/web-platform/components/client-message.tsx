@@ -8,6 +8,7 @@ import {
 import type { Locale, MessageValues } from "@publira/i18n";
 import { use } from "react";
 
+import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 import { loadPlatformMessages } from "#lib/messages";
 import type { PlatformMessageKey, PlatformMessages } from "#lib/messages";
 
@@ -55,7 +56,9 @@ const platformCatalog = (locale: Locale): Promise<PlatformMessages> => {
  * boundary.
  */
 export const useClientMessages = () =>
-  use(platformCatalog(parseLocaleCookie(readDocumentLocale())));
+  use(
+    platformCatalog(parseLocaleCookie(readDocumentLocale()) ?? FALLBACK_LOCALE)
+  );
 
 /**
  * One catalog string for Client Components that cannot render `<Message>`.

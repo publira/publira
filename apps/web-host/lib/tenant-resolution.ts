@@ -4,6 +4,8 @@ import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LRUCache } from "lru-cache";
 
+import { FALLBACK_LOCALE } from "./fallback-locale";
+
 /**
  * What the Host resolves to.
  *
@@ -56,7 +58,11 @@ export const createTenantResolver = (
       // the platform setting itself. `parseLocale` only catches a value this
       // build does not serve.
       const tenant = tenantId
-        ? { defaultLocale: parseLocale(response.defaultLocale), tenantId }
+        ? {
+            defaultLocale:
+              parseLocale(response.defaultLocale) ?? FALLBACK_LOCALE,
+            tenantId,
+          }
         : null;
       tenantCache.set(cacheKey, { tenant });
       return tenant;

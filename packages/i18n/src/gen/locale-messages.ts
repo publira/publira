@@ -14,6 +14,5 @@ const importers = {
 } satisfies LocaleCatalogImporters<LocaleMessages>;
 
 export const loadLocaleMessages = (
-  locale: Locale | string
-): Promise<MessageTree> =>
-  loadMessages(locale, importers);
+  locale: Locale
+): Promise<MessageTree> => loadMessages(locale, importers);

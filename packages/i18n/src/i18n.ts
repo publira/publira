@@ -25,9 +25,6 @@ export { getLocales } from "./gen/locale-registry";
 export type { Locale } from "./gen/locale-registry";
 export type { MessageValues } from "./mf2";
 
-/** Fallback when the value is missing or not in {@link getLocales}. */
-export const DEFAULT_LOCALE: Locale = "ja";
-
 /** Cookie that stores the UI locale for apps that do not put lang in the URL. */
 export const LOCALE_COOKIE_NAME = profileCookieName("publira_locale");
 
@@ -44,10 +41,16 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
  * An app that keeps the locale in a cookie cannot resolve `<html lang>` on the
  * server: under Cache Components a `cookies()` read above every `<Suspense>`
  * boundary leaves the route with no static shell, and the `<html>` element has
- * no child boundary the read could move into. So the root layout renders
- * {@link DEFAULT_LOCALE} statically and this script corrects the attribute
- * while the document is still being parsed — the pattern Next.js documents for
- * cookie-driven `<html>` attributes ("How to prevent flash before hydration").
+ * no child boundary the read could move into. So the root layout renders a
+ * statically known attribute and this script corrects it while the document is
+ * still being parsed — the pattern Next.js documents for cookie-driven
+ * `<html>` attributes ("How to prevent flash before hydration").
+ *
+ * The only thing the script ever writes is a locale the reader chose: it
+ * applies the cookie value when, and only when, that value is one of
+ * {@link getLocales}. A missing, empty, undecodable, or unsupported cookie
+ * leaves the attribute exactly as the server rendered it, so nothing here turns
+ * "no locale was chosen" into a language.
  *
  * Two things follow for the caller. The element needs
  * `suppressHydrationWarning`, because the DOM no longer matches what React
@@ -124,17 +127,27 @@ export type LocaleCatalogImporters<TCatalog> = Record<
 export const isLocale = (value: unknown): value is Locale =>
   typeof value === "string" && LOCALE_SET.has(value);
 
-/** Unknown / empty / non-string values become {@link DEFAULT_LOCALE}. */
-export const parseLocale = (value: unknown): Locale =>
-  isLocale(value) ? value : DEFAULT_LOCALE;
+/**
+ * The locale `value` names, or `undefined` when it names none.
+ *
+ * Unknown, empty, and non-string values are not locales, and nothing here
+ * invents one for them. What a missing choice means — a stored tenant or
+ * platform default, an `Accept-Language` candidate, or a failure the reader has
+ * to be told about — differs per call site, so the caller decides it.
+ */
+export const parseLocale = (value: unknown): Locale | undefined =>
+  isLocale(value) ? value : undefined;
 
 /**
  * Parse the **value** of the locale cookie. Does not call `cookies()`.
- * Surrounding whitespace is trimmed; anything else unknown is `ja`.
+ * Surrounding whitespace is trimmed; a cookie that is unset or holds anything
+ * else is `undefined`, the same as no cookie at all.
  */
-export const parseLocaleCookie = (value: string | null | undefined): Locale => {
+export const parseLocaleCookie = (
+  value: string | null | undefined
+): Locale | undefined => {
   if (typeof value !== "string") {
-    return DEFAULT_LOCALE;
+    return undefined;
   }
 
   return parseLocale(value.trim());
@@ -172,15 +185,14 @@ const unwrapCatalog = <TCatalog>(mod: CatalogModule<TCatalog>): TCatalog => {
  * Load one locale's catalog. Only the matching importer runs, so bundlers
  * that split on `import()` keep the other locale out of the chunk.
  *
- * `locale` is parsed so a raw cookie / segment value is safe to pass.
+ * `locale` is already resolved. Run a raw cookie or segment value through
+ * {@link parseLocale} first, so the decision about an unknown one is made where
+ * that value came from rather than by whichever catalog happens to load.
  */
 export const loadMessages = async <TCatalog>(
-  locale: Locale | string,
+  locale: Locale,
   importers: LocaleCatalogImporters<TCatalog>
-): Promise<TCatalog> => {
-  const resolved = parseLocale(locale);
-  return unwrapCatalog(await importers[resolved]());
-};
+): Promise<TCatalog> => unwrapCatalog(await importers[locale]());
 
 const isMessageTree = (value: unknown): value is MessageTree =>
   typeof value === "object" && value !== null;

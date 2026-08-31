@@ -3,7 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -15,6 +15,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 export type GetTenantTimezoneResult =
@@ -70,7 +71,7 @@ const parseErrorMessage = (
 
 export const getTenantTimezone = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<GetTenantTimezoneResult> => {
   "use cache: private";
 
@@ -141,7 +142,7 @@ export const updateTenantTimezone = async (
     tenantId: string;
     timezone: string;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<UpdateTenantTimezoneResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

@@ -5,7 +5,7 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { DEFAULT_LOCALE, getMessage, toIntlLocale } from "@publira/i18n";
+import { getMessage, toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -23,6 +23,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { mentionsImageRejection } from "./image-rejection";
 import { getAccessToken } from "./session";
 
@@ -147,7 +148,7 @@ const mapLabel = (label: RawLabel): LabelItem => ({
 export const listLabels = async (
   tenantId: string,
   options: CursorPageOptions = {},
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListLabelsResult> => {
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
@@ -203,7 +204,7 @@ export const listLabels = async (
  */
 export const listAllLabels = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListLabelsResult> => {
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
@@ -282,7 +283,7 @@ export const createLabel = async (
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<CreateLabelResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -334,7 +335,7 @@ export const updateLabel = async (
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<UpdateLabelResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -389,7 +390,7 @@ export const getLabel = async (
     tenantId: string;
     publicId: string;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<GetLabelResult> => {
   "use cache: private";
   const parsed = getLabelInputSchema.safeParse(input);

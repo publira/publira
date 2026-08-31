@@ -4,7 +4,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -15,6 +15,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { PAYMENT_PROVIDER_STRIPE } from "./payment-settings-shared";
 import type { TenantPaymentSettings } from "./payment-settings-shared";
 import { getAccessToken } from "./session";
@@ -117,7 +118,7 @@ const toTenantPaymentSettings = (
 
 export const getTenantPaymentSettings = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<TenantPaymentSettingsResult> => {
   "use cache: private";
 
@@ -162,7 +163,7 @@ export const getTenantPaymentSettings = async (
 
 export const updateTenantPaymentSettings = async (
   input: UpdateTenantPaymentSettingsInput,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<TenantPaymentSettingsResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

@@ -3,7 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage, parseLocale } from "@publira/i18n";
+import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
@@ -18,6 +18,7 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 
 /**
  * Loaded lazily so this module can keep exporting
@@ -91,7 +92,7 @@ export const getPlatformSettings = async (
     dropFailedCacheEntry();
     const messages = await loadPlatformMessages(locale);
     return {
-      defaultLocale: DEFAULT_LOCALE,
+      defaultLocale: FALLBACK_LOCALE,
       defaultTimezone: DEFAULT_TIME_ZONE,
       message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
@@ -110,7 +111,8 @@ export const getPlatformSettings = async (
     return {
       // The server always answers a resolved locale code and IANA name; the
       // fallbacks only cover a response shape that predates the fields.
-      defaultLocale: parseLocale(response.settings?.defaultLocale.trim()),
+      defaultLocale:
+        parseLocale(response.settings?.defaultLocale.trim()) ?? FALLBACK_LOCALE,
       defaultTimezone:
         response.settings?.defaultTimezone.trim() || DEFAULT_TIME_ZONE,
       ok: true,
@@ -123,7 +125,7 @@ export const getPlatformSettings = async (
     dropFailedCacheEntry();
     const messages = await loadPlatformMessages(locale);
     return {
-      defaultLocale: DEFAULT_LOCALE,
+      defaultLocale: FALLBACK_LOCALE,
       defaultTimezone: DEFAULT_TIME_ZONE,
       message: parseErrorMessage(
         error,
@@ -143,23 +145,23 @@ export const getPlatformSettings = async (
  * (#564).
  */
 export const getPlatformDisplayTimeZone = async (): Promise<string> => {
-  // Error copy is unused here; DEFAULT_LOCALE only keys the cached read.
-  const settings = await getPlatformSettings(DEFAULT_LOCALE);
+  // Error copy is unused here; the locale only keys the cached read.
+  const settings = await getPlatformSettings(FALLBACK_LOCALE);
   return settings.defaultTimezone;
 };
 
 /**
  * Display locale for the platform console itself when the operator has not
  * chosen one in the `publira_locale` cookie (#1047). A failed read degrades to
- * {@link DEFAULT_LOCALE} rather than interrupting the page.
+ * {@link FALLBACK_LOCALE} rather than interrupting the page.
  *
  * `/setup` does not come through here: it runs before the settings row exists,
  * so it resolves its own locale from `Accept-Language`. Removing this last
  * implicit fallback for the rest of the console is #1249.
  */
 export const getPlatformDisplayLocale = async (): Promise<Locale> => {
-  // Error copy is unused here; DEFAULT_LOCALE only keys the cached read.
-  const settings = await getPlatformSettings(DEFAULT_LOCALE);
+  // Error copy is unused here; the locale only keys the cached read.
+  const settings = await getPlatformSettings(FALLBACK_LOCALE);
   return settings.defaultLocale;
 };
 
@@ -190,7 +192,10 @@ const readStoredPlatformSettings = async (
     return null;
   }
 
-  return { defaultLocale: parseLocale(defaultLocale), defaultTimezone };
+  return {
+    defaultLocale: parseLocale(defaultLocale) ?? FALLBACK_LOCALE,
+    defaultTimezone,
+  };
 };
 
 export const updatePlatformDefaultTimezone = async (
@@ -278,7 +283,8 @@ export const updatePlatformDefaultLocale = async (
     );
 
     return {
-      defaultLocale: parseLocale(response.settings?.defaultLocale.trim()),
+      defaultLocale:
+        parseLocale(response.settings?.defaultLocale.trim()) ?? FALLBACK_LOCALE,
       ok: true,
     };
   } catch (error) {

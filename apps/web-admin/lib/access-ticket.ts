@@ -4,7 +4,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -21,6 +21,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 const sessionErrorMessage = (messages: SharedMessages): string =>
@@ -161,7 +162,7 @@ const mapTicket = (item: RawAccessTicket): AccessTicketItem => ({
 export const listAccessTickets = async (
   tenantId: string,
   options: ListAccessTicketsOptions = {},
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListAccessTicketsResult> => {
   "use cache: private";
   cacheTag(`access-tickets-${tenantId}`);
@@ -209,7 +210,7 @@ export const listAccessTickets = async (
 
 export const issueAccessTicket = async (
   input: IssueAccessTicketInput,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<IssueAccessTicketResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -256,7 +257,7 @@ export const issueAccessTicket = async (
 export const revokeAccessTicket = async (
   tenantId: string,
   publicId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<RevokeAccessTicketResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

@@ -18,6 +18,7 @@ import {
   setEmailFlashCookie,
   SIGNUP_PENDING_EMAIL_COOKIE,
 } from "#lib/email-flash-cookie";
+import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 import { localeFormSchema } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
@@ -62,7 +63,9 @@ export const signupAction = async (
   await assertSameOrigin();
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
-  const messages = await loadHostMessages(parseLocale(formData.get("locale")));
+  const messages = await loadHostMessages(
+    parseLocale(formData.get("locale")) ?? FALLBACK_LOCALE
+  );
   const parsed = signupFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",

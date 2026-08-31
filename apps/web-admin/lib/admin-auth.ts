@@ -10,11 +10,12 @@ import {
   rpcErrorHasFieldViolation,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { loadAdminMessages } from "./locale";
 import type { AdminMessages } from "./locale";
 import { getAccessToken } from "./session";
@@ -140,7 +141,7 @@ export const loginAdmin = async (
   email: string,
   password: string,
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<AdminLoginResult> => {
   const messages = await loadAdminMessages(locale);
   try {
@@ -279,7 +280,7 @@ export const acceptTenantAdminInvitation = async (
   token: string,
   name?: string,
   password?: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<AcceptTenantAdminInvitationResult> => {
   const messages = await loadAdminMessages(locale);
   const normalizedToken = token.trim();
@@ -333,7 +334,7 @@ export const acceptTenantAdminInvitation = async (
 export const requestAdminPasswordReset = async (
   tenantId: string,
   email: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<AdminPasswordResetRequestResult> => {
   const messages = await loadAdminMessages(locale);
   const normalizedEmail = email.trim();
@@ -380,7 +381,7 @@ export const confirmAdminPasswordReset = async (
   tenantId: string,
   token: string,
   newPassword: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<AdminPasswordResetConfirmResult> => {
   const normalizedToken = token.trim();
   const normalizedPassword = newPassword.trim();
@@ -445,7 +446,7 @@ export const requestAdminEmailChange = async (
   currentEmail: string,
   newEmail: string,
   currentPassword: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<AdminEmailChangeRequestResult> => {
   const messages = await loadAdminMessages(locale);
   const normalizedCurrentEmail = currentEmail.trim();

@@ -7,7 +7,7 @@ import {
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -23,6 +23,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 export interface EpisodeItem {
@@ -298,7 +299,7 @@ export const createEpisode = async (
     readingPeriodHours: number;
     publishAt: string;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<CreateEpisodeResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -356,7 +357,7 @@ export const listEpisodes = async (
     tenantId: string;
     seriesPublicId: string;
   } & CursorPageOptions,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListEpisodesResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -413,7 +414,7 @@ export const listAllEpisodes = async (
     seriesPublicId: string;
     tenantId: string;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListEpisodesResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -485,7 +486,7 @@ export const getEpisode = async (
     seriesPublicId: string;
     publicId: string;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<GetEpisodeResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -537,7 +538,7 @@ export const updateEpisodePublishSchedule = async (
     episodePublicId: string;
     publishAt: string;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<UpdateEpisodePublishScheduleResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -587,7 +588,7 @@ export const uploadEpisodePages = async (
     pages?: File[];
     archive?: File;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<UploadEpisodePagesResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -643,7 +644,7 @@ export const listEpisodeImages = async (
     tenantId: string;
     episodePublicId: string;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListEpisodeImagesResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -869,7 +870,7 @@ export const reorderEpisodePage = async (
     currentEpisodePublicIds: string[];
     episodePublicIds: string[];
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ReorderEpisodesResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -946,7 +947,7 @@ export const reorderEpisodeImages = async (
     episodePublicId: string;
     imageIds: string[];
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ReorderEpisodeImagesResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

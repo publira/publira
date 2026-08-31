@@ -5,7 +5,7 @@ import type {
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { DEFAULT_LOCALE, getMessage, toIntlLocale } from "@publira/i18n";
+import { getMessage, toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -28,6 +28,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 const sessionErrorMessage = (messages: SharedMessages): string =>
@@ -93,7 +94,7 @@ const mapUser = (user: RawAnnouncementTargetUser): AnnouncementTargetUser => ({
  */
 export const listAllAnnouncementTargetUsers = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListAnnouncementTargetUsersResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -175,7 +176,7 @@ export const listAllAnnouncementTargetUsers = async (
 export const listAnnouncements = async (
   tenantId: string,
   options: CursorPageOptions = {},
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListAnnouncementsResult> => {
   "use cache: private";
   cacheTag(`announcements-${tenantId}`);
@@ -229,7 +230,7 @@ export const createAnnouncement = async (
     audienceType: "all" | "selected";
     targetUserPublicIds: string[];
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<
   { ok: true; createdCount: number } | { ok: false; message: string }
 > => {

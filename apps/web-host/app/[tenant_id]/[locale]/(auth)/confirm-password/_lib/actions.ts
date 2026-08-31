@@ -14,6 +14,7 @@ import {
   tenantIdFormSchema,
 } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
+import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 import { localeFormSchema } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
@@ -77,7 +78,7 @@ export const confirmPasswordAction = async (
   });
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
-  const submittedLocale = parseLocale(input.locale);
+  const submittedLocale = parseLocale(input.locale) ?? FALLBACK_LOCALE;
   const messages = await loadHostMessages(submittedLocale);
   const parsed = confirmPasswordFormSchema(messages).safeParse(input);
   if (!parsed.success) {

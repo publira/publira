@@ -3,7 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -16,6 +16,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import {
   mentionsIconRejection,
   mentionsLogoRejection,
@@ -151,7 +152,7 @@ const toTenantTheme = (
 
 export const getTenantThemeSettings = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<TenantThemeSettingsResult> => {
   "use cache: private";
 
@@ -220,7 +221,7 @@ export const getTenantThemeLogo = async (
 
 export const updateTenantThemeSettings = async (
   input: UpdateTenantThemeSettingsInput,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<TenantThemeSettingsResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -294,7 +295,7 @@ export const updateTenantThemeSettings = async (
 
 export const uploadTenantIcon = async (
   input: UploadTenantIconInput,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<TenantIconResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -336,7 +337,7 @@ export const uploadTenantIcon = async (
 
 export const deleteTenantIcon = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<TenantIconResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -374,7 +375,7 @@ export const deleteTenantIcon = async (
 
 export const uploadTenantLogo = async (
   input: UploadTenantLogoInput,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<TenantLogoResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -416,7 +417,7 @@ export const uploadTenantLogo = async (
 
 export const deleteTenantLogo = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<TenantLogoResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

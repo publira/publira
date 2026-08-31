@@ -5,7 +5,7 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { DEFAULT_LOCALE, getMessage, toIntlLocale } from "@publira/i18n";
+import { getMessage, toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -21,6 +21,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { mentionsImageRejection } from "./image-rejection";
 import { getAccessToken } from "./session";
 
@@ -190,7 +191,7 @@ const mapSeries = (series: RawSeries): SeriesItem => ({
 export const listSeries = async (
   tenantId: string,
   options: CursorPageOptions = {},
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListSeriesResult> => {
   "use cache: private";
 
@@ -252,7 +253,7 @@ export const listSeries = async (
  */
 export const listAllSeries = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<ListSeriesResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -332,7 +333,7 @@ export const getSeries = async (
     tenantId: string;
     publicId: string;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<GetSeriesResult> => {
   "use cache: private";
 
@@ -392,7 +393,7 @@ export const createSeries = async (
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<CreateSeriesResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -459,7 +460,7 @@ export const updateSeries = async (
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<UpdateSeriesResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

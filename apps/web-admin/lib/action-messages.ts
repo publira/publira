@@ -1,6 +1,6 @@
-import { DEFAULT_LOCALE } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getLocale, loadAdminMessages } from "./locale";
 import type { AdminMessages } from "./locale";
 
@@ -18,7 +18,7 @@ export const getActionLocale = async (formData: FormData): Promise<Locale> => {
   } catch {
     // Server Actions always have request storage. The fallback keeps direct
     // callers (for example isolated validation tests) deterministic as well.
-    return DEFAULT_LOCALE;
+    return FALLBACK_LOCALE;
   }
 };
 

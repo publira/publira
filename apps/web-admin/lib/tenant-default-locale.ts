@@ -1,6 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage, parseLocale } from "@publira/i18n";
+import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -11,6 +11,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 export type GetTenantDefaultLocaleResult =
@@ -48,11 +49,11 @@ export const tenantDefaultLocaleCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:default-locale`;
 
 const resolveDefaultLocale = (value: string | undefined): Locale =>
-  parseLocale(value?.trim());
+  parseLocale(value?.trim()) ?? FALLBACK_LOCALE;
 
 export const getTenantDefaultLocale = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<GetTenantDefaultLocaleResult> => {
   "use cache: private";
 
@@ -61,7 +62,7 @@ export const getTenantDefaultLocale = async (
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      defaultLocale: DEFAULT_LOCALE,
+      defaultLocale: FALLBACK_LOCALE,
       message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: !sessionId,
@@ -85,7 +86,7 @@ export const getTenantDefaultLocale = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      defaultLocale: DEFAULT_LOCALE,
+      defaultLocale: FALLBACK_LOCALE,
       message: rpcErrorMessage(error, genericLoadErrorMessage(messages), {
         locale,
       }),
@@ -100,7 +101,7 @@ export const getTenantDefaultLocale = async (
  * (#1046). One entry point, so a cookie-less request never hard-codes `ja`
  * by omission.
  *
- * An unavailable tenant read degrades to {@link DEFAULT_LOCALE} rather than
+ * An unavailable tenant read degrades to {@link FALLBACK_LOCALE} rather than
  * guessing. The read is tagged `tenant:<id>:default-locale`, which `updateTag`
  * invalidates when the value is saved, so a change reaches every screen in
  * the same session.
@@ -117,7 +118,7 @@ export const updateTenantDefaultLocale = async (
     tenantId: string;
     defaultLocale: Locale;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = FALLBACK_LOCALE
 ): Promise<UpdateTenantDefaultLocaleResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

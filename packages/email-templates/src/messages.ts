@@ -1,9 +1,10 @@
-import { getMessage } from "@publira/i18n";
+import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale, MessageKey, MessageValues } from "@publira/i18n";
 import { loadLocaleMessages } from "@publira/i18n/messages";
 
 // Type-only JSON imports cannot take import attributes (TS2857).
 import type jaCatalog from "../../../locales/ja.json";
+import { FALLBACK_LOCALE } from "./fallback-locale";
 
 export type Messages = typeof jaCatalog;
 
@@ -14,7 +15,9 @@ export type EmailMessageKey = MessageKey<Messages>;
  * static import specifiers in one place (see `locales/README.md`).
  */
 export const loadEmailMessages = (locale: Locale | string): Promise<Messages> =>
-  loadLocaleMessages(locale) as Promise<Messages>;
+  loadLocaleMessages(
+    parseLocale(locale) ?? FALLBACK_LOCALE
+  ) as Promise<Messages>;
 
 export const emailMessage = (
   messages: Messages,

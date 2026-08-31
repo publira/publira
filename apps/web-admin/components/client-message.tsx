@@ -8,6 +8,7 @@ import {
 import type { Locale, MessageValues } from "@publira/i18n";
 import { use } from "react";
 
+import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 import { loadAdminMessages } from "#lib/messages";
 import type { AdminMessageKey, AdminMessages } from "#lib/messages";
 
@@ -72,7 +73,7 @@ export const ClientMessage = ({
   message: AdminMessageKey;
   values?: MessageValues;
 }) => {
-  const locale = parseLocaleCookie(readDocumentLocale());
+  const locale = parseLocaleCookie(readDocumentLocale()) ?? FALLBACK_LOCALE;
   const messages = use(adminCatalog(locale));
 
   return getMessage(messages, message, values);

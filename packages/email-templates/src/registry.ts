@@ -5,6 +5,7 @@ import { createElement } from "react";
 import type { ReactElement } from "react";
 import type { z } from "zod";
 
+import { FALLBACK_LOCALE } from "./fallback-locale";
 import type { Messages } from "./messages";
 import {
   SampleEmail,
@@ -92,7 +93,7 @@ export const resolveEmail = (input: ResolveEmailInput): ResolveEmailResult => {
     };
   }
 
-  const locale = parseLocale(input.locale);
+  const locale = parseLocale(input.locale) ?? FALLBACK_LOCALE;
   const { messages, timeZone } = input;
 
   switch (input.template) {
