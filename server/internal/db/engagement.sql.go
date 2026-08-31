@@ -156,6 +156,45 @@ func (q *Queries) GetItemRecommendFeatures(ctx context.Context, arg GetItemRecom
 	return i, err
 }
 
+const getLatestContentRankingSnapshot = `-- name: GetLatestContentRankingSnapshot :one
+SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
+FROM content_ranking_snapshots
+WHERE tenant_id = $1
+    AND ranking_key = $2
+    AND entity_type = $3
+ORDER BY computed_at DESC
+LIMIT 1
+`
+
+type GetLatestContentRankingSnapshotParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	RankingKey string    `json:"ranking_key"`
+	EntityType string    `json:"entity_type"`
+}
+
+// The newest snapshot for one ranking key and entity type, whichever period
+// and algorithm version produced it. A reader on a request path cannot know
+// which day the last batch run covered, so it asks for the most recently
+// computed row instead of naming period bounds. A bumped algorithm_version
+// files its snapshots beside the old ones rather than replacing them, and wins
+// here because it was computed later.
+func (q *Queries) GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error) {
+	row := q.db.QueryRowContext(ctx, getLatestContentRankingSnapshot, arg.TenantID, arg.RankingKey, arg.EntityType)
+	var i ContentRankingSnapshot
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.RankingKey,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.EntityType,
+		&i.Items,
+		&i.AlgorithmVersion,
+		&i.ComputedAt,
+	)
+	return i, err
+}
+
 const getUserRecommendFeatures = `-- name: GetUserRecommendFeatures :one
 SELECT tenant_id, user_id, features, feature_version, computed_at
 FROM user_recommend_features
@@ -246,6 +285,8 @@ type InsertContentEventParams struct {
 //	  -> idx_content_daily_stats_unique / idx_content_daily_stats_tenant_entity
 //	GetContentRankingSnapshot
 //	  -> idx_content_ranking_snapshots_unique
+//	GetLatestContentRankingSnapshot
+//	  -> idx_content_ranking_snapshots_tenant_key_computed
 //	InsertDebouncedEpisodeViewEvent
 //	  -> idx_content_events_episode_view_debounce
 //	InsertProjectedSourceEvent

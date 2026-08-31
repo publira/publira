@@ -219,6 +219,35 @@ message SearchPublishedSeriesResponse {
   string next_token = 3;
 }
 
+// Where the order of a recommendation list came from. The list itself never
+// says: a ranked list and its fallback are both just series, so a caller that
+// wants to label the slot (or a test that wants to prove the ranking is being
+// read) needs this stated rather than inferred.
+enum RecommendationSource {
+  RECOMMENDATION_SOURCE_UNSPECIFIED = 0;
+  // At least one series in the list came from the ranking snapshot.
+  RECOMMENDATION_SOURCE_RANKING = 1;
+  // The tenant has no usable ranking snapshot, so the list is new arrivals.
+  RECOMMENDATION_SOURCE_NEW_ARRIVALS = 2;
+}
+
+// Not paginated, unlike the other list RPCs here. A storefront recommendation
+// slot shows one fixed-size list and never asks for a second page, and a
+// ranking snapshot is replaced wholesale by every batch run, so a cursor into
+// one would point at an order that no longer exists.
+message ListRecommendedSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in the list. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+}
+
+message ListRecommendedSeriesResponse {
+  // Ranked series first, in ranking order, followed by the newest published
+  // series the ranking did not already name, up to `limit`.
+  repeated publira.types.v1.Series series = 1;
+  RecommendationSource source = 2;
+}
+
 service CatalogService {
   rpc ListPublishedLabels(ListPublishedLabelsRequest) returns (ListPublishedLabelsResponse) {}
   rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
@@ -242,6 +271,12 @@ service CatalogService {
   // built for; sending it with a query that lowers to a different string is
   // invalid_argument.
   rpc SearchPublishedSeries(SearchPublishedSeriesRequest) returns (SearchPublishedSeriesResponse) {}
+  // Series for the storefront recommendation slot, built from the latest
+  // ranking snapshot of behavioural signals and topped up with the newest
+  // published series so the slot is never short of `limit`. A tenant whose
+  // signals have not produced a snapshot yet gets the new arrivals alone,
+  // which is what the slot showed before rankings existed.
+  rpc ListRecommendedSeries(ListRecommendedSeriesRequest) returns (ListRecommendedSeriesResponse) {}
 }
 
 message MarkEpisodeAsReadRequest {

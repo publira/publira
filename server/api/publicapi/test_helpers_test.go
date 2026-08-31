@@ -92,6 +92,12 @@ func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, defaultLocale))
 }
 
+const getLatestContentRankingSnapshotQuery = "-- name: GetLatestContentRankingSnapshot :one\n"
+
+func contentRankingSnapshotColumns() []string {
+	return []string{"id", "tenant_id", "ranking_key", "period_start", "period_end", "entity_type", "items", "algorithm_version", "computed_at"}
+}
+
 const getPlatformConfigQuery = "-- name: GetPlatformConfig :one\n"
 
 func publicPlatformConfigColumns() []string {

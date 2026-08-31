@@ -124,6 +124,13 @@ type Querier interface {
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
+	// The newest snapshot for one ranking key and entity type, whichever period
+	// and algorithm version produced it. A reader on a request path cannot know
+	// which day the last batch run covered, so it asks for the most recently
+	// computed row instead of naming period bounds. A bumped algorithm_version
+	// files its snapshots beside the old ones rather than replacing them, and wins
+	// here because it was computed later.
+	GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
 	GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error)
 	// ページの最大バージョン番号を取得する（次バージョン番号算出用）
@@ -205,6 +212,8 @@ type Querier interface {
 	//     -> idx_content_daily_stats_unique / idx_content_daily_stats_tenant_entity
 	//   GetContentRankingSnapshot
 	//     -> idx_content_ranking_snapshots_unique
+	//   GetLatestContentRankingSnapshot
+	//     -> idx_content_ranking_snapshots_tenant_key_computed
 	//   InsertDebouncedEpisodeViewEvent
 	//     -> idx_content_events_episode_view_debounce
 	//   InsertProjectedSourceEvent

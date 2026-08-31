@@ -4,6 +4,7 @@ import {
   isRpcError,
 } from "@publira/api-client/errors";
 import { EpisodeAccess } from "@publira/api-client/public/catalog";
+import type { ListRecommendedSeriesResponse } from "@publira/api-client/public/catalog";
 import type {
   EpisodeImage,
   Series,
@@ -295,6 +296,44 @@ export const listPublishedSeries = async (
       series,
     },
   };
+};
+
+/**
+ * The series for the storefront recommendation slot, best first.
+ *
+ * The order comes from the ranking snapshot the engagement batch builds out of
+ * reading, purchase and rating signals. A tenant whose signals have not
+ * produced one yet gets the newest published series instead — what the slot
+ * showed before rankings existed — and the server tops a short ranked list up
+ * with new arrivals, so the slot is never emptier than the catalogue is.
+ *
+ * Not paginated: the response is the whole slot.
+ */
+export const listRecommendedSeries = async (
+  tenantId: string,
+  { limit = 6, locale }: { limit?: number; locale: Locale }
+): Promise<CachedReadResult<SeriesListItem[]>> => {
+  "use cache";
+
+  const normalizedTenantId = tenantId.trim();
+  // These tags cover the half of the answer this app can observe: which series
+  // exist and are published. The ranking snapshot itself is replaced by a batch
+  // that never calls back here, so a new snapshot arrives with the cache
+  // profile's own revalidation rather than with a tag.
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+
+  let response: ListRecommendedSeriesResponse;
+  try {
+    response = await apiClient.catalog.listRecommendedSeries({
+      limit,
+      tenant: { tenantId: normalizedTenantId },
+    });
+  } catch (error) {
+    return localizedReadFailure(error, locale, "host.top.recommended_failed");
+  }
+
+  return { ok: true, value: (response.series ?? []).map(toSeriesListItem) };
 };
 
 export interface LabelListPage {

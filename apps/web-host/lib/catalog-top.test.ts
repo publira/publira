@@ -16,10 +16,12 @@ const {
   mockGetSeriesDetail,
   mockListPublishedLabels,
   mockListPublishedSeries,
+  mockListRecommendedSeries,
 } = vi.hoisted(() => ({
   mockGetSeriesDetail: vi.fn(),
   mockListPublishedLabels: vi.fn(),
   mockListPublishedSeries: vi.fn(),
+  mockListRecommendedSeries: vi.fn(),
 }));
 
 vi.mock("./authors", () => ({
@@ -34,6 +36,7 @@ vi.mock("./catalog", async (importOriginal) => {
     getSeriesDetail: mockGetSeriesDetail,
     listPublishedLabels: mockListPublishedLabels,
     listPublishedSeries: mockListPublishedSeries,
+    listRecommendedSeries: mockListRecommendedSeries,
   };
 });
 
@@ -112,23 +115,50 @@ describe("catalog-top section loaders", () => {
     mockListPublishedLabels.mockReset();
     mockListPublishedAuthors.mockReset();
     mockListPublishedSeries.mockReset();
+    mockListRecommendedSeries.mockReset();
   });
 
-  it("getCatalogTopRecommendedSeries は公開シリーズの先頭を返す", async () => {
-    mockListPublishedSeries.mockResolvedValue({
+  it("getCatalogTopRecommendedSeries keeps the order the ranking decided", async () => {
+    // Newest first is what the slot used to show. The server answers with the
+    // ranking instead, so a loader that re-sorted or re-sliced here would throw
+    // the behavioural signal away.
+    mockListRecommendedSeries.mockResolvedValue({
       ok: true,
-      value: { nextToken: "", previousToken: "", series: seriesFixture },
+      value: [seriesFixture[1], seriesFixture[0]],
     });
 
     const result = await getCatalogTopRecommendedSeries("TENANT_001", {
       locale: "ja",
-      maxRecommended: 1,
-      seriesLimit: 10,
+      maxRecommended: 2,
     });
 
+    expect(mockListRecommendedSeries).toHaveBeenCalledWith("TENANT_001", {
+      limit: 2,
+      locale: "ja",
+    });
     expect(result.ok && result.value.map((item) => item.publicId)).toEqual([
+      "SERIES_2",
       "SERIES_1",
     ]);
+  });
+
+  it("getCatalogTopRecommendedSeries reports a failed recommendation read", async () => {
+    mockListRecommendedSeries.mockResolvedValue({
+      message:
+        "おすすめ作品を取得できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
+
+    await expect(
+      getCatalogTopRecommendedSeries("TENANT_001", {
+        locale: "ja",
+        maxRecommended: 6,
+      })
+    ).resolves.toEqual({
+      message:
+        "おすすめ作品を取得できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
   });
 
   it("getCatalogTopNewEpisodes は公開日が新しい順に返す", async () => {
@@ -256,16 +286,6 @@ describe("catalog-top section loaders", () => {
       ok: false,
     });
 
-    await expect(
-      getCatalogTopRecommendedSeries("TENANT_001", {
-        locale: "ja",
-        maxRecommended: 6,
-      })
-    ).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
-      ok: false,
-    });
     await expect(
       getCatalogTopNewEpisodes("TENANT_001", {
         locale: "ja",

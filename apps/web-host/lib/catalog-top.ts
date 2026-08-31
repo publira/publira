@@ -8,6 +8,7 @@ import {
   getSeriesDetail,
   listPublishedLabels,
   listPublishedSeries,
+  listRecommendedSeries,
 } from "./catalog";
 import type {
   EyeCatchImageVariant,
@@ -139,21 +140,21 @@ const loadSeriesDetailRows = async (
   return { ok: true, value: rows };
 };
 
+/**
+ * The recommendation slot. `seriesLimit` is not part of this read: the server
+ * decides which series are worth recommending out of the whole catalogue, so
+ * there is no local page to slice.
+ */
 export const getCatalogTopRecommendedSeries = async (
   tenantId: string,
-  { locale, maxRecommended = 6, seriesLimit = 24 }: CatalogTopDataOptions
+  { locale, maxRecommended = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<SeriesListItem[]>> => {
   "use cache";
 
-  const seriesPage = await listPublishedSeries(tenantId, {
-    limit: seriesLimit,
+  return await listRecommendedSeries(tenantId, {
+    limit: maxRecommended,
     locale,
   });
-  if (!seriesPage.ok) {
-    return cachedReadFailure(seriesPage.message);
-  }
-
-  return { ok: true, value: seriesPage.value.series.slice(0, maxRecommended) };
 };
 
 export const getCatalogTopNewEpisodes = async (

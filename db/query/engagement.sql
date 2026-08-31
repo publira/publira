@@ -12,6 +12,8 @@
 --     -> idx_content_daily_stats_unique / idx_content_daily_stats_tenant_entity
 --   GetContentRankingSnapshot
 --     -> idx_content_ranking_snapshots_unique
+--   GetLatestContentRankingSnapshot
+--     -> idx_content_ranking_snapshots_tenant_key_computed
 --   InsertDebouncedEpisodeViewEvent
 --     -> idx_content_events_episode_view_debounce
 --   InsertProjectedSourceEvent
@@ -405,3 +407,18 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND period_end = sqlc.arg('period_end')
     AND entity_type = sqlc.arg('entity_type')
     AND algorithm_version = sqlc.arg('algorithm_version');
+
+-- The newest snapshot for one ranking key and entity type, whichever period
+-- and algorithm version produced it. A reader on a request path cannot know
+-- which day the last batch run covered, so it asks for the most recently
+-- computed row instead of naming period bounds. A bumped algorithm_version
+-- files its snapshots beside the old ones rather than replacing them, and wins
+-- here because it was computed later.
+-- name: GetLatestContentRankingSnapshot :one
+SELECT *
+FROM content_ranking_snapshots
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND ranking_key = sqlc.arg('ranking_key')
+    AND entity_type = sqlc.arg('entity_type')
+ORDER BY computed_at DESC
+LIMIT 1;
