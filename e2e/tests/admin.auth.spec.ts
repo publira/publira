@@ -41,7 +41,7 @@ const currentSession = async (
  * invalidate `admin.publish-flow` / `admin.access-tickets` mid-run.
  */
 test.describe("web-admin auth", () => {
-  test("正しい資格情報でシリーズ一覧へ戻る", async ({ page }) => {
+  test("valid credentials return to the series list", async ({ page }) => {
     await signInAsSeedAdmin(page, "/series");
 
     await expect(page).toHaveURL(/\/series\/?$/u);
@@ -51,7 +51,7 @@ test.describe("web-admin auth", () => {
     expect(await currentSession(page)).toBeTruthy();
   });
 
-  test("誤ったパスワードではログインできず Cookie も出さない", async ({
+  test("a wrong password neither signs in nor issues a cookie", async ({
     page,
   }) => {
     await page.goto(adminUrl("/login?next=%2Fseries"));
@@ -65,7 +65,7 @@ test.describe("web-admin auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("未認証の /series は next 付きでログインへ送り、成功後に戻す", async ({
+  test("an unauthenticated /series redirects to login with next and comes back after signing in", async ({
     page,
   }) => {
     await page.goto(adminUrl("/series"));
@@ -80,7 +80,9 @@ test.describe("web-admin auth", () => {
     ).toBeVisible();
   });
 
-  test("外部 URL の next は捨ててダッシュボードへ送る", async ({ page }) => {
+  test("an external next is dropped and the dashboard is served", async ({
+    page,
+  }) => {
     await page.goto(
       adminUrl(`/login?next=${encodeURIComponent("//evil.example")}`)
     );
@@ -92,7 +94,9 @@ test.describe("web-admin auth", () => {
     ).toBeVisible();
   });
 
-  test("ログアウトすると Cookie を消しログインへ戻す", async ({ page }) => {
+  test("signing out clears the cookie and returns to login", async ({
+    page,
+  }) => {
     await signInAsSeedAdmin(page, "/series");
     expect(await currentSession(page)).toBeTruthy();
 
@@ -105,7 +109,9 @@ test.describe("web-admin auth", () => {
     await expect(page).toHaveURL(/\/login\?next=/u);
   });
 
-  test("Cookie が無い保護ルートはログインへ送る", async ({ page }) => {
+  test("a protected route without a cookie redirects to login", async ({
+    page,
+  }) => {
     await signInAsSeedAdmin(page, "/series");
     await page.context().clearCookies({ name: ADMIN_SESSION_COOKIE_NAME });
 
@@ -114,7 +120,7 @@ test.describe("web-admin auth", () => {
     await expect(page).not.toHaveURL(/reason=session_revoked/u);
   });
 
-  test("Cookie の期限切れはログインへ送り session_revoked にはしない", async ({
+  test("an expired cookie redirects to login without session_revoked", async ({
     page,
   }) => {
     await signInAsSeedAdmin(page, "/series");
@@ -131,7 +137,7 @@ test.describe("web-admin auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("期限切れ JWT は再ログイン案内を出す", async ({ page }) => {
+  test("an expired JWT shows the sign-in-again notice", async ({ page }) => {
     await signInAsSeedAdmin(page, "/");
     await plantExpiredAccessTokenCookie(
       page,
@@ -150,7 +156,9 @@ test.describe("web-admin auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("credentials_version 失効は再ログイン案内を出す", async ({ page }) => {
+  test("a credentials_version revocation shows the sign-in-again notice", async ({
+    page,
+  }) => {
     applyScenarioSql(AUTH_E2E_SCENARIO);
     await signInAsAdmin(page, SCENARIO_AUTH_ADMIN, "/");
     await expect(
@@ -166,7 +174,9 @@ test.describe("web-admin auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("会員はコンソールに入れるが設定は閲覧専用になる", async ({ page }) => {
+  test("a member can enter the console but settings stay read-only", async ({
+    page,
+  }) => {
     await signInAsAdmin(page, SEED_MEMBER, "/settings/email");
 
     await expect(page).toHaveURL(/\/settings\/email/u);
@@ -182,7 +192,9 @@ test.describe("web-admin auth", () => {
     await expect(page.getByRole("button", { name: "保存" })).toBeDisabled();
   });
 
-  test("会員は決済設定を閲覧専用で権限エラーを見る", async ({ page }) => {
+  test("a member sees payment settings read-only with a permission error", async ({
+    page,
+  }) => {
     await signInAsAdmin(page, SEED_MEMBER, "/settings/payment");
 
     await expect(page).toHaveURL(/\/settings\/payment/u);
@@ -201,7 +213,9 @@ test.describe("web-admin auth", () => {
 });
 
 test.describe("admin GET /logout", () => {
-  test("認証済み GET は 404 でセッションを維持する", async ({ page }) => {
+  test("an authenticated GET is a 404 and keeps the session", async ({
+    page,
+  }) => {
     await signInAsSeedAdmin(page, "/series");
 
     const before = await currentSession(page);
@@ -221,7 +235,9 @@ test.describe("admin GET /logout", () => {
     ).toBeVisible();
   });
 
-  test("未認証 GET は 404 で Cookie を発行しない", async ({ request }) => {
+  test("an unauthenticated GET is a 404 and issues no cookie", async ({
+    request,
+  }) => {
     const response = await request.get(adminUrl("/logout"));
     expect(response.status()).toBe(404);
     expect(response.headers()["set-cookie"] ?? "").not.toContain(

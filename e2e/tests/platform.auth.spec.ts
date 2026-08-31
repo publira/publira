@@ -44,7 +44,7 @@ const currentSession = async (
  * a dedicated platform user so they cannot invalidate those suites mid-run.
  */
 test.describe("web-platform auth", () => {
-  test("正しい資格情報でテナント一覧へ戻る", async ({ page }) => {
+  test("valid credentials return to the tenant list", async ({ page }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");
 
     await expect(page).toHaveURL(/\/tenants\/?$/u);
@@ -54,7 +54,7 @@ test.describe("web-platform auth", () => {
     expect(await currentSession(page)).toBeTruthy();
   });
 
-  test("誤ったパスワードではログインできず Cookie も出さない", async ({
+  test("a wrong password neither signs in nor issues a cookie", async ({
     page,
   }) => {
     await page.goto(platformUrl("/login?next=%2Ftenants"));
@@ -68,7 +68,7 @@ test.describe("web-platform auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("未認証の /tenants は next 付きでログインへ送り、成功後に戻す", async ({
+  test("an unauthenticated /tenants redirects to login with next and comes back after signing in", async ({
     page,
   }) => {
     await page.goto(platformUrl("/tenants"));
@@ -83,7 +83,9 @@ test.describe("web-platform auth", () => {
     ).toBeVisible();
   });
 
-  test("外部 URL の next は捨ててコンソールトップへ送る", async ({ page }) => {
+  test("an external next is dropped and the console top is served", async ({
+    page,
+  }) => {
     await page.goto(
       platformUrl(`/login?next=${encodeURIComponent("//evil.example")}`)
     );
@@ -95,7 +97,9 @@ test.describe("web-platform auth", () => {
     ).toBeVisible();
   });
 
-  test("ログアウトすると Cookie を消しログインへ戻す", async ({ page }) => {
+  test("signing out clears the cookie and returns to login", async ({
+    page,
+  }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");
     expect(await currentSession(page)).toBeTruthy();
 
@@ -108,7 +112,9 @@ test.describe("web-platform auth", () => {
     await expect(page).toHaveURL(/\/login\?next=/u);
   });
 
-  test("Cookie が無い保護ルートはログインへ送る", async ({ page }) => {
+  test("a protected route without a cookie redirects to login", async ({
+    page,
+  }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");
     await page.context().clearCookies({ name: PLATFORM_SESSION_COOKIE_NAME });
 
@@ -117,7 +123,7 @@ test.describe("web-platform auth", () => {
     await expect(page).not.toHaveURL(/reason=session_revoked/u);
   });
 
-  test("Cookie の期限切れはログインへ送り session_revoked にはしない", async ({
+  test("an expired cookie redirects to login without session_revoked", async ({
     page,
   }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");
@@ -133,7 +139,7 @@ test.describe("web-platform auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("期限切れ JWT は再ログイン案内を出す", async ({ page }) => {
+  test("an expired JWT shows the sign-in-again notice", async ({ page }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");
     await plantExpiredAccessTokenCookie(
       page,
@@ -151,7 +157,9 @@ test.describe("web-platform auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("credentials_version 失効は再ログイン案内を出す", async ({ page }) => {
+  test("a credentials_version revocation shows the sign-in-again notice", async ({
+    page,
+  }) => {
     applyScenarioSql(AUTH_E2E_SCENARIO);
     await signInAsPlatformOperator(page, SCENARIO_AUTH_PLATFORM, "/tenants");
     await expect(

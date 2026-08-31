@@ -34,7 +34,7 @@ test.describe("web-host public API outage", () => {
     startApiServer();
   });
 
-  test("テナント解決できない間は 503 と Retry-After を返す", async ({
+  test("answers 503 with Retry-After while the tenant cannot be resolved", async ({
     page,
   }) => {
     const response = await page.goto(
@@ -73,7 +73,7 @@ test.describe("web-host public API outage", () => {
    * for exactly that reason: it asserts the tenant resolves rather than
    * relying on another spec having warmed the cache first.
    */
-  test("データ取得の失敗はフォールバックを出し、復旧後はキャッシュされない", async ({
+  test("a failed fetch renders the fallback and is not cached once recovered", async ({
     page,
   }) => {
     // Tenant resolution must be the thing that still works, so warm it against
@@ -145,7 +145,7 @@ test.describe("web-host public API outage", () => {
     ).toBeVisible();
   });
 
-  test("復旧後は同じ導線が通常どおり応答する", async ({ page }) => {
+  test("the same paths answer normally after recovery", async ({ page }) => {
     startApiServer();
 
     // Another never-resolved Host: 503 → 404 means tenant resolution reached

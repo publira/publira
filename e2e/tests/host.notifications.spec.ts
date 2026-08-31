@@ -10,7 +10,7 @@ import { hostPath } from "../src/urls";
  */
 
 test.describe("web-host notification bell", () => {
-  test("空のベルのメニューと通知一覧を出し、お知らせ画面は回帰しない", async ({
+  test("shows the empty bell menu and notification list, leaving the announcements screen intact", async ({
     page,
   }) => {
     await signInAsSeedMember(page, "/notifications");
@@ -41,7 +41,9 @@ test.describe("web-host notification bell", () => {
     await expect(page.getByText("通知はまだありません。")).toHaveCount(0);
   });
 
-  test("未ログインの /notifications はログインへ送る", async ({ page }) => {
+  test("/notifications redirects to login while signed out", async ({
+    page,
+  }) => {
     await page.goto(hostPath("/notifications"));
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
     await expect(

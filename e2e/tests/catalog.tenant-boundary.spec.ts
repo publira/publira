@@ -31,7 +31,9 @@ test.describe("web-host tenant boundary", () => {
     applyScenarioSql(MULTI_TENANT_SCENARIO);
   });
 
-  test("別 Host が別テナントのカタログトップを表示する", async ({ page }) => {
+  test("a second Host serves the other tenant's catalog top", async ({
+    page,
+  }) => {
     const response = await page.goto(otherTenantUrl("/"));
     expect(response?.status(), await page.content()).toBe(200);
 
@@ -60,7 +62,9 @@ test.describe("web-host tenant boundary", () => {
     await expect(page.getByText(/Seed /u)).toHaveCount(0);
   });
 
-  test("シリーズ一覧・詳細に公開中のコンテンツだけが並ぶ", async ({ page }) => {
+  test("series list and detail show only published content", async ({
+    page,
+  }) => {
     await page.goto(otherTenantUrl("/series"));
 
     const seriesHeadings = page.getByRole("heading", { level: 2 });
@@ -118,7 +122,7 @@ test.describe("web-host tenant boundary", () => {
     ).toBeVisible();
   });
 
-  test("他テナントのシリーズは public_id を知っていても見えない", async ({
+  test("another tenant's series stays hidden even with its public_id", async ({
     page,
   }) => {
     const foreign = await page.goto(
@@ -137,7 +141,7 @@ test.describe("web-host tenant boundary", () => {
     ).toHaveCount(0);
   });
 
-  test("他テナントのエピソードは自テナントのシリーズ配下でも見えない", async ({
+  test("another tenant's episode stays hidden under an own-tenant series URL", async ({
     page,
   }) => {
     // Valid own-tenant series URL, other tenant's episode_id.
@@ -162,7 +166,7 @@ test.describe("web-host tenant boundary", () => {
     ).toHaveCount(0);
   });
 
-  test("未公開シリーズの詳細は見つからない", async ({ page }) => {
+  test("an unpublished series detail is not found", async ({ page }) => {
     const response = await page.goto(
       otherTenantUrl(`/series/${OTHER_TENANT.unpublishedSeries.publicId}`)
     );
@@ -173,7 +177,7 @@ test.describe("web-host tenant boundary", () => {
     ).toHaveCount(0);
   });
 
-  test("他テナントの著者詳細は見つからない", async ({ page }) => {
+  test("another tenant's author detail is not found", async ({ page }) => {
     const response = await page.goto(
       otherTenantUrl(`/authors/${SEED_TENANT.authorId}`)
     );
@@ -182,7 +186,7 @@ test.describe("web-host tenant boundary", () => {
     await expect(page.getByText(SEED_TENANT.authorName)).toHaveCount(0);
   });
 
-  test("他テナントのレーベル詳細は見つからない", async ({ page }) => {
+  test("another tenant's label detail is not found", async ({ page }) => {
     const response = await page.goto(
       otherTenantUrl(`/labels/${SEED_TENANT.labelId}`)
     );
@@ -194,7 +198,9 @@ test.describe("web-host tenant boundary", () => {
     await expect(page.getByText(SEED_TENANT.labelName)).toHaveCount(0);
   });
 
-  test("検索結果に他テナントのシリーズが混ざらない", async ({ page }) => {
+  test("search results never mix in another tenant's series", async ({
+    page,
+  }) => {
     const foreign = await page.goto(otherTenantUrl("/search?q=Seed"));
     expect(foreign?.status(), await page.content()).toBe(200);
     await expect(
@@ -220,7 +226,7 @@ test.describe("web-host tenant boundary", () => {
     ).toBeVisible();
   });
 
-  test("テナントに紐づかない Host は 404", async ({ page }) => {
+  test("a Host bound to no tenant is a 404", async ({ page }) => {
     const response = await page.goto(
       `${WEB_HOST_UNKNOWN_TENANT_BASE_URL}${hostPath("/")}`
     );

@@ -34,7 +34,9 @@ test.describe("web-admin access tickets", () => {
     notes.length = 0;
   });
 
-  test("一覧で状態が分かり、発行と失効ができる", async ({ page }) => {
+  test("the list shows ticket state, and a ticket can be issued and revoked", async ({
+    page,
+  }) => {
     await signInAsSeedAdmin(page, "/access-tickets");
 
     await expect(

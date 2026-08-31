@@ -100,7 +100,7 @@ test.describe("admin publish flow", () => {
     return publicId;
   };
 
-  test("シリーズを下書き作成し、編集後に管理画面へ再表示される", async ({
+  test("creates a draft series and shows the edit back in the console", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -141,7 +141,7 @@ test.describe("admin publish flow", () => {
     ).toBeVisible();
   });
 
-  test("シリーズを公開すると同じ tenant の web-host で確認できる", async ({
+  test("publishing a series makes it visible on the same tenant's web-host", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -169,7 +169,7 @@ test.describe("admin publish flow", () => {
     await expect(page.getByText(synopsis)).toBeVisible();
   });
 
-  test("エピソードを入稿・予約し、公開後に web-host へ反映される", async ({
+  test("submits and schedules an episode, and it reaches web-host once published", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -217,7 +217,7 @@ test.describe("admin publish flow", () => {
     await expect(page.getByText(episodeTitle)).toBeVisible();
   });
 
-  test("必須項目が欠けているとエラーが表示される", async ({ page }) => {
+  test("a missing required field shows an error", async ({ page }) => {
     await page.goto(adminUrl("/series/new"));
     const fields = seriesFormFields(page);
     await fields.title.fill(`E2E Invalid ${uniqueSuffix()}`);
@@ -230,7 +230,9 @@ test.describe("admin publish flow", () => {
     await expect(page).toHaveURL(/\/series\/new/u);
   });
 
-  test("他 tenant のシリーズは編集画面で見つからない", async ({ page }) => {
+  test("another tenant's series is not found in the edit screen", async ({
+    page,
+  }) => {
     applyScenarioSql(MULTI_TENANT_SCENARIO);
 
     const response = await page.goto(

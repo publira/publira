@@ -75,7 +75,9 @@ test.describe("platform tenant operations", () => {
     return publicId;
   };
 
-  test("テナントを作成し、一覧と詳細で再取得できる", async ({ page }) => {
+  test("creates a tenant and reads it back in the list and the detail", async ({
+    page,
+  }) => {
     const suffix = uniqueSuffix();
     const name = `E2E Platform Tenant ${suffix}`;
     const domain = `e2e-${suffix}.localhost`;
@@ -104,7 +106,9 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
   });
 
-  test("名前とドメインを更新し、詳細へ再表示される", async ({ page }) => {
+  test("updates name and domain, and the tenant detail shows the new values", async ({
+    page,
+  }) => {
     const suffix = uniqueSuffix();
     const name = `E2E Edit Tenant ${suffix}`;
     const domain = `e2e-edit-${suffix}.localhost`;
@@ -141,7 +145,7 @@ test.describe("platform tenant operations", () => {
     );
   });
 
-  test("domain / admin_domain が web-host と web-admin のテナント解決へ反映される", async ({
+  test("domain / admin_domain reach tenant resolution in web-host and web-admin", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -214,7 +218,9 @@ test.describe("platform tenant operations", () => {
     await expect(page.getByLabel(/メールアドレス/u)).toBeVisible();
   });
 
-  test("テナントを停止・再開でき、一覧の状態が更新される", async ({ page }) => {
+  test("suspends and resumes a tenant, and the list reflects the new state", async ({
+    page,
+  }) => {
     const suffix = uniqueSuffix();
     const name = `E2E Status Tenant ${suffix}`;
     const domain = `e2e-status-${suffix}.localhost`;
@@ -247,7 +253,7 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
   });
 
-  test("主要操作が監査ログに記録される", async ({ page }) => {
+  test("key operations are recorded in the audit log", async ({ page }) => {
     const suffix = uniqueSuffix();
     const name = `E2E Audit Tenant ${suffix}`;
     const domain = `e2e-audit-${suffix}.localhost`;
@@ -304,7 +310,7 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
   });
 
-  test("権限不足の operator はオペレーター作成を拒否される", async ({
+  test("an operator without the required permission cannot create an operator", async ({
     page,
   }) => {
     applyScenarioSql(PLATFORM_OPERATORS_SCENARIO);
@@ -332,7 +338,9 @@ test.describe("platform tenant operations", () => {
     await expect(page).toHaveURL(/\/operators\/new/u);
   });
 
-  test("権限不足でもテナント一覧の参照はできる", async ({ page }) => {
+  test("an operator without the required permission can still read the tenant list", async ({
+    page,
+  }) => {
     applyScenarioSql(PLATFORM_OPERATORS_SCENARIO);
 
     const suffix = uniqueSuffix();
@@ -353,7 +361,7 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
   });
 
-  test("必須項目が欠けているとエラーが表示される", async ({ page }) => {
+  test("a missing required field shows an error", async ({ page }) => {
     await page.goto(platformUrl("/tenants/new"));
     await page.locator("#tenant_name").fill(`E2E Invalid ${uniqueSuffix()}`);
     // Leave domain empty — HTML required may block submit; clear via fill and

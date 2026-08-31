@@ -15,7 +15,9 @@ const paidEpisodePath = `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_
  * rather than a page raster — that still means the viewer opened.
  */
 test.describe("web-host episode access", () => {
-  test("未ログインの有料エピソードはログイン導線を出す", async ({ page }) => {
+  test("a paid episode shows the sign-in gate while signed out", async ({
+    page,
+  }) => {
     await page.goto(hostPath(paidEpisodePath));
 
     await expect(
@@ -36,7 +38,9 @@ test.describe("web-host episode access", () => {
     ).toHaveCount(0);
   });
 
-  test("有効チケットの会員は有料エピソードの本文を開ける", async ({ page }) => {
+  test("a member with a valid ticket can open the paid episode body", async ({
+    page,
+  }) => {
     await signInAsSeedMember(page, paidEpisodePath);
 
     await expect(page).toHaveURL(new RegExp(`${paidEpisodePath}$`, "u"));
@@ -58,7 +62,9 @@ test.describe("web-host episode access", () => {
     ).toHaveCount(0);
   });
 
-  test("ゲートのログインから戻るとチケット閲覧できる", async ({ page }) => {
+  test("returning from the gate's login opens the episode with the ticket", async ({
+    page,
+  }) => {
     await page.goto(hostPath(paidEpisodePath));
     await page.getByRole("link", { name: "ログインして閲覧する" }).click();
 
