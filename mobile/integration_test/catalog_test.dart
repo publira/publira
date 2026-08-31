@@ -182,6 +182,10 @@ void main() {
           tester,
           find.text('2 / ${ConnectFixtureServer.seedEpisodePageCount}'),
         );
+        // The page number turns over halfway through the animation, so the
+        // reader is still scrolling here and the incoming page's image is
+        // still waiting on a frame callback.
+        await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });
 

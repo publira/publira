@@ -1,3 +1,4 @@
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Pumps until [finder] matches, instead of [WidgetTester.pumpAndSettle].
@@ -36,4 +37,24 @@ Future<void> pumpUntilTrue(
     }
   }
   fail('Timed out waiting for $description');
+}
+
+/// Pumps until no transient frame callback is left registered.
+///
+/// `PageView` reports its new page halfway through the turn animation, and
+/// `ScrollAwareImageProvider` keeps rescheduling the incoming page's image
+/// resolution on a frame callback for as long as the scroll is fast. A test
+/// that ends as soon as the page number changes therefore leaves that callback
+/// behind, and the binding reports it as an animation that outlived the widget
+/// tree once the test tears the tree down.
+Future<void> pumpUntilNoPendingFrameCallbacks(
+  WidgetTester tester, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  await pumpUntilTrue(
+    tester,
+    () => SchedulerBinding.instance.transientCallbackCount == 0,
+    description: 'the pending frame callbacks to drain',
+    timeout: timeout,
+  );
 }
