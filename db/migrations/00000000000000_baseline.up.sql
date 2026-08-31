@@ -1195,7 +1195,7 @@ CREATE UNIQUE INDEX idx_content_daily_stats_unique ON content_daily_stats USING 
 CREATE UNIQUE INDEX idx_content_events_episode_view_debounce ON content_events USING btree (tenant_id, event_type, episode_id, actor_key, debounce_bucket) WHERE ((event_type)::text = 'episode_view'::text);
 
 -- INDEX: idx_content_events_occurred_at
--- Retention purge (cmd/purge-content-events) walks the oldest rows across every
+-- Retention purge (cmd/batch purge-content-events) walks the oldest rows across every
 -- tenant at once, so none of the tenant-leading indexes here can serve it.
 CREATE INDEX idx_content_events_occurred_at ON content_events USING btree (occurred_at);
 

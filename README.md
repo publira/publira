@@ -20,10 +20,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 ├── server/             # [Go] バックエンドシステム (単一モジュール)
 │   ├── cmd/
 │   │   ├── api-server/       # ConnectRPC API サーバー
-│   │   ├── aggregate-content-stats/ # 日次コンテンツ統計の完全再集計バッチ
-│   │   ├── build-recommend-features/ # Daily user/item recommend feature snapshot batch
-│   │   ├── publish-episodes/ # 予約公開バッチ
-│   │   ├── purge-content-events/ # 閲覧イベントの保持期限パージバッチ
+│   │   ├── batch/            # 全バッチジョブを束ねた単一バイナリ（サブコマンドで選択）
 │   │   └── outbox-worker/    # Outbox + River 常駐ワーカー
 │   ├── gen/            # buf 自動生成コード (Go)
 │   └── internal/

@@ -17,9 +17,9 @@ start_publish_episodes() {
     fi
   fi
 
-  local bin="${REPO_ROOT}/server/bin/publish-episodes"
+  local bin="${REPO_ROOT}/server/bin/batch"
   if [[ ! -x "${bin}" ]]; then
-    e2e_err "publish-episodes binary not found at ${bin}; run: task server:build"
+    e2e_err "batch binary not found at ${bin}; run: task server:build"
     exit 1
   fi
 
@@ -29,7 +29,7 @@ start_publish_episodes() {
     exec env \
       PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" \
       PUBLIRA_PUBLISH_INTERVAL_SECONDS="${E2E_PUBLISH_EPISODES_INTERVAL_SEC}" \
-      "${bin}"
+      "${bin}" publish-episodes
   ) >>"${LOG_DIR}/publish-episodes.log" 2>&1 &
   write_pid "publish-episodes" $!
 }

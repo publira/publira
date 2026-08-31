@@ -12,58 +12,26 @@ import (
 
 	"github.com/publira/publira/server/config"
 	dbmodels "github.com/publira/publira/server/internal/db"
-	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/sqldb"
-	"github.com/publira/publira/server/internal/tracing"
 )
 
 const (
-	serviceName = "publira-publish-episodes"
-
-	defaultIntervalSeconds = 60
-	defaultMaxRetries      = 3
-	defaultWorkerDBURL     = "postgres://postgres:password@db:5432/publira?sslmode=disable"
+	defaultPublishIntervalSeconds = 60
+	defaultPublishMaxRetries      = 3
 )
 
-func main() {
-	logger := logging.New(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	})
-	slog.SetDefault(logger)
-
-	shutdownTracing, err := tracing.Setup(context.Background(), serviceName)
-	if err != nil {
-		// Telemetry is not worth refusing to run the batch over.
-		logger.Error("failed to initialize tracing", "error", err)
-	}
-	defer func() {
-		if err := shutdownTracing(context.Background()); err != nil {
-			logger.Error("failed to flush pending spans", "error", err)
-		}
-	}()
-
-	cfg, err := config.New()
-	if err != nil {
-		logger.Error("failed to load config", "error", err)
-		os.Exit(1)
-	}
-
-	dbURL := cfg.DB.URL
-	if dbURL == "" {
-		dbURL = defaultWorkerDBURL
-	}
-
-	db, err := sqldb.Open(dbURL)
+func runPublishEpisodes(ctx context.Context, logger *slog.Logger, cfg *config.Config) error {
+	db, err := sqldb.Open(cfg.DB.URL)
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
-		os.Exit(1)
+		return err
 	}
 	defer db.Close() //nolint:errcheck
 
-	interval := resolveInterval()
-	maxRetries := resolveMaxRetries()
+	interval := resolvePublishInterval()
+	maxRetries := resolvePublishMaxRetries()
 
 	revalidateToken := strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN"))
 	reval, revalidateErr := revalidate.NewClient(revalidateToken, logger)
@@ -75,7 +43,7 @@ func main() {
 
 	runner := publishepisodes.New(db, dbmodels.New(db), reval, logger, maxRetries)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	logger.Info("publish-episodes worker started", "interval", interval, "max_retries", maxRetries)
@@ -90,33 +58,33 @@ func main() {
 		select {
 		case <-ctx.Done():
 			logger.Info("shutting down publish-episodes worker")
-			return
+			return nil
 		case <-ticker.C:
 			runner.RunOnce(ctx)
 		}
 	}
 }
 
-func resolveInterval() time.Duration {
+func resolvePublishInterval() time.Duration {
 	raw := strings.TrimSpace(os.Getenv("PUBLIRA_PUBLISH_INTERVAL_SECONDS"))
 	if raw == "" {
-		return defaultIntervalSeconds * time.Second
+		return defaultPublishIntervalSeconds * time.Second
 	}
 	n, err := strconv.Atoi(raw)
 	if err != nil || n <= 0 {
-		return defaultIntervalSeconds * time.Second
+		return defaultPublishIntervalSeconds * time.Second
 	}
 	return time.Duration(n) * time.Second
 }
 
-func resolveMaxRetries() int {
+func resolvePublishMaxRetries() int {
 	raw := strings.TrimSpace(os.Getenv("PUBLIRA_PUBLISH_MAX_RETRIES"))
 	if raw == "" {
-		return defaultMaxRetries
+		return defaultPublishMaxRetries
 	}
 	n, err := strconv.Atoi(raw)
 	if err != nil || n < 0 {
-		return defaultMaxRetries
+		return defaultPublishMaxRetries
 	}
 	return n
 }

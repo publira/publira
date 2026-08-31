@@ -11,7 +11,7 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
 | `api/Dockerfile` | Long-running Go HTTP servers (`server/cmd/*`) that stay `CGO_ENABLED=0` |
 | `image/Dockerfile` | Image servers that link Manael / libvips (`image-server`, `admin-image-server`) |
-| `batch/Dockerfile` | One-shot Go jobs (`server/cmd/*`) |
+| `batch/Dockerfile` | Every batch job, as one image (`server/cmd/batch`) |
 | `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
 | `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
 | `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` (included from repo root) |
@@ -34,7 +34,7 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
 | `web` | `APP_NAME` (e.g. `web-admin`) | `PORT` (default `3000`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}` |
 | `api` | `CMD_NAME` (e.g. `api-server`) | `PORT` (default `8000`) | `server/cmd/${CMD_NAME}` → binary `/app/server` |
 | `image` | `CMD_NAME` (e.g. `image-server`) | `PORT` (default `8200`) | `server/cmd/${CMD_NAME}` → binary `/app/server` |
-| `batch` | `CMD_NAME` (e.g. `publish-episodes`) | — | `server/cmd/${CMD_NAME}` → binary `/app/job` |
+| `batch` | — | — | `server/cmd/batch` → binary `/app/job`; the job is a container argument, not a build ARG |
 | `node` | `APP_NAME` (e.g. `email-renderer`) | `PORT` (default `8080`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}`, entry `dist/index.mjs` |
 
 ## Implementation rules
@@ -67,13 +67,13 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
 From the **repository root**, prefer Task (same entrypoint as CI):
 
 ```bash
-# Role representatives (web-host / api-server / publish-episodes / email-renderer / image-server)
+# Role representatives (web-host / api-server / batch / email-renderer / image-server)
 task docker:verify
 
 # Or only what you touched
 task docker:build:web APP_NAME=web-admin PORT=4000
 task docker:build:api CMD_NAME=api-server PORT=8000
-task docker:build:batch CMD_NAME=publish-episodes
+task docker:build:batch
 task docker:build:node APP_NAME=email-renderer PORT=8080
 task docker:build:image CMD_NAME=image-server PORT=8200
 
@@ -84,7 +84,7 @@ task docker:smoke:node APP_NAME=email-renderer PORT=8080
 
 Raw `docker build -f infra/docker/<role>/Dockerfile … .` is fine for debugging; keep context at repo root.
 
-After adding a service/target: update `README.md` examples, `Taskfile.yaml` `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) together.
+After adding a service/target: update `README.md` examples, `Taskfile.yaml` `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) together. A new **batch job** is not a new target — it is a subcommand of `server/cmd/batch`, so none of those three registrations change.
 
 Docker CI strategy and build triage: [`README.md`](./README.md)（Docker の CI 実行戦略 / ビルド失敗時のトリアージ節）.  
 Host CI as a whole (jobs, path filters, triage): [`.github/workflows/README.md`](../../.github/workflows/README.md).  

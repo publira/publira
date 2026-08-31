@@ -23,20 +23,20 @@ func TestResolveStatDate(t *testing.T) {
 	}
 }
 
-func TestResolveDBURL(t *testing.T) {
+func TestResolveContentStatsDBURL(t *testing.T) {
 	t.Setenv("PUBLIRA_CONTENT_STATS_DB_URL", " content-stats-url ")
 	t.Setenv("PUBLIRA_WORKER_DB_URL", "worker-url")
-	if got := resolveDBURL("fallback-url"); got != "content-stats-url" {
+	if got := resolveContentStatsDBURL("fallback-url"); got != "content-stats-url" {
 		t.Fatalf("content stats URL = %q, want content-stats-url", got)
 	}
 
 	t.Setenv("PUBLIRA_CONTENT_STATS_DB_URL", "")
-	if got := resolveDBURL("fallback-url"); got != "worker-url" {
+	if got := resolveContentStatsDBURL("fallback-url"); got != "worker-url" {
 		t.Fatalf("worker URL = %q, want worker-url", got)
 	}
 
 	t.Setenv("PUBLIRA_WORKER_DB_URL", "")
-	if got := resolveDBURL("fallback-url"); got != "fallback-url" {
+	if got := resolveContentStatsDBURL("fallback-url"); got != "fallback-url" {
 		t.Fatalf("fallback URL = %q, want fallback-url", got)
 	}
 }

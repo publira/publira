@@ -138,7 +138,7 @@ e2e/
 
 - **依存 (Compose):** Postgres 18・Valkey（Redis 互換）・RustFS（S3 互換。path-style / バケット `publira`）
 - **アプリ (ホストプロセス):**
-  - `server/bin/api-server` + `server/bin/admin-api-server` + `server/bin/platform-api-server` + `server/bin/publish-episodes` + `server/bin/outbox-worker`
+  - `server/bin/api-server` + `server/bin/admin-api-server` + `server/bin/platform-api-server` + `server/bin/batch publish-episodes` + `server/bin/outbox-worker`
   - `apps/web-host` / `apps/web-admin` / `apps/web-platform`（standalone の `node server.js`）
 - **seed:** 開発用 `task db:setup`（public domain `localhost` / admin domain `admin.localhost` / テナント名 `Seed Tenant` / platform `platform@example.com`）
 
