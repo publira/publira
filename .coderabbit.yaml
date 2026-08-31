@@ -5,8 +5,6 @@
 # Resolved config: comment `@coderabbitai configuration` on a PR.
 inheritance: true
 
-# Review comments to humans stay Japanese; instruction text is English (token-efficient, like AGENTS.md).
-language: ja-JP
 tone_instructions: >-
   Be concise and technical. No praise. Focus on bugs, security, contract breaks, and policy violations. Skip style nits and anything lint already catches. Keep code identifiers, paths, and commands as-is.
 

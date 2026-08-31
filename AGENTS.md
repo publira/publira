@@ -4,7 +4,13 @@ Repository-specific conventions for agents. This file is the source of truth for
 
 ## Output language
 
-Always respond to the user in **Japanese**, even though this guide and the rest of this repository's documentation are written in English. Code, identifiers, commit messages, and quoted technical terms stay as-is; explanations, summaries, and questions to the user must be Japanese.
+Respond to the user in the language they wrote in, even though this guide and the rest of this repository's documentation are written in English. A Japanese message is answered in Japanese, an English one in English. Publira is open source, so a contributor working here is not necessarily a Japanese reader, and a fixed response language would hand them a terminal they cannot read.
+
+Judge the language from the user's own prose, not from what the prompt quotes: a log line, an error message, a UI string, or a snippet of code pasted into an English question does not make the question Japanese.
+
+When a run has no user message at all — a scheduled run, an agent started from CI, an autonomous loop — respond in **English**. This repository's own documentation is English, and there is no way to know who reads such a transcript.
+
+Code, identifiers, commit messages, and quoted technical terms stay as-is in either direction; only the explanations, summaries, and questions to the user follow the user's language.
 
 ## Documentation and test labels: English
 
