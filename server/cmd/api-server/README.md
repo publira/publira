@@ -1,42 +1,42 @@
 # api-server
 
-公開向け ConnectRPC API サーバーです。
+The public ConnectRPC API server.
 
-## 起動
+## Running
 
-リポジトリルートから:
+From the repository root:
 
 ```bash
 make dev-api
 ```
 
-`server` ディレクトリから:
+From the `server` directory:
 
 ```bash
 go run ./cmd/api-server
 ```
 
-ビルド済みバイナリを使う場合:
+Using a pre-built binary:
 
 ```bash
 cd server && make build
 ./bin/api-server
 ```
 
-## 主な環境変数
+## Main environment variables
 
-- `PUBLIRA_PUBLIC_DB_URL` (任意, 未指定時は開発用デフォルト)
-- `PUBLIRA_AUTH_JWT_SECRET` (必須, 32 バイト以上。アクセストークンの HS256 署名鍵。未設定なら起動に失敗する。詳細は [リポジトリ README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
-- `PUBLIRA_S3_BUCKET` (必須)
-- `AWS_REGION` (任意)
-- `PUBLIRA_S3_ENDPOINT` (任意)
-- `PUBLIRA_S3_FORCE_PATH_STYLE` (任意)
-- `PUBLIRA_S3_PUBLIC_BASE_URL` (任意)
-- `PUBLIRA_TRACING_ENABLED` (任意, 既定は無効。OpenTelemetry トレースの有効化)
-- `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (任意, 未指定時 `development`。`deployment.environment.name` と既定サンプリング率を決める)
+- `PUBLIRA_PUBLIC_DB_URL` (optional; a development default is used when unset)
+- `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens. The server fails to start when it is unset. For the details, see the [repository README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
+- `PUBLIRA_S3_BUCKET` (required)
+- `AWS_REGION` (optional)
+- `PUBLIRA_S3_ENDPOINT` (optional)
+- `PUBLIRA_S3_FORCE_PATH_STYLE` (optional)
+- `PUBLIRA_S3_PUBLIC_BASE_URL` (optional)
+- `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
+- `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 
-トレースの属性・span 命名・サンプリング・`OTEL_*` の一覧は [server/README.md](../../README.md#分散トレーシング-opentelemetry) にあります。
+The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
-## 備考
+## Notes
 
-- 既定の待ち受けアドレスは `:8000` です。
+- The default listen address is `:8000`.

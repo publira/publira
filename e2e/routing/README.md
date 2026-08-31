@@ -10,7 +10,7 @@ Playwright E2E（[`../README.md`](../README.md)）はアプリポートへ直結
 
 Traefik の振り分けは `.devcontainer/compose.yaml` の `app` labels だけが正である。priority・HostRegexp・`/api` の strip-prefix・`/api/v1/revalidate` の除外・`/images` の admin 分岐は、ラベルを 1 行変えただけで壊れる。その退行は `pnpm preflight` でも Playwright でも bootstrap でも見えない。
 
-`web` エントリポイントの `strip-trace-context` ミドルウェアも同じ立場にある。これは外来の `traceparent` / `tracestate` / `baggage` を落とす信頼境界で、外れても通信は普通に成功するため、検証しなければ誰も気づかない。詳細は [`../../server/README.md`](../../server/README.md#外部から届く-trace-context) を参照。
+`web` エントリポイントの `strip-trace-context` ミドルウェアも同じ立場にある。これは外来の `traceparent` / `tracestate` / `baggage` を落とす信頼境界で、外れても通信は普通に成功するため、検証しなければ誰も気づかない。詳細は [`../../server/README.md`](../../server/README.md#trace-context-arriving-from-outside) を参照。
 
 本チェックは **同じ compose ファイル** を専用 project 名で起動し、`app` のプロセスだけをポート応答用の echo サーバーに差し替える。ラベルはそのままなので、compose 上のルール変更がそのままテストに現れる。
 

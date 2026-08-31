@@ -89,7 +89,7 @@ When a tenant logo is set, the brand area of the public site header shows its de
 
 ### Episode purchase
 
-The checkout button on a paid episode leads to Stripe Checkout. After the reader comes back from Stripe, the purchase recorded by the `checkout.session.completed` webhook grants access to the body images. web-host itself holds no Stripe secret key. The return URL and the webhook are received on the tenant's public domain; for the procedure, see the [server README](../../server/README.md#stripe-checkoutエピソード購入).
+The checkout button on a paid episode leads to Stripe Checkout. After the reader comes back from Stripe, the purchase recorded by the `checkout.session.completed` webhook grants access to the body images. web-host itself holds no Stripe secret key. The return URL and the webhook are received on the tenant's public domain; for the procedure, see the [server README](../../server/README.md#stripe-checkout-episode-purchases).
 
 ## What it covers
 

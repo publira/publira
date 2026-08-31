@@ -1,41 +1,41 @@
 # image-server
 
-公開向け画像配送サーバーです。権限確認のあと、Manael で WebP / AVIF への変換と縮小を行い、変換結果を中間キャッシュして返します。
+The public image delivery server. After checking permissions, it converts images to WebP / AVIF with Manael, resizes them, caches the converted result, and returns it.
 
-## 起動
+## Running
 
-リポジトリルートから:
+From the repository root:
 
 ```bash
 task server:dev-image-server
 ```
 
-`server` ディレクトリから:
+From the `server` directory:
 
 ```bash
 go run ./cmd/image-server
 ```
 
-Manael は libvips を使うため、ビルドと実行には `libvips-dev`（実行時は `libvips42`）が必要です。Dev Container には含まれます。本番イメージは `infra/docker/image/Dockerfile`（`CMD_NAME=image-server`）です。管理向けは同じハンドラを [admin-image-server](../admin-image-server/README.md) が載せます。
+Manael uses libvips, so building and running require `libvips-dev` (`libvips42` at runtime). The Dev Container includes them. The production image is `infra/docker/image/Dockerfile` (`CMD_NAME=image-server`). On the admin side, [admin-image-server](../admin-image-server/README.md) mounts the same handler.
 
-## 主な環境変数
+## Main environment variables
 
-- `PUBLIRA_IMAGE_SERVER_ADDR` (任意, 既定 `:8200`)
-- `PUBLIRA_IMAGE_DB_URL` / `PUBLIRA_PUBLIC_DB_URL` (任意。どちらも未設定なら `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable`)
-- `PUBLIRA_AUTH_JWT_SECRET` (必須, 32 バイト以上)
-- `PUBLIRA_S3_BUCKET` (必須)
-- `AWS_REGION` / `PUBLIRA_S3_ENDPOINT` / `PUBLIRA_S3_FORCE_PATH_STYLE` (ストレージ)
-- `PUBLIRA_REDIS_URL` (任意。未設定 / `disabled` / `off` / `false` のときはメモリキャッシュのみ)
-- `PUBLIRA_IMAGE_CACHE_TTL` (任意。変換結果の TTL。Go duration または秒数。既定 `1h`)
+- `PUBLIRA_IMAGE_SERVER_ADDR` (optional, default `:8200`)
+- `PUBLIRA_IMAGE_DB_URL` / `PUBLIRA_PUBLIC_DB_URL` (optional. When neither is set, `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable`)
+- `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes)
+- `PUBLIRA_S3_BUCKET` (required)
+- `AWS_REGION` / `PUBLIRA_S3_ENDPOINT` / `PUBLIRA_S3_FORCE_PATH_STYLE` (storage)
+- `PUBLIRA_REDIS_URL` (optional. Unset / `disabled` / `off` / `false` means the memory cache only)
+- `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted result. A Go duration or a number of seconds. Default `1h`)
 
-変換はリクエストの `Accept`（`image/webp` / `image/avif`）と `w` / `h` / `fit` / `q` クエリに従います。中間キャッシュのキーも同じ入力から決まります。ヒット時はレスポンスヘッダ `X-Publira-Image-Cache: hit`、ミス時は `miss` です。
+Conversion follows the request's `Accept` (`image/webp` / `image/avif`) and the `w` / `h` / `fit` / `q` query parameters. The key of the intermediate cache is derived from the same inputs. On a hit the response header is `X-Publira-Image-Cache: hit`, and on a miss it is `miss`.
 
-## エピソード本文画像の認可
+## Authorization for episode body images
 
-`GET /images/episodes/{media_id}` は次の順で読者を特定します。
+`GET /images/episodes/{media_id}` identifies the reader in the following order.
 
-1. `Authorization: Bearer <JWT>`（audience `public`）
-2. クエリ `t=<JWT>`（audience `media`。ブラウザの `<img>` はヘッダーを付けられないため、`GetEpisodeDetail` が URL に付けて返す）
-3. どちらも無い / 検証に失敗した場合は無記名扱い
+1. `Authorization: Bearer <JWT>` (audience `public`)
+2. The `t=<JWT>` query (audience `media`. Because a browser cannot attach a header to an `<img>`, `GetEpisodeDetail` appends it to the URL)
+3. If neither is present, or verification fails, the request is treated as anonymous
 
-特定できた場合は `GetEpisodeImageAccessByIDForUser`、無記名なら `GetEpisodeImagePublicAccessByIDForTenant` で判定します。どちらも「`price = 0` / 有効な purchase / 有効な access ticket」という API と同じ規則です。`media` トークンは発行元のエピソード以外には効かず、クエリの `t` は中間キャッシュのキーに含めません。管理画面向けの `admin-media` トークンはこのプロセスでは検証しません。詳細は [server/README.md](../../README.md) の認証節を参照してください。
+When the reader is identified, the decision uses `GetEpisodeImageAccessByIDForUser`; for an anonymous request it uses `GetEpisodeImagePublicAccessByIDForTenant`. Both follow the same rules as the API: `price = 0`, a valid purchase, or a valid access ticket. A `media` token has no effect outside the episode it was issued for, and the `t` query is not part of the intermediate cache key. The `admin-media` tokens meant for the admin UI are not verified by this process. For the details, see the authentication sections of [server/README.md](../../README.md).

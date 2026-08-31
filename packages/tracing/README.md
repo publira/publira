@@ -72,6 +72,6 @@ NEXT_OTEL_VERBOSE=1 pnpm --dir apps/web-host dev
 | ブラウザ → Next.js の inbound | Next.js 組み込み（`GET /[tenant_id]/[locale]` などの root span） |
 | `proxy.ts` | Next.js 組み込み（`middleware GET`）。ページのレンダリングとは**別のトレース**になります |
 | SSR → Go API の Connect / gRPC | [`@publira/api-client`](../api-client) の tracing interceptor（client span と `traceparent` の送出） |
-| Go API の inbound・DB クエリ | [`server/internal/tracing`](../../server/README.md#分散トレーシング-opentelemetry) |
+| Go API の inbound・DB クエリ | [`server/internal/tracing`](../../server/README.md#distributed-tracing-opentelemetry) |
 
 伝播は W3C Trace Context です。Go の Connect ハンドラは inbound の `traceparent` を親として信頼するので、Web アプリ → API → DB が 1 本のトレースになります。
