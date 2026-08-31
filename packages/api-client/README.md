@@ -93,7 +93,7 @@ const stop = await forEachPageWithToken(
   },
   { pageSize: 50 }
 );
-// stop === "max-pages" | "max-rows" means the list was only read partway
+// stop === "max-pages" | "max-rows" | "repeated-token" means the list was only read partway
 ```
 
 ## The tenant header

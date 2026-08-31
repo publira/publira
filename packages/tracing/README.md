@@ -32,7 +32,7 @@ Only two variables are ours — the enable flag and the deployment environment. 
 | `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG` | The sampler. Setting it bypasses the defaults below and lets the SDK interpret the value |
 | `NEXT_OTEL_VERBOSE` | `1` emits Next.js's detailed spans (off by default) |
 
-**Tracing is off by default.** Unless `PUBLIRA_TRACING_ENABLED` is set, `registerTracing` registers nothing and Next.js's instrumentation records into OpenTelemetry's no-op provider. The app starts and serves requests with no collector in place.
+**Tracing is off by default.** Without a recognized truthy `PUBLIRA_TRACING_ENABLED` (`true` / `1` / `t`), `registerTracing` registers nothing and Next.js's instrumentation records into OpenTelemetry's no-op provider. The app starts and serves requests with no collector in place.
 
 ## Resource attributes
 
