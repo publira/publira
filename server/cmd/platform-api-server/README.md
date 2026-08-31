@@ -27,7 +27,7 @@ cd server && make build
 
 - `PUBLIRA_PLATFORM_API_ADDR` (任意, 未指定時 `:8002`)
 - `PUBLIRA_PLATFORM_DB_URL` (任意, 未指定時は開発用デフォルト)
-- `PUBLIRA_AUTH_JWT_SECRET` (必須, 32 バイト以上。アクセストークンの HS256 署名鍵。未設定なら起動に失敗する。詳細は [リポジトリ README](../../../README.md#api-アクセストークンの署名鍵-publira_auth_jwt_secret))
+- `PUBLIRA_AUTH_JWT_SECRET` (必須, 32 バイト以上。アクセストークンの HS256 署名鍵。未設定なら起動に失敗する。詳細は [リポジトリ README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
 - `PUBLIRA_TRACING_ENABLED` (任意, 既定は無効。OpenTelemetry トレースの有効化)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (任意, 未指定時 `development`。`deployment.environment.name` と既定サンプリング率を決める)
 

@@ -124,7 +124,7 @@ aws CLI で `PUBLIRA_S3_BUCKET` を作成します（既存ならそのまま成
 
 ### 開発環境 (RustFS)
 
-Dev Container では S3 互換の RustFS が起動し、path-style で接続します（エンドポイント `http://rustfs:9000`、バケット `publira`、資格情報はローカル専用の `publira` / `publirapass`）。値の一覧とコンソール URL は [../README.md](../README.md#開発用オブジェクトストレージ-rustfs) を参照してください。
+Dev Container では S3 互換の RustFS が起動し、path-style で接続します（エンドポイント `http://rustfs:9000`、バケット `publira`、資格情報はローカル専用の `publira` / `publirapass`）。値の一覧とコンソール URL は [../README.md](../README.md#object-storage-for-development-rustfs) を参照してください。
 
 RustFS に対する Go の統合テストは `internal/testutil` の Testcontainers ヘルパー (`StartRustFS`) を使い、`internal/storage/s3` のアップロードと `internal/imageserver` の取得を検証します（`-short` や Docker 不在ではスキップ）。
 
@@ -286,7 +286,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 PUBLIRA_TRACING_ENABLED=true OTEL_TRACES_EXPORTER=console task server:dev-admin-api
 ```
 
-Dev Container には Jaeger が同梱されています（UI は `http://localhost:16686`）。詳細は [../README.md](../README.md#分散トレーシング-jaeger) を参照してください。
+Dev Container には Jaeger が同梱されています（UI は `http://localhost:16686`）。詳細は [../README.md](../README.md#distributed-tracing-jaeger) を参照してください。
 
 ## 機密情報の暗号化設定 (AES-GCM)
 
