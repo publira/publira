@@ -1,27 +1,30 @@
 # apps
 
-Web フロントエンド群です。Turborepo 上でホスト単位の Next.js アプリを管理します。
+The web frontends. Turborepo manages one Next.js app per host.
 
-## アプリ一覧
+## Apps
 
-| アプリ | ポート | 用途 |
+| App | Port | Purpose |
 | --- | --- | --- |
-| `web-host/` | 3000 | テナント公開サイト（カタログ・認証・マイページ・静的公開ページ） |
-| `web-admin/` | 4000 | 出版社・編集者向け入稿/運用管理画面 |
-| `web-platform/` | 4100 | プラットフォーム運営者向けテナント横断オペレーション画面 |
-| `email-renderer/` | 8080 | React Email テンプレートを HTML/テキストへ変換する ConnectRPC サービス |
+| `web-host/` | 3000 | Public tenant site (catalog, authentication, member pages, static public pages) |
+| `web-admin/` | 4000 | Content entry and operations console for publishers and editors |
+| `web-platform/` | 4100 | Cross-tenant operations console for platform operators |
+| `email-renderer/` | 8080 | ConnectRPC service that renders React Email templates into HTML and text |
 
-## 開発コマンド
+## Development commands
 
 ```bash
-# 全アプリ起動
-task server:dev-web
+# Start every app, including email-renderer (Turbo runs each app's dev script)
+pnpm dev
 
-# 個別起動
+# Start every app together with the Go server
+task dev
+
+# Start one app
 cd apps/web-host     && pnpm dev
 cd apps/web-admin    && pnpm dev
 cd apps/web-platform && pnpm dev
 cd apps/email-renderer && pnpm dev
 ```
 
-worktree 用プロファイルでは、通常コマンドの前に `eval "$(task --silent dev-env:env)"` を実行します。`web-host`、`web-admin`、`web-platform` の `pnpm dev` は `PORT` を受け取るため、プロファイルが割り当てたポートで待ち受けます。
+With a worktree profile, run `eval "$(task --silent dev-env:env)"` before the usual command. `pnpm dev` of `web-host`, `web-admin`, and `web-platform` honors `PORT`, so each one listens on the port the profile assigned.
