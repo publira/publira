@@ -9,11 +9,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import {
-  apiClient,
-  buildSessionHeaders,
-  resolveAccessToken,
-} from "#lib/api-client";
+import { apiClient, buildSessionHeaders } from "#lib/api-client";
 import { tenantIdSchema } from "#lib/auth-input";
 import { redirectToLogin, requirePublicSession } from "#lib/auth-session";
 import { isUnauthenticatedError } from "#lib/auth-shared";
@@ -30,59 +26,6 @@ const checkoutFormSchema = z.object({
   seriesPublicId: publicIDFormSchema,
   tenantId: tenantIdSchema,
 });
-
-const markAsReadSchema = z.object({
-  episodePublicId: publicIDFormSchema,
-  tenantId: tenantIdSchema,
-});
-
-/**
- * Record that the signed-in member has finished reading this episode.
- *
- * A guest is left alone: no login redirect, no anonymous row. Reaching the
- * last page is not a request to sign in, and the reader already has what they
- * came for. The same goes for an episode this member may no longer read — the
- * API re-checks publication and paid-body access on the write itself and
- * answers `NotFound`, so nothing here decides on its behalf.
- *
- * The boolean is what the viewer suppresses repeat sends with: `true` means a
- * record stands and no second attempt is needed, and `false` means the next
- * arrival at the last page may try again. It says nothing to the reader —
- * there is no read badge on this screen yet (#1227) — so a rejection is not
- * worded, only reported.
- */
-export const markEpisodeAsReadAction = async (input: {
-  episodePublicId: string;
-  tenantId: string;
-}): Promise<boolean> => {
-  await assertSameOrigin();
-  const parsed = markAsReadSchema.safeParse(input);
-  if (!parsed.success) {
-    return false;
-  }
-
-  const sessionId = await resolveAccessToken();
-  if (!sessionId) {
-    return false;
-  }
-
-  const { episodePublicId, tenantId } = parsed.data;
-  try {
-    await apiClient.episodeRead.markEpisodeAsRead(
-      { episodePublicId, tenant: { tenantId } },
-      buildSessionHeaders(sessionId)
-    );
-    return true;
-  } catch (error) {
-    // An expired session, an episode that has since been unpublished, an
-    // entitlement that has run out: each is an answer, and none of them is
-    // something to interrupt the reader over. Anything unclassifiable is a
-    // real failure and still reaches the caller, which fails the Action alone
-    // and leaves the viewer running.
-    rethrowUnclassifiedRpcError(error);
-    return false;
-  }
-};
 
 const episodePath = (seriesPublicId: string, episodePublicId: string): string =>
   `/series/${seriesPublicId}/episodes/${episodePublicId}`;

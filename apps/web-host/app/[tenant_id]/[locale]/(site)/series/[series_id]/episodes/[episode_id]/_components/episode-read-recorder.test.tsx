@@ -8,30 +8,28 @@ import {
   ViewerProvider,
 } from "@publira/comic-viewer";
 import type { ViewerPage, ViewMode } from "@publira/comic-viewer";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { EpisodeDetail } from "#lib/catalog";
 
 import { EpisodeReadRecorder } from "./episode-read-recorder";
 
-const { mockMarkEpisodeAsReadAction } = vi.hoisted(() => ({
-  mockMarkEpisodeAsReadAction: vi.fn(),
-}));
-
-vi.mock("../_lib/actions", () => ({
-  markEpisodeAsReadAction: mockMarkEpisodeAsReadAction,
-}));
+const sendBeacon = vi.fn((_url: string, _body: Blob) => true);
 
 /** The reader's own pairing rule: the cover stands alone (#356). */
 const SPREAD_START_INDEX = 1;
 
-const episodePublicId = "EPISODE_001";
-const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const episode: EpisodeDetail = {
+  orderIndex: 1,
+  price: 0,
+  publicId: "EPISODE_001",
+  publishedAt: "2026-08-01T00:00:00Z",
+  readingPeriodHours: 0,
+  scheduledAt: "",
+  status: "published",
+  title: "First light",
+};
 
 const buildPages = (pageCount: number): ViewerPage[] =>
   Array.from({ length: pageCount }, (_, index) => ({
@@ -77,10 +75,7 @@ const renderViewer = ({
       <NextPageButton>Next</NextPageButton>
       <GestureNavigation />
       <PageStatus />
-      <EpisodeReadRecorder
-        episodePublicId={episodePublicId}
-        tenantId={tenantId}
-      />
+      <EpisodeReadRecorder episode={episode} />
     </ViewerProvider>
   );
 
@@ -88,136 +83,98 @@ const turnPage = (name: "Next page" | "Previous page" | "Swipe forward") => {
   fireEvent.click(screen.getByRole("button", { name }));
 };
 
-/**
- * Lets every attempt started so far settle, so the next page turn sees the
- * suppression state the finished attempt left behind.
- */
-const settleAttempts = async (): Promise<void> => {
-  await Promise.allSettled(
-    mockMarkEpisodeAsReadAction.mock.results.map((result) => result.value)
-  );
+const sentBody = async (call: number): Promise<unknown> => {
+  const [, blob] = sendBeacon.mock.calls[call];
+  return JSON.parse(await blob.text());
 };
 
 beforeEach(() => {
-  mockMarkEpisodeAsReadAction.mockResolvedValue(true);
+  vi.stubGlobal("navigator", { ...navigator, sendBeacon });
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("EpisodeReadRecorder", () => {
-  it("records nothing while pages are still left to read", () => {
+  it("reports nothing while pages are still left to read", () => {
     renderViewer({ pageCount: 3 });
     turnPage("Next page");
 
-    expect(mockMarkEpisodeAsReadAction).not.toHaveBeenCalled();
+    expect(sendBeacon).not.toHaveBeenCalled();
   });
 
-  it("records the read when the next-page button reaches the last page", () => {
+  it("reports the read when the next-page button reaches the last page", async () => {
     renderViewer({ pageCount: 3 });
     turnPage("Next page");
     turnPage("Next page");
 
-    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledExactlyOnceWith({
-      episodePublicId,
-      tenantId,
-    });
+    expect(sendBeacon).toHaveBeenCalledOnce();
+    // The tenant comes from the segment the proxy rewrote, never the body.
+    expect(sendBeacon.mock.calls[0][0]).toBe("/api/v1/episode-reads");
+    await expect(sentBody(0)).resolves.toEqual({ publicId: "EPISODE_001" });
   });
 
-  it("records the read when a swipe reaches the last page", () => {
+  it("reports the read when a swipe reaches the last page", () => {
     renderViewer({ pageCount: 2 });
     turnPage("Swipe forward");
 
-    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledExactlyOnceWith({
-      episodePublicId,
-      tenantId,
-    });
+    expect(sendBeacon).toHaveBeenCalledOnce();
   });
 
-  it("records a spread that carries the last page", () => {
+  it("reports a spread that carries the last page", () => {
     // Five pages: the cover alone, then 2-3, then 4-5.
     renderViewer({ pageCount: 5, viewMode: "double" });
     turnPage("Next page");
 
     expect(screen.getByText("Pages 2-3 of 5")).toBeDefined();
-    expect(mockMarkEpisodeAsReadAction).not.toHaveBeenCalled();
+    expect(sendBeacon).not.toHaveBeenCalled();
 
     turnPage("Next page");
 
     expect(screen.getByText("Pages 4-5 of 5")).toBeDefined();
-    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledOnce();
+    expect(sendBeacon).toHaveBeenCalledOnce();
   });
 
-  it("records a one-page episode without any page turn", () => {
+  it("reports a one-page episode without any page turn", () => {
     renderViewer({ pageCount: 1 });
 
-    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledExactlyOnceWith({
-      episodePublicId,
-      tenantId,
-    });
+    expect(sendBeacon).toHaveBeenCalledOnce();
   });
 
-  it("sends nothing more once the read stands", async () => {
+  it("sends nothing more once the read has been handed over", () => {
     renderViewer({ pageCount: 2 });
     turnPage("Next page");
-    await settleAttempts();
 
     turnPage("Previous page");
     turnPage("Next page");
 
-    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledOnce();
+    expect(sendBeacon).toHaveBeenCalledOnce();
   });
 
-  it("tries again the next time the reader reaches the last page", async () => {
-    mockMarkEpisodeAsReadAction.mockResolvedValueOnce(false);
+  it("tries again the next time the reader reaches a last page the browser refused", () => {
+    sendBeacon.mockReturnValueOnce(false);
 
     renderViewer({ pageCount: 2 });
     turnPage("Next page");
-    await settleAttempts();
 
     turnPage("Previous page");
     turnPage("Next page");
 
-    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledTimes(2);
+    expect(sendBeacon).toHaveBeenCalledTimes(2);
   });
 
-  it("takes up an arrival that landed while a failing attempt was in flight", async () => {
-    const attempt = Promise.withResolvers<boolean>();
-    mockMarkEpisodeAsReadAction.mockReturnValueOnce(attempt.promise);
+  it("leaves the reader turning pages when the browser cannot queue it", () => {
+    sendBeacon.mockReturnValue(false);
 
     renderViewer({ pageCount: 2 });
     turnPage("Next page");
-
-    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledOnce();
-
-    // The reader turns back and returns before the first attempt settles.
-    turnPage("Previous page");
-    turnPage("Next page");
-
-    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledOnce();
-
-    attempt.resolve(false);
-    await act(async () => {
-      await attempt.promise;
-    });
-
-    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledTimes(2);
-  });
-
-  it("leaves the reader turning pages when recording throws", async () => {
-    mockMarkEpisodeAsReadAction.mockRejectedValueOnce(new Error("unreachable"));
-
-    renderViewer({ pageCount: 2 });
-    turnPage("Next page");
-    await settleAttempts();
 
     expect(screen.getByText("Page 2 of 2")).toBeDefined();
 
     turnPage("Previous page");
 
     expect(screen.getByText("Page 1 of 2")).toBeDefined();
-
-    turnPage("Next page");
-
-    expect(mockMarkEpisodeAsReadAction).toHaveBeenCalledTimes(2);
   });
 });
