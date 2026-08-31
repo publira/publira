@@ -281,7 +281,7 @@ describe("platform-settings", () => {
     await expect(getPlatformDisplayLocale()).resolves.toBe("en");
   });
 
-  it("表示言語は取得に失敗しても ja に落ちる", async () => {
+  it("falls back to ja when the settings read fails", async () => {
     mockGetPlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError("platform api unavailable", Code.Unavailable)
     );

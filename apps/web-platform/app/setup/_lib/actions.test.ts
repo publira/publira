@@ -45,10 +45,13 @@ describe("setupAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    mockGetInitialLocaleCandidate.mockResolvedValue("en");
+    // Deliberately not the locale the fixture submits: what gets saved is the
+    // operator's pick, and the header only decided which option opened
+    // selected.
+    mockGetInitialLocaleCandidate.mockResolvedValue("ja");
   });
 
-  it("saves the locale chosen on the form as the platform default", async () => {
+  it("saves the locale chosen on the form rather than the negotiated one", async () => {
     mockCreateInitialUser.mockResolvedValueOnce({ ok: true });
 
     const { setupAction } = await import("./actions");
@@ -59,13 +62,16 @@ describe("setupAction", () => {
     expect(mockCreateInitialUser).toHaveBeenCalledWith({
       defaultLocale: "en",
       email: "admin@example.com",
-      locale: "en",
+      // The failure copy follows the screen, which renders in the negotiated
+      // locale; only `defaultLocale` is the operator's choice.
+      locale: "ja",
       name: "Admin User",
       password: "correct-horse-battery",
     });
   });
 
   it("saves ja when that is what the operator picked", async () => {
+    mockGetInitialLocaleCandidate.mockResolvedValue("en");
     mockCreateInitialUser.mockResolvedValueOnce({ ok: true });
 
     const { setupAction } = await import("./actions");

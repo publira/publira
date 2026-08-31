@@ -138,7 +138,7 @@ describe("resolveSetupCompleted", () => {
 });
 
 describe("createInitialUser", () => {
-  it("API 成功時は ok=true を返す", async () => {
+  it("sends the chosen default locale and reports success", async () => {
     mockCreateInitialUser.mockResolvedValueOnce({});
 
     await expect(
@@ -158,7 +158,7 @@ describe("createInitialUser", () => {
     });
   });
 
-  it("セットアップ済みエラー時は専用メッセージを返す", async () => {
+  it("reports an already-completed setup with its own message", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
       new ConnectError("setup already completed", Code.AlreadyExists)
     );
@@ -179,7 +179,7 @@ describe("createInitialUser", () => {
     });
   });
 
-  it("入力エラー時は入力内容エラーのメッセージを返す", async () => {
+  it("reports an invalid argument as a validation message", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
       new ConnectError("invalid email", Code.InvalidArgument)
     );
@@ -199,7 +199,7 @@ describe("createInitialUser", () => {
     });
   });
 
-  it("locale=en では英語のメッセージを返す", async () => {
+  it("renders the failure copy in the locale it was given", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
       new ConnectError("setup already completed", Code.AlreadyExists)
     );
@@ -219,7 +219,7 @@ describe("createInitialUser", () => {
     });
   });
 
-  it("分類できない RPC エラーは伝播する", async () => {
+  it("rethrows an RPC error it cannot classify", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
@@ -235,7 +235,7 @@ describe("createInitialUser", () => {
     ).rejects.toThrow("boom");
   });
 
-  it("RPC 由来でない例外も伝播する", async () => {
+  it("rethrows a rejection that is not an RPC error", async () => {
     mockCreateInitialUser.mockRejectedValueOnce("boom");
 
     await expect(

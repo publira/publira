@@ -57,6 +57,9 @@ describe("createTenantAction", () => {
     // `withPlatformSessionReauth` resolves the session before the mutation
     // runs; without a token the Action would redirect to /login instead.
     mockResolveAccessToken.mockResolvedValue("session-token");
+    // Deliberately not the locale the success case submits: the new tenant's
+    // language comes from the form, not from the console the operator is
+    // looking at.
     mockGetPlatformLocale.mockResolvedValue("en");
   });
 
@@ -68,12 +71,12 @@ describe("createTenantAction", () => {
 
     const { createTenantAction } = await import("./actions");
 
-    await expect(createTenantAction(null, tenantFormData())).rejects.toThrow(
-      "NEXT_REDIRECT:/tenants/TENANT00001"
-    );
+    await expect(
+      createTenantAction(null, tenantFormData({ tenant_default_locale: "ja" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/tenants/TENANT00001");
     expect(mockCreatePlatformTenant).toHaveBeenCalledWith(
       expect.objectContaining({
-        defaultLocale: "en",
+        defaultLocale: "ja",
         domain: "tenant-example.example.com",
         name: "Example Tenant",
       })
