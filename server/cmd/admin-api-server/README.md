@@ -7,7 +7,7 @@ The admin ConnectRPC API server.
 From the repository root:
 
 ```bash
-make dev-admin-api
+task server:dev-admin-api
 ```
 
 From the `server` directory:
@@ -19,8 +19,8 @@ go run ./cmd/admin-api-server
 Using a pre-built binary:
 
 ```bash
-cd server && make build
-./bin/admin-api-server
+task server:build
+./server/bin/admin-api-server
 ```
 
 ## Main environment variables

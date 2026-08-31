@@ -7,7 +7,7 @@ The ConnectRPC API server for platform administration.
 From the repository root:
 
 ```bash
-make dev-platform-api
+task server:dev-platform-api
 ```
 
 From the `server` directory:
@@ -19,8 +19,8 @@ go run ./cmd/platform-api-server
 Using a pre-built binary:
 
 ```bash
-cd server && make build
-./bin/platform-api-server
+task server:build
+./server/bin/platform-api-server
 ```
 
 ## Main environment variables
