@@ -19,22 +19,13 @@
  * Only top-level fields are reported, which is the shape of a form schema.
  */
 
-import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
 import { z } from "zod";
 
-import { FALLBACK_LOCALE } from "./fallback-locale";
-
-/**
- * Shared wording so a rejected form reads the same in all three apps.
- * Omit `locale` (or pass an unknown value) to keep the Japanese default.
- */
-export const validationErrorMessage = (locale?: Locale | string): string =>
-  sharedMessage("errors.validation", parseLocale(locale) ?? FALLBACK_LOCALE);
-
-/** Japanese default. Prefer {@link validationErrorMessage} when a locale is known. */
-export const VALIDATION_ERROR_MESSAGE = validationErrorMessage();
+/** Shared wording so a rejected form reads the same in all three apps. */
+export const validationErrorMessage = (locale: Locale): string =>
+  sharedMessage("errors.validation", locale);
 
 /** At most one message per schema field, ready to hand to the form controls. */
 export type FieldErrors<T> = {
@@ -44,8 +35,8 @@ export type FieldErrors<T> = {
 export interface FormErrorMessageOptions {
   /** Used when the error carries no message at all. Default: {@link validationErrorMessage} for `locale`. */
   fallback?: string;
-  /** UI locale (`ja` | `en`). Unknown values fall back to `ja`. */
-  locale?: Locale | string;
+  /** UI locale the rejection is worded in. */
+  locale: Locale;
 }
 
 /**
@@ -74,7 +65,7 @@ export const toFieldErrors = <T>(error: z.ZodError<T>): FieldErrors<T> => {
  */
 export const toFormErrorMessage = <T>(
   error: z.ZodError<T>,
-  options?: FormErrorMessageOptions
+  options: FormErrorMessageOptions
 ): string => {
   const { fieldErrors, formErrors } = z.flattenError(error);
   const [formError] = formErrors;
@@ -89,5 +80,5 @@ export const toFormErrorMessage = <T>(
     }
   }
 
-  return options?.fallback ?? validationErrorMessage(options?.locale);
+  return options.fallback ?? validationErrorMessage(options.locale);
 };

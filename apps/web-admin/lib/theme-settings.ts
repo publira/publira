@@ -16,7 +16,6 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import {
   mentionsIconRejection,
   mentionsLogoRejection,
@@ -152,7 +151,7 @@ const toTenantTheme = (
 
 export const getTenantThemeSettings = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantThemeSettingsResult> => {
   "use cache: private";
 
@@ -209,10 +208,11 @@ export const getTenantThemeSettings = async (
  * text instead of taking the layout down.
  */
 export const getTenantThemeLogo = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale
 ): Promise<TenantBrandingImage | null> => {
   try {
-    const result = await getTenantThemeSettings(tenantId);
+    const result = await getTenantThemeSettings(tenantId, locale);
     return result.ok ? result.logo : null;
   } catch {
     return null;
@@ -221,7 +221,7 @@ export const getTenantThemeLogo = async (
 
 export const updateTenantThemeSettings = async (
   input: UpdateTenantThemeSettingsInput,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantThemeSettingsResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -295,7 +295,7 @@ export const updateTenantThemeSettings = async (
 
 export const uploadTenantIcon = async (
   input: UploadTenantIconInput,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantIconResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -337,7 +337,7 @@ export const uploadTenantIcon = async (
 
 export const deleteTenantIcon = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantIconResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -375,7 +375,7 @@ export const deleteTenantIcon = async (
 
 export const uploadTenantLogo = async (
   input: UploadTenantLogoInput,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantLogoResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -417,7 +417,7 @@ export const uploadTenantLogo = async (
 
 export const deleteTenantLogo = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantLogoResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

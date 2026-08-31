@@ -30,7 +30,8 @@ import { AnnouncementManager } from "./_components/announcement-manager";
 type AnnouncementsPageProps = PageProps<"/[tenant_id]/announcements">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.announcements.title") };
@@ -57,7 +58,7 @@ const AnnouncementManagerData = async ({
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
   const [listResult, timeZone] = await Promise.all([
-    listAnnouncements(tenantId, { token }, locale),
+    listAnnouncements(tenantId, locale, { token }),
     getTenantDisplayTimeZone(tenantId),
   ]);
 

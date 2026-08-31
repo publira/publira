@@ -43,7 +43,7 @@ describe("listLabels", () => {
     });
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", {
+    const result = await listLabels("TENANT001", "ja", {
       limit: 20,
       token: "current-page",
     });
@@ -67,7 +67,7 @@ describe("listLabels", () => {
     mockListLabels.mockResolvedValue({ labels: [] });
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001");
+    const result = await listLabels("TENANT001", "ja", {});
 
     expect(mockListLabels).toHaveBeenCalledWith(
       {
@@ -94,7 +94,7 @@ describe("listLabels", () => {
     });
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001");
+    const result = await listLabels("TENANT001", "ja", {});
 
     expect(result.labels.map((item) => item.publicId)).toEqual([
       "LABEL002",
@@ -109,7 +109,9 @@ describe("listLabels", () => {
     );
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", { token: "current-page" });
+    const result = await listLabels("TENANT001", "ja", {
+      token: "current-page",
+    });
 
     expect(result).toMatchObject({
       labels: [],
@@ -148,10 +150,13 @@ describe("getLabel", () => {
     });
 
     const { getLabel } = await import("./label");
-    const result = await getLabel({
-      publicId: "LABEL101",
-      tenantId: "TENANT001",
-    });
+    const result = await getLabel(
+      {
+        publicId: "LABEL101",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(mockGetLabel).toHaveBeenCalledExactlyOnceWith(
       {
@@ -184,10 +189,13 @@ describe("getLabel", () => {
 
   it("returns notFound for invalid input without calling the RPC", async () => {
     const { getLabel } = await import("./label");
-    const result = await getLabel({
-      publicId: "   ",
-      tenantId: "TENANT001",
-    });
+    const result = await getLabel(
+      {
+        publicId: "   ",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(mockGetLabel).not.toHaveBeenCalled();
     expect(mockCacheTag).not.toHaveBeenCalled();
@@ -198,10 +206,13 @@ describe("getLabel", () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { getLabel } = await import("./label");
-    const result = await getLabel({
-      publicId: "LABEL001",
-      tenantId: "TENANT001",
-    });
+    const result = await getLabel(
+      {
+        publicId: "LABEL001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(mockGetLabel).not.toHaveBeenCalled();
     expect(result).toEqual({
@@ -220,10 +231,13 @@ describe("getLabel", () => {
     );
 
     const { getLabel } = await import("./label");
-    const result = await getLabel({
-      publicId: "MISSING",
-      tenantId: "TENANT001",
-    });
+    const result = await getLabel(
+      {
+        publicId: "MISSING",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result).toEqual({ notFound: true, ok: false });
   });
@@ -235,10 +249,13 @@ describe("getLabel", () => {
     );
 
     const { getLabel } = await import("./label");
-    const result = await getLabel({
-      publicId: "LABEL001",
-      tenantId: "TENANT001",
-    });
+    const result = await getLabel(
+      {
+        publicId: "LABEL001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result.ok).toBe(false);
     expect(result).not.toMatchObject({ notFound: true });
@@ -248,10 +265,13 @@ describe("getLabel", () => {
     mockGetLabel.mockResolvedValue({});
 
     const { getLabel } = await import("./label");
-    const result = await getLabel({
-      publicId: "LABEL001",
-      tenantId: "TENANT001",
-    });
+    const result = await getLabel(
+      {
+        publicId: "LABEL001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result).toEqual({
       message:
@@ -287,7 +307,7 @@ describe("listAllLabels", () => {
       });
 
     const { listAllLabels } = await import("./label");
-    const result = await listAllLabels("TENANT001");
+    const result = await listAllLabels("TENANT001", "ja");
 
     expect(mockListLabels).toHaveBeenNthCalledWith(
       1,
@@ -323,7 +343,7 @@ describe("listAllLabels", () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { listAllLabels } = await import("./label");
-    const result = await listAllLabels("TENANT001");
+    const result = await listAllLabels("TENANT001", "ja");
 
     expect(mockListLabels).not.toHaveBeenCalled();
     expect(result).toEqual({
@@ -351,7 +371,7 @@ describe("listAllLabels", () => {
       });
 
     const { listAllLabels } = await import("./label");
-    const result = await listAllLabels("TENANT001");
+    const result = await listAllLabels("TENANT001", "ja");
 
     expect(mockListLabels).toHaveBeenCalledTimes(2);
     expect(result).toEqual({

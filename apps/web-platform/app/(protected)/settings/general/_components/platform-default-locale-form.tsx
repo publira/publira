@@ -28,7 +28,8 @@ export const PlatformDefaultLocaleForm = async ({
   initialDefaultLocale,
   loadErrorMessage,
 }: {
-  initialDefaultLocale: Locale;
+  /** The saved value, absent when the settings read failed. */
+  initialDefaultLocale?: Locale;
   loadErrorMessage?: string;
 }) => {
   const locale = await getPlatformLocale();

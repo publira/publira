@@ -23,7 +23,6 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import { mentionsImageRejection } from "./image-rejection";
 import { getAccessToken } from "./session";
 
@@ -147,8 +146,8 @@ const mapLabel = (label: RawLabel): LabelItem => ({
  */
 export const listLabels = async (
   tenantId: string,
-  options: CursorPageOptions = {},
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale,
+  options: CursorPageOptions = {}
 ): Promise<ListLabelsResult> => {
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
@@ -204,7 +203,7 @@ export const listLabels = async (
  */
 export const listAllLabels = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<ListLabelsResult> => {
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
@@ -283,7 +282,7 @@ export const createLabel = async (
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<CreateLabelResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -335,7 +334,7 @@ export const updateLabel = async (
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<UpdateLabelResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -390,7 +389,7 @@ export const getLabel = async (
     tenantId: string;
     publicId: string;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<GetLabelResult> => {
   "use cache: private";
   const parsed = getLabelInputSchema.safeParse(input);

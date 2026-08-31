@@ -131,6 +131,9 @@ importers:
       '@publira/email-templates':
         specifier: workspace:*
         version: link:../../packages/email-templates
+      '@publira/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       temporal-polyfill:
         specifier: 'catalog:'
         version: 1.0.4

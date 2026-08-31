@@ -10,10 +10,8 @@
  * (`YYYY-MM-DDTHH:mm`, optionally with seconds / fractional seconds).
  */
 
-import { parseLocale, toIntlLocale } from "@publira/i18n";
+import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-
-import { FALLBACK_LOCALE } from "./fallback-locale";
 
 /** Default IANA zone when `timeZone` is omitted (gradual migration from fixed JST). */
 export const DEFAULT_TIME_ZONE = "Asia/Tokyo";
@@ -21,10 +19,11 @@ export const DEFAULT_TIME_ZONE = "Asia/Tokyo";
 export interface FormatDateTimeOptions {
   fallback?: string;
   /**
-   * UI locale (`ja` | `en`). Unknown values fall back to `ja`.
-   * Defaults to `ja`, which keeps the previous `ja-JP` `Intl` output.
+   * UI locale the timestamp is worded in. Required: the month name and the
+   * order of the parts differ per language, so a formatter that picked one on
+   * its own would put a date the reader cannot read next to copy they can.
    */
-  locale?: Locale | string;
+  locale: Locale;
   /**
    * IANA time zone used for display (e.g. `Asia/Tokyo`, `America/Los_Angeles`).
    * Defaults to {@link DEFAULT_TIME_ZONE}.
@@ -71,9 +70,6 @@ const getCachedFormatter = (
   cache.set(key, formatter);
   return formatter;
 };
-
-const resolveIntlLocale = (locale: Locale | string | undefined): string =>
-  toIntlLocale(parseLocale(locale) ?? FALLBACK_LOCALE);
 
 const getDateTimeFormatter = (
   intlLocale: string,
@@ -122,11 +118,11 @@ const padTwo = (n: number): string => String(n).padStart(2, "0");
  */
 export const formatDateTime = (
   value: string,
-  options?: FormatDateTimeOptions
+  options: FormatDateTimeOptions
 ): string => {
-  const fallback = options?.fallback ?? value;
-  const timeZone = options?.timeZone ?? DEFAULT_TIME_ZONE;
-  const intlLocale = resolveIntlLocale(options?.locale);
+  const fallback = options.fallback ?? value;
+  const timeZone = options.timeZone ?? DEFAULT_TIME_ZONE;
+  const intlLocale = toIntlLocale(options.locale);
 
   const instant = parseInstant(value);
   if (!instant) {
@@ -145,11 +141,11 @@ export const formatDateTime = (
  */
 export const formatDate = (
   value: string,
-  options?: FormatDateTimeOptions
+  options: FormatDateTimeOptions
 ): string => {
-  const fallback = options?.fallback ?? value;
-  const timeZone = options?.timeZone ?? DEFAULT_TIME_ZONE;
-  const intlLocale = resolveIntlLocale(options?.locale);
+  const fallback = options.fallback ?? value;
+  const timeZone = options.timeZone ?? DEFAULT_TIME_ZONE;
+  const intlLocale = toIntlLocale(options.locale);
 
   const instant = parseInstant(value);
   if (!instant) {

@@ -31,7 +31,7 @@ describe("createTenantResolver", () => {
     });
   });
 
-  it("Only locales that this build does not distribute are reduced to ja", async () => {
+  it("refuses a locale this build serves no catalog for", async () => {
     const getTenantByDomain = vi.fn().mockResolvedValue({
       defaultLocale: "fr",
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
@@ -41,10 +41,9 @@ describe("createTenantResolver", () => {
       { max: 10, ttl: 10_000 }
     );
 
-    await expect(resolver(["fr.example.com"])).resolves.toEqual({
-      defaultLocale: "ja",
-      tenantId: "018f0e6a-1000-7000-8000-000000000001",
-    });
+    await expect(resolver(["fr.example.com"])).rejects.toThrow(
+      "tenant default locale is not supported: fr"
+    );
   });
 
   it("Cache the resolution result and do not retrieve it again on the second call with the same key", async () => {

@@ -28,7 +28,6 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 const sessionErrorMessage = (messages: SharedMessages): string =>
@@ -94,7 +93,7 @@ const mapUser = (user: RawAnnouncementTargetUser): AnnouncementTargetUser => ({
  */
 export const listAllAnnouncementTargetUsers = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<ListAnnouncementTargetUsersResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -175,8 +174,8 @@ export const listAllAnnouncementTargetUsers = async (
  */
 export const listAnnouncements = async (
   tenantId: string,
-  options: CursorPageOptions = {},
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale,
+  options: CursorPageOptions = {}
 ): Promise<ListAnnouncementsResult> => {
   "use cache: private";
   cacheTag(`announcements-${tenantId}`);
@@ -230,7 +229,7 @@ export const createAnnouncement = async (
     audienceType: "all" | "selected";
     targetUserPublicIds: string[];
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<
   { ok: true; createdCount: number } | { ok: false; message: string }
 > => {

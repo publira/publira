@@ -1,5 +1,7 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
 import { createPublicApiClient } from "@publira/api-client/public/client";
+import { parseLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
@@ -11,6 +13,12 @@ const publicApiClient = createPublicApiClient({
 });
 
 interface TenantPublicInfo {
+  /**
+   * The tenant's stored default locale. `GetTenant` documents it as never
+   * empty and resolves it against the platform default first, so `null` means
+   * this build serves no catalog for the code the API answered with.
+   */
+  defaultLocale: Locale | null;
   name: string | null;
   theme: TenantThemeColors;
 }
@@ -42,6 +50,7 @@ const getTenantPublicInfo = async (
     });
 
     return {
+      defaultLocale: parseLocale(response.defaultLocale.trim()) ?? null,
       name: response.tenantName?.trim() || null,
       theme: resolveTenantThemeColors(response.theme),
     };
@@ -71,4 +80,45 @@ export const getTenantThemeColors = async (
 ): Promise<TenantThemeColors | null> => {
   const info = await getTenantPublicInfo(tenantId);
   return info?.theme ?? null;
+};
+
+/**
+ * The tenant's default UI locale, or `null` when it cannot be read.
+ *
+ * This is what an unauthenticated console screen renders in: the login form has
+ * no operator to have a cookie yet, and the admin API's own
+ * `GetTenantDefaultLocale` needs the session that screen exists to create.
+ * `GetTenant` answers the same stored value without one, and the read carries
+ * `tenant:<id>:site`, which the admin API revalidates when the setting is saved
+ * (`tenantDefaultLocaleRevalidateTags`), so a change reaches the console as
+ * soon as it reaches the site.
+ *
+ * Use this only where `null` has an answer of its own — `<html lang>`, which
+ * says nothing rather than naming a language it did not resolve. Everything
+ * that renders copy wants {@link getTenantDisplayLocale}.
+ */
+export const findTenantDisplayLocale = async (
+  tenantId: string
+): Promise<Locale | null> => {
+  const info = await getTenantPublicInfo(tenantId);
+  return info?.defaultLocale ?? null;
+};
+
+/**
+ * The tenant's default UI locale.
+ *
+ * Throws when the tenant cannot be read, or names a locale this build serves no
+ * catalog for. The console has no second language to offer: rendering the
+ * operator a page in one nobody chose would hide the outage behind chrome that
+ * looks like it worked.
+ */
+export const getTenantDisplayLocale = async (
+  tenantId: string
+): Promise<Locale> => {
+  const defaultLocale = await findTenantDisplayLocale(tenantId);
+  if (!defaultLocale) {
+    throw new Error(`tenant default locale is unavailable: ${tenantId}`);
+  }
+
+  return defaultLocale;
 };

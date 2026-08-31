@@ -15,6 +15,11 @@ const labels = {
 
 const mockUsePathname = vi.hoisted(() => vi.fn(() => "/settings"));
 
+vi.mock("#components/locale-provider", () => ({
+  useLocale: () => "ja",
+  useTenantDefaultLocale: () => "ja",
+}));
+
 vi.mock("next/navigation", () => ({
   useParams: () => ({ locale: "ja" }),
   usePathname: () => mockUsePathname(),

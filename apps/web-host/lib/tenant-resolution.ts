@@ -4,8 +4,6 @@ import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LRUCache } from "lru-cache";
 
-import { FALLBACK_LOCALE } from "./fallback-locale";
-
 /**
  * What the Host resolves to.
  *
@@ -23,6 +21,20 @@ export interface ResolvedTenant {
 interface TenantCacheValue {
   tenant: ResolvedTenant | null;
 }
+
+const toResolvedTenant = (
+  defaultLocale: string,
+  tenantId: string
+): ResolvedTenant => {
+  const locale = parseLocale(defaultLocale);
+  if (locale === undefined) {
+    throw new Error(
+      `tenant default locale is not supported: ${defaultLocale} (${tenantId})`
+    );
+  }
+
+  return { defaultLocale: locale, tenantId };
+};
 
 export const createTenantResolver = (
   publicApiClient: PublicApiClient,
@@ -55,14 +67,11 @@ export const createTenantResolver = (
       });
       const tenantId = response.tenantId?.trim() || null;
       // The API documents `default_locale` as never empty, and falls back to
-      // the platform setting itself. `parseLocale` only catches a value this
-      // build does not serve.
+      // the platform setting itself, so a value that fails to parse is one this
+      // build does not serve. The proxy redirects a locale-less URL to this
+      // code, and there is no second choice worth sending a reader to.
       const tenant = tenantId
-        ? {
-            defaultLocale:
-              parseLocale(response.defaultLocale) ?? FALLBACK_LOCALE,
-            tenantId,
-          }
+        ? toResolvedTenant(response.defaultLocale, tenantId)
         : null;
       tenantCache.set(cacheKey, { tenant });
       return tenant;

@@ -116,6 +116,31 @@ export default defineConfig({
     },
     {
       /**
+       * `web-platform` ships its document with no `lang`, and the inline script
+       * writes one once it has read the cookie.
+       *
+       * The console's locale is the operator's cookie, falling back to the
+       * stored platform default — and neither is readable from a root layout
+       * that has to stay in the static shell: `cookies()` is request-time, and
+       * `GetPlatformSettings` needs the session that the login screen under
+       * this layout exists to create. `web-admin` has a cached, session-free
+       * tenant read to name a language with; this console has none.
+       *
+       * So the attribute is left off rather than filled with a guess. A `lang`
+       * the document is not written in tells a screen reader to pronounce the
+       * page in the wrong language, which is worse for the reader this rule
+       * protects than an absent one, and it is what AGENTS.md means by not
+       * misreporting an unresolved locale as a language. Resolving it properly
+       * is #1249.
+       */
+      files: ["apps/web-platform/app/layout.tsx"],
+      rules: {
+        "jsx-a11y/html-has-lang": "off",
+        "jsx-a11y/lang": "off",
+      },
+    },
+    {
+      /**
        * The locale Action writes a UI preference, not privileged state: it
        * stores one value from `getLocales()` in `publira_locale`, and every read parses that
        * cookie again (`parseLocaleCookie`), so a forged or hand-edited value is

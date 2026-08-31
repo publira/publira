@@ -56,7 +56,7 @@ describe("listAccessTickets", () => {
     });
 
     const { listAccessTickets } = await import("./access-ticket");
-    const result = await listAccessTickets("TENANT001", {
+    const result = await listAccessTickets("TENANT001", "ja", {
       limit: 20,
       token: "current-page",
     });
@@ -83,7 +83,7 @@ describe("listAccessTickets", () => {
     mockListAccessTickets.mockResolvedValue({ tickets: [] });
 
     const { listAccessTickets } = await import("./access-ticket");
-    const result = await listAccessTickets("TENANT001");
+    const result = await listAccessTickets("TENANT001", "ja", {});
 
     expect(mockListAccessTickets).toHaveBeenCalledWith(
       {
@@ -108,7 +108,7 @@ describe("listAccessTickets", () => {
     mockListAccessTickets.mockResolvedValue({ tickets: [] });
 
     const { listAccessTickets } = await import("./access-ticket");
-    await listAccessTickets("TENANT001", {
+    await listAccessTickets("TENANT001", "ja", {
       activeOnly: true,
       episodePublicId: "EPISODE001",
       token: "current-page",
@@ -137,7 +137,7 @@ describe("listAccessTickets", () => {
     });
 
     const { listAccessTickets } = await import("./access-ticket");
-    const result = await listAccessTickets("TENANT001");
+    const result = await listAccessTickets("TENANT001", "ja", {});
 
     expect(result.tickets.map((item) => item.publicId)).toEqual([
       "TICKET002",
@@ -149,7 +149,7 @@ describe("listAccessTickets", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listAccessTickets } = await import("./access-ticket");
-    const result = await listAccessTickets("TENANT001", {
+    const result = await listAccessTickets("TENANT001", "ja", {
       token: "current-page",
     });
 
@@ -168,7 +168,7 @@ describe("listAccessTickets", () => {
     );
 
     const { listAccessTickets } = await import("./access-ticket");
-    const result = await listAccessTickets("TENANT001", {
+    const result = await listAccessTickets("TENANT001", "ja", {
       token: "current-page",
     });
 

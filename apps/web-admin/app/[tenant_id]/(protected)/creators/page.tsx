@@ -29,7 +29,8 @@ import { CreatorManager } from "./_components/creator-manager";
 type CreatorPageProps = PageProps<"/[tenant_id]/creators">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.creators.title") };
@@ -55,7 +56,7 @@ const CreatorManagerData = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const listResult = await listCreators(tenantId, { token }, locale);
+  const listResult = await listCreators(tenantId, locale, { token });
 
   await redirectToLoginIfSessionRejected(listResult);
 

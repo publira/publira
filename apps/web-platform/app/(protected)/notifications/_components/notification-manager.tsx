@@ -1,4 +1,5 @@
 import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
   Card,
@@ -43,8 +44,11 @@ interface NotificationManagerProps {
   unreadCount: number;
 }
 
-const formatNotificationDateTime = (value: string, timeZone: string): string =>
-  formatDateTime(value, { fallback: "—", timeZone });
+const formatNotificationDateTime = (
+  value: string,
+  locale: Locale,
+  timeZone: string
+): string => formatDateTime(value, { fallback: "—", locale, timeZone });
 
 const NotificationTitle = ({ item }: { item: NotificationItem }) => {
   if (item.href) {
@@ -64,6 +68,7 @@ const NotificationTitle = ({ item }: { item: NotificationItem }) => {
 const renderNotificationListBody = ({
   hasPageLinks,
   listErrorMessage,
+  locale,
   markReadAriaLabel,
   messages,
   notifications,
@@ -71,6 +76,7 @@ const renderNotificationListBody = ({
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
+  locale: Locale;
   markReadAriaLabel: (title: string) => string;
   messages: PlatformMessages;
   notifications: NotificationItem[];
@@ -156,7 +162,7 @@ const renderNotificationListBody = ({
               )}
             </TableCell>
             <TableCell>
-              {formatNotificationDateTime(item.createdAt, timeZone)}
+              {formatNotificationDateTime(item.createdAt, locale, timeZone)}
             </TableCell>
             <TableCell>
               <div className="grid gap-1">
@@ -229,6 +235,7 @@ export const NotificationManager = async ({
         {renderNotificationListBody({
           hasPageLinks,
           listErrorMessage,
+          locale,
           markReadAriaLabel: (title) =>
             getMessage(messages, "platform.notifications.mark_read_aria", {
               title,

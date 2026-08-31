@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage, parseLocale } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -14,8 +14,7 @@ import {
   RESET_PASSWORD_REQUESTED_EMAIL_COOKIE,
   setEmailFlashCookie,
 } from "#lib/email-flash-cookie";
-import { FALLBACK_LOCALE } from "#lib/fallback-locale";
-import { localeFormSchema } from "#lib/locale-form";
+import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
@@ -34,9 +33,8 @@ export const requestPasswordResetAction = async (
   await assertSameOrigin();
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
-  const messages = await loadHostMessages(
-    parseLocale(formData.get("locale")) ?? FALLBACK_LOCALE
-  );
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+  const messages = await loadHostMessages(submittedLocale);
   const parsed = requestPasswordResetFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       email: "value",
@@ -46,7 +44,7 @@ export const requestPasswordResetAction = async (
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
       ok: false,
     };
   }

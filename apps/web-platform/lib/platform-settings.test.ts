@@ -4,17 +4,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockCacheTag,
   mockGetPlatformSettingsApi,
+  mockHeaders,
   mockResolveAccessToken,
   mockUpdatePlatformSettingsApi,
 } = vi.hoisted(() => ({
   mockCacheTag: vi.fn(),
   mockGetPlatformSettingsApi: vi.fn(),
+  mockHeaders: vi.fn(),
   mockResolveAccessToken: vi.fn(),
   mockUpdatePlatformSettingsApi: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
   cacheTag: mockCacheTag,
+}));
+
+vi.mock("next/headers", () => ({
+  headers: mockHeaders,
 }));
 
 vi.mock("./api-client", () => ({
@@ -35,6 +41,7 @@ describe("platform-settings", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockResolveAccessToken.mockResolvedValue("session-token");
+    mockHeaders.mockResolvedValue(new Headers());
   });
 
   it("returns the default time zone and locale when loading succeeds", async () => {
@@ -66,7 +73,6 @@ describe("platform-settings", () => {
     const result = await getPlatformSettings("ja");
 
     expect(result).toEqual({
-      defaultLocale: "ja",
       defaultTimezone: "Asia/Tokyo",
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
@@ -83,7 +89,6 @@ describe("platform-settings", () => {
     const result = await getPlatformSettings("en");
 
     expect(result).toEqual({
-      defaultLocale: "ja",
       defaultTimezone: "Asia/Tokyo",
       message: "Your session is no longer valid. Please sign in again.",
       ok: false,
@@ -91,7 +96,7 @@ describe("platform-settings", () => {
     });
   });
 
-  it("returns defaults so the form remains usable when loading fails", async () => {
+  it("reports a failed read without naming a saved locale", async () => {
     mockGetPlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError("platform api unavailable", Code.Unavailable)
     );
@@ -102,10 +107,10 @@ describe("platform-settings", () => {
 
     expect(result.ok).toBe(false);
     expect(result.defaultTimezone).toBe("Asia/Tokyo");
-    expect(result.defaultLocale).toBe("ja");
+    expect(result).not.toHaveProperty("defaultLocale");
   });
 
-  it("falls back to ja for an unsupported default locale", async () => {
+  it("treats a locale this build does not serve as a failed read", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "fr", defaultTimezone: "Asia/Tokyo" },
     });
@@ -114,7 +119,8 @@ describe("platform-settings", () => {
 
     const result = await getPlatformSettings("ja");
 
-    expect(result.defaultLocale).toBe("ja");
+    expect(result.ok).toBe(false);
+    expect(result).not.toHaveProperty("defaultLocale");
   });
 
   it("does not fall back to the host time zone when loading the display time zone fails", async () => {
@@ -281,13 +287,16 @@ describe("platform-settings", () => {
     await expect(getPlatformDisplayLocale()).resolves.toBe("en");
   });
 
-  it("falls back to ja when the settings read fails", async () => {
+  it("negotiates from Accept-Language when the settings read fails", async () => {
     mockGetPlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError("platform api unavailable", Code.Unavailable)
+    );
+    mockHeaders.mockResolvedValue(
+      new Headers({ "accept-language": "en-US,en;q=0.9" })
     );
 
     const { getPlatformDisplayLocale } = await import("./platform-settings");
 
-    await expect(getPlatformDisplayLocale()).resolves.toBe("ja");
+    await expect(getPlatformDisplayLocale()).resolves.toBe("en");
   });
 });

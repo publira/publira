@@ -21,7 +21,6 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 const sessionErrorMessage = (messages: SharedMessages): string =>
@@ -161,8 +160,8 @@ const mapTicket = (item: RawAccessTicket): AccessTicketItem => ({
  */
 export const listAccessTickets = async (
   tenantId: string,
-  options: ListAccessTicketsOptions = {},
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale,
+  options: ListAccessTicketsOptions = {}
 ): Promise<ListAccessTicketsResult> => {
   "use cache: private";
   cacheTag(`access-tickets-${tenantId}`);
@@ -210,7 +209,7 @@ export const listAccessTickets = async (
 
 export const issueAccessTicket = async (
   input: IssueAccessTicketInput,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<IssueAccessTicketResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -257,7 +256,7 @@ export const issueAccessTicket = async (
 export const revokeAccessTicket = async (
   tenantId: string,
   publicId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<RevokeAccessTicketResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

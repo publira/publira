@@ -62,7 +62,8 @@ const pageSize = 20;
 type AuditLogsPageProps = PageProps<"/[tenant_id]/audit-logs">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.audit.title") };
@@ -128,26 +129,18 @@ const AuditLogsContent = async ({
   const messages = sharedCatalog(locale);
 
   const [result, actorCandidatesResult, timeZone] = await Promise.all([
-    listAuditLogs(
-      tenantId,
-      {
-        action: filters.action,
-        actorUserPublicId: filters.actor,
-        createdFrom: filters.from,
-        createdTo: filters.to,
-        limit: pageSize,
-        token: filters.token,
-      },
-      locale
-    ),
-    listAuditActorCandidates(
-      tenantId,
-      {
-        limit: 100,
-        query: filters.actor,
-      },
-      locale
-    ),
+    listAuditLogs(tenantId, locale, {
+      action: filters.action,
+      actorUserPublicId: filters.actor,
+      createdFrom: filters.from,
+      createdTo: filters.to,
+      limit: pageSize,
+      token: filters.token,
+    }),
+    listAuditActorCandidates(tenantId, locale, {
+      limit: 100,
+      query: filters.actor,
+    }),
     getTenantDisplayTimeZone(tenantId),
   ]);
 

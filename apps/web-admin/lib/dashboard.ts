@@ -6,7 +6,6 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 export interface DashboardStats {
@@ -42,7 +41,7 @@ const mapErrorToMessage = (error: unknown, locale: Locale): string =>
 
 export const getDashboard = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<GetDashboardResult> => {
   "use cache: private";
 

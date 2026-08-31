@@ -22,7 +22,6 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 export interface CreatorItem {
@@ -110,8 +109,8 @@ const mapCreator = (creator: RawCreator): CreatorItem => ({
 
 export const listCreators = async (
   tenantId: string,
-  options: CursorPageOptions = {},
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale,
+  options: CursorPageOptions = {}
 ): Promise<ListCreatorsResult> => {
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
@@ -168,7 +167,7 @@ export const listCreators = async (
  */
 export const listAllCreators = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<ListCreatorsResult> => {
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
@@ -248,7 +247,7 @@ export const createCreator = async (
     iconImageContentType?: string;
     iconImageData?: Uint8Array;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<CreateCreatorResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -302,7 +301,7 @@ export const updateCreator = async (
     iconImageContentType?: string;
     iconImageData?: Uint8Array;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<UpdateCreatorResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -353,7 +352,7 @@ export const getCreator = async (
     tenantId: string;
     publicId: string;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<GetCreatorResult> => {
   "use cache: private";
   cacheTag(`creators-${input.tenantId}`);

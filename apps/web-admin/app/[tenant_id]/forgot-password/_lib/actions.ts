@@ -6,10 +6,11 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getActionLocale } from "#lib/action-messages";
 import { requestAdminPasswordReset } from "#lib/admin-auth";
 import { emailFormSchema, tenantIdFormSchema } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { loadAdminMessages } from "#lib/locale";
 import type { AdminMessages } from "#lib/locale";
 
 const forgotPasswordFormSchema = (messages: AdminMessages) =>
@@ -47,7 +48,7 @@ export const requestPasswordResetAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
-  const locale = await getLocale();
+  const locale = await getActionLocale(formData);
   const messages = await loadAdminMessages(locale);
   const input = toFormDataInput(formData, {
     email: "value",
@@ -63,7 +64,7 @@ export const requestPasswordResetAction = async (
       buildForgotPasswordPath({
         email: emailResult.success ? emailResult.data : undefined,
         error: tenantIdResult.success
-          ? toFormErrorMessage(parsed.error)
+          ? toFormErrorMessage(parsed.error, { locale })
           : getMessage(messages, "admin.auth.errors.tenant_missing"),
       })
     );

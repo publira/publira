@@ -14,14 +14,6 @@ describe("loadEmailMessages", () => {
     ).toBe("青灯書房 管理者招待");
   });
 
-  it("an unknown locale falls back to ja", async () => {
-    const catalog = await loadEmailMessages("fr");
-
-    expect(emailMessage(catalog, "email.tenant_admin_invitation.action")).toBe(
-      "招待を承諾する"
-    );
-  });
-
   it("en returns the English copy for the same keys", async () => {
     const en = await loadEmailMessages("en");
 

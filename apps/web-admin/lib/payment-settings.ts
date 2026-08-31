@@ -15,7 +15,6 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import { PAYMENT_PROVIDER_STRIPE } from "./payment-settings-shared";
 import type { TenantPaymentSettings } from "./payment-settings-shared";
 import { getAccessToken } from "./session";
@@ -118,7 +117,7 @@ const toTenantPaymentSettings = (
 
 export const getTenantPaymentSettings = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantPaymentSettingsResult> => {
   "use cache: private";
 
@@ -163,7 +162,7 @@ export const getTenantPaymentSettings = async (
 
 export const updateTenantPaymentSettings = async (
   input: UpdateTenantPaymentSettingsInput,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantPaymentSettingsResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

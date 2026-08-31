@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage, parseLocale } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -14,8 +14,7 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { FALLBACK_LOCALE } from "#lib/fallback-locale";
-import { localeFormSchema } from "#lib/locale-form";
+import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
@@ -58,8 +57,7 @@ export const updateNotificationSettingsAction = async (
   await assertSameOrigin();
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
-  const submittedLocale =
-    parseLocale(formData.get("locale")) ?? FALLBACK_LOCALE;
+  const submittedLocale = requireFormLocale(formData.get("locale"));
   const messages = await loadHostMessages(submittedLocale);
   const parsed = updateNotificationSettingsFormSchema(messages).safeParse(
     toFormDataInput(formData, {

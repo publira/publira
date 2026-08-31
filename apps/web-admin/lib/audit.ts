@@ -12,7 +12,6 @@ import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 import { getTenantDisplayTimeZone } from "./tenant-timezone";
 
@@ -153,11 +152,11 @@ const mapAuditActorCandidate = (
 
 export const listAuditActorCandidates = async (
   tenantId: string,
+  locale: Locale,
   options: {
     limit?: number;
     query?: string;
-  } = {},
-  locale: Locale = FALLBACK_LOCALE
+  } = {}
 ): Promise<ListAuditActorCandidatesResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -198,8 +197,8 @@ export const listAuditActorCandidates = async (
 
 export const listAuditLogs = async (
   tenantId: string,
-  filters: AuditLogFilters = {},
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale,
+  filters: AuditLogFilters = {}
 ): Promise<ListAuditLogsResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {

@@ -10,6 +10,11 @@ import {
   FollowLoginLink,
 } from "./follow-button";
 
+vi.mock("#components/locale-provider", () => ({
+  useLocale: () => "ja",
+  useTenantDefaultLocale: () => "ja",
+}));
+
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
     <a href={href} {...props}>

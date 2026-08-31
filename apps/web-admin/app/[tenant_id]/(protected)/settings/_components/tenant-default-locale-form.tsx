@@ -37,7 +37,8 @@ interface TenantDefaultLocaleFormProps {
     formData: FormData
   ) => Promise<TenantDefaultLocaleActionState>;
   canEdit: boolean;
-  initialDefaultLocale: Locale;
+  /** The saved value, absent when the settings read failed. */
+  initialDefaultLocale?: Locale;
   loadErrorMessage?: string;
   options: readonly TenantDefaultLocaleFormOption[];
 }

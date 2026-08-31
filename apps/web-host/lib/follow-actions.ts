@@ -15,7 +15,11 @@ import {
   followsCacheTag,
   unfollowTarget,
 } from "./follow";
-import { LOCALE_FIELD_NAME, localeFormSchema } from "./locale-form";
+import {
+  LOCALE_FIELD_NAME,
+  localeFormSchema,
+  requireFormLocale,
+} from "./locale-form";
 import { loadHostMessages } from "./messages";
 
 export type FollowActionState =
@@ -39,6 +43,9 @@ export const toggleFollowAction = async (
   formData: FormData
 ): Promise<FollowActionState> => {
   await assertSameOrigin();
+  // Read first: the rejection below is worded in the reader's language, and a
+  // submission that names no locale did not come from a form this site rendered.
+  const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
   const parsed = followFormSchema.safeParse(
     toFormDataInput(formData, {
       intent: "value",
@@ -50,14 +57,7 @@ export const toggleFollowAction = async (
     })
   );
   if (!parsed.success) {
-    // The locale field parses on its own — it falls back rather than failing —
-    // so the rejection can still be worded in the reader's language.
-    return {
-      message: validationErrorMessage(
-        localeFormSchema.parse(formData.get(LOCALE_FIELD_NAME))
-      ),
-      ok: false,
-    };
+    return { message: validationErrorMessage(submittedLocale), ok: false };
   }
 
   const { intent, locale, publicId, returnTo, targetKind, tenantId } =

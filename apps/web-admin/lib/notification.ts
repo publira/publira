@@ -27,7 +27,6 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import {
   notificationDisplay,
   parseNotificationPayload,
@@ -204,8 +203,8 @@ const readUnreadNotificationCount = async (
  */
 export const listNotifications = async (
   tenantId: string,
-  options: CursorPageOptions = {},
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale,
+  options: CursorPageOptions = {}
 ): Promise<ListNotificationsResult> => {
   const { unexpected, ...result } = await readNotificationList(
     tenantId,
@@ -226,7 +225,7 @@ export const listNotifications = async (
  */
 export const countUnreadNotifications = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<CountUnreadNotificationsResult> => {
   const { unexpected, ...result } = await readUnreadNotificationCount(
     tenantId,
@@ -244,7 +243,7 @@ export const markNotificationAsRead = async (
     notificationId: string;
     tenantId: string;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<{ message: string; ok: false } | { ok: true }> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -276,7 +275,7 @@ export const markNotificationAsRead = async (
 
 export const markAllNotificationsAsRead = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<
   { message: string; ok: false } | { markedCount: number; ok: true }
 > => {

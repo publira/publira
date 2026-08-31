@@ -10,22 +10,38 @@
  * can import the name from the same place the action parses it.
  */
 
-import { parseLocale } from "@publira/i18n";
+import { isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
-
-import { FALLBACK_LOCALE } from "./fallback-locale";
 
 /** Name of the hidden field the locale travels in. */
 export const LOCALE_FIELD_NAME = "locale";
 
 /**
- * Accepts anything and resolves to a supported locale.
+ * The submitted locale, rejected when it names none this site serves.
  *
- * A missing or forged field falls back to `ja` rather than failing the
- * submission: the locale only decides where the redirect lands, and rejecting
- * the whole form over it would lose the reader's input.
+ * `<LocaleField />` fills the field in from the `[locale]` segment the reader
+ * is already on, so a value outside {@link isLocale} did not come from the
+ * form. Answering it anyway is worse than refusing it: the redirect would land
+ * under a prefix the site does not serve.
  */
 export const localeFormSchema = z
   .unknown()
-  .transform((value): Locale => parseLocale(value) ?? FALLBACK_LOCALE);
+  .refine((value): value is Locale => isLocale(value));
+
+/**
+ * The locale a Server Action words its own response in, read from its form.
+ *
+ * Throws rather than standing in: an Action that cannot name the reader's
+ * language cannot word the rejection it was about to return either, so there
+ * is nothing for it to answer with.
+ */
+export const requireFormLocale = (value: unknown): Locale => {
+  if (!isLocale(value)) {
+    throw new Error(
+      `${LOCALE_FIELD_NAME} names no supported locale: ${String(value)}`
+    );
+  }
+
+  return value;
+};

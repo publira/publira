@@ -1,13 +1,19 @@
 /**
- * Pick the locale a first-run setup screen opens on, from `Accept-Language`.
+ * Pick the locale a screen with no identified reader opens on, from
+ * `Accept-Language`.
  *
  * Platform and tenant setup have no stored preference to read yet, so the
  * request header is the only signal about the person in front of the screen.
  * The result is a *candidate*: it seeds the first render and the selector's
  * initial option, and the value that gets saved is whatever the operator then
- * picks from the supported locales. Nothing here writes a preference, and no
- * other path should use it as a stand-in for one — a route that lost a stored
- * locale has to say so rather than re-negotiate a new one.
+ * picks from the supported locales. Nothing here writes a preference.
+ *
+ * The same holds for a screen that exists to create a session — the platform
+ * console's login form, where reading the stored default needs the session
+ * that screen has not issued yet. What those two cases share is that nobody
+ * has identified themselves, so there is no stored preference to lose. A path
+ * that *does* have one and could not read it has to say so instead: renegotiating
+ * would replace the operator's saved language with their browser's.
  *
  * The caller passes the header value (`(await headers()).get("accept-language")`),
  * so this module reads no request state and stays testable as a pure function.

@@ -5,6 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { UnfollowButton } from "./unfollow-button";
 
+vi.mock("#components/locale-provider", () => ({
+  useLocale: () => "ja",
+  useTenantDefaultLocale: () => "ja",
+}));
+
 vi.mock("#lib/follow-actions", () => ({
   toggleFollowAction: vi.fn(),
 }));

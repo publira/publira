@@ -16,7 +16,8 @@ import { confirmPasswordAction } from "./_lib/actions";
 import { parseConfirmPasswordSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return {

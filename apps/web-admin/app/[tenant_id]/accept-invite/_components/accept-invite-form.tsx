@@ -7,12 +7,14 @@ import { Suspense } from "react";
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { Message } from "#components/message";
 import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getTenantId } from "#lib/tenant-id";
 
 import { acceptInviteAction } from "../_lib/actions";
 
 /** The only localized attribute in this form needs a string rather than a node. */
 const NameField = async () => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return (

@@ -5,7 +5,6 @@ import { createElement } from "react";
 import type { ReactElement } from "react";
 import type { z } from "zod";
 
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import type { Messages } from "./messages";
 import {
   SampleEmail,
@@ -42,7 +41,7 @@ export interface ResolveEmailInput {
 export interface ResolveEmailFailure {
   message: string;
   ok: false;
-  reason: "invalid_data" | "unknown_template";
+  reason: "invalid_data" | "unknown_template" | "unsupported_locale";
 }
 
 export interface ResolveEmailSuccess {
@@ -93,7 +92,15 @@ export const resolveEmail = (input: ResolveEmailInput): ResolveEmailResult => {
     };
   }
 
-  const locale = parseLocale(input.locale) ?? FALLBACK_LOCALE;
+  const locale = parseLocale(input.locale);
+  if (locale === undefined) {
+    return {
+      message: `unsupported locale: ${input.locale}`,
+      ok: false,
+      reason: "unsupported_locale",
+    };
+  }
+
   const { messages, timeZone } = input;
 
   switch (input.template) {

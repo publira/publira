@@ -76,7 +76,7 @@ describe("resolveEmail", () => {
     });
   });
 
-  it("an unknown locale is normalized to ja", () => {
+  it("refuses a locale this build serves no catalog for", () => {
     const result = resolveEmail({
       data: sampleData,
       locale: "fr",
@@ -85,13 +85,11 @@ describe("resolveEmail", () => {
       timeZone: "Asia/Tokyo",
     });
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
+    expect(result.ok).toBe(false);
+    if (result.ok) {
       return;
     }
-    expect(result.locale).toBe("ja");
-    expect(result.timeZone).toBe("Asia/Tokyo");
-    expect(result.subject).toBe("件名");
+    expect(result.reason).toBe("unsupported_locale");
   });
 });
 

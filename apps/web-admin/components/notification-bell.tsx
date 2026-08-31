@@ -37,7 +37,7 @@ export const NotificationBell = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const [list, unread, messages] = await Promise.all([
-    listNotifications(tenantId, { limit: notificationMenuLimit }, locale),
+    listNotifications(tenantId, locale, { limit: notificationMenuLimit }),
     countUnreadNotifications(tenantId, locale),
     loadAdminMessages(locale),
   ]);

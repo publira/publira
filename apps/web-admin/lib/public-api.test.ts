@@ -35,6 +35,7 @@ describe("getTenantName", () => {
 
   it("returns the tenant name from the public API", async () => {
     mockGetTenant.mockResolvedValueOnce({
+      defaultLocale: "ja",
       tenantName: "  サンプル出版社  ",
       theme: undefined,
     });

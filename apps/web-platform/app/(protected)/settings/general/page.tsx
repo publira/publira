@@ -54,7 +54,8 @@ const SettingsFormCardSkeleton = () => (
 );
 
 interface DefaultLocaleSectionProps {
-  initialDefaultLocale: Locale;
+  /** The saved value, absent when the settings read failed. */
+  initialDefaultLocale?: Locale;
   loadErrorMessage?: string;
 }
 
@@ -105,7 +106,9 @@ const GeneralSettingsContent = async () => {
       />
       <Suspense fallback={<SettingsFormCardSkeleton />}>
         <DefaultLocaleSection
-          initialDefaultLocale={settingsResult.defaultLocale}
+          initialDefaultLocale={
+            settingsResult.ok ? settingsResult.defaultLocale : undefined
+          }
           loadErrorMessage={
             settingsResult.ok ? undefined : settingsResult.message
           }

@@ -55,12 +55,15 @@ describe("listEpisodes", () => {
     });
 
     const { listEpisodes } = await import("./episode");
-    const result = await listEpisodes({
-      limit: 20,
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-      token: "current-page",
-    });
+    const result = await listEpisodes(
+      {
+        limit: 20,
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+        token: "current-page",
+      },
+      "ja"
+    );
 
     expect(mockListEpisodes).toHaveBeenCalledWith(
       {
@@ -82,10 +85,13 @@ describe("listEpisodes", () => {
     mockListEpisodes.mockResolvedValue({ episodes: [] });
 
     const { listEpisodes } = await import("./episode");
-    const result = await listEpisodes({
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await listEpisodes(
+      {
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(mockListEpisodes).toHaveBeenCalledWith(
       {
@@ -110,10 +116,13 @@ describe("listEpisodes", () => {
     });
 
     const { listEpisodes } = await import("./episode");
-    const result = await listEpisodes({
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await listEpisodes(
+      {
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result.episodes.map((item) => item.publicId)).toEqual([
       "EPISODE003",
@@ -127,11 +136,14 @@ describe("listEpisodes", () => {
     );
 
     const { listEpisodes } = await import("./episode");
-    const result = await listEpisodes({
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-      token: "current-page",
-    });
+    const result = await listEpisodes(
+      {
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+        token: "current-page",
+      },
+      "ja"
+    );
 
     expect(result).toMatchObject({
       episodes: [],
@@ -158,10 +170,13 @@ describe("listAllEpisodes", () => {
       });
 
     const { listAllEpisodes } = await import("./episode");
-    const result = await listAllEpisodes({
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await listAllEpisodes(
+      {
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(mockListEpisodes).toHaveBeenNthCalledWith(
       1,
@@ -186,10 +201,13 @@ describe("listAllEpisodes", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listAllEpisodes } = await import("./episode");
-    const result = await listAllEpisodes({
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await listAllEpisodes(
+      {
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(mockListEpisodes).not.toHaveBeenCalled();
     expect(result).toMatchObject({
@@ -210,10 +228,13 @@ describe("listAllEpisodes", () => {
       });
 
     const { listAllEpisodes } = await import("./episode");
-    const result = await listAllEpisodes({
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await listAllEpisodes(
+      {
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result).toMatchObject({
       episodes: [],
@@ -229,11 +250,14 @@ describe("getEpisode", () => {
     });
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode({
-      publicId: "EPISODE001",
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE001",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(mockGetEpisode).toHaveBeenCalledWith(
       {
@@ -269,11 +293,14 @@ describe("getEpisode", () => {
     });
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode({
-      publicId: "EPISODE002",
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE002",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result).toMatchObject({
       episode: { scheduledAt: "2030-01-01T01:00:00Z", status: "scheduled" },
@@ -287,11 +314,14 @@ describe("getEpisode", () => {
     );
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode({
-      publicId: "EPISODE_MISSING",
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE_MISSING",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result).toEqual({ notFound: true, ok: false });
   });
@@ -361,12 +391,15 @@ describe("reorderEpisodePage", () => {
     mockReorderEpisodes.mockResolvedValue({ episodes: [] });
 
     const { reorderEpisodePage } = await import("./episode");
-    const result = await reorderEpisodePage({
-      currentEpisodePublicIds: ["EPISODE003", "EPISODE004"],
-      episodePublicIds: ["EPISODE004", "EPISODE003"],
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await reorderEpisodePage(
+      {
+        currentEpisodePublicIds: ["EPISODE003", "EPISODE004"],
+        episodePublicIds: ["EPISODE004", "EPISODE003"],
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result.ok).toBe(true);
     expect(mockReorderEpisodes).toHaveBeenCalledWith(
@@ -397,12 +430,15 @@ describe("reorderEpisodePage", () => {
     });
 
     const { reorderEpisodePage } = await import("./episode");
-    const result = await reorderEpisodePage({
-      currentEpisodePublicIds: ["EPISODE002"],
-      episodePublicIds: ["EPISODE002"],
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await reorderEpisodePage(
+      {
+        currentEpisodePublicIds: ["EPISODE002"],
+        episodePublicIds: ["EPISODE002"],
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result.ok).toBe(false);
     expect(mockReorderEpisodes).not.toHaveBeenCalled();
@@ -422,12 +458,15 @@ describe("reorderEpisodePage", () => {
     });
 
     const { reorderEpisodePage } = await import("./episode");
-    const result = await reorderEpisodePage({
-      currentEpisodePublicIds: ["EPISODE003", "EPISODE004"],
-      episodePublicIds: ["EPISODE004", "EPISODE003"],
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await reorderEpisodePage(
+      {
+        currentEpisodePublicIds: ["EPISODE003", "EPISODE004"],
+        episodePublicIds: ["EPISODE004", "EPISODE003"],
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result.ok).toBe(false);
     expect(mockReorderEpisodes).not.toHaveBeenCalled();
@@ -443,12 +482,15 @@ describe("reorderEpisodePage", () => {
     );
 
     const { reorderEpisodePage } = await import("./episode");
-    const result = await reorderEpisodePage({
-      currentEpisodePublicIds: ["EPISODE001", "EPISODE002"],
-      episodePublicIds: ["EPISODE002", "EPISODE001"],
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await reorderEpisodePage(
+      {
+        currentEpisodePublicIds: ["EPISODE001", "EPISODE002"],
+        episodePublicIds: ["EPISODE002", "EPISODE001"],
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result.ok).toBe(false);
     expect(result).toMatchObject({
@@ -463,12 +505,15 @@ describe("reorderEpisodePage", () => {
     );
 
     const { reorderEpisodePage } = await import("./episode");
-    const result = await reorderEpisodePage({
-      currentEpisodePublicIds: ["EPISODE001"],
-      episodePublicIds: ["EPISODE001"],
-      seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
-    });
+    const result = await reorderEpisodePage(
+      {
+        currentEpisodePublicIds: ["EPISODE001"],
+        episodePublicIds: ["EPISODE001"],
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result.ok).toBe(false);
     expect(mockReorderEpisodes).not.toHaveBeenCalled();

@@ -18,6 +18,14 @@ const {
   mockUploadEpisodePages: vi.fn(),
 }));
 
+vi.mock("#lib/action-messages", async () => {
+  const { sharedCatalog } = await import("@publira/i18n/catalog");
+  return {
+    getActionLocale: () => Promise.resolve("ja"),
+    getActionMessages: () => Promise.resolve(sharedCatalog("ja")),
+  };
+});
+
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
 }));

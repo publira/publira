@@ -35,7 +35,8 @@ import { CreatorForm } from "../_components/creator-form";
 import { updateCreatorAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.creators.edit_title") };

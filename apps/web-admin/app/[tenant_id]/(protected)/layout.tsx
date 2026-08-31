@@ -17,10 +17,10 @@ const AdminLayoutSkeleton = () => <ConsoleLayoutSkeleton />;
 const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   const tenantId = await getTenantId();
 
-  const [result, logo, locale] = await Promise.all([
+  const locale = await getLocale(tenantId);
+  const [result, logo] = await Promise.all([
     getTenantForSession(tenantId),
-    getTenantThemeLogo(tenantId),
-    getLocale(tenantId),
+    getTenantThemeLogo(tenantId, locale),
   ]);
   if (!result.ok) {
     // The proxy let this request in on a cookie the API has since rejected,

@@ -1,21 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCookies, mockGetAccessToken, mockGetTenantDisplayLocale } =
-  vi.hoisted(() => ({
-    mockCookies: vi.fn(),
-    mockGetAccessToken: vi.fn(),
-    mockGetTenantDisplayLocale: vi.fn(),
-  }));
+const { mockCookies, mockGetTenantDisplayLocale } = vi.hoisted(() => ({
+  mockCookies: vi.fn(),
+  mockGetTenantDisplayLocale: vi.fn(),
+}));
 
 vi.mock("next/headers", () => ({
   cookies: mockCookies,
 }));
 
-vi.mock("./session", () => ({
-  getAccessToken: mockGetAccessToken,
-}));
-
-vi.mock("./tenant-default-locale", () => ({
+vi.mock("./public-api", () => ({
   getTenantDisplayLocale: mockGetTenantDisplayLocale,
 }));
 
@@ -37,27 +31,10 @@ describe("web-admin locale", () => {
     vi.clearAllMocks();
     vi.resetModules();
     setLocaleCookie();
-    mockGetAccessToken.mockResolvedValue("");
     mockGetTenantDisplayLocale.mockResolvedValue("en");
   });
 
   describe("getLocale", () => {
-    it("falls back to ja when the cookie is not set and there is no session", async () => {
-      mockGetAccessToken.mockResolvedValue("");
-      const { getLocale } = await importLocale();
-
-      await expect(getLocale(TENANT_ID)).resolves.toBe("ja");
-      expect(mockGetTenantDisplayLocale).not.toHaveBeenCalled();
-    });
-
-    it("falls back to ja when no tenant id is passed", async () => {
-      mockGetAccessToken.mockResolvedValue("session-token");
-      const { getLocale } = await importLocale();
-
-      await expect(getLocale()).resolves.toBe("ja");
-      expect(mockGetTenantDisplayLocale).not.toHaveBeenCalled();
-    });
-
     it("returns the locale stored in the cookie", async () => {
       setLocaleCookie("en");
       const { getLocale } = await importLocale();
@@ -68,7 +45,6 @@ describe("web-admin locale", () => {
 
     it("keeps an explicit ja cookie even when the tenant default is en", async () => {
       setLocaleCookie("ja");
-      mockGetAccessToken.mockResolvedValue("session-token");
       const { getLocale } = await importLocale();
 
       await expect(getLocale(TENANT_ID)).resolves.toBe("ja");
@@ -76,32 +52,35 @@ describe("web-admin locale", () => {
     });
 
     it("uses the tenant default locale when the cookie is not set", async () => {
-      mockGetAccessToken.mockResolvedValue("session-token");
       const { getLocale } = await importLocale();
 
       await expect(getLocale(TENANT_ID)).resolves.toBe("en");
       expect(mockGetTenantDisplayLocale).toHaveBeenCalledWith(TENANT_ID);
     });
 
-    it("falls back to ja when the tenant id is not a UUID", async () => {
-      mockGetAccessToken.mockResolvedValue("session-token");
+    it("refuses a segment that is not a tenant id", async () => {
       const { getLocale } = await importLocale();
 
-      await expect(getLocale("not-a-tenant")).resolves.toBe("ja");
+      await expect(getLocale("not-a-tenant")).rejects.toThrow(
+        "not a tenant id"
+      );
+      await expect(getLocale("favicon.ico")).rejects.toThrow("not a tenant id");
       expect(mockGetTenantDisplayLocale).not.toHaveBeenCalled();
     });
 
-    it("reads no session for a tenant id that is not a UUID", async () => {
-      mockGetAccessToken.mockResolvedValue("session-token");
+    it("reports an unreadable tenant default instead of naming a locale", async () => {
+      mockGetTenantDisplayLocale.mockRejectedValueOnce(
+        new Error("tenant default locale is unavailable: TENANT001")
+      );
       const { getLocale } = await importLocale();
 
-      await expect(getLocale("favicon.ico")).resolves.toBe("ja");
-      expect(mockGetAccessToken).not.toHaveBeenCalled();
+      await expect(getLocale(TENANT_ID)).rejects.toThrow(
+        "tenant default locale is unavailable"
+      );
     });
 
     it("falls through to the tenant default for an unsupported cookie value", async () => {
       setLocaleCookie("fr");
-      mockGetAccessToken.mockResolvedValue("session-token");
       const { getLocale } = await importLocale();
 
       await expect(getLocale(TENANT_ID)).resolves.toBe("en");
@@ -110,18 +89,9 @@ describe("web-admin locale", () => {
 
     it("falls through to the tenant default for a full BCP 47 tag", async () => {
       setLocaleCookie("ja-JP");
-      mockGetAccessToken.mockResolvedValue("session-token");
       const { getLocale } = await importLocale();
 
       await expect(getLocale(TENANT_ID)).resolves.toBe("en");
-    });
-
-    it("falls back to ja for an unsupported cookie when there is no session", async () => {
-      setLocaleCookie("fr");
-      const { getLocale } = await importLocale();
-
-      await expect(getLocale(TENANT_ID)).resolves.toBe("ja");
-      expect(mockGetTenantDisplayLocale).not.toHaveBeenCalled();
     });
   });
 

@@ -59,21 +59,21 @@ describe("generateMetadata", () => {
     expect(mockGetTenantName).toHaveBeenCalledWith(tenantId);
   });
 
-  it("falls back without calling the public API for a tenant_id that is not a string", async () => {
+  it("titles nothing for a segment that is not a tenant id", async () => {
     mockTenantId.mockResolvedValueOnce(null);
 
     const { generateMetadata } = await import("./layout");
 
-    await expect(generateMetadata()).resolves.toEqual({ title: "管理画面" });
+    await expect(generateMetadata()).resolves.toEqual({});
     expect(mockGetTenantName).not.toHaveBeenCalled();
   });
 
-  it("falls back without calling the public API for a tenant_id that is not a UUID", async () => {
+  it("reads neither locale nor public API for a segment that is not a UUID", async () => {
     mockTenantId.mockResolvedValueOnce("favicon.ico");
 
     const { generateMetadata } = await import("./layout");
 
-    await expect(generateMetadata()).resolves.toEqual({ title: "管理画面" });
+    await expect(generateMetadata()).resolves.toEqual({});
     expect(mockGetLocale).not.toHaveBeenCalled();
     expect(mockGetTenantName).not.toHaveBeenCalled();
     expect(mockNotFound).not.toHaveBeenCalled();

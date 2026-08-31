@@ -12,7 +12,11 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { LOCALE_FIELD_NAME, localeFormSchema } from "#lib/locale-form";
+import {
+  LOCALE_FIELD_NAME,
+  localeFormSchema,
+  requireFormLocale,
+} from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import {
   markAllNotificationsAsRead,
@@ -40,6 +44,7 @@ export const markNotificationAsReadAction = async (
   formData: FormData
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
   const parsed = markOneSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -51,9 +56,7 @@ export const markNotificationAsReadAction = async (
     // The locale field parses on its own — it falls back rather than failing —
     // so the rejection can still be worded in the reader's language.
     return {
-      message: validationErrorMessage(
-        localeFormSchema.parse(formData.get(LOCALE_FIELD_NAME))
-      ),
+      message: validationErrorMessage(submittedLocale),
       ok: false,
     };
   }
@@ -86,6 +89,7 @@ export const markAllNotificationsAsReadAction = async (
   formData: FormData
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
   const parsed = markAllSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -94,9 +98,7 @@ export const markAllNotificationsAsReadAction = async (
   );
   if (!parsed.success) {
     return {
-      message: validationErrorMessage(
-        localeFormSchema.parse(formData.get(LOCALE_FIELD_NAME))
-      ),
+      message: validationErrorMessage(submittedLocale),
       ok: false,
     };
   }

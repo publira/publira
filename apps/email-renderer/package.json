@@ -21,6 +21,7 @@
     "@connectrpc/connect-node": "2.1.2",
     "@publira/api-client": "workspace:*",
     "@publira/email-templates": "workspace:*",
+    "@publira/i18n": "workspace:*",
     "temporal-polyfill": "catalog:"
   },
   "devDependencies": {

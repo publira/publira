@@ -30,7 +30,8 @@ import { NotificationManager } from "./_components/notification-manager";
 type NotificationsPageProps = PageProps<"/[tenant_id]/notifications">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.notifications.title") };
@@ -57,7 +58,7 @@ const NotificationManagerData = async ({
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
   const [listResult, unreadResult, timeZone] = await Promise.all([
-    listNotifications(tenantId, { token }, locale),
+    listNotifications(tenantId, locale, { token }),
     countUnreadNotifications(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);

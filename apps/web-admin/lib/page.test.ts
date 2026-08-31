@@ -50,7 +50,7 @@ describe("listPages", () => {
     });
 
     const { listPages } = await import("./page");
-    const result = await listPages("TENANT001", {
+    const result = await listPages("TENANT001", "ja", {
       limit: 20,
       token: "current-page",
     });
@@ -74,7 +74,7 @@ describe("listPages", () => {
     mockListPages.mockResolvedValue({ pages: [] });
 
     const { listPages } = await import("./page");
-    const result = await listPages("TENANT001");
+    const result = await listPages("TENANT001", "ja", {});
 
     expect(mockListPages).toHaveBeenCalledWith(
       {
@@ -98,7 +98,7 @@ describe("listPages", () => {
     });
 
     const { listPages } = await import("./page");
-    const result = await listPages("TENANT001");
+    const result = await listPages("TENANT001", "ja", {});
 
     expect(result.pages.map((item) => item.id)).toEqual(["PAGE002", "PAGE001"]);
   });
@@ -107,7 +107,9 @@ describe("listPages", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listPages } = await import("./page");
-    const result = await listPages("TENANT001", { token: "current-page" });
+    const result = await listPages("TENANT001", "ja", {
+      token: "current-page",
+    });
 
     expect(mockListPages).not.toHaveBeenCalled();
     expect(result).toMatchObject({
@@ -124,7 +126,9 @@ describe("listPages", () => {
     );
 
     const { listPages } = await import("./page");
-    const result = await listPages("TENANT001", { token: "current-page" });
+    const result = await listPages("TENANT001", "ja", {
+      token: "current-page",
+    });
 
     expect(result).toMatchObject({
       nextToken: "",

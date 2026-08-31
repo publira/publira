@@ -46,6 +46,7 @@ const password = "secret-password";
 const validSignupFields = {
   confirmPassword: password,
   email,
+  locale: "ja",
   name: "Example User",
   password,
   tenantId,

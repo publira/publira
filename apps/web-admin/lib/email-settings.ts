@@ -15,7 +15,6 @@ import {
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { TenantSmtpSettings } from "./email-settings-shared";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 export type { TenantSmtpSettings } from "./email-settings-shared";
@@ -125,7 +124,7 @@ const toTenantSmtpSettings = (
 
 export const getTenantEmailSettings = async (
   tenantId: string,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantSmtpSettingsResult> => {
   "use cache: private";
 
@@ -162,7 +161,7 @@ export const getTenantEmailSettings = async (
 
 export const updateTenantEmailSettings = async (
   input: UpdateTenantSmtpSettingsInput,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantSmtpSettingsResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -200,7 +199,7 @@ export const updateTenantEmailSettings = async (
 
 export const sendTenantSmtpTestEmail = async (
   input: SendTenantSmtpTestInput,
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<TenantSmtpTestResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

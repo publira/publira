@@ -3,10 +3,12 @@
  *
  * The console rewrites onto `/[tenant_id]/...` and never puts the locale in
  * the URL: it lives in the `publira_locale` cookie, the same name and parser
- * as web-platform. When that cookie is missing, an authenticated request
- * that passes the tenant id falls through to the tenant's default locale
- * (#1046). Unauthenticated screens cannot call the admin API, so they omit
- * the tenant id and stay on {@link FALLBACK_LOCALE}.
+ * as web-platform. When that cookie is missing, the request falls through to
+ * the tenant's stored default locale (#1046) — read from the public
+ * `GetTenant`, so the login screen and every other unauthenticated screen
+ * resolve the same value the signed-in console does. Nothing here names a
+ * language of its own: a tenant whose default cannot be read is an outage the
+ * screen reports, not a reason to pick one.
  *
  * `cookies()` is a request-time read, so every caller of {@link getLocale}
  * must sit inside a `<Suspense>` boundary — reading it in
@@ -23,9 +25,7 @@ import {
 import type { Locale } from "@publira/i18n";
 import { cookies } from "next/headers";
 
-import { FALLBACK_LOCALE } from "./fallback-locale";
-import { getAccessToken } from "./session";
-import { getTenantDisplayLocale } from "./tenant-default-locale";
+import { getTenantDisplayLocale } from "./public-api";
 import { isTenantIdFormat } from "./tenant-id-format";
 
 export {
@@ -43,8 +43,7 @@ export {
  * `document.cookie`. The value is a two-letter UI preference chosen from a
  * fixed list — nothing an attacker gains by reading, and the server re-parses
  * it against {@link isLocale} on every request, so a hand-edited value is not
- * treated as a choice and the tenant default (or {@link FALLBACK_LOCALE}) is
- * used instead.
+ * treated as a choice and the tenant default is used instead.
  */
 export const adminLocaleCookieOptions = {
   httpOnly: false as const,
@@ -55,44 +54,28 @@ export const adminLocaleCookieOptions = {
 };
 
 /**
- * Cookie-less fallback: the tenant's default locale when the session can
- * reach the admin API, otherwise {@link FALLBACK_LOCALE}. Login and other
- * unauthenticated screens stay on it because they cannot call that API.
- */
-const resolveTenantFallbackLocale = async (
-  tenantId: string
-): Promise<Locale> => {
-  // The format check comes first because it needs nothing from the request:
-  // reading the session for an id that is about to be rejected spends an
-  // uncached read on an answer that is already known.
-  const normalizedTenantId = tenantId.trim();
-  if (!normalizedTenantId || !isTenantIdFormat(normalizedTenantId)) {
-    return FALLBACK_LOCALE;
-  }
-
-  const sessionId = await getAccessToken();
-  if (!sessionId) {
-    return FALLBACK_LOCALE;
-  }
-
-  return getTenantDisplayLocale(normalizedTenantId);
-};
-
-/**
  * The locale this request should render in.
  *
- * Resolution is cookie → tenant default locale → {@link FALLBACK_LOCALE}. A
- * set, supported cookie always wins, including when it is `ja`; only an unset
- * or unsupported value falls through to the tenant default, and only when
- * `tenantId` is passed. Unauthenticated screens omit `tenantId` so they stay on
- * {@link FALLBACK_LOCALE}.
+ * Resolution is cookie → the tenant's stored default locale. A set, supported
+ * cookie always wins, including when it is `ja`; only an unset or unsupported
+ * value falls through to the default, which the public `GetTenant` answers
+ * without a session so an unauthenticated screen resolves it too.
+ *
+ * There is no third step. A tenant id that is not one, or a default locale the
+ * console cannot read, throws: rendering the operator a console in a language
+ * nobody chose would hide the failure behind chrome that looks like it worked.
+ *
+ * `tenantId` is the caller's to supply, because where it comes from differs:
+ * a Server Component reads the `tenant_id` root parameter (`getTenantId()`),
+ * and a Server Action, which has no root parameters, takes it from the form
+ * (`getActionLocale`). Keeping `next/root-params` out of this module is what
+ * lets both use it.
  *
  * **Inside `<Suspense>` only.** Never call this from a `"use cache"` scope
  * either — pass the resolved locale in as an argument instead, so it becomes
- * part of the cache key. Server Actions read `cookies()` themselves rather
- * than going through this helper.
+ * part of the cache key.
  */
-export const getLocale = async (tenantId?: string): Promise<Locale> => {
+export const getLocale = async (tenantId: string): Promise<Locale> => {
   const cookieStore = await cookies();
   const raw = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
   if (typeof raw === "string") {
@@ -102,9 +85,10 @@ export const getLocale = async (tenantId?: string): Promise<Locale> => {
     }
   }
 
-  if (!tenantId) {
-    return FALLBACK_LOCALE;
+  const normalizedTenantId = tenantId.trim();
+  if (!isTenantIdFormat(normalizedTenantId)) {
+    throw new Error(`not a tenant id: ${tenantId}`);
   }
 
-  return resolveTenantFallbackLocale(tenantId);
+  return getTenantDisplayLocale(normalizedTenantId);
 };

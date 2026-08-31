@@ -215,7 +215,13 @@ describe("tenant admin invitation", () => {
     });
 
     await expect(
-      acceptTenantAdminInvitation("tenant_001", "token_001", "山田", "password")
+      acceptTenantAdminInvitation(
+        "tenant_001",
+        "token_001",
+        "ja",
+        "山田",
+        "password"
+      )
     ).resolves.toEqual({
       accepted: true,
       accountCreated: true,
@@ -229,7 +235,7 @@ describe("tenant admin invitation", () => {
     );
 
     await expect(
-      acceptTenantAdminInvitation("tenant_001", "token_001")
+      acceptTenantAdminInvitation("tenant_001", "token_001", "ja")
     ).resolves.toEqual({
       message: "招待リンクの有効期限が切れています。",
       ok: false,
@@ -242,7 +248,7 @@ describe("admin password reset", () => {
     mockRequestPasswordReset.mockResolvedValueOnce({ requested: true });
 
     await expect(
-      requestAdminPasswordReset("tenant_001", "admin@example.com")
+      requestAdminPasswordReset("tenant_001", "admin@example.com", "ja")
     ).resolves.toEqual({ ok: true, requested: true });
   });
 
@@ -252,7 +258,7 @@ describe("admin password reset", () => {
     );
 
     await expect(
-      requestAdminPasswordReset("tenant_001", "invalid")
+      requestAdminPasswordReset("tenant_001", "invalid", "ja")
     ).resolves.toEqual({
       message: "メールアドレスを確認してください。",
       ok: false,
@@ -263,7 +269,7 @@ describe("admin password reset", () => {
     mockConfirmPasswordReset.mockResolvedValueOnce({ confirmed: true });
 
     await expect(
-      confirmAdminPasswordReset("tenant_001", "token_001", "password123")
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "ja")
     ).resolves.toEqual({ confirmed: true, ok: true });
   });
 
@@ -273,7 +279,7 @@ describe("admin password reset", () => {
     );
 
     await expect(
-      confirmAdminPasswordReset("tenant_001", "token_001", "password123")
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "ja")
     ).resolves.toEqual({
       message:
         "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
@@ -288,7 +294,7 @@ describe("admin password reset", () => {
     );
 
     await expect(
-      confirmAdminPasswordReset("tenant_001", "token_001", "password123")
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "ja")
     ).resolves.toEqual({
       message:
         "再設定リンクが無効です。もう一度メール送信からやり直してください。",

@@ -60,7 +60,7 @@ describe("payment-settings", () => {
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
 
-    const result = await getTenantPaymentSettings("TENANT001");
+    const result = await getTenantPaymentSettings("TENANT001", "ja");
 
     expect(result).toEqual({ ok: true, settings: publicSettings });
     expect(mockGetTenantPaymentSettingsApi).toHaveBeenCalledWith(
@@ -83,7 +83,7 @@ describe("payment-settings", () => {
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
 
-    const result = await getTenantPaymentSettings("TENANT001");
+    const result = await getTenantPaymentSettings("TENANT001", "ja");
 
     expect(result.ok).toBe(true);
     expect(JSON.stringify(result)).not.toContain(leakedSecretKey);
@@ -100,7 +100,7 @@ describe("payment-settings", () => {
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
 
-    const result = await getTenantPaymentSettings("TENANT001");
+    const result = await getTenantPaymentSettings("TENANT001", "ja");
 
     expect(result).toEqual({
       message: "セッションが無効です。再ログインしてください。",
@@ -117,7 +117,7 @@ describe("payment-settings", () => {
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
 
-    const result = await getTenantPaymentSettings("TENANT001");
+    const result = await getTenantPaymentSettings("TENANT001", "ja");
 
     expect(result).toEqual({
       message: "この操作を行う権限がありません。",
@@ -133,7 +133,7 @@ describe("payment-settings", () => {
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
 
-    await expect(getTenantPaymentSettings("TENANT001")).rejects.toThrow(
+    await expect(getTenantPaymentSettings("TENANT001", "ja")).rejects.toThrow(
       /boom/u
     );
   });
@@ -146,14 +146,17 @@ describe("payment-settings", () => {
     const { SECRET_UPDATE_MODE_REPLACE, updateTenantPaymentSettings } =
       await import("./payment-settings");
 
-    const result = await updateTenantPaymentSettings({
-      enabled: true,
-      secretKey: leakedSecretKey,
-      secretKeyUpdateMode: SECRET_UPDATE_MODE_REPLACE,
-      tenantId: "TENANT001",
-      webhookSecret: leakedWebhookSecret,
-      webhookSecretUpdateMode: SECRET_UPDATE_MODE_REPLACE,
-    });
+    const result = await updateTenantPaymentSettings(
+      {
+        enabled: true,
+        secretKey: leakedSecretKey,
+        secretKeyUpdateMode: SECRET_UPDATE_MODE_REPLACE,
+        tenantId: "TENANT001",
+        webhookSecret: leakedWebhookSecret,
+        webhookSecretUpdateMode: SECRET_UPDATE_MODE_REPLACE,
+      },
+      "ja"
+    );
 
     expect(result).toEqual({ ok: true, settings: publicSettings });
     expect(JSON.stringify(result)).not.toContain(leakedSecretKey);
@@ -183,14 +186,17 @@ describe("payment-settings", () => {
     const { SECRET_UPDATE_MODE_UNCHANGED, updateTenantPaymentSettings } =
       await import("./payment-settings");
 
-    const result = await updateTenantPaymentSettings({
-      enabled: true,
-      secretKey: "",
-      secretKeyUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
-      tenantId: "TENANT001",
-      webhookSecret: "",
-      webhookSecretUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
-    });
+    const result = await updateTenantPaymentSettings(
+      {
+        enabled: true,
+        secretKey: "",
+        secretKeyUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
+        tenantId: "TENANT001",
+        webhookSecret: "",
+        webhookSecretUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
+      },
+      "ja"
+    );
 
     expect(result).toEqual({
       message:
@@ -207,14 +213,17 @@ describe("payment-settings", () => {
     const { SECRET_UPDATE_MODE_UNCHANGED, updateTenantPaymentSettings } =
       await import("./payment-settings");
 
-    const result = await updateTenantPaymentSettings({
-      enabled: false,
-      secretKey: "",
-      secretKeyUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
-      tenantId: "TENANT001",
-      webhookSecret: "",
-      webhookSecretUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
-    });
+    const result = await updateTenantPaymentSettings(
+      {
+        enabled: false,
+        secretKey: "",
+        secretKeyUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
+        tenantId: "TENANT001",
+        webhookSecret: "",
+        webhookSecretUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
+      },
+      "ja"
+    );
 
     expect(result).toEqual({
       message: "この操作を行う権限がありません。",

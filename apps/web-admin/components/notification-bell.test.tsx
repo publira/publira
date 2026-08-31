@@ -16,10 +16,13 @@ vi.mock("#lib/locale", () => ({
 }));
 
 vi.mock("#lib/notification", () => ({
-  countUnreadNotifications: (tenantId: string) =>
-    countUnreadNotifications(tenantId),
-  listNotifications: (tenantId: string, options: { limit: number }) =>
-    listNotifications(tenantId, options),
+  countUnreadNotifications: (tenantId: string, locale: string) =>
+    countUnreadNotifications(tenantId, locale),
+  listNotifications: (
+    tenantId: string,
+    locale: string,
+    options: { limit: number }
+  ) => listNotifications(tenantId, locale, options),
 }));
 
 vi.mock("#lib/tenant-id", () => ({
@@ -72,7 +75,9 @@ describe("NotificationBell", () => {
       name: "通知、未読はありません",
     });
     expect(trigger.textContent).not.toContain("0");
-    expect(listNotifications).toHaveBeenCalledWith("tenant-1", { limit: 5 });
+    expect(listNotifications).toHaveBeenCalledWith("tenant-1", "ja", {
+      limit: 5,
+    });
 
     fireEvent.click(trigger);
     expect(screen.getByText("通知はまだありません。")).toBeDefined();

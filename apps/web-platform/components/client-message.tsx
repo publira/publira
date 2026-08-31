@@ -3,12 +3,13 @@
 import {
   getMessage,
   LOCALE_COOKIE_NAME,
+  negotiateInitialLocale,
+  parseLocale,
   parseLocaleCookie,
 } from "@publira/i18n";
 import type { Locale, MessageValues } from "@publira/i18n";
 import { use } from "react";
 
-import { FALLBACK_LOCALE } from "#lib/fallback-locale";
 import { loadPlatformMessages } from "#lib/messages";
 import type { PlatformMessageKey, PlatformMessages } from "#lib/messages";
 
@@ -29,6 +30,28 @@ const readDocumentLocale = (): string => {
   } catch {
     return match[1];
   }
+};
+
+/**
+ * The locale this chunk renders in, from the browser alone.
+ *
+ * The cookie is the operator's own choice, and `<html lang>` is what the server
+ * resolved for this document — the script in the root layout has already
+ * written the cookie into it by the time any component runs. When neither says
+ * anything this is a first visit with no session behind it, so the last word is
+ * what the browser asked for, the same `Accept-Language` preference the server
+ * negotiates from.
+ */
+const readClientLocale = (): Locale => {
+  if (typeof document === "undefined") {
+    return negotiateInitialLocale(null);
+  }
+
+  return (
+    parseLocaleCookie(readDocumentLocale()) ??
+    parseLocale(document.documentElement.lang) ??
+    negotiateInitialLocale(navigator.languages.join(","))
+  );
 };
 
 /**
@@ -55,10 +78,7 @@ const platformCatalog = (locale: Locale): Promise<PlatformMessages> => {
  * The hook stays local to that control; no catalog object crosses a component
  * boundary.
  */
-export const useClientMessages = () =>
-  use(
-    platformCatalog(parseLocaleCookie(readDocumentLocale()) ?? FALLBACK_LOCALE)
-  );
+export const useClientMessages = () => use(platformCatalog(readClientLocale()));
 
 /**
  * One catalog string for Client Components that cannot render `<Message>`.
@@ -72,10 +92,10 @@ export const useClientMessages = () =>
  * above it, so a suspend with nothing to fall back to leaves React unable to
  * flush the error screen at all.
  *
- * The platform default locale is out of reach here — resolving it needs the
+ * The stored platform default is out of reach here — resolving it needs the
  * platform API, and the boundary that renders this is the one the API failing
- * brought up. An operator who has never switched languages therefore reads the
- * error screen in `ja` even when the console defaults to `en`.
+ * brought up. The locale therefore comes from the browser
+ * ({@link readClientLocale}), which is the last thing still standing.
  */
 export const ClientMessage = ({
   message,

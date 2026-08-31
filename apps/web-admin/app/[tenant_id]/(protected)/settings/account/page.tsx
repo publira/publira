@@ -15,12 +15,14 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getTenantId } from "#lib/tenant-id";
 
 import { EmailChangeForm } from "../_components/email-change-form";
 import { requestEmailChangeAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.settings.account_title") };

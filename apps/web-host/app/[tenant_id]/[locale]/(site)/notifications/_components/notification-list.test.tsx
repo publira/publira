@@ -8,6 +8,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { NotificationItem } from "../notification-types";
 import { NotificationList } from "./notification-list";
 
+vi.mock("#components/locale-provider", () => ({
+  useLocale: () => "ja",
+  useTenantDefaultLocale: () => "ja",
+}));
+
 vi.mock("next/link", () => ({
   default: ({ children, href }: React.ComponentProps<"a">) => (
     <a href={href}>{children}</a>

@@ -45,8 +45,10 @@ const defaultPageSize = 20;
  */
 export const notificationsCacheTag = "platform:notifications";
 
+// This module's copy is still written out in Japanese above rather than read
+// from the catalog, so the shared RPC wording is read in the same language.
 const mapErrorMessage = (error: unknown, fallback: string): string =>
-  rpcErrorMessage(error, fallback);
+  rpcErrorMessage(error, fallback, { locale: "ja" });
 
 const isUnexpectedError = (error: unknown): boolean =>
   rpcErrorDisposition(error) === "unexpected";

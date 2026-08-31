@@ -10,8 +10,22 @@ import { cacheLife } from "next/cache";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantSiteTag, tenantThemeTag } from "./cache-tags";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import { loadHostMessages } from "./messages";
+
+/**
+ * The locale code the API answered with, or a throw when this build has no
+ * catalog for it. `GetTenant` documents `default_locale` as never empty and
+ * resolves it against the platform default first, so a value that fails here
+ * is a deployment serving a locale its catalogs do not cover.
+ */
+const requireSupportedLocale = (value: string): Locale => {
+  const locale = parseLocale(value);
+  if (locale === undefined) {
+    throw new Error(`tenant default locale is not supported: ${value}`);
+  }
+
+  return locale;
+};
 
 /**
  * A stored tenant branding image, carried the way the eye-catch variants are
@@ -142,9 +156,10 @@ export const getTenantSiteInfo = async (
       acceptsPayments: response.acceptsPayments === true,
       copyrightText: trimmed(response.copyrightText),
       // The server resolves the tenant value against the platform default
-      // before answering (`locale.Resolve`), so `parseLocale` only catches a
-      // code this build does not serve.
-      defaultLocale: parseLocale(response.defaultLocale) ?? FALLBACK_LOCALE,
+      // before answering (`locale.Resolve`), so a code that fails to parse here
+      // is one this build does not serve. Rendering the site in some other
+      // language would hide that mismatch behind pages nobody asked for.
+      defaultLocale: requireSupportedLocale(response.defaultLocale),
       domain: trimmed(response.tenantDomain) ?? "",
       iconImageUpdatedAt: nonEmpty(response.theme?.iconImageUpdatedAt),
       iconImageVariants: toTenantImageVariants(
@@ -262,15 +277,20 @@ export const getTenantDisplayTimeZone = async (
  * `default_locale` that `GetTenantByDomain` returns alongside the tenant id
  * (`lib/tenant-resolution.ts`). Both paths resolve to the same setting.
  *
- * An unavailable tenant read degrades to {@link FALLBACK_LOCALE} rather than
- * failing the render. The read carries `tenant:<id>:site`, which the admin API
- * revalidates when the default locale is saved
- * (`tenantDefaultLocaleRevalidateTags`), so a change reaches the site without
- * waiting for the cache to age out.
+ * An unavailable tenant read throws rather than naming a language of its own:
+ * the caller is choosing what a reader sees, and a stand-in would show them a
+ * site in the wrong language instead of the error the outage actually is. The
+ * read carries `tenant:<id>:site`, which the admin API revalidates when the
+ * default locale is saved (`tenantDefaultLocaleRevalidateTags`), so a change
+ * reaches the site without waiting for the cache to age out.
  */
 export const getTenantDefaultLocale = async (
   tenantId: string
 ): Promise<Locale> => {
   const tenant = await getTenantSiteInfo(tenantId);
-  return tenant?.defaultLocale ?? FALLBACK_LOCALE;
+  if (!tenant) {
+    throw new Error(`tenant default locale is unavailable: ${tenantId}`);
+  }
+
+  return tenant.defaultLocale;
 };

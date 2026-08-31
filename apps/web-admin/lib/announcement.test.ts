@@ -63,7 +63,7 @@ describe("announcement lib", () => {
     });
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001", {
+    const result = await listAnnouncements("TENANT001", "ja", {
       limit: 20,
       token: "current-page",
     });
@@ -87,7 +87,7 @@ describe("announcement lib", () => {
     mockListAnnouncementsApi.mockResolvedValue({ announcements: [] });
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001");
+    const result = await listAnnouncements("TENANT001", "ja", {});
 
     expect(mockListAnnouncementsApi).toHaveBeenCalledWith(
       {
@@ -122,7 +122,7 @@ describe("announcement lib", () => {
     });
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001");
+    const result = await listAnnouncements("TENANT001", "ja", {});
 
     expect(result.ok).toBe(true);
     expect(result.announcements).toEqual([
@@ -148,7 +148,7 @@ describe("announcement lib", () => {
     });
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001");
+    const result = await listAnnouncements("TENANT001", "ja", {});
 
     expect(result.announcements.map((item) => item.id)).toEqual(["n2", "n1"]);
   });
@@ -159,7 +159,7 @@ describe("announcement lib", () => {
     );
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001");
+    const result = await listAnnouncements("TENANT001", "ja", {});
 
     expect(result).toEqual({
       announcements: [],
@@ -175,7 +175,7 @@ describe("announcement lib", () => {
     mockGetSessionId.mockResolvedValue("");
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001", {
+    const result = await listAnnouncements("TENANT001", "ja", {
       token: "current-page",
     });
 
@@ -194,7 +194,7 @@ describe("announcement lib", () => {
     );
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001", {
+    const result = await listAnnouncements("TENANT001", "ja", {
       token: "current-page",
     });
 
@@ -210,7 +210,7 @@ describe("announcement lib", () => {
     mockListAnnouncementsApi.mockResolvedValue({ announcements: [] });
 
     const { listAnnouncements } = await import("./announcement");
-    await listAnnouncements("TENANT001");
+    await listAnnouncements("TENANT001", "ja", {});
 
     // 対象ユーザーは作成画面だけが要るので、一覧のたびに引かない。
     expect(mockListTenantUsersApi).not.toHaveBeenCalled();
@@ -228,7 +228,7 @@ describe("announcement lib", () => {
       });
 
     const { listAllAnnouncementTargetUsers } = await import("./announcement");
-    const result = await listAllAnnouncementTargetUsers("TENANT001");
+    const result = await listAllAnnouncementTargetUsers("TENANT001", "ja");
 
     expect(mockListTenantUsersApi).toHaveBeenNthCalledWith(
       1,
@@ -269,7 +269,7 @@ describe("announcement lib", () => {
     });
 
     const { listAllAnnouncementTargetUsers } = await import("./announcement");
-    const result = await listAllAnnouncementTargetUsers("TENANT001");
+    const result = await listAllAnnouncementTargetUsers("TENANT001", "ja");
 
     expect(result).toEqual({
       message: "対象ユーザー一覧の取得に失敗しました。",
@@ -285,7 +285,7 @@ describe("announcement lib", () => {
     );
 
     const { listAllAnnouncementTargetUsers } = await import("./announcement");
-    const result = await listAllAnnouncementTargetUsers("TENANT001");
+    const result = await listAllAnnouncementTargetUsers("TENANT001", "ja");
 
     expect(result).toEqual({
       message:
@@ -302,14 +302,17 @@ describe("announcement lib", () => {
     });
 
     const { createAnnouncement } = await import("./announcement");
-    const result = await createAnnouncement({
-      audienceType: "all",
-      body: "本文",
-      linkUrl: "",
-      targetUserPublicIds: [],
-      tenantId: "TENANT001",
-      title: "タイトル",
-    });
+    const result = await createAnnouncement(
+      {
+        audienceType: "all",
+        body: "本文",
+        linkUrl: "",
+        targetUserPublicIds: [],
+        tenantId: "TENANT001",
+        title: "タイトル",
+      },
+      "ja"
+    );
 
     expect(result).toEqual({ createdCount: 2, ok: true });
   });

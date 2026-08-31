@@ -24,7 +24,6 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
-import { FALLBACK_LOCALE } from "./fallback-locale";
 import { getAccessToken } from "./session";
 
 export interface PageItem {
@@ -197,8 +196,8 @@ const mapPageVersion = (version: RawPageVersion): PageVersionItem => ({
  */
 export const listPages = async (
   tenantId: string,
-  options: CursorPageOptions = {},
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale,
+  options: CursorPageOptions = {}
 ): Promise<ListPagesResult> => {
   "use cache: private";
   cacheTag(`pages-${tenantId}`);
@@ -246,7 +245,7 @@ export const getPage = async (
     tenantId: string;
     pageId: string;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<GetPageResult> => {
   "use cache: private";
   cacheTag(`pages-${input.tenantId}`);
@@ -306,7 +305,7 @@ export const listPageVersions = async (
     tenantId: string;
     pageId: string;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<ListPageVersionsResult> => {
   "use cache: private";
   cacheTag(`page-${input.tenantId}-${input.pageId}`);
@@ -355,7 +354,7 @@ export const createPage = async (
     title: string;
     displayInFooter?: boolean;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<CreatePageResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -405,7 +404,7 @@ export const updatePage = async (
     title: string;
     displayInFooter?: boolean;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<UpdatePageResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -457,7 +456,7 @@ export const createPageVersion = async (
     pageId: string;
     contentMarkdown: string;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<CreatePageVersionResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -505,7 +504,7 @@ export const publishPageVersion = async (
     pageId: string;
     versionId: string;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<PublishPageVersionResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -553,7 +552,7 @@ export const rollbackPageVersion = async (
     pageId: string;
     versionId: string;
   },
-  locale: Locale = FALLBACK_LOCALE
+  locale: Locale
 ): Promise<RollbackPageVersionResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

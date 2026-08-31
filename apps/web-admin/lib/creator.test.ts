@@ -50,7 +50,7 @@ describe("listCreators", () => {
     });
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", {
+    const result = await listCreators("TENANT001", "ja", {
       limit: 20,
       token: "current-page",
     });
@@ -74,7 +74,7 @@ describe("listCreators", () => {
     mockListCreators.mockResolvedValue({ creators: [] });
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001");
+    const result = await listCreators("TENANT001", "ja", {});
 
     expect(mockListCreators).toHaveBeenCalledWith(
       {
@@ -101,7 +101,7 @@ describe("listCreators", () => {
     });
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001");
+    const result = await listCreators("TENANT001", "ja", {});
 
     expect(result.creators.map((item) => item.publicId)).toEqual([
       "CREATOR002",
@@ -116,7 +116,9 @@ describe("listCreators", () => {
     );
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", { token: "current-page" });
+    const result = await listCreators("TENANT001", "ja", {
+      token: "current-page",
+    });
 
     expect(result).toMatchObject({
       creators: [],
@@ -144,10 +146,13 @@ describe("getCreator", () => {
     });
 
     const { getCreator } = await import("./creator");
-    const result = await getCreator({
-      publicId: "CREATOR101",
-      tenantId: "TENANT001",
-    });
+    const result = await getCreator(
+      {
+        publicId: "CREATOR101",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(mockGetCreator).toHaveBeenCalledExactlyOnceWith(
       {
@@ -174,10 +179,13 @@ describe("getCreator", () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { getCreator } = await import("./creator");
-    const result = await getCreator({
-      publicId: "CREATOR001",
-      tenantId: "TENANT001",
-    });
+    const result = await getCreator(
+      {
+        publicId: "CREATOR001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(mockGetCreator).not.toHaveBeenCalled();
     expect(result).toEqual({
@@ -196,10 +204,13 @@ describe("getCreator", () => {
     );
 
     const { getCreator } = await import("./creator");
-    const result = await getCreator({
-      publicId: "MISSING",
-      tenantId: "TENANT001",
-    });
+    const result = await getCreator(
+      {
+        publicId: "MISSING",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result).toEqual({ notFound: true, ok: false });
   });
@@ -211,10 +222,13 @@ describe("getCreator", () => {
     );
 
     const { getCreator } = await import("./creator");
-    const result = await getCreator({
-      publicId: "CREATOR001",
-      tenantId: "TENANT001",
-    });
+    const result = await getCreator(
+      {
+        publicId: "CREATOR001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result.ok).toBe(false);
     expect(result).not.toMatchObject({ notFound: true });
@@ -224,10 +238,13 @@ describe("getCreator", () => {
     mockGetCreator.mockResolvedValue({});
 
     const { getCreator } = await import("./creator");
-    const result = await getCreator({
-      publicId: "CREATOR001",
-      tenantId: "TENANT001",
-    });
+    const result = await getCreator(
+      {
+        publicId: "CREATOR001",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result).toEqual({
       message: "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
@@ -258,7 +275,7 @@ describe("listAllCreators", () => {
       });
 
     const { listAllCreators } = await import("./creator");
-    const result = await listAllCreators("TENANT001");
+    const result = await listAllCreators("TENANT001", "ja");
 
     expect(mockListCreators).toHaveBeenNthCalledWith(
       1,
@@ -294,7 +311,7 @@ describe("listAllCreators", () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { listAllCreators } = await import("./creator");
-    const result = await listAllCreators("TENANT001");
+    const result = await listAllCreators("TENANT001", "ja");
 
     expect(mockListCreators).not.toHaveBeenCalled();
     expect(result).toEqual({
@@ -321,7 +338,7 @@ describe("listAllCreators", () => {
       });
 
     const { listAllCreators } = await import("./creator");
-    const result = await listAllCreators("TENANT001");
+    const result = await listAllCreators("TENANT001", "ja");
 
     expect(mockListCreators).toHaveBeenCalledTimes(2);
     expect(result).toEqual({

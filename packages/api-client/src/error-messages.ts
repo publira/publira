@@ -1,4 +1,3 @@
-import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedRpcErrorMessage } from "@publira/i18n/catalog";
 
@@ -19,42 +18,12 @@ export type RpcErrorMessageOverrides = Partial<
   Record<RpcErrorDisposition, string>
 >;
 
-/**
- * The locale the shared wording falls back to when the caller names none.
- *
- * `@publira/i18n` no longer turns a missing or unknown value into a locale, so
- * this is the last place the previous behaviour of `options.locale` lives.
- *
- * Making `locale` required, and deleting this, is #1340.
- */
-const FALLBACK_LOCALE: Locale = "ja";
-
 export interface RpcErrorMessageOptions {
-  /**
-   * UI locale (`ja` | `en`). Unknown values fall back to `ja`.
-   * Omit to keep the Japanese shared wording.
-   */
-  locale?: Locale | string;
+  /** UI locale the shared wording is read in. */
+  locale: Locale;
   /** Replaces the shared wording for individual categories. */
   overrides?: RpcErrorMessageOverrides;
 }
-
-const isRpcErrorMessageOptions = (
-  value: RpcErrorMessageOptions | RpcErrorMessageOverrides
-): value is RpcErrorMessageOptions =>
-  Object.hasOwn(value, "locale") || Object.hasOwn(value, "overrides");
-
-const resolveRpcErrorMessageOptions = (
-  overridesOrOptions?: RpcErrorMessageOptions | RpcErrorMessageOverrides
-): RpcErrorMessageOptions | undefined => {
-  if (!overridesOrOptions) {
-    return undefined;
-  }
-  if (isRpcErrorMessageOptions(overridesOrOptions)) {
-    return overridesOrOptions;
-  }
-  return { overrides: overridesOrOptions };
-};
 
 /**
  * Localized copy for a caught RPC error.
@@ -65,23 +34,21 @@ const resolveRpcErrorMessageOptions = (
  *
  * `fallback` is the operation-specific message ("著者の保存に失敗しました。…")
  * used when the category has no shared wording. Pass `overrides` to replace
- * the shared wording for individual categories. The third argument may also
- * be the overrides map itself, matching the pre-locale signature.
+ * the shared wording for individual categories.
+ *
+ * `locale` is required. A caller that cannot name one cannot word `fallback`
+ * either, so it has a locale to resolve before it has an error to report.
  */
 export const rpcErrorMessage = (
   error: unknown,
   fallback: string,
-  overridesOrOptions?: RpcErrorMessageOptions | RpcErrorMessageOverrides
+  options: RpcErrorMessageOptions
 ): string => {
-  const options = resolveRpcErrorMessageOptions(overridesOrOptions);
   const disposition = rpcErrorDisposition(error);
 
   return (
-    options?.overrides?.[disposition] ??
-    sharedRpcErrorMessage(
-      disposition,
-      parseLocale(options?.locale) ?? FALLBACK_LOCALE
-    ) ??
+    options.overrides?.[disposition] ??
+    sharedRpcErrorMessage(disposition, options.locale) ??
     fallback
   );
 };
