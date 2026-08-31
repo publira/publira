@@ -15,7 +15,7 @@ import type { EpisodeDetail, EpisodeSeriesSummary } from "#lib/catalog";
 
 import { EpisodeReadRecorder } from "./episode-read-recorder";
 
-const sendBeacon = vi.fn((_url: string, _body: Blob) => true);
+const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>();
 
 /** The reader's own pairing rule: the cover stands alone (#356). */
 const SPREAD_START_INDEX = 1;
@@ -89,6 +89,10 @@ const turnPage = (name: "Next page" | "Previous page" | "Swipe forward") => {
 };
 
 beforeEach(() => {
+  // `clearMocks` drops the calls but keeps whatever a test taught the mock to
+  // return, so the queue-refusing tests would otherwise reach the next one.
+  sendBeacon.mockReset();
+  sendBeacon.mockReturnValue(true);
   vi.stubGlobal("navigator", { ...navigator, sendBeacon });
 });
 
