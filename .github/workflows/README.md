@@ -1,93 +1,85 @@
-# GitHub Actions ワークフロー
+# GitHub Actions workflows
 
-| ワークフロー | ファイル | 役割 |
+| Workflow | File | Purpose |
 | --- | --- | --- |
-| `CI` | [`ci.yml`](./ci.yml) | 検証ジョブ（下記） |
-| `Skills Update` | [`skills-update.yml`](./skills-update.yml) | 週次の agent skills 更新 PR |
-| `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue 整備の自動化 |
+| `CI` | [`ci.yml`](./ci.yml) | Validation jobs described below. |
+| `Skills Update` | [`skills-update.yml`](./skills-update.yml) | Weekly pull requests that update agent skills. |
+| `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue-maintenance automation. |
 
 ## Organize issues
 
-[`organize-issues.yml`](./organize-issues.yml)（workflow 名 `Organize issues`）は Issue 整備用の受け皿。処理の単位は **ジョブ** で足す。実装は `actions/github-script`（checkout なし）。
+[`organize-issues.yml`](./organize-issues.yml), named `Organize issues`, is the home for Issue-maintenance jobs. Add work by job; it uses `actions/github-script` and does not check out the repository.
 
-| ジョブ（表示名） | 内容 |
+| Displayed job | Purpose |
 | --- | --- |
-| `Close completed epics` | native sub-issues がすべて閉じた `epic` Issue を `completed` でクローズする |
+| `Close completed epics` | Close an `epic` Issue as `completed` when all native sub-issues are closed. |
 
-`Close completed epics` の補足:
+`Close completed epics` is triggered by a closed Issue and manual `workflow_dispatch` (which scans open `epic` Issues if no number is supplied). It considers only `epic` parents with at least one sub-issue, walks nested Epic ancestors in one run, and is serialized to avoid missed simultaneous closures. A `GITHUB_TOKEN` close does not trigger another run.
 
-- トリガ: Issue の `closed`、手動の `workflow_dispatch`（番号省略時は open な `epic` を走査）
-- 対象は `epic` ラベル付きの親だけ。sub-issue が 0 件の Epic は閉じない
-- 入れ子の Epic は同一 run で祖先方向へ辿る（`GITHUB_TOKEN` による close は別 run を起こさない）
-- 同時クローズの取りこぼしを避けるため、このジョブだけ直列化する
+# CI workflow
 
-# CI ワークフロー
+[`ci.yml`](./ci.yml), named `CI`, defines job layout, triggers, path filters, and failure triage. This file is the primary source of truth for _which jobs run when_; domain READMEs and AGENTS files define _what each job verifies_.
 
-[`ci.yml`](./ci.yml)（workflow 名 `CI`）のジョブ構成・トリガ・path filter・失敗時のトリアージを定義する。  
-「どのジョブがいつ動くか」の一次情報は本ファイル。「各ジョブが何を検証するか」は各ドメインの README / AGENTS を正とする。
+Implementation:
 
-実装:
+- Workflow: [`ci.yml`](./ci.yml)
+- Job planning—selected jobs and Docker matrix: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
 
-- ワークフロー本体: [`ci.yml`](./ci.yml)
-- ジョブ計画（どのジョブを走らせ、Docker 行列に何を積むか）: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
+[`infra/docker/README.md`](../../infra/docker/README.md) is authoritative for Docker image placement, build steps, and Docker-specific triage. This document covers only how the `Docker` job is started by CI.
 
-Docker イメージの配置規約・ビルド手順・Docker 固有のトリアージは [`infra/docker/README.md`](../../infra/docker/README.md) を正とする。本ファイルは `Docker` ジョブが CI 上でどう起動されるかだけを扱う。
+## Jobs
 
-## ジョブ一覧
-
-| ジョブ（表示名） | 内容 | 詳細 |
+| Displayed job | Contents | Details |
 | --- | --- | --- |
-| `Detect changes` | path filter を評価し、実行するジョブと Docker 行列を決める | 本ファイル |
-| `Check` | ロケールカタログ・`sqlc`・buf 生成物のドリフト検出・packages ビルド・`pnpm typegen`・`pnpm check`・べた書き `<svg>` の grep・`pnpm typecheck` | [`AGENTS.md`](../../AGENTS.md) |
-| `Lint / Go` | `golangci-lint run ./...`（`server/`、設定は `server/.golangci.yml`） | [`server/AGENTS.md`](../../server/AGENTS.md) |
-| `Test / Go` | `go test ./...`（`server/`） | [`server/AGENTS.md`](../../server/AGENTS.md) |
-| `Test / TypeScript` | packages ビルド後に `pnpm test` | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
-| `Test / DB Migrations` | 空 Postgres に対する `migrate up` → `down -all` → `up` | [`db/AGENTS.md`](../../db/AGENTS.md) |
-| `Test / Mobile` | `task mobile:check`（依存は `task mobile:deps`） | [`mobile/README.md`](../../mobile/README.md) |
-| `Test / Mobile E2E` | Android エミュレータ上で `task mobile:test-integration`（公開 API + seed。失敗時 artifact） | [`mobile/README.md`](../../mobile/README.md) |
-| `Test / E2E` | `task e2e:run`（ビルド → readiness → Playwright → teardown） | [`e2e/README.md`](../../e2e/README.md) |
-| `Test / Bootstrap` | `task e2e:bootstrap`（空 volume → `task setup` → DB 再起動 → `task dev`） | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
-| `Test / Routing` | `task e2e:routing`（Dev Container Traefik のホスト / `/api` / `/images` 疎通） | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
-| `Build` | `pnpm build`（Web）・`task server:build`（Go） | 本ファイル |
-| `Docker / <target>` | `task docker:build:*`（web は続けて `task docker:smoke:web`、node は `task docker:smoke:node`） | [`infra/docker/README.md`](../../infra/docker/README.md) |
-| `Summary` | 全ジョブの結果を集約する最終ジョブ | 本ファイル |
+| `Detect changes` | Evaluate path filters and select jobs and Docker matrix entries. | This file |
+| `Check` | Locale-catalog, `sqlc`, and buf-generated drift; package builds; `pnpm typegen`, `pnpm check`, literal-`<svg>` grep, and `pnpm typecheck`. | [`AGENTS.md`](../../AGENTS.md) |
+| `Lint / Go` | `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
+| `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
+| `Test / TypeScript` | `pnpm test` after package builds. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
+| `Test / DB Migrations` | Empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
+| `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
+| `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed. | [`mobile/README.md`](../../mobile/README.md) |
+| `Test / E2E` | `task e2e:run`: build, readiness, Playwright, teardown. | [`e2e/README.md`](../../e2e/README.md) |
+| `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
+| `Test / Routing` | `task e2e:routing`: Dev Container Traefik host, `/api`, and `/images` connectivity. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
+| `Build` | `pnpm build` for Web and `task server:build` for Go. | This file |
+| `Docker / <target>` | `task docker:build:*`, then web/node smoke tests. | [`infra/docker/README.md`](../../infra/docker/README.md) |
+| `Summary` | Final aggregation of every job result. | This file |
 
-Branch ruleset が要求する必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`）。中間ジョブは path filter で個別にスキップされうるが、`Summary` は `skipped` を success として扱う。
+The branch ruleset requires only final aggregation job **`Summary`** (shown as `CI / Summary`). Intermediate jobs can be skipped by filters; `Summary` treats `skipped` as success.
 
-## トリガと実行モード
+## Triggers and modes
 
-| トリガ | ホスト CI | Docker |
+| Trigger | Host CI | Docker |
 | --- | --- | --- |
-| `pull_request`（main 宛て） / `push`（main） | path filter で該当ジョブのみ | 変更ロールの代表のみ（`docker_core` に触れた場合は全ターゲット） |
-| `schedule`（毎日 03:00 UTC） | `Test / Bootstrap` のみ | 全ターゲット（Nightly フル） |
-| `workflow_dispatch` | 全ジョブ実行 | 入力 `docker_mode` で `verify`（代表）/ `full`（全ターゲット）を選択 |
+| `pull_request` to main / `push` to main | Only matching jobs through path filters. | Representatives of changed roles only; all targets when `docker_core` changes. |
+| `schedule` (daily at 03:00 UTC) | Only `Test / Bootstrap`. | Every target (nightly full). |
+| `workflow_dispatch` | Every job. | Select `verify` (representatives) or `full` (all targets) through `docker_mode`. |
 
-Nightly フルは path filter で拾えないサービス横断のドリフトを検出するためのもので、ホスト CI は `Test / Bootstrap` を除き回さない。`Test / Bootstrap` だけは例外で、`.devcontainer/**` のように普段の PR ではほとんど触られない構成 path を監視対象に含むため、定期実行でも 1 日 1 回は通す。
+Nightly full builds find cross-service drift that filters cannot catch. Host CI does not run nightly except **Test / Bootstrap**, which monitors rarely changed paths such as `.devcontainer/**`.
 
-## path filter
+## Path filters
 
-`Detect changes` が [dorny/paths-filter](https://github.com/dorny/paths-filter) で変更 path を判定し、`scripts/ci-plan-jobs.sh` が実行フラグと Docker 行列に変換する。
+`Detect changes` uses [dorny/paths-filter](https://github.com/dorny/paths-filter); `scripts/ci-plan-jobs.sh` turns the result into job flags and the Docker matrix.
 
-**全ジョブ共通**で、`.github/workflows/ci.yml` と `scripts/ci-plan-jobs.sh` の変更は必ずそのジョブを起動する（CI 自体の変更を取りこぼさないため）。また**全ジョブ共通で Markdown（`**/*.md`）は監視対象から除外**する（後述）。以下の表は共通分を除いた監視 path。
+For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. Every filter also excludes Markdown (`**/*.md`), avoiding checks triggered by README-only changes. Outside those shared rules, the main filters are:
 
-| ジョブ | 監視 path（共通分を除く） |
+| Job | Watched paths |
 | --- | --- |
-| `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, `sqlc.yaml`, `buf.yaml`, `buf.gen.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `oxlint.config.ts`, `oxfmt.config.ts` |
+| `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, package / lock / turbo config, and lint / format config |
 | `Lint / Go` | `server/**` |
-| `Test / Go` | `server/**`, `db/**`, `proto/**`, `sqlc.yaml`, `buf.yaml`, `buf.gen.yaml` |
-| `Test / TypeScript` | `apps/**`, `locales/**`, `packages/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
+| `Test / Go` | `server/**`, `db/**`, `proto/**`, and generator config |
+| `Test / TypeScript` | apps, locales, packages, package / lock / turbo config |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml` |
-| `Test / Mobile E2E` | `mobile/**`, `e2e/compose.yaml`, `e2e/scripts/{up,down,db-setup,api-server,lib,stop-apps}.sh`, `proto/publira/v1/catalog.proto`, `proto/publira/v1/domain.proto`, `server/**`, `db/migrations/**`, `db/seeds/**`, `Taskfile.yaml`, `scripts/storage-init.sh` |
-| `Test / E2E` | `e2e/**`（`e2e/routing/**` を除外）, `apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `Taskfile.yaml`, `scripts/storage-init.sh` |
-| `Test / Bootstrap` | `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `scripts/storage-init.sh` |
+| `Test / Mobile E2E` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init |
+| `Test / E2E` | E2E except routing, web apps, packages, server, db, and build inputs |
+| `Test / Bootstrap` | Dev Container, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init |
 | `Test / Routing` | `.devcontainer/**`, `e2e/routing/**` |
-| `Build` | `apps/**`, `packages/**`, `server/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
-| `Docker`（ロール別） | [`infra/docker/README.md`](../../infra/docker/README.md) の「変更検知のロール対応」 |
+| `Build` | apps, packages, server, and build inputs |
+| `Docker` | The role mapping in [Docker CI execution strategy](../../infra/docker/README.md#docker-ci-execution-strategy) |
 
-### ドキュメントのみの変更の除外
-
-監視 path は `apps/**` のようにディレクトリ単位で指定しているため、放置すると配下の README / AGENTS.md を直しただけで `Check` や `Test / E2E` まで走る。これを避けるため、全 filter が否定パターン `!**/*.md` を共有する（[#656](https://github.com/publira/publira/issues/656)）。
+The shared exclusion is implemented as:
 
 ```yaml
 predicate-quantifier: "some-with-excludes"
@@ -100,113 +92,55 @@ filters: |
     …
 ```
 
-- **`predicate-quantifier: "some-with-excludes"` は必須**。既定の `some` は「どれか 1 つの pattern にマッチすれば採用」なので、`!**/*.md` が単なる選択肢の 1 つとして扱われて除外が効かない。`some-with-excludes` では「肯定 pattern に 1 つ以上マッチし、かつ否定 pattern に 1 つもマッチしない」となる。この入力はアクション全体（全 filter）に適用されるが、他の pattern はすべて肯定なので挙動は変わらない。
-- 除外リストは YAML アンカー `&docs_excluded` に 1 箇所だけ定義し、各 filter が `*docs_excluded` で参照する。**filter を追加したらこの行も足す**（書き漏れるとその filter だけ Markdown で起動する）。
-- `docs_excluded` 自体も filter として出力されるが、否定 pattern しか持たない filter は常に false で、`scripts/ci-plan-jobs.sh` も読んでいない。
-- Markdown とコードが混在する PR では、コード側が肯定 pattern にマッチするので従来どおりジョブは起動する。
-- 除外対象は `**/*.md` のみ。ルート直下の `LICENSE` や `.coderabbit.yaml` などはそもそもどの filter の監視 path にも入っていない。
+**`predicate-quantifier: "some-with-excludes"` is required.** Default `some` treats the negative pattern as merely another choice, so it does not exclude Markdown. `some-with-excludes` requires at least one positive match and no negative matches. Define `&docs_excluded` once and include `*docs_excluded` in every filter; the negative-only `docs_excluded` output is always false and is not read by `scripts/ci-plan-jobs.sh`.
 
-### `Detect changes` の checkout（push イベントの base 解決）
-
-paths-filter の判定方法はトリガによって異なり、`Detect changes` の checkout はそれに合わせる必要がある。
-
-| トリガ | 判定方法 | 必要な履歴 |
-| --- | --- | --- |
-| `pull_request` | GitHub API から変更ファイル一覧を取得 | 不要（shallow で足りる） |
-| `push` | `github.event.before`..HEAD を **ローカルで git diff** | base コミットがローカルに必要 |
-
-`Detect changes` の checkout は `persist-credentials: false`（ハードニング）なので、base コミットが手元になくても paths-filter のフォールバックの `git fetch` は認証できず exit 128 で落ちる。そのため `push` のときだけ `fetch-depth: 0` にして base をローカルに用意し、`git cat-file -e` で解決できる状態にしている（[#657](https://github.com/publira/publira/issues/657)）。
+For `pull_request`, paths-filter obtains changed files through the GitHub API, so shallow history is sufficient. For `push`, it diffs `github.event.before`..HEAD locally, requiring the base commit. `Detect changes` sets `persist-credentials: false`, so the fallback fetch cannot authenticate; on pushes, use `fetch-depth: 0` to provide the base locally:
 
 ```yaml
 fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
 ```
 
-`'0'` のクォートは必須。GitHub の式では `0` が falsy なので、クォートを外すと `github.event_name == 'push' && 0 || 1` が push 時に `1` へ潰れ、同じ失敗が再発する。
+Quotes around `'0'` are required: GitHub expressions treat bare `0` as falsy, which would turn the push result into `1` and reproduce the failure.
 
-### テストを分割している理由
+Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and routing jobs prevent unrelated toolchain setup for a focused PR; `Summary` keeps the required-check count unchanged. `sqlc diff` reads schema and query files and needs no live database, so it remains in `Check`.
 
-Go / TypeScript / DB migration / Mobile / Mobile E2E / E2E / Bootstrap / Routing は**ジョブを分ける**。片方の言語しか触らない PR で無関係なツールチェーンのセットアップとテストを走らせないためで、`Summary` が集約するので必須チェックの数は増えない。
+`Validate / buf Generated Diff` runs `buf generate`, then compares `server/gen/**` and `packages/api-client/src/gen/**` against the committed tree. `buf.gen.yaml` sets `clean: true` so stale output is visible; when it fails, run `task gen` and commit the result. CI stages before comparing so untracked generated files are included.
 
-`sqlc diff` は、`sqlc.yaml` の `schema` 設定が指すスキーマファイル（`db/migrations/`）と `queries`（`db/query/`）を読んで生成結果との差分を検証する codegen チェックであり、生きた DB 接続を必要としない。したがって `Check` に残し、`Check` 自体は Postgres service を持たない。
+## Lint, migrations, and Docker
 
-### buf 生成物のドリフト検出
+`Lint / Go` is independent from `Test / Go` so static-analysis results arrive before Testcontainers tests, and front-end-only PRs do not run it. Its rules and version are [`server/.golangci.yml`](../../server/.golangci.yml) and `GOLANGCI_LINT_VERSION` in `ci.yml`; reproduce it with `task server:lint`.
 
-`sqlc diff` に相当するサブコマンドが buf には無いので、`Validate / buf Generated Diff` は `buf generate` で作り直してから、コミット済みのツリーと比べる（[#922](https://github.com/publira/publira/issues/922)）。リモートプラグインは `buf.gen.yaml` でピン留めしてあり `buf generate` が再現可能なので（[#919](https://github.com/publira/publira/pull/919)）、差分の有無がそのままドリフトの有無になる。
+`Test / DB Migrations` runs against its own Postgres service and must succeed through `migrate up`, `migrate down -all`, and another `migrate up`; any failure, including a dirty database, makes `Summary` fail.
 
-- 比較対象は `server/gen/**` と `packages/api-client/src/gen/**`。どちらも buf の出力しか置かないディレクトリなので、`buf.gen.yaml` の `clean: true` で丸ごと消してから生成している。これにより、proto を消したのに残っている生成ファイルも差分として出る。
-- `clean` を CI 側の `--clean` フラグではなく `buf.gen.yaml` に置いているのは、`task gen` と CI の `buf generate` を同じ挙動にするため。CI だけが clean すると、案内どおり `task gen` しても直らない失敗が起きる。
-- 比較の前に `git add -A` で stage するのは、`git diff` 単体では未追跡の新規ファイルが見えないため。stage すれば追加・削除・変更が同じ diff に揃う。
-- 落ちたときは手元で `task gen` を実行して結果をコミットする。エラーアノテーションにも同じ案内を出している。
-- path filter は `Check` の既存パターンで足りる。生成先は `server/**` と `packages/**` に、入力は `proto/**` / `buf.yaml` / `buf.gen.yaml` に含まれる。
+`Docker / <target>` executes the matrix from `scripts/ci-plan-jobs.sh` with the same `task docker:build:web|api|batch|node` commands used locally, followed by `task docker:smoke:web` or `task docker:smoke:node` where applicable. See [`infra/docker/README.md`](../../infra/docker/README.md) for role mapping, build conventions, local verification, and Docker triage.
 
-## Lint / Go（golangci-lint）
+## Failure triage
 
-フロントの lint が `Check` に入っているのと対称に、Go の静的解析は独立ジョブ `Lint / Go` で回す（[#587](https://github.com/publira/publira/issues/587)）。`Test / Go` と分けているのは、Testcontainers を伴う Go テストの完了を待たずに lint 結果が出るため、および `Check` の広い path filter（`apps/**` など）でフロントだけの PR に golangci-lint を走らせないため。
+1. Identify the failing `CI` job. A failed **`Summary`** means a dependency is `failure` or `cancelled`; its log reports `Job failed: <name>`.
+2. Reproduce locally:
 
-- ルールセットとバージョン: [`server/.golangci.yml`](../../server/.golangci.yml) と `ci.yml` の `GOLANGCI_LINT_VERSION`（devcontainer の同名 `ARG` と揃える。どちらも Renovate 管理）
-- ローカル等価コマンド: `task server:lint`
-- path filter は `Test / Go` より狭い `server/**` のみ。golangci-lint が読むのは Go ソースと `server/.golangci.yml` だけで、`task gen` の出力先も `server/` 配下なので、`db/**` や `proto/**` だけの変更で結果が変わることはない。
-
-## Test / DB Migrations（migration の up/down 検証）
-
-[`db/AGENTS.md`](../../db/AGENTS.md) の baseline 単一ファイル運用を前提に、このジョブ専用の Postgres service（他ジョブとは別インスタンス）へ次の順で `golang-migrate` を実行する。
-
-1. `migrate up` — 空 DB へ baseline を適用できること
-2. `migrate down -all` — dirty にならず空 DB まで戻せること（baseline の `down.sql` の健全性）
-3. `migrate up` — down 後に再適用できること（往復の整合性）
-
-いずれかのステップが失敗（dirty 化を含む）すれば `Test / DB Migrations` が落ち、`Summary` が赤くなる。
-
-## Docker ジョブ
-
-`Docker / <target>` は matrix ジョブで、`scripts/ci-plan-jobs.sh` が組み立てた行列（ロール・ターゲット・`task` 名・build arg）をそのまま実行する。コマンドはローカルと同一の `task docker:build:web|api|batch|node` で、web ロールは続けて `task docker:smoke:web`、node ロールは `task docker:smoke:node` を走らせる。
-
-- 変更検知のロール対応（どの path でどの代表イメージをビルドするか）・verify / full の使い分け: [`infra/docker/README.md`](../../infra/docker/README.md) の「Docker の CI 実行戦略」
-- ビルド規約・ローカル検証・Docker 固有のトリアージ: [`infra/docker/README.md`](../../infra/docker/README.md)
-
-## 失敗時のトリアージ
-
-1. **どのゲートが落ちたか**（workflow `CI` 内のジョブ名）を見る
-   - 最終ジョブ **`Summary`** が赤 → 依存ジョブのどれかが `failure` / `cancelled`（ログに `Job failed: <名前>` が出る）
-   - `Detect changes` → path filter の base 解決（push イベントの checkout 履歴。上記「`Detect changes` の checkout」を参照）
-   - `Check` → lint・フォーマット・型・`sqlc diff`・buf 生成物のドリフト（`task gen` して差分をコミット）
-   - `Test / Go` → `server/` の `go test`
-   - `Test / TypeScript` → `pnpm test`
-   - `Test / DB Migrations` → `db/migrations/00000000000000_baseline.{up,down}.sql` の SQL（`up` / `down -all` / `up` の往復）
-   - `Test / Mobile` → `task mobile:check`（format / analyze / test）
-   - `Test / Mobile E2E` → エミュレータ起動か integration test 失敗か（artifact `mobile-e2e-artifacts`）
-   - `Test / E2E` → readiness 失敗かテスト失敗か（artifact `e2e-artifacts`）
-   - `Test / Bootstrap` → どの phase で落ちたか（artifact `bootstrap-artifacts`）
-   - `Test / Routing` → どのプローブが落ちたか（artifact `routing-artifacts`）
-   - `Build` → `pnpm build` / `go build`
-   - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
-2. **ローカルで同じコマンドを再現する**
-
-   | ジョブ | ローカル再現 |
+   | Job | Local command |
    | --- | --- |
-   | `Check` | `pnpm preflight`（typegen / typecheck / check / test） |
-   | `Test / Go` | `task server:test-short` → `task server:test` |
-   | `Test / TypeScript` | `pnpm test`（先に `pnpm build --filter "./packages/*"`） |
-   | `Test / DB Migrations` | `task db:reset`（`drop` → `migrate` → `seed`）。`down` 単体は `task db:rollback` |
-   | `Test / Mobile` | `task mobile:check`（依存は `task mobile:deps`） |
-   | `Test / Mobile E2E` | `task mobile:e2e`（Android エミュレータと Docker が必要。常に teardown する） |
-   | `Test / E2E` | `task e2e`（常に teardown する） |
-   | `Test / Bootstrap` | `task e2e:bootstrap`（常に teardown する。`task dev` を止められないときは `BOOTSTRAP_SKIP_DEV=1`） |
-   | `Test / Routing` | `task e2e:routing`（常に teardown する） |
+   | `Check` | `pnpm preflight` |
+   | `Test / Go` | `task server:test-short` then `task server:test` |
+   | `Test / TypeScript` | `pnpm build --filter "./packages/*"` then `pnpm test` |
+   | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only |
+   | `Test / Mobile` | `task mobile:check` |
+   | `Test / Mobile E2E` | `task mobile:e2e` |
+   | `Test / E2E` | `task e2e` |
+   | `Test / Bootstrap` | `task e2e:bootstrap` (`BOOTSTRAP_SKIP_DEV=1` if `task dev` cannot stop) |
+   | `Test / Routing` | `task e2e:routing` |
    | `Build` | `pnpm build` / `task server:build` |
-   | `Docker / <target>` | CI ログの `task docker:build:…` 行をそのまま実行、または `task docker:verify` |
+   | `Docker / <target>` | The exact CI `task docker:build:…` line, or `task docker:verify` |
 
-3. **CI だけ失敗する場合**
-   - ランナー arch とローカルの差（Docker については [`infra/docker/README.md`](../../infra/docker/README.md) の「ビルド失敗時のトリアージ」を参照）
-   - キャッシュ汚れ → 再実行、ローカルは `docker builder prune`
-   - path filter の取りこぼし懸念 → `workflow_dispatch` で全ジョブ実行（Docker は `full`）、または Nightly の結果を確認
+3. For CI-only failures, consider runner architecture / Buildx differences, stale caches (rerun CI or use local `docker builder prune`), and missed path filters (use `workflow_dispatch`, Docker `full`, or nightly results).
 
-## CI を変更するときのチェックリスト
+## CI change checklist
 
-- [ ] ジョブを追加・改名したら `Summary` の `needs` と集約ループ（`env` と表示名）に足した
-- [ ] path filter を追加したら `scripts/ci-plan-jobs.sh` の `FILTER_*` 読み取り・出力・`workflow_dispatch` 分岐を更新した
-- [ ] path filter を追加したら先頭に `- *docs_excluded` を入れた（ドキュメントのみの変更で起動しないこと）
-- [ ] 本ファイルの「ジョブ一覧」「path filter」表を更新した
-- [ ] `Detect changes` の checkout を変えた場合、push イベントで base コミットを解決できることを確認した（`fetch-depth` と `persist-credentials` の組み合わせ）
-- [ ] ジョブ表示名を変えた場合、Branch ruleset の必須チェックは `Summary` のままで足りるか確認した
-- [ ] Docker ターゲットを増やした場合は [`infra/docker/Taskfile.yaml`](../../infra/docker/Taskfile.yaml) の `verify:full` と `scripts/ci-plan-jobs.sh` の full 行列を同時に更新した
+- [ ] Added or renamed jobs in `Summary` `needs` and aggregation loop (environment and display name)
+- [ ] Updated `scripts/ci-plan-jobs.sh` flags, output, and `workflow_dispatch` branch for a new path filter
+- [ ] Added `- *docs_excluded` to every new filter
+- [ ] Updated the Jobs and Path filters tables in this document
+- [ ] Confirmed that a `Detect changes` checkout change still resolves the push base (the `fetch-depth` / `persist-credentials` combination)
+- [ ] Confirmed that `Summary` remains the required branch-ruleset check after changing a displayed job name
+- [ ] Updated `infra/docker/Taskfile.yaml` `verify:full` and the full Docker matrix in `scripts/ci-plan-jobs.sh` when adding a Docker target

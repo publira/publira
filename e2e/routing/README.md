@@ -1,126 +1,113 @@
-# ホストベースルーティング疎通チェック
+# Host-based routing connectivity check
 
-開発環境 Traefik（`.devcontainer/compose.yaml` の Docker labels と静的設定）のルーティング退行を、実アプリを起動せずに検知する。外来 trace context の除去も同じ経路の設定なのでここで見る。
+This check detects routing regressions in development Traefik—the Docker labels and static configuration in `.devcontainer/compose.yaml`—without starting real applications. It also covers removal of inbound trace context, which is configured on the same path.
 
-関連: [#55](https://github.com/publira/publira/issues/55) / Epic [#512](https://github.com/publira/publira/issues/512)
+Related: [#55](https://github.com/publira/publira/issues/55) / Epic [#512](https://github.com/publira/publira/issues/512)
 
-Playwright E2E（[`../README.md`](../README.md)）はアプリポートへ直結する。bootstrap（[`../bootstrap/README.md`](../bootstrap/README.md)）は `task setup` / `task dev` を検証するが Traefik は起動しない。どちらもここの対象外。
+Playwright E2E ([`../README.md`](../README.md)) connects directly to application ports. Bootstrap ([`../bootstrap/README.md`](../bootstrap/README.md)) verifies `task setup` / `task dev`, but does not start Traefik. Neither is in this check's scope.
 
-## なぜ必要か
+## Why it is needed
 
-Traefik の振り分けは `.devcontainer/compose.yaml` の `app` labels だけが正である。priority・HostRegexp・`/api` の strip-prefix・`/api/v1/revalidate` の除外・`/images` の admin 分岐は、ラベルを 1 行変えただけで壊れる。その退行は `pnpm preflight` でも Playwright でも bootstrap でも見えない。
+The `app` labels in `.devcontainer/compose.yaml` are the source of truth for Traefik routing. A one-line label change can break priority, `HostRegexp`, `/api` strip-prefixing, the `/api/v1/revalidate` exception, or the admin `/images` route. `pnpm preflight`, Playwright, and bootstrap cannot detect these regressions.
 
-`web` エントリポイントの `strip-trace-context` ミドルウェアも同じ立場にある。これは外来の `traceparent` / `tracestate` / `baggage` を落とす信頼境界で、外れても通信は普通に成功するため、検証しなければ誰も気づかない。詳細は [`../../server/README.md`](../../server/README.md#trace-context-arriving-from-outside) を参照。
+The `strip-trace-context` middleware on the `web` entrypoint is another trust boundary: it removes incoming `traceparent`, `tracestate`, and `baggage`. Requests still succeed if it is detached, so the regression is silent without this check. See [`../../server/README.md`](../../server/README.md#trace-context-arriving-from-outside).
 
-本チェックは **同じ compose ファイル** を専用 project 名で起動し、`app` のプロセスだけをポート応答用の echo サーバーに差し替える。ラベルはそのままなので、compose 上のルール変更がそのままテストに現れる。
+The check starts **the same compose file** under a dedicated project name, replacing only the `app` process with an echo server for port responses. The labels remain unchanged, so compose-rule changes are tested directly.
 
-## 前提
+## Prerequisites
 
-- Docker（Compose v2, `!reset` / `!override` を解釈できる版）
-- `curl` / `task`
+- Docker with Compose v2 that supports `!reset` and `!override`
+- `curl` and `task`
 
-| 用途 | ポート | 備考 |
+| Use | Port | Notes |
 | --- | --- | --- |
-| Traefik web entrypoint | `13080` | `ROUTING_TRAEFIK_PORT` で変更可。Dev Container の `3080` とはずらしてある |
-| Traefik API / dashboard | `18080` | `ROUTING_TRAEFIK_API_PORT` で変更可。readiness が routers を読む |
+| Traefik web entrypoint | `13080` | Change with `ROUTING_TRAEFIK_PORT`; it intentionally differs from the Dev Container's `3080`. |
+| Traefik API / dashboard | `18080` | Change with `ROUTING_TRAEFIK_API_PORT`; readiness reads routers here. |
 
-`db` / `redis` / `mailpit` は起動しない。`task dev` を動かしたままでも、既定ポートが衝突しなければ同時に走らせられる。
+`db`, `redis`, and `mailpit` do not start. This can run alongside `task dev` when the default ports do not collide.
 
-ログは既定で `e2e/routing/.run/` に置く。`ROUTING_TRAEFIK_PORT` / `ROUTING_TRAEFIK_API_PORT` / `ROUTING_PROJECT_NAME` を既定から変えた場合、`lib.sh` は project 名とポートを組み合わせたサブディレクトリに state を分ける。明示的な `ROUTING_RUN_DIR` があればそちらを優先する。同じ compose project の並行起動は flock で拒否する。同じポートでの並行起動はポート競合で失敗する想定。
+Logs default to `e2e/routing/.run/`. When `ROUTING_TRAEFIK_PORT`, `ROUTING_TRAEFIK_API_PORT`, or `ROUTING_PROJECT_NAME` differs from its default, `lib.sh` keeps state in a subdirectory made from the project name and ports. `ROUTING_RUN_DIR` takes precedence when set. `flock` rejects concurrent starts of the same compose project; starts on the same ports fail through normal port collision.
 
-## 実行
+## Run
 
 ```bash
 task e2e:routing
 ```
 
-成功・失敗・中断のいずれでも teardown する（compose project + volume を消す）。
+It always tears down the compose project and volumes, whether it succeeds, fails, or is interrupted.
 
-### 分解コマンド
+### Individual commands
 
-| コマンド | 内容 |
+| Command | Purpose |
 | --- | --- |
-| `task e2e:routing:up` | `.devcontainer/compose.yaml` + overlay で `traefik` + echo `app` を起動 |
-| `task e2e:routing:wait-ready` | Traefik API に 6 本の labeled router と 2 本の middleware が出るまで待つ |
-| `task e2e:routing:test` | Host / `/api` / `/images` のプローブ（stack 起動済み前提） |
-| `task e2e:routing:down` | teardown |
+| `task e2e:routing:up` | Start `traefik` and the echo `app` with `.devcontainer/compose.yaml` plus the overlay. |
+| `task e2e:routing:wait-ready` | Wait until the Traefik API reports six labeled routers and two middleware entries. |
+| `task e2e:routing:test` | Probe Host, `/api`, and `/images` routes (requires a running stack). |
+| `task e2e:routing:down` | Tear down the stack. |
 
-## 検証内容
+## What it verifies
 
-echo サーバーは受けたリクエストを `{"backend","port","path","host","method"}` と、受け取った `traceparent` / `tracestate` / `baggage` の値で返す。アサーションは **どのバックエンドに届いたか** と **そのバックエンドが見た path**（strip-prefix 後）の両方。
+The echo server responds with `{"backend","port","path","host","method"}` and the received `traceparent`, `tracestate`, and `baggage` values. Assertions cover both **which backend received a request** and **the path it saw** after strip-prefixing.
 
-| 系統 | 例 | 期待 |
+| Route | Example | Expected result |
 | --- | --- | --- |
-| web-host | `Host: localhost` `/` | `web-host` (`:3000`) path `/` |
-| web-host | `Host: other.localhost` `/catalog` | `web-host`（Host 非制限の fallback） |
+| web-host | `Host: localhost` `/` | `web-host` (`:3000`), path `/` |
+| web-host fallback | `Host: other.localhost` `/catalog` | `web-host` |
 | web-admin | `Host: admin.localhost` `/` | `web-admin` (`:4000`) |
-| web-admin | `Host: admin2.example.com` `/series` | `web-admin`（`admin\d*`） |
-| web-admin | `Host: administrator.localhost` `/` | `web-host`（非マッチ） |
+| web-admin regexp | `Host: admin2.example.com` `/series` | `web-admin` (`admin\d*`) |
+| non-match | `Host: administrator.localhost` `/` | `web-host` |
 | web-platform | `Host: platform.localhost` `/` | `web-platform` (`:4100`) |
-| Host + port | `Host: admin.localhost:3080` `/` | `web-admin`（Traefik は hostname だけ見る） |
-| `/api` strip | `GET /api/readyz` | `api` (`:8000`) path `/readyz` |
-| `/api` on admin / platform | `Host: admin.localhost` `/api/readyz` | `api` path `/readyz`（priority 105 > host 100） |
-| revalidate 除外 | `POST /api/v1/revalidate` | `web-host` path `/api/v1/revalidate`（strip しない） |
-| revalidate on admin | `Host: admin.localhost` `POST /api/v1/revalidate` | `web-admin`（admin-api が叩く Next.js） |
-| revalidate の prefix | `GET /api/v1/revalidate/extra` | `api` path `/v1/revalidate/extra`（完全一致だけ除外） |
+| Host with port | `Host: admin.localhost:3080` `/` | `web-admin`; Traefik uses only the hostname |
+| `/api` strip | `GET /api/readyz` | `api` (`:8000`), path `/readyz` |
+| `/api` on admin / platform | `Host: admin.localhost` `/api/readyz` | `api`, path `/readyz` (priority 105 > 100) |
+| revalidate exception | `POST /api/v1/revalidate` | `web-host`, path `/api/v1/revalidate` (not stripped) |
+| revalidate on admin | `Host: admin.localhost` `POST /api/v1/revalidate` | `web-admin` |
+| revalidate prefix | `GET /api/v1/revalidate/extra` | `api`, path `/v1/revalidate/extra` (only exact match is excluded) |
 | `/images` | `GET /images/cover` | `image-server` (`:8200`) |
-| `/images` on platform | `Host: platform.localhost` `/images/cover` | `image-server`（priority 110 > 100） |
-| `/images` on admin | `Host: admin.localhost` `/images/cover` | `admin-image-server` (`:8201`, priority 130） |
+| `/images` on platform | `Host: platform.localhost` `/images/cover` | `image-server` (priority 110 > 100) |
+| `/images` on admin | `Host: admin.localhost` `/images/cover` | `admin-image-server` (`:8201`, priority 130) |
 
-外来 trace context の除去は、偽装した `traceparent` / `tracestate` / `baggage` を付けたうえで、上と同じ backend / path のアサーションに **3 ヘッダがどれも届いていないこと** を足して確認する。エントリポイント既定のミドルウェアなので、6 つのバックエンドすべてが対象。
+The trace-context checks send forged `traceparent`, `tracestate`, and `baggage` values and add assertions that **all three are absent** at the backend. Since this is an entrypoint-default middleware, the checks cover all six backends, including web, `/api`, the revalidate exception, and `/images`.
 
-| 系統 | 例 | 期待 |
-| --- | --- | --- |
-| web-host / web-admin / web-platform | `Host: admin.localhost` `/` + 偽装ヘッダ | `web-admin`、3 ヘッダとも空 |
-| `/api` | `GET /api/readyz` + 偽装ヘッダ | `api` path `/readyz`（strip-prefix と同居しても除去される）、3 ヘッダとも空 |
-| revalidate 除外 | `POST /api/v1/revalidate` + 偽装ヘッダ | `web-host`、3 ヘッダとも空 |
-| `/images` | `GET /images/cover`（既定 / admin ホスト） + 偽装ヘッダ | `image-server` / `admin-image-server`、3 ヘッダとも空 |
-
-## 構成
+## Layout
 
 ```text
 e2e/routing/
-├── compose.override.yaml   # .devcontainer/compose.yaml への overlay（port 公開 + echo app）
-├── echo.py                 # 3000 / 4000 / 4100 / 8000 / 8200 / 8201 で JSON を返す
+├── compose.override.yaml   # Overlay for .devcontainer/compose.yaml (published ports + echo app)
+├── echo.py                 # Returns JSON on 3000 / 4000 / 4100 / 8000 / 8200 / 8201
 ├── Taskfile.yaml
 └── scripts/
     ├── lib.sh
-    ├── run.sh              # up → wait-ready → test + 常時 teardown
+    ├── run.sh              # up → wait-ready → test, always followed by teardown
     ├── up.sh / wait-ready.sh / test.sh
     └── down.sh
 ```
 
-`app` の Traefik labels は overlay しない。image / command / volumes / depends_on / healthcheck だけを差し替える。
+The overlay does not replace the `app` Traefik labels; it replaces only the image, command, volumes, `depends_on`, and health check.
 
-## 失敗時のトリアージ
+## Failure triage
 
-失敗したメッセージ（`[routing] ERROR: …`）がどのプローブかを示す。
+The failing `[routing] ERROR: …` message identifies the probe.
 
-1. **port is already in use** — `13080` / `18080` を空けたか、`ROUTING_TRAEFIK_PORT` を変える
-2. **readiness failed: traefik-routers** — Docker provider が labels を読んでいない。`app` に `traefik.enable=true` があるか、`/var/run/docker.sock` が Traefik から見えるかを確認。middleware だけ出ていない場合は `traefik.http.middlewares.*` のラベル名を確認する
-3. **backend / path mismatch** — `.devcontainer/compose.yaml` の該当 router の rule / priority / middleware
-4. **backend saw traceparent … (want it stripped)** — `web` エントリポイントの `--entrypoints.web.http.middlewares` と `strip-trace-context` のラベルを確認。参照名は provider 込みの `strip-trace-context@docker`
+1. **port is already in use** — free `13080` / `18080`, or change `ROUTING_TRAEFIK_PORT` / `ROUTING_TRAEFIK_API_PORT`.
+2. **readiness failed: traefik-routers** — Docker provider did not read labels. Check `traefik.enable=true` on `app` and Docker-socket visibility. If middleware entries alone are missing, inspect `traefik.http.middlewares.*` labels.
+3. **backend / path mismatch** — inspect the matching router's rule, priority, and middleware in `.devcontainer/compose.yaml`.
+4. **backend saw traceparent … (want it stripped)** — check `--entrypoints.web.http.middlewares` and the `strip-trace-context` label. The provider-qualified reference is `strip-trace-context@docker`.
 
-`.run/logs/` に次を残す（teardown では消さない）。
-
-- `compose-ps.log` / `compose.log` — 失敗時のみ
-- `traefik-routers.json` — 失敗時のみ。Traefik API の routers 一覧
-- `traefik-middlewares.json` — 失敗時のみ。Traefik API の middlewares 一覧
+Teardown leaves these files in `.run/logs/`: `compose-ps.log` / `compose.log` (on failure), `traefik-routers.json` (on failure), and `traefik-middlewares.json` (on failure).
 
 ## CI
 
-ジョブ名: **Test / Routing**（`.github/workflows/ci.yml`）
+Job: **Test / Routing** (`.github/workflows/ci.yml`)
 
-- path filter: `.devcontainer/**`, `e2e/routing/**`。ラベルの正本と本チェック自身だけ
-- `workflow_dispatch` では他ジョブと同様に必ず実行する。Nightly には載せない（compose を触る PR で既に走る）
-- 失敗時 artifact: `routing-artifacts`（`.run/`）
+- Path filter: `.devcontainer/**`, `e2e/routing/**`; only the labels' source of truth and this check.
+- It always runs for `workflow_dispatch` and is not part of nightly; PRs that change compose already run it.
+- Failure artifact: `routing-artifacts` (`.run/`).
 
-`e2e/routing/**` の変更では Playwright の **Test / E2E** は起動しない。
+Changing `e2e/routing/**` does not start the Playwright **Test / E2E** job. See [the workflow overview](../../.github/workflows/README.md) for all CI jobs.
 
-ジョブ構成全体: [`.github/workflows/README.md`](../../.github/workflows/README.md)
+## Out of scope
 
-## 非スコープ
-
-- 実アプリの業務シナリオ（[`../README.md`](../README.md)）
-- `task setup` / `task dev`（[`../bootstrap/README.md`](../bootstrap/README.md)）
-- 本番 Traefik / 監視 / 負荷試験
+- Real application scenarios ([`../README.md`](../README.md))
+- `task setup` / `task dev` ([`../bootstrap/README.md`](../bootstrap/README.md))
+- Production Traefik, monitoring, and load tests
