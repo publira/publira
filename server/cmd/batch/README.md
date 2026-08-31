@@ -7,12 +7,13 @@ task server:build
 ./server/bin/batch aggregate-content-stats
 ```
 
-Without an argument, or with a name that is not one of the four below, the binary prints its usage to stderr and exits non-zero.
+Without an argument, or with a name that is not one of the five below, the binary prints its usage to stderr and exits non-zero.
 
 | Subcommand | Lifetime | What it does |
 | --- | --- | --- |
 | `publish-episodes` | Ticker, until `SIGINT` / `SIGTERM` | Promotes episodes whose scheduled time has passed |
 | `aggregate-content-stats` | One-shot | Rebuilds one UTC day of `content_daily_stats` |
+| `aggregate-rankings` | One-shot | Rebuilds the daily and weekly `content_ranking_snapshots` |
 | `purge-content-events` | One-shot | Deletes `content_events` rows past their retention window |
 | `build-recommend-features` | One-shot | Rebuilds the daily user and item recommend feature snapshots |
 
@@ -66,6 +67,88 @@ The structured log records the target date, the number of tenants processed, the
 ### Query plan
 
 The event range for a day can use `idx_content_events_tenant_type_occurred_at`, and the purchase range `idx_purchases_tenant_purchased_at_episode`. On small data sets PostgreSQL may pick a sequential scan anyway, so add `SET enable_seqscan = off` when checking index eligibility with `EXPLAIN`.
+
+## aggregate-rankings
+
+Rebuilds every tenant's ranking snapshots from the `content_daily_stats` rows `aggregate-content-stats` produces. One run writes four snapshots per tenant — a daily and a weekly leaderboard, each for series and for episodes — so run it after `aggregate-content-stats` for the same day.
+
+The role needs `BYPASSRLS` (or superuser), because one run spans every tenant. For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
+
+```bash
+eval "$(task --silent dev-env:env)"
+PUBLIRA_CONTENT_RANKING_DATE=2026-08-28 go run ./server/cmd/batch aggregate-rankings
+```
+
+Environment variables:
+
+- `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_RANKING_DATE`: last UTC day of every window, as `YYYY-MM-DD`. Defaults to yesterday (UTC).
+- `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT`: how many entities one snapshot carries. Defaults to 50, and must be at least 1.
+
+The structured log records the reference date, item limit, algorithm version, and how many tenants, snapshots, and items the run finished — on failure too, since each tenant commits on its own.
+
+One tenant's four snapshots are written in a single transaction, so a reader never sees this run's daily ranking beside the last run's weekly one. Two runs cannot rank the same tenant at once: the second waits up to 30 seconds for the first and then fails, rather than blocking for the rest of the day with a transaction open.
+
+### Score formula
+
+A snapshot ranks whatever `content_daily_stats` recorded over its window. Each daily row contributes
+
+```text
+1 × view_count
++ 2 × unique_viewer_count
++ 20 × purchase_count
++ 8 × favorite_count
++ 3 × max(rating_sum − 3 × rating_count, 0)
+```
+
+faded by `0.5 ^ (days before the last day of the window / 3)`, and an entity's score is the sum over its rows.
+
+The weights order the signals by how much a reader committed: paying for an episode says the most, following a series next, and a view least. A distinct viewer counts double a repeat view, so a title read once by many outranks one refreshed by a few. Ratings only ever add — above neutral is a bonus, below it contributes nothing rather than pushing a title down a popularity chart — because a low rating is a quality signal, not an unpopularity one.
+
+Views are whatever `content_daily_stats` holds, which today is soft PV (a successful episode or series detail read). Separating hard PV out is a later change, and it is one that would change the meaning of `view_count`: bump `algorithm_version` with it.
+
+The fade is measured against the end of the window, never against now, so re-running a past day reproduces that day's snapshot exactly. The order is fully determined — score, then purchases, then viewers, then entity id — so two runs over unchanged stats agree on every position, not just on the set of entities.
+
+### Snapshot contract
+
+Each row is one leaderboard, identified by `(tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version)`. A re-run replaces the row with that key in place; a run with a different `algorithm_version` writes alongside it.
+
+| Column | Meaning |
+| --- | --- |
+| `ranking_key` | `daily` for a single UTC day, `weekly` for the seven days ending on it |
+| `period_start`, `period_end` | Inclusive UTC calendar dates. Equal for a daily ranking |
+| `entity_type` | `series` or `episode`. A run writes both, and never mixes them in one row |
+| `algorithm_version` | The score formula this row was built with. Read it rather than assuming it |
+| `items` | The leaderboard, best first. Never null — an empty array when there is nothing to rank |
+| `computed_at` | When this row was last written |
+
+Each entry of `items`:
+
+| Field | Meaning |
+| --- | --- |
+| `rank` | Position, starting at 1 |
+| `entity_id` | The series or episode, per the row's `entity_type` |
+| `score` | The faded weighted score, rounded to four decimals. Comparable within one row, and nowhere else |
+| `view_count` | Views over the window |
+| `viewer_days` | Sum of the daily unique viewer counts. A reader who returns on five days counts five times — this is not a window-wide distinct count |
+| `purchase_count`, `rating_count`, `rating_sum`, `favorite_count` | Remaining engagement totals over the window |
+| `last_active_date` | Most recent day in the window that produced a daily stats row for this entity |
+
+#### What a reader must tolerate
+
+- **An empty leaderboard is the normal case, not an error.** A tenant with no traffic in the period, and every tenant before the first run, has nothing to show. Fall back to new releases.
+- **A snapshot only holds the top `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT` entities.** An entity's absence means it did not place, not that it saw no engagement.
+- **The entity may be gone.** `items` stores ids, and nothing keeps a snapshot in step with an unpublished or deleted series. Resolve the ids and drop what no longer exists.
+- **The snapshot is up to a day stale**, and only as good as its input: a period whose `aggregate-content-stats` run never happened ranks the days that did run.
+- **`algorithm_version` may not be the one you compiled against.** Scores are only comparable inside one row, so never compare a score across two snapshots or two versions.
+
+### Query plan and runtime
+
+Each snapshot scans one tenant's `content_daily_stats` for its window and groups by entity. Every index on that table leads with `tenant_id`, so `idx_content_daily_stats_tenant_date`, `idx_content_daily_stats_tenant_entity`, and `idx_content_daily_stats_unique` are all eligible; which one the planner picks depends on how much data the table holds. On small data sets PostgreSQL may pick a sequential scan anyway, so add `SET enable_seqscan = off` when checking index eligibility with `EXPLAIN`.
+
+Every run keeps its four snapshots per tenant, including the empty ones a silent tenant produces: an empty leaderboard is the answer that a run happened and found nothing, which a missing row cannot say. Nothing deletes an old snapshot, so the table grows by four rows per tenant per run.
+
+The work is bounded by the daily rows a tenant produced over the window — at most one row per entity per day, capped by the size of the catalogue — not by raw event volume, so the eight window scans behind one tenant's four snapshots stay small next to the `aggregate-content-stats` run that feeds them. The budget is the daily cron interval, shared with the batches that must run before and after it; judge one run from the elapsed time in its completion log. If a run stops fitting, the fix is upstream of the scan — fewer tenants per invocation, or a materialised per-entity window rollup — because the item limit bounds only what is written, not what is read.
 
 ## purge-content-events
 

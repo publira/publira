@@ -77,7 +77,7 @@ CREATE TABLE creator_follows (
 );
 
 -- TABLE: content_daily_stats
--- L2: daily per-item aggregates consumed by ranking (#39) and later feature builds.
+-- L2: daily per-item aggregates consumed by the ranking and feature builds.
 CREATE TABLE content_daily_stats (
     id uuid NOT NULL,
     tenant_id uuid NOT NULL,
@@ -127,7 +127,8 @@ CREATE TABLE content_events (
 );
 
 -- TABLE: content_ranking_snapshots
--- L4: persisted ranking output (#39). Schema only in this change.
+-- L4: persisted ranking output. One row is one leaderboard, keyed by tenant,
+-- period, entity type, and the algorithm version that scored it.
 CREATE TABLE content_ranking_snapshots (
     id uuid NOT NULL,
     tenant_id uuid NOT NULL,

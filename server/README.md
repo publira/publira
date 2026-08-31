@@ -76,7 +76,7 @@ task server:test
 - プラットフォーム API サーバー: [cmd/platform-api-server/README.md](cmd/platform-api-server/README.md)
 - 公開画像サーバー: [cmd/image-server/README.md](cmd/image-server/README.md)
 - 管理画像サーバー: [cmd/admin-image-server/README.md](cmd/admin-image-server/README.md)
-- バッチ（予約公開 / 日次コンテンツ統計 / 閲覧イベントパージ / Recommend feature build）: [cmd/batch/README.md](cmd/batch/README.md)
+- バッチ（予約公開 / 日次コンテンツ統計 / ランキング集計 / 閲覧イベントパージ / Recommend feature build）: [cmd/batch/README.md](cmd/batch/README.md)
 - Outbox ワーカー: [cmd/outbox-worker/README.md](cmd/outbox-worker/README.md)
 
 ## Graceful shutdown
@@ -230,7 +230,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 | キー | 値 |
 | --- | --- |
-| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`）。`cmd/batch` はサブコマンドごとに解決するため `publira-publish-episodes` / `publira-aggregate-content-stats` / `publira-purge-content-events` / `publira-build-recommend-features` になる。`OTEL_SERVICE_NAME` で上書き可能 |
+| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`）。`cmd/batch` はサブコマンドごとに解決するため `publira-publish-episodes` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-build-recommend-features` になる。`OTEL_SERVICE_NAME` で上書き可能 |
 | `service.version` | ビルド時に埋め込んだ version。無ければチェックアウトの VCS リビジョン、それも無ければ `dev`（`internal/buildinfo`） |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`。未設定なら `development` |
 
@@ -415,6 +415,7 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 | api (public) | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
 | outbox-worker | BYPASSRLS 相当（ローカルは superuser） | `PUBLIRA_WORKER_DB_URL`（未設定時 `PUBLIRA_DB_URL`） | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
 | batch aggregate-content-stats | `publira_content_stats`（BYPASSRLS） | `PUBLIRA_CONTENT_STATS_DB_URL`（未設定時 `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL`） | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| batch aggregate-rankings | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch purge-content-events | `publira_content_stats`（BYPASSRLS） | `PUBLIRA_CONTENT_EVENTS_DB_URL`（未設定時 `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL`） | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 

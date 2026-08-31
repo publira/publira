@@ -38,6 +38,11 @@ var subcommands = []subcommand{
 		run:     runAggregateContentStats,
 	},
 	{
+		name:    "aggregate-rankings",
+		summary: "Rebuild the daily and weekly ranking snapshots for every tenant",
+		run:     runAggregateRankings,
+	},
+	{
 		name:    "purge-content-events",
 		summary: "Delete content_events rows past their retention window",
 		run:     runPurgeContentEvents,
