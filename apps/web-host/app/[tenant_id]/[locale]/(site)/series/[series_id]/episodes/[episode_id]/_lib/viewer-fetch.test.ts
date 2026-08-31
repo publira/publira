@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 describe("decryptImageBuffer", () => {
-  it("Decode the same xor-hmac-sha256-v1 vector as image-server", async () => {
+  it("Decrypt the same xor-hmac-sha256-v1 vector as image-server", async () => {
     await expect(
       decryptImageBuffer(ciphertext.buffer, keyID, subject, token)
     ).resolves.toEqual(plaintext.buffer);
@@ -40,7 +40,7 @@ describe("decryptImageBuffer", () => {
 });
 
 describe("acceptNegotiatedImages", () => {
-  it("Decrypt the encrypted response and reflect Manael's MIME type on the page", async () => {
+  it("Decrypt the encrypted response and preserve its MIME type on the page", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(ciphertext, {
         headers: {

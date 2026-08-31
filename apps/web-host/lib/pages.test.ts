@@ -23,7 +23,7 @@ vi.mock("./api-client", () => ({
 }));
 
 describe("normalizePublishedPageSlug", () => {
-  it("Empty and / should be empty characters", () => {
+  it("Empty input and / normalize to an empty string", () => {
     expect(normalizePublishedPageSlug("")).toBe("");
     expect(normalizePublishedPageSlug(" / ")).toBe("");
     expect(normalizePublishedPageSlug("/")).toBe("");

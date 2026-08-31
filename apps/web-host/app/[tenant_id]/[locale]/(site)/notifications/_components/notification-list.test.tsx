@@ -75,7 +75,7 @@ afterEach(() => {
 });
 
 describe("NotificationList", () => {
-  it("If the first page is empty, it will be marked as undelivered.", async () => {
+  it("The empty notification state is displayed when the first page is empty.", async () => {
     await renderList();
 
     expect(screen.getByText("通知はまだありません。")).toBeDefined();

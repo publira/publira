@@ -77,7 +77,7 @@ describe("buildTenantRewritePathname", () => {
     );
   });
 
-  it("Reserved pass and route are directly under tenant / locale.", () => {
+  it("Keep root and reserved routes under the tenant/locale path", () => {
     expect(buildTenantRewritePathname("tenant-1", "ja", "/")).toBe(
       "/tenant-1/ja"
     );
