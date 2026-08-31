@@ -19,7 +19,7 @@ require (
 	github.com/publira/epub v0.8.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/riverqueue/river v0.47.0
-	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.46.0
+	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.47.0
 	github.com/riverqueue/river/rivertype v0.47.0
 	github.com/stripe/stripe-go/v86 v86.4.0
 	github.com/testcontainers/testcontainers-go v0.44.0
