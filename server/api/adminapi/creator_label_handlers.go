@@ -233,7 +233,7 @@ func (s *adminServer) createCreatorIconImage(ctx context.Context, tenant dbmodel
 		Data:        image.Data,
 	})
 	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+		return uuid.NullUUID{}, storageUploadError(err)
 	}
 
 	creatorImageVariantID, err := uuid.NewV7()
@@ -306,7 +306,7 @@ func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmod
 			Data:        variant.Data,
 		})
 		if uploadErr != nil {
-			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, uploadErr)
+			return uuid.NullUUID{}, storageUploadError(uploadErr)
 		}
 
 		labelImageVariantID, variantIDErr := uuid.NewV7()

@@ -54,6 +54,16 @@ func invalidSessionError() error {
 	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
 }
 
+// storageUploadError keeps context cancellation and deadline errors uncoded so
+// Connect maps them to CodeCanceled / CodeDeadlineExceeded at the protocol
+// boundary. Other storage failures retain the existing internal error code.
+func storageUploadError(err error) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return connect.NewError(connect.CodeInternal, err)
+}
+
 // internalDBError keeps context cancellation and deadline errors as-is so
 // Connect can map them to CodeCanceled / CodeDeadlineExceeded. Other DB
 // failures are logged and replaced with a generic client-facing message so

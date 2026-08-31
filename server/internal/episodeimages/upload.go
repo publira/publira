@@ -60,6 +60,13 @@ type UploadRequest struct {
 	Headers         http.Header
 }
 
+func storageUploadError(err error) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return connect.NewError(connect.CodeInternal, err)
+}
+
 func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattypesv1.EpisodeImage, uuid.UUID, error) {
 	imageInputs, err := collectInputs(req.Images, req.ArchiveData, req.ArchiveFilename, req.ArchiveType, req.SeriesPublicID)
 	if err != nil {
@@ -256,7 +263,7 @@ func (s Service) storeImages(
 			)
 			cancel()
 			if persistErr != nil {
-				return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("variant persistence failed: %w", persistErr))
+				return nil, storageUploadError(fmt.Errorf("variant persistence failed: %w", persistErr))
 			}
 			lastVariant = createdVariant
 		}
