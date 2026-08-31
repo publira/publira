@@ -26,9 +26,10 @@ func TestDBInitialSetupCreatesLoginableSuperAdmin(t *testing.T) {
 	}
 
 	if _, err := setup.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
-		Name:     "Initial Admin",
-		Email:    "initial-admin@example.com",
-		Password: "initial-admin-password",
+		Name:          "Initial Admin",
+		Email:         "initial-admin@example.com",
+		Password:      "initial-admin-password",
+		DefaultLocale: "en",
 	})); err != nil {
 		t.Fatalf("CreateInitialUser: %v", err)
 	}
@@ -72,9 +73,10 @@ func TestDBCreateInitialUserRejectsSecondSetup(t *testing.T) {
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
 
 	_, err := setup.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
-		Name:     "Second Admin",
-		Email:    "second-admin@example.com",
-		Password: "second-admin-password",
+		Name:          "Second Admin",
+		Email:         "second-admin@example.com",
+		Password:      "second-admin-password",
+		DefaultLocale: "en",
 	}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateInitialUser code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
@@ -94,9 +96,10 @@ func TestDBCreateInitialUserRejectsWhenRolelessPlatformUserExists(t *testing.T) 
 	seedPlatformUserWithoutRole(t, pg, "PLATNOROLE01", "no-role@example.com", "No Role")
 
 	_, err := setup.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
-		Name:     "Initial Admin",
-		Email:    "initial-admin@example.com",
-		Password: "initial-admin-password",
+		Name:          "Initial Admin",
+		Email:         "initial-admin@example.com",
+		Password:      "initial-admin-password",
+		DefaultLocale: "en",
 	}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateInitialUser code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
@@ -123,5 +126,71 @@ func TestDBLoginRejectsPlatformUserWithoutRole(t *testing.T) {
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
+// The locale the operator picks on the setup screen is the platform default
+// from the moment setup finishes, so the console has a language to render in
+// before anyone opens the settings screen.
+func TestDBInitialSetupSavesTheChosenDefaultLocale(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
+
+	if _, err := setup.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+		Name:          "Initial Admin",
+		Email:         "initial-admin@example.com",
+		Password:      "initial-admin-password",
+		DefaultLocale: "en",
+	})); err != nil {
+		t.Fatalf("CreateInitialUser: %v", err)
+	}
+
+	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_config WHERE default_locale = 'en'`); got != 1 {
+		t.Fatalf("platform_config rows with default_locale = en: %d, want 1", got)
+	}
+
+	loginResp, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+		Email:    "initial-admin@example.com",
+		Password: "initial-admin-password",
+	}))
+	if err != nil {
+		t.Fatalf("Login as the initial user: %v", err)
+	}
+
+	resp, err := settings.GetPlatformSettings(
+		context.Background(),
+		newDBBearerRequest(loginResp.Msg.AccessToken.Token, publirasplatformv1.GetPlatformSettingsRequest{}),
+	)
+	if err != nil {
+		t.Fatalf("GetPlatformSettings: %v", err)
+	}
+	if resp.Msg.Settings.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.Msg.Settings.DefaultLocale)
+	}
+}
+
+// An unsupported code is rejected before any write, so a rejected setup leaves
+// no administrator and no settings row behind.
+func TestDBCreateInitialUserRejectsUnsupportedLocale(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+
+	_, err := setup.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+		Name:          "Initial Admin",
+		Email:         "initial-admin@example.com",
+		Password:      "initial-admin-password",
+		DefaultLocale: "fr",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateInitialUser code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_users"); got != 0 {
+		t.Fatalf("platform_users rows = %d, want 0", got)
+	}
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_config"); got != 0 {
+		t.Fatalf("platform_config rows = %d, want 0", got)
 	}
 }

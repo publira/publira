@@ -641,6 +641,9 @@ type Querier interface {
 	UpsertContentRankingSnapshot(ctx context.Context, arg UpsertContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
 	UpsertItemRecommendFeatures(ctx context.Context, arg UpsertItemRecommendFeaturesParams) (ItemRecommendFeature, error)
+	// 初期セットアップで選ばれた既定ロケールだけを保存する。タイムゾーンはまだ
+	// 選ばれていないので、行を作るときは列 DEFAULT に任せ、既存行のものは残す。
+	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
 	// プラットフォーム既定タイムゾーンと既定ロケールを原子的に作成または更新する。
 	// default_locale は列 DEFAULT を持たないため、呼び出し側が必ず明示する。

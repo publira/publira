@@ -28,8 +28,10 @@ type PlatformSettings struct {
 	// IANA time zone name (e.g. Asia/Tokyo, America/Los_Angeles, UTC) applied to
 	// newly created tenants. Never empty in a response.
 	DefaultTimezone string `protobuf:"bytes,1,opt,name=default_timezone,json=defaultTimezone,proto3" json:"default_timezone,omitempty"`
-	// UI locale code (ja, en) applied to newly created tenants. Never empty in a
-	// response.
+	// UI locale code (ja, en) the platform console falls back to when the
+	// operator has chosen no display language of their own, and the fallback for
+	// a tenant row with no usable locale. Tenant creation states its own locale,
+	// so this is not a creation default. Never empty in a response.
 	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -400,8 +400,9 @@ CREATE TABLE platform_config (
     -- it is the fallback when a tenant row has no usable timezone.
     -- Strict allow-list validation is enforced at the application/API layer.
     default_timezone text DEFAULT 'Asia/Tokyo'::text NOT NULL,
-    -- Platform-wide default UI locale. New tenants start from this value and
-    -- it is the fallback when a tenant row has no usable default_locale.
+    -- Platform-wide default UI locale. It is the fallback when a tenant row has
+    -- no usable default_locale, and the console's display language when the
+    -- operator has chosen none; tenant creation states its own locale.
     -- No column default: every writer names the locale it means, so a row can
     -- never be created with an unstated language.
     -- Canonical codes live in locales/*.json (first cut: ja / en).

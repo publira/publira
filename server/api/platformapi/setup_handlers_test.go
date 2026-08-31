@@ -93,12 +93,16 @@ func TestCreateInitialUserSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "platform_super_admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "role", "created_at", "platform_user_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), "platform_super_admin", now, userID))
+	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformDefaultLocaleQuery)).
+		WithArgs("en").
+		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "Asia/Tokyo", "en", now, now))
 	mock.ExpectCommit()
 
 	_, err := server.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
-		Name:     "Admin User",
-		Email:    "admin@example.com",
-		Password: "secure-password-123",
+		Name:          "Admin User",
+		Email:         "admin@example.com",
+		Password:      "secure-password-123",
+		DefaultLocale: "en",
 	}))
 	if err != nil {
 		t.Fatalf("CreateInitialUser: %v", err)
@@ -113,9 +117,10 @@ func TestCreateInitialUserAlreadySetup(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
 
 	_, err := server.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
-		Name:     "Admin User",
-		Email:    "admin@example.com",
-		Password: "secure-password-123",
+		Name:          "Admin User",
+		Email:         "admin@example.com",
+		Password:      "secure-password-123",
+		DefaultLocale: "ja",
 	}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateInitialUser code = %v, want already_exists", connect.CodeOf(err))
@@ -131,16 +136,25 @@ func TestCreateInitialUserInvalidInput(t *testing.T) {
 		req  func() *publirasplatformv1.CreateInitialUserRequest
 	}{
 		{"empty_name", func() *publirasplatformv1.CreateInitialUserRequest {
-			return &publirasplatformv1.CreateInitialUserRequest{Name: "", Email: "a@b.com", Password: "pass"}
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "", Email: "a@b.com", Password: "pass", DefaultLocale: "ja"}
 		}},
 		{"empty_email", func() *publirasplatformv1.CreateInitialUserRequest {
-			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "", Password: "pass"}
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "", Password: "pass", DefaultLocale: "ja"}
 		}},
 		{"empty_password", func() *publirasplatformv1.CreateInitialUserRequest {
-			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: ""}
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: "", DefaultLocale: "ja"}
 		}},
 		{"invalid_email", func() *publirasplatformv1.CreateInitialUserRequest {
-			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "not-an-email", Password: "pass"}
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "not-an-email", Password: "pass", DefaultLocale: "ja"}
+		}},
+		{"empty_locale", func() *publirasplatformv1.CreateInitialUserRequest {
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: "pass"}
+		}},
+		{"blank_locale", func() *publirasplatformv1.CreateInitialUserRequest {
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: "pass", DefaultLocale: "   "}
+		}},
+		{"unsupported_locale", func() *publirasplatformv1.CreateInitialUserRequest {
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: "pass", DefaultLocale: "fr"}
 		}},
 	}
 

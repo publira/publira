@@ -18,6 +18,10 @@ message CreateInitialUserRequest {
   string name = 1;
   string email = 2;
   string password = 3;
+  // UI locale code (ja, en) the platform starts on, chosen by the operator on
+  // the setup screen. Required: the settings row is created here and has no
+  // column default for the locale, so the first language is never left unstated.
+  string default_locale = 4;
 }
 
 // 初期管理ユーザー作成レスポンス

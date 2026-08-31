@@ -20,3 +20,13 @@ SET default_timezone = EXCLUDED.default_timezone,
     default_locale = EXCLUDED.default_locale,
     updated_at = NOW()
 RETURNING *;
+
+-- name: UpsertPlatformDefaultLocale :one
+-- 初期セットアップで選ばれた既定ロケールだけを保存する。タイムゾーンはまだ
+-- 選ばれていないので、行を作るときは列 DEFAULT に任せ、既存行のものは残す。
+INSERT INTO platform_config (singleton, default_locale, updated_at)
+VALUES (TRUE, sqlc.arg('default_locale'), NOW()) ON CONFLICT (singleton) DO
+UPDATE
+SET default_locale = EXCLUDED.default_locale,
+    updated_at = NOW()
+RETURNING *;

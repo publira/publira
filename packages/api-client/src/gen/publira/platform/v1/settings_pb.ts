@@ -28,8 +28,10 @@ export type PlatformSettings = Message<"publira.platform.v1.PlatformSettings"> &
   defaultTimezone: string;
 
   /**
-   * UI locale code (ja, en) applied to newly created tenants. Never empty in a
-   * response.
+   * UI locale code (ja, en) the platform console falls back to when the
+   * operator has chosen no display language of their own, and the fallback for
+   * a tenant row with no usable locale. Tenant creation states its own locale,
+   * so this is not a creation default. Never empty in a response.
    *
    * @generated from field: string default_locale = 2;
    */
