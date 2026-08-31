@@ -29,7 +29,7 @@ afterEach(async () => {
 });
 
 describe("email renderer server", () => {
-  it("テンプレートを件名、HTML、プレーンテキストに描画する", async () => {
+  it("renders a template into a subject, HTML, and plain text", async () => {
     const { baseUrl } = await startServer();
     const client = createClient(
       EmailRendererService,
@@ -53,7 +53,7 @@ describe("email renderer server", () => {
     expect(response.text).toContain("Message body");
   });
 
-  it("不正なテンプレート入力を invalid_argument で返す", async () => {
+  it("invalid template input comes back as invalid_argument", async () => {
     const { baseUrl } = await startServer();
     const client = createClient(
       EmailRendererService,
@@ -70,7 +70,7 @@ describe("email renderer server", () => {
     ).rejects.toMatchObject({ code: Code.InvalidArgument });
   });
 
-  it("liveness と readiness を提供する", async () => {
+  it("serves liveness and readiness", async () => {
     const { baseUrl } = await startServer();
 
     const livez = await fetch(`${baseUrl}/livez`);
@@ -90,11 +90,11 @@ describe("parsePort", () => {
   it.each([
     [undefined, 8080],
     ["8081", 8081],
-  ])("%s を %i として解釈する", (value, expected) => {
+  ])("parses %s as %i", (value, expected) => {
     expect(parsePort(value)).toBe(expected);
   });
 
-  it.each(["0", "65536", "invalid"])("%s を拒否する", (value) => {
+  it.each(["0", "65536", "invalid"])("rejects %s", (value) => {
     expect(() => parsePort(value)).toThrow(
       "PORT must be an integer between 1 and 65535"
     );

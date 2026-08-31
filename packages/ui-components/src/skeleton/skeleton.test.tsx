@@ -6,14 +6,14 @@ import { describe, expect, it } from "vitest";
 import { Skeleton, SkeletonCard, SkeletonLine, SkeletonText } from "./skeleton";
 
 describe("Skeleton components", () => {
-  it("Skeleton は aria-hidden 属性を持つ", () => {
+  it("Skeleton carries the aria-hidden attribute", () => {
     render(<Skeleton data-testid="sk" />);
 
     const el = screen.getByTestId("sk");
     expect(el.getAttribute("aria-hidden")).toBe("true");
   });
 
-  it("SkeletonLine は行内に置ける span として描画される", () => {
+  it("SkeletonLine renders as a span that fits inside a line", () => {
     const { container } = render(<SkeletonLine className="h-7 w-64" />);
 
     const el = container.firstElementChild;
@@ -24,7 +24,7 @@ describe("Skeleton components", () => {
     expect(el?.classList.contains("h-7")).toBe(true);
   });
 
-  it("SkeletonLine のアニメーションは prefers-reduced-motion を尊重する", () => {
+  it("SkeletonLine's animation respects prefers-reduced-motion", () => {
     const { container } = render(<SkeletonLine />);
 
     const el = container.firstElementChild;
@@ -33,13 +33,13 @@ describe("Skeleton components", () => {
     expect(el?.classList.contains("animate-pulse")).toBe(false);
   });
 
-  it("SkeletonText は lines 数に応じて要素を描画する", () => {
+  it("SkeletonText renders one element per line count", () => {
     const { container } = render(<SkeletonText lines={4} />);
 
     expect(container.querySelectorAll('[aria-hidden="true"]').length).toBe(4);
   });
 
-  it("SkeletonCard は複数の Skeleton 要素を含む", () => {
+  it("SkeletonCard holds several Skeleton elements", () => {
     const { container } = render(<SkeletonCard />);
 
     expect(

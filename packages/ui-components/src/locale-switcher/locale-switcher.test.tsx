@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe("LocaleSwitcher", () => {
-  it("母語表記の選択肢と現在の言語をポップオーバーに表示する", () => {
+  it("the popover lists the options in their own language and marks the current one", () => {
     render(
       <LocaleSwitcher
         action={vi.fn()}
@@ -49,7 +49,7 @@ describe("LocaleSwitcher", () => {
     );
   });
 
-  it("選択した言語を Action に送り、成功後に html の lang を更新する", async () => {
+  it("sends the chosen language to the Action and updates html lang once it succeeds", async () => {
     const action = vi.fn<(formData: FormData) => Promise<void>>(() =>
       Promise.resolve()
     );
@@ -73,7 +73,7 @@ describe("LocaleSwitcher", () => {
     expect(action.mock.calls[0]?.[0]?.get("locale")).toBe("en");
   });
 
-  it("Escape で閉じ、トリガーへフォーカスを戻す", () => {
+  it("Escape closes it and returns focus to the trigger", () => {
     render(
       <LocaleSwitcher
         action={vi.fn()}

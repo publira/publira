@@ -13,7 +13,7 @@ const sampleData = {
 };
 
 describe("TEMPLATE_IDS", () => {
-  it("サンプルと業務テンプレートを含む", () => {
+  it("holds the sample and the operational templates", () => {
     expect(TEMPLATE_IDS).toEqual(["sample", "tenant_admin_invitation"]);
     expect(isTemplateId("tenant_admin_invitation")).toBe(true);
     expect(isTemplateId("missing")).toBe(false);
@@ -27,7 +27,7 @@ describe("resolveEmail", () => {
     jaMessages = await loadEmailMessages("ja");
   });
 
-  it("未知の template を unknown_template にする", () => {
+  it("an unknown template becomes unknown_template", () => {
     const result = resolveEmail({
       data: {},
       locale: "ja",
@@ -43,7 +43,7 @@ describe("resolveEmail", () => {
     });
   });
 
-  it("不正な data を invalid_data にする", () => {
+  it("invalid data becomes invalid_data", () => {
     const result = resolveEmail({
       data: { tenant_name: "青灯書房" },
       locale: "ja",
@@ -60,7 +60,7 @@ describe("resolveEmail", () => {
     expect(result.message.length).toBeGreaterThan(0);
   });
 
-  it("不正な timeZone を invalid_data にする", () => {
+  it("an invalid timeZone becomes invalid_data", () => {
     const result = resolveEmail({
       data: sampleData,
       locale: "ja",
@@ -76,7 +76,7 @@ describe("resolveEmail", () => {
     });
   });
 
-  it("未知の locale は ja に正規化する", () => {
+  it("an unknown locale is normalized to ja", () => {
     const result = resolveEmail({
       data: sampleData,
       locale: "fr",
@@ -96,7 +96,7 @@ describe("resolveEmail", () => {
 });
 
 describe("renderEmail", () => {
-  it("失敗を HTML 化せずに返す", async () => {
+  it("a failure comes back without being rendered to HTML", async () => {
     const result = await renderEmail({
       data: {},
       locale: "ja",

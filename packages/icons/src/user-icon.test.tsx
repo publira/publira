@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { UserIcon } from "./user-icon";
 
 describe("UserIcon", () => {
-  it("SVG として描画される", () => {
+  it("renders as an SVG with the given aria-label", () => {
     const { container } = render(<UserIcon aria-label="User icon" />);
 
     const svg = container.querySelector("svg");
@@ -14,7 +14,7 @@ describe("UserIcon", () => {
     expect(svg?.getAttribute("aria-label")).toBe("User icon");
   });
 
-  it("size/className/strokeWidth を反映する", () => {
+  it("reflects size, className, and strokeWidth", () => {
     const { container } = render(
       <UserIcon className="test-icon" height={18} strokeWidth={3} width={18} />
     );

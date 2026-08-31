@@ -15,7 +15,7 @@ describe("dropFailedCacheEntry", () => {
     mockCacheLife.mockReset();
   });
 
-  it("エントリを保存不可にする cacheLife を設定する", () => {
+  it("sets a cacheLife that makes the entry unstorable", () => {
     dropFailedCacheEntry();
 
     expect(mockCacheLife).toHaveBeenCalledWith({
@@ -25,7 +25,7 @@ describe("dropFailedCacheEntry", () => {
     });
   });
 
-  it("cacheLife が使えない環境（ユニットテスト）でも throw しない", () => {
+  it("does not throw where cacheLife is unavailable, such as a unit test", () => {
     mockCacheLife.mockImplementationOnce(() => {
       throw new Error("outside a cache scope");
     });
@@ -39,7 +39,7 @@ describe("cachedReadFailure", () => {
     mockCacheLife.mockReset();
   });
 
-  it("メッセージ付きの失敗を返し、エントリを落とす", () => {
+  it("returns a failure with a message and drops the entry", () => {
     expect(cachedReadFailure("取得できませんでした。")).toEqual({
       message: "取得できませんでした。",
       ok: false,

@@ -23,7 +23,7 @@ const ActionForm = () => {
 };
 
 describe("FormMessage", () => {
-  it("デフォルトで status role と info アイコンを表示する", () => {
+  it("shows the status role and the info icon by default", () => {
     render(<FormMessage>保存しました</FormMessage>);
 
     expect(screen.getByRole("status")).toBeTruthy();
@@ -31,14 +31,14 @@ describe("FormMessage", () => {
     expect(screen.getByText("i")).toBeTruthy();
   });
 
-  it("success variant のアイコンを表示する", () => {
+  it("shows the icon for the success variant", () => {
     render(<FormMessage variant="success">成功</FormMessage>);
 
     expect(screen.getByText("✓")).toBeTruthy();
     expect(screen.getByText("成功")).toBeTruthy();
   });
 
-  it("Action を続けて送っても本文が更新される", async () => {
+  it("the body updates across consecutive Action submissions", async () => {
     // React は Action の完了後にフォームを reset する。resettable element の
     // <output> だとその reset で本文が畳まれ、2 回目以降の更新が DOM に届かない
     // (#1070)。

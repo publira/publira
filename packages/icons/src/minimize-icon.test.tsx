@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { MinimizeIcon } from "./minimize-icon";
 
 describe("MinimizeIcon", () => {
-  it("SVG として描画される", () => {
+  it("renders as an SVG with the given aria-label", () => {
     const { container } = render(<MinimizeIcon aria-label="Minimize icon" />);
 
     const svg = container.querySelector("svg");
@@ -14,7 +14,7 @@ describe("MinimizeIcon", () => {
     expect(svg?.getAttribute("aria-label")).toBe("Minimize icon");
   });
 
-  it("size/className/strokeWidth を反映する", () => {
+  it("reflects size, className, and strokeWidth", () => {
     const { container } = render(
       <MinimizeIcon
         className="test-icon"

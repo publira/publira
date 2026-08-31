@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { LogoutIcon } from "./logout-icon";
 
 describe("LogoutIcon", () => {
-  it("SVG として描画される", () => {
+  it("renders as an SVG with the given aria-label", () => {
     const { container } = render(<LogoutIcon aria-label="Logout icon" />);
 
     const svg = container.querySelector("svg");
@@ -14,7 +14,7 @@ describe("LogoutIcon", () => {
     expect(svg?.getAttribute("aria-label")).toBe("Logout icon");
   });
 
-  it("size/className/strokeWidth を反映する", () => {
+  it("reflects size, className, and strokeWidth", () => {
     const { container } = render(
       <LogoutIcon
         className="test-icon"

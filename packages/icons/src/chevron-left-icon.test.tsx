@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ChevronLeftIcon } from "./chevron-left-icon";
 
 describe("ChevronLeftIcon", () => {
-  it("SVG として描画される", () => {
+  it("renders as an SVG with the given aria-label", () => {
     const { container } = render(
       <ChevronLeftIcon aria-label="Chevron left icon" />
     );
@@ -16,7 +16,7 @@ describe("ChevronLeftIcon", () => {
     expect(svg?.getAttribute("aria-label")).toBe("Chevron left icon");
   });
 
-  it("size/className/strokeWidth を反映する", () => {
+  it("reflects size, className, and strokeWidth", () => {
     const { container } = render(
       <ChevronLeftIcon
         className="test-icon"

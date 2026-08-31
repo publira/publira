@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { SectionError } from "./section-error";
 
 describe("SectionError", () => {
-  it("alert role で見出しと説明を表示する", () => {
+  it("shows the heading and the description with the alert role", () => {
     render(
       <SectionError
         description="この操作を行う権限がありません。"
@@ -21,7 +21,7 @@ describe("SectionError", () => {
     expect(screen.getByText("この操作を行う権限がありません。")).toBeTruthy();
   });
 
-  it("digest を渡したときだけエラー ID を表示する", () => {
+  it("the error ID appears only when a digest is given", () => {
     const { rerender } = render(<SectionError title="読み込めませんでした" />);
 
     expect(screen.queryByText("2870412426")).toBeNull();
@@ -31,7 +31,7 @@ describe("SectionError", () => {
     expect(screen.getByText("2870412426")).toBeTruthy();
   });
 
-  it("actions をそのまま描画する", () => {
+  it("renders actions as they are", () => {
     render(
       <SectionError
         actions={<button type="button">再試行</button>}

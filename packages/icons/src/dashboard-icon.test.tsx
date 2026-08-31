@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { DashboardIcon } from "./dashboard-icon";
 
 describe("DashboardIcon", () => {
-  it("SVG として描画される", () => {
+  it("renders as an SVG with the given aria-label", () => {
     const { container } = render(<DashboardIcon aria-label="Dashboard icon" />);
 
     const svg = container.querySelector("svg");
@@ -14,7 +14,7 @@ describe("DashboardIcon", () => {
     expect(svg?.getAttribute("aria-label")).toBe("Dashboard icon");
   });
 
-  it("size/className/strokeWidth を反映する", () => {
+  it("reflects size, className, and strokeWidth", () => {
     const { container } = render(
       <DashboardIcon
         className="test-icon"
