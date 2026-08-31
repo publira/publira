@@ -11,13 +11,19 @@ tone_instructions: >-
 reviews:
   # Org sets assertive / auto_review off / noise flags. Repo-specific only below.
   path_filters:
-    # Defaults already drop !**/gen/** etc. Publira-specific generated / noise:
+    # Repository-specific exclusions. CodeRabbit's own built-in ignored paths still
+    # apply on top of these, but that list is not published, so nothing here leans on
+    # it: every generated / vendored path is named even when a default may cover it.
+    - "!**/gen/**"
     - "!server/internal/db/*.sql.go"
     - "!server/internal/db/db.go"
     - "!server/internal/db/models.go"
     - "!server/internal/db/querier.go"
     - "!packages/**/dist/**"
     - "!**/*.tsbuildinfo"
+    - "!pnpm-lock.yaml"
+    - "!mobile/pubspec.lock"
+    - "!.devcontainer/devcontainer-lock.json"
     - "!skills-lock.json"
     - "!.agents/skills/**"
     - "!mobile/**/Generated.xcconfig"
@@ -99,6 +105,23 @@ reviews:
           and missing verification steps.
         - Adding/renaming a job also needs scripts/ci-plan-jobs.sh, the Summary
           aggregator (needs + env), and .github/workflows/README.md updated together.
+
+    - path: "**/*.md"
+      instructions: |
+        Markdown this repository owns is written in English. Source of truth: the
+        "Documentation and test labels: English" section of AGENTS.md.
+
+        - The one translated copy is README.ja.md, paired with the root README.md.
+          No other directory gets a *.ja.md.
+        - Japanese README files that are still around are leftovers awaiting
+          translation in #1283, not a precedent. Never ask an English line to match
+          the Japanese entries surrounding it.
+        - The "Output language" section of AGENTS.md sets the language of replies to
+          the user, not the language of documents stored in the repository. Do not
+          cite it to ask for Japanese prose in a Markdown file.
+        - Japanese stays where it is the subject rather than the prose: user-facing
+          UI strings, including the ones quoted in a code example, locales/*.json
+          values, and Japanese test fixtures.
 
     - path: "**/*.{test,spec}.{ts,tsx,go,dart}"
       instructions: |
