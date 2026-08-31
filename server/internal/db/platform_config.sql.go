@@ -30,6 +30,30 @@ func (q *Queries) GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 	return i, err
 }
 
+const upsertPlatformDefaultLocale = `-- name: UpsertPlatformDefaultLocale :one
+INSERT INTO platform_config (singleton, default_locale, updated_at)
+VALUES (TRUE, $1, NOW()) ON CONFLICT (singleton) DO
+UPDATE
+SET default_locale = EXCLUDED.default_locale,
+    updated_at = NOW()
+RETURNING singleton, default_timezone, default_locale, created_at, updated_at
+`
+
+// 初期セットアップで選ばれた既定ロケールだけを保存する。タイムゾーンはまだ
+// 選ばれていないので、行を作るときは列 DEFAULT に任せ、既存行のものは残す。
+func (q *Queries) UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error) {
+	row := q.db.QueryRowContext(ctx, upsertPlatformDefaultLocale, defaultLocale)
+	var i PlatformConfig
+	err := row.Scan(
+		&i.Singleton,
+		&i.DefaultTimezone,
+		&i.DefaultLocale,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const upsertPlatformSettings = `-- name: UpsertPlatformSettings :one
 INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
 VALUES (

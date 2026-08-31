@@ -106,10 +106,14 @@ func (x *CheckSetupStatusResponse) GetSetupCompleted() bool {
 
 // 初期管理ユーザー作成リクエスト
 type CreateInitialUserRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Name     string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Email    string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Password string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	// UI locale code (ja, en) the platform starts on, chosen by the operator on
+	// the setup screen. Required: the settings row is created here and has no
+	// column default for the locale, so the first language is never left unstated.
+	DefaultLocale string `protobuf:"bytes,4,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -165,6 +169,13 @@ func (x *CreateInitialUserRequest) GetPassword() string {
 	return ""
 }
 
+func (x *CreateInitialUserRequest) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
+	}
+	return ""
+}
+
 // 初期管理ユーザー作成レスポンス
 type CreateInitialUserResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -209,11 +220,12 @@ const file_publira_platform_v1_setup_proto_rawDesc = "" +
 	"\x1fpublira/platform/v1/setup.proto\x12\x13publira.platform.v1\"\x19\n" +
 	"\x17CheckSetupStatusRequest\"C\n" +
 	"\x18CheckSetupStatusResponse\x12'\n" +
-	"\x0fsetup_completed\x18\x01 \x01(\bR\x0esetupCompleted\"`\n" +
+	"\x0fsetup_completed\x18\x01 \x01(\bR\x0esetupCompleted\"\x87\x01\n" +
 	"\x18CreateInitialUserRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpassword\"\x1b\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\x12%\n" +
+	"\x0edefault_locale\x18\x04 \x01(\tR\rdefaultLocale\"\x1b\n" +
 	"\x19CreateInitialUserResponse2\xff\x01\n" +
 	"\x14PlatformSetupService\x12q\n" +
 	"\x10CheckSetupStatus\x12,.publira.platform.v1.CheckSetupStatusRequest\x1a-.publira.platform.v1.CheckSetupStatusResponse\"\x00\x12t\n" +

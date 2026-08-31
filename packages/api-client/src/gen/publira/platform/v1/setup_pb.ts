@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/setup.proto.
  */
 export const file_publira_platform_v1_setup: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL3NldHVwLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIhkKF0NoZWNrU2V0dXBTdGF0dXNSZXF1ZXN0IjMKGENoZWNrU2V0dXBTdGF0dXNSZXNwb25zZRIXCg9zZXR1cF9jb21wbGV0ZWQYASABKAgiSQoYQ3JlYXRlSW5pdGlhbFVzZXJSZXF1ZXN0EgwKBG5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSEAoIcGFzc3dvcmQYAyABKAkiGwoZQ3JlYXRlSW5pdGlhbFVzZXJSZXNwb25zZTL/AQoUUGxhdGZvcm1TZXR1cFNlcnZpY2UScQoQQ2hlY2tTZXR1cFN0YXR1cxIsLnB1YmxpcmEucGxhdGZvcm0udjEuQ2hlY2tTZXR1cFN0YXR1c1JlcXVlc3QaLS5wdWJsaXJhLnBsYXRmb3JtLnYxLkNoZWNrU2V0dXBTdGF0dXNSZXNwb25zZSIAEnQKEUNyZWF0ZUluaXRpYWxVc2VyEi0ucHVibGlyYS5wbGF0Zm9ybS52MS5DcmVhdGVJbml0aWFsVXNlclJlcXVlc3QaLi5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZUluaXRpYWxVc2VyUmVzcG9uc2UiAEJOWkxnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
+  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL3NldHVwLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIhkKF0NoZWNrU2V0dXBTdGF0dXNSZXF1ZXN0IjMKGENoZWNrU2V0dXBTdGF0dXNSZXNwb25zZRIXCg9zZXR1cF9jb21wbGV0ZWQYASABKAgiYQoYQ3JlYXRlSW5pdGlhbFVzZXJSZXF1ZXN0EgwKBG5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSEAoIcGFzc3dvcmQYAyABKAkSFgoOZGVmYXVsdF9sb2NhbGUYBCABKAkiGwoZQ3JlYXRlSW5pdGlhbFVzZXJSZXNwb25zZTL/AQoUUGxhdGZvcm1TZXR1cFNlcnZpY2UScQoQQ2hlY2tTZXR1cFN0YXR1cxIsLnB1YmxpcmEucGxhdGZvcm0udjEuQ2hlY2tTZXR1cFN0YXR1c1JlcXVlc3QaLS5wdWJsaXJhLnBsYXRmb3JtLnYxLkNoZWNrU2V0dXBTdGF0dXNSZXNwb25zZSIAEnQKEUNyZWF0ZUluaXRpYWxVc2VyEi0ucHVibGlyYS5wbGF0Zm9ybS52MS5DcmVhdGVJbml0aWFsVXNlclJlcXVlc3QaLi5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZUluaXRpYWxVc2VyUmVzcG9uc2UiAEJOWkxnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
 
 /**
  * セットアップ状態確認リクエスト
@@ -68,6 +68,15 @@ export type CreateInitialUserRequest = Message<"publira.platform.v1.CreateInitia
    * @generated from field: string password = 3;
    */
   password: string;
+
+  /**
+   * UI locale code (ja, en) the platform starts on, chosen by the operator on
+   * the setup screen. Required: the settings row is created here and has no
+   * column default for the locale, so the first language is never left unstated.
+   *
+   * @generated from field: string default_locale = 4;
+   */
+  defaultLocale: string;
 };
 
 /**

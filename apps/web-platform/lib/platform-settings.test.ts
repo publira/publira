@@ -127,16 +127,6 @@ describe("platform-settings", () => {
     expect(await getPlatformDisplayTimeZone()).toBe("Asia/Tokyo");
   });
 
-  it("表示言語は取得に失敗しても ja に落ちる", async () => {
-    mockGetPlatformSettingsApi.mockRejectedValueOnce(
-      new ConnectError("platform api unavailable", Code.Unavailable)
-    );
-
-    const { getPlatformDisplayLocale } = await import("./platform-settings");
-
-    expect(await getPlatformDisplayLocale()).toBe("ja");
-  });
-
   it("更新に成功した場合は保存された既定タイムゾーンを返す", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "en", defaultTimezone: "Asia/Tokyo" },
@@ -281,28 +271,23 @@ describe("platform-settings", () => {
     expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
   });
 
-  it("returns the stored platform default locale for a write path", async () => {
+  it("reports the saved default locale as the display locale", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
     });
 
-    const { readPlatformDefaultLocale } = await import("./platform-settings");
+    const { getPlatformDisplayLocale } = await import("./platform-settings");
 
-    await expect(readPlatformDefaultLocale("ja")).resolves.toEqual({
-      defaultLocale: "en",
-      ok: true,
-    });
+    await expect(getPlatformDisplayLocale()).resolves.toBe("en");
   });
 
-  it("reports a failure instead of guessing the platform default locale", async () => {
+  it("falls back to ja when the settings read fails", async () => {
     mockGetPlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError("platform api unavailable", Code.Unavailable)
     );
 
-    const { readPlatformDefaultLocale } = await import("./platform-settings");
+    const { getPlatformDisplayLocale } = await import("./platform-settings");
 
-    const result = await readPlatformDefaultLocale("ja");
-
-    expect(result.ok).toBe(false);
+    await expect(getPlatformDisplayLocale()).resolves.toBe("ja");
   });
 });

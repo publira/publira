@@ -138,26 +138,39 @@ describe("resolveSetupCompleted", () => {
 });
 
 describe("createInitialUser", () => {
-  it("API 成功時は ok=true を返す", async () => {
+  it("sends the chosen default locale and reports success", async () => {
     mockCreateInitialUser.mockResolvedValueOnce({});
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password", "ja")
+      createInitialUser({
+        defaultLocale: "en",
+        email: "admin@example.com",
+        locale: "ja",
+        name: "管理者",
+        password: "password",
+      })
     ).resolves.toEqual({ ok: true });
     expect(mockCreateInitialUser).toHaveBeenCalledWith({
+      defaultLocale: "en",
       email: "admin@example.com",
       name: "管理者",
       password: "password",
     });
   });
 
-  it("セットアップ済みエラー時は専用メッセージを返す", async () => {
+  it("reports an already-completed setup with its own message", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
       new ConnectError("setup already completed", Code.AlreadyExists)
     );
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password", "ja")
+      createInitialUser({
+        defaultLocale: "ja",
+        email: "admin@example.com",
+        locale: "ja",
+        name: "管理者",
+        password: "password",
+      })
     ).resolves.toEqual({
       alreadyCompleted: true,
       message:
@@ -166,13 +179,19 @@ describe("createInitialUser", () => {
     });
   });
 
-  it("入力エラー時は入力内容エラーのメッセージを返す", async () => {
+  it("reports an invalid argument as a validation message", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
       new ConnectError("invalid email", Code.InvalidArgument)
     );
 
     await expect(
-      createInitialUser("管理者", "invalid", "password", "ja")
+      createInitialUser({
+        defaultLocale: "ja",
+        email: "invalid",
+        locale: "ja",
+        name: "管理者",
+        password: "password",
+      })
     ).resolves.toEqual({
       alreadyCompleted: false,
       message: "入力内容に誤りがあります。",
@@ -180,13 +199,19 @@ describe("createInitialUser", () => {
     });
   });
 
-  it("locale=en では英語のメッセージを返す", async () => {
+  it("renders the failure copy in the locale it was given", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
       new ConnectError("setup already completed", Code.AlreadyExists)
     );
 
     await expect(
-      createInitialUser("Admin", "admin@example.com", "password", "en")
+      createInitialUser({
+        defaultLocale: "en",
+        email: "admin@example.com",
+        locale: "en",
+        name: "Admin",
+        password: "password",
+      })
     ).resolves.toEqual({
       alreadyCompleted: true,
       message: "Setup is already complete. Sign in from the sign-in screen.",
@@ -194,21 +219,33 @@ describe("createInitialUser", () => {
     });
   });
 
-  it("分類できない RPC エラーは伝播する", async () => {
+  it("rethrows an RPC error it cannot classify", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password", "ja")
+      createInitialUser({
+        defaultLocale: "ja",
+        email: "admin@example.com",
+        locale: "ja",
+        name: "管理者",
+        password: "password",
+      })
     ).rejects.toThrow("boom");
   });
 
-  it("RPC 由来でない例外も伝播する", async () => {
+  it("rethrows a rejection that is not an RPC error", async () => {
     mockCreateInitialUser.mockRejectedValueOnce("boom");
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password", "ja")
+      createInitialUser({
+        defaultLocale: "ja",
+        email: "admin@example.com",
+        locale: "ja",
+        name: "管理者",
+        password: "password",
+      })
     ).rejects.toBe("boom");
   });
 });

@@ -52,6 +52,16 @@ export interface CreateTenantInput {
   domain: string;
   adminDomain?: string;
   initialAdminEmails?: string;
+  /**
+   * Label of the option to pick in the default-language selector.
+   *
+   * The form opens on whatever `Accept-Language` asks for (#1246), which is
+   * `English` under Playwright's Chromium. Every assertion this suite makes on
+   * a tenant-owned screen — the web-host catalog, the tenant's web-admin login
+   * — is written against the Japanese copy, so the helper picks `日本語`
+   * unless a test says otherwise.
+   */
+  defaultLocaleLabel?: "English" | "日本語";
 }
 
 /**
@@ -69,6 +79,10 @@ export const createTenantViaUi = async (
 
   await page.locator("#tenant_name").fill(input.name);
   await page.locator("#tenant_domain").fill(input.domain);
+  await page.locator("#tenant_default_locale").click();
+  await page
+    .getByRole("option", { name: input.defaultLocaleLabel ?? "日本語" })
+    .click();
   if (input.adminDomain !== undefined) {
     await page.locator("#tenant_admin_domain").fill(input.adminDomain);
   }

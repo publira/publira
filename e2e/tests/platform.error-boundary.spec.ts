@@ -104,21 +104,28 @@ test.describe("web-platform console error boundary", () => {
     }
   });
 
-  test("/setup shows the connection error and no form while the platform API is down", async ({
-    page,
-  }) => {
-    try {
-      runPlatformApiServerScript("stop");
+  // `/setup` runs before any locale is stored, so it renders in whatever
+  // `Accept-Language` asks for (#1246). Pinning the context locale is what
+  // makes the Japanese copy below the expected copy.
+  test.describe("with a Japanese browser", () => {
+    test.use({ locale: "ja-JP" });
 
-      const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/setup`);
+    test("/setup shows the connection error and no form while the platform API is down", async ({
+      page,
+    }) => {
+      try {
+        runPlatformApiServerScript("stop");
 
-      expect(response?.status(), await page.content()).toBe(200);
-      await expect(page.getByText(setupApiUnavailableMessage)).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "管理ユーザーを作成する" })
-      ).toHaveCount(0);
-    } finally {
-      runPlatformApiServerScript("start-wait");
-    }
+        const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/setup`);
+
+        expect(response?.status(), await page.content()).toBe(200);
+        await expect(page.getByText(setupApiUnavailableMessage)).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: "管理ユーザーを作成する" })
+        ).toHaveCount(0);
+      } finally {
+        runPlatformApiServerScript("start-wait");
+      }
+    });
   });
 });

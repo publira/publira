@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/publicid"
 )
 
@@ -44,6 +45,14 @@ func (s *platformServer) CreateInitialUser(
 	if _, err := mail.ParseAddress(email); err != nil {
 		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+	// The setup screen offers the supported locales and sends the one the
+	// operator picked; there is no stored preference yet to fall back on, so an
+	// absent or unsupported code is rejected rather than guessed at.
+	defaultLocale, err := locale.Normalize(req.Msg.DefaultLocale)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "invalid_locale")
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	// Fast-path: セットアップ済み確認
@@ -103,6 +112,13 @@ func (s *platformServer) CreateInitialUser(
 		}
 		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "platform_role_creation_failed")
 		return nil, s.internalDBError(ctx, "failed to create initial platform user role", err, "platform_user_id", userID.String())
+	}
+
+	// The chosen locale becomes the platform default in the same transaction, so
+	// a platform that has an administrator always has a language to render in.
+	if _, err := txq.UpsertPlatformDefaultLocale(ctx, defaultLocale); err != nil {
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "platform_locale_save_failed")
+		return nil, s.internalDBError(ctx, "failed to save the initial platform default locale", err, "platform_user_id", userID.String())
 	}
 
 	if err := tx.Commit(); err != nil {
