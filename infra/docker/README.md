@@ -72,7 +72,7 @@ What is being containerized?
 
 ### Naming
 
-- **Role directories** use a short category name (`web` / `api` / `batch` / `node`), never a service name.
+- **Role directories** use a short category name (`web` / `api` / `image` / `batch` / `node`), never a service name.
 - **`APP_NAME`** is the directory name directly under `apps/` (for example, `web-admin` or `email-renderer`). The Dockerfile adds the `@publira/` prefix.
 - **`CMD_NAME`** is the directory name directly under `server/cmd/` (for example, `api-server`).
 - **Example image tags** use `publira/<service-name>:local`, a build-time convention. Deployment defines registry policy separately.
@@ -311,5 +311,5 @@ Use these steps when a `Docker / <target>` job or local `task docker:build:*` fa
 - [ ] Pinned base-image digests and made tool-version `ARG`s trackable by Renovate
 - [ ] Verified the build from the root with `docker build -f … .` and `task docker:build:*`
 - [ ] Passed representative verification with `task docker:verify` (and `verify:full` when needed)
-- [ ] For a new target, updated [`Taskfile.yaml`](./Taskfile.yaml) `verify:full` and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
+- [ ] For a new target, updated this README's build examples, [`Taskfile.yaml`](./Taskfile.yaml) `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
 - [ ] The documentation link from the root [README.md](../../README.md) reaches this file
