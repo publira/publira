@@ -3,7 +3,8 @@
 // repository: which signals count, how much each is worth, and how quickly an
 // older day fades. Every run recomputes a whole period from
 // content_daily_stats, so re-running a day replaces its snapshot instead of
-// adding to it.
+// adding to it. It also owns the retention side of the same table: snapshots
+// accumulate one period at a time and are dropped on a deadline.
 package contentranking
 
 import (
@@ -132,7 +133,7 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 	if itemLimit <= 0 {
 		itemLimit = DefaultItemLimit
 	}
-	if err := a.requireBypassRLS(ctx); err != nil {
+	if err := requireBypassRLS(ctx, a.db, "ranking aggregation"); err != nil {
 		return Result{}, err
 	}
 
@@ -162,9 +163,13 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 	return result, errors.Join(failures...)
 }
 
-func (a *Aggregator) requireBypassRLS(ctx context.Context) error {
+// requireBypassRLS refuses a connection that row-level security would scope to
+// one tenant. Both the aggregation and the purge span every tenant, and under
+// a tenant-scoped role they would silently do a fraction of their work; task
+// names the caller in the error.
+func requireBypassRLS(ctx context.Context, db *sql.DB, task string) error {
 	var bypasses bool
-	err := a.db.QueryRowContext(ctx, `
+	err := db.QueryRowContext(ctx, `
 		SELECT rolsuper OR rolbypassrls
 		FROM pg_roles
 		WHERE rolname = current_user
@@ -173,7 +178,7 @@ func (a *Aggregator) requireBypassRLS(ctx context.Context) error {
 		return fmt.Errorf("check database role: %w", err)
 	}
 	if !bypasses {
-		return errors.New("ranking aggregation requires a database role with BYPASSRLS")
+		return fmt.Errorf("%s requires a database role with BYPASSRLS", task)
 	}
 	return nil
 }
