@@ -5,6 +5,7 @@ import 'package:publira/app.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/router.dart';
 
+import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/pump_until.dart';
 
@@ -21,7 +22,9 @@ void main() {
   });
 
   Future<void> pumpApp(WidgetTester tester) async {
-    await tester.pumpWidget(PubliraApp(router: router, catalog: catalog));
+    await tester.pumpWidget(
+      PubliraApp(router: router, catalog: catalog, auth: fakeAuthController()),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
   }

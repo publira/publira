@@ -13,10 +13,12 @@ class ConnectFixtureServer {
     this.series = const [],
     this.details = const {},
     this.episodes = const {},
+    this.entitledEpisodes = const {},
     this.listStatus = HttpStatus.ok,
     this.detailStatus = HttpStatus.ok,
     this.episodeStatus = HttpStatus.ok,
     this.tenantStatus = HttpStatus.ok,
+    this.activeAccessToken = memberAccessToken,
     this.listResponse,
     this.detailResponse,
     this.episodeResponse,
@@ -30,6 +32,15 @@ class ConnectFixtureServer {
   static const seedEpisodeTitle = 'Seed Episode 001-01';
   static const seedEpisodePageCount = 3;
   static const paidEpisodeId = 'SeedEPSDAA1A';
+
+  /// The one member `AuthService/Login` accepts here, mirroring the
+  /// development seed (`db/seeds/dev/001_tenant_users.sql`), which also holds
+  /// an access ticket for [paidEpisodeId].
+  static const memberEmail = 'member@example.com';
+  static const memberPassword = 'memberpass';
+  static const memberName = 'Sample Member';
+  static const memberPublicId = 'SeedMMBRAAA1';
+  static const memberAccessToken = 'fixture-access-token';
 
   /// 1x1 transparent PNG, enough for `Image.network` to decode a real page on
   /// a device.
@@ -92,6 +103,35 @@ class ConnectFixtureServer {
     };
   }
 
+  /// `GetEpisodeDetail` bodies served instead of [populatedEpisodes] once the
+  /// request carries [activeAccessToken]: the paid episode is entitled and has
+  /// pages, the way an access ticket makes it read for a signed-in member.
+  static Map<String, Map<String, Object?>> populatedEntitledEpisodes() {
+    return {
+      paidEpisodeId: {
+        'episode': {
+          'publicId': paidEpisodeId,
+          'title': 'Seed Episode 001-10',
+          'orderIndex': 10,
+          'price': 500,
+        },
+        'series': {'publicId': seedSeriesId, 'title': seedSeriesTitle},
+        'access': 'EPISODE_ACCESS_ENTITLED',
+        'images': [
+          for (var page = 1; page <= seedEpisodePageCount; page++)
+            {
+              'id': '$paidEpisodeId-page-$page',
+              'imageUrl': '/images/episodes/$paidEpisodeId-page-$page',
+              'contentType': 'image/png',
+              'displayOrder': page,
+              'width': 800,
+              'height': 1200,
+            },
+        ],
+      },
+    };
+  }
+
   static Map<String, Map<String, Object?>> populatedDetails() {
     return {
       seedSeriesId: {
@@ -125,10 +165,18 @@ class ConnectFixtureServer {
 
   /// `GetEpisodeDetail` bodies keyed by episode public id.
   Map<String, Map<String, Object?>> episodes;
+
+  /// The bodies a request carrying [activeAccessToken] gets instead, keyed the
+  /// same way. An episode missing here answers from [episodes].
+  Map<String, Map<String, Object?>> entitledEpisodes;
   int listStatus;
   int detailStatus;
   int episodeStatus;
   int tenantStatus;
+
+  /// The bearer `GetMe` accepts and `GetEpisodeDetail` unlocks for. Set it to
+  /// another value to act out a token the API has stopped accepting.
+  String? activeAccessToken;
   Object? listResponse;
   Object? detailResponse;
   Object? episodeResponse;
@@ -196,6 +244,51 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/Login')) {
+      final body = await _readBody(request);
+      if (body['email'] != memberEmail || body['password'] != memberPassword) {
+        await _write(request, HttpStatus.unauthorized, {
+          'code': 'unauthenticated',
+          'message': 'invalid credentials',
+        });
+        return;
+      }
+      await _write(request, HttpStatus.ok, {
+        'user': {
+          'publicId': memberPublicId,
+          'name': memberName,
+          'role': 'member',
+        },
+        'accessToken': {
+          'token': memberAccessToken,
+          'expiresAt': DateTime.now()
+              .toUtc()
+              .add(const Duration(hours: 24))
+              .toIso8601String(),
+        },
+      });
+      return;
+    }
+
+    if (path.endsWith('/GetMe')) {
+      await _readBody(request);
+      if (!_isAuthorized(request)) {
+        await _write(request, HttpStatus.unauthorized, {
+          'code': 'unauthenticated',
+          'message': 'invalid token',
+        });
+        return;
+      }
+      await _write(request, HttpStatus.ok, {
+        'user': {
+          'publicId': memberPublicId,
+          'name': memberName,
+          'role': 'member',
+        },
+      });
+      return;
+    }
+
     if (path.endsWith('/GetSeriesDetail')) {
       if (detailStatus != HttpStatus.ok) {
         await _write(request, detailStatus, {
@@ -226,7 +319,9 @@ class ConnectFixtureServer {
         return;
       }
       final publicId = await _readPublicId(request);
-      final episode = episodes[publicId];
+      final episode = _isAuthorized(request)
+          ? entitledEpisodes[publicId] ?? episodes[publicId]
+          : episodes[publicId];
       if (episode == null) {
         await _write(request, HttpStatus.notFound, {
           'code': 'not_found',
@@ -243,9 +338,28 @@ class ConnectFixtureServer {
   }
 
   Future<String> _readPublicId(HttpRequest request) async {
-    final body = await utf8.decoder.bind(request).join();
-    final decoded = jsonDecode(body);
-    return decoded is Map ? (decoded['publicId'] as String? ?? '') : '';
+    final body = await _readBody(request);
+    return body['publicId'] as String? ?? '';
+  }
+
+  Future<Map<String, Object?>> _readBody(HttpRequest request) async {
+    final raw = await utf8.decoder.bind(request).join();
+    if (raw.trim().isEmpty) {
+      return const {};
+    }
+    final decoded = jsonDecode(raw);
+    return decoded is Map
+        ? decoded.map((key, value) => MapEntry(key.toString(), value))
+        : const {};
+  }
+
+  bool _isAuthorized(HttpRequest request) {
+    final token = activeAccessToken;
+    if (token == null || token.isEmpty) {
+      return false;
+    }
+    return request.headers.value(HttpHeaders.authorizationHeader) ==
+        'Bearer $token';
   }
 
   Future<void> _write(HttpRequest request, int status, Object body) async {

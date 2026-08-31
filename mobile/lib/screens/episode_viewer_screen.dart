@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -25,14 +26,19 @@ class EpisodeViewerScreen extends StatefulWidget {
 class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
   late Future<EpisodeDetail?> _future;
   var _started = false;
+  var _accessToken = '';
 
+  /// Reloads whenever the reader signs in or out, because who is asking is
+  /// what decides whether this body comes back at all.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_started) {
+    final accessToken = AuthScope.of(context).accessToken;
+    if (_started && accessToken == _accessToken) {
       return;
     }
     _started = true;
+    _accessToken = accessToken;
     _future = _load();
   }
 
@@ -90,9 +96,17 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
 
   Widget _body(EpisodeDetail detail) {
     if (detail.access == EpisodeAccess.locked) {
-      return const _ViewerMessage(
-        key: ValueKey('episode-locked'),
-        message: 'この話は購入すると読めます',
+      if (AuthScope.of(context).isSignedIn) {
+        return const _ViewerMessage(
+          key: ValueKey('episode-locked'),
+          message: 'この話は購入すると読めます',
+        );
+      }
+      return _ViewerMessage(
+        key: const ValueKey('episode-locked'),
+        message: 'この話は購入すると読めます。購入済みの場合はサインインしてください。',
+        actionLabel: 'サインイン',
+        onAction: () => context.push(AppRoutes.signIn),
       );
     }
     if (detail.images.isEmpty) {

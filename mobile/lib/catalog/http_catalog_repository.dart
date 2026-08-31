@@ -1,5 +1,6 @@
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/config.dart';
@@ -8,31 +9,42 @@ import 'package:publira/models/series_item.dart';
 
 /// [CatalogRepository] backed by the public Connect API.
 class HttpCatalogRepository implements CatalogRepository {
-  HttpCatalogRepository({required this.config, ConnectClient? client})
-    : _client =
-          client ??
-          ConnectClient(
-            baseUrl: config.apiBaseUrl,
-            accessToken: config.accessToken,
-          );
+  factory HttpCatalogRepository({
+    required AppConfig config,
+    ConnectClient? client,
+    TenantResolver? tenants,
+  }) {
+    final resolved = client ?? ConnectClient(baseUrl: config.apiBaseUrl);
+    return HttpCatalogRepository._(
+      config: config,
+      client: resolved,
+      tenants:
+          tenants ??
+          TenantResolver(client: resolved, tenantHost: config.tenantHost),
+    );
+  }
+
+  HttpCatalogRepository._({
+    required this.config,
+    required ConnectClient client,
+    required TenantResolver tenants,
+  }) : _client = client,
+       _tenants = tenants;
 
   static const _listProcedure =
       '/publira.v1.CatalogService/ListPublishedSeries';
   static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
   static const _episodeProcedure =
       '/publira.v1.CatalogService/GetEpisodeDetail';
-  static const _tenantProcedure = '/publira.v1.DomainService/GetTenantByDomain';
 
   final AppConfig config;
   final ConnectClient _client;
-
-  String? _tenantId;
-  Future<String>? _tenantIdFuture;
+  final TenantResolver _tenants;
 
   @override
   Future<List<SeriesItem>> listSeries() async {
     try {
-      final tenantId = await _resolveTenantId();
+      final tenantId = await _tenants.resolve();
       final body = await _client.unary(_listProcedure, {
         'limit': 20,
         'tenant': {'tenantId': tenantId},
@@ -46,7 +58,7 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesDetail?> getSeries(String publicId) async {
     try {
-      final tenantId = await _resolveTenantId();
+      final tenantId = await _tenants.resolve();
       final body = await _client.unary(_detailProcedure, {
         'publicId': publicId,
         'tenant': {'tenantId': tenantId},
@@ -66,7 +78,7 @@ class HttpCatalogRepository implements CatalogRepository {
     String episodePublicId,
   ) async {
     try {
-      final tenantId = await _resolveTenantId();
+      final tenantId = await _tenants.resolve();
       final body = await _client.unary(_episodeProcedure, {
         'publicId': episodePublicId,
         'tenant': {'tenantId': tenantId},
@@ -77,37 +89,6 @@ class HttpCatalogRepository implements CatalogRepository {
         return null;
       }
       throw _toFailure(error);
-    }
-  }
-
-  Future<String> _resolveTenantId() {
-    final cached = _tenantId;
-    if (cached != null) {
-      return Future.value(cached);
-    }
-    return _tenantIdFuture ??= _fetchTenantId();
-  }
-
-  Future<String> _fetchTenantId() async {
-    try {
-      final body = await _client.unary(_tenantProcedure, {
-        'domains': [config.tenantHost],
-      });
-      final tenantId = (body['tenantId'] as String?)?.trim() ?? '';
-      if (tenantId.isEmpty) {
-        throw const CatalogFailure(
-          CatalogFailureKind.unexpected,
-          message: 'GetTenantByDomain returned an empty tenantId',
-        );
-      }
-      _tenantId = tenantId;
-      return tenantId;
-    } on ConnectException catch (error) {
-      _tenantIdFuture = null;
-      throw _toFailure(error);
-    } catch (error) {
-      _tenantIdFuture = null;
-      rethrow;
     }
   }
 
@@ -216,7 +197,7 @@ class HttpCatalogRepository implements CatalogRepository {
       seriesTitle: _readString(rawSeries, 'title', 'series'),
       access: _parseAccess(body['access']),
       images: _parseEpisodeImages(body['images']),
-      imageRequestHeaders: config.imageRequestHeaders,
+      imageRequestHeaders: config.imageRequestHeaders(_client.accessToken),
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/series_item.dart';
@@ -35,8 +36,20 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final signedIn = AuthScope.of(context).isSignedIn;
     return Scaffold(
-      appBar: AppBar(title: const Text('Publira')),
+      appBar: AppBar(
+        title: const Text('Publira'),
+        actions: [
+          IconButton(
+            key: const ValueKey('catalog-account'),
+            icon: Icon(signedIn ? Icons.person : Icons.person_outline),
+            tooltip: signedIn ? 'アカウント' : 'サインイン',
+            onPressed: () =>
+                context.push(signedIn ? AppRoutes.account : AppRoutes.signIn),
+          ),
+        ],
+      ),
       body: FutureBuilder<List<SeriesItem>>(
         future: _future,
         builder: (context, snapshot) {
