@@ -95,6 +95,18 @@ describe("web-admin proxy", () => {
     expect(mockResolveTenantId).not.toHaveBeenCalled();
   });
 
+  it("answers GET /favicon.ico with 404 without resolving the tenant", async () => {
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://admin.example.com/favicon.ico")
+    );
+
+    expect(response.status).toBe(404);
+    expect(mockResolveTenantId).not.toHaveBeenCalled();
+  });
+
   it.each(["/livez", "/readyz"])(
     "ヘルス probe %s はテナント解決なしで next する",
     async (path) => {

@@ -91,6 +91,14 @@ describe("web-admin locale", () => {
       expect(mockGetTenantDisplayLocale).not.toHaveBeenCalled();
     });
 
+    it("reads no session for a tenant id that is not a UUID", async () => {
+      mockGetAccessToken.mockResolvedValue("session-token");
+      const { getLocale } = await importLocale();
+
+      await getLocale("favicon.ico");
+      expect(mockGetAccessToken).not.toHaveBeenCalled();
+    });
+
     it("falls through to the tenant default for an unsupported cookie value", async () => {
       setLocaleCookie("fr");
       mockGetAccessToken.mockResolvedValue("session-token");

@@ -1,13 +1,15 @@
 import { STATIC_PARAM_PLACEHOLDER } from "@publira/utils/static-param-placeholder";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetTenantName, mockNotFound, mockTenantId } = vi.hoisted(() => ({
-  mockGetTenantName: vi.fn(),
-  mockNotFound: vi.fn(() => {
-    throw new Error("NEXT_NOT_FOUND");
-  }),
-  mockTenantId: vi.fn(),
-}));
+const { mockGetLocale, mockGetTenantName, mockNotFound, mockTenantId } =
+  vi.hoisted(() => ({
+    mockGetLocale: vi.fn(() => Promise.resolve("ja")),
+    mockGetTenantName: vi.fn(),
+    mockNotFound: vi.fn(() => {
+      throw new Error("NEXT_NOT_FOUND");
+    }),
+    mockTenantId: vi.fn(),
+  }));
 
 vi.mock("../globals.css", () => ({}));
 
@@ -23,7 +25,7 @@ vi.mock("#lib/locale", async () => {
   const { sharedCatalog } = await import("@publira/i18n/catalog");
 
   return {
-    getLocale: () => Promise.resolve("ja"),
+    getLocale: mockGetLocale,
     loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
   };
 });
@@ -36,6 +38,7 @@ const tenantId = "018f0e6a-1000-7000-8000-000000000001";
 
 describe("generateMetadata", () => {
   beforeEach(() => {
+    mockGetLocale.mockClear();
     mockGetTenantName.mockReset();
     mockNotFound.mockClear();
     mockTenantId.mockReset();
@@ -73,6 +76,25 @@ describe("generateMetadata", () => {
     await expect(generateMetadata()).resolves.toEqual({ title: "管理画面" });
     expect(mockGetTenantName).not.toHaveBeenCalled();
     expect(mockNotFound).not.toHaveBeenCalled();
+  });
+
+  it("resolves no locale for a tenant_id that is not a UUID", async () => {
+    mockTenantId.mockResolvedValueOnce("favicon.ico");
+
+    const { generateMetadata } = await import("./layout");
+
+    await generateMetadata();
+    expect(mockGetLocale).not.toHaveBeenCalled();
+  });
+
+  it("resolves the locale from the trimmed tenant_id", async () => {
+    mockTenantId.mockResolvedValueOnce(` ${tenantId} `);
+    mockGetTenantName.mockResolvedValueOnce("サンプル出版社");
+
+    const { generateMetadata } = await import("./layout");
+
+    await generateMetadata();
+    expect(mockGetLocale).toHaveBeenCalledWith(tenantId);
   });
 
   it("generateStaticParams のプレースホルダでは notFound する", async () => {

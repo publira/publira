@@ -7,9 +7,9 @@ import type { Metadata } from "next";
 import { tenant_id } from "next/root-params";
 import type { ReactNode } from "react";
 
-import { tenantIdFormSchema } from "#lib/auth-input";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantName } from "#lib/public-api";
+import { isTenantIdFormat } from "#lib/tenant-id-format";
 
 import "../globals.css";
 
@@ -25,20 +25,30 @@ export const generateMetadata = async (): Promise<Metadata> => {
   }
   guardPlaceholder(tenantId);
 
+  // A segment that is not a tenant UUID never went through `proxy.ts`, so
+  // there is no tenant and no session behind it and the title is the
+  // locale-independent fallback whichever way the locale resolves. Resolving it
+  // anyway would read the session — uncached data that this route's otherwise
+  // fully prerenderable shell has no `<Suspense>` boundary to hold, which is
+  // what Cache Components reports as `blocking-prerender-metadata-dynamic`.
+  // Deciding before the read keeps the metadata static instead.
+  const normalizedTenantId = tenantId.trim();
+  if (!isTenantIdFormat(normalizedTenantId)) {
+    const messages = await loadAdminMessages(DEFAULT_LOCALE);
+
+    return { title: getMessage(messages, "admin.shell.title") };
+  }
+
   // The title is copy, so it follows the cookie like every other string. It
   // costs the shell nothing: metadata is resolved in its own pass and streamed
   // into the document, so this read stays out of the route's static shell.
-  const locale = await getLocale(tenantId);
+  const locale = await getLocale(normalizedTenantId);
   const messages = await loadAdminMessages(locale);
-  const parsed = tenantIdFormSchema(messages).safeParse(tenantId);
-  if (!parsed.success) {
-    return { title: getMessage(messages, "admin.shell.title") };
-  }
 
   // `getTenantName` degrades to `null` when the public API is unavailable, so
   // an outage leaves the console titled 「管理画面」 instead of failing every
   // route (#672).
-  const tenantName = await getTenantName(parsed.data);
+  const tenantName = await getTenantName(normalizedTenantId);
   const base = tenantName
     ? getMessage(messages, "admin.shell.tenant_title", { name: tenantName })
     : getMessage(messages, "admin.shell.title");
