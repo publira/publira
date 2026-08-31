@@ -1,41 +1,41 @@
 # admin-image-server
 
-管理向け画像配送サーバーです。公開側の [image-server](../image-server/README.md) と同じ `imageserver` ハンドラを使い、Manael による WebP / AVIF 変換・縮小と中間キャッシュをそのまま載せます。待ち受けと DB 接続は管理ロール向けで、エピソード本文画像だけ管理者プレビュー用の判定を足します。
+The admin image delivery server. It uses the same `imageserver` handler as the public [image-server](../image-server/README.md), carrying over the Manael WebP / AVIF conversion, the resizing, and the intermediate cache as they are. Its listen address and DB connection are for the admin role, and it adds an administrator preview decision for episode body images only.
 
-## 起動
+## Running
 
-リポジトリルートから:
+From the repository root:
 
 ```bash
 task server:dev-admin-image-server
 ```
 
-`server` ディレクトリから:
+From the `server` directory:
 
 ```bash
 go run ./cmd/admin-image-server
 ```
 
-Manael は libvips を使うため、ビルドと実行には `libvips-dev`（実行時は `libvips42`）が必要です。Dev Container には含まれます。本番イメージは `infra/docker/image/Dockerfile`（`CMD_NAME=admin-image-server`）です。
+Manael uses libvips, so building and running require `libvips-dev` (`libvips42` at runtime). The Dev Container includes them. The production image is `infra/docker/image/Dockerfile` (`CMD_NAME=admin-image-server`).
 
-## 主な環境変数
+## Main environment variables
 
-- `PUBLIRA_ADMIN_IMAGE_SERVER_ADDR` (任意, 既定 `:8201`)
-- `PUBLIRA_ADMIN_IMAGE_DB_URL` / `PUBLIRA_ADMIN_DB_URL` (任意。どちらも未設定なら `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable`)
-- `PUBLIRA_AUTH_JWT_SECRET` (必須, 32 バイト以上)
-- `PUBLIRA_S3_BUCKET` (必須)
-- `AWS_REGION` / `PUBLIRA_S3_ENDPOINT` / `PUBLIRA_S3_FORCE_PATH_STYLE` (ストレージ)
-- `PUBLIRA_REDIS_URL` (任意。未設定 / `disabled` / `off` / `false` のときはメモリキャッシュのみ)
-- `PUBLIRA_IMAGE_CACHE_TTL` (任意。変換結果の TTL。Go duration または秒数。既定 `1h`)
+- `PUBLIRA_ADMIN_IMAGE_SERVER_ADDR` (optional, default `:8201`)
+- `PUBLIRA_ADMIN_IMAGE_DB_URL` / `PUBLIRA_ADMIN_DB_URL` (optional. When neither is set, `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable`)
+- `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes)
+- `PUBLIRA_S3_BUCKET` (required)
+- `AWS_REGION` / `PUBLIRA_S3_ENDPOINT` / `PUBLIRA_S3_FORCE_PATH_STYLE` (storage)
+- `PUBLIRA_REDIS_URL` (optional. Unset / `disabled` / `off` / `false` means the memory cache only)
+- `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted result. A Go duration or a number of seconds. Default `1h`)
 
-変換とキャッシュのキーは公開側と同じです。`Accept` と `w` / `h` / `fit` / `q` に従い、ヒット時は `X-Publira-Image-Cache: hit`、ミス時は `miss` です。
+Conversion and the cache key are the same as on the public side. They follow `Accept` and `w` / `h` / `fit` / `q`, and the response is `X-Publira-Image-Cache: hit` on a hit and `miss` on a miss.
 
-## エピソード本文画像の認可
+## Authorization for episode body images
 
-公開側と同じ `GET /images/episodes/{media_id}` を扱い、読者向けの判定（purchase / ticket / 公開かつ `price = 0`）もそのまま残します。そのうえで、クエリ `t=<JWT>` の audience が `admin-media` のときはテナントスタッフ向けのプレビューとして評価します。
+It serves the same `GET /images/episodes/{media_id}` as the public side, and keeps the reader-facing decision (a purchase, a ticket, or published with `price = 0`) intact. On top of that, when the audience of the `t=<JWT>` query is `admin-media`, the request is evaluated as a preview for tenant staff.
 
-1. ユーザーが当該テナントの `tenant_admin` / `tenant_editor` / `tenant_auditor` である
-2. 画像がそのテナントのエピソードに属する
-3. トークンの `eid` がそのエピソードと一致する
+1. The user holds `tenant_admin` / `tenant_editor` / `tenant_auditor` in that tenant
+2. The image belongs to an episode of that tenant
+3. The token's `eid` matches that episode
 
-公開状態と価格は見ません。下書き・公開予約・有料エピソードでも、管理画面の `<img>` / `next/image` から確認できます。`admin-media` トークンは公開側 image-server では検証されないので、コピーした管理プレビュー URL が公開ホストで本文を開きません。トークンは `ListEpisodeImages` / `UploadEpisodeImages` / `ReorderEpisodeImages` が URL に付けます。詳細は [server/README.md](../../README.md) の認証節を参照してください。
+The publication state and the price are not considered, so a draft, a scheduled, or a paid episode can still be checked from the admin UI's `<img>` / `next/image`. An `admin-media` token is not verified by the public image-server, so a copied admin preview URL does not open the body on the public host. The tokens are appended to the URLs by `ListEpisodeImages` / `UploadEpisodeImages` / `ReorderEpisodeImages`. For the details, see the authentication sections of [server/README.md](../../README.md).

@@ -1,45 +1,45 @@
 # admin-api-server
 
-管理向け ConnectRPC API サーバーです。
+The admin ConnectRPC API server.
 
-## 起動
+## Running
 
-リポジトリルートから:
+From the repository root:
 
 ```bash
 make dev-admin-api
 ```
 
-`server` ディレクトリから:
+From the `server` directory:
 
 ```bash
 go run ./cmd/admin-api-server
 ```
 
-ビルド済みバイナリを使う場合:
+Using a pre-built binary:
 
 ```bash
 cd server && make build
 ./bin/admin-api-server
 ```
 
-## 主な環境変数
+## Main environment variables
 
-- `PUBLIRA_ADMIN_API_ADDR` (任意, 未指定時 `:8001`)
-- `PUBLIRA_ADMIN_DB_URL` (任意, 未指定時は開発用デフォルト)
-- `PUBLIRA_AUTH_JWT_SECRET` (必須, 32 バイト以上。アクセストークンの HS256 署名鍵。未設定なら起動に失敗する。詳細は [リポジトリ README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
-- `PUBLIRA_S3_BUCKET` (必須)
-- `AWS_REGION` (任意)
-- `PUBLIRA_S3_ENDPOINT` (任意)
-- `PUBLIRA_S3_FORCE_PATH_STYLE` (任意)
-- `PUBLIRA_S3_PUBLIC_BASE_URL` (任意)
-- `PUBLIRA_REVALIDATE_TOKEN` (任意, `X-Revalidate-Token` ヘッダーで送る共有トークン)
-- `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (いずれも `PUBLIRA_REVALIDATE_TOKEN` 設定時は必須。各 Next.js アプリの private network URL)
-- `PUBLIRA_TRACING_ENABLED` (任意, 既定は無効。OpenTelemetry トレースの有効化)
-- `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (任意, 未指定時 `development`。`deployment.environment.name` と既定サンプリング率を決める)
+- `PUBLIRA_ADMIN_API_ADDR` (optional, `:8001` when unset)
+- `PUBLIRA_ADMIN_DB_URL` (optional; a development default is used when unset)
+- `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens. The server fails to start when it is unset. For the details, see the [repository README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
+- `PUBLIRA_S3_BUCKET` (required)
+- `AWS_REGION` (optional)
+- `PUBLIRA_S3_ENDPOINT` (optional)
+- `PUBLIRA_S3_FORCE_PATH_STYLE` (optional)
+- `PUBLIRA_S3_PUBLIC_BASE_URL` (optional)
+- `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
+- `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (all required when `PUBLIRA_REVALIDATE_TOKEN` is set. The private network URL of each Next.js app)
+- `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
+- `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 
-トレースの属性・span 命名・サンプリング・`OTEL_*` の一覧は [server/README.md](../../README.md#分散トレーシング-opentelemetry) にあります。
+The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
-`PUBLIRA_REVALIDATE_TOKEN` と 3 つの `PUBLIRA_WEB_*_INTERNAL_URL` が設定されている場合のみ、公開状態更新時に全 Next.js アプリへ再検証リクエストを送信します。各宛先の固定パスは `/api/v1/revalidate` で、タグはテナント ID による制限なしにそのまま送信します。再検証は tenant domain の `Host` / `X-Forwarded-Host` に依存せず、リバースプロキシを経由しません。不足または不正な URL がある場合は再検証を無効化し、理由をログへ記録します。
+Revalidation requests are sent to every Next.js app on a publication state update only when `PUBLIRA_REVALIDATE_TOKEN` and all three `PUBLIRA_WEB_*_INTERNAL_URL` variables are set. The fixed path at each destination is `/api/v1/revalidate`, and tags are sent as they are, without a tenant ID restriction. Revalidation does not depend on the tenant domain in `Host` / `X-Forwarded-Host`, and does not go through the reverse proxy. If any URL is missing or malformed, revalidation is disabled and the reason is logged.
 
-`PUBLIRA_WEB_HOST_URL` は Stripe Checkout がブラウザへ返すための公開 URL であり、この内部 URL 群とは別です。
+`PUBLIRA_WEB_HOST_URL` is the public URL that Stripe Checkout returns the browser to, and is separate from this set of internal URLs.

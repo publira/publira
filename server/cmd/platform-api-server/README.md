@@ -1,45 +1,45 @@
 # platform-api-server
 
-プラットフォーム管理向け ConnectRPC API サーバーです。
+The ConnectRPC API server for platform administration.
 
-## 起動
+## Running
 
-リポジトリルートから:
+From the repository root:
 
 ```bash
 make dev-platform-api
 ```
 
-`server` ディレクトリから:
+From the `server` directory:
 
 ```bash
 go run ./cmd/platform-api-server
 ```
 
-ビルド済みバイナリを使う場合:
+Using a pre-built binary:
 
 ```bash
 cd server && make build
 ./bin/platform-api-server
 ```
 
-## 主な環境変数
+## Main environment variables
 
-- `PUBLIRA_PLATFORM_API_ADDR` (任意, 未指定時 `:8002`)
-- `PUBLIRA_PLATFORM_DB_URL` (任意, 未指定時は開発用デフォルト)
-- `PUBLIRA_AUTH_JWT_SECRET` (必須, 32 バイト以上。アクセストークンの HS256 署名鍵。未設定なら起動に失敗する。詳細は [リポジトリ README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
-- `PUBLIRA_TRACING_ENABLED` (任意, 既定は無効。OpenTelemetry トレースの有効化)
-- `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (任意, 未指定時 `development`。`deployment.environment.name` と既定サンプリング率を決める)
+- `PUBLIRA_PLATFORM_API_ADDR` (optional, `:8002` when unset)
+- `PUBLIRA_PLATFORM_DB_URL` (optional; a development default is used when unset)
+- `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens. The server fails to start when it is unset. For the details, see the [repository README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
+- `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
+- `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 
-トレースの属性・span 命名・サンプリング・`OTEL_*` の一覧は [server/README.md](../../README.md#分散トレーシング-opentelemetry) にあります。
+The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
-## ロール権限
+## Role permissions
 
-| 操作 | `platform_auditor` | `platform_operator` | `platform_super_admin` |
+| Operation | `platform_auditor` | `platform_operator` | `platform_super_admin` |
 | --- | --- | --- | --- |
-| ダッシュボード、テナント・ユーザー・監査ログ・設定・通知の閲覧 | 可 | 可 | 可 |
-| テナント、テナントメンバー、テナント管理者招待、エンドユーザー、SMTP、プラットフォーム設定の変更 | 不可 | 可 | 可 |
-| プラットフォームオペレーターの作成、ロール変更、停止、有効化、無効化 | 不可 | 不可 | 可 |
-| 自分の通知の既読化、ログアウト、パスワード・メールアドレス変更 | 可 | 可 | 可 |
+| Viewing the dashboard, tenants, users, audit logs, settings, and notifications | Yes | Yes | Yes |
+| Changing tenants, tenant members, tenant administrator invitations, end users, SMTP, and platform settings | No | Yes | Yes |
+| Creating, changing the role of, suspending, activating, and deactivating platform operators | No | No | Yes |
+| Marking one's own notifications as read, signing out, and changing one's password and email address | Yes | Yes | Yes |
 
-サーバーは変更系 RPC を共通インターセプターで検査するため、拒否時は DB 更新、監査ログ記録、メール送信を開始しません。
+The server checks mutating RPCs in a shared interceptor, so a rejected call never starts a DB update, an audit log entry, or an email.

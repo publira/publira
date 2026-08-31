@@ -230,4 +230,4 @@ Next.js 自体の内部 span（`BaseServer.renderToResponse` / `Router.executeRo
 NEXT_OTEL_VERBOSE=1 pnpm --dir apps/web-host dev
 ```
 
-属性・span 命名・サンプリング方針は [#502](https://github.com/publira/publira/issues/502) の設計合意に従います。設定と計装の詳細は Go 側が [server/README.md](server/README.md#分散トレーシング-opentelemetry)、Next.js 側が [packages/tracing/README.md](packages/tracing/README.md) です。
+属性・span 命名・サンプリング方針は [#502](https://github.com/publira/publira/issues/502) の設計合意に従います。設定と計装の詳細は Go 側が [server/README.md](server/README.md#distributed-tracing-opentelemetry)、Next.js 側が [packages/tracing/README.md](packages/tracing/README.md) です。
