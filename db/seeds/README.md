@@ -1,41 +1,41 @@
 # SQL Seeds
 
-ローカル開発・画面確認向けの初期データを SQL で管理します。
+Initial data for local development and UI checks is managed as SQL.
 
-## 目的
+## Purpose
 
-- migration と seed の責務を分離する
-- Go 実行環境なしでも DB 初期状態を再現する
-- 複数回実行しても壊れない（冪等）
+- Separate the responsibilities of migrations and seeds
+- Reproduce the initial database state without a Go runtime
+- Remain safe to run repeatedly (idempotent)
 
-## ディレクトリ構成
+## Directory layout
 
-- `prod.sql`: **本番用**エントリポイント — DB ユーザー・ロールのみ
-- `dev.sql`: **開発用**エントリポイント — `prod.sql` + 開発用サンプルデータ
-- `baseline/`: 環境共通の最小ファイル群（prod / dev 両方から参照）
-- `dev/`: 開発環境専用データ（dev.sql からのみ参照）
-  - `001_tenant_users.sql`: テナント・ユーザー・ロール
-  - `010_catalog.sql`: レーベル・著者・シリーズ・エピソード
-  - `020_audit_logs.sql`: 監査ログ
-  - `030_smtp_config.sql`: SMTP 設定
-- `scenarios/`: シナリオ別データ（任意実行）— [`scenarios/README.md`](./scenarios/README.md)
+- `prod.sql`: **Production** entry point — database users and roles only
+- `dev.sql`: **Development** entry point — `prod.sql` plus development sample data
+- `baseline/`: Minimal files shared between environments (referenced by both prod and dev)
+- `dev/`: Data used only in development (referenced only by dev.sql)
+  - `001_tenant_users.sql`: Tenants, users, and roles
+  - `010_catalog.sql`: Labels, creators, series, and episodes
+  - `020_audit_logs.sql`: Audit logs
+  - `030_smtp_config.sql`: SMTP configuration
+- `scenarios/`: Scenario-specific data (run as needed) — [scenarios/README.md](./scenarios/README.md)
 
-## 実行方法
+## Running seeds
 
 ```bash
-task db:seed             # 開発用シード（デフォルト: ENV=dev）
-task db:seed ENV=prod    # 本番用シード（DBユーザー・ロールのみ）
+task db:seed             # Development seeds (default: ENV=dev)
+task db:seed ENV=prod    # Production seeds (database users and roles only)
 ```
 
-`task db:setup` は `db:migrate` + `db:seed`（dev）を実行します。
+`task db:setup` runs `db:migrate` and `db:seed` (dev).
 
-## 基本方針
+## Principles
 
-- スキーマ変更は migration にのみ追加する
-- seed は開発用の固定データ・参照データに限定する
-- seed は `ON CONFLICT` を使って冪等に保つ
+- Add schema changes only to migrations
+- Limit seeds to fixed development data and reference data
+- Keep seeds idempotent with `ON CONFLICT`
 
-## dev サンプルアカウント
+## Development sample accounts
 
 - Platform:
   - email: `platform@example.com`
@@ -49,44 +49,43 @@ task db:seed ENV=prod    # 本番用シード（DBユーザー・ロールのみ
   - email: `member@example.com`
   - password: `memberpass`
 
-## baseline ロールとユーザー
+## Baseline roles and users
 
-`baseline/000_rls_bypass_role.sql` で以下を作成します（冪等）:
+`baseline/000_rls_bypass_role.sql` creates the following idempotently:
 
-| 名前 | 種別 | 用途 |
+| Name | Type | Purpose |
 | --- | --- | --- |
-| `publira_rls_bypass` | NOLOGIN, BYPASSRLS | 本番で専用ロールを付与するための名前付き権限 |
-| `publira_platform` | LOGIN, BYPASSRLS | platform API 用ログインユーザー。RLS をバイパスして全テナントに横断アクセス |
-| `publira_admin` | LOGIN | admin API 用ログインユーザー。RLS 有効（テナントスコープ） |
-| `publira_public` | LOGIN | public API 用ログインユーザー。RLS 有効（テナントスコープ） |
+| `publira_rls_bypass` | NOLOGIN, BYPASSRLS | Named privilege used to grant a dedicated role in production |
+| `publira_platform` | LOGIN, BYPASSRLS | Login user for the platform API; bypasses RLS to access every tenant |
+| `publira_admin` | LOGIN | Login user for the admin API; RLS enabled (tenant-scoped) |
+| `publira_public` | LOGIN | Login user for the public API; RLS enabled (tenant-scoped) |
 
-開発用パスワードはそれぞれ `platformpass` / `adminpass` / `publicpass` です。  
-本番環境では seed 後に `ALTER ROLE ... PASSWORD` で安全な値に変更してください。
+The development passwords are `platformpass`, `adminpass`, and `publicpass`. After seeding a production environment, change them to secure values with `ALTER ROLE ... PASSWORD`.
 
-## dev データ件数
+## Development data counts
 
-- labels: 10 件
-- series: 100 件
-- episodes: 1000 件（各 series 10 件）
+- labels: 10
+- series: 100
+- episodes: 1,000 (10 per series)
 
-## ID 仕様
+## ID specification
 
-- `public_id`: 12 文字の標準 Base58（サーバーの `server/internal/publicid` と同じ形式）
-- `id` (UUID): UUIDv7 形式に準拠した値を使用
+- `public_id`: A standard 12-character Base58 value (the same format as `server/internal/publicid`)
+- `id` (UUID): A value conforming to the UUIDv7 format
 
-seed の `public_id` は主キー UUID から導出せず、固定値を使います。書式は `Seed` + 種別 4 文字 + 4 桁の連番で、Base58 に `0` が無いため連番の `0` は `A` に置き換えます（`scenarios/` は `Seed` の代わりに `Bndr`）。
+Seed `public_id` values are fixed rather than derived from primary-key UUIDs. Their format is `Seed`, a four-character type, and a four-digit sequence number. Because Base58 has no `0`, each zero in the sequence is replaced with `A` (`scenarios/` uses `Bndr` instead of `Seed`).
 
-| 種別                    | 例                                         |
-| ----------------------- | ------------------------------------------ |
-| tenants                 | `SeedTNNTAAA1`                             |
-| platform_users          | `SeedPFUSAAA1`                             |
-| users（admin / member） | `SeedADMNAAA1` / `SeedMMBRAAA1`            |
-| labels                  | `SeedLABLAAA1` … `SeedLABLAA1A`（10 件）   |
-| creators                | `SeedAUTHAAA1` … `SeedAUTHA1AA`（100 件）  |
-| series                  | `SeedSERSAAA1` … `SeedSERSA1AA`（100 件）  |
-| episodes                | `SeedEPSDAAA1` … `SeedEPSD1AAA`（1000 件） |
-| access_tickets          | `SeedTCKTAAA1`                             |
+| Type                   | Example                                         |
+| ---------------------- | ----------------------------------------------- |
+| tenants                | `SeedTNNTAAA1`                                  |
+| platform_users         | `SeedPFUSAAA1`                                  |
+| users (admin / member) | `SeedADMNAAA1` / `SeedMMBRAAA1`                 |
+| labels                 | `SeedLABLAAA1` … `SeedLABLAA1A` (10 entries)    |
+| creators               | `SeedAUTHAAA1` … `SeedAUTHA1AA` (100 entries)   |
+| series                 | `SeedSERSAAA1` … `SeedSERSA1AA` (100 entries)   |
+| episodes               | `SeedEPSDAAA1` … `SeedEPSD1AAA` (1,000 entries) |
+| access_tickets         | `SeedTCKTAAA1`                                  |
 
-`public_id` は大文字小文字を区別します。E2E から参照する値は `e2e/src/scenarios/multi-tenant.ts` と対応させてください。
+`public_id` is case-sensitive. Keep values referenced from E2E tests aligned with `e2e/src/scenarios/multi-tenant.ts`.
 
-旧形式（UUID 先頭 12 桁の 16 進）で作成済みのローカル DB には、`ON CONFLICT (public_id)` が効かず主キー衝突になります。`task db:reset` で作り直してください。
+An existing local database created with the old format (the first 12 hexadecimal characters of a UUID) will encounter primary-key conflicts because `ON CONFLICT (public_id)` does not match. Re-create it with `task db:reset`.

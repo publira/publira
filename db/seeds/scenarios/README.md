@@ -1,28 +1,27 @@
 # Scenarios
 
-画面確認・E2E 向けのシナリオ seed を置くディレクトリです。  
-baseline / dev seed とは分離し、**必要時のみ**個別に実行します。
+This directory holds scenario seeds for UI checks and E2E tests. They are separate from baseline and development seeds, and each runs **only when needed**.
 
-## 方針
+## Principles
 
-- ファイル名: `<nnn>_<slug>.sql` または `<slug>.sql`（例: `010_multi_tenant.sql`）
-- scenario seed は冪等な DML のみを含める。`ON CONFLICT` 等を使用し、共有 dev seed を壊さない ID 帯を使う
-- DDL はここに置かない。現段階のスキーマ変更は `db/migrations/00000000000000_baseline.up.sql` と対応する down migration に置く
+- File name: `<nnn>_<slug>.sql` or `<slug>.sql` (for example, `010_multi_tenant.sql`)
+- A scenario seed contains only idempotent DML. Use `ON CONFLICT` and an ID range that does not break the shared development seeds
+- Do not put DDL here. At this stage, place schema changes in `db/migrations/00000000000000_baseline.up.sql` and its matching down migration
 
-## 適用方法
+## Applying a scenario
 
-### 手動
+### Manually
 
 ```bash
-# E2E compose の Postgres を使う例（ポートは e2e/compose.yaml 既定）
+# Example using the E2E Compose Postgres instance (the port is the e2e/compose.yaml default)
 psql "postgres://postgres:password@127.0.0.1:5433/publira?sslmode=disable" \
   -v ON_ERROR_STOP=1 \
   -f db/seeds/scenarios/010_multi_tenant.sql
 ```
 
-### E2E（Playwright）から
+### From E2E (Playwright)
 
-1. スタック起動後（`task e2e:db` 済み）に、テスト内で:
+1. After starting the stack and running `task e2e:db`, call it in a test:
 
 ```ts
 import { applyScenarioSql } from "../src/db";
@@ -32,15 +31,15 @@ test.beforeAll(() => {
 });
 ```
 
-2. `PUBLIRA_DB_URL` は e2e スクリプトが設定します。単体で `pnpm exec playwright test` する場合は同 URL を export してください。
+2. The E2E scripts set `PUBLIRA_DB_URL`. When running `pnpm exec playwright test` alone, export the same URL.
 
-詳細な E2E 運用は [e2e/README.md](../../../e2e/README.md) を参照。
+For detailed E2E operation, see [e2e/README.md](../../../e2e/README.md).
 
-## 一覧
+## List
 
-| ファイル | 内容 |
+| File | Description |
 | --- | --- |
-| `010_multi_tenant.sql` | dev seed（`localhost` / `Seed Tenant`）の隣に 2 つ目のテナント `other.localhost` / `Boundary Tenant` を追加する。公開シリーズ 1 本（公開エピソード 2 本 + 未公開の scheduled 1 本）と未公開シリーズ 1 本を持ち、テナント境界と公開判定の検証に使う（`e2e/tests/catalog.tenant-boundary.spec.ts`）。レコードの public_id は `e2e/src/scenarios/multi-tenant.ts` に定数化してある |
-| `020_member_announcements.sql` | 会員お知らせのページング用シード（`e2e/tests/announcements.pagination.spec.ts`） |
-| `030_platform_operators.sql` | dev seed の super admin に加え、`platform_operator` ロールの限定オペレーター `platform-operator@example.com` / `platformpass`（public_id `ScenPFUSAAA1`）を追加する。ロール別の操作可否検証に使う（`e2e/tests/platform.tenant-ops.spec.ts`）。定数は `e2e/src/scenarios/platform-tenants.ts` |
-| `040_auth_e2e.sql` | 認証 E2E 専用アカウント。dev seed のセッションを `credentials_version` バンプで壊さないために、`auth-admin@example.com` / `auth-member@example.com` / `auth-platform@example.com` を追加する（`e2e/tests/admin.auth.spec.ts` / `host.auth.spec.ts` / `platform.auth.spec.ts`）。定数は `e2e/src/scenarios/auth.ts` |
+| `010_multi_tenant.sql` | Adds a second tenant, `other.localhost` / `Boundary Tenant`, alongside the development seed's `localhost` / `Seed Tenant`. It has one published series (two published episodes and one unpublished scheduled episode) and one unpublished series, and is used to verify tenant boundaries and publication decisions (`e2e/tests/catalog.tenant-boundary.spec.ts`). Its record `public_id` values are constants in `e2e/src/scenarios/multi-tenant.ts` |
+| `020_member_announcements.sql` | Seed for member-announcement pagination (`e2e/tests/announcements.pagination.spec.ts`) |
+| `030_platform_operators.sql` | Adds a limited `platform_operator`, `platform-operator@example.com` / `platformpass` (public_id `ScenPFUSAAA1`), in addition to the development seed's super admin. Used to verify permissions by role (`e2e/tests/platform.tenant-ops.spec.ts`). Constants are in `e2e/src/scenarios/platform-tenants.ts` |
+| `040_auth_e2e.sql` | Accounts used only by authentication E2E tests. Adds `auth-admin@example.com`, `auth-member@example.com`, and `auth-platform@example.com` so that bumping `credentials_version` does not break development-seed sessions (`e2e/tests/admin.auth.spec.ts` / `host.auth.spec.ts` / `platform.auth.spec.ts`). Constants are in `e2e/src/scenarios/auth.ts` |
