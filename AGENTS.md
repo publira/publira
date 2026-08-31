@@ -4,7 +4,15 @@ Repository-specific conventions for agents. This file is the source of truth for
 
 ## Output language
 
-Always respond to the user in **Japanese**, even though this guide and other `AGENTS.md` files are written in English. Code, identifiers, commit messages, and quoted technical terms stay as-is; explanations, summaries, and questions to the user must be Japanese.
+Always respond to the user in **Japanese**, even though this guide and the rest of this repository's documentation are written in English. Code, identifiers, commit messages, and quoted technical terms stay as-is; explanations, summaries, and questions to the user must be Japanese.
+
+## Documentation and test labels: English
+
+Every Markdown document this repository owns — every `README.md` and `AGENTS.md`, the skills under `skills/`, the pull request template — is written in English, and so are the labels of automated tests: the first argument of Vitest's `describe` / `it`, Playwright's `test` / `test.describe`, Go's `t.Run`, and Flutter's `test` / `group` / `testWidgets`. The only exception is the root `README.md`, which is paired with a Japanese translation at `README.ja.md`; no other directory gets a `*.ja.md`.
+
+Japanese survives where it is the subject rather than the prose: user-facing UI strings, including the ones quoted in a code example, the values in `locales/*.json`, and Japanese test fixtures. Identifiers, API names, paths, and environment variable names are never translated in either direction.
+
+No lint covers this. Japanese README files and test labels predating the rule are still being translated under [#1283](https://github.com/publira/publira/issues/1283), so an existing Japanese one is a leftover, not a precedent.
 
 ## Git commits
 
