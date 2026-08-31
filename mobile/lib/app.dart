@@ -1,37 +1,130 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/tenant_resolver.dart';
+import 'package:publira/auth/auth_controller.dart';
+import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/auth/http_auth_repository.dart';
+import 'package:publira/auth/session_store.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/router.dart';
 
-/// Root widget. Accepts [router], [catalog], and [config] so tests can inject
-/// a fresh [GoRouter] and a fake or fixture-backed catalog.
-class PubliraApp extends StatelessWidget {
-  PubliraApp({
+/// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
+/// fresh [GoRouter], a fake or fixture-backed catalog, and a session that does
+/// not touch the platform keychain.
+class PubliraApp extends StatefulWidget {
+  const PubliraApp({
     super.key,
-    GoRouter? router,
-    CatalogRepository? catalog,
-    AppConfig? config,
-  }) : _router = router ?? createAppRouter(),
-       _catalog =
-           catalog ??
-           HttpCatalogRepository(config: config ?? AppConfig.fromEnvironment());
+    required this.router,
+    required this.catalog,
+    required this.auth,
+  });
 
-  final GoRouter _router;
-  final CatalogRepository _catalog;
+  /// Wires the app to the public API described by [config].
+  ///
+  /// One [ConnectClient] serves the catalog and the auth calls alike, so every
+  /// request carries whichever token the reader is signed in with, and one
+  /// [TenantResolver] means the tenant is looked up once per run. [store] is
+  /// the session's home, which an on-device test replaces so it does not carry
+  /// a session from one test to the next.
+  factory PubliraApp.fromConfig({
+    Key? key,
+    AppConfig? config,
+    GoRouter? router,
+    SessionStore store = const SecureSessionStore(),
+  }) {
+    final resolved = config ?? AppConfig.fromEnvironment();
+    late final AuthController auth;
+    final client = ConnectClient(
+      baseUrl: resolved.apiBaseUrl,
+      accessToken: () => auth.accessToken,
+    );
+    final tenants = TenantResolver(
+      client: client,
+      tenantHost: resolved.tenantHost,
+    );
+    auth = AuthController(
+      repository: HttpAuthRepository(
+        config: resolved,
+        client: client,
+        tenants: tenants,
+      ),
+      store: store,
+    );
+    return PubliraApp(
+      key: key,
+      router: router ?? createAppRouter(),
+      catalog: HttpCatalogRepository(
+        config: resolved,
+        client: client,
+        tenants: tenants,
+      ),
+      auth: auth,
+    );
+  }
+
+  final GoRouter router;
+  final CatalogRepository catalog;
+  final AuthController auth;
+
+  @override
+  State<PubliraApp> createState() => _PubliraAppState();
+}
+
+class _PubliraAppState extends State<PubliraApp> {
+  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.auth.addListener(_onAuthChanged);
+    unawaited(widget.auth.restore());
+  }
+
+  @override
+  void dispose() {
+    widget.auth.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  /// Tells the reader once when a session the app had stored turned out to be
+  /// gone, and offers the way back in rather than signing them in silently.
+  void _onAuthChanged() {
+    if (!widget.auth.acknowledgeExpiry()) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _messengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: const Text('サインインの有効期限が切れました'),
+          action: SnackBarAction(
+            label: 'サインイン',
+            onPressed: () => widget.router.push(AppRoutes.signIn),
+          ),
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return CatalogScope(
-      repository: _catalog,
-      child: MaterialApp.router(
-        title: 'Publira',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-          useMaterial3: true,
+    return AuthScope(
+      controller: widget.auth,
+      child: CatalogScope(
+        repository: widget.catalog,
+        child: MaterialApp.router(
+          title: 'Publira',
+          scaffoldMessengerKey: _messengerKey,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+            useMaterial3: true,
+          ),
+          routerConfig: widget.router,
         ),
-        routerConfig: _router,
       ),
     );
   }

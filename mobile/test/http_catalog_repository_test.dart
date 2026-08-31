@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/connect_client.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/config.dart';
@@ -19,6 +20,7 @@ void main() {
       series: ConnectFixtureServer.populatedSeries(),
       details: ConnectFixtureServer.populatedDetails(),
       episodes: ConnectFixtureServer.populatedEpisodes(),
+      entitledEpisodes: ConnectFixtureServer.populatedEntitledEpisodes(),
     );
     await server.start();
     catalog = HttpCatalogRepository(
@@ -235,6 +237,24 @@ void main() {
     );
   });
 
+  test(
+    'a tenant lookup answering with a non-string id is unexpected',
+    () async {
+      server.tenantResponse = const {'tenantId': 1};
+
+      expect(
+        catalog.listSeries(),
+        throwsA(
+          isA<CatalogFailure>().having(
+            (error) => error.kind,
+            'kind',
+            CatalogFailureKind.unexpected,
+          ),
+        ),
+      );
+    },
+  );
+
   test('getEpisode carries the tenant host on the image request', () async {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
@@ -246,20 +266,38 @@ void main() {
   });
 
   test('an access token reaches both the API and image-server', () async {
+    var accessToken = '';
+    final config = AppConfig(
+      apiBaseUrl: server.baseUrl,
+      tenantHost: 'localhost',
+      imageBaseUrl: imageBaseUrl,
+    );
     final authenticated = HttpCatalogRepository(
-      config: AppConfig(
-        apiBaseUrl: server.baseUrl,
-        tenantHost: 'localhost',
-        imageBaseUrl: imageBaseUrl,
-        accessToken: 'jwt-value',
+      config: config,
+      client: ConnectClient(
+        baseUrl: server.baseUrl,
+        accessToken: () => accessToken,
       ),
     );
 
-    final detail = await authenticated.getEpisode(
+    final anonymous = await authenticated.getEpisode(
       ConnectFixtureServer.seedSeriesId,
-      ConnectFixtureServer.seedEpisodeId,
+      ConnectFixtureServer.paidEpisodeId,
+    );
+    expect(anonymous!.access, EpisodeAccess.locked);
+    expect(anonymous.imageRequestHeaders.containsKey('authorization'), isFalse);
+
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    final entitled = await authenticated.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.paidEpisodeId,
     );
 
-    expect(detail!.imageRequestHeaders['authorization'], 'Bearer jwt-value');
+    expect(entitled!.access, EpisodeAccess.entitled);
+    expect(entitled.images, isNotEmpty);
+    expect(
+      entitled.imageRequestHeaders['authorization'],
+      'Bearer ${ConnectFixtureServer.memberAccessToken}',
+    );
   });
 }

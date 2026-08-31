@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
+import 'package:publira/auth/auth_session.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/router.dart';
 
+import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/pump_until.dart';
 
@@ -26,8 +28,14 @@ void main() {
     );
   });
 
-  Future<void> pumpApp(WidgetTester tester) async {
-    await tester.pumpWidget(PubliraApp(router: router, catalog: catalog));
+  Future<void> pumpApp(WidgetTester tester, {AuthSession? session}) async {
+    await tester.pumpWidget(
+      PubliraApp(
+        router: router,
+        catalog: catalog,
+        auth: fakeAuthController(session: session),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
   }
@@ -91,7 +99,7 @@ void main() {
 
   testWidgets('a locked paid body shows the purchase notice', (tester) async {
     catalog.episodes = fixtureEpisodes(access: EpisodeAccess.locked);
-    await pumpApp(tester);
+    await pumpApp(tester, session: fakeSession);
     await pumpUntilFound(tester, find.byKey(const ValueKey('episode-locked')));
 
     expect(find.text('この話は購入すると読めます'), findsOneWidget);

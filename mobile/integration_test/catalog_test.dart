@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:publira/app.dart';
-import 'package:publira/catalog/http_catalog_repository.dart';
+import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/session_store.dart';
 import 'package:publira/config.dart';
 import 'package:publira/router.dart';
 
 import '../test/support/connect_fixture_server.dart';
+import '../test/support/fake_auth.dart';
 import '../test/support/pump_until.dart';
 import 'support/artifacts.dart';
 
@@ -24,6 +26,7 @@ void main() {
         series: ConnectFixtureServer.populatedSeries(),
         details: ConnectFixtureServer.populatedDetails(),
         episodes: ConnectFixtureServer.populatedEpisodes(),
+        entitledEpisodes: ConnectFixtureServer.populatedEntitledEpisodes(),
       );
       await server.start();
     });
@@ -38,24 +41,35 @@ void main() {
       AppConfig? config,
     }) async {
       await tester.pumpWidget(
-        PubliraApp(
+        PubliraApp.fromConfig(
+          config:
+              config ??
+              AppConfig(
+                apiBaseUrl: server.baseUrl,
+                tenantHost: 'localhost',
+                // The fixture server answers the image routes too, so the
+                // reader fetches real bytes over a real socket.
+                imageBaseUrl: server.baseUrl,
+              ),
           router: createAppRouter(
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
-          catalog: HttpCatalogRepository(
-            config:
-                config ??
-                AppConfig(
-                  apiBaseUrl: server.baseUrl,
-                  tenantHost: 'localhost',
-                  // The fixture server answers the image routes too, so the
-                  // reader fetches real bytes over a real socket.
-                  imageBaseUrl: server.baseUrl,
-                ),
-          ),
+          store: InMemorySessionStore(),
         ),
       );
       await tester.pump();
+    }
+
+    Future<void> signIn(WidgetTester tester) async {
+      await tester.enterText(
+        find.byKey(const ValueKey('sign-in-email')),
+        ConnectFixtureServer.memberEmail,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('sign-in-password')),
+        ConnectFixtureServer.memberPassword,
+      );
+      await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
     }
 
     testWidgets('launches onto a catalog populated from the public API', (
@@ -207,6 +221,123 @@ void main() {
       });
     });
 
+    testWidgets('signing in unlocks a paid episode body', (tester) async {
+      await withFailureScreenshot(tester, 'fixture-sign-in-unlock', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-locked')),
+        );
+
+        await tester.tap(find.text('サインイン'));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await signIn(tester);
+
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+        expect(
+          find.text('1 / ${ConnectFixtureServer.seedEpisodePageCount}'),
+          findsOneWidget,
+        );
+        await pumpUntilTrue(
+          tester,
+          () =>
+              server.lastImageRequestHeaders?.value('authorization') ==
+              'Bearer ${ConnectFixtureServer.memberAccessToken}',
+          description: 'an authorized image-server request',
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testWidgets('signing out locks the paid episode again', (tester) async {
+      await withFailureScreenshot(tester, 'fixture-sign-out-lock', () async {
+        final seriesTile = find.byKey(
+          const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+        );
+        final paidEpisode = find.byKey(
+          const ValueKey('episode-tile-${ConnectFixtureServer.paidEpisodeId}'),
+        );
+
+        // The catalog list is still in flight when its app bar arrives, and a
+        // route below the one on screen stays in the tree, so each step waits
+        // for the widget it is about to tap and then for the transition around
+        // it to finish.
+        Future<void> settleOn(Finder finder) async {
+          await pumpUntilFound(tester, finder);
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        }
+
+        await pumpApp(tester, initialLocation: AppRoutes.signIn);
+        await settleOn(find.byKey(const ValueKey('sign-in-submit')));
+        await signIn(tester);
+        await settleOn(seriesTile);
+
+        await tester.tap(seriesTile);
+        await settleOn(paidEpisode);
+        await tester.tap(paidEpisode);
+        await settleOn(find.byKey(const ValueKey('episode-page-view')));
+
+        await tester.pageBack();
+        await settleOn(paidEpisode);
+        await tester.pageBack();
+        await settleOn(find.byKey(const ValueKey('catalog-account')));
+
+        await tester.tap(find.byKey(const ValueKey('catalog-account')));
+        await settleOn(find.byKey(const ValueKey('account-sign-out')));
+        await tester.tap(find.byKey(const ValueKey('account-sign-out')));
+        await settleOn(find.text('サインインしていません'));
+        await tester.pageBack();
+        await settleOn(seriesTile);
+
+        await tester.tap(seriesTile);
+        await settleOn(paidEpisode);
+        await tester.tap(paidEpisode);
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-locked')),
+        );
+      });
+    });
+
+    testWidgets('rejected credentials keep the reader on the form', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-sign-in-error', () async {
+        await pumpApp(tester, initialLocation: AppRoutes.signIn);
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-email')),
+          ConnectFixtureServer.memberEmail,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-password')),
+          'wrong-password',
+        );
+        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-in-error')),
+        );
+      });
+    });
+
     testWidgets('missing series shows the not-found state', (tester) async {
       await withFailureScreenshot(tester, 'fixture-not-found', () async {
         await pumpApp(tester, initialLocation: '/series/ZZZZZZZZZZZZ');
@@ -264,16 +395,15 @@ void main() {
       String? initialLocation,
     }) async {
       await tester.pumpWidget(
-        PubliraApp(
+        PubliraApp.fromConfig(
+          config: const AppConfig(
+            apiBaseUrl: liveBaseUrl,
+            tenantHost: liveTenantHost,
+          ),
           router: createAppRouter(
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
-          catalog: HttpCatalogRepository(
-            config: const AppConfig(
-              apiBaseUrl: liveBaseUrl,
-              tenantHost: liveTenantHost,
-            ),
-          ),
+          store: InMemorySessionStore(),
         ),
       );
       await tester.pump();
@@ -362,6 +492,108 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
       });
+    });
+
+    testWidgets('the seed member signs in and unlocks their ticketed episode', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-sign-in', () async {
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-locked')),
+          timeout: const Duration(seconds: 20),
+        );
+
+        await tester.tap(find.text('サインイン'));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-email')),
+          ConnectFixtureServer.memberEmail,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-password')),
+          ConnectFixtureServer.memberPassword,
+        );
+        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+
+        // `db/seeds/dev/050_access_tickets.sql` gives this member an access
+        // ticket for the episode, and the development seed publishes it
+        // without body images, so the reader's empty state is what a granted
+        // body looks like here.
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-empty')),
+          timeout: const Duration(seconds: 20),
+        );
+      });
+    });
+
+    testWidgets('wrong credentials are rejected by the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-sign-in-error', () async {
+        await pumpLive(tester, initialLocation: AppRoutes.signIn);
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-email')),
+          ConnectFixtureServer.memberEmail,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-password')),
+          'wrong-password',
+        );
+        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-in-error')),
+          timeout: const Duration(seconds: 20),
+        );
+      });
+    });
+  });
+
+  group('secure session store', () {
+    const store = SecureSessionStore();
+
+    tearDown(() async {
+      await store.clear();
+    });
+
+    testWidgets('a written session survives a new store instance', (
+      tester,
+    ) async {
+      const session = AuthSession(
+        accessToken: 'stored-access-token',
+        userPublicId: ConnectFixtureServer.memberPublicId,
+        userName: ConnectFixtureServer.memberName,
+      );
+
+      await store.write(session);
+      // A second instance stands in for the next launch: nothing is carried
+      // over in memory, so what comes back came from the platform keychain.
+      final restored = await const SecureSessionStore().read();
+
+      expect(restored?.accessToken, session.accessToken);
+      expect(restored?.userPublicId, session.userPublicId);
+      expect(restored?.userName, session.userName);
+
+      await store.clear();
+      expect(await const SecureSessionStore().read(), isNull);
     });
   });
 }

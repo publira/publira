@@ -8,7 +8,6 @@ class AppConfig {
     required this.apiBaseUrl,
     required this.tenantHost,
     this.imageBaseUrl = defaultImageBaseUrl,
-    this.accessToken = '',
   });
 
   factory AppConfig.fromEnvironment() {
@@ -25,7 +24,6 @@ class AppConfig {
         'PUBLIRA_IMAGE_BASE_URL',
         defaultValue: defaultImageBaseUrl,
       ),
-      accessToken: String.fromEnvironment('PUBLIRA_ACCESS_TOKEN'),
     );
   }
 
@@ -46,13 +44,6 @@ class AppConfig {
   final String imageBaseUrl;
   final String tenantHost;
 
-  /// Public-audience JWT sent as `Authorization: Bearer` on every API and
-  /// image request. Empty means an anonymous reader, which reaches free
-  /// episode bodies and nothing else.
-  // TODO(#1274): drop the define once the app can sign in and hold its own
-  // token; until then a build define is the only way to read a paid body.
-  final String accessToken;
-
   Uri get apiBaseUri => Uri.parse(apiBaseUrl);
 
   /// Resolves an `image_url` from the API against [imageBaseUrl]. The API
@@ -61,13 +52,14 @@ class AppConfig {
   Uri imageUri(String imageUrl) =>
       Uri.parse(imageBaseUrl).resolveUri(Uri.parse(imageUrl));
 
-  /// Headers every image-server request carries.
+  /// Headers an image-server request carries for a reader holding
+  /// [accessToken], which is empty for an anonymous one.
   ///
   /// image-server picks the tenant from the request host, which is the ingress
   /// hostname in a deployment but an address or an emulator loopback here, so
   /// the tenant travels in `X-Forwarded-Host` the way the reverse proxy sends
   /// it.
-  Map<String, String> get imageRequestHeaders {
+  Map<String, String> imageRequestHeaders(String accessToken) {
     final tenant = tenantHost.trim();
     final token = accessToken.trim();
     return {

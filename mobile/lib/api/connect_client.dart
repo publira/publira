@@ -5,33 +5,47 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:publira/api/connect_exception.dart';
 
+/// Reads the public-audience JWT the app holds right now.
+///
+/// Called once per request rather than captured at construction, so a sign-in
+/// or a sign-out reaches the very next call without rebuilding the client.
+typedef AccessTokenReader = String Function();
+
 /// Minimal Connect JSON unary client for the public API.
 ///
-/// Only the catalog/domain RPCs this app needs are called. Field names follow
-/// protojson camelCase (`publicId`, `tenantId`), matching connect-go.
+/// Only the catalog/domain/auth RPCs this app needs are called. Field names
+/// follow protojson camelCase (`publicId`, `tenantId`), matching connect-go.
 class ConnectClient {
   ConnectClient({
     required this.baseUrl,
     http.Client? httpClient,
-    this.accessToken = '',
+    AccessTokenReader? accessToken,
     this.timeout = const Duration(seconds: 10),
-  }) : _http = httpClient ?? http.Client();
+  }) : _accessToken = accessToken,
+       _http = httpClient ?? http.Client();
 
   final String baseUrl;
-
-  /// Public-audience JWT. Empty calls the API anonymously, which the public
-  /// RPCs allow; a body that needs a purchase stays locked without it.
-  final String accessToken;
-
   final Duration timeout;
+
+  final AccessTokenReader? _accessToken;
   final http.Client _http;
 
   static const _tenantHeader = 'X-Publira-Tenant-Id';
 
+  /// The JWT this client would send right now. Empty calls the API
+  /// anonymously, which the public RPCs allow; a body that needs a purchase
+  /// stays locked without it.
+  String get accessToken => _accessToken?.call().trim() ?? '';
+
+  /// Calls [procedure] with [body].
+  ///
+  /// [accessToken] replaces the client's own reader for this one call, which
+  /// is how a stored token gets checked before the app adopts it.
   Future<Map<String, Object?>> unary(
     String procedure,
     Map<String, Object?> body, {
     String? tenantId,
+    String? accessToken,
   }) async {
     final uri = Uri.parse(baseUrl).resolve(procedure);
     final headers = <String, String>{
@@ -42,7 +56,7 @@ class ConnectClient {
     if (trimmedTenant.isNotEmpty) {
       headers[_tenantHeader] = trimmedTenant;
     }
-    final trimmedToken = accessToken.trim();
+    final trimmedToken = (accessToken ?? this.accessToken).trim();
     if (trimmedToken.isNotEmpty) {
       headers['authorization'] = 'Bearer $trimmedToken';
     }
