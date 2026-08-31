@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { findByPublicIdWithToken, forEachPageWithToken } from "./pagination";
 
 describe("forEachPageWithToken", () => {
-  it("token を順に辿って各ページを onPage に渡し completed を返す", async () => {
+  it("follows the tokens, hands each page to onPage, and returns completed", async () => {
     const fetchPage = vi
       .fn()
       .mockResolvedValueOnce({
@@ -26,7 +26,7 @@ describe("forEachPageWithToken", () => {
     expect(onPage).toHaveBeenNthCalledWith(2, [{ id: "b" }]);
   });
 
-  it("onPage が false を返したら stopped-by-callback で止まる", async () => {
+  it("onPage returning false stops with stopped-by-callback", async () => {
     const fetchPage = vi.fn().mockResolvedValue({
       items: [{ id: "a" }],
       nextToken: "page-2",
@@ -41,7 +41,7 @@ describe("forEachPageWithToken", () => {
     expect(onPage).toHaveBeenCalledTimes(1);
   });
 
-  it("同じ token が返された場合は repeated-token で止まる", async () => {
+  it("a repeated token stops with repeated-token", async () => {
     const fetchPage = vi.fn().mockResolvedValue({
       items: [{ id: "a" }],
       nextToken: "page-2",
@@ -55,7 +55,7 @@ describe("forEachPageWithToken", () => {
     expect(onPage).toHaveBeenCalledTimes(2);
   });
 
-  it("ページ上限で max-pages を返す", async () => {
+  it("the page limit returns max-pages", async () => {
     let page = 0;
     const fetchPage = vi.fn().mockImplementation(() => {
       page += 1;
@@ -70,7 +70,7 @@ describe("forEachPageWithToken", () => {
     expect(onPage).toHaveBeenCalledTimes(3);
   });
 
-  it("maxRows が pageSize より小さいとき limit を残り件数に抑える", async () => {
+  it("a maxRows below pageSize caps the limit at the remaining rows", async () => {
     const fetchPage = vi.fn().mockResolvedValue({
       items: Array.from({ length: 50 }, (_, index) => ({
         id: `item-${index}`,
@@ -91,7 +91,7 @@ describe("forEachPageWithToken", () => {
     expect(onPage).toHaveBeenCalledTimes(1);
   });
 
-  it("limit を超える応答があっても maxRows 以降の行は onPage に渡さない", async () => {
+  it("rows past maxRows are not handed to onPage even when the response exceeds the limit", async () => {
     const fetchPage = vi.fn().mockResolvedValue({
       items: [{ id: "1" }, { id: "2" }, { id: "3" }],
       nextToken: "page-2",
@@ -112,7 +112,7 @@ describe("forEachPageWithToken", () => {
 });
 
 describe("findByPublicIdWithToken", () => {
-  it("token を順に辿って publicId が一致する項目を返す", async () => {
+  it("follows the tokens and returns the item whose publicId matches", async () => {
     const fetchPage = vi
       .fn()
       .mockResolvedValueOnce({
@@ -131,7 +131,7 @@ describe("findByPublicIdWithToken", () => {
     expect(fetchPage).toHaveBeenNthCalledWith(2, "page-2", 100);
   });
 
-  it("同じ token が返された場合は走査を停止する", async () => {
+  it("a repeated token stops the scan", async () => {
     const fetchPage = vi.fn().mockResolvedValue({
       items: [{ publicId: "other" }],
       nextToken: "page-2",
@@ -143,7 +143,7 @@ describe("findByPublicIdWithToken", () => {
     expect(fetchPage).toHaveBeenCalledTimes(2);
   });
 
-  it("ページサイズを呼び出し側で指定できる", async () => {
+  it("the caller can set the page size", async () => {
     const fetchPage = vi.fn().mockResolvedValue({ items: [], nextToken: "" });
 
     await findByPublicIdWithToken("target", fetchPage, { pageSize: 20 });
@@ -151,7 +151,7 @@ describe("findByPublicIdWithToken", () => {
     expect(fetchPage).toHaveBeenCalledWith("", 20);
   });
 
-  it("異なる token が続いてもページ上限で走査を停止する", async () => {
+  it("the page limit stops the scan even while the tokens keep changing", async () => {
     let page = 0;
     const fetchPage = vi.fn().mockImplementation(() => {
       page += 1;
@@ -164,7 +164,7 @@ describe("findByPublicIdWithToken", () => {
     expect(fetchPage).toHaveBeenCalledTimes(3);
   });
 
-  it("maxRows が pageSize より小さいとき limit を残り件数に抑える", async () => {
+  it("a maxRows below pageSize caps the limit at the remaining rows", async () => {
     const fetchPage = vi.fn().mockResolvedValue({
       items: Array.from({ length: 50 }, (_, index) => ({
         publicId: `item-${index}`,
@@ -182,7 +182,7 @@ describe("findByPublicIdWithToken", () => {
     expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 
-  it("limit を超える応答があっても maxRows 以降の一致は返さない", async () => {
+  it("a match past maxRows is not returned even when the response exceeds the limit", async () => {
     const fetchPage = vi.fn().mockResolvedValue({
       items: [
         { publicId: "first" },

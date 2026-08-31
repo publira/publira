@@ -70,7 +70,7 @@ const StatefulMultiCombobox = ({ id }: { id?: string }) => {
   );
 };
 
-describe("Field とフォームパーツの for/id 関連付け", () => {
+describe("for/id association between Field and the form parts", () => {
   it.each([
     {
       name: "Input",
@@ -105,7 +105,7 @@ describe("Field とフォームパーツの for/id 関連付け", () => {
       renderControl: () => <StatefulMultiCombobox />,
     },
   ])(
-    "id 未指定の $name は一意な id を持ち、FieldLabel の for がそれを指す",
+    "a $name without an id gets a unique id, and FieldLabel's for points at it",
     ({ renderControl }) => {
       const { container } = render(
         <Field>
@@ -128,29 +128,26 @@ describe("Field とフォームパーツの for/id 関連付け", () => {
       name: "MultiCombobox",
       renderControl: () => <StatefulMultiCombobox />,
     },
-  ])(
-    "同じ $name を 2 つ同時にマウントしても id が重複しない",
-    ({ renderControl }) => {
-      const { container } = render(
-        <>
-          <Field>
-            <FieldLabel>一つ目</FieldLabel>
-            {renderControl()}
-          </Field>
-          <Field>
-            <FieldLabel>二つ目</FieldLabel>
-            {renderControl()}
-          </Field>
-        </>
-      );
+  ])("two $name mounted at once do not share an id", ({ renderControl }) => {
+    const { container } = render(
+      <>
+        <Field>
+          <FieldLabel>一つ目</FieldLabel>
+          {renderControl()}
+        </Field>
+        <Field>
+          <FieldLabel>二つ目</FieldLabel>
+          {renderControl()}
+        </Field>
+      </>
+    );
 
-      const first = getAssociation(container, "一つ目");
-      const second = getAssociation(container, "二つ目");
+    const first = getAssociation(container, "一つ目");
+    const second = getAssociation(container, "二つ目");
 
-      expect(first.htmlFor).not.toBe(second.htmlFor);
-      expect(first.control.id).not.toBe(second.control.id);
-    }
-  );
+    expect(first.htmlFor).not.toBe(second.htmlFor);
+    expect(first.control.id).not.toBe(second.control.id);
+  });
 
   it.each([
     {
@@ -182,7 +179,7 @@ describe("Field とフォームパーツの for/id 関連付け", () => {
       renderControl: (id: string) => <StatefulMultiCombobox id={id} />,
     },
   ])(
-    "明示した id を $name と FieldLabel の両方で使う",
+    "an explicit id is used by both $name and FieldLabel",
     ({ name, renderControl }) => {
       const explicitId = `explicit-${name.toLowerCase()}`;
 
@@ -220,7 +217,7 @@ describe("Field とフォームパーツの for/id 関連付け", () => {
       name: "MultiCombobox",
       renderControl: () => <StatefulMultiCombobox />,
     },
-  ])("ラベルをクリックすると $name が活性化する", ({ renderControl }) => {
+  ])("clicking the label activates $name", ({ renderControl }) => {
     const { container } = render(
       <Field>
         <FieldLabel>ラベル</FieldLabel>

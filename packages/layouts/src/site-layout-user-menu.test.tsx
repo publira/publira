@@ -43,7 +43,7 @@ const renderMenu = (logoutAction = () => {}) =>
 afterEach(cleanup);
 
 describe("SiteLayoutUserMenu slots", () => {
-  it("開くとマイページとログアウトへの導線を表示する", () => {
+  it("opening it shows the my-page and sign-out links", () => {
     renderMenu();
     fireEvent.click(screen.getByRole("button", { name: "アカウントメニュー" }));
 
@@ -53,7 +53,7 @@ describe("SiteLayoutUserMenu slots", () => {
     expect(screen.getByRole("menuitem", { name: "ログアウト" })).toBeTruthy();
   });
 
-  it("ログアウト用スロットが Server Action の form を持つ", () => {
+  it("the sign-out slot carries the Server Action form", () => {
     const logoutAction = vi.fn();
     renderMenu(logoutAction);
     fireEvent.click(screen.getByRole("button", { name: "アカウントメニュー" }));

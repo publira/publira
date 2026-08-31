@@ -39,7 +39,7 @@ vi.mock("next/link", () => ({
 afterEach(cleanup);
 
 describe("SiteLayout slots", () => {
-  it("ブランド・ナビゲーション・本文を子スロットで構成する", () => {
+  it("composes the brand, the navigation, and the body from child slots", () => {
     render(
       <SiteLayout>
         <SiteLayoutHeader>
@@ -61,7 +61,7 @@ describe("SiteLayout slots", () => {
     expect(screen.getByText("本文")).toBeTruthy();
   });
 
-  it("フッターの各領域を独立した子スロットで表示する", () => {
+  it("renders each footer area from its own child slot", () => {
     render(
       <SiteLayoutFooter>
         <SiteLayoutFooterLinks ariaLabel="フッターリンク">
@@ -81,7 +81,7 @@ describe("SiteLayout slots", () => {
     expect(screen.getByText("© Publira")).toBeTruthy();
   });
 
-  it("ヘッダーアクションを個別の子スロットで表示する", () => {
+  it("renders the header actions from separate child slots", () => {
     render(
       <SiteLayoutActions>
         <SiteLayoutSecondaryAction href="/login">
@@ -101,7 +101,7 @@ describe("SiteLayout slots", () => {
     ).toBe("/signup");
   });
 
-  it("ログアウトの Server Action は専用スロットだけが受け取る", () => {
+  it("only the dedicated slot receives the sign-out Server Action", () => {
     render(
       <SiteLayoutActions>
         <SiteLayoutLogoutAction action={() => {}}>

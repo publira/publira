@@ -21,7 +21,7 @@ describe("revalidateTags", () => {
     revalidateTag.mockReset();
   });
 
-  it("受け取ったタグを stale にする", async () => {
+  it("marks the received tags stale", async () => {
     const response = await revalidateTags(
       request({
         tags: ["tenant:tenant-a:site", "tenant:tenant-a:site"],
@@ -35,7 +35,7 @@ describe("revalidateTags", () => {
     );
   });
 
-  it("テナントをまたぐタグもそのまま再検証する", async () => {
+  it("tags spanning tenants are revalidated as they are", async () => {
     const response = await revalidateTags(
       request({
         tags: ["tenant:tenant-a:site", "tenant:tenant-b:series:list"],
@@ -55,7 +55,7 @@ describe("revalidateTags", () => {
     );
   });
 
-  it("共有トークンを要求する", async () => {
+  it("requires the shared token", async () => {
     const response = await revalidateTags(
       request({ tags: ["tenant:tenant-a:site"] }, "wrong-token")
     );

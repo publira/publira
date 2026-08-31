@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { emailMessage, loadEmailMessages } from "./messages";
 
 describe("loadEmailMessages", () => {
-  it("指定したロケールのカタログだけを読み、プレースホルダを展開する", async () => {
+  it("loads only the requested locale's catalog and expands the placeholders", async () => {
     const ja = await loadEmailMessages("ja");
 
     expect(emailMessage(ja, "email.layout.brand")).toBe("Publira");
@@ -14,7 +14,7 @@ describe("loadEmailMessages", () => {
     ).toBe("青灯書房 管理者招待");
   });
 
-  it("未知のロケールは ja にフォールバックする", async () => {
+  it("an unknown locale falls back to ja", async () => {
     const catalog = await loadEmailMessages("fr");
 
     expect(emailMessage(catalog, "email.tenant_admin_invitation.action")).toBe(
@@ -22,7 +22,7 @@ describe("loadEmailMessages", () => {
     );
   });
 
-  it("en は同じキーで英語の文面を返す", async () => {
+  it("en returns the English copy for the same keys", async () => {
     const en = await loadEmailMessages("en");
 
     expect(

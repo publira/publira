@@ -21,7 +21,7 @@ describe("next-static-params", () => {
     vi.clearAllMocks();
   });
 
-  it("createPlaceholderStaticParams は指定キーに placeholder を設定する", () => {
+  it("createPlaceholderStaticParams sets placeholder on the given keys", () => {
     expect(createPlaceholderStaticParams("tenant", "series")).toEqual([
       {
         series: STATIC_PARAM_PLACEHOLDER,
@@ -30,13 +30,13 @@ describe("next-static-params", () => {
     ]);
   });
 
-  it("isPlaceholderStaticParam は placeholder のみ true", () => {
+  it("isPlaceholderStaticParam is true only for placeholder", () => {
     expect(isPlaceholderStaticParam(STATIC_PARAM_PLACEHOLDER)).toBe(true);
     expect(isPlaceholderStaticParam("TENANT001")).toBe(false);
     expect(isPlaceholderStaticParam(null)).toBe(false);
   });
 
-  it("guardPlaceholder と guardPlaceholders は placeholder のとき notFound を呼ぶ", () => {
+  it("guardPlaceholder and guardPlaceholders call notFound for placeholder", () => {
     guardPlaceholder("TENANT001");
     expect(mockNotFound).not.toHaveBeenCalled();
 

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { CollectionIcon } from "./collection-icon";
 
 describe("CollectionIcon", () => {
-  it("SVG として描画される", () => {
+  it("renders as an SVG with the given aria-label", () => {
     const { container } = render(
       <CollectionIcon aria-label="Collection icon" />
     );
@@ -16,7 +16,7 @@ describe("CollectionIcon", () => {
     expect(svg?.getAttribute("aria-label")).toBe("Collection icon");
   });
 
-  it("size/className/strokeWidth を反映する", () => {
+  it("reflects size, className, and strokeWidth", () => {
     const { container } = render(
       <CollectionIcon
         className="test-icon"

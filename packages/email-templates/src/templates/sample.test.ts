@@ -12,11 +12,11 @@ const sampleData = {
 };
 
 describe("sampleEmailDataSchema", () => {
-  it("http(s) の action_url を受け付ける", () => {
+  it("accepts an http(s) action_url", () => {
     expect(sampleEmailDataSchema.parse(sampleData)).toEqual(sampleData);
   });
 
-  it("title の CR/LF を拒否する", () => {
+  it("rejects CR/LF in title", () => {
     const parsed = sampleEmailDataSchema.safeParse({
       ...sampleData,
       title: "Sample\r\nBcc: injected@example.com",
@@ -25,7 +25,7 @@ describe("sampleEmailDataSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
-  it("http(s) 以外の URL を拒否する", () => {
+  it("rejects a URL that is not http(s)", () => {
     const parsed = sampleEmailDataSchema.safeParse({
       ...sampleData,
       action_url: "ftp://example.com/action",
@@ -36,7 +36,7 @@ describe("sampleEmailDataSchema", () => {
 });
 
 describe("SampleEmail", () => {
-  it("件名・本文・ボタン先をレンダリングする", async () => {
+  it("renders the subject, the body, and the button target", async () => {
     const result = await renderEmail({
       data: sampleData,
       locale: "en",

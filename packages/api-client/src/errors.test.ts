@@ -28,30 +28,30 @@ const rehydratedConnectError = (message: string): Error => {
 };
 
 describe("rpcErrorCode", () => {
-  it("ConnectError からは code をそのまま読む", () => {
+  it("a ConnectError exposes its code directly", () => {
     expect(rpcErrorCode(new ConnectError("gone", Code.NotFound))).toBe(
       Code.NotFound
     );
   });
 
-  it("キャッシュ境界で再生成されたエラーはメッセージ接頭辞から復元する", () => {
+  it("an error re-created at a cache boundary is restored from the message prefix", () => {
     expect(
       rpcErrorCode(rehydratedConnectError("[permission_denied] not published"))
     ).toBe(Code.PermissionDenied);
   });
 
-  it("RPC 由来でないエラーは null", () => {
+  it("an error that did not come from an RPC is null", () => {
     expect(rpcErrorCode(new Error("boom"))).toBeNull();
     expect(rpcErrorCode("boom")).toBeNull();
     expect(rpcErrorCode(null)).toBeNull();
   });
 
-  it("メッセージ本文に code 名が含まれるだけでは分類しない", () => {
+  it("a code name inside the message body alone is not classified", () => {
     expect(rpcErrorCode(new Error("tenant not found"))).toBeNull();
     expect(rpcErrorCode(new Error("failed: not_found"))).toBeNull();
   });
 
-  it("ConnectError 以外は接頭辞を持っていても分類しない", () => {
+  it("anything but a ConnectError stays unclassified even with the prefix", () => {
     // Otherwise any Error could disguise itself as an RPC failure and slip
     // past rethrowUnclassifiedRpcError().
     expect(
@@ -62,13 +62,13 @@ describe("rpcErrorCode", () => {
     ).toBe("unexpected");
   });
 
-  it("未知の接頭辞は null", () => {
+  it("an unknown prefix is null", () => {
     expect(rpcErrorCode(new Error("[teapot] nope"))).toBeNull();
   });
 });
 
 describe("isRpcError", () => {
-  it("指定した code のいずれかに一致する", () => {
+  it("matches any of the given codes", () => {
     const error = new ConnectError("nope", Code.PermissionDenied);
     expect(isRpcError(error, Code.NotFound, Code.PermissionDenied)).toBe(true);
     expect(isRpcError(error, Code.NotFound)).toBe(false);
@@ -87,17 +87,17 @@ describe("rpcErrorDisposition", () => {
     [Code.FailedPrecondition, "precondition"],
     [Code.Unavailable, "unavailable"],
     [Code.Internal, "unexpected"],
-  ])("Code %s は %s", (code, expected) => {
+  ])("Code %s is %s", (code, expected) => {
     expect(rpcErrorDisposition(new ConnectError("x", code))).toBe(expected);
   });
 
-  it("RPC 由来でないエラーは unexpected", () => {
+  it("an error that did not come from an RPC is unexpected", () => {
     expect(rpcErrorDisposition(new TypeError("boom"))).toBe("unexpected");
   });
 });
 
-describe("共通ポリシー", () => {
-  it("not_found と permission_denied は同じ「見つからない」扱い", () => {
+describe("shared policy", () => {
+  it("not_found and permission_denied are both treated as missing", () => {
     expect(
       isMissingResourceRpcError(new ConnectError("x", Code.NotFound))
     ).toBe(true);
@@ -109,7 +109,7 @@ describe("共通ポリシー", () => {
     ).toBe(false);
   });
 
-  it("unauthenticated は再認証導線用に切り分ける", () => {
+  it("unauthenticated is separated out for the re-authentication path", () => {
     expect(
       isUnauthenticatedRpcError(new ConnectError("x", Code.Unauthenticated))
     ).toBe(true);
@@ -118,7 +118,7 @@ describe("共通ポリシー", () => {
     ).toBe(false);
   });
 
-  it("null 許容の読み取りは not_found / permission_denied / unauthenticated のみ", () => {
+  it("a nullable read accepts only not_found, permission_denied, and unauthenticated", () => {
     expect(
       isExpectedNullableRpcError(new ConnectError("x", Code.Unauthenticated))
     ).toBe(true);
@@ -133,7 +133,7 @@ describe("共通ポリシー", () => {
 });
 
 describe("Connect error details", () => {
-  it("BadRequest の field violation を型付きで読む", () => {
+  it("reads a BadRequest field violation with its type", () => {
     const error = new ConnectError(
       "invalid slug",
       Code.InvalidArgument,
@@ -149,7 +149,7 @@ describe("Connect error details", () => {
     expect(rpcErrorHasFieldViolation(error, "title")).toBe(false);
   });
 
-  it("ErrorInfo の Publira reason を型付きで読む", () => {
+  it("reads a Publira reason from ErrorInfo with its type", () => {
     const error = new ConnectError(
       "invitation canceled",
       Code.FailedPrecondition,
@@ -185,7 +185,7 @@ describe("Connect error details", () => {
     expect(rpcErrorHasReason(foreignError, "INVITATION_CANCELED")).toBe(false);
   });
 
-  it("RPC 由来でない値に details は無い", () => {
+  it("a value that did not come from an RPC has no details", () => {
     expect(rpcErrorHasFieldViolation(new Error("bad"), "slug")).toBe(false);
     expect(
       rpcErrorHasReason(new Error("canceled"), "INVITATION_CANCELED")

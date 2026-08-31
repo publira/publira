@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { MaximizeIcon } from "./maximize-icon";
 
 describe("MaximizeIcon", () => {
-  it("SVG として描画される", () => {
+  it("renders as an SVG with the given aria-label", () => {
     const { container } = render(<MaximizeIcon aria-label="Maximize icon" />);
 
     const svg = container.querySelector("svg");
@@ -14,7 +14,7 @@ describe("MaximizeIcon", () => {
     expect(svg?.getAttribute("aria-label")).toBe("Maximize icon");
   });
 
-  it("size/className/strokeWidth を反映する", () => {
+  it("reflects size, className, and strokeWidth", () => {
     const { container } = render(
       <MaximizeIcon
         className="test-icon"

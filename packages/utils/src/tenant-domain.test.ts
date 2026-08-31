@@ -5,7 +5,7 @@ import { getTenantDomainCandidates } from "./tenant-domain";
 type HeadersLike = Pick<Headers, "get">;
 
 describe("getTenantDomainCandidates", () => {
-  it("forwarded host と host から重複除去した候補を返す", () => {
+  it("returns deduplicated candidates from the forwarded host and the host", () => {
     const headers: HeadersLike = {
       get(name: string) {
         if (name === "x-forwarded-host") {
@@ -26,7 +26,7 @@ describe("getTenantDomainCandidates", () => {
     expect(new Set(result).size).toBe(result.length);
   });
 
-  it("ヘッダーが無い場合は空配列を返す", () => {
+  it("returns an empty array when no header is present", () => {
     const headers: HeadersLike = {
       get() {
         return null;

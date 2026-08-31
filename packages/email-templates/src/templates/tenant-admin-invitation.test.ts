@@ -15,13 +15,13 @@ const invitationData = {
 };
 
 describe("tenantAdminInvitationDataSchema", () => {
-  it("設計どおりの 3 変数を受け付ける", () => {
+  it("accepts the three variables the design calls for", () => {
     expect(tenantAdminInvitationDataSchema.parse(invitationData)).toEqual(
       invitationData
     );
   });
 
-  it("ゾーンなしの日時を拒否する", () => {
+  it("rejects a date and time without a zone", () => {
     const parsed = tenantAdminInvitationDataSchema.safeParse({
       ...invitationData,
       expires_at: "2030-01-15T12:00:00",
@@ -30,7 +30,7 @@ describe("tenantAdminInvitationDataSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
-  it("空の tenant_name を拒否する", () => {
+  it("rejects an empty tenant_name", () => {
     const parsed = tenantAdminInvitationDataSchema.safeParse({
       ...invitationData,
       tenant_name: "   ",
@@ -39,7 +39,7 @@ describe("tenantAdminInvitationDataSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
-  it("tenant_name の CR/LF を拒否する", () => {
+  it("rejects CR/LF in tenant_name", () => {
     const parsed = tenantAdminInvitationDataSchema.safeParse({
       ...invitationData,
       tenant_name: "青灯書房\r\nBcc: injected@example.com",
@@ -50,7 +50,7 @@ describe("tenantAdminInvitationDataSchema", () => {
 });
 
 describe("TenantAdminInvitationEmail", () => {
-  it("ja の件名と本文にテナント名と招待 URL を含める", async () => {
+  it("the ja subject and body carry the tenant name and the invitation URL", async () => {
     const timeZone = "Asia/Tokyo";
     const result = await renderEmail({
       data: invitationData,
@@ -79,7 +79,7 @@ describe("TenantAdminInvitationEmail", () => {
     expect(result.text).toContain("心当たりがない場合");
   });
 
-  it("expires_at を渡された timeZone で表示する", async () => {
+  it("expires_at is shown in the given timeZone", async () => {
     const timeZone = "America/Los_Angeles";
     const result = await renderEmail({
       data: invitationData,
@@ -107,7 +107,7 @@ describe("TenantAdminInvitationEmail", () => {
     expect(expires).not.toBe(tokyo);
   });
 
-  it("en では英語の件名になる", async () => {
+  it("en produces an English subject", async () => {
     const messages = await loadEmailMessages("en");
 
     expect(tenantAdminInvitationSubject(invitationData, messages)).toBe(

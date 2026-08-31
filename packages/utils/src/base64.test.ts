@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { decodeBase64Url } from "./base64";
 
 describe("decodeBase64Url", () => {
-  it("パディングなしの Base64URL をバイト列へ復号する", () => {
+  it("decodes unpadded Base64URL into bytes", () => {
     const value = decodeBase64Url("eyJzdWIiOiJyZWFkZXItcHVibGljLWlkIn0");
     if (!value) {
       throw new Error("Base64URL の復号に失敗しました。");
@@ -13,7 +13,7 @@ describe("decodeBase64Url", () => {
   });
 
   it.each(["a", "abcde", "abc===", "abc+/", "abc+_"])(
-    "不正な Base64URL を null にする: %s",
+    "invalid Base64URL becomes null: %s",
     (value) => {
       expect(decodeBase64Url(value)).toBeNull();
     }

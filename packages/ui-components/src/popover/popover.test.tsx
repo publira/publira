@@ -11,7 +11,7 @@ import {
 } from "./popover";
 
 describe("Popover", () => {
-  it("Portal と共通 surface で内容を表示し、Escape でトリガーへ戻る", () => {
+  it("shows its content in a Portal on the shared surface, and Escape returns to the trigger", () => {
     render(
       <Popover>
         <PopoverTrigger>言語を選択</PopoverTrigger>

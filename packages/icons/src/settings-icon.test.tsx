@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { SettingsIcon } from "./settings-icon";
 
 describe("SettingsIcon", () => {
-  it("SVG として描画される", () => {
+  it("renders as an SVG with the given aria-label", () => {
     const { container } = render(<SettingsIcon aria-label="Settings icon" />);
 
     const svg = container.querySelector("svg");
@@ -14,7 +14,7 @@ describe("SettingsIcon", () => {
     expect(svg?.getAttribute("aria-label")).toBe("Settings icon");
   });
 
-  it("size/className/strokeWidth を反映する", () => {
+  it("reflects size, className, and strokeWidth", () => {
     const { container } = render(
       <SettingsIcon
         className="test-icon"

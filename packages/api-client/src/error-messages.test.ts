@@ -7,7 +7,7 @@ import { Code } from "./errors";
 const fallback = "保存に失敗しました。時間をおいて再試行してください。";
 
 describe("rpcErrorMessage", () => {
-  it("分類に対応する共通文言を返す", () => {
+  it("returns the shared message for a mapped category", () => {
     expect(
       rpcErrorMessage(new ConnectError("x", Code.Unauthenticated), fallback)
     ).toBe("セッションが無効です。再ログインしてください。");
@@ -19,7 +19,7 @@ describe("rpcErrorMessage", () => {
     ).toBe("入力内容に誤りがあります。");
   });
 
-  it("locale を渡すと共有カテゴリがその言語になる", () => {
+  it("a locale renders the shared categories in that language", () => {
     expect(
       rpcErrorMessage(new ConnectError("x", Code.Unauthenticated), fallback, {
         locale: "en",
@@ -52,7 +52,7 @@ describe("rpcErrorMessage", () => {
     ).toBe("Could not connect to the server. Please try again later.");
   });
 
-  it("未知の locale は日本語に落ちる", () => {
+  it("an unknown locale falls back to Japanese", () => {
     expect(
       rpcErrorMessage(new ConnectError("x", Code.Unauthenticated), fallback, {
         locale: "fr",
@@ -60,7 +60,7 @@ describe("rpcErrorMessage", () => {
     ).toBe("セッションが無効です。再ログインしてください。");
   });
 
-  it("共通文言の無い分類は fallback を返す", () => {
+  it("a category without a shared message returns the fallback", () => {
     expect(
       rpcErrorMessage(new ConnectError("x", Code.FailedPrecondition), fallback)
     ).toBe(fallback);
@@ -74,7 +74,7 @@ describe("rpcErrorMessage", () => {
     expect(rpcErrorMessage(new Error("boom"), fallback)).toBe(fallback);
   });
 
-  it("overrides は共通文言より優先する", () => {
+  it("overrides take precedence over the shared message", () => {
     expect(
       rpcErrorMessage(new ConnectError("x", Code.NotFound), fallback, {
         "not-found": "指定したエピソードが見つかりません。",
@@ -82,7 +82,7 @@ describe("rpcErrorMessage", () => {
     ).toBe("指定したエピソードが見つかりません。");
   });
 
-  it("options.overrides は locale より優先する", () => {
+  it("options.overrides takes precedence over locale", () => {
     expect(
       rpcErrorMessage(new ConnectError("x", Code.NotFound), fallback, {
         locale: "en",
