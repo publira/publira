@@ -43,7 +43,7 @@ Go encoding and validation live in [server/internal/pagination](../server/intern
 ### Sort keys
 
 - Make the sort-key combination **unique**. When ties exist, the keyset-scan `WHERE` can either skip tied rows together or keep returning the same row.
-- Use the primary-key `id` as the tiebreaker. `id` is UUIDv7 and therefore ordered by creation time, so equal `published_at` or `created_at` values still have a meaningful order: later-created rows come first. `public_id` is a Base58 value from `crypto/rand` and has no ordering, so do not use it as a sort key.
+- Use the primary-key `id` as the tiebreaker. `id` is UUIDv7 and therefore ordered by creation time, so equal `published_at` or `created_at` values still have a meaningful order. The selected sort direction determines whether later-created rows come first or last. `public_id` is a Base58 value from `crypto/rand` and has no ordering, so do not use it as a sort key.
 - Use row-value comparison for keyset scans. `(a.created_at, a.id) < ($1, $2)` can use a composite index, while `a.created_at < $1 OR (a.created_at = $1 AND a.id < $2)` may not.
 - Index the same combination as the sort keys. A btree can scan in reverse, so separate ascending and descending indexes are unnecessary.
 - **Do not branch `ORDER BY` on a runtime parameter.** `CASE WHEN $1 THEN ... END` does not align with index ordering, which can force a full sort before `LIMIT` and defeat keyset pagination. Use separate queries with a fixed `ORDER BY` for each order.

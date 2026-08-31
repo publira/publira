@@ -14,7 +14,8 @@ This directory holds scenario seeds for UI checks and E2E tests. They are separa
 
 ```bash
 # Example using the E2E Compose Postgres instance (the port is the e2e/compose.yaml default)
-psql "postgres://postgres:password@127.0.0.1:5433/publira?sslmode=disable" \
+export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:5433/publira?sslmode=disable}"
+psql "${PUBLIRA_DB_URL:?Set PUBLIRA_DB_URL to the target database URL}" \
   -v ON_ERROR_STOP=1 \
   -f db/seeds/scenarios/010_multi_tenant.sql
 ```

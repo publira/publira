@@ -66,7 +66,7 @@ The legacy `{name}` is syntactically valid in MF2 as a **literal expression** an
 
 ## Reading catalogs
 
-Each screen's issue adds catalog content. This directory only defines its location and format. Readers do not build dynamic paths; they share a static import map generated from `index.json`.
+Each screen's issue adds catalog content. This directory only defines its location and format. Web/TypeScript readers do not build dynamic paths; they share a static import map generated from `index.json`.
 
 Put shared copy used across apps (RPC error classifications, form validation summaries, and `searchParamEnum` rejection messages) under `errors.*`. `@publira/i18n/catalog` and `@publira/api-client/error-messages` read it.
 
