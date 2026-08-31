@@ -1,10 +1,12 @@
 "use server";
 
-import { VALIDATION_ERROR_MESSAGE } from "@publira/utils/field-errors";
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
+import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -31,6 +33,8 @@ export const markNotificationAsReadAction = async (
   formData: FormData
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = markOneSchema.safeParse(
     toFormDataInput(formData, {
       notificationId: { kind: "value", name: "notification_id" },
@@ -39,13 +43,13 @@ export const markNotificationAsReadAction = async (
   );
   if (!parsed.success) {
     return {
-      message: VALIDATION_ERROR_MESSAGE,
+      message: getMessage(messages, "errors.validation"),
       ok: false,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    markNotificationAsRead(parsed.data)
+    markNotificationAsRead(parsed.data, locale)
   );
   if (!result.ok) {
     return {
@@ -56,7 +60,7 @@ export const markNotificationAsReadAction = async (
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
   return {
-    message: "既読にしました。",
+    message: getMessage(messages, "admin.notifications.mark_read_success"),
     ok: true,
   };
 };
@@ -66,6 +70,8 @@ export const markAllNotificationsAsReadAction = async (
   formData: FormData
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = markAllSchema.safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
@@ -73,13 +79,13 @@ export const markAllNotificationsAsReadAction = async (
   );
   if (!parsed.success) {
     return {
-      message: VALIDATION_ERROR_MESSAGE,
+      message: getMessage(messages, "errors.validation"),
       ok: false,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    markAllNotificationsAsRead(parsed.data.tenantId)
+    markAllNotificationsAsRead(parsed.data.tenantId, locale)
   );
   if (!result.ok) {
     return {
@@ -90,7 +96,7 @@ export const markAllNotificationsAsReadAction = async (
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
   return {
-    message: "未読をすべて既読にしました。",
+    message: getMessage(messages, "admin.notifications.mark_all_read_success"),
     ok: true,
   };
 };

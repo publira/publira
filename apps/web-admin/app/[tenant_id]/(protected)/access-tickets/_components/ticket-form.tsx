@@ -1,5 +1,8 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import type { SharedMessages } from "@publira/i18n/catalog";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { Card, CardContent } from "@publira/ui-components/card";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
@@ -16,12 +19,14 @@ import { Textarea } from "@publira/ui-components/textarea";
 import {
   useActionState,
   useCallback,
+  useContext,
   useMemo,
   useRef,
   useState,
   useTransition,
 } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -42,15 +47,27 @@ interface TicketFormProps {
   timeZone: string;
 }
 
-const toSeriesItems = (series: TicketSeriesOption[]): ComboboxItem[] =>
+const toSeriesItems = (
+  series: TicketSeriesOption[],
+  messages: SharedMessages
+): ComboboxItem[] =>
   series.map((item) => ({
-    label: `${item.title} (${item.publicId})`,
+    label: getMessage(messages, "admin.access_tickets.form.option", {
+      id: item.publicId,
+      title: item.title,
+    }),
     value: item.publicId,
   }));
 
-const toEpisodeItems = (episodes: TicketEpisodeOption[]): ComboboxItem[] =>
+const toEpisodeItems = (
+  episodes: TicketEpisodeOption[],
+  messages: SharedMessages
+): ComboboxItem[] =>
   episodes.map((item) => ({
-    label: `${item.title} (${item.publicId})`,
+    label: getMessage(messages, "admin.access_tickets.form.option", {
+      id: item.publicId,
+      title: item.title,
+    }),
     value: item.publicId,
   }));
 
@@ -60,6 +77,11 @@ export const TicketForm = ({
   seriesErrorMessage,
   timeZone,
 }: TicketFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [isEpisodePending, startEpisodeTransition] = useTransition();
@@ -69,8 +91,14 @@ export const TicketForm = ({
   const [episodesErrorMessage, setEpisodesErrorMessage] = useState<string>();
   const episodeRequestIdRef = useRef(0);
 
-  const seriesItems = useMemo(() => toSeriesItems(series), [series]);
-  const episodeItems = useMemo(() => toEpisodeItems(episodes), [episodes]);
+  const seriesItems = useMemo(
+    () => toSeriesItems(series, messages),
+    [messages, series]
+  );
+  const episodeItems = useMemo(
+    () => toEpisodeItems(episodes, messages),
+    [episodes, messages]
+  );
   // Only the missing catalog falls back to a public_id field. An episode-list
   // failure must keep the pickers so the operator can retry without a reload.
   const useEpisodeFallbackInput =
@@ -88,7 +116,8 @@ export const TicketForm = ({
       startEpisodeTransition(async () => {
         const result = await listEpisodeOptionsAction(
           tenantId,
-          nextSeriesPublicId
+          nextSeriesPublicId,
+          locale
         );
         if (requestId !== episodeRequestIdRef.current) {
           return;
@@ -101,7 +130,7 @@ export const TicketForm = ({
         setEpisodesErrorMessage(result.message);
       });
     },
-    [tenantId]
+    [locale, tenantId]
   );
 
   const handleSeriesChange = useCallback(
@@ -150,23 +179,33 @@ export const TicketForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel required>ユーザー public_id</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.access_tickets.form.user")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 name="user_public_id"
-                placeholder="例: SeedMMBRAAA1"
+                placeholder={getMessage(
+                  messages,
+                  "admin.access_tickets.form.user_placeholder"
+                )}
                 required
                 type="text"
               />
               <FieldDescription>
-                閲覧権を付与するエンドユーザーの public_id を入力します。
+                {getMessage(
+                  messages,
+                  "admin.access_tickets.form.user_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           {useEpisodeFallbackInput ? (
             <Field>
-              <FieldLabel required>エピソード public_id</FieldLabel>
+              <FieldLabel required>
+                {getMessage(messages, "admin.access_tickets.form.episode_id")}
+              </FieldLabel>
               <FieldContent>
                 {seriesErrorMessage ? (
                   <FormMessage variant="destructive">
@@ -175,46 +214,71 @@ export const TicketForm = ({
                 ) : null}
                 <Input
                   name="episode_public_id"
-                  placeholder="例: SeedEPSDAAA1"
+                  placeholder={getMessage(
+                    messages,
+                    "admin.access_tickets.form.episode_id_placeholder"
+                  )}
                   required
                   type="text"
                 />
                 <FieldDescription>
-                  {seriesItems.length === 0 && !seriesErrorMessage
-                    ? "選択できるシリーズがありません。エピソードの public_id を直接入力してください。"
-                    : "対象エピソードの public_id を入力します。"}
+                  {getMessage(
+                    messages,
+                    seriesItems.length === 0 && !seriesErrorMessage
+                      ? "admin.access_tickets.form.episode_id_no_series"
+                      : "admin.access_tickets.form.episode_id_description"
+                  )}
                 </FieldDescription>
               </FieldContent>
             </Field>
           ) : (
             <>
               <Field>
-                <FieldLabel required>シリーズ</FieldLabel>
+                <FieldLabel required>
+                  {getMessage(messages, "admin.access_tickets.form.series")}
+                </FieldLabel>
                 <FieldContent>
                   <Combobox
-                    emptyMessage="一致するシリーズが見つかりません。"
+                    emptyMessage={getMessage(
+                      messages,
+                      "admin.access_tickets.form.series_empty"
+                    )}
                     items={seriesItems}
                     onValueChange={handleSeriesChange}
-                    placeholder="シリーズ名で検索"
+                    placeholder={getMessage(
+                      messages,
+                      "admin.access_tickets.form.series_placeholder"
+                    )}
                     value={seriesPublicId}
                   />
                   <FieldDescription>
-                    対象エピソードが属するシリーズを選ぶと、エピソード一覧が開きます。
+                    {getMessage(
+                      messages,
+                      "admin.access_tickets.form.series_description"
+                    )}
                   </FieldDescription>
                 </FieldContent>
               </Field>
 
               <Field>
-                <FieldLabel required>エピソード</FieldLabel>
+                <FieldLabel required>
+                  {getMessage(messages, "admin.access_tickets.form.episode")}
+                </FieldLabel>
                 <FieldContent>
                   <Combobox
                     disabled={isEpisodePending || seriesPublicId === ""}
-                    emptyMessage="一致するエピソードが見つかりません。"
+                    emptyMessage={getMessage(
+                      messages,
+                      "admin.access_tickets.form.episode_empty"
+                    )}
                     items={episodeItems}
                     onValueChange={setEpisodePublicId}
-                    placeholder={
-                      isEpisodePending ? "読み込み中…" : "エピソード名で検索"
-                    }
+                    placeholder={getMessage(
+                      messages,
+                      isEpisodePending
+                        ? "admin.access_tickets.form.episode_loading"
+                        : "admin.access_tickets.form.episode_placeholder"
+                    )}
                     value={episodePublicId}
                   />
                   <input
@@ -232,14 +296,17 @@ export const TicketForm = ({
                         type="button"
                         variant="outline"
                       >
-                        再試行
+                        {getMessage(messages, "admin.common.retry")}
                       </Button>
                     </>
                   ) : null}
                   <FieldDescription>
-                    {seriesPublicId === ""
-                      ? "先にシリーズを選択してください。"
-                      : "閲覧権を付与するエピソードを選択します。"}
+                    {getMessage(
+                      messages,
+                      seriesPublicId === ""
+                        ? "admin.access_tickets.form.episode_needs_series"
+                        : "admin.access_tickets.form.episode_description"
+                    )}
                   </FieldDescription>
                 </FieldContent>
               </Field>
@@ -247,24 +314,34 @@ export const TicketForm = ({
           )}
 
           <Field>
-            <FieldLabel>有効期限</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.access_tickets.form.expires_at")}
+            </FieldLabel>
             <FieldContent>
               <Input name="expires_at_local" type="datetime-local" />
               <input defaultValue="" name="expires_at" type="hidden" />
               <FieldDescription>
-                未指定の場合は無期限です。テナントのタイムゾーン（{timeZone}
-                ）の壁時計として解釈し、送信時に絶対時刻へ変換します。失効操作でいつでも取り消せます。
+                {getMessage(
+                  messages,
+                  "admin.access_tickets.form.expires_at_description",
+                  { time_zone: timeZone }
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel>メモ</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.access_tickets.form.note")}
+            </FieldLabel>
             <FieldContent>
               <Textarea
                 maxLength={1000}
                 name="note"
-                placeholder="例: レビュー用の限定閲覧"
+                placeholder={getMessage(
+                  messages,
+                  "admin.access_tickets.form.note_placeholder"
+                )}
                 rows={3}
               />
             </FieldContent>
@@ -276,7 +353,9 @@ export const TicketForm = ({
 
           <div className="flex justify-end">
             <Button disabled={!canSubmit} type="submit">
-              {isPending ? "発行中…" : "チケットを発行"}
+              {isPending
+                ? getMessage(messages, "admin.access_tickets.form.submitting")
+                : getMessage(messages, "admin.access_tickets.form.submit")}
             </Button>
           </div>
         </form>

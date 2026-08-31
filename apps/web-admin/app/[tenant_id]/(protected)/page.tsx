@@ -198,6 +198,7 @@ const DashboardContent = async () => {
                     <TableCell>
                       {formatDateTime(item.scheduledAt, {
                         fallback: getMessage(messages, "admin.dashboard.unset"),
+                        locale,
                         timeZone,
                       })}
                     </TableCell>

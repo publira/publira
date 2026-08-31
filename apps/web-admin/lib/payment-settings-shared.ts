@@ -1,3 +1,5 @@
+import type { AdminMessageKey } from "./messages";
+
 export const PAYMENT_PROVIDER_STRIPE = "stripe";
 
 export const SECRET_UPDATE_MODE_UNCHANGED = 1;
@@ -46,26 +48,22 @@ export const paymentSettingsStatus = (
 
 export const paymentSettingsStatusCopy: Record<
   PaymentSettingsStatus,
-  { description: string; label: string }
+  { descriptionKey: AdminMessageKey; labelKey: AdminMessageKey }
 > = {
   disabled: {
-    description:
-      "シークレットは保存されていますが、決済は無効です。Checkout と Webhook は動きません。",
-    label: "無効",
+    descriptionKey: "admin.settings.payment.status.disabled_description",
+    labelKey: "admin.settings.payment.status.disabled",
   },
   incomplete: {
-    description:
-      "有効ですがシークレットが揃っていないため、決済は開始されません。",
-    label: "設定不足",
+    descriptionKey: "admin.settings.payment.status.incomplete_description",
+    labelKey: "admin.settings.payment.status.incomplete",
   },
   ready: {
-    description:
-      "有料エピソードの Checkout と Webhook にこのテナントの設定が使われます。",
-    label: "利用可能",
+    descriptionKey: "admin.settings.payment.status.ready_description",
+    labelKey: "admin.settings.payment.status.ready",
   },
   unset: {
-    description:
-      "Stripe のシークレットを登録すると、有料エピソードの決済を開始できます。",
-    label: "未設定",
+    descriptionKey: "admin.settings.payment.status.unset_description",
+    labelKey: "admin.settings.payment.status.unset",
   },
 };

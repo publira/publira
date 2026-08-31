@@ -51,7 +51,14 @@ afterEach(() => {
 
 describe("TicketManager", () => {
   it("最初のページが空なら未登録として案内する", () => {
-    render(<TicketManager pageSize={20} tickets={[]} timeZone="Asia/Tokyo" />);
+    render(
+      <TicketManager
+        locale="ja"
+        pageSize={20}
+        tickets={[]}
+        timeZone="Asia/Tokyo"
+      />
+    );
 
     expect(screen.getByText("チケットがまだありません。")).toBeDefined();
     expect(
@@ -62,6 +69,7 @@ describe("TicketManager", () => {
   it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
     render(
       <TicketManager
+        locale="ja"
         pageSize={20}
         previousHref="?token=previous"
         tickets={[]}
@@ -81,6 +89,7 @@ describe("TicketManager", () => {
   it("有効チケットの状態とメモを一覧に出す", () => {
     render(
       <TicketManager
+        locale="ja"
         pageSize={20}
         tickets={[
           {
@@ -101,6 +110,7 @@ describe("TicketManager", () => {
   it("後続ページでも行ごとの操作とページ送りを描画する", () => {
     render(
       <TicketManager
+        locale="ja"
         nextHref="?token=next"
         pageSize={20}
         previousHref="?token=previous"
@@ -121,6 +131,7 @@ describe("TicketManager", () => {
   it("取得失敗時はエラーだけを出し、空一覧としては案内しない", () => {
     render(
       <TicketManager
+        locale="ja"
         listErrorMessage="チケット一覧を取得できませんでした。"
         nextHref="?token=next"
         pageSize={20}

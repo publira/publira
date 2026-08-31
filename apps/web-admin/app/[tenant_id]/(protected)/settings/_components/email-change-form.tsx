@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -16,8 +18,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useContext, useState } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EmailChangeActionState } from "../settings-types";
@@ -30,6 +33,11 @@ interface EmailChangeFormProps {
 }
 
 export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [currentEmail, setCurrentEmail] = useState("");
@@ -60,9 +68,11 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>メールアドレス変更</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.settings.email_change.title")}
+        </CardTitle>
         <CardDescription>
-          管理者アカウントのメールアドレスを変更します。変更には現在のメールアドレスと新しいメールアドレスの両方で確認が必要です。
+          {getMessage(messages, "admin.settings.email_change.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -70,7 +80,12 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel required>現在のメールアドレス</FieldLabel>
+            <FieldLabel required>
+              {getMessage(
+                messages,
+                "admin.settings.email_change.current_email"
+              )}
+            </FieldLabel>
             <FieldContent>
               <Input
                 autoComplete="email"
@@ -85,7 +100,9 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
           </Field>
 
           <Field>
-            <FieldLabel required>新しいメールアドレス</FieldLabel>
+            <FieldLabel required>
+              {getMessage(messages, "admin.settings.email_change.new_email")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 autoComplete="email"
@@ -100,7 +117,12 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
           </Field>
 
           <Field>
-            <FieldLabel required>現在のパスワード</FieldLabel>
+            <FieldLabel required>
+              {getMessage(
+                messages,
+                "admin.settings.email_change.current_password"
+              )}
+            </FieldLabel>
             <FieldContent>
               <Input
                 autoComplete="current-password"
@@ -112,7 +134,10 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
                 value={currentPassword}
               />
               <FieldDescription>
-                セキュリティ上の理由から、パスワードの入力が必要です。
+                {getMessage(
+                  messages,
+                  "admin.settings.email_change.password_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
@@ -125,7 +150,9 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={isPending} type="submit">
-              {isPending ? "送信中..." : "確認メールを送信"}
+              {isPending
+                ? getMessage(messages, "admin.settings.email_change.submitting")
+                : getMessage(messages, "admin.settings.email_change.submit")}
             </Button>
           </div>
         </form>

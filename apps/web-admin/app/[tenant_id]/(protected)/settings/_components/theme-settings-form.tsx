@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -18,8 +20,16 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { toPubliraThemeCssVariables } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
-import { useActionState, useCallback, useId, useState } from "react";
+import {
+  useActionState,
+  useCallback,
+  useContext,
+  useId,
+  useState,
+} from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import type { AdminMessageKey } from "#lib/locale";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { ThemeSettingsActionState } from "../settings-types";
@@ -34,16 +44,22 @@ interface ThemeSettingsFormProps {
 
 interface ColorSwatchInputProps {
   name: string;
+  pickerLabel: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const ColorSwatchInput = ({ name, value, onChange }: ColorSwatchInputProps) => {
+const ColorSwatchInput = ({
+  name,
+  pickerLabel,
+  value,
+  onChange,
+}: ColorSwatchInputProps) => {
   const pickerId = useId();
   return (
     <div className="relative flex max-w-48 items-center">
       <label
-        aria-label="カラーピッカー"
+        aria-label={pickerLabel}
         className="absolute left-2 h-6 w-6 shrink-0 cursor-pointer overflow-hidden rounded-sm border"
         htmlFor={pickerId}
         style={{ backgroundColor: value }}
@@ -76,214 +92,224 @@ type ColorKey = keyof TenantThemeColors;
 interface ColorFieldConfig {
   key: ColorKey;
   formName: string;
-  label: string;
-  description?: string;
+  labelKey: AdminMessageKey;
+  descriptionKey?: AdminMessageKey;
   inlineWithNext?: boolean;
 }
 
 const colorGroups: {
-  title: string;
-  description: string;
+  titleKey: AdminMessageKey;
+  descriptionKey: AdminMessageKey;
   fields: ColorFieldConfig[];
 }[] = [
   {
-    description: "ブランドを表す主要なカラーです。",
+    descriptionKey: "admin.settings.theme.groups.brand.description",
     fields: [
       {
-        description: "主にボタンや強調要素で利用する基準カラーです。",
+        descriptionKey: "admin.settings.theme.colors.primary.description",
         formName: "primary_color",
         inlineWithNext: true,
         key: "primaryColor",
-        label: "プライマリーカラー",
+        labelKey: "admin.settings.theme.colors.primary.label",
       },
       {
-        description: "プライマリーカラー上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.primary_foreground.description",
         formName: "primary_foreground_color",
         key: "primaryForegroundColor",
-        label: "プライマリーテキストカラー",
+        labelKey: "admin.settings.theme.colors.primary_foreground.label",
       },
       {
-        description: "補助的なボタンや要素に使用するカラーです。",
+        descriptionKey: "admin.settings.theme.colors.secondary.description",
         formName: "secondary_color",
         inlineWithNext: true,
         key: "secondaryColor",
-        label: "セカンダリーカラー",
+        labelKey: "admin.settings.theme.colors.secondary.label",
       },
       {
-        description: "セカンダリーカラー上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.secondary_foreground.description",
         formName: "secondary_foreground_color",
         key: "secondaryForegroundColor",
-        label: "セカンダリーテキストカラー",
+        labelKey: "admin.settings.theme.colors.secondary_foreground.label",
       },
       {
-        description: "通知や装飾のアクセントに利用するカラーです。",
+        descriptionKey: "admin.settings.theme.colors.accent.description",
         formName: "accent_color",
         inlineWithNext: true,
         key: "accentColor",
-        label: "アクセントカラー",
+        labelKey: "admin.settings.theme.colors.accent.label",
       },
       {
-        description: "アクセントカラー上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.accent_foreground.description",
         formName: "accent_foreground_color",
         key: "accentForegroundColor",
-        label: "アクセントテキストカラー",
+        labelKey: "admin.settings.theme.colors.accent_foreground.label",
       },
     ],
-    title: "ブランドカラー",
+    titleKey: "admin.settings.theme.groups.brand.title",
   },
   {
-    description: "背景系のカラーとテキストカラーを設定します。",
+    descriptionKey: "admin.settings.theme.groups.surface.description",
     fields: [
       {
-        description: "ページ全体の基準となる背景カラーです。",
+        descriptionKey: "admin.settings.theme.colors.background.description",
         formName: "background_color",
         inlineWithNext: true,
         key: "backgroundColor",
-        label: "デフォルトカラー",
+        labelKey: "admin.settings.theme.colors.background.label",
       },
       {
-        description: "デフォルトカラー上に表示するテキストカラーです。",
+        descriptionKey: "admin.settings.theme.colors.foreground.description",
         formName: "foreground_color",
         key: "foregroundColor",
-        label: "テキストカラー",
+        labelKey: "admin.settings.theme.colors.foreground.label",
       },
       {
-        description: "コンテンツエリアの表面カラーです。",
+        descriptionKey: "admin.settings.theme.colors.surface.description",
         formName: "surface_color",
         inlineWithNext: true,
         key: "surfaceColor",
-        label: "サーフェースカラー",
+        labelKey: "admin.settings.theme.colors.surface.label",
       },
       {
-        description: "サーフェースカラー上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.surface_foreground.description",
         formName: "surface_foreground_color",
         key: "surfaceForegroundColor",
-        label: "サーフェーステキストカラー",
+        labelKey: "admin.settings.theme.colors.surface_foreground.label",
       },
       {
-        description: "カードコンポーネントの背景カラーです。",
+        descriptionKey: "admin.settings.theme.colors.card.description",
         formName: "card_color",
         inlineWithNext: true,
         key: "cardColor",
-        label: "カードカラー",
+        labelKey: "admin.settings.theme.colors.card.label",
       },
       {
-        description: "カードカラー上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.card_foreground.description",
         formName: "card_foreground_color",
         key: "cardForegroundColor",
-        label: "カードテキストカラー",
+        labelKey: "admin.settings.theme.colors.card_foreground.label",
       },
       {
-        description: "ポップオーバーやドロップダウンの背景カラーです。",
+        descriptionKey: "admin.settings.theme.colors.popover.description",
         formName: "popover_color",
         inlineWithNext: true,
         key: "popoverColor",
-        label: "ポップオーバーカラー",
+        labelKey: "admin.settings.theme.colors.popover.label",
       },
       {
-        description: "ポップオーバーカラー上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.popover_foreground.description",
         formName: "popover_foreground_color",
         key: "popoverForegroundColor",
-        label: "ポップオーバーテキストカラー",
+        labelKey: "admin.settings.theme.colors.popover_foreground.label",
       },
       {
-        description: "控えめな背景や無効化された要素に使用するカラーです。",
+        descriptionKey: "admin.settings.theme.colors.muted.description",
         formName: "muted_color",
         inlineWithNext: true,
         key: "mutedColor",
-        label: "ミュートカラー",
+        labelKey: "admin.settings.theme.colors.muted.label",
       },
       {
-        description: "ミュート領域上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.muted_foreground.description",
         formName: "muted_foreground_color",
         key: "mutedForegroundColor",
-        label: "ミュートテキストカラー",
+        labelKey: "admin.settings.theme.colors.muted_foreground.label",
       },
     ],
-    title: "背景・テキストカラー",
+    titleKey: "admin.settings.theme.groups.surface.title",
   },
   {
-    description: "ボーダーや入力欄など UI 要素に使用するカラーを設定します。",
+    descriptionKey: "admin.settings.theme.groups.ui.description",
     fields: [
       {
-        description: "テーブルや枠線に使用するボーダーカラーです。",
+        descriptionKey: "admin.settings.theme.colors.border.description",
         formName: "border_color",
         key: "borderColor",
-        label: "ボーダーカラー",
+        labelKey: "admin.settings.theme.colors.border.label",
       },
       {
-        description: "フォーム入力要素の背景カラーです。",
+        descriptionKey: "admin.settings.theme.colors.input.description",
         formName: "input_color",
         key: "inputColor",
-        label: "入力フィールドカラー",
+        labelKey: "admin.settings.theme.colors.input.label",
       },
       {
-        description: "フォーカス時に表示されるリングカラーです。",
+        descriptionKey: "admin.settings.theme.colors.ring.description",
         formName: "ring_color",
         key: "ringColor",
-        label: "フォーカスリングカラー",
+        labelKey: "admin.settings.theme.colors.ring.label",
       },
     ],
-    title: "UI要素カラー",
+    titleKey: "admin.settings.theme.groups.ui.title",
   },
   {
-    description:
-      "成功・警告・エラー・情報など通知に使用するカラーを設定します。",
+    descriptionKey: "admin.settings.theme.groups.status.description",
     fields: [
       {
-        description: "成功メッセージや操作完了を示すカラーです。",
+        descriptionKey: "admin.settings.theme.colors.success.description",
         formName: "success_color",
         inlineWithNext: true,
         key: "successColor",
-        label: "成功カラー",
+        labelKey: "admin.settings.theme.colors.success.label",
       },
       {
-        description: "成功表示上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.success_foreground.description",
         formName: "success_foreground_color",
         key: "successForegroundColor",
-        label: "成功テキストカラー",
+        labelKey: "admin.settings.theme.colors.success_foreground.label",
       },
       {
-        description: "警告メッセージを示すカラーです。",
+        descriptionKey: "admin.settings.theme.colors.warning.description",
         formName: "warning_color",
         inlineWithNext: true,
         key: "warningColor",
-        label: "警告カラー",
+        labelKey: "admin.settings.theme.colors.warning.label",
       },
       {
-        description: "警告表示上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.warning_foreground.description",
         formName: "warning_foreground_color",
         key: "warningForegroundColor",
-        label: "警告テキストカラー",
+        labelKey: "admin.settings.theme.colors.warning_foreground.label",
       },
       {
-        description: "削除やエラー操作を示すカラーです。",
+        descriptionKey: "admin.settings.theme.colors.destructive.description",
         formName: "destructive_color",
         inlineWithNext: true,
         key: "destructiveColor",
-        label: "危険カラー",
+        labelKey: "admin.settings.theme.colors.destructive.label",
       },
       {
-        description: "危険表示上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.destructive_foreground.description",
         formName: "destructive_foreground_color",
         key: "destructiveForegroundColor",
-        label: "危険テキストカラー",
+        labelKey: "admin.settings.theme.colors.destructive_foreground.label",
       },
       {
-        description: "情報メッセージを示すカラーです。",
+        descriptionKey: "admin.settings.theme.colors.info.description",
         formName: "info_color",
         inlineWithNext: true,
         key: "infoColor",
-        label: "情報カラー",
+        labelKey: "admin.settings.theme.colors.info.label",
       },
       {
-        description: "情報表示上に表示するテキストカラーです。",
+        descriptionKey:
+          "admin.settings.theme.colors.info_foreground.description",
         formName: "info_foreground_color",
         key: "infoForegroundColor",
-        label: "情報テキストカラー",
+        labelKey: "admin.settings.theme.colors.info_foreground.label",
       },
     ],
-    title: "ステータスカラー",
+    titleKey: "admin.settings.theme.groups.status.title",
   },
 ];
 
@@ -302,6 +328,12 @@ export const ThemeSettingsForm = ({
   action,
   initialTheme,
 }: ThemeSettingsFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
+  const pickerLabel = getMessage(messages, "admin.settings.theme.color_picker");
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [colors, setColors] = useState<TenantThemeColors>(initialTheme);
@@ -340,10 +372,12 @@ export const ThemeSettingsForm = ({
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         {colorGroups.map((group) => (
-          <Card key={group.title}>
+          <Card key={group.titleKey}>
             <CardHeader>
-              <CardTitle>{group.title}</CardTitle>
-              <CardDescription>{group.description}</CardDescription>
+              <CardTitle>{getMessage(messages, group.titleKey)}</CardTitle>
+              <CardDescription>
+                {getMessage(messages, group.descriptionKey)}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-5 sm:max-w-3xl">
@@ -360,16 +394,19 @@ export const ThemeSettingsForm = ({
                         key={`${field.key}-${pair.key}`}
                       >
                         <Field>
-                          <FieldLabel required>{field.label}</FieldLabel>
+                          <FieldLabel required>
+                            {getMessage(messages, field.labelKey)}
+                          </FieldLabel>
                           <FieldContent>
                             <ColorSwatchInput
                               name={field.formName}
                               onChange={createHandler(field.key)}
+                              pickerLabel={pickerLabel}
                               value={colors[field.key]}
                             />
-                            {field.description ? (
+                            {field.descriptionKey ? (
                               <FieldDescription>
-                                {field.description}
+                                {getMessage(messages, field.descriptionKey)}
                               </FieldDescription>
                             ) : null}
                             {fieldErrors?.[field.key] ? (
@@ -380,16 +417,19 @@ export const ThemeSettingsForm = ({
                           </FieldContent>
                         </Field>
                         <Field>
-                          <FieldLabel required>{pair.label}</FieldLabel>
+                          <FieldLabel required>
+                            {getMessage(messages, pair.labelKey)}
+                          </FieldLabel>
                           <FieldContent>
                             <ColorSwatchInput
                               name={pair.formName}
                               onChange={createHandler(pair.key)}
+                              pickerLabel={pickerLabel}
                               value={colors[pair.key]}
                             />
-                            {pair.description ? (
+                            {pair.descriptionKey ? (
                               <FieldDescription>
-                                {pair.description}
+                                {getMessage(messages, pair.descriptionKey)}
                               </FieldDescription>
                             ) : null}
                             {fieldErrors?.[pair.key] ? (
@@ -405,16 +445,19 @@ export const ThemeSettingsForm = ({
 
                   return (
                     <Field key={field.key}>
-                      <FieldLabel required>{field.label}</FieldLabel>
+                      <FieldLabel required>
+                        {getMessage(messages, field.labelKey)}
+                      </FieldLabel>
                       <FieldContent>
                         <ColorSwatchInput
                           name={field.formName}
                           onChange={createHandler(field.key)}
+                          pickerLabel={pickerLabel}
                           value={colors[field.key]}
                         />
-                        {field.description ? (
+                        {field.descriptionKey ? (
                           <FieldDescription>
-                            {field.description}
+                            {getMessage(messages, field.descriptionKey)}
                           </FieldDescription>
                         ) : null}
                         {fieldErrors?.[field.key] ? (
@@ -439,7 +482,9 @@ export const ThemeSettingsForm = ({
 
         <div className="flex justify-end">
           <Button disabled={isPending} type="submit">
-            {isPending ? "保存中..." : "テーマを保存"}
+            {isPending
+              ? getMessage(messages, "admin.settings.saving")
+              : getMessage(messages, "admin.settings.theme.submit")}
           </Button>
         </div>
       </form>

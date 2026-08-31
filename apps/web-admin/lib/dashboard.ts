@@ -35,7 +35,8 @@ export type GetDashboardResult =
 const mapErrorToMessage = (error: unknown, locale: Locale): string =>
   rpcErrorMessage(
     error,
-    getMessage(sharedCatalog(locale), "admin.dashboard.load_error")
+    getMessage(sharedCatalog(locale), "admin.dashboard.load_error"),
+    { locale }
   );
 
 export const getDashboard = async (
@@ -47,10 +48,7 @@ export const getDashboard = async (
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: getMessage(
-        sharedCatalog(locale),
-        "admin.dashboard.session_invalid"
-      ),
+      message: getMessage(sharedCatalog(locale), "errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };

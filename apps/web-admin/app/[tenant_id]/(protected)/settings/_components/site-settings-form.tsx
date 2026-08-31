@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -17,8 +19,9 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useContext, useState } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import type { TenantSiteSettings } from "#lib/site-settings";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -36,6 +39,11 @@ export const SiteSettingsForm = ({
   action,
   initialSettings,
 }: SiteSettingsFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [copyrightText, setCopyrightText] = useState(
@@ -92,9 +100,11 @@ export const SiteSettingsForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>公開サイト表示設定</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.settings.site.title")}
+        </CardTitle>
         <CardDescription>
-          公開向けに利用する文言を管理します。空欄のまま保存することもできます。
+          {getMessage(messages, "admin.settings.site.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -102,49 +112,73 @@ export const SiteSettingsForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel>Copyright 表示</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.settings.site.copyright")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 name="copyright_text"
                 onChange={handleCopyrightTextChange}
-                placeholder="例: Copyright © 2026 Acme Inc."
+                placeholder={getMessage(
+                  messages,
+                  "admin.settings.site.copyright_placeholder"
+                )}
                 type="text"
                 value={copyrightText}
               />
               <FieldDescription>
-                権利表記として利用する文言です。空欄のままにもできます。
+                {getMessage(
+                  messages,
+                  "admin.settings.site.copyright_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel>サイトの宣伝文句</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.settings.site.tagline")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 name="site_tagline"
                 onChange={handleSiteTaglineChange}
-                placeholder="例: 静かに読む、持続可能に出版する"
+                placeholder={getMessage(
+                  messages,
+                  "admin.settings.site.tagline_placeholder"
+                )}
                 type="text"
                 value={siteTagline}
               />
               <FieldDescription>
-                タイトルや認証画面の補助文などで利用する短い宣伝文句です。
+                {getMessage(
+                  messages,
+                  "admin.settings.site.tagline_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel>サイト説明文</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.settings.site.site_description")}
+            </FieldLabel>
             <FieldContent>
               <Textarea
                 name="site_description"
                 onChange={handleSiteDescriptionChange}
-                placeholder="例: 作品の最新情報や更新告知をお届けします。"
+                placeholder={getMessage(
+                  messages,
+                  "admin.settings.site.site_description_placeholder"
+                )}
                 rows={3}
                 value={siteDescription}
               />
               <FieldDescription>
-                サイト説明として利用する文言です。空欄のままにもできます。
+                {getMessage(
+                  messages,
+                  "admin.settings.site.site_description_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
@@ -157,7 +191,9 @@ export const SiteSettingsForm = ({
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={isPending} type="submit">
-              {isPending ? "保存中..." : "設定を保存"}
+              {isPending
+                ? getMessage(messages, "admin.settings.saving")
+                : getMessage(messages, "admin.settings.site.submit")}
             </Button>
           </div>
         </form>

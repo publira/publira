@@ -1,11 +1,15 @@
 "use server";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getActionLocale } from "#lib/action-messages";
 import { createAnnouncement } from "#lib/announcement";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
@@ -17,59 +21,79 @@ import {
 
 import type { CreateAnnouncementActionState } from "../announcement-types";
 
-const announcementFormSchema = z
-  .object({
-    audienceType: z.preprocess(
-      (value) => {
-        if (typeof value !== "string" || value.trim() === "") {
-          return "all";
-        }
+const announcementFormSchema = (messages: SharedMessages) =>
+  z
+    .object({
+      audienceType: z.preprocess(
+        (value) => {
+          if (typeof value !== "string" || value.trim() === "") {
+            return "all";
+          }
 
-        return value.trim();
-      },
-      z.enum(["all", "selected"], { error: "配信対象が不正です。" })
-    ),
-    body: requiredTrimmedString("本文は必須です。", 2000),
-    linkUrl: optionalTrimmedString(2048),
-    targetUserPublicIds: trimmedStringListFormSchema,
-    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-    title: requiredTrimmedString("タイトルは必須です。", 120),
-  })
-  .superRefine((value, ctx) => {
-    if (
-      value.audienceType === "selected" &&
-      value.targetUserPublicIds.length === 0
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        message:
-          "指定ユーザー配信では対象ユーザーを 1 件以上選択してください。",
-        path: ["targetUserPublicIds"],
-      });
-    }
+          return value.trim();
+        },
+        z.enum(["all", "selected"], {
+          error: getMessage(
+            messages,
+            "admin.announcements.validation.audience_invalid"
+          ),
+        })
+      ),
+      body: requiredTrimmedString(
+        getMessage(messages, "admin.announcements.validation.body_required"),
+        2000
+      ),
+      linkUrl: optionalTrimmedString(2048),
+      targetUserPublicIds: trimmedStringListFormSchema,
+      tenantId: requiredTrimmedString(
+        getMessage(messages, "admin.announcements.validation.tenant_missing")
+      ),
+      title: requiredTrimmedString(
+        getMessage(messages, "admin.announcements.validation.title_required"),
+        120
+      ),
+    })
+    .superRefine((value, ctx) => {
+      if (
+        value.audienceType === "selected" &&
+        value.targetUserPublicIds.length === 0
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: getMessage(
+            messages,
+            "admin.announcements.validation.target_users_required"
+          ),
+          path: ["targetUserPublicIds"],
+        });
+      }
 
-    const isInternalPath =
-      value.linkUrl.startsWith("/") && !value.linkUrl.startsWith("//");
-    if (
-      value.linkUrl !== "" &&
-      !isInternalPath &&
-      !value.linkUrl.startsWith("https://") &&
-      !value.linkUrl.startsWith("http://")
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        message: "リンク先は / もしくは http(s):// で入力してください。",
-        path: ["linkUrl"],
-      });
-    }
-  });
+      const isInternalPath =
+        value.linkUrl.startsWith("/") && !value.linkUrl.startsWith("//");
+      if (
+        value.linkUrl !== "" &&
+        !isInternalPath &&
+        !value.linkUrl.startsWith("https://") &&
+        !value.linkUrl.startsWith("http://")
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: getMessage(
+            messages,
+            "admin.announcements.validation.link_invalid"
+          ),
+          path: ["linkUrl"],
+        });
+      }
+    });
 
 export const createAnnouncementAction = async (
   _prevState: CreateAnnouncementActionState,
   formData: FormData
 ): Promise<CreateAnnouncementActionState> => {
   await assertSameOrigin();
-  const parsed = announcementFormSchema.safeParse(
+  const locale = await getActionLocale(formData);
+  const parsed = announcementFormSchema(sharedCatalog(locale)).safeParse(
     toFormDataInput(formData, {
       audienceType: { kind: "value", name: "audience_type" },
       body: "value",
@@ -81,20 +105,23 @@ export const createAnnouncementAction = async (
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    createAnnouncement({
-      audienceType: parsed.data.audienceType,
-      body: parsed.data.body,
-      linkUrl: parsed.data.linkUrl,
-      targetUserPublicIds: parsed.data.targetUserPublicIds,
-      tenantId: parsed.data.tenantId,
-      title: parsed.data.title,
-    })
+    createAnnouncement(
+      {
+        audienceType: parsed.data.audienceType,
+        body: parsed.data.body,
+        linkUrl: parsed.data.linkUrl,
+        targetUserPublicIds: parsed.data.targetUserPublicIds,
+        tenantId: parsed.data.tenantId,
+        title: parsed.data.title,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {

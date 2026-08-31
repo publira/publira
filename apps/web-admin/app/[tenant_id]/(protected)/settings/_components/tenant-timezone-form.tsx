@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -18,8 +20,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { listSupportedTimeZones } from "@publira/utils";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useContext, useMemo, useState } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { TenantTimezoneActionState } from "../settings-types";
@@ -40,6 +43,11 @@ export const TenantTimezoneForm = ({
   initialTimezone,
   loadErrorMessage,
 }: TenantTimezoneFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [timezone, setTimezone] = useState(initialTimezone);
@@ -59,9 +67,11 @@ export const TenantTimezoneForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>タイムゾーン</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.settings.timezone.title")}
+        </CardTitle>
         <CardDescription>
-          管理画面と公開サイトで日時を表示・入力するときの基準になるタイムゾーンです。
+          {getMessage(messages, "admin.settings.timezone.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -70,26 +80,36 @@ export const TenantTimezoneForm = ({
           <input name="timezone" type="hidden" value={timezone} />
 
           <Field>
-            <FieldLabel>タイムゾーン</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.settings.timezone.label")}
+            </FieldLabel>
             <FieldContent>
               <Combobox
                 disabled={!canEdit}
-                emptyMessage="一致するタイムゾーンが見つかりません。"
+                emptyMessage={getMessage(
+                  messages,
+                  "admin.settings.timezone.empty"
+                )}
                 items={items}
                 onValueChange={setTimezone}
-                placeholder="例: Asia/Tokyo"
+                placeholder={getMessage(
+                  messages,
+                  "admin.settings.timezone.placeholder"
+                )}
                 value={timezone}
               />
               <FieldDescription>
-                IANA タイムゾーン名（例:
-                Asia/Tokyo）で保存されます。地域名や都市名を入力して絞り込めます。
+                {getMessage(
+                  messages,
+                  "admin.settings.timezone.field_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           {canEdit ? null : (
             <FormMessage variant="destructive">
-              この設定はテナント管理者のみ編集できます。現在は閲覧専用です。
+              {getMessage(messages, "admin.settings.admin_only")}
             </FormMessage>
           )}
 
@@ -105,7 +125,9 @@ export const TenantTimezoneForm = ({
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={!canEdit || isPending} type="submit">
-              {isPending ? "保存中..." : "タイムゾーンを保存"}
+              {isPending
+                ? getMessage(messages, "admin.settings.saving")
+                : getMessage(messages, "admin.settings.timezone.submit")}
             </Button>
           </div>
         </form>

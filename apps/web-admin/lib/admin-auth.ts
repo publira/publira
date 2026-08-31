@@ -16,6 +16,7 @@ import type { Locale } from "@publira/i18n";
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { loadAdminMessages } from "./locale";
+import type { AdminMessages } from "./locale";
 import { getAccessToken } from "./session";
 
 export {
@@ -131,8 +132,9 @@ const toErrorMessage = async (
   );
 };
 
-const genericEmailChangeRequestErrorMessage =
-  "メールアドレス変更リクエストに失敗しました。時間をおいて再試行してください。";
+const genericEmailChangeRequestErrorMessage = (
+  messages: AdminMessages
+): string => getMessage(messages, "admin.settings.email_change.failed");
 
 export const loginAdmin = async (
   email: string,
@@ -442,8 +444,10 @@ export const requestAdminEmailChange = async (
   tenantId: string,
   currentEmail: string,
   newEmail: string,
-  currentPassword: string
+  currentPassword: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<AdminEmailChangeRequestResult> => {
+  const messages = await loadAdminMessages(locale);
   const normalizedCurrentEmail = currentEmail.trim();
   const normalizedNewEmail = newEmail.trim();
 
@@ -456,7 +460,10 @@ export const requestAdminEmailChange = async (
     !currentPassword
   ) {
     return {
-      message: "すべての項目を入力してください。",
+      message: getMessage(
+        messages,
+        "admin.settings.email_change.all_fields_required"
+      ),
       ok: false,
     };
   }
@@ -480,12 +487,28 @@ export const requestAdminEmailChange = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(error, genericEmailChangeRequestErrorMessage, {
-        conflict: "このメールアドレスは既に使用されています。",
-        "invalid-argument": rpcErrorHasFieldViolation(error, "current_password")
-          ? "パスワードが正しくありません。"
-          : "入力内容を確認してください。",
-      }),
+      message: rpcErrorMessage(
+        error,
+        genericEmailChangeRequestErrorMessage(messages),
+        {
+          locale,
+          overrides: {
+            conflict: getMessage(
+              messages,
+              "admin.settings.email_change.email_taken"
+            ),
+            "invalid-argument": rpcErrorHasFieldViolation(
+              error,
+              "current_password"
+            )
+              ? getMessage(
+                  messages,
+                  "admin.settings.email_change.password_incorrect"
+                )
+              : getMessage(messages, "errors.validation"),
+          },
+        }
+      ),
       ok: false,
     };
   }

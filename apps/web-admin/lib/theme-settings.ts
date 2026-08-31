@@ -3,6 +3,10 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { cacheTag } from "next/cache";
@@ -62,23 +66,24 @@ export interface UploadTenantLogoInput {
   logoData: Uint8Array;
 }
 
-const genericLoadErrorMessage =
-  "テーマの取得に失敗しました。時間をおいて再試行してください。";
-const genericUpdateErrorMessage =
-  "テーマの保存に失敗しました。時間をおいて再試行してください。";
-const genericIconUploadErrorMessage =
-  "アイコンのアップロードに失敗しました。時間をおいて再試行してください。";
-const genericIconDeleteErrorMessage =
-  "アイコンの削除に失敗しました。時間をおいて再試行してください。";
-const genericLogoUploadErrorMessage =
-  "ロゴのアップロードに失敗しました。時間をおいて再試行してください。";
-const genericLogoDeleteErrorMessage =
-  "ロゴの削除に失敗しました。時間をおいて再試行してください。";
-const rejectedIconMessage =
-  "画像を読み込めませんでした。32x32px 以上の JPEG / PNG / WebP を選択してください。";
-const rejectedLogoMessage =
-  "画像を読み込めませんでした。縦横とも 32px 以上の JPEG / PNG / WebP を選択してください。";
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
+const genericLoadErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.theme.load_failed");
+const genericUpdateErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.theme.save_failed");
+const genericIconUploadErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.icon.upload_failed");
+const genericIconDeleteErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.icon.delete_failed");
+const genericLogoUploadErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.logo.upload_failed");
+const genericLogoDeleteErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.logo.delete_failed");
+const rejectedIconMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.icon.rejected");
+const rejectedLogoMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.logo.rejected");
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
 
 /**
  * Tag the settings screen's cached read carries, so `updateTag` in a Server
@@ -93,11 +98,18 @@ export const tenantThemeCacheTag = (tenantId: string): string =>
  * be a hex color"), so the server's own text is more useful to the operator
  * than the generic wording. Everything else takes the shared copy.
  */
-const parseErrorMessage = (error: unknown, fallback: string): string => {
+const parseErrorMessage = (
+  error: unknown,
+  fallback: string,
+  locale: Locale
+): string => {
   const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
   return rpcErrorMessage(error, fallback, {
-    "invalid-argument": serverMessage,
-    precondition: serverMessage,
+    locale,
+    overrides: {
+      "invalid-argument": serverMessage,
+      precondition: serverMessage,
+    },
   });
 };
 
@@ -108,41 +120,49 @@ const parseErrorMessage = (error: unknown, fallback: string): string => {
  * naming what the screen accepts. The `icon_data` field violation is what
  * separates a rejected image from any other `invalid_argument`.
  */
-const parseIconErrorMessage = (error: unknown, fallback: string): string =>
-  rpcErrorMessage(
-    error,
-    fallback,
-    mentionsIconRejection(error)
-      ? { "invalid-argument": rejectedIconMessage }
-      : undefined
-  );
+const parseIconErrorMessage = (
+  error: unknown,
+  fallback: string,
+  locale: Locale
+): string =>
+  rpcErrorMessage(error, fallback, {
+    locale,
+    overrides: mentionsIconRejection(error)
+      ? { "invalid-argument": rejectedIconMessage(sharedCatalog(locale)) }
+      : undefined,
+  });
 
 /** The logo rejections are worded here for the same reason as the icon's. */
-const parseLogoErrorMessage = (error: unknown, fallback: string): string =>
-  rpcErrorMessage(
-    error,
-    fallback,
-    mentionsLogoRejection(error)
-      ? { "invalid-argument": rejectedLogoMessage }
-      : undefined
-  );
+const parseLogoErrorMessage = (
+  error: unknown,
+  fallback: string,
+  locale: Locale
+): string =>
+  rpcErrorMessage(error, fallback, {
+    locale,
+    overrides: mentionsLogoRejection(error)
+      ? { "invalid-argument": rejectedLogoMessage(sharedCatalog(locale)) }
+      : undefined,
+  });
 
 const toTenantTheme = (
   theme?: Partial<TenantThemeColors> | null
 ): TenantThemeColors => resolveTenantThemeColors(theme);
 
 export const getTenantThemeSettings = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantThemeSettingsResult> => {
   "use cache: private";
 
   cacheTag(tenantThemeCacheTag(tenantId));
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: !sessionId,
     };
@@ -171,7 +191,11 @@ export const getTenantThemeSettings = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, genericLoadErrorMessage),
+      message: parseErrorMessage(
+        error,
+        genericLoadErrorMessage(messages),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -195,12 +219,14 @@ export const getTenantThemeLogo = async (
 };
 
 export const updateTenantThemeSettings = async (
-  input: UpdateTenantThemeSettingsInput
+  input: UpdateTenantThemeSettingsInput,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantThemeSettingsResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return { message: sessionErrorMessage(messages), ok: false };
   }
 
   try {
@@ -256,19 +282,25 @@ export const updateTenantThemeSettings = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, genericUpdateErrorMessage),
+      message: parseErrorMessage(
+        error,
+        genericUpdateErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }
 };
 
 export const uploadTenantIcon = async (
-  input: UploadTenantIconInput
+  input: UploadTenantIconInput,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantIconResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return { message: sessionErrorMessage(messages), ok: false };
   }
 
   try {
@@ -292,19 +324,25 @@ export const uploadTenantIcon = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseIconErrorMessage(error, genericIconUploadErrorMessage),
+      message: parseIconErrorMessage(
+        error,
+        genericIconUploadErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }
 };
 
 export const deleteTenantIcon = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantIconResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return { message: sessionErrorMessage(messages), ok: false };
   }
 
   try {
@@ -324,19 +362,25 @@ export const deleteTenantIcon = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseIconErrorMessage(error, genericIconDeleteErrorMessage),
+      message: parseIconErrorMessage(
+        error,
+        genericIconDeleteErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }
 };
 
 export const uploadTenantLogo = async (
-  input: UploadTenantLogoInput
+  input: UploadTenantLogoInput,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantLogoResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return { message: sessionErrorMessage(messages), ok: false };
   }
 
   try {
@@ -360,19 +404,25 @@ export const uploadTenantLogo = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseLogoErrorMessage(error, genericLogoUploadErrorMessage),
+      message: parseLogoErrorMessage(
+        error,
+        genericLogoUploadErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }
 };
 
 export const deleteTenantLogo = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantLogoResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return { message: sessionErrorMessage(messages), ok: false };
   }
 
   try {
@@ -392,7 +442,11 @@ export const deleteTenantLogo = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseLogoErrorMessage(error, genericLogoDeleteErrorMessage),
+      message: parseLogoErrorMessage(
+        error,
+        genericLogoDeleteErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }

@@ -1,5 +1,9 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 
 import {
   isUnauthenticatedError,
@@ -34,24 +38,29 @@ const defaultSettings: TenantSiteSettings = {
   siteTagline: "",
 };
 
-const genericLoadErrorMessage =
-  "設定の取得に失敗しました。時間をおいて再試行してください。";
-const genericUpdateErrorMessage =
-  "設定の保存に失敗しました。時間をおいて再試行してください。";
+const genericLoadErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.site.load_failed");
+const genericUpdateErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.site.save_failed");
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
-  rpcErrorMessage(error, fallbackMessage);
+const mapErrorToMessage = (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): string => rpcErrorMessage(error, fallbackMessage, { locale });
 
 export const getTenantSiteSettings = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<GetTenantSiteSettingsResult> => {
   "use cache: private";
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: !sessionId,
       settings: defaultSettings,
@@ -77,7 +86,11 @@ export const getTenantSiteSettings = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericLoadErrorMessage),
+      message: mapErrorToMessage(
+        error,
+        genericLoadErrorMessage(messages),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       settings: defaultSettings,
@@ -85,17 +98,21 @@ export const getTenantSiteSettings = async (
   }
 };
 
-export const updateTenantSiteSettings = async (input: {
-  tenantId: string;
-  copyrightText: string;
-  siteDescription: string;
-  siteTagline: string;
-}): Promise<UpdateTenantSiteSettingsResult> => {
+export const updateTenantSiteSettings = async (
+  input: {
+    tenantId: string;
+    copyrightText: string;
+    siteDescription: string;
+    siteTagline: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<UpdateTenantSiteSettingsResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: getMessage(messages, "errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -123,7 +140,11 @@ export const updateTenantSiteSettings = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericUpdateErrorMessage),
+      message: mapErrorToMessage(
+        error,
+        genericUpdateErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }

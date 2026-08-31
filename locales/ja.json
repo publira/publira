@@ -38,7 +38,107 @@
   },
   "admin": {
     "audit": {
-      "section_error": "監査ログを表示できませんでした"
+      "section_error": "監査ログを表示できませんでした",
+      "title": "監査ログ",
+      "page_description": "テナント内の操作履歴を確認し、変更の追跡や説明責任に利用します。",
+      "list_title": "監査ログ一覧",
+      "list_description": "誰が、いつ、何を行い、どの結果になったかを確認できます。",
+      "empty": "条件に一致する監査ログはありません。",
+      "pagination_description": "1ページあたり{$count}件まで表示します。",
+      "actor_option": "{$name} ({$id})",
+      "actor_unnamed": "名前未設定",
+      "actor_id_unknown": "公開 ID 不明",
+      "target_type_none": "対象種別なし",
+      "list_failed": "監査ログの取得に失敗しました。時間をおいて再試行してください。",
+      "filter_invalid": "フィルタ条件に誤りがあります。入力内容を確認してください。",
+      "columns": {
+        "created_at": "日時",
+        "actor": "操作者",
+        "action": "アクション",
+        "outcome": "結果"
+      },
+      "filter": {
+        "title": "絞り込み",
+        "description": "期間、アクション種別、操作者で自テナントの監査ログを確認します。開始日・終了日はテナントのタイムゾーン（{$time_zone}）の暦日として解釈します。",
+        "from": "開始日",
+        "to": "終了日",
+        "action": "アクション",
+        "actor": "操作者",
+        "actor_placeholder": "操作者を検索",
+        "actor_empty": "一致する操作者が見つかりません。",
+        "apply": "適用",
+        "reset": "リセット"
+      },
+      "actions": {
+        "all": "すべて",
+        "series_created": "シリーズ作成",
+        "series_updated": "シリーズ更新",
+        "episode_created": "エピソード作成",
+        "episode_publish_schedule_updated": "公開設定更新",
+        "creator_created": "著者作成",
+        "creator_updated": "著者更新",
+        "label_created": "レーベル作成",
+        "label_updated": "レーベル更新",
+        "other": "その他の操作"
+      },
+      "outcome": {
+        "failure": "失敗",
+        "success": "成功",
+        "unknown": "不明"
+      }
+    },
+    "announcements": {
+      "title": "お知らせ",
+      "page_description": "お知らせの作成状況と配信対象を確認できます。",
+      "new_title": "お知らせを作成",
+      "new_description": "本文・リンク先・配信対象を指定してお知らせを配信します。",
+      "back_to_list": "一覧へ戻る",
+      "list_title": "お知らせ一覧",
+      "list_description": "作成済みのお知らせと配信対象を確認できます。",
+      "list_error": "お知らせ一覧を表示できませんでした",
+      "empty_title": "お知らせがまだありません。",
+      "empty_description": "お知らせ作成から対象ユーザーにお知らせを配信してください。",
+      "new_action": "お知らせを作成",
+      "pagination_aria": "お知らせ一覧のページ送り",
+      "pagination_description": "新しい順に、1ページあたり{$count}件まで表示します。",
+      "audience_all": "全体",
+      "audience_selected": "指定",
+      "audience_selected_user": "指定 ({$name})",
+      "list_failed": "お知らせ一覧の取得に失敗しました。時間をおいて再試行してください。",
+      "create_failed": "お知らせの配信に失敗しました。時間をおいて再試行してください。",
+      "target_users_failed": "対象ユーザー一覧の取得に失敗しました。",
+      "columns": {
+        "created_at": "作成日時",
+        "title": "タイトル",
+        "body": "本文",
+        "audience": "対象",
+        "link": "リンク先"
+      },
+      "form": {
+        "title": "タイトル",
+        "title_placeholder": "例: 重要なお知らせ",
+        "body": "本文",
+        "body_placeholder": "お知らせ本文を入力",
+        "link": "リンク先",
+        "link_placeholder": "例: /series/SERIES001",
+        "link_description": "お知らせをタップしたときのリンク先を指定できます。サイト内ページは /...、外部サイトは https:// で入力してください。",
+        "audience": "配信対象",
+        "audience_all": "全体配信",
+        "audience_selected": "指定ユーザー配信",
+        "target_users": "対象ユーザー",
+        "target_users_unavailable": "対象ユーザー一覧を取得できないため、指定ユーザー配信は利用できません。",
+        "user_option": "{$name} ({$id})",
+        "submitting": "送信中…",
+        "submit": "お知らせを配信"
+      },
+      "validation": {
+        "audience_invalid": "配信対象が不正です。",
+        "body_required": "本文は必須です。",
+        "tenant_missing": "テナント ID が見つかりません。",
+        "title_required": "タイトルは必須です。",
+        "target_users_required": "指定ユーザー配信では対象ユーザーを 1 件以上選択してください。",
+        "link_invalid": "リンク先は / もしくは http(s):// で入力してください。"
+      }
     },
     "auth": {
       "accept_invite": {
@@ -203,7 +303,6 @@
       "section_error": "ダッシュボードを表示できませんでした",
       "title": "ダッシュボード",
       "load_error": "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。",
-      "session_invalid": "セッションが無効です。再ログインしてください。",
       "unset": "未設定",
       "status_scheduled": "予約済み",
       "status_draft": "下書き",
@@ -586,16 +685,378 @@
       "email_error": "メール設定を表示できませんでした",
       "payment_error": "決済設定を表示できませんでした",
       "section_error": "設定を表示できませんでした",
-      "theme_error": "テーマを表示できませんでした"
+      "theme_error": "テーマを表示できませんでした",
+      "theme": {
+        "color_picker": "カラーピッカー",
+        "submit": "テーマを保存",
+        "colors": {
+          "primary": {
+            "label": "プライマリーカラー",
+            "description": "主にボタンや強調要素で利用する基準カラーです。"
+          },
+          "primary_foreground": {
+            "label": "プライマリーテキストカラー",
+            "description": "プライマリーカラー上に表示するテキストカラーです。"
+          },
+          "secondary": {
+            "label": "セカンダリーカラー",
+            "description": "補助的なボタンや要素に使用するカラーです。"
+          },
+          "secondary_foreground": {
+            "label": "セカンダリーテキストカラー",
+            "description": "セカンダリーカラー上に表示するテキストカラーです。"
+          },
+          "accent": {
+            "label": "アクセントカラー",
+            "description": "通知や装飾のアクセントに利用するカラーです。"
+          },
+          "accent_foreground": {
+            "label": "アクセントテキストカラー",
+            "description": "アクセントカラー上に表示するテキストカラーです。"
+          },
+          "background": {
+            "label": "デフォルトカラー",
+            "description": "ページ全体の基準となる背景カラーです。"
+          },
+          "foreground": {
+            "label": "テキストカラー",
+            "description": "デフォルトカラー上に表示するテキストカラーです。"
+          },
+          "surface": {
+            "label": "サーフェースカラー",
+            "description": "コンテンツエリアの表面カラーです。"
+          },
+          "surface_foreground": {
+            "label": "サーフェーステキストカラー",
+            "description": "サーフェースカラー上に表示するテキストカラーです。"
+          },
+          "card": {
+            "label": "カードカラー",
+            "description": "カードコンポーネントの背景カラーです。"
+          },
+          "card_foreground": {
+            "label": "カードテキストカラー",
+            "description": "カードカラー上に表示するテキストカラーです。"
+          },
+          "popover": {
+            "label": "ポップオーバーカラー",
+            "description": "ポップオーバーやドロップダウンの背景カラーです。"
+          },
+          "popover_foreground": {
+            "label": "ポップオーバーテキストカラー",
+            "description": "ポップオーバーカラー上に表示するテキストカラーです。"
+          },
+          "muted": {
+            "label": "ミュートカラー",
+            "description": "控えめな背景や無効化された要素に使用するカラーです。"
+          },
+          "muted_foreground": {
+            "label": "ミュートテキストカラー",
+            "description": "ミュート領域上に表示するテキストカラーです。"
+          },
+          "border": {
+            "label": "ボーダーカラー",
+            "description": "テーブルや枠線に使用するボーダーカラーです。"
+          },
+          "input": {
+            "label": "入力フィールドカラー",
+            "description": "フォーム入力要素の背景カラーです。"
+          },
+          "ring": {
+            "label": "フォーカスリングカラー",
+            "description": "フォーカス時に表示されるリングカラーです。"
+          },
+          "success": {
+            "label": "成功カラー",
+            "description": "成功メッセージや操作完了を示すカラーです。"
+          },
+          "success_foreground": {
+            "label": "成功テキストカラー",
+            "description": "成功表示上に表示するテキストカラーです。"
+          },
+          "warning": {
+            "label": "警告カラー",
+            "description": "警告メッセージを示すカラーです。"
+          },
+          "warning_foreground": {
+            "label": "警告テキストカラー",
+            "description": "警告表示上に表示するテキストカラーです。"
+          },
+          "destructive": {
+            "label": "危険カラー",
+            "description": "削除やエラー操作を示すカラーです。"
+          },
+          "destructive_foreground": {
+            "label": "危険テキストカラー",
+            "description": "危険表示上に表示するテキストカラーです。"
+          },
+          "info": {
+            "label": "情報カラー",
+            "description": "情報メッセージを示すカラーです。"
+          },
+          "info_foreground": {
+            "label": "情報テキストカラー",
+            "description": "情報表示上に表示するテキストカラーです。"
+          }
+        },
+        "groups": {
+          "brand": {
+            "title": "ブランドカラー",
+            "description": "ブランドを表す主要なカラーです。"
+          },
+          "surface": {
+            "title": "背景・テキストカラー",
+            "description": "背景系のカラーとテキストカラーを設定します。"
+          },
+          "ui": {
+            "title": "UI要素カラー",
+            "description": "ボーダーや入力欄など UI 要素に使用するカラーを設定します。"
+          },
+          "status": {
+            "title": "ステータスカラー",
+            "description": "成功・警告・エラー・情報など通知に使用するカラーを設定します。"
+          }
+        },
+        "saved": "テーマを保存しました。",
+        "load_failed": "テーマの取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "テーマの保存に失敗しました。時間をおいて再試行してください。",
+        "validation": {
+          "hex_color": "#RRGGBB 形式で入力してください。",
+          "contrast": "{$background}と{$foreground}のコントラスト比は {$minimum}:1 以上にしてください（現在 {$actual}:1）。",
+          "contrast_summary": "テキストを読みやすくするため、色の組み合わせを確認してください。"
+        }
+      },
+      "title": "設定",
+      "basic_title": "設定 - 基本情報",
+      "basic_description": "テナントごとの公開表示設定を管理します。",
+      "theme_title": "設定 - テーマ",
+      "theme_description": "テナントごとのテーマカラー、ロゴ、アイコンを管理します。",
+      "email_title": "設定 - メール情報",
+      "email_description": "テナントごとのメール送信設定を管理します。",
+      "payment_title": "設定 - 決済",
+      "payment_description": "テナントごとの Stripe 決済設定を管理します。",
+      "account_title": "アカウント設定",
+      "account_description": "ログイン中の管理者アカウントの情報を管理します。",
+      "tenant_missing": "テナント ID が見つかりません。",
+      "admin_only": "この設定はテナント管理者のみ編集できます。現在は閲覧専用です。",
+      "saving": "保存中…",
+      "save": "保存",
+      "delete": "削除",
+      "delete_action": "削除する",
+      "tabs": {
+        "basic": "基本情報",
+        "theme": "テーマ",
+        "email": "メール情報",
+        "payment": "決済"
+      },
+      "image": {
+        "file_required": "画像ファイルを選択してください。",
+        "too_large": "画像は 10MB 以下にしてください。",
+        "unsupported_type": "JPEG / PNG / WebP の画像を選択してください。"
+      },
+      "site": {
+        "title": "公開サイト表示設定",
+        "description": "公開向けに利用する文言を管理します。空欄のまま保存することもできます。",
+        "copyright": "Copyright 表示",
+        "copyright_placeholder": "例: Copyright © 2026 Acme Inc.",
+        "copyright_description": "権利表記として利用する文言です。空欄のままにもできます。",
+        "tagline": "サイトの宣伝文句",
+        "tagline_placeholder": "例: 静かに読む、持続可能に出版する",
+        "tagline_description": "タイトルや認証画面の補助文などで利用する短い宣伝文句です。",
+        "site_description": "サイト説明文",
+        "site_description_placeholder": "例: 作品の最新情報や更新告知をお届けします。",
+        "site_description_description": "サイト説明として利用する文言です。空欄のままにもできます。",
+        "submit": "設定を保存",
+        "saved": "設定を保存しました。",
+        "load_failed": "設定の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "設定の保存に失敗しました。時間をおいて再試行してください。"
+      },
+      "timezone": {
+        "title": "タイムゾーン",
+        "description": "管理画面と公開サイトで日時を表示・入力するときの基準になるタイムゾーンです。",
+        "label": "タイムゾーン",
+        "placeholder": "例: Asia/Tokyo",
+        "empty": "一致するタイムゾーンが見つかりません。",
+        "field_description": "IANA タイムゾーン名（例: Asia/Tokyo）で保存されます。地域名や都市名を入力して絞り込めます。",
+        "submit": "タイムゾーンを保存",
+        "saved": "タイムゾーンを保存しました。",
+        "load_failed": "タイムゾーンの取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "タイムゾーンの保存に失敗しました。時間をおいて再試行してください。",
+        "validation": {
+          "required": "タイムゾーンを選択してください。",
+          "invalid": "有効なタイムゾーンを選択してください。"
+        }
+      },
+      "default_locale": {
+        "title": "既定言語",
+        "description": "管理者が表示言語を選んでいないときに、この管理画面で使う言語です。すでに選んだ表示言語は変わりません。",
+        "label": "既定言語",
+        "placeholder": "言語を選択してください",
+        "field_description": "日本語または英語を選べます。管理者が表示言語を選んでいないときの初期値であり、すでに Cookie で選んでいる表示言語は変わりません。",
+        "load_error_hint": "保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。",
+        "submit": "既定言語を保存",
+        "saved": "既定言語を保存しました。",
+        "load_failed": "既定言語の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "既定言語の保存に失敗しました。時間をおいて再試行してください。",
+        "validation": {
+          "required": "言語を選択してください。"
+        }
+      },
+      "icon": {
+        "title": "アイコン",
+        "description": "公開サイトのタブやロケーションバーに表示するアイコンです。",
+        "current": "現在のアイコン",
+        "unset": "アイコンは設定されていません。",
+        "file": "アイコン画像",
+        "file_description": "JPEG/PNG/WebP、10MB以下、32x32px以上の画像を選択してください。中央を正方形に切り出して保存します。",
+        "delete_title": "アイコンを削除しますか？",
+        "delete_description": "公開サイトのアイコンはブラウザの既定に戻ります。",
+        "delete_submit": "アイコンを削除",
+        "submit": "アイコンを保存",
+        "saved": "アイコンを保存しました。",
+        "deleted": "アイコンを削除しました。",
+        "rejected": "画像を読み込めませんでした。32x32px 以上の JPEG / PNG / WebP を選択してください。",
+        "upload_failed": "アイコンのアップロードに失敗しました。時間をおいて再試行してください。",
+        "delete_failed": "アイコンの削除に失敗しました。時間をおいて再試行してください。"
+      },
+      "logo": {
+        "title": "ロゴ",
+        "description": "ブランド表示に使う画像です。縦横比はそのまま保存されます。",
+        "current": "現在のロゴ",
+        "unset": "ロゴは設定されていません。",
+        "file": "ロゴ画像",
+        "file_description": "JPEG/PNG/WebP、10MB以下、縦横とも32px以上の画像を選択してください。長辺が1024pxを超える場合は縮小して保存します。",
+        "delete_title": "ロゴを削除しますか？",
+        "delete_description": "ブランド表示はテナント名に戻ります。",
+        "delete_submit": "ロゴを削除",
+        "submit": "ロゴを保存",
+        "saved": "ロゴを保存しました。",
+        "deleted": "ロゴを削除しました。",
+        "rejected": "画像を読み込めませんでした。縦横とも 32px 以上の JPEG / PNG / WebP を選択してください。",
+        "upload_failed": "ロゴのアップロードに失敗しました。時間をおいて再試行してください。",
+        "delete_failed": "ロゴの削除に失敗しました。時間をおいて再試行してください。"
+      },
+      "email": {
+        "title": "メール設定",
+        "description": "未設定または無効時はプラットフォームで設定された送信元で送信されます。",
+        "override": "テナントSMTP上書きを有効にする",
+        "override_checkbox": "上書きを有効化",
+        "override_description": "OFF の場合はプラットフォーム既定の SMTP 設定で送信されます。",
+        "host": "ホスト",
+        "port": "ポート",
+        "username": "ユーザー名",
+        "password": "パスワード",
+        "password_change": "変更する",
+        "password_change_cancel": "変更を取り消す",
+        "encryption": "暗号化方式",
+        "encryption_none": "なし",
+        "from_name": "送信者名（任意）",
+        "from_name_fallback": "テナント名",
+        "from_name_description": "未入力時はテナント名が利用されます。",
+        "from_address": "送信者メールアドレス",
+        "reply_to": "返信先メールアドレス（任意）",
+        "test": "接続テスト",
+        "test_title": "SMTP 接続テスト",
+        "test_description": "現在のフォーム入力値でテストメールを送信します。",
+        "test_send_to_self": "自分に送信する",
+        "test_recipient": "送信先メールアドレス",
+        "test_sending": "送信中…",
+        "test_submit": "テストを実行",
+        "test_sent": "接続テストメールを送信しました（送信先: {$recipient}）。",
+        "close": "閉じる",
+        "saved": "メール設定を保存しました。",
+        "failed": "処理に失敗しました。時間をおいて再試行してください。"
+      },
+      "email_change": {
+        "title": "メールアドレス変更",
+        "description": "管理者アカウントのメールアドレスを変更します。変更には現在のメールアドレスと新しいメールアドレスの両方で確認が必要です。",
+        "current_email": "現在のメールアドレス",
+        "new_email": "新しいメールアドレス",
+        "current_password": "現在のパスワード",
+        "password_description": "セキュリティ上の理由から、パスワードの入力が必要です。",
+        "submitting": "送信中…",
+        "submit": "確認メールを送信",
+        "requested": "現在のメールアドレスと新しいメールアドレスの両方に確認メールを送信しました。両方のリンクを開いて変更を完了してください。",
+        "all_fields_required": "すべての項目を入力してください。",
+        "email_taken": "このメールアドレスは既に使用されています。",
+        "password_incorrect": "パスワードが正しくありません。",
+        "failed": "メールアドレス変更リクエストに失敗しました。時間をおいて再試行してください。"
+      },
+      "payment": {
+        "title": "決済設定",
+        "description": "このテナントの Stripe シークレットを登録・更新・無効化します。秘密情報は書き込み専用で、再表示時は状態とマスキングだけが見えます。",
+        "provider": "決済プロバイダ",
+        "provider_description": "現在選択できるプロバイダは Stripe のみです。",
+        "enabled": "Stripe 決済を有効にする",
+        "enabled_checkbox": "有効化",
+        "enabled_description": "OFF の場合、有料エピソードの Checkout と Webhook はこのテナントでは動きません。",
+        "secret_key": "シークレットキー",
+        "webhook_secret": "Webhook 署名シークレット",
+        "secret_change": "変更する",
+        "secret_change_cancel": "変更を取り消す",
+        "secret_description": "入力した値は保存後に表示しません。登録済みの値は先頭と末尾だけがマスキングされます。",
+        "webhook_url": "Webhook URL",
+        "webhook_url_description": "Stripe ダッシュボードにこの URL を登録してください。署名シークレットは上の欄で保存します。",
+        "saved": "決済設定を保存しました。",
+        "load_failed": "決済設定の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "決済設定の保存に失敗しました。時間をおいて再試行してください。",
+        "status": {
+          "disabled": "無効",
+          "disabled_description": "シークレットは保存されていますが、決済は無効です。Checkout と Webhook は動きません。",
+          "incomplete": "設定不足",
+          "incomplete_description": "有効ですがシークレットが揃っていないため、決済は開始されません。",
+          "ready": "利用可能",
+          "ready_description": "有料エピソードの Checkout と Webhook にこのテナントの設定が使われます。",
+          "unset": "未設定",
+          "unset_description": "Stripe のシークレットを登録すると、有料エピソードの決済を開始できます。"
+        },
+        "validation": {
+          "secret_key_required": "シークレットキーを入力してください。",
+          "webhook_secret_required": "Webhook 署名シークレットを入力してください。"
+        }
+      }
     },
     "notifications": {
+      "page_description": "自分宛の業務イベントを確認し、既読にできます。お知らせの配信管理は別画面です。",
+      "list_title": "通知一覧",
+      "list_description": "自分宛の業務イベントです。お知らせの配信管理とは別の一覧です。",
+      "list_error": "通知一覧を表示できませんでした",
+      "updating": "更新中…",
+      "mark_read": "既読にする",
+      "mark_read_success": "既読にしました。",
+      "mark_all_read": "すべて既読にする",
+      "mark_all_read_success": "未読をすべて既読にしました。",
+      "mark_read_aria": "{$label}を既読にする",
+      "pagination_aria": "通知一覧のページ送り",
+      "pagination_description": "新しい順に、1ページあたり{$count}件まで表示します。",
+      "columns": {
+        "status": "状態",
+        "created_at": "日時",
+        "content": "内容",
+        "actions": "操作"
+      },
       "empty_description": "予約公開などの業務イベントが起きると、ここに自分宛の通知が届きます。",
       "empty_title": "通知はまだありません。",
       "list_failed": "通知一覧の取得に失敗しました。時間をおいて再試行してください。",
       "menu_more": "もっと見る",
       "read": "既読",
       "title": "通知",
-      "unread": "未読"
+      "unread": "未読",
+      "count_failed": "未読件数の取得に失敗しました。時間をおいて再試行してください。",
+      "mark_read_failed": "既読への更新に失敗しました。時間をおいて再試行してください。",
+      "mark_all_read_failed": "一括既読に失敗しました。時間をおいて再試行してください。",
+      "events": {
+        "subject_in_series": "「{$episode}」（{$series}）",
+        "subject_episode": "「{$episode}」",
+        "subject_series": "「{$series}」のエピソード",
+        "subject_unnamed": "予約していたエピソード",
+        "published_title": "エピソードが公開されました",
+        "published_description": "{$subject}を公開しました。",
+        "publish_failed_title": "エピソードの公開に失敗しました",
+        "publish_failed_description": "{$subject}を公開できませんでした。",
+        "unknown_title": "通知",
+        "unknown_description": "内容の詳細はありません。"
+      }
     },
     "shell": {
       "account_menu": "{$name}のアカウントメニュー",
@@ -611,6 +1072,98 @@
       "status_online": "Online",
       "tenant_title": "{$name} 管理画面",
       "title": "管理画面"
+    },
+    "access_tickets": {
+      "title": "アクセスチケット",
+      "page_description": "決済を経由しない限定閲覧チケットの発行と失効を管理します。",
+      "new_title": "チケットを発行",
+      "new_description": "ユーザーとエピソードを指定して限定閲覧チケットを発行します。",
+      "back_to_list": "一覧へ戻る",
+      "item_label": "チケット",
+      "list_title": "アクセスチケット一覧",
+      "list_description": "発行済みの限定閲覧チケットを確認・失効できます。",
+      "list_error": "アクセスチケット一覧を表示できませんでした",
+      "empty_title": "チケットがまだありません。",
+      "empty_description": "チケット発行からユーザーにエピソード閲覧権を付与してください。",
+      "new_action": "チケットを発行",
+      "pagination_aria": "アクセスチケット一覧のページ送り",
+      "pagination_description": "新しい順に、1ページあたり{$count}件まで表示します。",
+      "status_active": "有効",
+      "status_expired": "期限切れ",
+      "status_revoked": "失効",
+      "revoked_at": "失効: {$at}",
+      "revoke": "失効",
+      "revoking": "失効中…",
+      "revoked": "チケットを失効しました。",
+      "revoke_confirm_title": "このチケットを失効しますか？",
+      "revoke_confirm_action": "失効する",
+      "revoke_confirm_description": "失効したチケットでは対象エピソードを閲覧できなくなります。同じユーザーへ再度付与するには、失効後に発行し直してください。",
+      "issued": "チケットを発行しました。",
+      "existing_expired": "同じユーザー・エピソードの期限切れチケット（{$id}）が未失効のまま残っています。期限を付け直すには、先に一覧から失効してください。",
+      "existing_ticket": "同じユーザー・エピソードのチケット（{$id}）を発行できません。一覧を確認してください。",
+      "user_not_found": "指定したユーザーが見つかりません。",
+      "episode_not_found": "指定したエピソードが見つかりません。",
+      "user_not_active": "対象ユーザーが有効ではありません。",
+      "list_failed": "アクセスチケット一覧の取得に失敗しました。時間をおいて再試行してください。",
+      "issue_failed": "アクセスチケットの発行に失敗しました。時間をおいて再試行してください。",
+      "revoke_failed": "アクセスチケットの失効に失敗しました。時間をおいて再試行してください。",
+      "columns": {
+        "status": "状態",
+        "user": "ユーザー",
+        "episode": "エピソード",
+        "note": "メモ",
+        "expires_at": "有効期限",
+        "created_at": "作成日時",
+        "actions": "操作"
+      },
+      "filter": {
+        "title": "絞り込み",
+        "description": "ユーザー、エピソード、状態で発行済みチケットを探せます。",
+        "user": "ユーザー public_id",
+        "user_placeholder": "例: SeedMMBRAAA1",
+        "episode": "エピソード public_id",
+        "episode_placeholder": "例: SeedEPSDAAA1",
+        "status": "状態",
+        "status_all": "すべて",
+        "status_active_only": "有効のみ",
+        "apply": "適用",
+        "reset": "リセット"
+      },
+      "form": {
+        "option": "{$title} ({$id})",
+        "user": "ユーザー public_id",
+        "user_placeholder": "例: SeedMMBRAAA1",
+        "user_description": "閲覧権を付与するエンドユーザーの public_id を入力します。",
+        "episode_id": "エピソード public_id",
+        "episode_id_placeholder": "例: SeedEPSDAAA1",
+        "episode_id_description": "対象エピソードの public_id を入力します。",
+        "episode_id_no_series": "選択できるシリーズがありません。エピソードの public_id を直接入力してください。",
+        "series": "シリーズ",
+        "series_placeholder": "シリーズ名で検索",
+        "series_empty": "一致するシリーズが見つかりません。",
+        "series_description": "対象エピソードが属するシリーズを選ぶと、エピソード一覧が開きます。",
+        "episode": "エピソード",
+        "episode_placeholder": "エピソード名で検索",
+        "episode_loading": "読み込み中…",
+        "episode_empty": "一致するエピソードが見つかりません。",
+        "episode_needs_series": "先にシリーズを選択してください。",
+        "episode_description": "閲覧権を付与するエピソードを選択します。",
+        "expires_at": "有効期限",
+        "expires_at_description": "未指定の場合は無期限です。テナントのタイムゾーン（{$time_zone}）の壁時計として解釈し、送信時に絶対時刻へ変換します。失効操作でいつでも取り消せます。",
+        "note": "メモ",
+        "note_placeholder": "例: レビュー用の限定閲覧",
+        "submitting": "発行中…",
+        "submit": "チケットを発行"
+      },
+      "validation": {
+        "episode_id_required": "エピソード public_id は必須です。",
+        "user_id_required": "ユーザー public_id は必須です。",
+        "tenant_missing": "テナント ID が見つかりません。",
+        "expires_at_invalid": "有効期限の形式が正しくありません。",
+        "expires_at_past": "有効期限は未来の日時を指定してください。",
+        "revoke_target": "失効対象が不正です。",
+        "series_required": "シリーズを選択してください。"
+      }
     }
   },
   "host": {

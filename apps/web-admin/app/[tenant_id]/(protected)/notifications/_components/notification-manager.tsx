@@ -1,3 +1,6 @@
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
   Card,
@@ -31,6 +34,7 @@ import {
 
 type NotificationManagerProps = CursorPageHrefs & {
   listErrorMessage?: string;
+  locale: Locale;
   notifications: NotificationItem[];
   pageSize: number;
   tenantId: string;
@@ -59,21 +63,24 @@ const NotificationTitle = ({ item }: { item: NotificationItem }) => {
 const NotificationListBody = ({
   hasPageLinks,
   listErrorMessage,
+  locale,
   notifications,
   tenantId,
   timeZone,
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
+  locale: Locale;
   notifications: NotificationItem[];
   tenantId: string;
   timeZone: string;
 }) => {
+  const messages = sharedCatalog(locale);
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title="通知一覧を表示できませんでした"
+        title={getMessage(messages, "admin.notifications.list_error")}
       />
     );
   }
@@ -81,10 +88,13 @@ const NotificationListBody = ({
   if (notifications.length === 0) {
     return (
       <CursorPageEmptyState
-        description="予約公開などの業務イベントが起きると、ここに自分宛の通知が届きます。"
+        description={getMessage(
+          messages,
+          "admin.notifications.empty_description"
+        )}
         hasPageLinks={hasPageLinks}
-        itemLabel="通知"
-        title="通知はまだありません。"
+        itemLabel={getMessage(messages, "admin.notifications.title")}
+        title={getMessage(messages, "admin.notifications.empty_title")}
       />
     );
   }
@@ -93,11 +103,19 @@ const NotificationListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-24">状態</TableHead>
-          <TableHead className="w-44">日時</TableHead>
-          <TableHead>内容</TableHead>
+          <TableHead className="w-24">
+            {getMessage(messages, "admin.notifications.columns.status")}
+          </TableHead>
+          <TableHead className="w-44">
+            {getMessage(messages, "admin.notifications.columns.created_at")}
+          </TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.notifications.columns.content")}
+          </TableHead>
           <TableHead className="w-36">
-            <span className="sr-only">操作</span>
+            <span className="sr-only">
+              {getMessage(messages, "admin.notifications.columns.actions")}
+            </span>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -106,9 +124,13 @@ const NotificationListBody = ({
           <TableRow key={item.id}>
             <TableCell>
               {item.isRead ? (
-                <StatusChip status="muted">既読</StatusChip>
+                <StatusChip status="muted">
+                  {getMessage(messages, "admin.notifications.read")}
+                </StatusChip>
               ) : (
-                <StatusChip status="info">未読</StatusChip>
+                <StatusChip status="info">
+                  {getMessage(messages, "admin.notifications.unread")}
+                </StatusChip>
               )}
             </TableCell>
             <TableCell>
@@ -140,6 +162,7 @@ const NotificationListBody = ({
 
 export const NotificationManager = ({
   listErrorMessage,
+  locale,
   nextHref,
   notifications,
   pageSize,
@@ -148,6 +171,7 @@ export const NotificationManager = ({
   timeZone,
   unreadCount,
 }: NotificationManagerProps) => {
+  const messages = sharedCatalog(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   const showPagination =
     !listErrorMessage && (notifications.length > 0 || hasPageLinks);
@@ -158,9 +182,11 @@ export const NotificationManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>通知一覧</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.notifications.list_title")}
+          </CardTitle>
           <CardDescription>
-            自分宛の業務イベントです。お知らせの配信管理とは別の一覧です。
+            {getMessage(messages, "admin.notifications.list_description")}
           </CardDescription>
         </div>
         {hasUnread && !listErrorMessage ? (
@@ -172,6 +198,7 @@ export const NotificationManager = ({
         <NotificationListBody
           hasPageLinks={hasPageLinks}
           listErrorMessage={listErrorMessage}
+          locale={locale}
           notifications={notifications}
           tenantId={tenantId}
           timeZone={timeZone}
@@ -179,8 +206,15 @@ export const NotificationManager = ({
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel="通知一覧のページ送り"
-            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            ariaLabel={getMessage(
+              messages,
+              "admin.notifications.pagination_aria"
+            )}
+            description={getMessage(
+              messages,
+              "admin.notifications.pagination_description",
+              { count: pageSize }
+            )}
             nextHref={nextHref}
             previousHref={previousHref}
           />

@@ -1,7 +1,8 @@
 "use client";
 
-import { isLocale } from "@publira/i18n";
+import { getMessage, isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -18,8 +19,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Select } from "@publira/ui-components/select";
-import { useActionState, useState } from "react";
+import { useActionState, useContext, useState } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { TenantDefaultLocaleActionState } from "../settings-types";
@@ -47,6 +49,11 @@ export const TenantDefaultLocaleForm = ({
   loadErrorMessage,
   options,
 }: TenantDefaultLocaleFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [defaultLocale, setDefaultLocale] = useState(initialDefaultLocale);
@@ -65,9 +72,11 @@ export const TenantDefaultLocaleForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>既定言語</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.settings.default_locale.title")}
+        </CardTitle>
         <CardDescription>
-          管理者が表示言語を選んでいないときに、この管理画面で使う言語です。すでに選んだ表示言語は変わりません。
+          {getMessage(messages, "admin.settings.default_locale.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -76,7 +85,9 @@ export const TenantDefaultLocaleForm = ({
           <input name="default_locale" type="hidden" value={defaultLocale} />
 
           <Field>
-            <FieldLabel htmlFor="tenant_default_locale">既定言語</FieldLabel>
+            <FieldLabel htmlFor="tenant_default_locale">
+              {getMessage(messages, "admin.settings.default_locale.label")}
+            </FieldLabel>
             <FieldContent>
               <Select
                 disabled={fieldsDisabled}
@@ -87,26 +98,34 @@ export const TenantDefaultLocaleForm = ({
                     setDefaultLocale(value);
                   }
                 }}
-                placeholder="言語を選択してください"
+                placeholder={getMessage(
+                  messages,
+                  "admin.settings.default_locale.placeholder"
+                )}
                 value={defaultLocale}
               />
               <FieldDescription>
-                日本語または英語を選べます。管理者が表示言語を選んでいないときの初期値であり、すでに
-                Cookie で選んでいる表示言語は変わりません。
+                {getMessage(
+                  messages,
+                  "admin.settings.default_locale.field_description"
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
 
           {canEdit ? null : (
             <FormMessage variant="destructive">
-              この設定はテナント管理者のみ編集できます。現在は閲覧専用です。
+              {getMessage(messages, "admin.settings.admin_only")}
             </FormMessage>
           )}
 
           {loadErrorMessage ? (
             <FormMessage variant="destructive">
               {loadErrorMessage}
-              保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。
+              {getMessage(
+                messages,
+                "admin.settings.default_locale.load_error_hint"
+              )}
             </FormMessage>
           ) : null}
 
@@ -118,7 +137,9 @@ export const TenantDefaultLocaleForm = ({
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={fieldsDisabled || isPending} type="submit">
-              {isPending ? "保存中..." : "既定言語を保存"}
+              {isPending
+                ? getMessage(messages, "admin.settings.saving")
+                : getMessage(messages, "admin.settings.default_locale.submit")}
             </Button>
           </div>
         </form>

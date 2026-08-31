@@ -1,12 +1,10 @@
 "use server";
 
-import { getLocales } from "@publira/i18n";
+import { getLocales, getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { isValidTimeZone } from "@publira/utils";
-import {
-  toFieldErrors,
-  toFormErrorMessage,
-  VALIDATION_ERROR_MESSAGE,
-} from "@publira/utils/field-errors";
+import { toFieldErrors, toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import {
   findThemeTextContrastIssues,
@@ -15,6 +13,7 @@ import {
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
+import { getActionLocale } from "#lib/action-messages";
 import { requestAdminEmailChange } from "#lib/admin-auth";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
@@ -33,6 +32,7 @@ import {
   flagOneFormSchema,
   requiredTrimmedString,
 } from "#lib/form-schemas";
+import type { AdminMessageKey } from "#lib/locale";
 import {
   tenantPaymentSettingsCacheTag,
   updateTenantPaymentSettings,
@@ -85,73 +85,85 @@ interface ParsedTenantSmtpFormData {
   recipientEmail: string;
 }
 
-const hexColorCodeSchema = z
-  .string()
-  .trim()
-  .regex(/^#[0-9a-fA-F]{6}$/u, "#RRGGBB 形式で入力してください。")
-  .transform((value) => value.toLowerCase());
+const hexColorCodeSchema = (messages: SharedMessages) =>
+  z
+    .string()
+    .trim()
+    .regex(
+      /^#[0-9a-fA-F]{6}$/u,
+      getMessage(messages, "admin.settings.theme.validation.hex_color")
+    )
+    .transform((value) => value.toLowerCase());
 
-const tenantThemeSchema = z.object({
-  accentColor: hexColorCodeSchema,
-  accentForegroundColor: hexColorCodeSchema,
-  backgroundColor: hexColorCodeSchema,
-  borderColor: hexColorCodeSchema,
-  cardColor: hexColorCodeSchema,
-  cardForegroundColor: hexColorCodeSchema,
-  destructiveColor: hexColorCodeSchema,
-  destructiveForegroundColor: hexColorCodeSchema,
-  foregroundColor: hexColorCodeSchema,
-  infoColor: hexColorCodeSchema,
-  infoForegroundColor: hexColorCodeSchema,
-  inputColor: hexColorCodeSchema,
-  mutedColor: hexColorCodeSchema,
-  mutedForegroundColor: hexColorCodeSchema,
-  popoverColor: hexColorCodeSchema,
-  popoverForegroundColor: hexColorCodeSchema,
-  primaryColor: hexColorCodeSchema,
-  primaryForegroundColor: hexColorCodeSchema,
-  ringColor: hexColorCodeSchema,
-  secondaryColor: hexColorCodeSchema,
-  secondaryForegroundColor: hexColorCodeSchema,
-  successColor: hexColorCodeSchema,
-  successForegroundColor: hexColorCodeSchema,
-  surfaceColor: hexColorCodeSchema,
-  surfaceForegroundColor: hexColorCodeSchema,
-  warningColor: hexColorCodeSchema,
-  warningForegroundColor: hexColorCodeSchema,
-});
+const tenantThemeSchema = (messages: SharedMessages) =>
+  z.object({
+    accentColor: hexColorCodeSchema(messages),
+    accentForegroundColor: hexColorCodeSchema(messages),
+    backgroundColor: hexColorCodeSchema(messages),
+    borderColor: hexColorCodeSchema(messages),
+    cardColor: hexColorCodeSchema(messages),
+    cardForegroundColor: hexColorCodeSchema(messages),
+    destructiveColor: hexColorCodeSchema(messages),
+    destructiveForegroundColor: hexColorCodeSchema(messages),
+    foregroundColor: hexColorCodeSchema(messages),
+    infoColor: hexColorCodeSchema(messages),
+    infoForegroundColor: hexColorCodeSchema(messages),
+    inputColor: hexColorCodeSchema(messages),
+    mutedColor: hexColorCodeSchema(messages),
+    mutedForegroundColor: hexColorCodeSchema(messages),
+    popoverColor: hexColorCodeSchema(messages),
+    popoverForegroundColor: hexColorCodeSchema(messages),
+    primaryColor: hexColorCodeSchema(messages),
+    primaryForegroundColor: hexColorCodeSchema(messages),
+    ringColor: hexColorCodeSchema(messages),
+    secondaryColor: hexColorCodeSchema(messages),
+    secondaryForegroundColor: hexColorCodeSchema(messages),
+    successColor: hexColorCodeSchema(messages),
+    successForegroundColor: hexColorCodeSchema(messages),
+    surfaceColor: hexColorCodeSchema(messages),
+    surfaceForegroundColor: hexColorCodeSchema(messages),
+    warningColor: hexColorCodeSchema(messages),
+    warningForegroundColor: hexColorCodeSchema(messages),
+  });
 
-const themeColorLabels: Record<
-  keyof z.output<typeof tenantThemeSchema>,
-  string
+const themeColorLabelKeys: Record<
+  keyof z.output<ReturnType<typeof tenantThemeSchema>>,
+  AdminMessageKey
 > = {
-  accentColor: "アクセントカラー",
-  accentForegroundColor: "アクセントテキストカラー",
-  backgroundColor: "デフォルトカラー",
-  borderColor: "ボーダーカラー",
-  cardColor: "カードカラー",
-  cardForegroundColor: "カードテキストカラー",
-  destructiveColor: "危険カラー",
-  destructiveForegroundColor: "危険テキストカラー",
-  foregroundColor: "テキストカラー",
-  infoColor: "情報カラー",
-  infoForegroundColor: "情報テキストカラー",
-  inputColor: "入力フィールドカラー",
-  mutedColor: "ミュートカラー",
-  mutedForegroundColor: "ミュートテキストカラー",
-  popoverColor: "ポップオーバーカラー",
-  popoverForegroundColor: "ポップオーバーテキストカラー",
-  primaryColor: "プライマリーカラー",
-  primaryForegroundColor: "プライマリーテキストカラー",
-  ringColor: "フォーカスリングカラー",
-  secondaryColor: "セカンダリーカラー",
-  secondaryForegroundColor: "セカンダリーテキストカラー",
-  successColor: "成功カラー",
-  successForegroundColor: "成功テキストカラー",
-  surfaceColor: "サーフェースカラー",
-  surfaceForegroundColor: "サーフェーステキストカラー",
-  warningColor: "警告カラー",
-  warningForegroundColor: "警告テキストカラー",
+  accentColor: "admin.settings.theme.colors.accent.label",
+  accentForegroundColor: "admin.settings.theme.colors.accent_foreground.label",
+  backgroundColor: "admin.settings.theme.colors.background.label",
+  borderColor: "admin.settings.theme.colors.border.label",
+  cardColor: "admin.settings.theme.colors.card.label",
+  cardForegroundColor: "admin.settings.theme.colors.card_foreground.label",
+  destructiveColor: "admin.settings.theme.colors.destructive.label",
+  destructiveForegroundColor:
+    "admin.settings.theme.colors.destructive_foreground.label",
+  foregroundColor: "admin.settings.theme.colors.foreground.label",
+  infoColor: "admin.settings.theme.colors.info.label",
+  infoForegroundColor: "admin.settings.theme.colors.info_foreground.label",
+  inputColor: "admin.settings.theme.colors.input.label",
+  mutedColor: "admin.settings.theme.colors.muted.label",
+  mutedForegroundColor: "admin.settings.theme.colors.muted_foreground.label",
+  popoverColor: "admin.settings.theme.colors.popover.label",
+  popoverForegroundColor:
+    "admin.settings.theme.colors.popover_foreground.label",
+  primaryColor: "admin.settings.theme.colors.primary.label",
+  primaryForegroundColor:
+    "admin.settings.theme.colors.primary_foreground.label",
+  ringColor: "admin.settings.theme.colors.ring.label",
+  secondaryColor: "admin.settings.theme.colors.secondary.label",
+  secondaryForegroundColor:
+    "admin.settings.theme.colors.secondary_foreground.label",
+  successColor: "admin.settings.theme.colors.success.label",
+  successForegroundColor:
+    "admin.settings.theme.colors.success_foreground.label",
+  surfaceColor: "admin.settings.theme.colors.surface.label",
+  surfaceForegroundColor:
+    "admin.settings.theme.colors.surface_foreground.label",
+  warningColor: "admin.settings.theme.colors.warning.label",
+  warningForegroundColor:
+    "admin.settings.theme.colors.warning_foreground.label",
 };
 
 /**
@@ -172,72 +184,99 @@ const BRANDING_IMAGE_CONTENT_TYPES = new Set([
   "image/webp",
 ]);
 
-const brandingImageFileSchema = z
-  .custom<File>((value) => value instanceof File, {
-    error: "画像ファイルを選択してください。",
-  })
-  .refine((file) => file.size <= BRANDING_IMAGE_MAX_BYTES, {
-    error: "画像は 10MB 以下にしてください。",
-  })
-  .refine((file) => BRANDING_IMAGE_CONTENT_TYPES.has(file.type), {
-    error: "JPEG / PNG / WebP の画像を選択してください。",
-  });
+const brandingImageFileSchema = (messages: SharedMessages) =>
+  z
+    .custom<File>((value) => value instanceof File, {
+      error: getMessage(messages, "admin.settings.image.file_required"),
+    })
+    .refine((file) => file.size <= BRANDING_IMAGE_MAX_BYTES, {
+      error: getMessage(messages, "admin.settings.image.too_large"),
+    })
+    .refine((file) => BRANDING_IMAGE_CONTENT_TYPES.has(file.type), {
+      error: getMessage(messages, "admin.settings.image.unsupported_type"),
+    });
 
 /**
  * Upload and delete share one Action so the card renders the current icon
  * straight from the Action state: with a state per operation there is no way to
  * tell which of the two ran last.
  */
-const tenantIconSchema = z.discriminatedUnion("intent", [
-  z.object({
-    icon: brandingImageFileSchema,
-    intent: z.literal("upload"),
-    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-  }),
-  z.object({
-    intent: z.literal("delete"),
-    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-  }),
-]);
+const tenantIconSchema = (messages: SharedMessages) =>
+  z.discriminatedUnion("intent", [
+    z.object({
+      icon: brandingImageFileSchema(messages),
+      intent: z.literal("upload"),
+      tenantId: requiredTrimmedString(
+        getMessage(messages, "admin.settings.tenant_missing")
+      ),
+    }),
+    z.object({
+      intent: z.literal("delete"),
+      tenantId: requiredTrimmedString(
+        getMessage(messages, "admin.settings.tenant_missing")
+      ),
+    }),
+  ]);
 
 /** Upload and delete share one Action, for the reason the icon's does. */
-const tenantLogoSchema = z.discriminatedUnion("intent", [
-  z.object({
-    intent: z.literal("upload"),
-    logo: brandingImageFileSchema,
-    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-  }),
-  z.object({
-    intent: z.literal("delete"),
-    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-  }),
-]);
+const tenantLogoSchema = (messages: SharedMessages) =>
+  z.discriminatedUnion("intent", [
+    z.object({
+      intent: z.literal("upload"),
+      logo: brandingImageFileSchema(messages),
+      tenantId: requiredTrimmedString(
+        getMessage(messages, "admin.settings.tenant_missing")
+      ),
+    }),
+    z.object({
+      intent: z.literal("delete"),
+      tenantId: requiredTrimmedString(
+        getMessage(messages, "admin.settings.tenant_missing")
+      ),
+    }),
+  ]);
 
 /**
  * The Go server validates against the IANA tzdata it embeds
  * (`server/internal/tenanttz`) and stays the authority; this only gives the
  * operator immediate feedback instead of a round trip.
  */
-const tenantTimezoneSchema = z.object({
-  timezone: z
-    .string({ error: "タイムゾーンを選択してください。" })
-    .trim()
-    .min(1, "タイムゾーンを選択してください。")
-    .refine(isValidTimeZone, {
-      error: "有効なタイムゾーンを選択してください。",
-    }),
-});
+const tenantTimezoneSchema = (messages: SharedMessages) =>
+  z.object({
+    timezone: z
+      .string({
+        error: getMessage(
+          messages,
+          "admin.settings.timezone.validation.required"
+        ),
+      })
+      .trim()
+      .min(
+        1,
+        getMessage(messages, "admin.settings.timezone.validation.required")
+      )
+      .refine(isValidTimeZone, {
+        error: getMessage(
+          messages,
+          "admin.settings.timezone.validation.invalid"
+        ),
+      }),
+  });
 
 /**
  * The Go server validates against the supported locale list
  * (`server/internal/locale`) and stays the authority; this only gives the
  * operator immediate feedback instead of a round trip.
  */
-const tenantDefaultLocaleSchema = z.object({
-  defaultLocale: z.enum(getLocales(), {
-    error: "言語を選択してください。",
-  }),
-});
+const tenantDefaultLocaleSchema = (messages: SharedMessages) =>
+  z.object({
+    defaultLocale: z.enum(getLocales(), {
+      error: getMessage(
+        messages,
+        "admin.settings.default_locale.validation.required"
+      ),
+    }),
+  });
 
 const tenantThemeFormFieldMap = [
   ["accentColor", "accent_color"],
@@ -269,7 +308,7 @@ const tenantThemeFormFieldMap = [
   ["warningForegroundColor", "warning_foreground_color"],
 ] as const;
 
-type TenantThemeSchemaInput = z.input<typeof tenantThemeSchema>;
+type TenantThemeSchemaInput = z.input<ReturnType<typeof tenantThemeSchema>>;
 
 const parseTenantThemeFormData = (formData: FormData): TenantThemeSchemaInput =>
   Object.fromEntries(
@@ -287,11 +326,27 @@ const mapThemeFieldErrors = (
   ) as ThemeSettingsFieldErrors;
 
 const mapThemeContrastFieldErrors = (
-  issues: ReturnType<typeof findThemeTextContrastIssues>
+  issues: ReturnType<typeof findThemeTextContrastIssues>,
+  messages: SharedMessages
 ): ThemeSettingsFieldErrors =>
   Object.fromEntries(
     issues.flatMap((issue) => {
-      const message = `${themeColorLabels[issue.background]}と${themeColorLabels[issue.foreground]}のコントラスト比は ${THEME_TEXT_CONTRAST_MIN_RATIO}:1 以上にしてください（現在 ${issue.ratio.toFixed(2)}:1）。`;
+      const message = getMessage(
+        messages,
+        "admin.settings.theme.validation.contrast",
+        {
+          actual: issue.ratio.toFixed(2),
+          background: getMessage(
+            messages,
+            themeColorLabelKeys[issue.background]
+          ),
+          foreground: getMessage(
+            messages,
+            themeColorLabelKeys[issue.foreground]
+          ),
+          minimum: String(THEME_TEXT_CONTRAST_MIN_RATIO),
+        }
+      );
       return [
         [issue.background, message],
         [issue.foreground, message],
@@ -355,6 +410,8 @@ export const updateSiteSettingsAction = async (
   formData: FormData
 ): Promise<SiteSettingsActionState> => {
   await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const copyrightText = String(formData.get("copyright_text") ?? "");
   const siteDescription = String(formData.get("site_description") ?? "");
@@ -362,18 +419,21 @@ export const updateSiteSettingsAction = async (
 
   if (!tenantId) {
     return {
-      message: "テナント ID が見つかりません。",
+      message: getMessage(messages, "admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantSiteSettings({
-      copyrightText,
-      siteDescription,
-      siteTagline,
-      tenantId,
-    })
+    updateTenantSiteSettings(
+      {
+        copyrightText,
+        siteDescription,
+        siteTagline,
+        tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -384,7 +444,7 @@ export const updateSiteSettingsAction = async (
   }
 
   return {
-    message: "設定を保存しました。",
+    message: getMessage(messages, "admin.settings.site.saved"),
     ok: true,
   };
 };
@@ -394,22 +454,24 @@ export const updateTenantThemeSettingsAction = async (
   formData: FormData
 ): Promise<ThemeSettingsActionState> => {
   await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   if (!tenantId) {
     return {
-      message: "テナント ID が見つかりません。",
+      message: getMessage(messages, "admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
-  const parsed = tenantThemeSchema.safeParse(
+  const parsed = tenantThemeSchema(messages).safeParse(
     parseTenantThemeFormData(formData)
   );
 
   if (!parsed.success) {
     return {
       fieldErrors: mapThemeFieldErrors(parsed.error.flatten().fieldErrors),
-      message: "入力内容を確認してください。",
+      message: getMessage(messages, "errors.validation"),
       ok: false,
     };
   }
@@ -417,18 +479,23 @@ export const updateTenantThemeSettingsAction = async (
   const contrastIssues = findThemeTextContrastIssues(parsed.data);
   if (contrastIssues.length > 0) {
     return {
-      fieldErrors: mapThemeContrastFieldErrors(contrastIssues),
-      message:
-        "テキストを読みやすくするため、色の組み合わせを確認してください。",
+      fieldErrors: mapThemeContrastFieldErrors(contrastIssues, messages),
+      message: getMessage(
+        messages,
+        "admin.settings.theme.validation.contrast_summary"
+      ),
       ok: false,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantThemeSettings({
-      ...parsed.data,
-      tenantId,
-    })
+    updateTenantThemeSettings(
+      {
+        ...parsed.data,
+        tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -443,7 +510,7 @@ export const updateTenantThemeSettingsAction = async (
   updateTag(tenantThemeCacheTag(tenantId));
 
   return {
-    message: "テーマを保存しました。",
+    message: getMessage(messages, "admin.settings.theme.saved"),
     ok: true,
     theme: result.theme,
   };
@@ -454,7 +521,9 @@ export const updateTenantIconAction = async (
   formData: FormData
 ): Promise<TenantIconActionState> => {
   await assertSameOrigin();
-  const parsed = tenantIconSchema.safeParse(
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
+  const parsed = tenantIconSchema(messages).safeParse(
     toFormDataInput(formData, {
       icon: { kind: "file", name: "icon" },
       intent: { kind: "value", name: "intent" },
@@ -476,14 +545,17 @@ export const updateTenantIconAction = async (
   // never gets a 10MB upload buffered on its behalf.
   const result = await withAdminSessionReauth(async () => {
     if (input.intent === "delete") {
-      return deleteTenantIcon(input.tenantId);
+      return deleteTenantIcon(input.tenantId, locale);
     }
 
-    return uploadTenantIcon({
-      iconContentType: input.icon.type,
-      iconData: new Uint8Array(await input.icon.arrayBuffer()),
-      tenantId: input.tenantId,
-    });
+    return uploadTenantIcon(
+      {
+        iconContentType: input.icon.type,
+        iconData: new Uint8Array(await input.icon.arrayBuffer()),
+        tenantId: input.tenantId,
+      },
+      locale
+    );
   });
 
   if (!result.ok) {
@@ -499,7 +571,10 @@ export const updateTenantIconAction = async (
 
   return {
     icon: result.icon,
-    message: isDelete ? "アイコンを削除しました。" : "アイコンを保存しました。",
+    message: getMessage(
+      messages,
+      isDelete ? "admin.settings.icon.deleted" : "admin.settings.icon.saved"
+    ),
     ok: true,
   };
 };
@@ -509,7 +584,9 @@ export const updateTenantLogoAction = async (
   formData: FormData
 ): Promise<TenantLogoActionState> => {
   await assertSameOrigin();
-  const parsed = tenantLogoSchema.safeParse(
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
+  const parsed = tenantLogoSchema(messages).safeParse(
     toFormDataInput(formData, {
       intent: { kind: "value", name: "intent" },
       logo: { kind: "file", name: "logo" },
@@ -531,14 +608,17 @@ export const updateTenantLogoAction = async (
   // never gets a 10MB upload buffered on its behalf.
   const result = await withAdminSessionReauth(async () => {
     if (input.intent === "delete") {
-      return deleteTenantLogo(input.tenantId);
+      return deleteTenantLogo(input.tenantId, locale);
     }
 
-    return uploadTenantLogo({
-      logoContentType: input.logo.type,
-      logoData: new Uint8Array(await input.logo.arrayBuffer()),
-      tenantId: input.tenantId,
-    });
+    return uploadTenantLogo(
+      {
+        logoContentType: input.logo.type,
+        logoData: new Uint8Array(await input.logo.arrayBuffer()),
+        tenantId: input.tenantId,
+      },
+      locale
+    );
   });
 
   if (!result.ok) {
@@ -554,7 +634,10 @@ export const updateTenantLogoAction = async (
 
   return {
     logo: result.logo,
-    message: isDelete ? "ロゴを削除しました。" : "ロゴを保存しました。",
+    message: getMessage(
+      messages,
+      isDelete ? "admin.settings.logo.deleted" : "admin.settings.logo.saved"
+    ),
     ok: true,
   };
 };
@@ -564,15 +647,17 @@ export const updateTenantTimezoneAction = async (
   formData: FormData
 ): Promise<TenantTimezoneActionState> => {
   await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   if (!tenantId) {
     return {
-      message: "テナント ID が見つかりません。",
+      message: getMessage(messages, "admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
-  const parsed = tenantTimezoneSchema.safeParse(
+  const parsed = tenantTimezoneSchema(messages).safeParse(
     toFormDataInput(formData, { timezone: "value" })
   );
   if (!parsed.success) {
@@ -584,10 +669,13 @@ export const updateTenantTimezoneAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantTimezone({
-      tenantId,
-      timezone: parsed.data.timezone,
-    })
+    updateTenantTimezone(
+      {
+        tenantId,
+        timezone: parsed.data.timezone,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -602,7 +690,7 @@ export const updateTenantTimezoneAction = async (
   updateTag(tenantTimezoneCacheTag(tenantId));
 
   return {
-    message: "タイムゾーンを保存しました。",
+    message: getMessage(messages, "admin.settings.timezone.saved"),
     ok: true,
     timezone: result.timezone,
   };
@@ -613,15 +701,17 @@ export const updateTenantDefaultLocaleAction = async (
   formData: FormData
 ): Promise<TenantDefaultLocaleActionState> => {
   await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   if (!tenantId) {
     return {
-      message: "テナント ID が見つかりません。",
+      message: getMessage(messages, "admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
-  const parsed = tenantDefaultLocaleSchema.safeParse(
+  const parsed = tenantDefaultLocaleSchema(messages).safeParse(
     toFormDataInput(formData, {
       defaultLocale: { kind: "value", name: "default_locale" },
     })
@@ -635,10 +725,13 @@ export const updateTenantDefaultLocaleAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantDefaultLocale({
-      defaultLocale: parsed.data.defaultLocale,
-      tenantId,
-    })
+    updateTenantDefaultLocale(
+      {
+        defaultLocale: parsed.data.defaultLocale,
+        tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -655,7 +748,7 @@ export const updateTenantDefaultLocaleAction = async (
 
   return {
     defaultLocale: result.defaultLocale,
-    message: "既定言語を保存しました。",
+    message: getMessage(messages, "admin.settings.default_locale.saved"),
     ok: true,
   };
 };
@@ -665,34 +758,43 @@ const optionalSecretSchema = z.preprocess(
   z.string()
 );
 
-const tenantPaymentSettingsSchema = z
-  .object({
-    enabled: checkboxOnFormSchema,
-    secretKey: optionalSecretSchema,
-    secretKeyConfigured: flagOneFormSchema,
-    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-    webhookSecret: optionalSecretSchema,
-    webhookSecretConfigured: flagOneFormSchema,
-  })
-  .superRefine((value, ctx) => {
-    if (!value.enabled) {
-      return;
-    }
-    if (!value.secretKeyConfigured && value.secretKey.trim() === "") {
-      ctx.addIssue({
-        code: "custom",
-        message: "シークレットキーを入力してください。",
-        path: ["secretKey"],
-      });
-    }
-    if (!value.webhookSecretConfigured && value.webhookSecret.trim() === "") {
-      ctx.addIssue({
-        code: "custom",
-        message: "Webhook 署名シークレットを入力してください。",
-        path: ["webhookSecret"],
-      });
-    }
-  });
+const tenantPaymentSettingsSchema = (messages: SharedMessages) =>
+  z
+    .object({
+      enabled: checkboxOnFormSchema,
+      secretKey: optionalSecretSchema,
+      secretKeyConfigured: flagOneFormSchema,
+      tenantId: requiredTrimmedString(
+        getMessage(messages, "admin.settings.tenant_missing")
+      ),
+      webhookSecret: optionalSecretSchema,
+      webhookSecretConfigured: flagOneFormSchema,
+    })
+    .superRefine((value, ctx) => {
+      if (!value.enabled) {
+        return;
+      }
+      if (!value.secretKeyConfigured && value.secretKey.trim() === "") {
+        ctx.addIssue({
+          code: "custom",
+          message: getMessage(
+            messages,
+            "admin.settings.payment.validation.secret_key_required"
+          ),
+          path: ["secretKey"],
+        });
+      }
+      if (!value.webhookSecretConfigured && value.webhookSecret.trim() === "") {
+        ctx.addIssue({
+          code: "custom",
+          message: getMessage(
+            messages,
+            "admin.settings.payment.validation.webhook_secret_required"
+          ),
+          path: ["webhookSecret"],
+        });
+      }
+    });
 
 const tenantPaymentSettingsFormFields = {
   enabled: "value",
@@ -716,13 +818,15 @@ export const updateTenantPaymentSettingsAction = async (
   formData: FormData
 ): Promise<TenantPaymentSettingsFormState> => {
   await assertSameOrigin();
-  const parsed = tenantPaymentSettingsSchema.safeParse(
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
+  const parsed = tenantPaymentSettingsSchema(messages).safeParse(
     toFormDataInput(formData, tenantPaymentSettingsFormFields)
   );
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
-      message: VALIDATION_ERROR_MESSAGE,
+      message: getMessage(messages, "errors.validation"),
       ok: false,
     };
   }
@@ -731,14 +835,17 @@ export const updateTenantPaymentSettingsAction = async (
   const webhookSecret = parsed.data.webhookSecret.trim();
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantPaymentSettings({
-      enabled: parsed.data.enabled,
-      secretKey,
-      secretKeyUpdateMode: secretUpdateMode(secretKey),
-      tenantId: parsed.data.tenantId,
-      webhookSecret,
-      webhookSecretUpdateMode: secretUpdateMode(webhookSecret),
-    })
+    updateTenantPaymentSettings(
+      {
+        enabled: parsed.data.enabled,
+        secretKey,
+        secretKeyUpdateMode: secretUpdateMode(secretKey),
+        tenantId: parsed.data.tenantId,
+        webhookSecret,
+        webhookSecretUpdateMode: secretUpdateMode(webhookSecret),
+      },
+      locale
+    )
   );
   if (!result.ok) {
     return {
@@ -750,7 +857,7 @@ export const updateTenantPaymentSettingsAction = async (
   updateTag(tenantPaymentSettingsCacheTag(parsed.data.tenantId));
 
   return {
-    message: "決済設定を保存しました。",
+    message: getMessage(messages, "admin.settings.payment.saved"),
     ok: true,
     settings: result.settings,
   };
@@ -761,17 +868,19 @@ export const updateTenantEmailSettingsAction = async (
   formData: FormData
 ): Promise<TenantEmailSettingsFormState> => {
   await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const input = parseTenantSmtpFormData(formData);
 
   if (!input.tenantId) {
     return {
-      message: "テナント ID が見つかりません。",
+      message: getMessage(messages, "admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantEmailSettings(input)
+    updateTenantEmailSettings(input, locale)
   );
   if (!result.ok) {
     return {
@@ -781,7 +890,7 @@ export const updateTenantEmailSettingsAction = async (
   }
 
   return {
-    message: "メール設定を保存しました。",
+    message: getMessage(messages, "admin.settings.email.saved"),
     ok: true,
     settings: result.settings,
   };
@@ -792,17 +901,19 @@ export const sendTenantSmtpTestEmailAction = async (
   formData: FormData
 ): Promise<TenantSmtpTestFormState> => {
   await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const input = parseTenantSmtpFormData(formData);
 
   if (!input.tenantId) {
     return {
-      message: "テナント ID が見つかりません。",
+      message: getMessage(messages, "admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    sendTenantSmtpTestEmail(input)
+    sendTenantSmtpTestEmail(input, locale)
   );
   if (!result.ok) {
     return {
@@ -812,7 +923,9 @@ export const sendTenantSmtpTestEmailAction = async (
   }
 
   return {
-    message: `接続テストメールを送信しました（送信先: ${result.recipientEmail}）。`,
+    message: getMessage(messages, "admin.settings.email.test_sent", {
+      recipient: result.recipientEmail,
+    }),
     ok: true,
     recipientEmail: result.recipientEmail,
   };
@@ -823,6 +936,8 @@ export const requestEmailChangeAction = async (
   formData: FormData
 ): Promise<EmailChangeActionState> => {
   await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const currentEmail = String(formData.get("current_email") ?? "").trim();
   const newEmail = String(formData.get("new_email") ?? "").trim();
@@ -830,20 +945,29 @@ export const requestEmailChangeAction = async (
 
   if (!tenantId) {
     return {
-      message: "テナント ID が見つかりません。",
+      message: getMessage(messages, "admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
   if (!currentEmail || !newEmail || !currentPassword) {
     return {
-      message: "すべての項目を入力してください。",
+      message: getMessage(
+        messages,
+        "admin.settings.email_change.all_fields_required"
+      ),
       ok: false,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    requestAdminEmailChange(tenantId, currentEmail, newEmail, currentPassword)
+    requestAdminEmailChange(
+      tenantId,
+      currentEmail,
+      newEmail,
+      currentPassword,
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -854,8 +978,7 @@ export const requestEmailChangeAction = async (
   }
 
   return {
-    message:
-      "現在のメールアドレスと新しいメールアドレスの両方に確認メールを送信しました。両方のリンクを開いて変更を完了してください。",
+    message: getMessage(messages, "admin.settings.email_change.requested"),
     ok: true,
   };
 };

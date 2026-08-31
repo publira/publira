@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -18,8 +20,9 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import Image from "next/image";
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useContext, useRef, useState } from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { tenantBrandingVariant } from "#lib/tenant-branding-image";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -38,6 +41,11 @@ export const TenantLogoForm = ({
   action,
   initialLogo,
 }: TenantLogoFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -70,9 +78,11 @@ export const TenantLogoForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>ロゴ</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.settings.logo.title")}
+        </CardTitle>
         <CardDescription>
-          ブランド表示に使う画像です。縦横比はそのまま保存されます。
+          {getMessage(messages, "admin.settings.logo.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -80,11 +90,13 @@ export const TenantLogoForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel>現在のロゴ</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.settings.logo.current")}
+            </FieldLabel>
             <FieldContent>
               {preview ? (
                 <Image
-                  alt="現在のロゴ"
+                  alt={getMessage(messages, "admin.settings.logo.current")}
                   className="h-16 w-auto max-w-full rounded-md border bg-card object-contain"
                   height={preview.height}
                   src={preview.url}
@@ -92,14 +104,16 @@ export const TenantLogoForm = ({
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  ロゴは設定されていません。
+                  {getMessage(messages, "admin.settings.logo.unset")}
                 </p>
               )}
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel>ロゴ画像</FieldLabel>
+            <FieldLabel>
+              {getMessage(messages, "admin.settings.logo.file")}
+            </FieldLabel>
             <FieldContent>
               <Input
                 accept="image/jpeg,image/png,image/webp"
@@ -107,7 +121,7 @@ export const TenantLogoForm = ({
                 type="file"
               />
               <FieldDescription>
-                JPEG/PNG/WebP、10MB以下、縦横とも32px以上の画像を選択してください。長辺が1024pxを超える場合は縮小して保存します。
+                {getMessage(messages, "admin.settings.logo.file_description")}
               </FieldDescription>
             </FieldContent>
           </Field>
@@ -121,16 +135,22 @@ export const TenantLogoForm = ({
           <div className="flex justify-end gap-2">
             {preview ? (
               <ConfirmDialog
-                actionText="削除する"
+                actionText={getMessage(
+                  messages,
+                  "admin.settings.delete_action"
+                )}
                 actionVariant="destructive"
-                description="ブランド表示はテナント名に戻ります。"
+                description={getMessage(
+                  messages,
+                  "admin.settings.logo.delete_description"
+                )}
                 onAction={() => {
                   formRef.current?.requestSubmit(deleteButtonRef.current);
                 }}
-                title="ロゴを削除しますか？"
+                title={getMessage(messages, "admin.settings.logo.delete_title")}
                 trigger={
                   <Button disabled={isPending} type="button" variant="outline">
-                    削除
+                    {getMessage(messages, "admin.settings.delete")}
                   </Button>
                 }
               />
@@ -142,7 +162,7 @@ export const TenantLogoForm = ({
               type="submit"
               value="delete"
             >
-              ロゴを削除
+              {getMessage(messages, "admin.settings.logo.delete_submit")}
             </button>
             <Button
               disabled={isPending}
@@ -150,7 +170,9 @@ export const TenantLogoForm = ({
               type="submit"
               value="upload"
             >
-              {isPending ? "保存中..." : "ロゴを保存"}
+              {isPending
+                ? getMessage(messages, "admin.settings.saving")
+                : getMessage(messages, "admin.settings.logo.submit")}
             </Button>
           </div>
         </form>

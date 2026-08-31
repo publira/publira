@@ -41,6 +41,7 @@ describe("AnnouncementManager", () => {
     render(
       <AnnouncementManager
         announcements={[]}
+        locale="ja"
         pageSize={20}
         timeZone="Asia/Tokyo"
       />
@@ -54,6 +55,7 @@ describe("AnnouncementManager", () => {
     render(
       <AnnouncementManager
         announcements={[]}
+        locale="ja"
         pageSize={20}
         previousHref="?token=previous"
         timeZone="Asia/Tokyo"
@@ -74,6 +76,7 @@ describe("AnnouncementManager", () => {
       <AnnouncementManager
         nextHref="?token=next"
         announcements={[announcement("n1")]}
+        locale="ja"
         pageSize={20}
         previousHref="?token=previous"
         timeZone="Asia/Tokyo"
@@ -97,6 +100,7 @@ describe("AnnouncementManager", () => {
         listErrorMessage="お知らせ一覧を取得できませんでした。"
         nextHref="?token=next"
         announcements={[]}
+        locale="ja"
         pageSize={20}
         previousHref="?token=previous"
         timeZone="Asia/Tokyo"
@@ -123,6 +127,7 @@ describe("AnnouncementManager", () => {
     render(
       <AnnouncementManager
         announcements={[announcement("n1")]}
+        locale="ja"
         pageSize={20}
         timeZone="America/Los_Angeles"
       />

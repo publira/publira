@@ -55,6 +55,7 @@ describe("NotificationManager", () => {
   it("最初のページが空なら未着として案内する", () => {
     render(
       <NotificationManager
+        locale="ja"
         notifications={[]}
         pageSize={20}
         tenantId="TENANT001"
@@ -71,6 +72,7 @@ describe("NotificationManager", () => {
   it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
     render(
       <NotificationManager
+        locale="ja"
         notifications={[]}
         pageSize={20}
         previousHref="?token=previous"
@@ -90,6 +92,7 @@ describe("NotificationManager", () => {
   it("未読行とリンク、既読ボタンを描画する", () => {
     render(
       <NotificationManager
+        locale="ja"
         nextHref="?token=next"
         notifications={[
           notification("n1"),
@@ -130,6 +133,7 @@ describe("NotificationManager", () => {
     render(
       <NotificationManager
         listErrorMessage="通知一覧を取得できませんでした。"
+        locale="ja"
         nextHref="?token=next"
         notifications={[]}
         pageSize={20}
@@ -152,9 +156,27 @@ describe("NotificationManager", () => {
     expect(screen.queryByText("すべて既読にする TENANT001")).toBeNull();
   });
 
+  it("renders its copy in the locale the protected layout resolved", () => {
+    render(
+      <NotificationManager
+        locale="en"
+        notifications={[notification("n1")]}
+        pageSize={20}
+        tenantId="TENANT001"
+        timeZone="Asia/Tokyo"
+        unreadCount={1}
+      />
+    );
+
+    expect(screen.getByText("Notifications")).toBeDefined();
+    expect(screen.getByText("Unread")).toBeDefined();
+    expect(screen.queryByText("通知一覧")).toBeNull();
+  });
+
   it("作成日時をテナントタイムゾーンの壁時計で表示する", () => {
     render(
       <NotificationManager
+        locale="ja"
         notifications={[notification("n1")]}
         pageSize={20}
         tenantId="TENANT001"

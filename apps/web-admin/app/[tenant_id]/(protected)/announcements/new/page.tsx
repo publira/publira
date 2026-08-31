@@ -1,4 +1,6 @@
+import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -14,15 +16,20 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { listAllAnnouncementTargetUsers } from "#lib/announcement";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { AnnouncementForm } from "../_components/announcement-form";
 import { createAnnouncementAction } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "お知らせ作成",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.announcements.new_title") };
 };
 
 export const generateStaticParams = () =>
@@ -41,7 +48,8 @@ const AnnouncementFormSkeleton = () => (
 
 const AnnouncementFormData = async () => {
   const tenantId = await getTenantId();
-  const usersResult = await listAllAnnouncementTargetUsers(tenantId);
+  const locale = await getLocale(tenantId);
+  const usersResult = await listAllAnnouncementTargetUsers(tenantId, locale);
 
   await redirectToLoginIfSessionRejected(usersResult);
 
@@ -59,14 +67,22 @@ const NewAnnouncementPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>お知らせを作成</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.announcements.new_title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          本文・リンク先・配信対象を指定してお知らせを配信します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.announcements.new_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <LinkButton render={<Link href="/announcements" />} variant="outline">
-          一覧へ戻る
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.announcements.back_to_list" />
+          </Suspense>
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>

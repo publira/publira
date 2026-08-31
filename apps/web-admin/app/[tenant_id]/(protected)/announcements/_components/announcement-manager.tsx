@@ -1,3 +1,7 @@
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -28,18 +32,24 @@ import type { AnnouncementItem } from "../announcement-types";
 type AnnouncementManagerProps = CursorPageHrefs & {
   listErrorMessage?: string;
   announcements: AnnouncementItem[];
+  locale: Locale;
   pageSize: number;
   timeZone: string;
 };
 
-const formatAudience = (item: AnnouncementItem): string => {
+const formatAudience = (
+  item: AnnouncementItem,
+  messages: SharedMessages
+): string => {
   if (item.audienceType === "all") {
-    return "全体";
+    return getMessage(messages, "admin.announcements.audience_all");
   }
   if (item.targetUserName) {
-    return `指定 (${item.targetUserName})`;
+    return getMessage(messages, "admin.announcements.audience_selected_user", {
+      name: item.targetUserName,
+    });
   }
-  return "指定";
+  return getMessage(messages, "admin.announcements.audience_selected");
 };
 
 const excerpt = (text: string, maxLength: number): string => {
@@ -52,27 +62,33 @@ const excerpt = (text: string, maxLength: number): string => {
 
 // Absolute API timestamp → tenant display zone. `formatDateTime` falls back to
 // the raw value when it cannot be parsed, so only the empty case is special.
-const formatAnnouncementDateTime = (value: string, timeZone: string): string =>
-  value ? formatDateTime(value, { timeZone }) : "—";
+const formatAnnouncementDateTime = (
+  value: string,
+  locale: Locale,
+  timeZone: string
+): string => (value ? formatDateTime(value, { locale, timeZone }) : "—");
 
 const AnnouncementListBody = ({
   hasPageLinks,
   listErrorMessage,
   announcements,
+  locale,
   timeZone,
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
   announcements: AnnouncementItem[];
+  locale: Locale;
   timeZone: string;
 }) => {
+  const messages = sharedCatalog(locale);
   // A failed fetch still hands an empty `announcements` array; do not show the
   // empty list state alongside the error or operators will read it as "none".
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title="お知らせ一覧を表示できませんでした"
+        title={getMessage(messages, "admin.announcements.list_error")}
       />
     );
   }
@@ -80,10 +96,13 @@ const AnnouncementListBody = ({
   if (announcements.length === 0) {
     return (
       <CursorPageEmptyState
-        description="お知らせ作成から対象ユーザーにお知らせを配信してください。"
+        description={getMessage(
+          messages,
+          "admin.announcements.empty_description"
+        )}
         hasPageLinks={hasPageLinks}
-        itemLabel="お知らせ"
-        title="お知らせがまだありません。"
+        itemLabel={getMessage(messages, "admin.announcements.title")}
+        title={getMessage(messages, "admin.announcements.empty_title")}
       />
     );
   }
@@ -92,22 +111,36 @@ const AnnouncementListBody = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-44">作成日時</TableHead>
-          <TableHead>タイトル</TableHead>
-          <TableHead>本文</TableHead>
-          <TableHead className="w-52">対象</TableHead>
-          <TableHead className="w-60">リンク先</TableHead>
+          <TableHead className="w-44">
+            {getMessage(messages, "admin.announcements.columns.created_at")}
+          </TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.announcements.columns.title")}
+          </TableHead>
+          <TableHead>
+            {getMessage(messages, "admin.announcements.columns.body")}
+          </TableHead>
+          <TableHead className="w-52">
+            {getMessage(messages, "admin.announcements.columns.audience")}
+          </TableHead>
+          <TableHead className="w-60">
+            {getMessage(messages, "admin.announcements.columns.link")}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {announcements.map((announcement) => (
           <TableRow key={announcement.id}>
             <TableCell>
-              {formatAnnouncementDateTime(announcement.createdAt, timeZone)}
+              {formatAnnouncementDateTime(
+                announcement.createdAt,
+                locale,
+                timeZone
+              )}
             </TableCell>
             <TableCell className="font-medium">{announcement.title}</TableCell>
             <TableCell>{excerpt(announcement.body, 72)}</TableCell>
-            <TableCell>{formatAudience(announcement)}</TableCell>
+            <TableCell>{formatAudience(announcement, messages)}</TableCell>
             <TableCell>{announcement.linkUrl || "—"}</TableCell>
           </TableRow>
         ))}
@@ -120,10 +153,12 @@ export const AnnouncementManager = ({
   listErrorMessage,
   nextHref,
   announcements,
+  locale,
   pageSize,
   previousHref,
   timeZone,
 }: AnnouncementManagerProps) => {
+  const messages = sharedCatalog(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -134,16 +169,18 @@ export const AnnouncementManager = ({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>お知らせ一覧</CardTitle>
+          <CardTitle>
+            {getMessage(messages, "admin.announcements.list_title")}
+          </CardTitle>
           <CardDescription>
-            作成済みのお知らせと配信対象を確認できます。
+            {getMessage(messages, "admin.announcements.list_description")}
           </CardDescription>
         </div>
         <LinkButton
           render={<Link href="/announcements/new" />}
           variant="outline"
         >
-          お知らせを作成
+          {getMessage(messages, "admin.announcements.new_action")}
         </LinkButton>
       </CardHeader>
 
@@ -152,13 +189,21 @@ export const AnnouncementManager = ({
           hasPageLinks={hasPageLinks}
           listErrorMessage={listErrorMessage}
           announcements={announcements}
+          locale={locale}
           timeZone={timeZone}
         />
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel="お知らせ一覧のページ送り"
-            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            ariaLabel={getMessage(
+              messages,
+              "admin.announcements.pagination_aria"
+            )}
+            description={getMessage(
+              messages,
+              "admin.announcements.pagination_description",
+              { count: pageSize }
+            )}
             nextHref={nextHref}
             previousHref={previousHref}
           />

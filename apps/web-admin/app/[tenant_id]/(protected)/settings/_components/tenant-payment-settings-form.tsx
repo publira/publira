@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
@@ -19,8 +21,16 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { ChangeEvent } from "react";
-import { useActionState, useCallback, useId, useState } from "react";
+import {
+  useActionState,
+  useCallback,
+  useContext,
+  useId,
+  useState,
+} from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import type { AdminMessageKey } from "#lib/locale";
 import {
   paymentSettingsStatus,
   paymentSettingsStatusCopy,
@@ -56,7 +66,7 @@ interface PaymentSecretFieldProps {
   configured: boolean;
   error?: string;
   hint: string;
-  label: string;
+  labelKey: AdminMessageKey;
   name: string;
   required: boolean;
 }
@@ -66,10 +76,15 @@ const PaymentSecretField = ({
   configured,
   error,
   hint,
-  label,
+  labelKey,
   name,
   required,
 }: PaymentSecretFieldProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const inputId = useId();
   const [isEditing, setIsEditing] = useState(false);
   const showInput = !configured || isEditing;
@@ -85,7 +100,7 @@ const PaymentSecretField = ({
   return (
     <Field>
       <FieldLabel htmlFor={inputId} required={canEdit && required && showInput}>
-        {label}
+        {getMessage(messages, labelKey)}
       </FieldLabel>
       <FieldContent>
         {showInput ? (
@@ -105,7 +120,10 @@ const PaymentSecretField = ({
                 type="button"
                 variant="outline"
               >
-                変更を取り消す
+                {getMessage(
+                  messages,
+                  "admin.settings.payment.secret_change_cancel"
+                )}
               </Button>
             ) : null}
           </div>
@@ -118,7 +136,7 @@ const PaymentSecretField = ({
               type="button"
               variant="outline"
             >
-              変更する
+              {getMessage(messages, "admin.settings.payment.secret_change")}
             </Button>
           </div>
         )}
@@ -127,7 +145,7 @@ const PaymentSecretField = ({
         ) : null}
       </FieldContent>
       <FieldDescription>
-        入力した値は保存後に表示しません。登録済みの値は先頭と末尾だけがマスキングされます。
+        {getMessage(messages, "admin.settings.payment.secret_description")}
       </FieldDescription>
     </Field>
   );
@@ -152,6 +170,11 @@ const PaymentSettingsFields = ({
   settings,
   webhookUrl,
 }: PaymentSettingsFieldsProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const enabledId = useId();
   const [enabledOverride, setEnabledOverride] = useState<boolean | null>(null);
@@ -188,26 +211,33 @@ const PaymentSettingsFields = ({
       {loadErrorMessage ? null : (
         <div className="flex flex-wrap items-center gap-3">
           <StatusChip status={statusTone[status]}>
-            {statusCopy.label}
+            {getMessage(messages, statusCopy.labelKey)}
           </StatusChip>
           <p className="text-sm text-muted-foreground">
-            {statusCopy.description}
+            {getMessage(messages, statusCopy.descriptionKey)}
           </p>
         </div>
       )}
 
       <Field>
-        <FieldLabel>決済プロバイダ</FieldLabel>
+        <FieldLabel>
+          {getMessage(messages, "admin.settings.payment.provider")}
+        </FieldLabel>
         <FieldContent>
           <Input disabled readOnly type="text" value="Stripe" />
           <FieldDescription>
-            現在選択できるプロバイダは Stripe のみです。
+            {getMessage(
+              messages,
+              "admin.settings.payment.provider_description"
+            )}
           </FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
-        <FieldLabel htmlFor={enabledId}>Stripe 決済を有効にする</FieldLabel>
+        <FieldLabel htmlFor={enabledId}>
+          {getMessage(messages, "admin.settings.payment.enabled")}
+        </FieldLabel>
         <FieldContent>
           <label className="inline-flex items-center gap-2 text-sm text-foreground">
             <input
@@ -218,11 +248,10 @@ const PaymentSettingsFields = ({
               onChange={handleEnabledChange}
               type="checkbox"
             />
-            有効化
+            {getMessage(messages, "admin.settings.payment.enabled_checkbox")}
           </label>
           <FieldDescription>
-            OFF の場合、有料エピソードの Checkout と Webhook
-            はこのテナントでは動きません。
+            {getMessage(messages, "admin.settings.payment.enabled_description")}
           </FieldDescription>
         </FieldContent>
       </Field>
@@ -232,7 +261,7 @@ const PaymentSettingsFields = ({
         configured={settings.secretKeyConfigured}
         error={fieldErrors?.secretKey}
         hint={settings.secretKeyHint}
-        label="シークレットキー"
+        labelKey="admin.settings.payment.secret_key"
         name="secret_key"
         required={secretKeyRequired}
       />
@@ -242,19 +271,23 @@ const PaymentSettingsFields = ({
         configured={settings.webhookSecretConfigured}
         error={fieldErrors?.webhookSecret}
         hint={settings.webhookSecretHint}
-        label="Webhook 署名シークレット"
+        labelKey="admin.settings.payment.webhook_secret"
         name="webhook_secret"
         required={webhookSecretRequired}
       />
 
       {webhookUrl ? (
         <Field>
-          <FieldLabel>Webhook URL</FieldLabel>
+          <FieldLabel>
+            {getMessage(messages, "admin.settings.payment.webhook_url")}
+          </FieldLabel>
           <FieldContent>
             <Input disabled readOnly type="text" value={webhookUrl} />
             <FieldDescription>
-              Stripe ダッシュボードにこの URL
-              を登録してください。署名シークレットは上の欄で保存します。
+              {getMessage(
+                messages,
+                "admin.settings.payment.webhook_url_description"
+              )}
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -262,7 +295,7 @@ const PaymentSettingsFields = ({
 
       {canEdit ? null : (
         <FormMessage variant="destructive">
-          この設定はテナント管理者のみ編集できます。現在は閲覧専用です。
+          {getMessage(messages, "admin.settings.admin_only")}
         </FormMessage>
       )}
 
@@ -278,7 +311,9 @@ const PaymentSettingsFields = ({
 
       <div className="flex flex-wrap gap-3">
         <Button disabled={fieldsDisabled || isSaving} type="submit">
-          {isSaving ? "保存中..." : "保存"}
+          {isSaving
+            ? getMessage(messages, "admin.settings.saving")
+            : getMessage(messages, "admin.settings.save")}
         </Button>
       </div>
     </form>
@@ -292,16 +327,22 @@ export const TenantPaymentSettingsForm = ({
   loadErrorMessage,
   webhookUrl,
 }: TenantPaymentSettingsFormProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const [saveState, saveFormAction, isSaving] = useActionState(action, null);
   const settings = saveState?.ok ? saveState.settings : initialSettings;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>決済設定</CardTitle>
+        <CardTitle>
+          {getMessage(messages, "admin.settings.payment.title")}
+        </CardTitle>
         <CardDescription>
-          このテナントの Stripe
-          シークレットを登録・更新・無効化します。秘密情報は書き込み専用で、再表示時は状態とマスキングだけが見えます。
+          {getMessage(messages, "admin.settings.payment.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>

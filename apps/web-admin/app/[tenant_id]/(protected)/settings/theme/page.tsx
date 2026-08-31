@@ -1,3 +1,4 @@
+import { getMessage } from "@publira/i18n";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -16,6 +17,7 @@ import {
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeSettings } from "#lib/theme-settings";
 
@@ -29,8 +31,11 @@ import {
   updateTenantThemeSettingsAction,
 } from "../_lib/actions";
 
-export const metadata: Metadata = {
-  title: "設定 - テーマ",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.settings.theme_title") };
 };
 
 export const generateStaticParams = () =>
@@ -55,8 +60,10 @@ const SettingsThemeFormsSkeleton = () => (
 
 const SettingsThemeForms = async () => {
   const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+  const messages = await loadAdminMessages(locale);
 
-  const themeResult = await getTenantThemeSettings(tenantId);
+  const themeResult = await getTenantThemeSettings(tenantId, locale);
 
   await redirectToLoginIfSessionRejected(themeResult);
 
@@ -64,7 +71,7 @@ const SettingsThemeForms = async () => {
     return (
       <SectionError
         description={themeResult.message}
-        title="テーマを表示できませんでした"
+        title={getMessage(messages, "admin.settings.theme_error")}
       />
     );
   }
@@ -92,9 +99,15 @@ const SettingsThemePage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>設定</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
+            <Message message="admin.settings.title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          テナントごとのテーマカラー、ロゴ、アイコンを管理します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.settings.theme_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

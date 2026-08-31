@@ -5,6 +5,10 @@ import type {
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { DEFAULT_LOCALE, getMessage, toIntlLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import type {
@@ -26,17 +30,22 @@ import {
 } from "./cursor-page";
 import { getAccessToken } from "./session";
 
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
-const listErrorMessage =
-  "お知らせ一覧の取得に失敗しました。時間をおいて再試行してください。";
-const createErrorMessage =
-  "お知らせの配信に失敗しました。時間をおいて再試行してください。";
-const targetUsersErrorMessage = "対象ユーザー一覧の取得に失敗しました。";
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
+const listErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.announcements.list_failed");
+const createErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.announcements.create_failed");
+const targetUsersErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.announcements.target_users_failed");
 const audienceTypeAllUsers = 1;
 const audienceTypeSelectedUsers = 2;
 
-const mapErrorMessage = (error: unknown, fallback: string): string =>
-  rpcErrorMessage(error, fallback);
+const mapErrorMessage = (
+  error: unknown,
+  fallback: string,
+  locale: Locale
+): string => rpcErrorMessage(error, fallback, { locale });
 
 /** The generated `AdminAnnouncement` fields {@link mapAnnouncement} reads (see `series.ts`). */
 type RawAnnouncement = Pick<
@@ -83,12 +92,14 @@ const mapUser = (user: RawAnnouncementTargetUser): AnnouncementTargetUser => ({
  * until the entry expired.
  */
 export const listAllAnnouncementTargetUsers = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListAnnouncementTargetUsersResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
       users: [],
@@ -126,7 +137,7 @@ export const listAllAnnouncementTargetUsers = async (
     // option list that operators read as the whole tenant.
     if (walkStop !== "completed") {
       return {
-        message: targetUsersErrorMessage,
+        message: targetUsersErrorMessage(messages),
         ok: false,
         requiresSignIn: false,
         users: [],
@@ -135,12 +146,18 @@ export const listAllAnnouncementTargetUsers = async (
 
     return {
       ok: true,
-      users: users.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
+      users: users.toSorted((a, b) =>
+        a.name.localeCompare(b.name, toIntlLocale(locale))
+      ),
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorMessage(error, targetUsersErrorMessage),
+      message: mapErrorMessage(
+        error,
+        targetUsersErrorMessage(messages),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       users: [],
@@ -157,17 +174,19 @@ export const listAllAnnouncementTargetUsers = async (
  */
 export const listAnnouncements = async (
   tenantId: string,
-  options: CursorPageOptions = {}
+  options: CursorPageOptions = {},
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListAnnouncementsResult> => {
   "use cache: private";
   cacheTag(`announcements-${tenantId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       announcements: [],
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -194,27 +213,31 @@ export const listAnnouncements = async (
     return {
       ...emptyCursorPageTokens,
       announcements: [],
-      message: mapErrorMessage(error, listErrorMessage),
+      message: mapErrorMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const createAnnouncement = async (input: {
-  tenantId: string;
-  title: string;
-  body: string;
-  linkUrl: string;
-  audienceType: "all" | "selected";
-  targetUserPublicIds: string[];
-}): Promise<
+export const createAnnouncement = async (
+  input: {
+    tenantId: string;
+    title: string;
+    body: string;
+    linkUrl: string;
+    audienceType: "all" | "selected";
+    targetUserPublicIds: string[];
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<
   { ok: true; createdCount: number } | { ok: false; message: string }
 > => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -245,7 +268,7 @@ export const createAnnouncement = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorMessage(error, createErrorMessage),
+      message: mapErrorMessage(error, createErrorMessage(messages), locale),
       ok: false,
     };
   }

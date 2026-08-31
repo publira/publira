@@ -4,6 +4,10 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -47,11 +51,12 @@ export type TenantPaymentSettingsResult =
       requiresSignIn?: boolean;
     };
 
-const genericLoadErrorMessage =
-  "決済設定の取得に失敗しました。時間をおいて再試行してください。";
-const genericUpdateErrorMessage =
-  "決済設定の保存に失敗しました。時間をおいて再試行してください。";
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
+const genericLoadErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.payment.load_failed");
+const genericUpdateErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.settings.payment.save_failed");
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
 
 /**
  * Tag the settings screen's cached read carries, so `updateTag` in the Server
@@ -66,11 +71,18 @@ export const tenantPaymentSettingsCacheTag = (tenantId: string): string =>
  * fix, so those categories pass the server's own text through. Other categories
  * take the shared copy — a raw `[internal]` message is not something to show.
  */
-const parseErrorMessage = (error: unknown, fallback: string): string => {
+const parseErrorMessage = (
+  error: unknown,
+  fallback: string,
+  locale: Locale
+): string => {
   const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
   return rpcErrorMessage(error, fallback, {
-    "invalid-argument": serverMessage,
-    precondition: serverMessage,
+    locale,
+    overrides: {
+      "invalid-argument": serverMessage,
+      precondition: serverMessage,
+    },
   });
 };
 
@@ -104,15 +116,17 @@ const toTenantPaymentSettings = (
 });
 
 export const getTenantPaymentSettings = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantPaymentSettingsResult> => {
   "use cache: private";
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: !sessionId,
     };
@@ -135,7 +149,11 @@ export const getTenantPaymentSettings = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, genericLoadErrorMessage),
+      message: parseErrorMessage(
+        error,
+        genericLoadErrorMessage(messages),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -143,12 +161,14 @@ export const getTenantPaymentSettings = async (
 };
 
 export const updateTenantPaymentSettings = async (
-  input: UpdateTenantPaymentSettingsInput
+  input: UpdateTenantPaymentSettingsInput,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<TenantPaymentSettingsResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return { message: sessionErrorMessage(messages), ok: false };
   }
 
   try {
@@ -174,7 +194,11 @@ export const updateTenantPaymentSettings = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, genericUpdateErrorMessage),
+      message: parseErrorMessage(
+        error,
+        genericUpdateErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }

@@ -1,12 +1,21 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import { ConfirmDialog } from "@publira/ui-components/dialog";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useEffectEvent, useRef } from "react";
+import {
+  useActionState,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useRef,
+} from "react";
 
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { revokeAccessTicketAction } from "../_lib/actions";
@@ -16,6 +25,11 @@ interface RevokeTicketButtonProps {
 }
 
 export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const router = useRouter();
   const { add } = useToastManager();
@@ -26,7 +40,10 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
   );
 
   const onRevoked = useEffectEvent(() => {
-    add({ title: "チケットを失効しました。", type: "success" });
+    add({
+      title: getMessage(messages, "admin.access_tickets.revoked"),
+      type: "success",
+    });
     router.refresh();
   });
 
@@ -44,13 +61,22 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
         <input name="public_id" type="hidden" value={publicId} />
       </form>
       <ConfirmDialog
-        actionText="失効する"
+        actionText={getMessage(
+          messages,
+          "admin.access_tickets.revoke_confirm_action"
+        )}
         actionVariant="destructive"
-        description="失効したチケットでは対象エピソードを閲覧できなくなります。同じユーザーへ再度付与するには、失効後に発行し直してください。"
+        description={getMessage(
+          messages,
+          "admin.access_tickets.revoke_confirm_description"
+        )}
         onAction={() => {
           formRef.current?.requestSubmit();
         }}
-        title="このチケットを失効しますか？"
+        title={getMessage(
+          messages,
+          "admin.access_tickets.revoke_confirm_title"
+        )}
         trigger={
           <Button
             disabled={isPending}
@@ -58,7 +84,9 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
             type="button"
             variant="outline"
           >
-            {isPending ? "失効中…" : "失効"}
+            {isPending
+              ? getMessage(messages, "admin.access_tickets.revoking")
+              : getMessage(messages, "admin.access_tickets.revoke")}
           </Button>
         }
       />

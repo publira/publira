@@ -35,12 +35,12 @@ export { NotificationBellSkeleton } from "./notification-bell-menu";
  */
 export const NotificationBell = async () => {
   const tenantId = await getTenantId();
-  const [list, unread, locale] = await Promise.all([
-    listNotifications(tenantId, { limit: notificationMenuLimit }),
-    countUnreadNotifications(tenantId),
-    getLocale(tenantId),
+  const locale = await getLocale(tenantId);
+  const [list, unread, messages] = await Promise.all([
+    listNotifications(tenantId, { limit: notificationMenuLimit }, locale),
+    countUnreadNotifications(tenantId, locale),
+    loadAdminMessages(locale),
   ]);
-  const messages = await loadAdminMessages(locale);
   const count = Math.max(0, unread.unreadCount);
   const ariaLabel =
     count > 0

@@ -148,10 +148,13 @@ describe("updateTenantThemeSettingsAction", () => {
       ok: true,
       theme: DEFAULT_TENANT_THEME_COLORS,
     });
-    expect(mockUpdateTenantThemeSettings).toHaveBeenCalledWith({
-      ...DEFAULT_TENANT_THEME_COLORS,
-      tenantId: "TENANT001",
-    });
+    expect(mockUpdateTenantThemeSettings).toHaveBeenCalledWith(
+      {
+        ...DEFAULT_TENANT_THEME_COLORS,
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:theme-settings"
@@ -189,10 +192,13 @@ describe("updateTenantTimezoneAction", () => {
       ok: true,
       timezone: "America/Los_Angeles",
     });
-    expect(mockUpdateTenantTimezone).toHaveBeenCalledWith({
-      tenantId: "TENANT001",
-      timezone: "America/Los_Angeles",
-    });
+    expect(mockUpdateTenantTimezone).toHaveBeenCalledWith(
+      {
+        tenantId: "TENANT001",
+        timezone: "America/Los_Angeles",
+      },
+      "ja"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:timezone");
   });
 
@@ -214,10 +220,13 @@ describe("updateTenantTimezoneAction", () => {
       ok: true,
       timezone: "Asia/Calcutta",
     });
-    expect(mockUpdateTenantTimezone).toHaveBeenCalledWith({
-      tenantId: "TENANT001",
-      timezone: "Asia/Calcutta",
-    });
+    expect(mockUpdateTenantTimezone).toHaveBeenCalledWith(
+      {
+        tenantId: "TENANT001",
+        timezone: "Asia/Calcutta",
+      },
+      "ja"
+    );
   });
 
   it.each([
@@ -318,10 +327,13 @@ describe("updateTenantDefaultLocaleAction", () => {
       message: "既定言語を保存しました。",
       ok: true,
     });
-    expect(mockUpdateTenantDefaultLocale).toHaveBeenCalledWith({
-      defaultLocale: "en",
-      tenantId: "TENANT001",
-    });
+    expect(mockUpdateTenantDefaultLocale).toHaveBeenCalledWith(
+      {
+        defaultLocale: "en",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:default-locale"
     );
@@ -421,14 +433,17 @@ describe("updateTenantPaymentSettingsAction", () => {
       ok: true,
       settings: storedPaymentSettings,
     });
-    expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith({
-      enabled: true,
-      secretKey: "sk_test_51NEW",
-      secretKeyUpdateMode: 2,
-      tenantId: "TENANT001",
-      webhookSecret: "whsec_NEW",
-      webhookSecretUpdateMode: 2,
-    });
+    expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith(
+      {
+        enabled: true,
+        secretKey: "sk_test_51NEW",
+        secretKeyUpdateMode: 2,
+        tenantId: "TENANT001",
+        webhookSecret: "whsec_NEW",
+        webhookSecretUpdateMode: 2,
+      },
+      "ja"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:payment-settings"
     );
@@ -453,14 +468,17 @@ describe("updateTenantPaymentSettingsAction", () => {
     );
 
     expect(result?.ok).toBe(true);
-    expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith({
-      enabled: true,
-      secretKey: "",
-      secretKeyUpdateMode: 1,
-      tenantId: "TENANT001",
-      webhookSecret: "",
-      webhookSecretUpdateMode: 1,
-    });
+    expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith(
+      {
+        enabled: true,
+        secretKey: "",
+        secretKeyUpdateMode: 1,
+        tenantId: "TENANT001",
+        webhookSecret: "",
+        webhookSecretUpdateMode: 1,
+      },
+      "ja"
+    );
   });
 
   it("未設定のまま有効化するとフィールドエラーを返し API を呼ばない", async () => {
@@ -593,11 +611,14 @@ describe("updateTenantIconAction", () => {
       message: "アイコンを保存しました。",
       ok: true,
     });
-    expect(mockUploadTenantIcon).toHaveBeenCalledWith({
-      iconContentType: "image/png",
-      iconData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-      tenantId: "TENANT001",
-    });
+    expect(mockUploadTenantIcon).toHaveBeenCalledWith(
+      {
+        iconContentType: "image/png",
+        iconData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:theme-settings"
@@ -619,7 +640,7 @@ describe("updateTenantIconAction", () => {
       message: "アイコンを削除しました。",
       ok: true,
     });
-    expect(mockDeleteTenantIcon).toHaveBeenCalledWith("TENANT001");
+    expect(mockDeleteTenantIcon).toHaveBeenCalledWith("TENANT001", "ja");
     expect(mockUploadTenantIcon).not.toHaveBeenCalled();
   });
 
@@ -737,11 +758,14 @@ describe("updateTenantLogoAction", () => {
       message: "ロゴを保存しました。",
       ok: true,
     });
-    expect(mockUploadTenantLogo).toHaveBeenCalledWith({
-      logoContentType: "image/png",
-      logoData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-      tenantId: "TENANT001",
-    });
+    expect(mockUploadTenantLogo).toHaveBeenCalledWith(
+      {
+        logoContentType: "image/png",
+        logoData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:theme-settings"
@@ -763,7 +787,7 @@ describe("updateTenantLogoAction", () => {
       message: "ロゴを削除しました。",
       ok: true,
     });
-    expect(mockDeleteTenantLogo).toHaveBeenCalledWith("TENANT001");
+    expect(mockDeleteTenantLogo).toHaveBeenCalledWith("TENANT001", "ja");
     expect(mockUploadTenantLogo).not.toHaveBeenCalled();
   });
 

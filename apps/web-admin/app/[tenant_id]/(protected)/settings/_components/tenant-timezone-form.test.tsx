@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render as renderBase, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import { TenantTimezoneForm } from "./tenant-timezone-form";
 
@@ -10,6 +13,13 @@ vi.mock("next/navigation", () => ({
 }));
 
 const noopAction = vi.fn();
+
+const render = (ui: ReactNode) =>
+  renderBase(ui, {
+    wrapper: ({ children }) => (
+      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+    ),
+  });
 
 afterEach(() => {
   cleanup();

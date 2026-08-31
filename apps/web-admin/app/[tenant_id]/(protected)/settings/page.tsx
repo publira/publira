@@ -1,4 +1,4 @@
-import { getLocaleLabel, getLocales } from "@publira/i18n";
+import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -18,6 +18,7 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantSiteSettings } from "#lib/site-settings";
 import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
 import { getTenantId } from "#lib/tenant-id";
@@ -34,8 +35,11 @@ import {
   updateTenantTimezoneAction,
 } from "./_lib/actions";
 
-export const metadata: Metadata = {
-  title: "設定 - 基本情報",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getLocale();
+  const messages = await loadAdminMessages(locale);
+
+  return { title: getMessage(messages, "admin.settings.basic_title") };
 };
 
 export const generateStaticParams = () =>
@@ -70,6 +74,8 @@ const tenantDefaultLocaleOptions = (): TenantDefaultLocaleFormOption[] =>
 
 const SettingsForms = async () => {
   const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+  const messages = await loadAdminMessages(locale);
 
   const [
     settingsResult,
@@ -78,9 +84,9 @@ const SettingsForms = async () => {
     currentUserResult,
     options,
   ] = await Promise.all([
-    getTenantSiteSettings(tenantId),
-    getTenantTimezone(tenantId),
-    getTenantDefaultLocale(tenantId),
+    getTenantSiteSettings(tenantId, locale),
+    getTenantTimezone(tenantId, locale),
+    getTenantDefaultLocale(tenantId, locale),
     getAdminCurrentUser(tenantId),
     tenantDefaultLocaleOptions(),
   ]);
@@ -106,7 +112,7 @@ const SettingsForms = async () => {
       ) : (
         <SectionError
           description={settingsResult.message}
-          title="設定を表示できませんでした"
+          title={getMessage(messages, "admin.settings.section_error")}
         />
       )}
 
@@ -137,9 +143,15 @@ const SettingsPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>設定</AdminPageTitle>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
+            <Message message="admin.settings.title" />
+          </Suspense>
+        </AdminPageTitle>
         <AdminPageDescription>
-          テナントごとの公開表示設定を管理します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.settings.basic_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

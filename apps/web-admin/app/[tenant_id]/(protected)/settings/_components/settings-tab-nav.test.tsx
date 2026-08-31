@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SettingsTabNav } from "./settings-tab-nav";
+
+vi.mock("#components/message", () => ({
+  Message: ({ message }: { message: string }) =>
+    getMessage(sharedCatalog("ja"), message),
+}));
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: ComponentProps<"a">) => (
