@@ -68,7 +68,7 @@ test.describe("web-platform auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("an unauthenticated /tenants sends to login with next and comes back on success", async ({
+  test("an unauthenticated /tenants redirects to login with next and comes back after signing in", async ({
     page,
   }) => {
     await page.goto(platformUrl("/tenants"));
@@ -112,7 +112,7 @@ test.describe("web-platform auth", () => {
     await expect(page).toHaveURL(/\/login\?next=/u);
   });
 
-  test("a protected route without a cookie sends to login", async ({
+  test("a protected route without a cookie redirects to login", async ({
     page,
   }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");
@@ -123,7 +123,7 @@ test.describe("web-platform auth", () => {
     await expect(page).not.toHaveURL(/reason=session_revoked/u);
   });
 
-  test("an expired cookie sends to login without session_revoked", async ({
+  test("an expired cookie redirects to login without session_revoked", async ({
     page,
   }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");

@@ -64,7 +64,7 @@ test.describe("web-host auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("an unauthenticated member page sends to login with returnTo and comes back on success", async ({
+  test("an unauthenticated member page redirects to login with returnTo and comes back after signing in", async ({
     page,
   }) => {
     await page.goto(hostUrl("/announcements"));
@@ -98,7 +98,9 @@ test.describe("web-host auth", () => {
     await expectSameOriginPath(page, WEB_HOST_BASE_URL, hostPath("/"));
   });
 
-  test("opening /login while signed in sends to My Page", async ({ page }) => {
+  test("opening /login while signed in redirects to My Page", async ({
+    page,
+  }) => {
     await signInAsSeedMember(page, "/my");
     await page.goto(hostUrl("/login?returnTo=%2Fannouncements"));
 
@@ -120,7 +122,9 @@ test.describe("web-host auth", () => {
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
   });
 
-  test("a member page without a cookie sends to login", async ({ page }) => {
+  test("a member page without a cookie redirects to login", async ({
+    page,
+  }) => {
     await signInAsSeedMember(page, "/my");
     await page.context().clearCookies({ name: HOST_SESSION_COOKIE_NAME });
 
@@ -129,7 +133,7 @@ test.describe("web-host auth", () => {
     await expect(page).not.toHaveURL(/reason=session_revoked/u);
   });
 
-  test("an expired cookie sends to login without session_revoked", async ({
+  test("an expired cookie redirects to login without session_revoked", async ({
     page,
   }) => {
     await signInAsSeedMember(page, "/my");

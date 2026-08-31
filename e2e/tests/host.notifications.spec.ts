@@ -41,7 +41,9 @@ test.describe("web-host notification bell", () => {
     await expect(page.getByText("通知はまだありません。")).toHaveCount(0);
   });
 
-  test("/notifications sends to login while signed out", async ({ page }) => {
+  test("/notifications redirects to login while signed out", async ({
+    page,
+  }) => {
     await page.goto(hostPath("/notifications"));
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
     await expect(

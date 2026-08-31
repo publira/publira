@@ -106,7 +106,7 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
   });
 
-  test("updates name and domain, and the detail shows them back", async ({
+  test("updates name and domain, and the tenant detail shows the new values", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -218,7 +218,7 @@ test.describe("platform tenant operations", () => {
     await expect(page.getByLabel(/メールアドレス/u)).toBeVisible();
   });
 
-  test("suspends and resumes a tenant, and the list state follows", async ({
+  test("suspends and resumes a tenant, and the list reflects the new state", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -310,7 +310,7 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
   });
 
-  test("an operator without the permission is refused operator creation", async ({
+  test("an operator without the required permission cannot create an operator", async ({
     page,
   }) => {
     applyScenarioSql(PLATFORM_OPERATORS_SCENARIO);
@@ -338,7 +338,7 @@ test.describe("platform tenant operations", () => {
     await expect(page).toHaveURL(/\/operators\/new/u);
   });
 
-  test("an operator without the permission can still read the tenant list", async ({
+  test("an operator without the required permission can still read the tenant list", async ({
     page,
   }) => {
     applyScenarioSql(PLATFORM_OPERATORS_SCENARIO);
