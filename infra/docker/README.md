@@ -1,103 +1,95 @@
-# Dockerfile 配置規約とビルド検証
+# Dockerfile placement and build verification
 
-本番・CI で使う実行イメージ用 Dockerfile の置き場、ビルド手順、`Docker / <target>` ジョブとの連携を定義する。  
-新規サービス追加時は本ドキュメントに従い、配置先が一意に決まるようにする。
+This document defines where Dockerfiles for production and CI runtime images live, how to build them, and their connection to the `Docker / <target>` jobs. Follow it when adding services so the placement is unambiguous.
 
-エージェント向け実装ルール: [`AGENTS.md`](./AGENTS.md)  
-ホスト CI を含む CI 全体（ジョブ構成・path filter・トリアージ）: [`.github/workflows/README.md`](../../.github/workflows/README.md)
+Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, including host CI (job layout, path filters, and triage): [`.github/workflows/README.md`](../../.github/workflows/README.md)
 
-関連:
+Related: [#82](https://github.com/publira/publira/issues/82) (policy and placement), [#83](https://github.com/publira/publira/issues/83) (placement conventions), and [#87](https://github.com/publira/publira/issues/87) (build verification and CI integration).
 
-- [#82](https://github.com/publira/publira/issues/82)（方針策定・配置）
-- [#83](https://github.com/publira/publira/issues/83)（配置規約）
-- [#87](https://github.com/publira/publira/issues/87)（ビルド検証と CI 連携）
+## Adopted policy
 
-## 方針（採用）
+**Keep shared Dockerfiles grouped by runtime role under `infra/docker/<role>/`, and select the target with `ARG`.** The build context is always the **repository root** (`.`).
 
-**ロール別の共有 Dockerfile を `infra/docker/<role>/` に集約し、`ARG` で対象を切り替える。**  
-build context は常に **リポジトリルート**（`.`）。
-
-| ロール | パス | 対象 | 主な ARG |
+| Role | Path | Target | Primary ARGs |
 | --- | --- | --- | --- |
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
-| API (常駐) | [`api/Dockerfile`](./api/Dockerfile) | `server/cmd/*` の HTTP サーバー（CGO なし） | `CMD_NAME`, `PORT` |
-| Image (常駐) | [`image/Dockerfile`](./image/Dockerfile) | `image-server` / `admin-image-server`（Manael / libvips） | `CMD_NAME`, `PORT` |
-| Batch | [`batch/Dockerfile`](./batch/Dockerfile) | `server/cmd/batch`（全バッチジョブ） | なし |
-| Node (常駐) | [`node/Dockerfile`](./node/Dockerfile) | `apps/*` のうち Next.js でないもの | `APP_NAME`, `PORT` |
+| API (long-running) | [`api/Dockerfile`](./api/Dockerfile) | HTTP servers in `server/cmd/*` without CGO | `CMD_NAME`, `PORT` |
+| Image (long-running) | [`image/Dockerfile`](./image/Dockerfile) | `image-server` / `admin-image-server` (Manael / libvips) | `CMD_NAME`, `PORT` |
+| Batch | [`batch/Dockerfile`](./batch/Dockerfile) | `server/cmd/batch` (all batch jobs) | none |
+| Node (long-running) | [`node/Dockerfile`](./node/Dockerfile) | non-Next.js services in `apps/*` | `APP_NAME`, `PORT` |
 
-Dev Container 用は本番と分離する。
+Keep the Dev Container separate from production images.
 
-| 用途     | パス                                                         |
-| -------- | ------------------------------------------------------------ |
-| 開発環境 | [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) |
+| Use | Path |
+| --- | --- |
+| Development environment | [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) |
 
-`apps/*/Dockerfile` や `server/cmd/*/Dockerfile` には **置かない**（コピー展開もしない）。
+Do **not** put Dockerfiles in `apps/*/Dockerfile` or `server/cmd/*/Dockerfile`, including generated copies.
 
-## なぜこの配置か
+## Why this layout
 
-| 選択肢 | 採否 | 理由 |
+| Option | Decision | Reason |
 | --- | --- | --- |
-| サービス直下に Dockerfile（旧方針） | 不採用 | 同型イメージが N 本に複製され、ベースイメージ digest・ビルド手順の追随がバラつく |
-| `infra/docker/templates/` + 各 cmd へコピー | 不採用 | 「正」がテンプレと生成物の二箇所になり、ドリフトしやすい |
-| **ロール別 Dockerfile + ARG**（現行） | **採用** | 同ランタイムは 1 ファイル。ビルド時に対象だけ差し替え。ルート context で monorepo / `server/` を正しく扱える |
-| Dev Container と本番を同居 | 不採用 | 開発ツール（task, sqlc, Flutter 等）と最小実行イメージの責務が異なる |
+| Dockerfile under each service (the old policy) | Rejected | It duplicates the same image shape many times, making base-image digest and build-process updates inconsistent. |
+| `infra/docker/templates/` copied to each command | Rejected | It creates two sources of truth—the template and generated output—which can drift. |
+| **One Dockerfile per role plus `ARG`** (current) | **Adopted** | Each runtime has one file and only its build target changes. The root context handles the monorepo and `server/` correctly. |
+| Combine Dev Container and production images | Rejected | Development tools (`task`, `sqlc`, Flutter, and more) have different responsibilities from a minimal runtime image. |
 
-「サービス近接」の利点（対象がコード隣で見つけやすい）は、**ロール別パスと本 README・ルート README の導線**で補う。  
-実装の詳細（`turbo prune`、Go の `cmd` パス等）は各 Dockerfile 先頭コメントを正とする。
+Role-based paths and links from this README and the root README retain the discoverability advantage of keeping a Dockerfile beside each service. Dockerfile header comments are the source of truth for implementation details such as `turbo prune` and Go `cmd` paths.
 
-## 新規サービス追加時の判断フロー
+## Decision flow for new services
 
 ```text
-何をコンテナ化するか？
-├─ Next.js アプリ (apps/<name>)
+What is being containerized?
+├─ A Next.js app (apps/<name>)
 │    → infra/docker/web/Dockerfile
-│    → --build-arg APP_NAME=<name>   # package 名は @publira/<name>
-│    → 必要なら PORT（既定 3000）
+│    → --build-arg APP_NAME=<name>   # package name is @publira/<name>
+│    → Set PORT when needed (default: 3000)
 │
-├─ Go の常駐 HTTP サーバー (server/cmd/<name>、CGO なし)
+├─ A long-running Go HTTP server (server/cmd/<name>, no CGO)
 │    → infra/docker/api/Dockerfile
 │    → --build-arg CMD_NAME=<name>
-│    → 必要なら PORT（既定 8000）
+│    → Set PORT when needed (default: 8000)
 │
-├─ Go の画像サーバー (image-server / admin-image-server)
+├─ A Go image server (image-server / admin-image-server)
 │    → infra/docker/image/Dockerfile
 │    → --build-arg CMD_NAME=<name>
-│    → 必要なら PORT（既定 8200）
+│    → Set PORT when needed (default: 8200)
 │
-├─ Go のバッチジョブ
-│    → infra/docker/batch/Dockerfile（build ARG は無い）
-│    → ジョブはコンテナ引数で選ぶ: docker run publira/batch:local <サブコマンド>
+├─ A Go batch job
+│    → infra/docker/batch/Dockerfile (no build ARG)
+│    → Select the job with a container argument: docker run publira/batch:local <subcommand>
 │
-├─ Next.js でない Node.js の常駐サービス (apps/<name>)
+├─ A long-running non-Next.js Node.js service (apps/<name>)
 │    → infra/docker/node/Dockerfile
-│    → --build-arg APP_NAME=<name>   # package 名は @publira/<name>
-│    → 必要なら PORT（既定 8080）
+│    → --build-arg APP_NAME=<name>   # package name is @publira/<name>
+│    → Set PORT when needed (default: 8080)
 │
-└─ 上記以外のランタイム（例: 別言語のワーカー）
-     → 新ロール infra/docker/<role>/Dockerfile を追加し、本表を更新する
-     → 既存ロールに無理に載せない
+└─ Another runtime (for example, a worker in another language)
+     → Add a new role at infra/docker/<role>/Dockerfile and update this table
+     → Do not force it into an existing role
 ```
 
-### 命名
+### Naming
 
-- **ロールディレクトリ**: 短い種別名（`web` / `api` / `batch` / `node`）。サービス名は付けない。
-- **`APP_NAME`**: `apps/` 直下のディレクトリ名（例: `web-admin`、`email-renderer`）。`@publira/` プレフィックスは Dockerfile 内で付与。
-- **`CMD_NAME`**: `server/cmd/` 直下のディレクトリ名（例: `api-server`）。
-- **イメージタグ例**: `publira/<サービス名>:local`（ビルド側の慣習。レジストリ方針はデプロイ側で別途定義）。
+- **Role directories** use a short category name (`web` / `api` / `batch` / `node`), never a service name.
+- **`APP_NAME`** is the directory name directly under `apps/` (for example, `web-admin` or `email-renderer`). The Dockerfile adds the `@publira/` prefix.
+- **`CMD_NAME`** is the directory name directly under `server/cmd/` (for example, `api-server`).
+- **Example image tags** use `publira/<service-name>:local`, a build-time convention. Deployment defines registry policy separately.
 
-## ビルド規約
+## Build conventions
 
-### Context と `-f`
+### Context and `-f`
 
 ```bash
-# 必ずリポジトリルートで実行する
+# Always run this from the repository root.
 docker build -f infra/docker/<role>/Dockerfile --build-arg ... -t publira/<name>:local .
 ```
 
-- context は `.`（ルート）。`apps/web-admin` や `server` を context にしない。
-- ルート [`.dockerignore`](../../.dockerignore) が context を絞り込む。
+- The context is the root (`.`); do not use `apps/web-admin` or `server` as the context.
+- The root [`.dockerignore`](../../.dockerignore) narrows the context.
 
-### 例
+### Examples
 
 ```bash
 # Web
@@ -139,7 +131,7 @@ docker build -f infra/docker/image/Dockerfile \
   --build-arg CMD_NAME=admin-image-server --build-arg PORT=8201 \
   -t publira/admin-image-server:local .
 
-# Batch（全ジョブが 1 イメージ。ジョブはコンテナ引数で選ぶ）
+# Batch (all jobs share one image; choose the job with a container argument)
 docker build -f infra/docker/batch/Dockerfile \
   -t publira/batch:local .
 
@@ -151,64 +143,56 @@ docker build -f infra/docker/node/Dockerfile \
   -t publira/email-renderer:local .
 ```
 
-### マルチステージの共通方針
+### Shared multi-stage policy
 
-| 段階 | 内容 |
+| Stage | Contents |
 | --- | --- |
-| ビルド | フルツールチェーン付き Debian 系（Node bookworm-slim / golang bookworm） |
-| 実行 | distroless（Web / Node: `nodejs24-debian12:nonroot`、Go API / batch: `static:nonroot`）。画像サーバーだけ `debian:bookworm-slim` + `libvips42`（CGO） |
-| ベースイメージ | `tag@sha256:…` で digest 固定（Renovate が追跡） |
-| ツール版（turbo / pnpm 等） | `ARG *_VERSION` + `# renovate: datasource=…`（[`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) と同じ形式） |
+| Build | Debian-based image with the full toolchain (Node bookworm-slim / golang bookworm) |
+| Runtime | distroless (Web / Node: `nodejs24-debian12:nonroot`; Go API / batch: `static:nonroot`). Image servers alone use `debian:bookworm-slim` plus `libvips42` (CGO). |
+| Base image | Pin the digest as `tag@sha256:…` (tracked by Renovate). |
+| Tool versions (`turbo`, `pnpm`, and more) | `ARG *_VERSION` plus `# renovate: datasource=…`, in the same form as [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) |
 
-Web と Node は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools/docker) に沿い `turbo prune --docker` で依存を絞る。  
-実行イメージに shell / wget が無いため、**Docker `HEALTHCHECK` は置かない**。オーケストレータ側で `/livez`（liveness）/ `/readyz`（readiness）を probe する。
+Web and Node use `turbo prune --docker` according to the [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) to reduce dependencies. Runtime images have no shell or `wget`, so **do not add a Docker `HEALTHCHECK`**. Have the orchestrator probe `/livez` (liveness) and `/readyz` (readiness).
 
-Node ロールは Next.js の standalone 出力に相当する仕組みを持たないため、`pnpm install --prod` で作った実行時依存ツリーと、ワークスペース各パッケージの `dist/` だけをランナーへ渡す。ソースと開発依存はランナーに入らない。実行時に import されるものが `dependencies` に無いと（`devDependencies` 止まり、未充足の `peerDependencies` など）、`--prod` のツリーから消えて起動時に落ちる。
+The Node role has no equivalent of a Next.js standalone output, so the runner receives only the runtime dependency tree made by `pnpm install --prod` and each workspace package's `dist/`. Sources and development dependencies do not enter the runner. Anything imported at runtime must be in `dependencies`; entries only in `devDependencies` or unmet `peerDependencies` vanish from the `--prod` tree and cause startup failure.
 
-### 実行時に渡す主な環境変数（参考）
+### Main runtime environment variables (reference)
 
-- Web: `PORT`, `HOSTNAME`（イメージ内既定あり）, **`PUBLIRA_AUTH_SECRET`（必須。32 バイト以上。未設定だとセッション Cookie の暗号化・復号が例外になる）**, `PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP`（ビルド時に `APP_NAME` を既定セット）
-- API: **`PUBLIRA_AUTH_JWT_SECRET`（必須。32 バイト以上。未設定だとアクセストークンの署名鍵が無く起動に失敗する）**, アプリ固有（`PUBLIRA_*_DB_URL` 等）。待受はバイナリ側の設定。`PORT` は `EXPOSE` / ドキュメント用メタデータ
-- Node: `PORT`（既定 8080）, `HOST`（イメージ内既定 `0.0.0.0`）。email-renderer は外部依存を持たないので、他に必須の変数は無い
+- Web: `PORT`, `HOSTNAME` (an image default is present), **`PUBLIRA_AUTH_SECRET` (required; at least 32 bytes; leaving it unset makes session-Cookie encryption and decryption throw)**, `PUBLIRA_REDIS_URL`, and `PUBLIRA_CACHE_APP` (defaults to `APP_NAME` at build time)
+- API: **`PUBLIRA_AUTH_JWT_SECRET` (required; at least 32 bytes; without it, the server cannot start because it has no access-token signing key)**, app-specific values such as `PUBLIRA_*_DB_URL`. The binary configures its listener; `PORT` is `EXPOSE` and documentation metadata.
+- Node: `PORT` (default: 8080) and `HOST` (image default: `0.0.0.0`). The email renderer has no external dependencies, so it requires no other variables.
 
-詳細は各サービスの README と Dockerfile コメントを参照。
+See each service's README and Dockerfile comments for details.
 
-## 例外
+## Exceptions
 
-次だけが本規約の対象外、または例外として許される。
+1. **Dev Container** (`.devcontainer/Dockerfile`) is not a production runtime image; it is for development with a toolchain and volumes.
+2. **Temporary verification Dockerfiles** may exist only on a personal branch. To keep one on `main`, promote it to a new role under `infra/docker/` and update this table.
+3. **Generated Dockerfiles must not be committed.** Do not copy a template into every service and commit the output.
 
-1. **Dev Container**（`.devcontainer/Dockerfile`）  
-   本番実行イメージではない。ツールチェーンとボリューム前提の開発環境専用。
-2. **一時的な検証用 Dockerfile**  
-   個人ブランチのみ。main に残す場合は新ロールとして `infra/docker/` に昇格し、本表を更新する。
-3. **生成物のコミット**  
-   テンプレートから各サービスへ Dockerfile をコピーしてコミットする運用は行わない。
+## Responsibilities: Docker builds, local development, and CI
 
-## 責務分担（docker build / ローカル開発 / CI）
-
-| 経路 | 用途 | 正とするコマンド |
+| Path | Purpose | Canonical command |
 | --- | --- | --- |
-| **本番イメージビルド** | デプロイ用イメージの作成・検証 | `task docker:build:*`（中身はルート context の `docker build -f infra/docker/...`） |
-| **ローカル開発** | ホットリロード開発 | Dev Container + `task dev` / `task server:dev` 等（本番 Dockerfile は使わない） |
-| **CI（イメージ）** | 変更検知で `Docker / <target>` ジョブを実行 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（ローカルと同じ `task docker:build:*`） |
+| **Production image build** | Build and verify deployment images | `task docker:build:*` (runs `docker build -f infra/docker/...` with the root context) |
+| **Local development** | Hot-reload development | Dev Container plus `task dev` / `task server:dev`, and so on (do not use production Dockerfiles) |
+| **CI (images)** | Run `Docker / <target>` after detecting changes | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml), using the same local `task docker:build:*` commands |
 
-本番イメージと Dev Container は別物である。イメージビルドが通っても `task dev` の代替にはならないし、その逆でもない。
+Production images and the Dev Container serve different purposes. A successful image build does not replace `task dev`, and the reverse is also true. For the complete CI picture, including host CI (`Check` / `Test / *` / `Build` / `Summary`), see [`.github/workflows/README.md`](../../.github/workflows/README.md).
 
-ホスト CI（`Check` / `Test / *` / `Build` / `Summary`）を含む CI 全体像は [`.github/workflows/README.md`](../../.github/workflows/README.md) を正とする。
+## Local verification
 
-## ローカル検証手順
+Prerequisites: run from the repository root with Docker Engine and Buildx available.
 
-前提: リポジトリルート、Docker Engine / Buildx が利用可能であること。
+### Representative images (routine verification)
 
-### 代表イメージ（日常の確認）
-
-Issue / CI の「主要ビルド経路」は次の 5 本（各ロール 1 つ）とする。
+The five primary build paths for Issues and CI are the following representatives, one for each role:
 
 ```bash
-# まとめて（web-host / api-server / batch / email-renderer / image-server）
+# All at once (web-host / api-server / batch / email-renderer / image-server)
 task docker:verify
 
-# または個別
+# Or individually
 task docker:build:web APP_NAME=web-host PORT=3000
 task docker:build:api CMD_NAME=api-server PORT=8000
 task docker:build:batch
@@ -216,28 +200,26 @@ task docker:build:node APP_NAME=email-renderer PORT=8080
 task docker:build:image CMD_NAME=image-server PORT=8200
 ```
 
-起動確認（distroless・外部依存無し）:
+Runtime smoke tests for distroless images without external dependencies:
 
 ```bash
 task docker:smoke:web APP_NAME=web-host PORT=3000
 task docker:smoke:node APP_NAME=email-renderer PORT=8080
 ```
 
-`smoke:web` は `/livez`、`smoke:node` は `/livez` と `/readyz` の応答本文まで確認する。
+`smoke:web` checks `/livez`; `smoke:node` checks the response bodies of both `/livez` and `/readyz`. API and batch runtime smoke tests need dependencies such as the database and object storage, so **a successful image build is their gate**. Check startup through the orchestrator or an integration environment.
 
-API / batch のランタイムスモークは DB・ストレージ等の依存があるため、**イメージビルド成功をゲート**とする。起動確認はオーケストレータまたは結合環境で行う。
-
-### 全イメージ（リリース前・Dockerfile 大きな変更時）
+### All images (before release or after large Dockerfile changes)
 
 ```bash
 task docker:verify:full
 ```
 
-README のビルド例に載っている全ターゲットを順にビルドする。
+This builds every target shown in the README examples in sequence.
 
-### 生の `docker build`（デバッグ用）
+### Raw `docker build` (for debugging)
 
-Task は次と等価である（トラブルシュート時に Task を挟まず実行してよい）。
+Task is equivalent to the following command. You may run it directly rather than through Task while troubleshooting.
 
 ```bash
 docker build -f infra/docker/web/Dockerfile \
@@ -245,32 +227,32 @@ docker build -f infra/docker/web/Dockerfile \
   -t publira/web-host:local .
 ```
 
-## Docker の CI 実行戦略
+## Docker CI execution strategy
 
-ここで扱うのは `Docker / <target>` ジョブだけである。ホスト CI 全体（`Check` / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mobile` / `Test / Mobile E2E` / `Test / E2E` / `Build` / `Summary`）の path filter・実行戦略は [`.github/workflows/README.md`](../../.github/workflows/README.md) を参照。
+This section covers only the `Docker / <target>` jobs. For path filters and execution strategy across all host CI jobs (`Check` / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mobile` / `Test / Mobile E2E` / `Test / E2E` / `Build` / `Summary`), see [`.github/workflows/README.md`](../../.github/workflows/README.md).
 
-### 比較
+### Comparison
 
-| 戦略 | 内容 | 利点 | 欠点 |
+| Strategy | Contents | Benefit | Drawback |
 | --- | --- | --- | --- |
-| **全イメージ毎回** | PR のたびに全ターゲット | 取りこぼし最小 | 時間・コスト大（特に Web×3） |
-| **変更検知** | 影響ロールの代表だけビルド | PR が速い | ロール外の間接影響を見逃しうる |
-| **Nightly フル** | 定期で全ターゲット | ドリフト検出 | フィードバックが遅い |
+| **Build every image every time** | Every target on every PR | Least chance of missing a problem | High time and cost, especially Web × 3 |
+| **Detect changes** | Build only the representative of affected roles | Fast PRs | May miss indirect effects outside the role |
+| **Nightly full** | Build all targets periodically | Detects drift | Slow feedback |
 
-### 採用案
+### Adopted approach
 
-**変更検知（ロール代表） + Nightly フル** を採用する。
+Use **change detection (role representatives) plus nightly full builds**.
 
-| トリガ | モード | ビルド対象 |
+| Trigger | Mode | Build target |
 | --- | --- | --- |
-| `pull_request` / `push`（main）かつ関連 path | **verify** | 変更ロールの代表のみ（下表） |
-| Dockerfile 本体・Taskfile・`.dockerignore`・`ci.yml` の変更 | **full** | ドキュメント上の全ターゲット |
-| `schedule`（毎日 03:00 UTC） | **full** | 全ターゲット（ホスト CI はスキップ） |
-| `workflow_dispatch` | verify または full | 手動選択（入力 `docker_mode`） |
+| `pull_request` / `push` (main) with related paths | **verify** | Representatives of changed roles only (table below) |
+| Dockerfile, Taskfile, `.dockerignore`, or `ci.yml` changes | **full** | Every target documented here |
+| `schedule` (daily at 03:00 UTC) | **full** | Every target (host CI is skipped) |
+| `workflow_dispatch` | verify or full | Manual selection via the `docker_mode` input |
 
-#### 変更検知のロール対応
+#### Role mapping for change detection
 
-| ロール | 代表ターゲット | 監視 path（概要） |
+| Role | Representative target | Watched paths (summary) |
 | --- | --- | --- |
 | web | `web-host` | `apps/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/web/**` |
 | api | `api-server` | `server/**`, `infra/docker/api/**` |
@@ -278,59 +260,56 @@ docker build -f infra/docker/web/Dockerfile \
 | batch | `batch` | `server/**`, `infra/docker/batch/**` |
 | node | `email-renderer` | `apps/email-renderer/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/node/**` |
 
-`server/**` 変更時は api、batch、image の代表をビルドする（共有モジュールのため）。  
-`locales/**` は web と node が見る。`@publira/i18n/catalog` と `@publira/email-templates` がリポジトリルートの文言カタログを相対 import してバンドルするため。
+Changes under `server/**` build the api, batch, and image representatives because they share modules. `locales/**` is used by web and node because `@publira/i18n/catalog` and `@publira/email-templates` bundle repository-root message catalogs through relative imports.
 
-実装: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の `docker` ジョブ。  
-ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Docker 行列を決定）。  
-ローカルと同一コマンド: `task docker:build:web|api|image|batch|node`（Web は続けて `task docker:smoke:web`、Node は `task docker:smoke:node`）。
+Implementation: the `docker` job in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). Job planning: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), which turns path-filter results into the Docker matrix. The local commands are the same: `task docker:build:web|api|image|batch|node` (Web then runs `task docker:smoke:web`, and Node then runs `task docker:smoke:node`).
 
-`Docker / <target>` も他ジョブと同様に path filter でスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
+Like other jobs, `Docker / <target>` can be skipped by its path filter. The only required check in the branch ruleset is the final aggregation job **`Summary`** (shown as `CI / Summary` in the UI); skipped intermediate jobs count as success.
 
-## ビルド失敗時のトリアージ
+## Build-failure triage
 
-`Docker / <target>` ジョブ、およびローカルの `task docker:build:*` が失敗したときの手順。ホスト CI 側のジョブ（`Check` / `Test / *` / `Build`）については [`.github/workflows/README.md`](../../.github/workflows/README.md) の「失敗時のトリアージ」を参照。
+Use these steps when a `Docker / <target>` job or local `task docker:build:*` fails. For host-CI jobs (`Check` / `Test / *` / `Build`), see [the CI README's failure triage](../../.github/workflows/README.md#failure-triage).
 
-1. **落ちた段階を切り分ける**
-   - イメージビルド → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
-   - smoke（`/livez` / `/readyz`）のみ → エントリポイント経路・`PORT`・standalone 出力や `dist/` の配置（ビルドは成功している）
-2. **ローカルで同じ Task を再現する**
+1. **Identify the failing stage**
+   - Image build: Dockerfile path, context, base image, or the build inside the container
+   - Smoke only (`/livez` / `/readyz`): entrypoint path, `PORT`, or placement of standalone output or `dist/` (the image build succeeded)
+2. **Reproduce with the same local Task**
 
-   CI ログの `task docker:build:…` 行をそのまま実行する。
+   Run the `task docker:build:…` line from the CI log as-is.
 
    ```bash
    task docker:build:web APP_NAME=web-host PORT=3000
-   # または代表まとめて
+   # Or run all representatives.
    task docker:verify
    ```
 
-3. **レイヤで切り分ける**
+3. **Narrow it down by layer**
 
-   | 症状 | 疑う箇所 |
+   | Symptom | Likely cause |
    | --- | --- |
-   | `ERROR: APP_NAME/CMD_NAME is required` | build-arg の渡し忘れ |
-   | context / file not found | ルート以外での実行、`.dockerignore` の過剰除外 |
-   | `turbo prune` / `pnpm install` 失敗 | lockfile 不整合、workspace 名、`APP_NAME` 誤り |
-   | `pnpm turbo run build` 失敗 | アプリ本体のビルドエラー（先にホストで `pnpm build --filter @publira/<app>`） |
-   | `go build` 失敗 | `server/` のコンパイルエラー（先に `task server:build`） |
-   | ベース pull 失敗 / digest | レジストリ・digest 更新・Renovate PR の取りこぼし |
-   | Web smoke (`/livez`) のみ失敗 | エントリポイント経路・`PORT`・standalone 出力（ビルドは成功している） |
-   | Node smoke で `Cannot find package` | 実行時依存が `dependencies` ではなく `devDependencies` / `peerDependencies` にある（`pnpm install --prod` に載らない） |
-   | Web / Node ロールで `locales/*.json` が解決できない | `turbo prune` はリポジトリルートの `locales/` を含めないため、builder 段で明示 `COPY` する必要がある |
+   | `ERROR: APP_NAME/CMD_NAME is required` | A missing build argument |
+   | context / file not found | Running outside the root, or an overly broad `.dockerignore` exclusion |
+   | `turbo prune` / `pnpm install` failure | Lockfile inconsistency, workspace name, or incorrect `APP_NAME` |
+   | `pnpm turbo run build` failure | An application build error; first run `pnpm build --filter @publira/<app>` on the host |
+   | `go build` failure | A `server/` compile error; first run `task server:build` |
+   | Base pull failure / digest | Registry, digest update, or a missed Renovate PR |
+   | Web smoke (`/livez`) only | Entrypoint path, `PORT`, or standalone output (the image build succeeded) |
+   | Node smoke: `Cannot find package` | A runtime dependency is in `devDependencies` / `peerDependencies`, not `dependencies`, so `pnpm install --prod` omits it |
+   | Web / Node cannot resolve `locales/*.json` | `turbo prune` does not include root `locales/`; explicitly `COPY` it in the builder stage |
 
-4. **CI だけ失敗する場合**
-   - ランナー arch / Buildx とローカルの差（Go は `TARGETOS`/`TARGETARCH` を既定固定しない）
-   - キャッシュ汚れ → ローカルは `docker builder prune`、CI は再実行
-   - path filter の取りこぼし懸念 → `workflow_dispatch` で Docker `full`、または Nightly 結果を確認
-5. **直したら**
-   - 代表イメージ（`task docker:verify`）が通ることを確認してから PR を更新する
-   - ロール追加時は本 README の表・[`Taskfile.yaml`](./Taskfile.yaml) の `verify:full`・[`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) の Docker full 行列を同時更新する
+4. **When only CI fails**
+   - Runner architecture / Buildx differences from local (Go must not pin `TARGETOS` / `TARGETARCH` defaults)
+   - A dirty cache: use `docker builder prune` locally or rerun CI
+   - Concern about a missed path-filter match: run Docker `full` through `workflow_dispatch`, or inspect the nightly result
+5. **After a fix**
+   - Confirm the representative images with `task docker:verify` before updating the PR.
+   - When adding a role, update this README's tables, [`Taskfile.yaml`](./Taskfile.yaml) `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) together.
 
-## 変更時のチェックリスト
+## Change checklist
 
-- [ ] 新ロールなら `infra/docker/<role>/Dockerfile` を追加し、本 README の表・判断フロー・ビルド例を更新した
-- [ ] ベースイメージは digest 固定、ツール版は Renovate 追跡可能な `ARG` にした
-- [ ] ルートからの `docker build -f … .` および `task docker:build:*` でビルドできることを確認した
-- [ ] 代表検証 `task docker:verify`（必要なら `verify:full`）を通した
-- [ ] 新ターゲットなら [`Taskfile.yaml`](./Taskfile.yaml) の `verify:full` と [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) の Docker full 行列を更新した
-- [ ] ルート [README.md](../../README.md) のドキュメント案内から辿れる（本ファイルへのリンクが生きている）
+- [ ] For a new role, added `infra/docker/<role>/Dockerfile` and updated this README's table, decision flow, and build examples
+- [ ] Pinned base-image digests and made tool-version `ARG`s trackable by Renovate
+- [ ] Verified the build from the root with `docker build -f … .` and `task docker:build:*`
+- [ ] Passed representative verification with `task docker:verify` (and `verify:full` when needed)
+- [ ] For a new target, updated [`Taskfile.yaml`](./Taskfile.yaml) `verify:full` and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
+- [ ] The documentation link from the root [README.md](../../README.md) reaches this file

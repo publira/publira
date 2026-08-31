@@ -1,274 +1,120 @@
-# E2E テスト基盤
+# E2E test infrastructure
 
-Playwright による Web 横断 E2E の共通基盤と、公開カタログ・管理画面入稿フローのシナリオです。  
-本ディレクトリは起動・readiness・CI・成果物の標準化も責務に含みます。
+This directory provides shared Playwright infrastructure and scenarios spanning the public catalogue and admin publishing flows. It also standardizes startup, readiness, CI, and artifacts.
 
-関連: [#513](https://github.com/publira/publira/issues/513) / [#516](https://github.com/publira/publira/issues/516) / Epic [#512](https://github.com/publira/publira/issues/512)
+Related: [#513](https://github.com/publira/publira/issues/513) / [#516](https://github.com/publira/publira/issues/516) / Epic [#512](https://github.com/publira/publira/issues/512)
 
-開発環境そのもの（空 DB volume からの `task setup`、`task dev` の全サービス起動）の検証は Playwright を使わない別ライフサイクルで、[`bootstrap/README.md`](./bootstrap/README.md) が正（`task e2e:bootstrap`）。
+Development bootstrap, from empty database volumes through `task setup` and all `task dev` services, uses a separate lifecycle without Playwright; [`bootstrap/README.md`](./bootstrap/README.md) is its source of truth (`task e2e:bootstrap`). Dev Container Traefik host-based routing also uses a separate non-Playwright lifecycle, exercising `.devcontainer/compose.yaml` labels against echo backends; [`routing/README.md`](./routing/README.md) is its source of truth (`task e2e:routing`).
 
-Dev Container Traefik のホストベースルーティングは、同じく Playwright を使わない別ライフサイクルで、[`.devcontainer/compose.yaml`](../.devcontainer/compose.yaml) の labels を echo バックエンドで突く。[`routing/README.md`](./routing/README.md) が正（`task e2e:routing`）。
+## Prerequisites
 
-## 前提
-
-- Docker（Compose v2）が使えること（Dev Container の DinD 可）
-- [wait4x](https://github.com/wait4x/wait4x)（HTTP readiness 待ち。Dev Container に同梱。CI は `Test / E2E` でインストール）
-- リポジトリルートで `task deps` 済み
-- 初回のみ Playwright の OS 依存（Chromium）:
+- Docker with Compose v2 (Dev Container DinD is supported)
+- [wait4x](https://github.com/wait4x/wait4x) for HTTP readiness (included in the Dev Container; CI installs it for **Test / E2E**)
+- `task deps` from the repository root
+- For the first run, Playwright Chromium OS dependencies:
 
   ```bash
   pnpm --dir e2e exec playwright install-deps chromium
-  # 権限が必要なら sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
+  # If permissions are needed:
+  sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
   ```
 
-- ホスト上で次のポートが空いていること（既定値）
+The default required host ports are `3000` (web-host), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8001` / `8101` (admin API), `8002` / `8102` (platform API), `8003` (outbox worker), `5433` (E2E Postgres), `6380` (E2E Redis), and `9003` (E2E RustFS / S3).
 
-| 用途                                                   | 既定   |
-| ------------------------------------------------------ | ------ |
-| web-host（`other.localhost` などの別 Host も同ポート） | `3000` |
-| web-admin（Host `admin.localhost`）                    | `4000` |
-| web-platform（Host `platform.localhost`）              | `4100` |
-| public API (Connect)                                   | `8000` |
-| public API (gRPC 口 / Web が向ける先)                  | `8100` |
-| admin API (Connect)                                    | `8001` |
-| admin API (gRPC 口 / web-admin が向ける先)             | `8101` |
-| platform API (Connect)                                 | `8002` |
-| platform API (gRPC 口 / web-platform が向ける先)       | `8102` |
-| outbox-worker (`/livez` `/readyz`)                     | `8003` |
-| E2E Postgres（compose 公開）                           | `5433` |
-| E2E Redis（compose 公開）                              | `6380` |
-| E2E RustFS / S3（compose 公開）                        | `9003` |
+PIDs and logs default to `e2e/.run/`. When `E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
-PID / ログは既定で `e2e/.run/` に置く。  
-`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じ compose project は `up` が残す lock-holder が lease を保持し、別の `E2E_RUN_DIR` からの `down` / `start-apps` は stack が残っている間拒否する。分解コマンドで同じ `E2E_RUN_DIR` を続ける leftover stack は `start` / `test` / `down` できる。lock-holder は `e2e/.run/locks/<project>.lock` を掴んだまま単一プロセスとして待つので、teardown がそれを kill すれば lock も必ず外れる。lease ファイルだけ消えて lock が残った場合は `task e2e:down` が `/proc` から保持プロセスを見つけて回収し、回収できないときはエラーに掴んでいる PID（特定できなければ `fuser` / `lsof` での調べ方）を出す。同じポートでの並行起動はポート競合で失敗する想定。`PUBLIRA_REDIS_URL` は常に `E2E_REDIS_PORT` から組み立てる（devcontainer の `redis://redis:6379` を引き継がない）。`PUBLIRA_S3_ENDPOINT` も同様に常に `E2E_RUSTFS_PORT` から組み立てる（devcontainer の `http://rustfs:9000` を引き継ぐと、E2E のアップロードが開発用スタックの RustFS に入ってしまう）。Next.js アプリが必須とするセッション暗号鍵 `PUBLIRA_AUTH_SECRET` は `lib.sh` が既定値を export し、`start-apps.sh` が各アプリのプロセスへ渡す（アプリは `env` で環境を絞って起動するので、そこに並んでいない変数は届かない）。上の 2 つと違ってどのスタックを指すかという値ではないため、外から与えられていればそれを使う。Go の API サーバーが必須とするアクセストークン署名鍵 `PUBLIRA_AUTH_JWT_SECRET` も同じ扱いで、`lib.sh` が export し、`api-server.sh` / `admin-api-server.sh` / `platform-api-server.sh` の `env` が各プロセスへ渡す。
+Use distinct compose projects and **all** distinct ports for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process.
 
-## 1 コマンド実行
+## One-command run
 
 ```bash
-# ビルド → Compose 起動 → migrate/seed → アプリ起動 → readiness → Playwright → 後片付け
+# Build → start Compose → migrate/seed → start apps → readiness → Playwright → cleanup
 task e2e
 ```
 
-常に teardown します（成功・失敗・中断のいずれでも compose volume と app プロセスを消します）。
+This always tears down app processes and compose volumes, including on failure or interruption.
 
-### 分解コマンド
+### Individual commands
 
-| コマンド | 内容 |
+| Command | Purpose |
 | --- | --- |
-| `task e2e:prepare` | server 全バイナリ / `web-host` / `web-admin` / `web-platform` ビルド + Playwright Chromium インストール |
-| `task e2e:up` | Postgres + Redis + RustFS のみ起動 |
-| `task e2e:db` | migrate + dev seed + S3 バケット作成（`task storage:init`） |
-| `task e2e:start-apps` | api-server / admin-api-server / platform-api-server / publish-episodes / outbox-worker / web-host / web-admin / web-platform をバックグラウンド起動 |
-| `bash e2e/scripts/api-server.sh <start\|start-wait\|stop>` | api-server だけを操作（障害シナリオが使用） |
-| `bash e2e/scripts/admin-api-server.sh <start\|start-wait\|stop>` | admin-api-server だけを操作 |
-| `bash e2e/scripts/platform-api-server.sh <start\|start-wait\|stop>` | platform-api-server だけを操作 |
-| `task e2e:wait-ready` | wait4x で HTTP readiness 待ち（失敗時は `readiness failed: …`） |
-| `task e2e:test` | Playwright のみ（stack 起動済み前提） |
-| `task e2e:test-lib` | `E2E_RUN_DIR` 隔離と compose project lock の確認（Docker 不要。`task e2e` からも走る） |
-| `task e2e:down` | アプリ停止 + compose 削除（volume 含む） |
+| `task e2e:prepare` | Build server binaries and web apps; install Playwright Chromium. |
+| `task e2e:up` | Start Postgres, Redis, and RustFS only. |
+| `task e2e:db` | Migrate, apply development seed, and create the S3 bucket (`task storage:init`). |
+| `task e2e:start-apps` | Start APIs, `publish-episodes`, outbox worker, and the three web apps in the background. |
+| `bash e2e/scripts/{api-server,admin-api-server,platform-api-server}.sh <start\|start-wait\|stop>` | Operate one API server for outage scenarios. |
+| `task e2e:wait-ready` | Wait for HTTP readiness with wait4x; failure is `readiness failed: …`. |
+| `task e2e:test` | Run Playwright only against a running stack. |
+| `task e2e:test-lib` | Verify `E2E_RUN_DIR` isolation and compose-project locks (no Docker required; also run by `task e2e`). |
+| `task e2e:down` | Stop applications and remove compose resources, including volumes. |
 
-ローカルで stack を残したまま反復する場合の例:
+To keep a local stack while iterating:
 
 ```bash
 task e2e:prepare
 task e2e:up && task e2e:db && task e2e:start-apps && task e2e:wait-ready
 task e2e:test
-# ...
+# …
 task e2e:down
 ```
 
-同じチェックアウトから 2 つ目の stack を並行起動するときは、compose project と **使うポートをすべて** ずらす。`lib.sh` が PID / ログを別ディレクトリに置くので、片方の障害シナリオ（`stopApiServer`）がもう片方の api-server を止めない。
+For Next.js HMR during development, use `E2E_WEB_MODE=dev task e2e`; CI does not use this mode.
 
-```bash
-COMPOSE_PROJECT_NAME=publira-e2e-alt \
-  E2E_POSTGRES_PORT=5434 \
-  E2E_REDIS_PORT=6381 \
-  E2E_RUSTFS_PORT=9004 \
-  E2E_WEB_HOST_PORT=3010 \
-  E2E_WEB_ADMIN_PORT=4010 \
-  E2E_WEB_PLATFORM_PORT=4110 \
-  E2E_PUBLIC_API_PORT=8010 \
-  E2E_PUBLIC_API_GRPC_PORT=8110 \
-  E2E_ADMIN_API_PORT=8011 \
-  E2E_ADMIN_API_GRPC_PORT=8111 \
-  E2E_PLATFORM_API_PORT=8012 \
-  E2E_PLATFORM_API_GRPC_PORT=8112 \
-  task e2e
-```
-
-未指定の `E2E_*_PORT` は既定のままなので、片方だけ変えるとポート競合で失敗する。明示的な `E2E_RUN_DIR` があれば state ディレクトリはそちらを使う。同じ `COMPOSE_PROJECT_NAME` を別の `E2E_RUN_DIR` で触る操作は、先に立った stack の lease が残っている間は拒否される。
-
-開発中に Next の HMR を使いたい場合: `E2E_WEB_MODE=dev task e2e`（CI では使わない）。
-
-## 構成
+## Layout
 
 ```text
 e2e/
-├── bootstrap/             # 開発環境 bootstrap チェック（Playwright を使わない別ライフサイクル）
-├── routing/               # Dev Container Traefik 疎通（Playwright を使わない別ライフサイクル）
-├── compose.yaml           # postgres + redis + rustfs（project: publira-e2e）
+├── bootstrap/             # Development bootstrap check (separate lifecycle, no Playwright)
+├── routing/               # Dev Container Traefik check (separate lifecycle, no Playwright)
+├── compose.yaml           # postgres + redis + rustfs (project: publira-e2e)
 ├── playwright.config.ts
-├── scripts/               # up / db / start / api-server / admin-api / platform-api / publish-episodes / outbox-worker / wait-ready / stop-apps / test / lib_test / run / down
-├── src/
-│   ├── admin.ts           # web-admin ログイン・フォーム操作ヘルパー
-│   ├── api-server.ts      # api-server の停止・再起動（障害シナリオ用）
-│   ├── db.ts              # scenario SQL 適用ヘルパー
-│   ├── host.ts            # web-host ログイン・ログアウトヘルパー
-│   ├── platform.ts        # web-platform ログイン・テナント操作ヘルパー
-│   ├── session.ts         # セッション Cookie / JWT 失効ヘルパー
-│   ├── scenarios/         # scenario seed / seed アカウントの定数
-│   └── urls.ts            # host ベース URL 定数
-└── tests/
-    ├── admin.auth.spec.ts
-    ├── admin.publish-flow.spec.ts
-    ├── catalog.browse.spec.ts
-    ├── catalog.not-found.spec.ts
-    ├── catalog.outage.spec.ts
-    ├── catalog.error-boundary.spec.ts
-    ├── catalog.tenant-boundary.spec.ts
-    ├── admin.error-boundary.spec.ts
-    ├── announcements.pagination.spec.ts
-    ├── host.auth.spec.ts
-    ├── platform.auth.spec.ts
-    ├── platform.logout.spec.ts
-    ├── platform.tenant-ops.spec.ts
-    ├── smoke.health.spec.ts
-    └── smoke.web-host-home.spec.ts
+├── scripts/               # lifecycle, API controls, readiness, test, and locking helpers
+├── src/                   # app login, API control, DB, scenario, session, and URL helpers
+└── tests/                 # catalogue, admin, host, platform, and health scenarios
 ```
 
-- **依存 (Compose):** Postgres 18・Valkey（Redis 互換）・RustFS（S3 互換。path-style / バケット `publira`）
-- **アプリ (ホストプロセス):**
-  - `server/bin/api-server` + `server/bin/admin-api-server` + `server/bin/platform-api-server` + `server/bin/batch publish-episodes` + `server/bin/outbox-worker`
-  - `apps/web-host` / `apps/web-admin` / `apps/web-platform`（standalone の `node server.js`）
-- **seed:** 開発用 `task db:setup`（public domain `localhost` / admin domain `admin.localhost` / テナント名 `Seed Tenant` / platform `platform@example.com`）
+- **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), and RustFS (S3-compatible, path-style, bucket `publira`).
+- **Host processes:** API, admin API, platform API, batch `publish-episodes`, outbox worker, and standalone `web-host`, `web-admin`, and `web-platform` (`node server.js`).
+- **Seed:** development `task db:setup`: public domain `localhost`, admin domain `admin.localhost`, tenant `Seed Tenant`, and platform user `platform@example.com`.
 
-Host ベース URL は `src/urls.ts` を参照。
+Host-based URL constants are in `src/urls.ts`. web-host accepts one port and resolves the tenant through `Host` / `x-forwarded-host`; Chromium resolves `*.localhost` to loopback under RFC 6761, so neither DNS registration nor a hosts-file entry is needed. Use non-`localhost` hosts only through the browser (`page.goto`), because Node's `request` fixture uses OS name resolution.
 
-### Playwright の並列と隔離
+## Parallelism and isolation
 
-`playwright.config.ts` は `workers: 3` / `fullyParallel: false`（ファイル単位で並列、ファイル内は直列）。CI（`ubicloud-standard-4`、4 vCPU）と同じ数をローカルでも使い、隔離の前提を揃える。一時的に直列へ戻すときは `task e2e:test -- --workers=1`。
+`playwright.config.ts` uses `workers: 3` and `fullyParallel: false`: files run in parallel while tests within a file run serially. This matches CI's four-vCPU `ubicloud-standard-4`; temporarily serialize with `task e2e:test -- --workers=1`.
 
-共有プロセスを落とす spec は並列 pool に載せない:
+Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
 
-| project | 対象 | 開始条件 |
-| --- | --- | --- |
-| `web-host` / `web-admin` / `web-platform` | 通常 spec（3 worker で並列） | 同時開始 |
-| `catalog-outage` | `catalog.outage.spec.ts` | 上記 3 project の完了後 |
-| `catalog-error-boundary` | `catalog.error-boundary.spec.ts` | `catalog-outage` の完了後（同じ public API） |
-| `admin-outage` | `admin.outage.spec.ts`（未追加） | main 3 project の完了後（admin API。catalog 側とは並列可） |
-| `admin-error-boundary` | `admin.error-boundary.spec.ts` | `admin-outage` の完了後（同じ admin API） |
-| `platform-outage` | `platform.outage.spec.ts`（未追加） | main 3 project の完了後（platform API。他系統とは並列可） |
-| `platform-error-boundary` | `platform.error-boundary.spec.ts`（未追加） | `platform-outage` の完了後（同じ platform API） |
+## Readiness and failures
 
-同じファイル内で共有シードを書き換える suite（お知らせの既読など）は `test.describe.configure({ mode: "serial" })` でファイル内だけ直列にする。
-
-### Host によるテナント切り替え
-
-web-host は単一ポートで待ち受け、テナントは `Host` / `x-forwarded-host` で解決されます。  
-Chromium は `*.localhost` を RFC 6761 に従って自前でループバックへ解決するため、DNS 登録も hosts ファイルも不要です。
-
-| 定数 | Host | 解決先 |
-| --- | --- | --- |
-| `WEB_HOST_BASE_URL` | `localhost` | dev seed の `Seed Tenant` |
-| `WEB_HOST_OTHER_TENANT_BASE_URL` | `other.localhost` | scenario seed の `Boundary Tenant` |
-| `WEB_HOST_UNKNOWN_TENANT_BASE_URL` | `unknown-tenant.localhost` | なし（proxy が 404） |
-| `uncachedTenantBaseUrl()` | 毎回異なる `*.localhost` | なし（テナント解決キャッシュを外す） |
-
-Node 側の `request` fixture は OS の名前解決を使うので、`localhost` 以外の Host はブラウザ (`page.goto`) からのみ使ってください。
-
-## readiness 失敗とテスト失敗の区別
-
-| 段階 | 失敗時の見え方 |
+| Stage | Failure signal |
 | --- | --- |
-| readiness | ログに `readiness failed: <name>`。Playwright は起動しない |
-| Playwright | `Playwright tests failed`。`test-results/` / `playwright-report/` / `.run/logs/` を確認 |
+| Readiness | `readiness failed: <name>` in logs; Playwright does not start. |
+| Playwright | `Playwright tests failed`; inspect `test-results/`, `playwright-report/`, and `.run/logs/`. |
 
-`wait-ready` のチェック順（postgres / redis / rustfs のコンテナ healthcheck は `task e2e:up` の `docker compose up --wait` が担う。RustFS だけは公開ポートもホストから確認する）:
+`wait-ready` verifies RustFS on `:9003/health`, public/admin/platform API readiness on `:8100`–`:8102`, and `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`. `task e2e:up` owns compose health checks for Postgres, Redis, and RustFS.
 
-1. `GET :9003/health` → 200（RustFS。ホストから叩いて公開ポートごと確認する）
-2. `GET :8100/readyz` → `status=ok`（public API）
-3. `GET :8101/readyz` → `status=ok`（admin API）
-4. `GET :8102/readyz` → `status=ok`（platform API）
-5. `GET :3000/livez` → `ok`（web-host）
-6. `GET :3000/readyz` → `status=ok`
-7. `GET :4000/livez` → `ok`（web-admin）
-8. `GET :4000/readyz` → `status=ok`
-9. `GET :4100/livez` → `ok`（web-platform）
-10. `GET :4100/readyz` → `status=ok`
+## Adding scenarios
+
+1. Optionally add fixture SQL under `db/seeds/scenarios/<name>.sql` and apply it with `applyScenarioSql('name')` from `src/db.ts`.
+2. Add `e2e/tests/<area>.spec.ts` using `test` / `expect` from `@playwright/test`. `admin.*.spec.ts` runs under the web-admin project; `platform.*.spec.ts` under web-platform. Specs that stop shared processes must include `.outage.` or `.error-boundary.` and use the corresponding dependency chain.
+3. For a new host, add a project `baseURL` in `playwright.config.ts` or use an absolute `page.goto` URL; centralize constants in `src/urls.ts`.
+4. When starting another process, add it and its probe to `scripts/start-apps.sh`, `wait-ready.sh`, and `stop-apps.sh`. Verify Traefik labels in [`routing/`](./routing/README.md), not here.
+5. Run `task e2e`, or keep the stack running and use `task e2e:test`.
+6. Changes to relevant paths run **Test / E2E**. Changes only in `e2e/routing/**` run **Test / Routing** (`task e2e:routing`) without Playwright.
+
+Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, web-host and web-admin authentication and publishing, and platform authentication and tenant operations. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`.
+
+Outage specs must run through `task e2e:test`, which sources `lib.sh`. Filtering by file name can leave only isolated projects, so pass `--no-deps` when selecting an isolated project directly (for example, `--project=catalog-outage`).
 
 ## CI
 
-ジョブ名: **Test / E2E**（`.github/workflows/ci.yml`）
+Job: **Test / E2E** (`.github/workflows/ci.yml`)
 
-- path filter: `e2e/**`（`e2e/routing/**` を除外）、`apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**` など
-- 失敗時 artifact: `e2e-artifacts`（report / test-results / app logs）
-- Playwright Chromium のみ、`workers: 3` / `fullyParallel: false`（ファイル単位の並列）、CI 時 retries=1
-- 障害シナリオ（`.outage.` / `.error-boundary.`）は専用 project に分け、main 3 project のあとに `dependencies` で直列実行する（共有 API を落とすため）
-- 必須ブランチチェックは最終ジョブ **Summary** が集約（他ジョブと同様）
+- Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, server, db, and related build inputs.
+- Failure artifact: `e2e-artifacts` (report, test results, and app logs).
+- Chromium only; `workers: 3`, `fullyParallel: false`, and one retry in CI.
+- Outage and error-boundary scenarios run as isolated dependent projects after the three ordinary projects.
+- The required branch check is the final **Summary** job, as with all CI jobs.
 
-CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/README.md](../.github/workflows/README.md)
-
-## シナリオの追加手順
-
-1. **（任意）fixture SQL**  
-   `db/seeds/scenarios/<name>.sql` を追加し、必要ならテストから `applyScenarioSql('name')`（`src/db.ts`）で適用。
-2. **spec を追加**  
-   `e2e/tests/<area>.spec.ts` を作成。`@playwright/test` の `test` / `expect` を使う。  
-   web-admin 向けはファイル名を `admin.*.spec.ts` にすると `web-admin` project（baseURL=`admin.localhost:4000`）に載る。  
-   web-platform 向けは `platform.*.spec.ts`（baseURL=`platform.localhost:4100`）。  
-   共有プロセスを止める spec（`stopApiServer` や `admin-api-server.sh stop`）はファイル名に `.outage.` または `.error-boundary.` を含め、同じ API を落とす隔離 project へ `dependencies` でチェーンする（`catalog-outage` → `catalog-error-boundary`、`admin-outage` → `admin-error-boundary`、`platform-outage` → `platform-error-boundary`）。
-3. **Host が必要な場合**  
-   `playwright.config.ts` の `projects` に `baseURL` を足すか、テスト内で `page.goto` の絶対 URL を使う。定数は `src/urls.ts` に集約する。
-4. **起動対象を増やす場合**  
-   `scripts/start-apps.sh` / `wait-ready.sh` / `stop-apps.sh` にプロセスと probe を追加（start だけ足して stop を忘れると `task e2e:down` 後もポートが残る）。Traefik の labels そのものを検証するのは [`routing/`](./routing/README.md)（#55）。  
-   別ポートで stack を並行起動する場合、`lib.sh` がポート番号と project 名から `E2E_RUN_DIR` を自動で分ける。必要なら明示的に `E2E_RUN_DIR` を渡して上書きできる。
-5. **ローカルで確認**  
-   `task e2e` または stack 固定 + `task e2e:test`。
-6. **CI**  
-   上記 path に触れていれば `Test / E2E` が走る。`e2e/routing/**` だけを変えた場合は **Test / Routing**（`task e2e:routing`）が走り、Playwright は起動しない。
-
-### シナリオ一覧（現状）
-
-| ファイル | 検証内容 |
-| --- | --- |
-| `smoke.health.spec.ts` | `/livez`・`/readyz`（テナント非依存） |
-| `smoke.web-host-home.spec.ts` | Host `localhost` で seed テナントのカタログトップ |
-| `catalog.browse.spec.ts` | カタログトップの各セクション、シリーズ一覧 → 詳細 → エピソード、レーベル一覧、著者一覧 → 詳細 |
-| `catalog.not-found.spec.ts` | 存在しないシリーズ / エピソード / 著者 |
-| `catalog.outage.spec.ts` | 公開 API 停止中のテナント解決失敗（503 + `Retry-After`）と復旧。隔離 project `catalog-outage` |
-| `catalog.error-boundary.spec.ts` | 公開 API 停止中のサイトエラー画面と再試行。隔離 project `catalog-error-boundary`（`catalog-outage` のあと） |
-| `catalog.tenant-boundary.spec.ts` | Host による別テナント解決、公開中コンテンツのみの表示、テナント跨ぎ参照の遮断、未知 Host の 404 |
-| `admin.error-boundary.spec.ts` | 管理 API 停止中のコンソールエラー画面と再試行。隔離 project `admin-error-boundary` |
-| `announcements.pagination.spec.ts` | 会員お知らせ一覧の cursor ページングと既読 |
-| `admin.auth.spec.ts` | web-admin のログイン成功/失敗、returnTo、ログアウト、未認証ガード、Cookie / JWT / `credentials_version` 失効、会員の閲覧専用、GET `/logout` がセッションを消さないこと |
-| `admin.publish-flow.spec.ts` | web-admin 入稿（シリーズ/エピソード作成・編集・公開）→ 管理画面再表示 → web-host 反映、バリデーションエラー、tenant 境界 |
-| `host.auth.spec.ts` | web-host のログイン成功/失敗、returnTo、ログアウト、会員ページの未認証ガード、公開カタログ、Cookie / JWT / `credentials_version` 失効、GET `/logout` がセッションを消さないこと |
-| `platform.auth.spec.ts` | web-platform のログイン成功/失敗、returnTo、ログアウト、未認証ガード、Cookie / JWT / `credentials_version` 失効 |
-| `platform.tenant-ops.spec.ts` | Platform Console のテナント作成・編集・停止/再開、domain の公開/管理側解決、監査ログ、operator ロール別の操作可否 |
-
-`catalog.tenant-boundary.spec.ts` / `admin.publish-flow.spec.ts`（tenant 境界ケース）は `db/seeds/scenarios/010_multi_tenant.sql` を適用します（`applyScenarioSql`）。  
-`platform.tenant-ops.spec.ts`（ロール拒否ケース）は `db/seeds/scenarios/030_platform_operators.sql` を適用します。  
-`catalog.outage.spec.ts` / `catalog.error-boundary.spec.ts` は `src/api-server.ts` 経由で api-server を落として戻すので、単体で走らせる場合も `task e2e:test`（`scripts/test.sh` が `lib.sh` を読み込む）を使ってください。ファイル名で絞ると依存 project にマッチするテストが無いため、隔離 project だけが走ります。隔離 project 名を直接指定するとき（`--project=catalog-outage`）は、先に main 3 project 全部が走らないよう `--no-deps` を付けてください。
-
-`admin.publish-flow.spec.ts` は dev seed の `admin@example.com` / `adminpass` でログインします。  
-`platform.tenant-ops.spec.ts` は dev seed の `platform@example.com` / `platformpass`（super admin）と scenario の `platform-operator@example.com` を使います。  
-`admin.auth.spec.ts` / `host.auth.spec.ts` / `platform.auth.spec.ts` の `credentials_version` 失効ケースは `db/seeds/scenarios/040_auth_e2e.sql` の専用アカウントを使います（共有 seed のセッションをバンプで壊さないため）。  
-エピソードの予約公開は UI で `scheduled` にしたあと、`datetime-local` の分単位制約を避けるため `runSql` で `scheduled_at` を過去へ進め、`publish-episodes` ワーカーの反映を待ちます。
-
-### 未対応の挙動を先に書いておく
-
-まだ直っていない挙動は、期待する側を `test.skip` で置き、コメントに Issue の URL を書いておきます。修正時に `test.skip` を外すだけで検証できます。
-
-## 失敗時のトリアージ
-
-1. ログ先頭が `readiness failed:` か `Playwright tests failed` かを見る
-2. `$E2E_RUN_DIR/logs/`（既定は `e2e/.run/logs/`。ポートや project をずらした実行では `e2e/.run/<project>-pg…/` 配下）の `api-server.log` / `admin-api-server.log` / `platform-api-server.log` / `publish-episodes.log` / `outbox-worker.log` / `web-host.log` / `web-admin.log` / `web-platform.log`
-3. `docker compose -p publira-e2e -f e2e/compose.yaml ps`
-4. CI なら artifact `e2e-artifacts` の HTML report と trace
-
-## 非スコープ
-
-- モバイルの業務シナリオ本体（#518）
-- ホストベースルーティングの Traefik 疎通（#55 → [`routing/`](./routing/README.md)）
-- 開発環境の bootstrap 検証（#514 → [`bootstrap/`](./bootstrap/README.md)）
-- 負荷試験
+See [the workflow overview](../.github/workflows/README.md) for job layout, filters, and failure triage.
