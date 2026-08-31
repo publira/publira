@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -12,6 +13,12 @@ import (
 
 	"github.com/publira/publira/server/internal/storage"
 )
+
+const defaultUploadTimeout = 15 * time.Second
+
+type putObjectClient interface {
+	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+}
 
 type Config struct {
 	Bucket         string
@@ -22,9 +29,10 @@ type Config struct {
 }
 
 type Storage struct {
-	client        *s3.Client
+	client        putObjectClient
 	bucket        string
 	publicBaseURL string
+	uploadTimeout time.Duration
 }
 
 func New(ctx context.Context, cfg Config) (*Storage, error) {
@@ -46,6 +54,7 @@ func New(ctx context.Context, cfg Config) (*Storage, error) {
 		client:        client,
 		bucket:        cfg.Bucket,
 		publicBaseURL: strings.TrimRight(strings.TrimSpace(cfg.PublicBaseURL), "/"),
+		uploadTimeout: defaultUploadTimeout,
 	}, nil
 }
 
@@ -54,7 +63,10 @@ func (s *Storage) Upload(ctx context.Context, req storage.UploadRequest) (storag
 	if key == "" {
 		return storage.UploadResult{}, fmt.Errorf("object key is required")
 	}
-	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
+	uploadCtx, cancel := context.WithTimeout(ctx, s.uploadTimeout)
+	defer cancel()
+
+	_, err := s.client.PutObject(uploadCtx, &s3.PutObjectInput{
 		Bucket:      aws.String(s.bucket),
 		Key:         aws.String(key),
 		Body:        bytes.NewReader(req.Data),

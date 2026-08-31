@@ -107,7 +107,7 @@ func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmo
 			Data:        variant.Data,
 		})
 		if uploadErr != nil {
-			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, uploadErr)
+			return uuid.NullUUID{}, storageUploadError(uploadErr)
 		}
 
 		seriesImageVariantID, variantIDErr := uuid.NewV7()

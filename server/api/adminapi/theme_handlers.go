@@ -293,7 +293,7 @@ func (s *adminServer) storeTenantBrandingImage(ctx context.Context, tenant dbmod
 		Data:        variant.Data,
 	})
 	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInternal, err)
+		return uuid.Nil, storageUploadError(err)
 	}
 
 	variantID, err := uuid.NewV7()
