@@ -47,7 +47,7 @@ When no value is passed for a variable, MF2's fallback renders it as `{$name}`. 
 The npm package [`messageformat` v4](https://www.npmjs.com/package/messageformat) parses and formats the syntax. It is maintained by a member of the MessageFormat Working Group, follows the specification as of LDML 48 (2025-10), and can also serve as a polyfill for the TC39 `Intl.MessageFormat` proposal. `@publira/i18n` contains only the catalog-specific policies layered on top of it.
 
 - Convert values to strings before passing them. `getMessage` does not receive a locale, so locale-dependent formatting such as `:number` here would leak the host locale. `@publira/utils` formats numbers and dates first, then inserts the resulting strings
-- Bidirectional isolation is disabled. Formatting results contain only the characters written in the message. Both ja and en are LTR, and these strings can also become email subjects and `<title>` values, so this avoids invisibly transporting U+2068 / U+2069. Enable it when adding the first RTL locale
+- Bidirectional isolation is disabled. This prevents the formatter from adding bidi controls such as U+2068 / U+2069. Both ja and en are LTR, and these strings can also become email subjects and `<title>` values, so this avoids invisibly transporting those controls. Enable it when adding the first RTL locale
 
 ### Unsupported features
 
