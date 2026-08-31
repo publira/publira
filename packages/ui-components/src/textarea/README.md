@@ -1,8 +1,8 @@
 # Textarea
 
-複数行テキスト入力フィールドコンポーネントです。
+A multi-line text input field component.
 
-## 使用方法
+## Usage
 
 ```tsx
 import { Textarea } from "@publira/ui-components";
@@ -20,4 +20,4 @@ import { Textarea } from "@publira/ui-components/textarea";
 
 ## Props
 
-Textarea コンポーネントは HTML の `<textarea>` 要素と同じプロップをサポートしています。
+The Textarea component supports the same props as the HTML `<textarea>` element.

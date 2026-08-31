@@ -1,8 +1,8 @@
 # Dialog
 
-確認操作や詳細表示に利用するダイアログコンポーネントです。
+The dialog components, used for confirmation flows and detail views.
 
-## 使用方法
+## Usage
 
 ```tsx
 import { Button } from "@publira/ui-components/button";
@@ -37,4 +37,4 @@ import {
 
 ## Props
 
-ConfirmDialog の props は実装を参照してください。
+See the implementation for the props of ConfirmDialog.

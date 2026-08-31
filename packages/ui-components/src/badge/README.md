@@ -1,8 +1,8 @@
 # Badge
 
-状態表示や補助ラベルに使うコンポーネントです。
+A component for status indicators and supplementary labels.
 
-## 使用方法
+## Usage
 
 ```tsx
 import { Badge, StatusChip } from "@publira/ui-components";
@@ -27,4 +27,4 @@ import { Badge, StatusChip } from "@publira/ui-components/badge";
 
 ## Props
 
-Badge / StatusChip の props は実装を参照してください。
+See the implementation for the props of Badge and StatusChip.

@@ -1,8 +1,8 @@
 # Select
 
-セレクトボックス（ドロップダウン）コンポーネントです。[Base UI Select](https://base-ui.com/r/components/select) をベースに実装しています。
+A select box (dropdown) component, implemented on top of [Base UI Select](https://base-ui.com/r/components/select).
 
-## 使用方法
+## Usage
 
 ```tsx
 import { Select } from "@publira/ui-components";
@@ -26,4 +26,4 @@ import { Select } from "@publira/ui-components/select";
 
 ## Props
 
-Base UI Select のプロップに準じます。詳細は [Base UI Select documentation](https://base-ui.com/r/components/select) を参照してください。
+Follows the props of Base UI Select. See the [Base UI Select documentation](https://base-ui.com/r/components/select) for details.

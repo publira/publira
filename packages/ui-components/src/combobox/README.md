@@ -1,10 +1,10 @@
 # Combobox
 
-検索可能な単一選択・複数選択コンポーネントです。[Base UI Combobox](https://base-ui.com/r/components/combobox) をベースに実装しています。
+A searchable single-select and multi-select component, implemented on top of [Base UI Combobox](https://base-ui.com/r/components/combobox).
 
-`Field` 配下では `id` を渡さなくても入力に一意な id が付き、同じ `Field` 内の `FieldLabel` の `for` がそれを指します。呼び出し側が `id` を渡した場合はその id を使います。
+Inside a `Field`, the input gets a unique id even when none is passed, and the `for` of the `FieldLabel` in the same `Field` points at it. When the caller passes an `id`, that id is used instead.
 
-## 使用方法
+## Usage
 
 ```tsx
 import {
@@ -57,13 +57,13 @@ import { Combobox, MultiCombobox } from "@publira/ui-components/combobox";
 
 ## Props
 
-| Prop | 型 | デフォルト | 説明 |
+| Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `items` | `{ label: string; value: string }[]` | 必須 | 選択肢 |
-| `value` | `string` / `string[]` | 必須 | 選択中の値。`MultiCombobox` は配列 |
-| `onValueChange` | `(next) => void` | 必須 | 選択変更時 |
-| `id` | `string` | 自動採番 | 入力の id。省略時は `FieldLabel` と自動で結びつく |
-| `placeholder` / `searchPlaceholder` | `string` | `"検索"` | 未選択時のプレースホルダ |
-| `emptyMessage` | `string` | `"一致する項目が見つかりません。"` | 一致なしの表示 |
-| `disabled` | `boolean` | — | 無効化 |
-| `className` | `string` | — | 入力（`MultiCombobox` は入力グループ）の className |
+| `items` | `{ label: string; value: string }[]` | Required | The available options |
+| `value` | `string` / `string[]` | Required | The selected value. `MultiCombobox` takes an array |
+| `onValueChange` | `(next) => void` | Required | Called when the selection changes |
+| `id` | `string` | Generated | The id of the input. When omitted, it is associated with `FieldLabel` automatically |
+| `placeholder` / `searchPlaceholder` | `string` | `"検索"` | Placeholder shown while nothing is selected |
+| `emptyMessage` | `string` | `"一致する項目が見つかりません。"` | Shown when nothing matches |
+| `disabled` | `boolean` | — | Disable the control |
+| `className` | `string` | — | className of the input (of the input group for `MultiCombobox`) |

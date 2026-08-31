@@ -1,12 +1,12 @@
 # ActionForm
 
-`useActionState` をカプセル化したフォームコンポーネントです。Server Action のエラーハンドリング・送信中状態・成功メッセージ表示を統一的に扱えます。
+A form component that encapsulates `useActionState`. It gives Server Action error handling, the pending state, and success message display a single consistent shape.
 
-## 使用方法
+## Usage
 
-### 自動モード
+### Automatic mode
 
-`children` に ReactNode を渡すだけで、エラー表示と送信ボタンを自動管理します。
+Pass a ReactNode as `children` and the component manages error display and the submit button for you.
 
 ```tsx
 import { ActionForm } from "@publira/ui-components/action-form";
@@ -20,9 +20,9 @@ export default function Example() {
 }
 ```
 
-### レンダー関数モード
+### Render function mode
 
-ボタン配置やメッセージ表示をカスタマイズしたい場合、`children` に関数を渡します。
+Pass a function as `children` when you want to customize button placement or message display.
 
 ```tsx
 import { ActionForm } from "@publira/ui-components/action-form";
@@ -48,7 +48,7 @@ export default function Example() {
 }
 ```
 
-### Server Action での型の使用
+### Using the types in a Server Action
 
 ```ts
 "use server";
@@ -63,7 +63,7 @@ export const myAction = async (
   if (!email) {
     return { ok: false, message: "メールアドレスを入力してください。" };
   }
-  // 成功時は redirect() するか { ok: true, message: "..." } を返す
+  // On success, either redirect() or return { ok: true, message: "..." }
   return { ok: true, message: "送信しました。" };
 };
 ```
@@ -77,14 +77,14 @@ import type { FormActionState } from "@publira/ui-components/action-form";
 
 ## Props
 
-| Prop | 型 | デフォルト | 説明 |
+| Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `action` | `(prevState, formData) => Promise<FormActionState>` | 必須 | Server Action |
-| `children` | `ReactNode \| (props) => ReactNode` | 必須 | フォーム内容。関数を渡すとレンダー関数モード |
-| `submitLabel` | `string` | — | 自動モードの送信ボタンテキスト |
-| `pendingLabel` | `string` | `submitLabel` | 送信中のボタンテキスト |
-| `showSuccess` | `boolean` | `false` | `{ ok: true }` 時に成功メッセージを表示 |
-| `className` | `string` | — | `<form>` の className |
-| `submitClassName` | `string` | — | 送信ボタンの className |
-| `submitVariant` | `ButtonProps["variant"]` | — | 送信ボタンの variant |
-| `disabled` | `boolean` | — | 送信ボタンを無効化 |
+| `action` | `(prevState, formData) => Promise<FormActionState>` | Required | The Server Action |
+| `children` | `ReactNode \| (props) => ReactNode` | Required | Form content. Passing a function switches to render function mode |
+| `submitLabel` | `string` | — | Submit button text in automatic mode |
+| `pendingLabel` | `string` | `submitLabel` | Button text while the submission is pending |
+| `showSuccess` | `boolean` | `false` | Show a success message when the state is `{ ok: true }` |
+| `className` | `string` | — | className of the `<form>` |
+| `submitClassName` | `string` | — | className of the submit button |
+| `submitVariant` | `ButtonProps["variant"]` | — | variant of the submit button |
+| `disabled` | `boolean` | — | Disable the submit button |

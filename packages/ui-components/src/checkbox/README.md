@@ -1,8 +1,8 @@
 # Checkbox
 
-チェックボックスコンポーネントです。[Base UI Checkbox](https://base-ui.com/r/components/checkbox) をベースに実装しています。
+A checkbox component, implemented on top of [Base UI Checkbox](https://base-ui.com/r/components/checkbox).
 
-## 使用方法
+## Usage
 
 ```tsx
 import { Checkbox } from "@publira/ui-components";
@@ -25,4 +25,4 @@ import { Checkbox } from "@publira/ui-components/checkbox";
 
 ## Props
 
-Base UI Checkbox のプロップに準じます。詳細は [Base UI Checkbox documentation](https://base-ui.com/r/components/checkbox) を参照してください。
+Follows the props of Base UI Checkbox. See the [Base UI Checkbox documentation](https://base-ui.com/r/components/checkbox) for details.

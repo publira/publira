@@ -1,8 +1,8 @@
 # Card
 
-カードコンポーネント群です。カード全体、ヘッダー、タイトル、説明文、コンテンツ、フッターから構成されます。
+The card components. A card is made up of the container itself, a header, a title, a description, content, and a footer.
 
-## 使用方法
+## Usage
 
 ```tsx
 import {
@@ -41,11 +41,11 @@ import {
 } from "@publira/ui-components/card";
 ```
 
-## コンポーネント一覧
+## Components
 
-- `Card` - カード全体のコンテナ
-- `CardHeader` - ヘッダー領域
-- `CardTitle` - タイトル
-- `CardDescription` - 説明文
-- `CardContent` - メインコンテンツ
-- `CardFooter` - フッター領域
+- `Card` - The container for the whole card
+- `CardHeader` - The header area
+- `CardTitle` - The title
+- `CardDescription` - The description
+- `CardContent` - The main content
+- `CardFooter` - The footer area

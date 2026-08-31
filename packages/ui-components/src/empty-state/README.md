@@ -1,8 +1,8 @@
 # EmptyState
 
-空の状態を表示するコンポーネントです。
+A component that renders an empty state.
 
-## 使用方法
+## Usage
 
 ```tsx
 import { EmptyState } from "@publira/ui-components";
@@ -20,4 +20,4 @@ import { EmptyState } from "@publira/ui-components/empty-state";
 
 ## Props
 
-EmptyState コンポーネントのプロップについては、実装を参照してください。
+See the implementation for the props of the EmptyState component.

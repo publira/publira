@@ -1,8 +1,8 @@
 # FormActions
 
-フォームのアクション領域（ボタン群など）を配置するコンポーネントです。
+A component that lays out the action area of a form, such as its buttons.
 
-## 使用方法
+## Usage
 
 ```tsx
 import { FormActions, Button } from "@publira/ui-components";
@@ -25,4 +25,4 @@ import { FormActions } from "@publira/ui-components/form-actions";
 
 ## Props
 
-FormActions コンポーネントのプロップについては、実装を参照してください。
+See the implementation for the props of the FormActions component.
