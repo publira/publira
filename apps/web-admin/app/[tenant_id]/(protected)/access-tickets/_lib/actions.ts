@@ -193,10 +193,13 @@ export const listEpisodeOptionsAction = async (
     };
   }
 
-  const result = await listAllEpisodes({
-    seriesPublicId: parsed.data.seriesPublicId,
-    tenantId: parsed.data.tenantId,
-  });
+  const result = await listAllEpisodes(
+    {
+      seriesPublicId: parsed.data.seriesPublicId,
+      tenantId: parsed.data.tenantId,
+    },
+    locale
+  );
   await redirectToLoginIfSessionRejected(result);
   if (!result.ok) {
     return {

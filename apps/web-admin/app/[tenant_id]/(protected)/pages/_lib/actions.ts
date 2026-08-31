@@ -1,13 +1,14 @@
 "use server";
 
 import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { getActionMessages } from "#lib/action-messages";
+import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -86,10 +87,11 @@ export const createPageAction = async (
   formData: FormData
 ): Promise<PageFormState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = parsePageForm(formData, messages);
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "create");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
   if (!parsed.data.title) {
     return toFailure(
@@ -99,12 +101,15 @@ export const createPageAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    createPage({
-      displayInFooter: parsed.data.displayInFooter === true,
-      slug: parsed.data.slug,
-      tenantId: parsed.data.tenantId,
-      title: parsed.data.title,
-    })
+    createPage(
+      {
+        displayInFooter: parsed.data.displayInFooter === true,
+        slug: parsed.data.slug,
+        tenantId: parsed.data.tenantId,
+        title: parsed.data.title,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -115,11 +120,14 @@ export const createPageAction = async (
 
   if (parsed.data.contentMarkdown.trim()) {
     const versionResult = await withAdminSessionReauth(() =>
-      createPageVersion({
-        contentMarkdown: parsed.data.contentMarkdown,
-        pageId: result.page.id,
-        tenantId: parsed.data.tenantId,
-      })
+      createPageVersion(
+        {
+          contentMarkdown: parsed.data.contentMarkdown,
+          pageId: result.page.id,
+          tenantId: parsed.data.tenantId,
+        },
+        locale
+      )
     );
 
     if (!versionResult.ok) {
@@ -137,10 +145,11 @@ export const updatePageAction = async (
   formData: FormData
 ): Promise<PageFormState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = parsePageForm(formData, messages);
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "update");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
   }
   if (!parsed.data.pageId) {
     return toFailure(
@@ -156,12 +165,15 @@ export const updatePageAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updatePage({
-      displayInFooter: parsed.data.displayInFooter,
-      pageId: parsed.data.pageId,
-      tenantId: parsed.data.tenantId,
-      title: parsed.data.title,
-    })
+    updatePage(
+      {
+        displayInFooter: parsed.data.displayInFooter,
+        pageId: parsed.data.pageId,
+        tenantId: parsed.data.tenantId,
+        title: parsed.data.title,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -179,10 +191,11 @@ export const createDraftVersionAction = async (
   formData: FormData
 ): Promise<PageFormState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = parsePageForm(formData, messages);
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "draft");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "draft");
   }
   if (!parsed.data.pageId) {
     return toFailure(
@@ -192,11 +205,14 @@ export const createDraftVersionAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    createPageVersion({
-      contentMarkdown: parsed.data.contentMarkdown,
-      pageId: parsed.data.pageId,
-      tenantId: parsed.data.tenantId,
-    })
+    createPageVersion(
+      {
+        contentMarkdown: parsed.data.contentMarkdown,
+        pageId: parsed.data.pageId,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -210,18 +226,22 @@ export const createDraftVersionAction = async (
 
 export const publishVersionAction = async (formData: FormData) => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = parsePageForm(formData, messages);
   if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
   }
 
   const result = await withAdminSessionReauth(() =>
-    publishPageVersion({
-      pageId: parsed.data.pageId,
-      tenantId: parsed.data.tenantId,
-      versionId: parsed.data.versionId,
-    })
+    publishPageVersion(
+      {
+        pageId: parsed.data.pageId,
+        tenantId: parsed.data.tenantId,
+        versionId: parsed.data.versionId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -236,18 +256,22 @@ export const publishVersionAction = async (formData: FormData) => {
 
 export const rollbackVersionAction = async (formData: FormData) => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = parsePageForm(formData, messages);
   if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
   }
 
   const result = await withAdminSessionReauth(() =>
-    rollbackPageVersion({
-      pageId: parsed.data.pageId,
-      tenantId: parsed.data.tenantId,
-      versionId: parsed.data.versionId,
-    })
+    rollbackPageVersion(
+      {
+        pageId: parsed.data.pageId,
+        tenantId: parsed.data.tenantId,
+        versionId: parsed.data.versionId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {

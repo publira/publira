@@ -5,6 +5,10 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { DEFAULT_LOCALE, getMessage, toIntlLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -70,13 +74,18 @@ export type GetCreatorResult =
       requiresSignIn?: boolean;
     };
 
-const genericListErrorMessage =
-  "著者一覧の取得に失敗しました。時間をおいて再試行してください。";
-const genericMutationErrorMessage =
-  "著者の保存に失敗しました。時間をおいて再試行してください。";
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
+const listErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.creators.list_failed");
+const mutationErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.creators.save_failed");
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
-  rpcErrorMessage(error, fallbackMessage);
+const mapErrorToMessage = (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): string => rpcErrorMessage(error, fallbackMessage, { locale });
 
 /** The generated `Creator` fields {@link mapCreator} reads (see `series.ts`). */
 type RawCreator = Pick<
@@ -100,17 +109,19 @@ const mapCreator = (creator: RawCreator): CreatorItem => ({
 
 export const listCreators = async (
   tenantId: string,
-  options: CursorPageOptions = {}
+  options: CursorPageOptions = {},
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListCreatorsResult> => {
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       creators: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -136,7 +147,7 @@ export const listCreators = async (
     return {
       ...emptyCursorPageTokens,
       creators: [],
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -155,17 +166,19 @@ export const listCreators = async (
  * partial option set that would hide creators beyond the rows already read.
  */
 export const listAllCreators = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListCreatorsResult> => {
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       creators: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -201,7 +214,7 @@ export const listAllCreators = async (
       return {
         ...emptyCursorPageTokens,
         creators: [],
-        message: genericListErrorMessage,
+        message: listErrorMessage(messages),
         ok: false,
         requiresSignIn: false,
       };
@@ -209,7 +222,9 @@ export const listAllCreators = async (
 
     return {
       ...emptyCursorPageTokens,
-      creators: creators.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
+      creators: creators.toSorted((a, b) =>
+        a.name.localeCompare(b.name, toIntlLocale(locale))
+      ),
       ok: true,
     };
   } catch (error) {
@@ -217,24 +232,28 @@ export const listAllCreators = async (
     return {
       ...emptyCursorPageTokens,
       creators: [],
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const createCreator = async (input: {
-  tenantId: string;
-  name: string;
-  profileText: string;
-  iconImageContentType?: string;
-  iconImageData?: Uint8Array;
-}): Promise<CreateCreatorResult> => {
+export const createCreator = async (
+  input: {
+    tenantId: string;
+    name: string;
+    profileText: string;
+    iconImageContentType?: string;
+    iconImageData?: Uint8Array;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CreateCreatorResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -253,7 +272,7 @@ export const createCreator = async (input: {
 
     if (!response.creator?.publicId?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -266,25 +285,29 @@ export const createCreator = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }
 };
 
-export const updateCreator = async (input: {
-  tenantId: string;
-  publicId: string;
-  name: string;
-  profileText: string;
-  clearIconImage?: boolean;
-  iconImageContentType?: string;
-  iconImageData?: Uint8Array;
-}): Promise<UpdateCreatorResult> => {
+export const updateCreator = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+    name: string;
+    profileText: string;
+    clearIconImage?: boolean;
+    iconImageContentType?: string;
+    iconImageData?: Uint8Array;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<UpdateCreatorResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -305,7 +328,7 @@ export const updateCreator = async (input: {
 
     if (!response.creator?.publicId?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -318,24 +341,28 @@ export const updateCreator = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }
 };
 
-export const getCreator = async (input: {
-  tenantId: string;
-  publicId: string;
-}): Promise<GetCreatorResult> => {
+export const getCreator = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<GetCreatorResult> => {
   "use cache: private";
   cacheTag(`creators-${input.tenantId}`);
   cacheTag(`creator-${input.tenantId}-${input.publicId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -352,7 +379,7 @@ export const getCreator = async (input: {
 
     if (!response.creator?.publicId?.trim()) {
       return {
-        message: genericListErrorMessage,
+        message: listErrorMessage(messages),
         ok: false,
       };
     }
@@ -367,7 +394,7 @@ export const getCreator = async (input: {
       return { notFound: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };

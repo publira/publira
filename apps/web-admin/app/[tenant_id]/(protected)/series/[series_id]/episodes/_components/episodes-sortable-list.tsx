@@ -91,7 +91,7 @@ export const EpisodesSortableList = ({
           add({
             title:
               result.message ??
-              getMessage(messages, "admin.series.episodes.reorder_failed"),
+              getMessage(messages, "admin.series.episodes.reorder_error"),
             type: "error",
           });
           router.refresh();
@@ -105,7 +105,7 @@ export const EpisodesSortableList = ({
         router.refresh();
       } catch {
         add({
-          title: getMessage(messages, "admin.series.episodes.reorder_failed"),
+          title: getMessage(messages, "admin.series.episodes.reorder_error"),
           type: "error",
         });
         router.refresh();
@@ -196,7 +196,10 @@ export const EpisodesSortableList = ({
             {episode.status === "scheduled" && episode.scheduledAt ? (
               <p className="text-xs text-yellow-600 dark:text-yellow-400">
                 {getMessage(messages, "admin.series.episodes.scheduled_at", {
-                  date: formatDateTime(episode.scheduledAt, { timeZone }),
+                  date: formatDateTime(episode.scheduledAt, {
+                    locale,
+                    timeZone,
+                  }),
                 })}
               </p>
             ) : null}

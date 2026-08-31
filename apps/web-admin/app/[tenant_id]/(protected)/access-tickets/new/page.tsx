@@ -49,9 +49,10 @@ const NewAccessTicketFormSkeleton = () => (
 
 const NewAccessTicketFormData = async () => {
   const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const [timeZone, seriesResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
-    listAllSeries(tenantId),
+    listAllSeries(tenantId, locale),
   ]);
   await redirectToLoginIfSessionRejected(seriesResult);
 

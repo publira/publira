@@ -62,20 +62,26 @@ const EditEpisodePage = async ({
   }
   const { episode_id, series_id } = parsedParams;
 
-  const [episodeResult, imagesResult, timeZone, locale] = await Promise.all([
-    getEpisode({
-      publicId: episode_id,
-      seriesPublicId: series_id,
-      tenantId,
-    }),
-    listEpisodeImages({
-      episodePublicId: episode_id,
-      tenantId,
-    }),
+  const locale = await getLocale(tenantId);
+  const [episodeResult, imagesResult, timeZone, messages] = await Promise.all([
+    getEpisode(
+      {
+        publicId: episode_id,
+        seriesPublicId: series_id,
+        tenantId,
+      },
+      locale
+    ),
+    listEpisodeImages(
+      {
+        episodePublicId: episode_id,
+        tenantId,
+      },
+      locale
+    ),
     getTenantDisplayTimeZone(tenantId),
-    getLocale(tenantId),
+    loadAdminMessages(locale),
   ]);
-  const messages = await loadAdminMessages(locale);
   if (!episodeResult.ok && episodeResult.notFound) {
     notFound();
   }
@@ -132,7 +138,7 @@ const EditEpisodePage = async ({
           keyName="image_reorder_error"
           title={getMessage(
             messages,
-            "admin.series.episodes.image_reorder_failed"
+            "admin.series.episodes.image_reorder_error"
           )}
         />
 
@@ -172,10 +178,10 @@ const EditEpisodePage = async ({
             </p>
 
             {/*
-              A failed read hands back an empty `images`, so 「まだ登録されて
-              いません」 has to stay behind `imagesResult.ok`; otherwise the
-              section says the images are missing and that they were never
-              uploaded, in the same breath.
+              A failed read hands back an empty `images`, so the "nothing
+              uploaded yet" state has to stay behind `imagesResult.ok`;
+              otherwise the section says the images are missing and that they
+              were never uploaded, in the same breath.
             */}
             {imagesResult.ok ? null : (
               <SectionError

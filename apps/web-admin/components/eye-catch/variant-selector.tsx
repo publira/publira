@@ -1,8 +1,12 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cn } from "@publira/utils";
 import Image from "next/image";
-import { useCallback } from "react";
+import { useCallback, useContext } from "react";
+
+import { AdminLocaleContext } from "#components/admin-locale-context";
 
 import type { EyeCatchVariantItem } from "./types";
 
@@ -21,6 +25,12 @@ export const EyeCatchVariantSelector = ({
   selectedVariantType,
   variants,
 }: EyeCatchVariantSelectorProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
+
   const handleButtonClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       const { typeKey } = event.currentTarget.dataset;
@@ -52,7 +62,7 @@ export const EyeCatchVariantSelector = ({
   if (variants.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        まだ画像が登録されていません。
+        {getMessage(messages, "admin.eye_catch.variants_empty")}
       </p>
     );
   }
@@ -61,6 +71,9 @@ export const EyeCatchVariantSelector = ({
     <div className="grid gap-3 sm:grid-cols-2">
       {displayGroups.map(([typeKey, typeVariants]) => {
         const isSelected = selectedVariantType === typeKey;
+        const variantAlt = getMessage(messages, "admin.eye_catch.variant_alt", {
+          variant_type: typeKey,
+        });
         const fallbackVariant = typeVariants.at(-1);
         if (!fallbackVariant) {
           return null;
@@ -96,7 +109,7 @@ export const EyeCatchVariantSelector = ({
             >
               {localPreviewUrl ? (
                 <Image
-                  alt={`生成画像 ${typeKey}`}
+                  alt={variantAlt}
                   className="h-full w-full object-cover"
                   fill
                   sizes="(max-width: 768px) 50vw, 240px"
@@ -121,7 +134,7 @@ export const EyeCatchVariantSelector = ({
                   {/* blob/remote preview sources; next/image cannot take srcSet art direction */}
                   {/* oxlint-disable-next-line react-doctor/nextjs-no-img-element */}
                   <img
-                    alt={`生成画像 ${typeKey}`}
+                    alt={variantAlt}
                     className="h-full w-full object-cover"
                     src={fallbackVariant.url}
                   />

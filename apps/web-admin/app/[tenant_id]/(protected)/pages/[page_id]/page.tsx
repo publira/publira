@@ -94,9 +94,10 @@ const PageWorkspaceData = async ({
   const { page_id: pageId } = parsedParams;
 
   const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const [pageResult, versionsResult, timeZone] = await Promise.all([
-    getPage({ pageId, tenantId }),
-    listPageVersions({ pageId, tenantId }),
+    getPage({ pageId, tenantId }, locale),
+    listPageVersions({ pageId, tenantId }, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 

@@ -127,6 +127,7 @@ const SeriesListBody = ({
             <TableCell>
               {formatDateTime(item.publishedAt, {
                 fallback: "-",
+                locale,
                 timeZone,
               })}
             </TableCell>

@@ -284,7 +284,11 @@ export const PageWorkspace = ({
               </Badge>
               <span className="text-sm text-muted-foreground">
                 {getMessage(messages, "admin.pages.workspace.updated_at", {
-                  date: formatPageDateTime(initialPage.updatedAt, timeZone),
+                  date: formatPageDateTime(
+                    initialPage.updatedAt,
+                    locale,
+                    timeZone
+                  ),
                 })}
               </span>
             </div>
@@ -444,10 +448,18 @@ export const PageWorkspace = ({
                         <Badge tone={status.tone}>{status.label}</Badge>
                       </TableCell>
                       <TableCell>
-                        {formatPageDateTime(version.createdAt, timeZone)}
+                        {formatPageDateTime(
+                          version.createdAt,
+                          locale,
+                          timeZone
+                        )}
                       </TableCell>
                       <TableCell>
-                        {formatPageDateTime(version.publishedAt, timeZone)}
+                        {formatPageDateTime(
+                          version.publishedAt,
+                          locale,
+                          timeZone
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">

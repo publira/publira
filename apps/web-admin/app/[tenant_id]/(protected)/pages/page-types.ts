@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import { formatDateTime } from "@publira/utils";
 
 import type { PageItem, PageVersionItem } from "#lib/page";
@@ -10,8 +11,11 @@ export type PageMutationMode = "create" | "update" | "draft";
  * in the tenant's zone. Unparseable values still fall through as-is so a
  * malformed API response stays visible instead of turning into a placeholder.
  */
-export const formatPageDateTime = (value: string, timeZone: string): string =>
-  value ? formatDateTime(value, { timeZone }) : "-";
+export const formatPageDateTime = (
+  value: string,
+  locale: Locale,
+  timeZone: string
+): string => (value ? formatDateTime(value, { locale, timeZone }) : "-");
 
 /**
  * Canonical page slug for create/update forms and display.

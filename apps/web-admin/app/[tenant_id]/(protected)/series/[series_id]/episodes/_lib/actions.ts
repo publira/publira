@@ -1,13 +1,14 @@
 "use server";
 
 import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { getActionMessages } from "#lib/action-messages";
+import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { createEpisode, reorderEpisodePage } from "#lib/episode";
@@ -105,7 +106,8 @@ export const createEpisodeAction = async (
   formData: FormData
 ): Promise<EpisodeActionState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = createEpisodeSchema(messages).safeParse(
     toFormDataInput(formData, {
       price: "value",
@@ -117,7 +119,7 @@ export const createEpisodeAction = async (
     })
   );
   if (!parsed.success) {
-    return toCreateFailure(toFormErrorMessage(parsed.error));
+    return toCreateFailure(toFormErrorMessage(parsed.error, { locale }));
   }
 
   const scheduledAt = await toScheduledAt(
@@ -129,17 +131,21 @@ export const createEpisodeAction = async (
     return scheduledAt;
   }
 
-  // orderIndex は送らない。ListEpisodes がページ単位で返すようになったため
-  // 全件を読んで末尾を数える形は使えず、末尾への追加はサーバーが決める。
+  // `orderIndex` is not sent. `ListEpisodes` returns one page at a time, so
+  // counting the end by reading every episode is no longer possible; the
+  // server decides where an appended episode lands.
   const result = await withAdminSessionReauth(() =>
-    createEpisode({
-      price: parsed.data.price,
-      publishAt: scheduledAt.value,
-      readingPeriodHours: parsed.data.readingPeriodHours,
-      seriesPublicId: parsed.data.seriesPublicId,
-      tenantId: parsed.data.tenantId,
-      title: parsed.data.title,
-    })
+    createEpisode(
+      {
+        price: parsed.data.price,
+        publishAt: scheduledAt.value,
+        readingPeriodHours: parsed.data.readingPeriodHours,
+        seriesPublicId: parsed.data.seriesPublicId,
+        tenantId: parsed.data.tenantId,
+        title: parsed.data.title,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -155,7 +161,8 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   "use server";
 
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = reorderEpisodesSchema(messages).safeParse(
     toFormDataInput(formData, {
       currentEpisodeIds: { kind: "value", name: "current_episode_public_ids" },
@@ -171,6 +178,7 @@ export const reorderEpisodesAction = async (formData: FormData) => {
           messages,
           "admin.series.episodes.validation.sort_data_missing"
         ),
+        locale,
       }),
       ok: false,
     };
@@ -202,12 +210,15 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   // The list screen posts the order of the page that was dragged on, not of the
   // whole series; the merge back into the series' order happens in the lib.
   const reordered = await withAdminSessionReauth(() =>
-    reorderEpisodePage({
-      currentEpisodePublicIds: parsed.data.currentEpisodeIds,
-      episodePublicIds: parsed.data.orderedEpisodeIds,
-      seriesPublicId: parsed.data.seriesPublicId,
-      tenantId: parsed.data.tenantId,
-    })
+    reorderEpisodePage(
+      {
+        currentEpisodePublicIds: parsed.data.currentEpisodeIds,
+        episodePublicIds: parsed.data.orderedEpisodeIds,
+        seriesPublicId: parsed.data.seriesPublicId,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
   );
   if (!reordered.ok) {
     return reordered;

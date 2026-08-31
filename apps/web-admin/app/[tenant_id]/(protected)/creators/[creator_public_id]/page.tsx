@@ -75,10 +75,14 @@ const EditCreatorFormData = async ({
   const { creator_public_id: creatorPublicId } = parsedParams;
 
   const tenantId = await getTenantId();
-  const result = await getCreator({
-    publicId: creatorPublicId,
-    tenantId,
-  });
+  const locale = await getLocale(tenantId);
+  const result = await getCreator(
+    {
+      publicId: creatorPublicId,
+      tenantId,
+    },
+    locale
+  );
 
   if (!result.ok) {
     if (result.notFound) {

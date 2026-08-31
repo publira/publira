@@ -1,13 +1,14 @@
 "use server";
 
 import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { getActionMessages } from "#lib/action-messages";
+import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -138,7 +139,8 @@ export const updateEpisodeScheduleAction = async (
   formData: FormData
 ): Promise<EpisodeEditActionState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = scheduleFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
@@ -146,7 +148,7 @@ export const updateEpisodeScheduleAction = async (
     })
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "schedule");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "schedule");
   }
 
   const schedule = await parsePublishAtToRFC3339(
@@ -159,11 +161,14 @@ export const updateEpisodeScheduleAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateEpisodePublishSchedule({
-      episodePublicId: parsed.data.episodePublicId,
-      publishAt: schedule.iso,
-      tenantId: parsed.data.tenantId,
-    })
+    updateEpisodePublishSchedule(
+      {
+        episodePublicId: parsed.data.episodePublicId,
+        publishAt: schedule.iso,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -180,7 +185,8 @@ export const uploadEpisodePagesAction = async (
   formData: FormData
 ): Promise<EpisodeEditActionState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = uploadPagesFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
@@ -190,7 +196,7 @@ export const uploadEpisodePagesAction = async (
     })
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "pages");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "pages");
   }
 
   const {
@@ -239,12 +245,15 @@ export const uploadEpisodePagesAction = async (
     }
 
     const result = await withAdminSessionReauth(() =>
-      uploadEpisodePages({
-        archive,
-        episodePublicId,
-        seriesPublicId,
-        tenantId,
-      })
+      uploadEpisodePages(
+        {
+          archive,
+          episodePublicId,
+          seriesPublicId,
+          tenantId,
+        },
+        locale
+      )
     );
 
     if (!result.ok) {
@@ -264,11 +273,14 @@ export const uploadEpisodePagesAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    uploadEpisodePages({
-      episodePublicId,
-      pages,
-      tenantId,
-    })
+    uploadEpisodePages(
+      {
+        episodePublicId,
+        pages,
+        tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -284,7 +296,8 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
   "use server";
 
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = reorderImagesSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
@@ -298,6 +311,7 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
           messages,
           "admin.series.episodes.validation.sort_data_missing"
         ),
+        locale,
       }),
       ok: false,
     };
@@ -314,11 +328,14 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
   }
 
   const result = await withAdminSessionReauth(() =>
-    reorderEpisodeImages({
-      episodePublicId: parsed.data.episodePublicId,
-      imageIds: parsed.data.orderedImageIds,
-      tenantId: parsed.data.tenantId,
-    })
+    reorderEpisodeImages(
+      {
+        episodePublicId: parsed.data.episodePublicId,
+        imageIds: parsed.data.orderedImageIds,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {

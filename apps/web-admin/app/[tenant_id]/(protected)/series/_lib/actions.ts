@@ -1,13 +1,14 @@
 "use server";
 
 import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { getActionMessages } from "#lib/action-messages";
+import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -133,12 +134,13 @@ export const createSeriesAction = async (
   formData: FormData
 ): Promise<SeriesActionState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = seriesCommonSchema(messages).safeParse(
     toFormDataInput(formData, seriesFormFields)
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "create");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
 
   const schedule = await resolvePublishedAt(
@@ -156,18 +158,21 @@ export const createSeriesAction = async (
   );
 
   const result = await withAdminSessionReauth(() =>
-    createSeries({
-      creatorPublicIds: parsed.data.creatorPublicIds,
-      eyeCatchImageContentType,
-      eyeCatchImageData,
-      isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
-      labelPublicId: parsed.data.labelPublicId,
-      publishedAt: schedule.publishedAt,
-      readingPeriodHours: parsed.data.readingPeriodHours,
-      synopsis: parsed.data.synopsis,
-      tenantId: parsed.data.tenantId,
-      title: parsed.data.title,
-    })
+    createSeries(
+      {
+        creatorPublicIds: parsed.data.creatorPublicIds,
+        eyeCatchImageContentType,
+        eyeCatchImageData,
+        isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
+        labelPublicId: parsed.data.labelPublicId,
+        publishedAt: schedule.publishedAt,
+        readingPeriodHours: parsed.data.readingPeriodHours,
+        synopsis: parsed.data.synopsis,
+        tenantId: parsed.data.tenantId,
+        title: parsed.data.title,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -182,7 +187,8 @@ export const updateSeriesAction = async (
   formData: FormData
 ): Promise<SeriesActionState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = seriesUpdateSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,
@@ -190,7 +196,7 @@ export const updateSeriesAction = async (
     })
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "update");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
   }
 
   const schedule = await resolvePublishedAt(
@@ -208,19 +214,22 @@ export const updateSeriesAction = async (
   );
 
   const result = await withAdminSessionReauth(() =>
-    updateSeries({
-      creatorPublicIds: parsed.data.creatorPublicIds,
-      eyeCatchImageContentType,
-      eyeCatchImageData,
-      isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
-      labelPublicId: parsed.data.labelPublicId,
-      publicId: parsed.data.publicId,
-      publishedAt: schedule.publishedAt,
-      readingPeriodHours: parsed.data.readingPeriodHours,
-      synopsis: parsed.data.synopsis,
-      tenantId: parsed.data.tenantId,
-      title: parsed.data.title,
-    })
+    updateSeries(
+      {
+        creatorPublicIds: parsed.data.creatorPublicIds,
+        eyeCatchImageContentType,
+        eyeCatchImageData,
+        isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
+        labelPublicId: parsed.data.labelPublicId,
+        publicId: parsed.data.publicId,
+        publishedAt: schedule.publishedAt,
+        readingPeriodHours: parsed.data.readingPeriodHours,
+        synopsis: parsed.data.synopsis,
+        tenantId: parsed.data.tenantId,
+        title: parsed.data.title,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -235,7 +244,8 @@ export const updateSeriesEyeCatchAction = async (
   formData: FormData
 ): Promise<SeriesActionState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = seriesEyeCatchSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,
@@ -248,7 +258,7 @@ export const updateSeriesEyeCatchAction = async (
     })
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "update");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
   }
 
   const schedule = await resolvePublishedAt(
@@ -273,20 +283,23 @@ export const updateSeriesEyeCatchAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateSeries({
-      clearEyeCatchImage: parsed.data.clearEyeCatchImage,
-      creatorPublicIds: parsed.data.creatorPublicIds,
-      eyeCatchImageContentType,
-      eyeCatchImageData,
-      isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
-      labelPublicId: parsed.data.labelPublicId,
-      publicId: parsed.data.publicId,
-      publishedAt: schedule.publishedAt,
-      readingPeriodHours: parsed.data.readingPeriodHours,
-      synopsis: parsed.data.synopsis,
-      tenantId: parsed.data.tenantId,
-      title: parsed.data.title,
-    })
+    updateSeries(
+      {
+        clearEyeCatchImage: parsed.data.clearEyeCatchImage,
+        creatorPublicIds: parsed.data.creatorPublicIds,
+        eyeCatchImageContentType,
+        eyeCatchImageData,
+        isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
+        labelPublicId: parsed.data.labelPublicId,
+        publicId: parsed.data.publicId,
+        publishedAt: schedule.publishedAt,
+        readingPeriodHours: parsed.data.readingPeriodHours,
+        synopsis: parsed.data.synopsis,
+        tenantId: parsed.data.tenantId,
+        title: parsed.data.title,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {

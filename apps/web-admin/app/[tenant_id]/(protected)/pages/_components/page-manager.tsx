@@ -122,7 +122,7 @@ const PageListBody = ({
               )}
             </TableCell>
             <TableCell>
-              {formatPageDateTime(page.updatedAt, timeZone)}
+              {formatPageDateTime(page.updatedAt, locale, timeZone)}
             </TableCell>
             <TableCell>
               <LinkButton href={`/pages/${page.id}`} variant="outline">
