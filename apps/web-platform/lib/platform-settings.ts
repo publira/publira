@@ -19,6 +19,7 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
+import { readSetupDefaultLocale } from "./setup-status";
 
 /**
  * Loaded lazily so this module can keep exporting
@@ -210,17 +211,24 @@ export const getPlatformDisplayTimeZone = async (): Promise<string> => {
  * Display locale for the platform console itself when the operator has not
  * chosen one in the `publira_locale` cookie (#1047).
  *
- * The stored setting is the answer whenever it can be read. It cannot be on the
- * screens that exist to create a session — the login form above all, where
- * `GetPlatformSettings` has no session to authorize — so those fall through to
- * what the browser asked for in `Accept-Language`. That is a statement about
- * the person in front of the screen rather than a language picked for them,
- * which is the same reason `/setup` opens on it.
+ * The saved setting is the answer, and it stays the answer without a session:
+ * `GetPlatformSettings` needs one, but `CheckSetupStatus` does not and reports
+ * the same value, so the login screen renders in the language the platform
+ * saved rather than one guessed for whoever is looking at it.
+ *
+ * Only a platform that has saved nothing falls through to `Accept-Language` —
+ * before setup there is no console language yet, and the browser's preference
+ * is the one thing that says anything about the operator about to choose one.
  */
 export const getPlatformDisplayLocale = async (): Promise<Locale> => {
   const settings = await readPlatformSettings();
   if (settings) {
     return settings.defaultLocale;
+  }
+
+  const saved = await readSetupDefaultLocale();
+  if (saved) {
+    return saved;
   }
 
   const requestHeaders = await headers();

@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockCacheTag,
+  mockCheckSetupStatusApi,
   mockGetPlatformSettingsApi,
   mockHeaders,
   mockResolveAccessToken,
   mockUpdatePlatformSettingsApi,
 } = vi.hoisted(() => ({
   mockCacheTag: vi.fn(),
+  mockCheckSetupStatusApi: vi.fn(),
   mockGetPlatformSettingsApi: vi.fn(),
   mockHeaders: vi.fn(),
   mockResolveAccessToken: vi.fn(),
@@ -29,6 +31,9 @@ vi.mock("./api-client", () => ({
       getPlatformSettings: mockGetPlatformSettingsApi,
       updatePlatformSettings: mockUpdatePlatformSettingsApi,
     },
+    setup: {
+      checkSetupStatus: mockCheckSetupStatusApi,
+    },
   },
   buildSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
@@ -42,6 +47,10 @@ describe("platform-settings", () => {
     vi.resetModules();
     mockResolveAccessToken.mockResolvedValue("session-token");
     mockHeaders.mockResolvedValue(new Headers());
+    mockCheckSetupStatusApi.mockResolvedValue({
+      defaultLocale: "",
+      setupCompleted: true,
+    });
   });
 
   it("returns the default time zone and locale when loading succeeds", async () => {
@@ -287,10 +296,30 @@ describe("platform-settings", () => {
     await expect(getPlatformDisplayLocale()).resolves.toBe("en");
   });
 
-  it("negotiates from Accept-Language when the settings read fails", async () => {
-    mockGetPlatformSettingsApi.mockRejectedValueOnce(
-      new ConnectError("platform api unavailable", Code.Unavailable)
+  it("reads the saved default without a session, through the setup status", async () => {
+    // The login screen: no session for `GetPlatformSettings`, but the saved
+    // language still decides what it renders in.
+    mockResolveAccessToken.mockResolvedValue("");
+    mockCheckSetupStatusApi.mockResolvedValue({
+      defaultLocale: "en",
+      setupCompleted: true,
+    });
+    mockHeaders.mockResolvedValue(
+      new Headers({ "accept-language": "ja,en;q=0.9" })
     );
+
+    const { getPlatformDisplayLocale } = await import("./platform-settings");
+
+    await expect(getPlatformDisplayLocale()).resolves.toBe("en");
+    expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();
+  });
+
+  it("negotiates from Accept-Language only before anything is saved", async () => {
+    mockResolveAccessToken.mockResolvedValue("");
+    mockCheckSetupStatusApi.mockResolvedValue({
+      defaultLocale: "",
+      setupCompleted: false,
+    });
     mockHeaders.mockResolvedValue(
       new Headers({ "accept-language": "en-US,en;q=0.9" })
     );
