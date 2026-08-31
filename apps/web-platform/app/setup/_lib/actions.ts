@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import { getLocales, getMessage } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -10,14 +10,23 @@ import { z } from "zod";
 import { emailFormSchema, passwordFormSchema } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
 import { requiredTrimmedString } from "#lib/form-schemas";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getInitialLocaleCandidate } from "#lib/initial-locale";
+import { loadPlatformMessages } from "#lib/locale";
 import type { PlatformMessages } from "#lib/locale";
 import { createInitialUser } from "#lib/setup";
 
+/**
+ * The chosen locale is checked against the supported list here as well as on
+ * the server: `Accept-Language` only seeded the selector, and a hand-built
+ * request can name any code at all.
+ */
 const setupFormSchema = (messages: PlatformMessages) =>
   z
     .object({
       confirmPassword: passwordFormSchema(messages),
+      defaultLocale: z.enum(getLocales(), {
+        error: getMessage(messages, "platform.auth.setup.locale_required"),
+      }),
       email: emailFormSchema(messages),
       name: requiredTrimmedString(
         getMessage(messages, "platform.auth.setup.name_required")
@@ -34,12 +43,15 @@ export const setupAction = async (
   formData: FormData
 ): Promise<FormActionState> => {
   await assertSameOrigin();
-  const locale = await getPlatformLocale();
+  // The screen this was submitted from renders in the negotiated locale, so
+  // the failure copy has to come back in the same language.
+  const locale = await getInitialLocaleCandidate();
   const messages = await loadPlatformMessages(locale);
 
   const parsed = setupFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
+      defaultLocale: { kind: "value", name: "default_locale" },
       email: "value",
       name: "value",
       password: "value",
@@ -52,8 +64,14 @@ export const setupAction = async (
     };
   }
 
-  const { email, name, password } = parsed.data;
-  const result = await createInitialUser(name, email, password, locale);
+  const { defaultLocale, email, name, password } = parsed.data;
+  const result = await createInitialUser({
+    defaultLocale,
+    email,
+    locale,
+    name,
+    password,
+  });
   if (!result.ok) {
     if (result.alreadyCompleted) {
       redirect("/login");

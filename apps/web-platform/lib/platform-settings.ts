@@ -54,10 +54,6 @@ export type UpdatePlatformDefaultLocaleResult =
   | { defaultLocale: Locale; ok: true }
   | { message: string; ok: false };
 
-export type PlatformDefaultLocaleResult =
-  | { defaultLocale: Locale; ok: true }
-  | { message: string; ok: false };
-
 /**
  * Tag the cached read carries, so `updateTag` in the Server Action makes the
  * saved value visible in the same session — both on the settings screen and on
@@ -156,6 +152,10 @@ export const getPlatformDisplayTimeZone = async (): Promise<string> => {
  * Display locale for the platform console itself when the operator has not
  * chosen one in the `publira_locale` cookie (#1047). A failed read degrades to
  * {@link DEFAULT_LOCALE} rather than interrupting the page.
+ *
+ * `/setup` does not come through here: it runs before the settings row exists,
+ * so it resolves its own locale from `Accept-Language`. Removing this last
+ * implicit fallback for the rest of the console is #1249.
  */
 export const getPlatformDisplayLocale = async (): Promise<Locale> => {
   // Error copy is unused here; DEFAULT_LOCALE only keys the cached read.
@@ -191,52 +191,6 @@ const readStoredPlatformSettings = async (
   }
 
   return { defaultLocale: parseLocale(defaultLocale), defaultTimezone };
-};
-
-/**
- * The saved platform default locale, for a write path that has to name one.
- *
- * Tenant creation sends it as the new tenant's locale: the API no longer picks
- * a language when the request omits it. Until the creation screen offers its
- * own selector (#1246), the platform default is the locale the operator
- * configured, so it is the value to state explicitly.
- */
-export const readPlatformDefaultLocale = async (
-  locale: Locale
-): Promise<PlatformDefaultLocaleResult> => {
-  const [messages, sessionId] = await Promise.all([
-    loadPlatformMessages(locale),
-    resolveAccessToken(),
-  ]);
-  if (!sessionId) {
-    return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
-      ok: false,
-    };
-  }
-
-  try {
-    const stored = await readStoredPlatformSettings(sessionId);
-    if (!stored) {
-      return {
-        message: getMessage(messages, "platform.settings.load_failed"),
-        ok: false,
-      };
-    }
-
-    return { defaultLocale: stored.defaultLocale, ok: true };
-  } catch (error) {
-    rethrowUnauthenticatedRpcError(error);
-    rethrowUnclassifiedRpcError(error);
-    return {
-      message: parseErrorMessage(
-        error,
-        getMessage(messages, "platform.settings.load_failed"),
-        locale
-      ),
-      ok: false,
-    };
-  }
 };
 
 export const updatePlatformDefaultTimezone = async (

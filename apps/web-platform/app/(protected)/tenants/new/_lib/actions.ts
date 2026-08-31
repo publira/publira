@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import { getLocales, getMessage } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -16,12 +16,19 @@ import {
 } from "#lib/form-schemas";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import type { PlatformMessages } from "#lib/locale";
-import { readPlatformDefaultLocale } from "#lib/platform-settings";
 import { createPlatformTenant } from "#lib/tenants";
 
+/**
+ * The new tenant's locale is checked against the supported list here as well as
+ * on the server: `Accept-Language` only seeded the selector, and a hand-built
+ * request can name any code at all.
+ */
 const createTenantFormSchema = (messages: PlatformMessages) =>
   z.object({
     adminDomain: optionalTrimmedString(),
+    defaultLocale: z.enum(getLocales(), {
+      error: getMessage(messages, "platform.tenants.locale_required"),
+    }),
     domain: requiredTrimmedString(
       getMessage(messages, "platform.tenants.domain_required")
     ),
@@ -42,6 +49,7 @@ export const createTenantAction = async (
   const parsed = createTenantFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       adminDomain: { kind: "value", name: "tenant_admin_domain" },
+      defaultLocale: { kind: "value", name: "tenant_default_locale" },
       domain: { kind: "value", name: "tenant_domain" },
       initialAdminEmails: { kind: "value", name: "initial_admin_emails" },
       name: { kind: "value", name: "tenant_name" },
@@ -54,21 +62,9 @@ export const createTenantAction = async (
     };
   }
 
-  const result = await withPlatformSessionReauth(async () => {
-    // The API requires the new tenant's locale, so it is stated here rather
-    // than left to the server. The creation form gains its own selector in
-    // #1246; until then the configured platform default is that decision.
-    const platformDefault = await readPlatformDefaultLocale(locale);
-    if (!platformDefault.ok) {
-      return { message: platformDefault.message, ok: false as const };
-    }
-
-    return createPlatformTenant({
-      ...parsed.data,
-      defaultLocale: platformDefault.defaultLocale,
-      locale,
-    });
-  });
+  const result = await withPlatformSessionReauth(() =>
+    createPlatformTenant({ ...parsed.data, locale })
+  );
 
   if (!result.ok) {
     return { message: result.message, ok: false };

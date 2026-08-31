@@ -96,14 +96,30 @@ export type SetupResult =
       alreadyCompleted: boolean;
     };
 
-export const createInitialUser = async (
-  name: string,
-  email: string,
-  password: string,
-  locale: Locale
-): Promise<SetupResult> => {
+export interface CreateInitialUserInput {
+  /** Platform default language the operator chose on the setup form. */
+  defaultLocale: Locale;
+  email: string;
+  /** Locale the failure copy is rendered in, not the value being saved. */
+  locale: Locale;
+  name: string;
+  password: string;
+}
+
+export const createInitialUser = async ({
+  defaultLocale,
+  email,
+  locale,
+  name,
+  password,
+}: CreateInitialUserInput): Promise<SetupResult> => {
   try {
-    await apiClient.setup.createInitialUser({ email, name, password });
+    await apiClient.setup.createInitialUser({
+      defaultLocale,
+      email,
+      name,
+      password,
+    });
     return { ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);

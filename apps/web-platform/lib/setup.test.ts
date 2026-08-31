@@ -142,9 +142,16 @@ describe("createInitialUser", () => {
     mockCreateInitialUser.mockResolvedValueOnce({});
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password", "ja")
+      createInitialUser({
+        defaultLocale: "en",
+        email: "admin@example.com",
+        locale: "ja",
+        name: "管理者",
+        password: "password",
+      })
     ).resolves.toEqual({ ok: true });
     expect(mockCreateInitialUser).toHaveBeenCalledWith({
+      defaultLocale: "en",
       email: "admin@example.com",
       name: "管理者",
       password: "password",
@@ -157,7 +164,13 @@ describe("createInitialUser", () => {
     );
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password", "ja")
+      createInitialUser({
+        defaultLocale: "ja",
+        email: "admin@example.com",
+        locale: "ja",
+        name: "管理者",
+        password: "password",
+      })
     ).resolves.toEqual({
       alreadyCompleted: true,
       message:
@@ -172,7 +185,13 @@ describe("createInitialUser", () => {
     );
 
     await expect(
-      createInitialUser("管理者", "invalid", "password", "ja")
+      createInitialUser({
+        defaultLocale: "ja",
+        email: "invalid",
+        locale: "ja",
+        name: "管理者",
+        password: "password",
+      })
     ).resolves.toEqual({
       alreadyCompleted: false,
       message: "入力内容に誤りがあります。",
@@ -186,7 +205,13 @@ describe("createInitialUser", () => {
     );
 
     await expect(
-      createInitialUser("Admin", "admin@example.com", "password", "en")
+      createInitialUser({
+        defaultLocale: "en",
+        email: "admin@example.com",
+        locale: "en",
+        name: "Admin",
+        password: "password",
+      })
     ).resolves.toEqual({
       alreadyCompleted: true,
       message: "Setup is already complete. Sign in from the sign-in screen.",
@@ -200,7 +225,13 @@ describe("createInitialUser", () => {
     );
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password", "ja")
+      createInitialUser({
+        defaultLocale: "ja",
+        email: "admin@example.com",
+        locale: "ja",
+        name: "管理者",
+        password: "password",
+      })
     ).rejects.toThrow("boom");
   });
 
@@ -208,7 +239,13 @@ describe("createInitialUser", () => {
     mockCreateInitialUser.mockRejectedValueOnce("boom");
 
     await expect(
-      createInitialUser("管理者", "admin@example.com", "password", "ja")
+      createInitialUser({
+        defaultLocale: "ja",
+        email: "admin@example.com",
+        locale: "ja",
+        name: "管理者",
+        password: "password",
+      })
     ).rejects.toBe("boom");
   });
 });

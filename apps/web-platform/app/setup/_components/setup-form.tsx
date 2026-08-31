@@ -1,25 +1,39 @@
-import { getMessage } from "@publira/i18n";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
-import { Message } from "#components/message";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getInitialLocaleCandidate } from "#lib/initial-locale";
+import { loadPlatformMessages } from "#lib/locale";
 
 import { setupAction } from "../_lib/actions";
+import { SetupMessage } from "./setup-message";
 
 export const SetupForm = async () => {
-  const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  // Nothing is stored yet, so the header decides both the language this screen
+  // renders in and which option opens selected. The saved value is whatever the
+  // operator submits from this list.
+  const initialDefaultLocale = await getInitialLocaleCandidate();
+  const messages = await loadPlatformMessages(initialDefaultLocale);
+  const localeItems = getLocales().map((value) => ({
+    label: getLocaleLabel(value),
+    value,
+  }));
 
   return (
     <ActionForm action={setupAction} className="space-y-4">
       <Field>
         <FieldLabel htmlFor="name" required>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="platform.auth.setup.name_label" />
+            <SetupMessage message="platform.auth.setup.name_label" />
           </Suspense>
         </FieldLabel>
         <FieldContent>
@@ -40,7 +54,7 @@ export const SetupForm = async () => {
       <Field>
         <FieldLabel htmlFor="email" required>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <Message message="platform.auth.fields.email_label" />
+            <SetupMessage message="platform.auth.fields.email_label" />
           </Suspense>
         </FieldLabel>
         <FieldContent>
@@ -58,7 +72,7 @@ export const SetupForm = async () => {
       <Field>
         <FieldLabel htmlFor="password" required>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-            <Message message="platform.auth.fields.password_label" />
+            <SetupMessage message="platform.auth.fields.password_label" />
           </Suspense>
         </FieldLabel>
         <FieldContent>
@@ -76,7 +90,7 @@ export const SetupForm = async () => {
       <Field>
         <FieldLabel htmlFor="confirmPassword" required>
           <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-            <Message message="platform.auth.setup.confirm_password_label" />
+            <SetupMessage message="platform.auth.setup.confirm_password_label" />
           </Suspense>
         </FieldLabel>
         <FieldContent>
@@ -90,9 +104,35 @@ export const SetupForm = async () => {
           />
         </FieldContent>
       </Field>
+
+      <Field>
+        <FieldLabel htmlFor="default_locale" required>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <SetupMessage message="platform.auth.setup.default_locale_label" />
+          </Suspense>
+        </FieldLabel>
+        <FieldContent>
+          <Select
+            defaultValue={initialDefaultLocale}
+            id="default_locale"
+            items={localeItems}
+            name="default_locale"
+            placeholder={getMessage(
+              messages,
+              "platform.auth.setup.default_locale_placeholder"
+            )}
+          />
+          <FieldDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <SetupMessage message="platform.auth.setup.default_locale_help" />
+            </Suspense>
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+
       <ActionFormSubmit className="mt-2 w-full">
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-          <Message message="platform.auth.setup.submit" />
+          <SetupMessage message="platform.auth.setup.submit" />
         </Suspense>
       </ActionFormSubmit>
     </ActionForm>
