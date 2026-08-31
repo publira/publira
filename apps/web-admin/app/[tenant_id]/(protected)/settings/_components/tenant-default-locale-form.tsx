@@ -121,11 +121,13 @@ export const TenantDefaultLocaleForm = ({
 
           {loadErrorMessage ? (
             <FormMessage variant="destructive">
-              {loadErrorMessage}
-              {getMessage(
-                messages,
-                "admin.settings.default_locale.load_error_hint"
-              )}
+              <span className="block">{loadErrorMessage}</span>
+              <span className="block">
+                {getMessage(
+                  messages,
+                  "admin.settings.default_locale.load_error_hint"
+                )}
+              </span>
             </FormMessage>
           ) : null}
 
