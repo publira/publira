@@ -1,3 +1,4 @@
+import { DEFAULT_TENANT_THEME_COLORS } from "@publira/utils/theme-css-variables";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -8,6 +9,7 @@ const {
   mockUpdateTag,
   mockUpdateTenantDefaultLocale,
   mockUpdateTenantPaymentSettings,
+  mockUpdateTenantThemeSettings,
   mockUpdateTenantTimezone,
   mockUploadTenantIcon,
   mockUploadTenantLogo,
@@ -19,6 +21,7 @@ const {
   mockUpdateTag: vi.fn(),
   mockUpdateTenantDefaultLocale: vi.fn(),
   mockUpdateTenantPaymentSettings: vi.fn(),
+  mockUpdateTenantThemeSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
   mockUploadTenantIcon: vi.fn(),
   mockUploadTenantLogo: vi.fn(),
@@ -71,7 +74,7 @@ vi.mock("#lib/theme-settings", () => ({
   deleteTenantLogo: mockDeleteTenantLogo,
   tenantThemeCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:theme-settings`,
-  updateTenantThemeSettings: vi.fn(),
+  updateTenantThemeSettings: mockUpdateTenantThemeSettings,
   uploadTenantIcon: mockUploadTenantIcon,
   uploadTenantLogo: mockUploadTenantLogo,
 }));
@@ -83,6 +86,78 @@ const textFormData = (values: Record<string, string>): FormData => {
   }
   return formData;
 };
+
+const themeFormData = (colors = DEFAULT_TENANT_THEME_COLORS): FormData =>
+  textFormData({
+    tenant_id: "TENANT001",
+    ...Object.fromEntries(
+      Object.entries(colors).map(([key, value]) => [
+        key.replaceAll(/[A-Z]/gu, (character) => `_${character.toLowerCase()}`),
+        value,
+      ])
+    ),
+  });
+
+describe("updateTenantThemeSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("低コントラストの配色を API に送らず、両方の入力欄に理由を表示する", async () => {
+    const { updateTenantThemeSettingsAction } = await import("./actions");
+
+    const result = await updateTenantThemeSettingsAction(
+      null,
+      themeFormData({
+        ...DEFAULT_TENANT_THEME_COLORS,
+        primaryForegroundColor: DEFAULT_TENANT_THEME_COLORS.primaryColor,
+      })
+    );
+
+    const message =
+      "プライマリーカラーとプライマリーテキストカラーのコントラスト比は 4.5:1 以上にしてください（現在 1.00:1）。";
+    expect(result).toEqual({
+      fieldErrors: {
+        primaryColor: message,
+        primaryForegroundColor: message,
+      },
+      message:
+        "テキストを読みやすくするため、色の組み合わせを確認してください。",
+      ok: false,
+    });
+    expect(mockUpdateTenantThemeSettings).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("デフォルト配色を保存できる", async () => {
+    mockUpdateTenantThemeSettings.mockResolvedValueOnce({
+      icon: null,
+      logo: null,
+      ok: true,
+      theme: DEFAULT_TENANT_THEME_COLORS,
+    });
+
+    const { updateTenantThemeSettingsAction } = await import("./actions");
+
+    const result = await updateTenantThemeSettingsAction(null, themeFormData());
+
+    expect(result).toEqual({
+      message: "テーマを保存しました。",
+      ok: true,
+      theme: DEFAULT_TENANT_THEME_COLORS,
+    });
+    expect(mockUpdateTenantThemeSettings).toHaveBeenCalledWith({
+      ...DEFAULT_TENANT_THEME_COLORS,
+      tenantId: "TENANT001",
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:theme-settings"
+    );
+  });
+});
 
 describe("updateTenantTimezoneAction", () => {
   beforeEach(() => {

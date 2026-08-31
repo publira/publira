@@ -29,4 +29,12 @@ export {
   toPubliraThemeCssVariables,
   type TenantThemeColors,
 } from "./theme-css-variables";
+export {
+  colorContrastRatio,
+  findThemeTextContrastIssues,
+  THEME_TEXT_CONTRAST_MIN_RATIO,
+  THEME_TEXT_CONTRAST_PAIRS,
+  type ThemeContrastIssue,
+  type ThemeContrastPair,
+} from "./theme-contrast";
 export { isValidTimeZone, listSupportedTimeZones } from "./time-zone";

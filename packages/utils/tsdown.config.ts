@@ -16,6 +16,7 @@ export default defineConfig({
     "src/search-params.ts",
     "src/static-param-placeholder.ts",
     "src/theme-css-variables.ts",
+    "src/theme-contrast.ts",
   ],
   format: "esm",
 });

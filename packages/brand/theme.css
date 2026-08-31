@@ -13,7 +13,7 @@
 
   --color-primary: var(--publira-color-primary, #0f7c82);
   --color-primary-foreground: var(--publira-color-primary-foreground, #f4fbfb);
-  --color-secondary: var(--publira-color-secondary, #d96f4a);
+  --color-secondary: var(--publira-color-secondary, #b35235);
   --color-secondary-foreground: var(
     --publira-color-secondary-foreground,
     #fff6f1
@@ -22,21 +22,21 @@
   --color-accent: var(--publira-color-accent, #7aae90);
   --color-accent-foreground: var(--publira-color-accent-foreground, #0f2a1f);
   --color-muted: var(--publira-color-muted, #e9e1d3);
-  --color-muted-foreground: var(--publira-color-muted-foreground, #5c6773);
+  --color-muted-foreground: var(--publira-color-muted-foreground, #56616e);
 
   --color-border: var(--publira-color-border, #d7ccba);
   --color-input: var(--publira-color-input, #e3d8c7);
   --color-ring: var(--publira-color-ring, #2d8d93);
 
-  --color-success: var(--publira-color-success, #2f8f5b);
+  --color-success: var(--publira-color-success, #247542);
   --color-success-foreground: var(--publira-color-success-foreground, #f3fcf7);
-  --color-warning: var(--publira-color-warning, #c4872a);
+  --color-warning: var(--publira-color-warning, #9b6217);
   --color-warning-foreground: var(--publira-color-warning-foreground, #fff8ea);
   --color-destructive: var(--publira-color-destructive, #b54444);
   --color-destructive-foreground: var(
     --publira-color-destructive-foreground,
     #fff4f4
   );
-  --color-info: var(--publira-color-info, #3c78c2);
+  --color-info: var(--publira-color-info, #2b5e9f);
   --color-info-foreground: var(--publira-color-info-foreground, #f3f8ff);
 }
