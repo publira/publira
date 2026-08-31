@@ -128,10 +128,14 @@ const EditLabelFormData = async ({
   }
   const { label_public_id: labelPublicId } = parsedParams;
 
-  const result = await getLabel({
-    publicId: labelPublicId,
-    tenantId,
-  });
+  const locale = await getLocale(tenantId);
+  const result = await getLabel(
+    {
+      publicId: labelPublicId,
+      tenantId,
+    },
+    locale
+  );
 
   if (!result.ok) {
     if (result.notFound) {

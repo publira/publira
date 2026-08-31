@@ -297,7 +297,9 @@
         "id_missing": "The author ID to update is missing."
       },
       "updated": "Author updated.",
-      "created": "Author created."
+      "created": "Author created.",
+      "list_failed": "Could not load the creators. Please try again later.",
+      "save_failed": "Could not save the creator. Please try again later."
     },
     "dashboard": {
       "section_error": "Could not display the dashboard",
@@ -325,6 +327,17 @@
       "console_title": "Could not display this page",
       "root_description": "Failed to load the admin console. Please try again later.",
       "root_title": "Could not display the admin console"
+    },
+    "eye_catch": {
+      "label": "Eye-catch image",
+      "select_aria": "Select an eye-catch image",
+      "select_prompt": "Select an image",
+      "pending_delete": "Marked for deletion. Selecting an image replaces it.",
+      "delete_current": "Delete the current eye-catch image",
+      "undo_delete": "Undo the deletion",
+      "description": "Click a variant image to replace it. Choosing delete leaves the image unset. Select a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px.",
+      "variants_empty": "No image has been registered yet.",
+      "variant_alt": "Generated image {$variant_type}"
     },
     "labels": {
       "detail_error": "Could not display the label",
@@ -375,7 +388,10 @@
       "updated": "Label updated.",
       "eye_catch_updated": "Cover image updated.",
       "eye_catch_variants_missing": "The upload was accepted, but generated images could not be confirmed. Please try again.",
-      "eye_catch_upload_not_reflected": "The upload has not been applied. Select the image again and try again."
+      "eye_catch_upload_not_reflected": "The upload has not been applied. Select the image again and try again.",
+      "list_failed": "Could not load the labels. Please try again later.",
+      "save_failed": "Could not save the label. Please try again later.",
+      "image_invalid": "Check the image settings. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px, then try again."
     },
     "nav": {
       "access_tickets_description": "Issue and revoke limited-access tickets",
@@ -465,6 +481,11 @@
       "published_success": "Page published.",
       "rolled_back": "Rolled back to the selected version.",
       "preview_empty": "There is no content yet. Enter Markdown in the editor on the left to see a preview.",
+      "list_failed": "Could not load the page. Please try again later.",
+      "save_failed": "Could not save the page. Please try again later.",
+      "slug_conflict": "A page with the same slug already exists. Choose a different slug.",
+      "slug_invalid": "The slug must be empty, or start with / and use only lowercase letters, digits, and hyphens.",
+      "not_found": "The page or version could not be found. Reload the page.",
       "workspace": {
         "basic_title": "Details",
         "basic_description": "Manage the public URL and title. The slug is read-only because it affects public links.",
@@ -583,6 +604,11 @@
       "eye_catch_choice_required": "Select an image or choose to remove it.",
       "eye_catch_variants_missing": "The upload was accepted, but generated images could not be confirmed. Please try again.",
       "eye_catch_upload_not_reflected": "The upload has not been applied. Select the image again and try again.",
+      "list_failed": "Could not load the series. Please try again later.",
+      "save_failed": "Could not save the series. Please try again later.",
+      "image_invalid": "Check the image settings. Choose a JPEG, PNG, or WebP image no larger than 10MB that meets the recommended size, then try again.",
+      "input_invalid": "Check the information you entered. Review required fields such as the title, label, and creators, then try again.",
+      "not_found": "The series could not be found. Reload the page and try again.",
       "episodes": {
         "title": "Episodes",
         "list_title": "Episodes",
@@ -614,9 +640,9 @@
         "pagination_aria": "Episode list pagination",
         "pagination_description": "By display order, up to {$count} items per page.",
         "reordered": "Episode order updated.",
-        "reorder_failed": "Could not update episode order.",
+        "reorder_error": "Could not update episode order.",
         "image_reordered": "Page image order updated.",
-        "image_reorder_failed": "Could not update page image order.",
+        "image_reorder_error": "Could not update page image order.",
         "image_alt": "Page {$index}",
         "image_list_error": "Could not display page images",
         "schedule_error": "Could not display publishing settings",
@@ -624,6 +650,20 @@
         "schedule_description": "Update the scheduled publication time. Submit blank to clear the schedule.",
         "schedule_update": "Update publish_at",
         "updating": "Updating...",
+        "create_failed": "Could not create the episode. Please try again later.",
+        "list_failed": "Could not load the episodes. Please try again later.",
+        "get_failed": "Could not load the episode. Please try again later.",
+        "schedule_failed": "Could not update the publishing settings. Please try again later.",
+        "upload_failed": "Could not add the page images. Please try again later.",
+        "image_list_failed": "Could not load the page images. Please try again later.",
+        "reorder_failed": "Could not update the episode order. Please try again later.",
+        "image_reorder_failed": "Could not update the page image order. Please try again later.",
+        "reorder_conflict": "The episode order could not be updated because another change altered the series. Reload the screen and try again.",
+        "reorder_too_many": "The series has too many episodes for the order to be updated. Please try again later.",
+        "series_not_found": "The series could not be found. Reload the screen and try again.",
+        "epub_invalid": "The ePub could not be parsed. Choose an intact ePub (.epub) file.",
+        "epub_spine_invalid": "The ePub's content references are inconsistent. Check the spine and manifest references.",
+        "archive_path_invalid": "The archive contains an invalid path. Traversal and absolute paths cannot be used.",
         "pages": {
           "image": "Page images",
           "zip": "ZIP file",

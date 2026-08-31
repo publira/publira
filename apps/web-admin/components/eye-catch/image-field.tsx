@@ -1,5 +1,7 @@
 "use client";
 
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   Field,
   FieldContent,
@@ -9,6 +11,9 @@ import {
 import { Input } from "@publira/ui-components/input";
 import { cn } from "@publira/utils";
 import type { ChangeEventHandler, RefObject } from "react";
+import { useContext } from "react";
+
+import { AdminLocaleContext } from "#components/admin-locale-context";
 
 import type { EyeCatchVariantItem } from "./types";
 import { EyeCatchVariantSelector } from "./variant-selector";
@@ -39,74 +44,89 @@ export const EyeCatchImageField = ({
   onVariantTypeChange,
   selectedVariantType,
   variants,
-}: EyeCatchImageFieldProps) => (
-  <Field>
-    <FieldLabel htmlFor={fileInputId}>アイキャッチ画像</FieldLabel>
-    <FieldContent>
-      <div className="grid gap-2">
-        {!hasVariants || clearEyeCatchImage ? (
-          <button
-            aria-label="アイキャッチ画像を選択"
-            className="relative aspect-[3/4] overflow-hidden rounded-md border-2 border-dashed border-border/60 bg-muted/40 transition-colors hover:border-blue-300"
-            onClick={onVariantImageClick}
-            type="button"
-          >
-            <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                {clearEyeCatchImage
-                  ? "削除予定です。画像を選択すると差し替えます"
-                  : "画像を選択してください"}
-              </p>
-            </div>
-          </button>
-        ) : (
-          <EyeCatchVariantSelector
-            localPreviewUrl={localPreviewUrl}
-            onImageClick={onVariantImageClick}
-            onSelectVariantType={onVariantTypeChange}
-            selectedVariantType={selectedVariantType}
-            variants={variants}
-          />
-        )}
+}: EyeCatchImageFieldProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
 
-        {hasVariants ? (
-          <div className="pt-1">
+  return (
+    <Field>
+      <FieldLabel htmlFor={fileInputId}>
+        {getMessage(messages, "admin.eye_catch.label")}
+      </FieldLabel>
+      <FieldContent>
+        <div className="grid gap-2">
+          {!hasVariants || clearEyeCatchImage ? (
             <button
-              className={cn(
-                "text-sm underline underline-offset-4",
-                clearEyeCatchImage
-                  ? "text-destructive"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              onClick={onDeleteToggle}
+              aria-label={getMessage(messages, "admin.eye_catch.select_aria")}
+              className="relative aspect-[3/4] overflow-hidden rounded-md border-2 border-dashed border-border/60 bg-muted/40 transition-colors hover:border-blue-300"
+              onClick={onVariantImageClick}
               type="button"
             >
-              {clearEyeCatchImage
-                ? "削除を取り消す"
-                : "現在のアイキャッチ画像を削除する"}
+              <div className="flex h-full items-center justify-center">
+                <p className="text-sm text-muted-foreground">
+                  {getMessage(
+                    messages,
+                    clearEyeCatchImage
+                      ? "admin.eye_catch.pending_delete"
+                      : "admin.eye_catch.select_prompt"
+                  )}
+                </p>
+              </div>
             </button>
-          </div>
-        ) : null}
-      </div>
+          ) : (
+            <EyeCatchVariantSelector
+              localPreviewUrl={localPreviewUrl}
+              onImageClick={onVariantImageClick}
+              onSelectVariantType={onVariantTypeChange}
+              selectedVariantType={selectedVariantType}
+              variants={variants}
+            />
+          )}
 
-      <Input
-        accept="image/jpeg,image/png,image/webp"
-        id={fileInputId}
-        name="eye_catch_image"
-        onChange={onImageFileChange}
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        type="file"
-      />
-      <input
-        name="clear_eye_catch_image"
-        type="hidden"
-        value={clearEyeCatchImage ? "1" : "0"}
-      />
-      <FieldDescription>
-        バリアント画像をクリックして差し替えできます。削除を選ぶと画像は未設定になります。
-        JPEG/PNG/WebP、10MB以下、2400x3200px以上の画像を選択してください。
-      </FieldDescription>
-    </FieldContent>
-  </Field>
-);
+          {hasVariants ? (
+            <div className="pt-1">
+              <button
+                className={cn(
+                  "text-sm underline underline-offset-4",
+                  clearEyeCatchImage
+                    ? "text-destructive"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={onDeleteToggle}
+                type="button"
+              >
+                {getMessage(
+                  messages,
+                  clearEyeCatchImage
+                    ? "admin.eye_catch.undo_delete"
+                    : "admin.eye_catch.delete_current"
+                )}
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <Input
+          accept="image/jpeg,image/png,image/webp"
+          id={fileInputId}
+          name="eye_catch_image"
+          onChange={onImageFileChange}
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          type="file"
+        />
+        <input
+          name="clear_eye_catch_image"
+          type="hidden"
+          value={clearEyeCatchImage ? "1" : "0"}
+        />
+        <FieldDescription>
+          {getMessage(messages, "admin.eye_catch.description")}
+        </FieldDescription>
+      </FieldContent>
+    </Field>
+  );
+};

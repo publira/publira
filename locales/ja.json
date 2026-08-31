@@ -297,7 +297,9 @@
         "id_missing": "更新対象の著者 ID が見つかりません。"
       },
       "updated": "著者を更新しました。",
-      "created": "著者を作成しました。"
+      "created": "著者を作成しました。",
+      "list_failed": "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
+      "save_failed": "著者の保存に失敗しました。時間をおいて再試行してください。"
     },
     "dashboard": {
       "section_error": "ダッシュボードを表示できませんでした",
@@ -325,6 +327,17 @@
       "console_title": "画面を表示できませんでした",
       "root_description": "管理コンソールの読み込みに失敗しました。時間をおいて再試行してください。",
       "root_title": "管理コンソールを表示できませんでした"
+    },
+    "eye_catch": {
+      "label": "アイキャッチ画像",
+      "select_aria": "アイキャッチ画像を選択",
+      "select_prompt": "画像を選択してください",
+      "pending_delete": "削除予定です。画像を選択すると差し替えます",
+      "delete_current": "現在のアイキャッチ画像を削除する",
+      "undo_delete": "削除を取り消す",
+      "description": "バリアント画像をクリックして差し替えできます。削除を選ぶと画像は未設定になります。 JPEG/PNG/WebP、10MB以下、2400x3200px以上の画像を選択してください。",
+      "variants_empty": "まだ画像が登録されていません。",
+      "variant_alt": "生成画像 {$variant_type}"
     },
     "labels": {
       "detail_error": "レーベルを表示できませんでした",
@@ -375,7 +388,10 @@
       "updated": "レーベルを更新しました。",
       "eye_catch_updated": "アイキャッチを更新しました。",
       "eye_catch_variants_missing": "アップロードは受け付けましたが、生成画像を確認できませんでした。再試行してください。",
-      "eye_catch_upload_not_reflected": "アップロード処理が反映されていません。画像を選び直して再試行してください。"
+      "eye_catch_upload_not_reflected": "アップロード処理が反映されていません。画像を選び直して再試行してください。",
+      "list_failed": "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。",
+      "save_failed": "レーベルの保存に失敗しました。時間をおいて再試行してください。",
+      "image_invalid": "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・2400x3200px以上の画像を選び、もう一度お試しください。"
     },
     "nav": {
       "access_tickets_description": "限定閲覧チケットの発行と失効",
@@ -465,6 +481,11 @@
       "published_success": "ページを公開しました。",
       "rolled_back": "指定バージョンからロールバックしました。",
       "preview_empty": "まだ内容がありません。左側のエディタに Markdown を入力するとプレビューが表示されます。",
+      "list_failed": "ページ情報の取得に失敗しました。時間をおいて再試行してください。",
+      "save_failed": "ページ情報の保存に失敗しました。時間をおいて再試行してください。",
+      "slug_conflict": "同じ slug のページが既に存在します。別の slug を指定してください。",
+      "slug_invalid": "slug は空欄、または / で始まる半角小文字・数字・ハイフンで入力してください。",
+      "not_found": "対象のページまたはバージョンが見つかりませんでした。ページを再読み込みしてください。",
       "workspace": {
         "basic_title": "基本情報",
         "basic_description": "公開 URL とタイトルを管理します。slug は公開導線に影響するため読み取り専用です。",
@@ -583,6 +604,11 @@
       "eye_catch_choice_required": "画像を選択するか、削除チェックを選んでください。",
       "eye_catch_variants_missing": "アップロードは受け付けましたが、生成画像を確認できませんでした。再試行してください。",
       "eye_catch_upload_not_reflected": "アップロード処理が反映されていません。画像を選び直して再試行してください。",
+      "list_failed": "シリーズ一覧の取得に失敗しました。時間をおいて再試行してください。",
+      "save_failed": "シリーズの保存に失敗しました。時間をおいて再試行してください。",
+      "image_invalid": "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・推奨サイズを満たす画像を選び、もう一度お試しください。",
+      "input_invalid": "入力内容を確認してください。タイトル・ラベル・作者などの必須項目を見直して、もう一度お試しください。",
+      "not_found": "対象のシリーズが見つかりませんでした。ページを再読み込みして、もう一度お試しください。",
       "episodes": {
         "title": "エピソード",
         "list_title": "エピソード一覧",
@@ -614,9 +640,9 @@
         "pagination_aria": "エピソード一覧のページ送り",
         "pagination_description": "表示順に、1ページあたり {$count} 件まで表示します。",
         "reordered": "エピソードの表示順を更新しました。",
-        "reorder_failed": "エピソードの表示順更新に失敗しました。",
+        "reorder_error": "エピソードの表示順更新に失敗しました。",
         "image_reordered": "ページ画像の表示順を更新しました。",
-        "image_reorder_failed": "ページ画像の表示順更新に失敗しました。",
+        "image_reorder_error": "ページ画像の表示順更新に失敗しました。",
         "image_alt": "ページ {$index}",
         "image_list_error": "ページ画像を表示できませんでした",
         "schedule_error": "公開設定を表示できませんでした",
@@ -624,6 +650,20 @@
         "schedule_description": "公開予約日時を更新します。空欄で送信すると予約を解除します。",
         "schedule_update": "publish_at を更新",
         "updating": "更新中...",
+        "create_failed": "エピソードの入稿に失敗しました。時間をおいて再試行してください。",
+        "list_failed": "エピソード一覧の取得に失敗しました。時間をおいて再試行してください。",
+        "get_failed": "エピソードの取得に失敗しました。時間をおいて再試行してください。",
+        "schedule_failed": "公開設定の更新に失敗しました。時間をおいて再試行してください。",
+        "upload_failed": "ページ画像の追加に失敗しました。時間をおいて再試行してください。",
+        "image_list_failed": "ページ画像一覧の取得に失敗しました。時間をおいて再試行してください。",
+        "reorder_failed": "エピソードの並び順更新に失敗しました。時間をおいて再試行してください。",
+        "image_reorder_failed": "ページ画像の並び順更新に失敗しました。時間をおいて再試行してください。",
+        "reorder_conflict": "他の操作でエピソードの構成か並び順が変わったため、並び順を更新できませんでした。画面を再読み込みして再試行してください。",
+        "reorder_too_many": "エピソードが多すぎて並び順を更新できませんでした。時間をおいて再試行してください。",
+        "series_not_found": "シリーズが見つかりません。画面を再読み込みして再試行してください。",
+        "epub_invalid": "ePub の解析に失敗しました。壊れていない ePub（.epub）を選択してください。",
+        "epub_spine_invalid": "ePub の本文参照に不整合があります。spine と manifest の参照を確認してください。",
+        "archive_path_invalid": "アーカイブ内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。",
         "pages": {
           "image": "ページ画像",
           "zip": "ZIP ファイル",

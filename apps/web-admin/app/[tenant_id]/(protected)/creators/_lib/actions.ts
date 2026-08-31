@@ -1,13 +1,14 @@
 "use server";
 
 import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { getActionMessages } from "#lib/action-messages";
+import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { createCreator, updateCreator } from "#lib/creator";
 import { assertSameOrigin } from "#lib/csrf";
@@ -74,25 +75,29 @@ export const createCreatorAction = async (
   formData: FormData
 ): Promise<CreatorActionState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = creatorCommonSchema(messages).safeParse(
     toFormDataInput(formData, creatorFormFields)
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "create");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
 
   const { iconImage, name, profileText, tenantId } = parsed.data;
   const { iconImageContentType, iconImageData } = await toIconImage(iconImage);
 
   const result = await withAdminSessionReauth(() =>
-    createCreator({
-      iconImageContentType,
-      iconImageData,
-      name,
-      profileText,
-      tenantId,
-    })
+    createCreator(
+      {
+        iconImageContentType,
+        iconImageData,
+        name,
+        profileText,
+        tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -109,7 +114,8 @@ export const updateCreatorAction = async (
   formData: FormData
 ): Promise<CreatorActionState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = creatorUpdateSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...creatorFormFields,
@@ -117,7 +123,7 @@ export const updateCreatorAction = async (
     })
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "update");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
   }
 
   const { clearIconImage, iconImage, name, profileText, publicId, tenantId } =
@@ -125,15 +131,18 @@ export const updateCreatorAction = async (
   const { iconImageContentType, iconImageData } = await toIconImage(iconImage);
 
   const result = await withAdminSessionReauth(() =>
-    updateCreator({
-      clearIconImage,
-      iconImageContentType,
-      iconImageData,
-      name,
-      profileText,
-      publicId,
-      tenantId,
-    })
+    updateCreator(
+      {
+        clearIconImage,
+        iconImageContentType,
+        iconImageData,
+        name,
+        profileText,
+        publicId,
+        tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {

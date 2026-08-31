@@ -1,13 +1,14 @@
 "use server";
 
 import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { getActionMessages } from "#lib/action-messages";
+import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -75,12 +76,13 @@ export const createLabelAction = async (
   formData: FormData
 ): Promise<LabelActionState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = labelCommonSchema(messages).safeParse(
     toFormDataInput(formData, labelFormFields)
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "create");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
 
   const { eyeCatchImage, name, tenantId } = parsed.data;
@@ -88,12 +90,15 @@ export const createLabelAction = async (
     await toEyeCatchImage(eyeCatchImage);
 
   const result = await withAdminSessionReauth(() =>
-    createLabel({
-      eyeCatchImageContentType,
-      eyeCatchImageData,
-      name,
-      tenantId,
-    })
+    createLabel(
+      {
+        eyeCatchImageContentType,
+        eyeCatchImageData,
+        name,
+        tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {
@@ -110,7 +115,8 @@ export const updateLabelAction = async (
   formData: FormData
 ): Promise<LabelActionState> => {
   await assertSameOrigin();
-  const messages = await getActionMessages(formData);
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
   const parsed = labelUpdateSchema(messages).safeParse(
     toFormDataInput(formData, {
       ...labelFormFields,
@@ -123,7 +129,7 @@ export const updateLabelAction = async (
     })
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error), "update");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
   }
 
   const {
@@ -138,14 +144,17 @@ export const updateLabelAction = async (
     await toEyeCatchImage(eyeCatchImage);
 
   const result = await withAdminSessionReauth(() =>
-    updateLabel({
-      clearEyeCatchImage,
-      eyeCatchImageContentType,
-      eyeCatchImageData,
-      name,
-      publicId,
-      tenantId,
-    })
+    updateLabel(
+      {
+        clearEyeCatchImage,
+        eyeCatchImageContentType,
+        eyeCatchImageData,
+        name,
+        publicId,
+        tenantId,
+      },
+      locale
+    )
   );
 
   if (!result.ok) {

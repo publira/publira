@@ -5,6 +5,10 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { DEFAULT_LOCALE, getMessage, toIntlLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 
 import {
   isUnauthenticatedError,
@@ -89,22 +93,36 @@ export type GetSeriesResult =
       requiresSignIn?: boolean;
     };
 
-const genericListErrorMessage =
-  "シリーズ一覧の取得に失敗しました。時間をおいて再試行してください。";
-const genericMutationErrorMessage =
-  "シリーズの保存に失敗しました。時間をおいて再試行してください。";
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
+const listErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.list_failed");
+const mutationErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.save_failed");
 
-const invalidArgumentMessage = (error: unknown): string =>
+const invalidArgumentMessage = (
+  error: unknown,
+  messages: SharedMessages
+): string =>
   mentionsImageRejection(error)
-    ? "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・推奨サイズを満たす画像を選び、もう一度お試しください。"
-    : "入力内容を確認してください。タイトル・ラベル・作者などの必須項目を見直して、もう一度お試しください。";
+    ? getMessage(messages, "admin.series.image_invalid")
+    : getMessage(messages, "admin.series.input_invalid");
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
-  rpcErrorMessage(error, fallbackMessage, {
-    "invalid-argument": invalidArgumentMessage(error),
-    "not-found":
-      "対象のシリーズが見つかりませんでした。ページを再読み込みして、もう一度お試しください。",
+const mapErrorToMessage = (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): string => {
+  const messages = sharedCatalog(locale);
+
+  return rpcErrorMessage(error, fallbackMessage, {
+    locale,
+    overrides: {
+      "invalid-argument": invalidArgumentMessage(error, messages),
+      "not-found": getMessage(messages, "admin.series.not_found"),
+    },
   });
+};
 
 /**
  * The generated `Series` fields {@link mapSeries} reads. Naming them against
@@ -171,16 +189,18 @@ const mapSeries = (series: RawSeries): SeriesItem => ({
  */
 export const listSeries = async (
   tenantId: string,
-  options: CursorPageOptions = {}
+  options: CursorPageOptions = {},
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListSeriesResult> => {
   "use cache: private";
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
       series: [],
@@ -207,7 +227,7 @@ export const listSeries = async (
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       series: [],
@@ -231,14 +251,16 @@ export const listSeries = async (
  * the picker until the entry expired.
  */
 export const listAllSeries = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListSeriesResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
       series: [],
@@ -277,7 +299,7 @@ export const listAllSeries = async (
       return {
         ...emptyCursorPageTokens,
         defaultReadingPeriodHours: 0,
-        message: genericListErrorMessage,
+        message: listErrorMessage(messages),
         ok: false,
         requiresSignIn: false,
         series: [],
@@ -288,14 +310,16 @@ export const listAllSeries = async (
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours,
       ok: true,
-      series: series.toSorted((a, b) => a.title.localeCompare(b.title, "ja")),
+      series: series.toSorted((a, b) =>
+        a.title.localeCompare(b.title, toIntlLocale(locale))
+      ),
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       series: [],
@@ -303,16 +327,20 @@ export const listAllSeries = async (
   }
 };
 
-export const getSeries = async (input: {
-  tenantId: string;
-  publicId: string;
-}): Promise<GetSeriesResult> => {
+export const getSeries = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<GetSeriesResult> => {
   "use cache: private";
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -329,7 +357,7 @@ export const getSeries = async (input: {
 
     if (!response.series?.publicId?.trim()) {
       return {
-        message: genericListErrorMessage,
+        message: listErrorMessage(messages),
         ok: false,
       };
     }
@@ -344,29 +372,33 @@ export const getSeries = async (input: {
       return { notFound: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const createSeries = async (input: {
-  tenantId: string;
-  title: string;
-  synopsis: string;
-  readingPeriodHours: number;
-  labelPublicId: string;
-  creatorPublicIds: string[];
-  isPublished: boolean;
-  publishedAt?: string;
-  eyeCatchImageContentType?: string;
-  eyeCatchImageData?: Uint8Array;
-}): Promise<CreateSeriesResult> => {
+export const createSeries = async (
+  input: {
+    tenantId: string;
+    title: string;
+    synopsis: string;
+    readingPeriodHours: number;
+    labelPublicId: string;
+    creatorPublicIds: string[];
+    isPublished: boolean;
+    publishedAt?: string;
+    eyeCatchImageContentType?: string;
+    eyeCatchImageData?: Uint8Array;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CreateSeriesResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -390,7 +422,7 @@ export const createSeries = async (input: {
 
     if (!response.series?.publicId?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -406,30 +438,34 @@ export const createSeries = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }
 };
 
-export const updateSeries = async (input: {
-  tenantId: string;
-  publicId: string;
-  title: string;
-  synopsis: string;
-  readingPeriodHours: number;
-  labelPublicId: string;
-  creatorPublicIds: string[];
-  isPublished: boolean;
-  publishedAt?: string;
-  clearEyeCatchImage?: boolean;
-  eyeCatchImageContentType?: string;
-  eyeCatchImageData?: Uint8Array;
-}): Promise<UpdateSeriesResult> => {
+export const updateSeries = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+    title: string;
+    synopsis: string;
+    readingPeriodHours: number;
+    labelPublicId: string;
+    creatorPublicIds: string[];
+    isPublished: boolean;
+    publishedAt?: string;
+    clearEyeCatchImage?: boolean;
+    eyeCatchImageContentType?: string;
+    eyeCatchImageData?: Uint8Array;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<UpdateSeriesResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -455,7 +491,7 @@ export const updateSeries = async (input: {
 
     if (!response.series?.publicId?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -471,7 +507,7 @@ export const updateSeries = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }

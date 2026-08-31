@@ -7,6 +7,10 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -107,23 +111,33 @@ export type RollbackPageVersionResult =
   | { ok: true; version: PageVersionItem }
   | { ok: false; message: string };
 
-const genericListErrorMessage =
-  "ページ情報の取得に失敗しました。時間をおいて再試行してください。";
-const genericMutationErrorMessage =
-  "ページ情報の保存に失敗しました。時間をおいて再試行してください。";
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
+const listErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.pages.list_failed");
+const mutationErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.pages.save_failed");
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
-  rpcErrorMessage(error, fallbackMessage, {
-    conflict:
-      "同じ slug のページが既に存在します。別の slug を指定してください。",
-    // A page form is slug + title + body; only the slug has a format rule
-    // worth spelling out, and the server identifies it in BadRequest details.
-    "invalid-argument": rpcErrorHasFieldViolation(error, "slug")
-      ? "slug は空欄、または / で始まる半角小文字・数字・ハイフンで入力してください。"
-      : "入力内容を確認してください。",
-    "not-found":
-      "対象のページまたはバージョンが見つかりませんでした。ページを再読み込みしてください。",
+const mapErrorToMessage = (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): string => {
+  const messages = sharedCatalog(locale);
+
+  return rpcErrorMessage(error, fallbackMessage, {
+    locale,
+    overrides: {
+      conflict: getMessage(messages, "admin.pages.slug_conflict"),
+      // A page form is slug + title + body; only the slug has a format rule
+      // worth spelling out, and the server identifies it in BadRequest details.
+      "invalid-argument": rpcErrorHasFieldViolation(error, "slug")
+        ? getMessage(messages, "admin.pages.slug_invalid")
+        : getMessage(messages, "errors.validation"),
+      "not-found": getMessage(messages, "admin.pages.not_found"),
+    },
   });
+};
 
 /** The generated `Page` fields {@link mapPage} reads (see `series.ts`). */
 type RawPage = Pick<
@@ -182,16 +196,18 @@ const mapPageVersion = (version: RawPageVersion): PageVersionItem => ({
  */
 export const listPages = async (
   tenantId: string,
-  options: CursorPageOptions = {}
+  options: CursorPageOptions = {},
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListPagesResult> => {
   "use cache: private";
   cacheTag(`pages-${tenantId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       pages: [],
       requiresSignIn: true,
@@ -216,7 +232,7 @@ export const listPages = async (
     rethrowUnclassifiedRpcError(error);
     return {
       ...emptyCursorPageTokens,
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       pages: [],
       requiresSignIn: isUnauthenticatedError(error),
@@ -224,18 +240,22 @@ export const listPages = async (
   }
 };
 
-export const getPage = async (input: {
-  tenantId: string;
-  pageId: string;
-}): Promise<GetPageResult> => {
+export const getPage = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<GetPageResult> => {
   "use cache: private";
   cacheTag(`pages-${input.tenantId}`);
   cacheTag(`page-${input.tenantId}-${input.pageId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -273,24 +293,28 @@ export const getPage = async (input: {
       return { notFound: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const listPageVersions = async (input: {
-  tenantId: string;
-  pageId: string;
-}): Promise<ListPageVersionsResult> => {
+export const listPageVersions = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<ListPageVersionsResult> => {
   "use cache: private";
   cacheTag(`page-${input.tenantId}-${input.pageId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
       versions: [],
@@ -315,7 +339,7 @@ export const listPageVersions = async (input: {
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       versions: [],
@@ -323,16 +347,20 @@ export const listPageVersions = async (input: {
   }
 };
 
-export const createPage = async (input: {
-  tenantId: string;
-  slug: string;
-  title: string;
-  displayInFooter?: boolean;
-}): Promise<CreatePageResult> => {
+export const createPage = async (
+  input: {
+    tenantId: string;
+    slug: string;
+    title: string;
+    displayInFooter?: boolean;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CreatePageResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -350,7 +378,7 @@ export const createPage = async (input: {
 
     if (!response.page?.id?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -363,22 +391,26 @@ export const createPage = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }
 };
 
-export const updatePage = async (input: {
-  tenantId: string;
-  pageId: string;
-  title: string;
-  displayInFooter?: boolean;
-}): Promise<UpdatePageResult> => {
+export const updatePage = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    title: string;
+    displayInFooter?: boolean;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<UpdatePageResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -399,7 +431,7 @@ export const updatePage = async (input: {
 
     if (!response.page?.id?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -412,21 +444,25 @@ export const updatePage = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }
 };
 
-export const createPageVersion = async (input: {
-  tenantId: string;
-  pageId: string;
-  contentMarkdown: string;
-}): Promise<CreatePageVersionResult> => {
+export const createPageVersion = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    contentMarkdown: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CreatePageVersionResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -443,7 +479,7 @@ export const createPageVersion = async (input: {
 
     if (!response.version?.id?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -456,21 +492,25 @@ export const createPageVersion = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }
 };
 
-export const publishPageVersion = async (input: {
-  tenantId: string;
-  pageId: string;
-  versionId: string;
-}): Promise<PublishPageVersionResult> => {
+export const publishPageVersion = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    versionId: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<PublishPageVersionResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -487,7 +527,7 @@ export const publishPageVersion = async (input: {
 
     if (!response.version?.id?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -500,21 +540,25 @@ export const publishPageVersion = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }
 };
 
-export const rollbackPageVersion = async (input: {
-  tenantId: string;
-  pageId: string;
-  versionId: string;
-}): Promise<RollbackPageVersionResult> => {
+export const rollbackPageVersion = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    versionId: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<RollbackPageVersionResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -531,7 +575,7 @@ export const rollbackPageVersion = async (input: {
 
     if (!response.version?.id?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -544,7 +588,7 @@ export const rollbackPageVersion = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }

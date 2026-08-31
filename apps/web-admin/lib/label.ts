@@ -5,6 +5,10 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { DEFAULT_LOCALE, getMessage, toIntlLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 import { z } from "zod";
 
@@ -78,19 +82,31 @@ export type GetLabelResult =
       requiresSignIn?: boolean;
     };
 
-const genericListErrorMessage =
-  "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。";
-const genericMutationErrorMessage =
-  "レーベルの保存に失敗しました。時間をおいて再試行してください。";
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
+const listErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.labels.list_failed");
+const mutationErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.labels.save_failed");
 
-const invalidArgumentMessage = (error: unknown): string =>
+const invalidArgumentMessage = (
+  error: unknown,
+  messages: SharedMessages
+): string =>
   mentionsImageRejection(error)
-    ? "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・2400x3200px以上の画像を選び、もう一度お試しください。"
-    : "入力内容に誤りがあります。";
+    ? getMessage(messages, "admin.labels.image_invalid")
+    : getMessage(messages, "errors.rpc.invalid-argument");
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
+const mapErrorToMessage = (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): string =>
   rpcErrorMessage(error, fallbackMessage, {
-    "invalid-argument": invalidArgumentMessage(error),
+    locale,
+    overrides: {
+      "invalid-argument": invalidArgumentMessage(error, sharedCatalog(locale)),
+    },
   });
 
 /** The generated `Label` fields {@link mapLabel} reads (see `series.ts`). */
@@ -130,17 +146,19 @@ const mapLabel = (label: RawLabel): LabelItem => ({
  */
 export const listLabels = async (
   tenantId: string,
-  options: CursorPageOptions = {}
+  options: CursorPageOptions = {},
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListLabelsResult> => {
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       labels: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -165,7 +183,7 @@ export const listLabels = async (
     return {
       ...emptyCursorPageTokens,
       labels: [],
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -184,17 +202,19 @@ export const listLabels = async (
  * partial option set that would hide labels beyond the rows already read.
  */
 export const listAllLabels = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListLabelsResult> => {
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       labels: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -230,7 +250,7 @@ export const listAllLabels = async (
       return {
         ...emptyCursorPageTokens,
         labels: [],
-        message: genericListErrorMessage,
+        message: listErrorMessage(messages),
         ok: false,
         requiresSignIn: false,
       };
@@ -238,7 +258,9 @@ export const listAllLabels = async (
 
     return {
       ...emptyCursorPageTokens,
-      labels: labels.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
+      labels: labels.toSorted((a, b) =>
+        a.name.localeCompare(b.name, toIntlLocale(locale))
+      ),
       ok: true,
     };
   } catch (error) {
@@ -246,23 +268,27 @@ export const listAllLabels = async (
     return {
       ...emptyCursorPageTokens,
       labels: [],
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const createLabel = async (input: {
-  tenantId: string;
-  name: string;
-  eyeCatchImageContentType?: string;
-  eyeCatchImageData?: Uint8Array;
-}): Promise<CreateLabelResult> => {
+export const createLabel = async (
+  input: {
+    tenantId: string;
+    name: string;
+    eyeCatchImageContentType?: string;
+    eyeCatchImageData?: Uint8Array;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CreateLabelResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -280,7 +306,7 @@ export const createLabel = async (input: {
 
     if (!response.label?.publicId?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -293,24 +319,28 @@ export const createLabel = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }
 };
 
-export const updateLabel = async (input: {
-  tenantId: string;
-  publicId: string;
-  name: string;
-  clearEyeCatchImage?: boolean;
-  eyeCatchImageContentType?: string;
-  eyeCatchImageData?: Uint8Array;
-}): Promise<UpdateLabelResult> => {
+export const updateLabel = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+    name: string;
+    clearEyeCatchImage?: boolean;
+    eyeCatchImageContentType?: string;
+    eyeCatchImageData?: Uint8Array;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<UpdateLabelResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -330,7 +360,7 @@ export const updateLabel = async (input: {
 
     if (!response.label?.publicId?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -343,7 +373,7 @@ export const updateLabel = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }
@@ -354,10 +384,13 @@ const getLabelInputSchema = z.object({
   tenantId: z.string().trim().min(1).max(255),
 });
 
-export const getLabel = async (input: {
-  tenantId: string;
-  publicId: string;
-}): Promise<GetLabelResult> => {
+export const getLabel = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<GetLabelResult> => {
   "use cache: private";
   const parsed = getLabelInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -370,10 +403,11 @@ export const getLabel = async (input: {
   cacheTag(`labels-${parsed.data.tenantId}`);
   cacheTag(`label-${parsed.data.tenantId}-${parsed.data.publicId}`);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -390,7 +424,7 @@ export const getLabel = async (input: {
 
     if (!response.label?.publicId?.trim()) {
       return {
-        message: genericListErrorMessage,
+        message: listErrorMessage(messages),
         ok: false,
       };
     }
@@ -405,7 +439,7 @@ export const getLabel = async (input: {
       return { notFound: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };

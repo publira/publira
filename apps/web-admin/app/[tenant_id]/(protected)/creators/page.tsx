@@ -54,10 +54,8 @@ const CreatorManagerData = async ({
 }: Pick<CreatorPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const [listResult, locale] = await Promise.all([
-    listCreators(tenantId, { token }),
-    getLocale(tenantId),
-  ]);
+  const locale = await getLocale(tenantId);
+  const listResult = await listCreators(tenantId, { token }, locale);
 
   await redirectToLoginIfSessionRejected(listResult);
 

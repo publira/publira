@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE } from "@publira/i18n";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -76,21 +77,24 @@ describe("series actions", () => {
 
     await updateSeriesAction(null, formData);
 
-    expect(mockUpdateSeries).toHaveBeenCalledWith({
-      creatorPublicIds: [],
-      eyeCatchImageContentType: undefined,
-      eyeCatchImageData: undefined,
-      isPublished: true,
-      labelPublicId: "LABEL001",
-      publicId: "SERIES001",
-      // "2030-01-01T10:00" is a zone-less wall clock, read in the tenant zone
-      // (Asia/Tokyo here) — never as the server process's local zone.
-      publishedAt: "2030-01-01T01:00:00Z",
-      readingPeriodHours: 24,
-      synopsis: "Synopsis",
-      tenantId: "TENANT001",
-      title: "Title",
-    });
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      {
+        creatorPublicIds: [],
+        eyeCatchImageContentType: undefined,
+        eyeCatchImageData: undefined,
+        isPublished: true,
+        labelPublicId: "LABEL001",
+        publicId: "SERIES001",
+        // "2030-01-01T10:00" is a zone-less wall clock, read in the tenant zone
+        // (Asia/Tokyo here) — never as the server process's local zone.
+        publishedAt: "2030-01-01T01:00:00Z",
+        readingPeriodHours: 24,
+        synopsis: "Synopsis",
+        tenantId: "TENANT001",
+        title: "Title",
+      },
+      DEFAULT_LOCALE
+    );
     expect(mockRedirect).toHaveBeenCalledWith("/series/SERIES001?updated=1");
   });
 
@@ -125,7 +129,8 @@ describe("series actions", () => {
     await updateSeriesAction(null, formData);
 
     expect(mockUpdateSeries).toHaveBeenCalledWith(
-      expect.objectContaining({ publishedAt: "2030-01-01T18:00:00Z" })
+      expect.objectContaining({ publishedAt: "2030-01-01T18:00:00Z" }),
+      DEFAULT_LOCALE
     );
   });
 
@@ -162,7 +167,8 @@ describe("series actions", () => {
 
     // PST (UTC-8) in January — 10:00 in Los Angeles is 18:00Z.
     expect(mockUpdateSeries).toHaveBeenCalledWith(
-      expect.objectContaining({ publishedAt: "2030-01-01T18:00:00Z" })
+      expect.objectContaining({ publishedAt: "2030-01-01T18:00:00Z" }),
+      DEFAULT_LOCALE
     );
     expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
   });

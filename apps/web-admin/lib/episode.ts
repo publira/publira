@@ -7,6 +7,10 @@ import {
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 
 import {
   isUnauthenticatedError,
@@ -107,37 +111,56 @@ export type ReorderEpisodeImagesResult =
  */
 const reorderScanPageSize = 100;
 
-const genericMutationErrorMessage =
-  "エピソードの入稿に失敗しました。時間をおいて再試行してください。";
-const genericListErrorMessage =
-  "エピソード一覧の取得に失敗しました。時間をおいて再試行してください。";
-const genericGetErrorMessage =
-  "エピソードの取得に失敗しました。時間をおいて再試行してください。";
-const genericScheduleErrorMessage =
-  "公開設定の更新に失敗しました。時間をおいて再試行してください。";
-const genericUploadErrorMessage =
-  "ページ画像の追加に失敗しました。時間をおいて再試行してください。";
-const genericEpisodeImagesErrorMessage =
-  "ページ画像一覧の取得に失敗しました。時間をおいて再試行してください。";
-const genericEpisodeReorderErrorMessage =
-  "エピソードの並び順更新に失敗しました。時間をおいて再試行してください。";
-const genericEpisodeImageReorderErrorMessage =
-  "ページ画像の並び順更新に失敗しました。時間をおいて再試行してください。";
-const episodeOrderConflictMessage =
-  "他の操作でエピソードの構成か並び順が変わったため、並び順を更新できませんでした。画面を再読み込みして再試行してください。";
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
+const mutationErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.episodes.create_failed");
+const listErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.episodes.list_failed");
+const getErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.episodes.get_failed");
+const scheduleErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.episodes.schedule_failed");
+const uploadErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.episodes.upload_failed");
+const episodeImagesErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.episodes.image_list_failed");
+const episodeReorderErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.episodes.reorder_failed");
+const episodeImageReorderErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.episodes.image_reorder_failed");
+const episodeOrderConflictMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.series.episodes.reorder_conflict");
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
+const mapErrorToMessage = (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): string =>
   rpcErrorMessage(error, fallbackMessage, {
-    "not-found":
-      "シリーズが見つかりません。画面を再読み込みして再試行してください。",
+    locale,
+    overrides: {
+      "not-found": getMessage(
+        sharedCatalog(locale),
+        "admin.series.episodes.series_not_found"
+      ),
+    },
   });
 
-const mapReorderErrorToMessage = (error: unknown): string =>
-  rpcErrorMessage(error, genericEpisodeReorderErrorMessage, {
-    "not-found":
-      "シリーズが見つかりません。画面を再読み込みして再試行してください。",
-    precondition: episodeOrderConflictMessage,
+const mapReorderErrorToMessage = (error: unknown, locale: Locale): string => {
+  const messages = sharedCatalog(locale);
+
+  return rpcErrorMessage(error, episodeReorderErrorMessage(messages), {
+    locale,
+    overrides: {
+      "not-found": getMessage(
+        messages,
+        "admin.series.episodes.series_not_found"
+      ),
+      precondition: episodeOrderConflictMessage(messages),
+    },
   });
+};
 
 /** The generated `Episode` fields {@link mapEpisode} reads (see `series.ts`). */
 type RawEpisode = Pick<
@@ -191,23 +214,36 @@ const mapEpisodeImage = (image: RawEpisodeImage): EpisodeImageItem => ({
  * escapes the archive — and an uploader needs to know which. The server sends
  * those cases as stable `google.rpc.ErrorInfo` reasons.
  */
-const archiveRejectionMessage = (error: unknown): string | undefined => {
+const archiveRejectionMessage = (
+  error: unknown,
+  messages: SharedMessages
+): string | undefined => {
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidEPUB)) {
-    return "ePub の解析に失敗しました。壊れていない ePub（.epub）を選択してください。";
+    return getMessage(messages, "admin.series.episodes.epub_invalid");
   }
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidEPUBSpine)) {
-    return "ePub の本文参照に不整合があります。spine と manifest の参照を確認してください。";
+    return getMessage(messages, "admin.series.episodes.epub_spine_invalid");
   }
   return rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidPath)
-    ? "アーカイブ内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。"
+    ? getMessage(messages, "admin.series.episodes.archive_path_invalid")
     : undefined;
 };
 
-const mapEpisodeUploadErrorMessage = (error: unknown): string =>
-  rpcErrorMessage(error, genericUploadErrorMessage, {
-    "invalid-argument":
-      archiveRejectionMessage(error) ?? "入力内容に誤りがあります。",
+const mapEpisodeUploadErrorMessage = (
+  error: unknown,
+  locale: Locale
+): string => {
+  const messages = sharedCatalog(locale);
+
+  return rpcErrorMessage(error, uploadErrorMessage(messages), {
+    locale,
+    overrides: {
+      "invalid-argument":
+        archiveRejectionMessage(error, messages) ??
+        getMessage(messages, "errors.rpc.invalid-argument"),
+    },
   });
+};
 
 const uploadArchive = async (input: {
   archive: File;
@@ -253,18 +289,22 @@ const uploadPages = async (input: {
     withSessionHeaders(input.sessionId)
   );
 
-export const createEpisode = async (input: {
-  tenantId: string;
-  seriesPublicId: string;
-  title: string;
-  price: number;
-  readingPeriodHours: number;
-  publishAt: string;
-}): Promise<CreateEpisodeResult> => {
+export const createEpisode = async (
+  input: {
+    tenantId: string;
+    seriesPublicId: string;
+    title: string;
+    price: number;
+    readingPeriodHours: number;
+    publishAt: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CreateEpisodeResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -272,7 +312,7 @@ export const createEpisode = async (input: {
   try {
     const response = await apiClient.series.createEpisode(
       {
-        // orderIndex を省くとサーバーが末尾に追加する。
+        // Omitting orderIndex makes the server append to the end.
         price: input.price,
         readingPeriodHours: input.readingPeriodHours,
         scheduledAt: input.publishAt,
@@ -285,7 +325,7 @@ export const createEpisode = async (input: {
 
     if (!response.episode?.publicId?.trim()) {
       return {
-        message: genericMutationErrorMessage,
+        message: mutationErrorMessage(messages),
         ok: false,
       };
     }
@@ -298,7 +338,7 @@ export const createEpisode = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,
     };
   }
@@ -315,14 +355,16 @@ export const listEpisodes = async (
   input: {
     tenantId: string;
     seriesPublicId: string;
-  } & CursorPageOptions
+  } & CursorPageOptions,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ListEpisodesResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       episodes: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -348,7 +390,7 @@ export const listEpisodes = async (
     return {
       ...emptyCursorPageTokens,
       episodes: [],
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -366,16 +408,20 @@ export const listEpisodes = async (
  * fails with an empty list rather than a partial option set that would hide
  * later episodes.
  */
-export const listAllEpisodes = async (input: {
-  seriesPublicId: string;
-  tenantId: string;
-}): Promise<ListEpisodesResult> => {
+export const listAllEpisodes = async (
+  input: {
+    seriesPublicId: string;
+    tenantId: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<ListEpisodesResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       episodes: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -410,7 +456,7 @@ export const listAllEpisodes = async (input: {
       return {
         ...emptyCursorPageTokens,
         episodes: [],
-        message: genericListErrorMessage,
+        message: listErrorMessage(messages),
         ok: false,
         requiresSignIn: false,
       };
@@ -426,22 +472,26 @@ export const listAllEpisodes = async (input: {
     return {
       ...emptyCursorPageTokens,
       episodes: [],
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const getEpisode = async (input: {
-  tenantId: string;
-  seriesPublicId: string;
-  publicId: string;
-}): Promise<GetEpisodeResult> => {
+export const getEpisode = async (
+  input: {
+    tenantId: string;
+    seriesPublicId: string;
+    publicId: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<GetEpisodeResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -459,7 +509,7 @@ export const getEpisode = async (input: {
 
     if (!response.episode?.publicId?.trim()) {
       return {
-        message: genericGetErrorMessage,
+        message: getErrorMessage(messages),
         ok: false,
       };
     }
@@ -474,22 +524,26 @@ export const getEpisode = async (input: {
       return { notFound: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, genericGetErrorMessage),
+      message: mapErrorToMessage(error, getErrorMessage(messages), locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const updateEpisodePublishSchedule = async (input: {
-  tenantId: string;
-  episodePublicId: string;
-  publishAt: string;
-}): Promise<UpdateEpisodePublishScheduleResult> => {
+export const updateEpisodePublishSchedule = async (
+  input: {
+    tenantId: string;
+    episodePublicId: string;
+    publishAt: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<UpdateEpisodePublishScheduleResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -506,7 +560,7 @@ export const updateEpisodePublishSchedule = async (input: {
 
     if (!response.episode?.publicId?.trim()) {
       return {
-        message: genericScheduleErrorMessage,
+        message: scheduleErrorMessage(messages),
         ok: false,
       };
     }
@@ -519,30 +573,37 @@ export const updateEpisodePublishSchedule = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericScheduleErrorMessage),
+      message: mapErrorToMessage(error, scheduleErrorMessage(messages), locale),
       ok: false,
     };
   }
 };
 
-export const uploadEpisodePages = async (input: {
-  tenantId: string;
-  episodePublicId: string;
-  seriesPublicId?: string;
-  pages?: File[];
-  archive?: File;
-}): Promise<UploadEpisodePagesResult> => {
+export const uploadEpisodePages = async (
+  input: {
+    tenantId: string;
+    episodePublicId: string;
+    seriesPublicId?: string;
+    pages?: File[];
+    archive?: File;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<UploadEpisodePagesResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
 
   if (!input.archive && (!input.pages || input.pages.length === 0)) {
     return {
-      message: "追加するページ画像を選択してください。",
+      message: getMessage(
+        messages,
+        "admin.series.episodes.validation.pages_required"
+      ),
       ok: false,
     };
   }
@@ -571,21 +632,25 @@ export const uploadEpisodePages = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapEpisodeUploadErrorMessage(error),
+      message: mapEpisodeUploadErrorMessage(error, locale),
       ok: false,
     };
   }
 };
 
-export const listEpisodeImages = async (input: {
-  tenantId: string;
-  episodePublicId: string;
-}): Promise<ListEpisodeImagesResult> => {
+export const listEpisodeImages = async (
+  input: {
+    tenantId: string;
+    episodePublicId: string;
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<ListEpisodeImagesResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       images: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: true,
     };
@@ -608,30 +673,41 @@ export const listEpisodeImages = async (input: {
     rethrowUnclassifiedRpcError(error);
     return {
       images: [],
-      message: mapErrorToMessage(error, genericEpisodeImagesErrorMessage),
+      message: mapErrorToMessage(
+        error,
+        episodeImagesErrorMessage(messages),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-const reorderEpisodes = async (input: {
-  tenantId: string;
-  seriesPublicId: string;
-  episodePublicIds: string[];
-  expectedEpisodePublicIds: string[];
-}): Promise<ReorderEpisodesResult> => {
+const reorderEpisodes = async (
+  input: {
+    tenantId: string;
+    seriesPublicId: string;
+    episodePublicIds: string[];
+    expectedEpisodePublicIds: string[];
+  },
+  locale: Locale
+): Promise<ReorderEpisodesResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
 
   if (input.episodePublicIds.length === 0) {
     return {
-      message: "並び替え対象のエピソードがありません。",
+      message: getMessage(
+        messages,
+        "admin.series.episodes.validation.no_episodes_to_sort"
+      ),
       ok: false,
     };
   }
@@ -655,7 +731,7 @@ const reorderEpisodes = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapReorderErrorToMessage(error),
+      message: mapReorderErrorToMessage(error, locale),
       ok: false,
     };
   }
@@ -786,23 +862,30 @@ const listSeriesEpisodePublicIds = async (input: {
  * and the merge writes nothing unless the series still agrees with it — see
  * `mergeEpisodeOrder`.
  */
-export const reorderEpisodePage = async (input: {
-  tenantId: string;
-  seriesPublicId: string;
-  currentEpisodePublicIds: string[];
-  episodePublicIds: string[];
-}): Promise<ReorderEpisodesResult> => {
+export const reorderEpisodePage = async (
+  input: {
+    tenantId: string;
+    seriesPublicId: string;
+    currentEpisodePublicIds: string[];
+    episodePublicIds: string[];
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<ReorderEpisodesResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
 
   if (input.episodePublicIds.length === 0) {
     return {
-      message: "並び替え対象のエピソードがありません。",
+      message: getMessage(
+        messages,
+        "admin.series.episodes.validation.no_episodes_to_sort"
+      ),
       ok: false,
     };
   }
@@ -818,15 +901,18 @@ export const reorderEpisodePage = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericEpisodeReorderErrorMessage),
+      message: mapErrorToMessage(
+        error,
+        episodeReorderErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }
 
   if (!seriesPublicIds) {
     return {
-      message:
-        "エピソードが多すぎて並び順を更新できませんでした。時間をおいて再試行してください。",
+      message: getMessage(messages, "admin.series.episodes.reorder_too_many"),
       ok: false,
     };
   }
@@ -838,35 +924,45 @@ export const reorderEpisodePage = async (input: {
   );
   if (!episodePublicIds) {
     return {
-      message: episodeOrderConflictMessage,
+      message: episodeOrderConflictMessage(messages),
       ok: false,
     };
   }
 
-  return await reorderEpisodes({
-    episodePublicIds,
-    expectedEpisodePublicIds: seriesPublicIds,
-    seriesPublicId: input.seriesPublicId,
-    tenantId: input.tenantId,
-  });
+  return await reorderEpisodes(
+    {
+      episodePublicIds,
+      expectedEpisodePublicIds: seriesPublicIds,
+      seriesPublicId: input.seriesPublicId,
+      tenantId: input.tenantId,
+    },
+    locale
+  );
 };
 
-export const reorderEpisodeImages = async (input: {
-  tenantId: string;
-  episodePublicId: string;
-  imageIds: string[];
-}): Promise<ReorderEpisodeImagesResult> => {
+export const reorderEpisodeImages = async (
+  input: {
+    tenantId: string;
+    episodePublicId: string;
+    imageIds: string[];
+  },
+  locale: Locale = DEFAULT_LOCALE
+): Promise<ReorderEpisodeImagesResult> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
-      message: "セッションが無効です。再ログインしてください。",
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
 
   if (input.imageIds.length === 0) {
     return {
-      message: "並び替え対象の画像がありません。",
+      message: getMessage(
+        messages,
+        "admin.series.episodes.validation.no_images_to_sort"
+      ),
       ok: false,
     };
   }
@@ -889,7 +985,11 @@ export const reorderEpisodeImages = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericEpisodeImageReorderErrorMessage),
+      message: mapErrorToMessage(
+        error,
+        episodeImageReorderErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }

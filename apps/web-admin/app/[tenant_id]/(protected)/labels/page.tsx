@@ -54,10 +54,8 @@ const LabelManagerData = async ({
 }: Pick<LabelPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const [listResult, locale] = await Promise.all([
-    listLabels(tenantId, { token }),
-    getLocale(tenantId),
-  ]);
+  const locale = await getLocale(tenantId);
+  const listResult = await listLabels(tenantId, { token }, locale);
 
   await redirectToLoginIfSessionRejected(listResult);
 

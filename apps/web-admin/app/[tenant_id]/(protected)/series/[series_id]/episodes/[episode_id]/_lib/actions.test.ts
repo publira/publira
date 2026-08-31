@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE } from "@publira/i18n";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -96,11 +97,14 @@ describe("episode actions", () => {
 
     await updateEpisodeScheduleAction(null, formData);
 
-    expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledWith({
-      episodePublicId: "EP001",
-      publishAt: "2099-06-01T10:00:00Z",
-      tenantId: "TENANT001",
-    });
+    expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledWith(
+      {
+        episodePublicId: "EP001",
+        publishAt: "2099-06-01T10:00:00Z",
+        tenantId: "TENANT001",
+      },
+      DEFAULT_LOCALE
+    );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?schedule_updated=1"
     );
@@ -121,11 +125,14 @@ describe("episode actions", () => {
     await updateEpisodeScheduleAction(null, formData);
 
     // PDT (UTC-7) in June — 10:00 in Los Angeles is 17:00Z.
-    expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledWith({
-      episodePublicId: "EP001",
-      publishAt: "2099-06-01T17:00:00Z",
-      tenantId: "TENANT001",
-    });
+    expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledWith(
+      {
+        episodePublicId: "EP001",
+        publishAt: "2099-06-01T17:00:00Z",
+        tenantId: "TENANT001",
+      },
+      DEFAULT_LOCALE
+    );
     expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
   });
 
@@ -201,14 +208,17 @@ describe("episode actions", () => {
 
     await uploadEpisodePagesAction(null, formData);
 
-    expect(mockUploadEpisodePages).toHaveBeenCalledWith({
-      episodePublicId: "EP001",
-      pages: expect.arrayContaining([
-        expect.objectContaining({ name: "1.png" }),
-        expect.objectContaining({ name: "2.png" }),
-      ]),
-      tenantId: "TENANT001",
-    });
+    expect(mockUploadEpisodePages).toHaveBeenCalledWith(
+      {
+        episodePublicId: "EP001",
+        pages: expect.arrayContaining([
+          expect.objectContaining({ name: "1.png" }),
+          expect.objectContaining({ name: "2.png" }),
+        ]),
+        tenantId: "TENANT001",
+      },
+      DEFAULT_LOCALE
+    );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?pages_uploaded=1"
     );
@@ -243,11 +253,14 @@ describe("episode actions", () => {
 
     const result = await reorderEpisodeImagesAction(formData);
 
-    expect(mockReorderEpisodeImages).toHaveBeenCalledWith({
-      episodePublicId: "EP001",
-      imageIds: ["IMG1", "IMG2"],
-      tenantId: "TENANT001",
-    });
+    expect(mockReorderEpisodeImages).toHaveBeenCalledWith(
+      {
+        episodePublicId: "EP001",
+        imageIds: ["IMG1", "IMG2"],
+        tenantId: "TENANT001",
+      },
+      DEFAULT_LOCALE
+    );
     expect(result).toEqual({ ok: true });
   });
 });

@@ -147,8 +147,9 @@ const EditSeriesFormData = async ({
     notFound();
   }
   const { series_id: seriesId } = parsedParams;
+  const locale = await getLocale(tenantId);
   if (activeTab === "eye-catch") {
-    const result = await getSeries({ publicId: seriesId, tenantId });
+    const result = await getSeries({ publicId: seriesId, tenantId }, locale);
     if (!result.ok) {
       if (result.notFound) {
         // Missing, or another tenant's series — never told apart. Renders
@@ -167,10 +168,10 @@ const EditSeriesFormData = async ({
   }
 
   const [result, creatorsResult, labelsResult, timeZone] = await Promise.all([
-    getSeries({ publicId: seriesId, tenantId }),
+    getSeries({ publicId: seriesId, tenantId }, locale),
     // Walk every cursor page so the Combobox can search past the first 100.
-    listAllCreators(tenantId),
-    listAllLabels(tenantId),
+    listAllCreators(tenantId, locale),
+    listAllLabels(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 

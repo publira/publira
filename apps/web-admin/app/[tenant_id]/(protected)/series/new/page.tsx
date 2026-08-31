@@ -50,15 +50,16 @@ const NewSeriesFormSkeleton = () => (
 
 const NewSeriesFormData = async () => {
   const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const [listResult, creatorsResult, labelsResult, timeZone] =
     await Promise.all([
       // Only `defaultReadingPeriodHours` is read here, and that comes from the
       // tenant rather than the page, so the smallest page the API allows is
       // enough.
-      listSeries(tenantId, { limit: 1 }),
+      listSeries(tenantId, { limit: 1 }, locale),
       // Walk every cursor page so the Combobox can search past the first 100.
-      listAllCreators(tenantId),
-      listAllLabels(tenantId),
+      listAllCreators(tenantId, locale),
+      listAllLabels(tenantId, locale),
       getTenantDisplayTimeZone(tenantId),
     ]);
 

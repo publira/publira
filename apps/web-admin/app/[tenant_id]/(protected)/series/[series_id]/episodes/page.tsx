@@ -100,16 +100,19 @@ const SeriesEpisodesPage = async ({
   guardPlaceholder(series_id);
 
   const { token } = parseCursorSearchParams(sp);
-  const [result, timeZone, locale] = await Promise.all([
-    listEpisodes({
-      seriesPublicId: series_id,
-      tenantId,
-      token,
-    }),
+  const locale = await getLocale(tenantId);
+  const [result, timeZone, messages] = await Promise.all([
+    listEpisodes(
+      {
+        seriesPublicId: series_id,
+        tenantId,
+        token,
+      },
+      locale
+    ),
     getTenantDisplayTimeZone(tenantId),
-    getLocale(tenantId),
+    loadAdminMessages(locale),
   ]);
-  const messages = await loadAdminMessages(locale);
   await redirectToLoginIfSessionRejected(result);
 
   const pageHrefs = cursorPageHrefs(result);
@@ -151,7 +154,7 @@ const SeriesEpisodesPage = async ({
           />
           <FlashToast
             keyName="reorder_error"
-            title={getMessage(messages, "admin.series.episodes.reorder_failed")}
+            title={getMessage(messages, "admin.series.episodes.reorder_error")}
           />
 
           <Card>
@@ -166,9 +169,9 @@ const SeriesEpisodesPage = async ({
             <CardContent className="grid gap-4">
               {/*
               A failed read hands back an empty `episodes`, so the empty state
-              has to stay behind `result.ok`. Otherwise the card claims both
-              「表示できませんでした」 and 「未登録です」 at once, and offers a
-              新規作成 button for a list nobody managed to read.
+              has to stay behind `result.ok`. Otherwise the card says the list
+              could not be displayed and that nothing is registered at once, and
+              offers a create button for a list nobody managed to read.
             */}
               {result.ok ? (
                 <>

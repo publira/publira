@@ -84,10 +84,7 @@ export const EpisodeImagesSortableGrid = ({
           add({
             title:
               result.message ??
-              getMessage(
-                messages,
-                "admin.series.episodes.image_reorder_failed"
-              ),
+              getMessage(messages, "admin.series.episodes.image_reorder_error"),
             type: "error",
           });
           router.refresh();
@@ -103,7 +100,7 @@ export const EpisodeImagesSortableGrid = ({
         add({
           title: getMessage(
             messages,
-            "admin.series.episodes.image_reorder_failed"
+            "admin.series.episodes.image_reorder_error"
           ),
           type: "error",
         });
