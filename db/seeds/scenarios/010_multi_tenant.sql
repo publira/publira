@@ -35,7 +35,8 @@ ON CONFLICT (public_id) DO UPDATE
 SET domain = EXCLUDED.domain,
     admin_domain = EXCLUDED.admin_domain,
     name = EXCLUDED.name,
-    status = EXCLUDED.status;
+    status = EXCLUDED.status,
+    default_locale = EXCLUDED.default_locale;
 
 INSERT INTO tenant_config (
     tenant_id,

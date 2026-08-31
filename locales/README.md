@@ -115,12 +115,11 @@ raw, err := files.ReadFile(locale + ".json")
 2. `pnpm locales:check` が通ることを確認する（葉が simple message として妥当か検査される）
 3. `pnpm --filter @publira/i18n typecheck` が通ることを確認する（`ExactCatalog` の検査が `packages/i18n` のテストから掛かる）
 
-## Adding a locale
+## ロケールを増やすとき
 
-`index.json` is the only registry to hand-edit for the code itself: the TypeScript static import map and the Go allow-list are generated from it. The database is the one place that repeats the list, because a `CHECK` constraint cannot read a JSON file — widen it in the same change.
+手編集する一覧は `index.json` だけです。TypeScript の静的 import マップと Go の許可リストは生成物なので、個別に編集しません。
 
-1. Add `<code>.json` to this directory, carrying the same keys as every existing catalog
-2. Add `{ "code": "<code>", "label": "…", "intl": "…" }` to `locales` in `index.json`
-3. Widen `tenants_default_locale_supported_check` and `platform_config_default_locale_supported_check` in `db/migrations/00000000000000_baseline.up.sql`
-4. Run `pnpm locales:generate` to refresh the generated files
-5. Run `pnpm preflight` and `task server:test-short`
+1. このディレクトリに `<code>.json` を足し、既存のすべてのカタログと同じキーにする
+2. `index.json` の `locales` に `{ "code": "<code>", "label": "…", "intl": "…" }` を足す
+3. `pnpm locales:generate` を実行して生成物を更新する
+4. `pnpm preflight` と `task server:test-short` を実行する

@@ -45,10 +45,11 @@ func TestDefaultLocaleColumnsHaveNoDefault(t *testing.T) {
 	}
 }
 
-// Every code the application treats as supported has to be storable, and
-// nothing else. Driving the accepted half off locale.Supported is what keeps
-// the CHECK in the baseline from drifting away from locales/index.json.
-func TestDefaultLocaleColumnsAcceptOnlySupportedCodes(t *testing.T) {
+// The DB stops at "some language was named": the allow-list of supported codes
+// lives in server/internal/locale, generated from locales/index.json, so
+// repeating it as a CHECK here would be a second copy to widen by hand every
+// time a locale is added.
+func TestDefaultLocaleColumnsRejectBlankValues(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -61,10 +62,10 @@ func TestDefaultLocaleColumnsAcceptOnlySupportedCodes(t *testing.T) {
 		}
 	}
 
-	for _, unsupported := range []string{"", "   ", "fr", "EN", "en-US", "ja-JP"} {
-		err := insertTenantWithLocale(ctx, pg.DB, unsupported)
+	for _, blank := range []string{"", "   "} {
+		err := insertTenantWithLocale(ctx, pg.DB, blank)
 		if !isCheckViolation(err) {
-			t.Fatalf("tenants insert with unsupported locale %q error = %v, want check_violation", unsupported, err)
+			t.Fatalf("tenants insert with blank locale %q error = %v, want check_violation", blank, err)
 		}
 	}
 }

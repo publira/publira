@@ -403,14 +403,14 @@ CREATE TABLE platform_config (
     -- Platform-wide default UI locale. New tenants start from this value and
     -- it is the fallback when a tenant row has no usable default_locale.
     -- No column default: every writer names the locale it means, so a row can
-    -- never be created with an unstated language. The supported codes are
-    -- listed in locales/index.json; adding one there also means widening
-    -- platform_config_default_locale_supported_check below.
+    -- never be created with an unstated language.
+    -- Canonical codes live in locales/*.json (first cut: ja / en).
+    -- Strict allow-list validation is enforced at the application/API layer.
     default_locale text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT platform_config_default_timezone_not_blank_check CHECK ((btrim(default_timezone) <> '')),
-    CONSTRAINT platform_config_default_locale_supported_check CHECK ((default_locale = ANY (ARRAY['ja'::text, 'en'::text]))),
+    CONSTRAINT platform_config_default_locale_not_blank_check CHECK ((btrim(default_locale) <> '')),
     CONSTRAINT platform_config_singleton_check CHECK (singleton)
 );
 
@@ -711,13 +711,13 @@ CREATE TABLE tenants (
     timezone text DEFAULT 'Asia/Tokyo'::text NOT NULL,
     -- Default UI locale when the user has not chosen one (e.g. ja, en).
     -- No column default: tenant creation must name the locale it means, so a
-    -- tenant can never be created with an unstated language. The supported
-    -- codes are listed in locales/index.json; adding one there also means
-    -- widening tenants_default_locale_supported_check below.
+    -- tenant can never be created with an unstated language.
+    -- Canonical codes live in locales/*.json (first cut: ja / en).
+    -- Strict allow-list validation is enforced at the application/API layer.
     default_locale text NOT NULL,
     CONSTRAINT tenants_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'suspended'::character varying])::text[]))),
     CONSTRAINT tenants_timezone_not_blank_check CHECK ((btrim(timezone) <> '')),
-    CONSTRAINT tenants_default_locale_supported_check CHECK ((default_locale = ANY (ARRAY['ja'::text, 'en'::text])))
+    CONSTRAINT tenants_default_locale_not_blank_check CHECK ((btrim(default_locale) <> ''))
 );
 
 -- TABLE: user_email_change_tokens

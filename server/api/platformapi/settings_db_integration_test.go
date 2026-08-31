@@ -320,8 +320,9 @@ func TestDBCreateTenantStoresRequestedLocale(t *testing.T) {
 	}
 }
 
-// No locale in the request means no tenant: the column has no default left, so
-// the request is rejected rather than silently landing on one language.
+// No locale in the request means no tenant: the column has no default left to
+// land on. An unsupported code is rejected by the handler's allow-list, which
+// is the generated locale.Supported rather than a constraint in the schema.
 func TestDBCreateTenantRejectsMissingLocale(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")

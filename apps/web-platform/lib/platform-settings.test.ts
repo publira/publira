@@ -151,8 +151,9 @@ describe("platform-settings", () => {
     const result = await updatePlatformDefaultTimezone("Europe/Paris", "ja");
 
     expect(result).toEqual({ defaultTimezone: "Europe/Paris", ok: true });
-    // `default_locale` は必須になったので、ゾーンだけの保存でも保存済みの言語を
-    // 読み直して一緒に送る。画面が持つ値を送り返すと巻き戻してしまう。
+    // `default_locale` is required now, so a zone-only save reads the stored
+    // language back and sends it along. Posting back the value the screen holds
+    // would revert a language saved from another session.
     expect(mockUpdatePlatformSettingsApi).toHaveBeenCalledWith(
       { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
       { headers: { Authorization: "Bearer session-token" } }
