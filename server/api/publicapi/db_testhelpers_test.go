@@ -98,6 +98,10 @@ func (e *publicDBEnv) episodeReadClient() publirav1connect.EpisodeReadServiceCli
 	return publirav1connect.NewEpisodeReadServiceClient(e.Server.Client(), e.Server.URL)
 }
 
+func (e *publicDBEnv) contentViewClient() publirav1connect.ContentViewServiceClient {
+	return publirav1connect.NewContentViewServiceClient(e.Server.Client(), e.Server.URL)
+}
+
 func (e *publicDBEnv) followClient() publirav1connect.FollowServiceClient {
 	return publirav1connect.NewFollowServiceClient(e.Server.Client(), e.Server.URL)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
@@ -163,14 +164,97 @@ func (s *apiServer) viewerUserID(
 	return uuid.NullUUID{UUID: session.User.ID, Valid: true}
 }
 
-// instrumentViewEvent is the entire soft PV side effect of one successful
-// detail read: resolve the actor, hand a freshly minted cookie back on the
-// response, and record the debounced event. It reports nothing, because a
-// public read must never fail over its own instrumentation.
+// resolvedContentViewTarget is what content_events needs to file a view: the
+// series it belongs to, and the episode when the view is of one episode rather
+// than the series. Both come from the server's own catalog row, so an
+// episode_view cannot be filed under a series the episode does not belong to.
+type resolvedContentViewTarget struct {
+	seriesID  uuid.UUID
+	episodeID uuid.NullUUID
+}
+
+// resolveContentViewTarget mirrors resolveRatingTarget: every member-facing RPC
+// that acts on a catalog entity starts from the public query, so a foreign,
+// unpublished, or missing target is NotFound before anything is written.
+func (s *apiServer) resolveContentViewTarget(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	target *publirav1.ContentViewTarget,
+) (resolvedContentViewTarget, error) {
+	if target == nil || strings.TrimSpace(target.PublicId) == "" {
+		return resolvedContentViewTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target is required"))
+	}
+	publicID := strings.TrimSpace(target.PublicId)
+
+	queries := s.queriesFor(ctx)
+	switch target.Type {
+	case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES:
+		seriesID, err := queries.GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
+			TenantID: tenantID,
+			PublicID: publicID,
+		})
+		if err == nil {
+			return resolvedContentViewTarget{seriesID: seriesID}, nil
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			return resolvedContentViewTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
+		}
+		return resolvedContentViewTarget{}, s.internalDBError(ctx, "failed to get content view series target", err, "tenant_id", tenantID.String())
+	case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE:
+		row, err := queries.GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
+			TenantID: tenantID,
+			PublicID: publicID,
+		})
+		if err == nil {
+			return resolvedContentViewTarget{
+				seriesID:  row.SeriesID,
+				episodeID: uuid.NullUUID{UUID: row.ID, Valid: true},
+			}, nil
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			return resolvedContentViewTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
+		}
+		return resolvedContentViewTarget{}, s.internalDBError(ctx, "failed to get content view episode target", err, "tenant_id", tenantID.String())
+	default:
+		return resolvedContentViewTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target type is invalid"))
+	}
+}
+
+// RecordContentView records one soft PV for a page a reader opened.
 //
-// seriesID always comes from the server's own row, never from the request, so
-// an episode_view cannot be filed under a series the episode does not belong
-// to.
+// This is deliberately its own RPC rather than a side effect of the detail
+// reads. Those reads are cached by their callers, and a cache fill runs without
+// the reader: it carries neither the cookie nor the bearer, so every fill would
+// mint a fresh actor and add a row no one read, while a cache hit would record
+// nothing at all. Here the caller is the reader's own request.
+//
+// The target is resolved before anything is written, so an unpublished or
+// foreign public ID is NotFound rather than a recorded view. Once the target
+// resolves the recording itself reports nothing: a view is instrumentation, and
+// a reader whose page rendered must not be told their view failed to store.
+func (s *apiServer) RecordContentView(
+	ctx context.Context,
+	req *connect.Request[publirav1.RecordContentViewRequest],
+) (*connect.Response[publirav1.RecordContentViewResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	target, err := s.resolveContentViewTarget(ctx, tenant.ID, req.Msg.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	res := noStorePrivateResponse(&publirav1.RecordContentViewResponse{})
+	viewerUserID := s.viewerUserID(ctx, req.Msg.Tenant, req.Header())
+	s.instrumentViewEvent(ctx, res.Header(), req.Header(), tenant.ID, target.seriesID, target.episodeID, viewerUserID)
+	return res, nil
+}
+
+// instrumentViewEvent is the entire soft PV side effect of one recorded view:
+// resolve the actor, hand a freshly minted cookie back on the response, and
+// record the debounced event. It reports nothing, because instrumentation must
+// never fail the request it instruments.
 func (s *apiServer) instrumentViewEvent(
 	ctx context.Context,
 	responseHeader http.Header,

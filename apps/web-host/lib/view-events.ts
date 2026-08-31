@@ -1,3 +1,4 @@
+import { ContentViewTargetType } from "@publira/api-client/public/catalog";
 import { profileCookieName } from "@publira/web-session/cookie-name";
 import { cookies } from "next/headers";
 import { z } from "zod";
@@ -7,6 +8,14 @@ import { apiClient, resolveAccessToken } from "./api-client";
 /** Detail pages this app records a soft page view for. */
 export const contentViewKinds = ["episode", "series"] as const;
 export type ContentViewKind = (typeof contentViewKinds)[number];
+
+const contentViewTargetTypeByKind: Record<
+  ContentViewKind,
+  ContentViewTargetType
+> = {
+  episode: ContentViewTargetType.EPISODE,
+  series: ContentViewTargetType.SERIES,
+};
 
 export interface ContentView {
   kind: ContentViewKind;
@@ -113,15 +122,16 @@ const buildViewActorHeaders = async (): Promise<Record<string, string>> => {
 /**
  * Record one soft page view for the detail page the reader has open.
  *
- * The API records the view as a side effect of the detail RPC, and this app's
- * `getEpisodeDetail` / `getSeriesDetail` are `"use cache"`: a cache hit never
- * reaches the API at all, and a cache fill reaches it without the reader
- * attached. This call is the reader's own — it runs from the beacon endpoint,
- * outside every cache, once per page actually opened, and never on a prefetch
- * because a prefetch renders nothing that could send a beacon.
+ * `RecordContentView` exists so this is the only thing that files a view. The
+ * detail reads this app makes are `"use cache"`, so they cannot be the source:
+ * a cache hit never reaches the API at all, and a cache fill reaches it
+ * without the reader attached. This call is the reader's own — it runs from
+ * the beacon endpoint, outside every cache, once per page actually opened, and
+ * never on a prefetch because a prefetch renders nothing that could send a
+ * beacon.
  *
  * Nothing is reported back. A page must not fail, change, or slow down over
- * its own instrumentation, so an unreachable API or a rejected read is
+ * its own instrumentation, so an unreachable API or a rejected call is
  * swallowed here the same way the API swallows a failed insert.
  */
 export const recordContentView = async ({
@@ -130,13 +140,14 @@ export const recordContentView = async ({
   tenantId,
 }: ContentView): Promise<void> => {
   const headers = await buildViewActorHeaders();
-  const request = { publicId, tenant: { tenantId } };
   try {
-    if (kind === "episode") {
-      await apiClient.catalog.getEpisodeDetail(request, { headers });
-      return;
-    }
-    await apiClient.catalog.getSeriesDetail(request, { headers });
+    await apiClient.contentView.recordContentView(
+      {
+        target: { publicId, type: contentViewTargetTypeByKind[kind] },
+        tenant: { tenantId },
+      },
+      { headers }
+    );
   } catch {
     // An episode that has since been unpublished, a tenant that no longer
     // resolves, an API that is down: none of them are the reader's problem.

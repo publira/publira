@@ -352,14 +352,17 @@ The token only states who the administrator is; `admin-image-server` consults th
 
 ## View events (soft PV) and anonymous actors
 
-When `GetEpisodeDetail` / `GetSeriesDetail` succeed, a view event is recorded in `content_events`. This is the Phase 1 soft PV, and it means nothing more than "the detail RPC succeeded" (hard PV, which observes whether the body was actually read, comes later). The recording is decoupled from the main processing, so the RPC succeeds even when it fails.
+`ContentViewService.RecordContentView` records a view event in `content_events` for the series or episode detail page a reader opened. This is the Phase 1 soft PV, and it means nothing more than "the reader opened the page" (hard PV, which observes whether the body was actually read, comes later). The target is resolved before anything is written, so an unpublished, cross-tenant, or missing public ID is `not_found`; once it resolves, the recording is decoupled from the main processing and the RPC succeeds even when the write fails.
+
+The detail RPCs deliberately record nothing. Their callers cache them (`"use cache"` in web-host), and a cache fill reaches the API without the reader's cookie or bearer: instrumenting them would mint a fresh anonymous actor per fill and add a row for a page nobody opened, while a cache hit would record no reader at all. Recording lives in its own RPC so the reader's request is the only thing that files a view.
 
 | Item | Value |
 | --- | --- |
-| Event type | `episode_view` (episode detail) / `series_view` (series detail) |
+| Event type | `episode_view` (episode target) / `series_view` (series target) |
 | actor | `user_id` while signed in, otherwise the `anonymous_id` from the `publira_aid` cookie (`content_events.actor_key` unifies them with `COALESCE`) |
 | Debounce | Fixed 30-minute epoch buckets (`floor(unix / 1800)`) plus `ON CONFLICT DO NOTHING` against a partial UNIQUE index. It is not a sliding window |
 | `series_id` | Resolved from `episodes` rather than taken from client input |
+| Authentication | Optional. A rejected or unverifiable bearer attributes the view anonymously rather than failing it |
 | Prefetch | Nothing is recorded when `Sec-Purpose` / `Purpose` / `X-Purpose` / `X-Moz` / `Next-Router-Prefetch` indicate a speculative request |
 | Payload | `{"pv_kind":"soft"}` only. No personal data such as an IP address, a User-Agent, or an email address is stored |
 

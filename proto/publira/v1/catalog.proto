@@ -424,6 +424,49 @@ service RatingService {
   rpc RateContent(RateContentRequest) returns (RateContentResponse) {}
 }
 
+// Kinds of public catalog targets a page view can be recorded for.
+enum ContentViewTargetType {
+  CONTENT_VIEW_TARGET_TYPE_UNSPECIFIED = 0;
+  CONTENT_VIEW_TARGET_TYPE_SERIES = 1;
+  CONTENT_VIEW_TARGET_TYPE_EPISODE = 2;
+}
+
+// A public catalog target. The public ID is interpreted according to type.
+message ContentViewTarget {
+  ContentViewTargetType type = 1;
+  string public_id = 2;
+}
+
+// Records that a reader opened the target's detail page.
+message RecordContentViewRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  ContentViewTarget target = 2;
+}
+
+// Deliberately empty. The caller reports a view it already rendered, so there
+// is nothing for it to learn back; whether the view was recorded, deduplicated,
+// or dropped is not the reader's concern.
+message RecordContentViewResponse {}
+
+service ContentViewService {
+  // Records one soft page view for a currently public series or episode.
+  //
+  // A view is recorded here rather than as a side effect of GetSeriesDetail /
+  // GetEpisodeDetail, because those reads are cached by their callers: a cache
+  // fill carries no reader and would otherwise mint an actor of its own, and a
+  // cache hit never reaches this server at all. This RPC is called once per
+  // page a reader actually opened.
+  //
+  // Optional authentication. A signed-in reader is attributed to their account
+  // and everyone else to the publira_aid cookie, which is minted and returned
+  // in Set-Cookie when the request carries none.
+  //
+  // Cross-tenant, unpublished, and missing targets are all surfaced as
+  // NotFound, matching FollowService and RatingService, so a view cannot be
+  // used to probe for hidden content.
+  rpc RecordContentView(RecordContentViewRequest) returns (RecordContentViewResponse) {}
+}
+
 // A one-time paid-episode checkout. Purchases are created only by the Stripe
 // webhook after a successful payment, never by the browser's return URL.
 message StartEpisodeCheckoutRequest {

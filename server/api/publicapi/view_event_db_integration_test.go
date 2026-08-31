@@ -13,10 +13,10 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// Soft PV is written on the way out of a successful detail read, so nothing
-// about it can be asserted against canned rows: the debounce lives in a partial
-// unique index, the actor in a generated column, and the tenant boundary in an
-// RLS policy. These cases drive the real database.
+// Soft PV is written on the way out of a successful RecordContentView, so
+// nothing about it can be asserted against canned rows: the debounce lives in a
+// partial unique index, the actor in a generated column, and the tenant
+// boundary in an RLS policy. These cases drive the real database.
 
 // contentEventRow is the part of content_events these tests read back.
 type contentEventRow struct {
@@ -76,6 +76,20 @@ func (e *publicDBEnv) seedPublishedEpisode(t *testing.T, tenant testutil.Tenant)
 	return series, episode
 }
 
+func episodeViewRequest(tenant testutil.Tenant, publicID string) *connect.Request[publirav1.RecordContentViewRequest] {
+	return connect.NewRequest(&publirav1.RecordContentViewRequest{
+		Tenant: tenantContext(tenant),
+		Target: episodeViewTarget(publicID),
+	})
+}
+
+func seriesViewRequest(tenant testutil.Tenant, publicID string) *connect.Request[publirav1.RecordContentViewRequest] {
+	return connect.NewRequest(&publirav1.RecordContentViewRequest{
+		Tenant: tenantContext(tenant),
+		Target: seriesViewTarget(publicID),
+	})
+}
+
 func episodeDetailRequest(tenant testutil.Tenant, publicID string) *connect.Request[publirav1.GetEpisodeDetailRequest] {
 	return connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
@@ -87,29 +101,29 @@ func TestDBEpisodeViewEventMintsAnActorAndRecordsOneRowPerBucket(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series, episode := env.seedPublishedEpisode(t, tenant)
-	client := env.catalogClient()
+	client := env.contentViewClient()
 
-	first, err := client.GetEpisodeDetail(context.Background(), episodeDetailRequest(tenant, episode.PublicID))
+	first, err := client.RecordContentView(context.Background(), episodeViewRequest(tenant, episode.PublicID))
 	if err != nil {
-		t.Fatalf("first GetEpisodeDetail: %v", err)
+		t.Fatalf("first RecordContentView: %v", err)
 	}
 	anonymousID := mintedAnonymousID(t, first.Header())
 
 	// The same reader coming back inside the debounce window is the case the
 	// partial unique index exists for.
-	second := episodeDetailRequest(tenant, episode.PublicID)
+	second := episodeViewRequest(tenant, episode.PublicID)
 	second.Header().Set("Cookie", anonymousIDCookieName+"="+anonymousID.String())
-	secondResp, err := client.GetEpisodeDetail(context.Background(), second)
+	secondResp, err := client.RecordContentView(context.Background(), second)
 	if err != nil {
-		t.Fatalf("second GetEpisodeDetail: %v", err)
+		t.Fatalf("second RecordContentView: %v", err)
 	}
 	if got := secondResp.Header().Values("Set-Cookie"); len(got) != 0 {
-		t.Fatalf("Set-Cookie on the second read = %v, want the existing identifier reused", got)
+		t.Fatalf("Set-Cookie on the second view = %v, want the existing identifier reused", got)
 	}
 
 	events := env.contentEvents(t, tenant.ID)
 	if len(events) != 1 {
-		t.Fatalf("content_events = %d rows, want 1 for two reads in the same bucket", len(events))
+		t.Fatalf("content_events = %d rows, want 1 for two views in the same bucket", len(events))
 	}
 	event := events[0]
 	if event.eventType != "episode_view" {
@@ -148,15 +162,14 @@ func TestDBEpisodeViewEventAttributesASignedInReaderToTheirUser(t *testing.T) {
 	_, episode := env.seedPublishedEpisode(t, tenant)
 	member := env.PG.SeedEndUser(t, tenant.ID, "USERVIEW0001", "viewer@example.com", "Viewer")
 	token := tokenFor(t, tenant, member)
-	client := env.catalogClient()
 
-	req := episodeDetailRequest(tenant, episode.PublicID)
+	req := episodeViewRequest(tenant, episode.PublicID)
 	req.Header().Set("Authorization", "Bearer "+token)
 	// A member may well be carrying an anonymous cookie from before they signed
 	// in; the member is the actor either way.
 	req.Header().Set("Cookie", anonymousIDCookieName+"="+uuid.Must(uuid.NewV7()).String())
-	if _, err := client.GetEpisodeDetail(context.Background(), req); err != nil {
-		t.Fatalf("GetEpisodeDetail: %v", err)
+	if _, err := env.contentViewClient().RecordContentView(context.Background(), req); err != nil {
+		t.Fatalf("RecordContentView: %v", err)
 	}
 
 	events := env.contentEvents(t, tenant.ID)
@@ -171,11 +184,11 @@ func TestDBEpisodeViewEventAttributesASignedInReaderToTheirUser(t *testing.T) {
 	}
 }
 
-func TestDBEpisodeViewEventConcurrentReadsWithOneCookieCollapseToOneRow(t *testing.T) {
+func TestDBEpisodeViewEventConcurrentViewsWithOneCookieCollapseToOneRow(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	_, episode := env.seedPublishedEpisode(t, tenant)
-	client := env.catalogClient()
+	client := env.contentViewClient()
 	anonymousID := uuid.Must(uuid.NewV7())
 
 	// Concurrency is where ON CONFLICT DO NOTHING earns its place: a
@@ -187,35 +200,32 @@ func TestDBEpisodeViewEventConcurrentReadsWithOneCookieCollapseToOneRow(t *testi
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			req := episodeDetailRequest(tenant, episode.PublicID)
+			req := episodeViewRequest(tenant, episode.PublicID)
 			req.Header().Set("Cookie", anonymousIDCookieName+"="+anonymousID.String())
-			_, errs[i] = client.GetEpisodeDetail(context.Background(), req)
+			_, errs[i] = client.RecordContentView(context.Background(), req)
 		}()
 	}
 	wg.Wait()
 	for i, err := range errs {
 		if err != nil {
-			t.Fatalf("concurrent GetEpisodeDetail %d: %v", i, err)
+			t.Fatalf("concurrent RecordContentView %d: %v", i, err)
 		}
 	}
 
 	events := env.contentEvents(t, tenant.ID)
 	if len(events) != 1 {
-		t.Fatalf("content_events = %d rows, want 1 for %d concurrent reads by one actor", len(events), readers)
+		t.Fatalf("content_events = %d rows, want 1 for %d concurrent views by one actor", len(events), readers)
 	}
 }
 
-func TestDBSeriesViewEventIsRecordedForTheSeriesRead(t *testing.T) {
+func TestDBSeriesViewEventIsRecordedForTheSeriesTarget(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series, _ := env.seedPublishedEpisode(t, tenant)
 
-	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
-		Tenant:   tenantContext(tenant),
-		PublicId: series.PublicID,
-	}))
+	resp, err := env.contentViewClient().RecordContentView(context.Background(), seriesViewRequest(tenant, series.PublicID))
 	if err != nil {
-		t.Fatalf("GetSeriesDetail: %v", err)
+		t.Fatalf("RecordContentView: %v", err)
 	}
 	anonymousID := mintedAnonymousID(t, resp.Header())
 
@@ -228,7 +238,7 @@ func TestDBSeriesViewEventIsRecordedForTheSeriesRead(t *testing.T) {
 		t.Fatalf("event_type = %q, want series_view", event.eventType)
 	}
 	if event.episodeID.Valid {
-		t.Fatalf("episode_id = %v, want unset on a series read", event.episodeID.UUID)
+		t.Fatalf("episode_id = %v, want unset on a series view", event.episodeID.UUID)
 	}
 	if event.seriesID.UUID != series.ID {
 		t.Fatalf("series_id = %v, want %v", event.seriesID, series.ID)
@@ -238,9 +248,9 @@ func TestDBSeriesViewEventIsRecordedForTheSeriesRead(t *testing.T) {
 	}
 }
 
-// An unpublished episode never reaches the instrumentation, so a failed read
-// must leave the table empty rather than recording an attempt.
-func TestDBViewEventIsNotRecordedForAFailedRead(t *testing.T) {
+// An unpublished episode is not something a view may be filed against, so the
+// call fails before anything is written rather than recording an attempt.
+func TestDBViewEventIsNotRecordedForAnUnpublishedTarget(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -253,12 +263,49 @@ func TestDBViewEventIsNotRecordedForAFailedRead(t *testing.T) {
 		Title:    "Draft Episode",
 	})
 
-	_, err := env.catalogClient().GetEpisodeDetail(context.Background(), episodeDetailRequest(tenant, draft.PublicID))
+	_, err := env.contentViewClient().RecordContentView(context.Background(), episodeViewRequest(tenant, draft.PublicID))
 	if connect.CodeOf(err) != connect.CodeNotFound {
-		t.Fatalf("GetEpisodeDetail on a draft code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
+		t.Fatalf("RecordContentView on a draft code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 
 	if events := env.contentEvents(t, tenant.ID); len(events) != 0 {
-		t.Fatalf("content_events = %d rows, want none for a read that failed", len(events))
+		t.Fatalf("content_events = %d rows, want none for a view that failed", len(events))
+	}
+}
+
+// The detail RPCs are behind a `"use cache"` boundary in web-host, and a fill
+// of that cache reaches the API carrying neither the reader's cookie nor a
+// bearer. When they instrumented views themselves, every fill minted a fresh
+// actor and left a row nothing could deduplicate (#1276).
+func TestDBRepeatedDetailReadsRecordNoViewEvents(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series, episode := env.seedPublishedEpisode(t, tenant)
+	client := env.catalogClient()
+
+	const fills = 3
+	for range fills {
+		if _, err := client.GetEpisodeDetail(context.Background(), episodeDetailRequest(tenant, episode.PublicID)); err != nil {
+			t.Fatalf("GetEpisodeDetail: %v", err)
+		}
+		if _, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+			Tenant:   tenantContext(tenant),
+			PublicId: series.PublicID,
+		})); err != nil {
+			t.Fatalf("GetSeriesDetail: %v", err)
+		}
+	}
+
+	if events := env.contentEvents(t, tenant.ID); len(events) != 0 {
+		t.Fatalf("content_events = %d rows, want none for %d cache fills", len(events), fills)
+	}
+
+	// The reader's own view still lands, so the table is empty above because
+	// the detail reads stopped writing, not because writing broke.
+	if _, err := env.contentViewClient().RecordContentView(context.Background(), episodeViewRequest(tenant, episode.PublicID)); err != nil {
+		t.Fatalf("RecordContentView: %v", err)
+	}
+	if events := env.contentEvents(t, tenant.ID); len(events) != 1 {
+		t.Fatalf("content_events = %d rows, want the reader's single view", len(events))
 	}
 }
