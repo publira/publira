@@ -212,6 +212,7 @@ func newAuthedCreateTenantIntegrationRequest(msg *publirasplatformv1.CreateTenan
 
 func validIntegrationCreateTenantRequest() *publirasplatformv1.CreateTenantRequest {
 	return &publirasplatformv1.CreateTenantRequest{
+		DefaultLocale:      "ja",
 		Name:               "New Tenant",
 		Domain:             "new.example.com",
 		InitialAdminEmails: []string{"owner@example.com"},

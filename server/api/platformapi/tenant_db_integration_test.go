@@ -31,8 +31,9 @@ func TestDBCreateTenantPersistsAndLists(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 
 	createResp, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
-		Name:   "Integration Tenant",
-		Domain: "integration.example.com",
+		DefaultLocale: "ja",
+		Name:          "Integration Tenant",
+		Domain:        "integration.example.com",
 	}))
 	if err != nil {
 		t.Fatalf("CreateTenant: %v", err)
@@ -87,8 +88,9 @@ func TestDBListTenantsPaginatesWithTokens(t *testing.T) {
 	createdPublicIDs := make([]string, 0, 3)
 	for index, name := range []string{"First", "Second", "Third"} {
 		resp, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
-			Name:   name + " Paginated Tenant",
-			Domain: strings.ToLower(name) + "-paginated.example.com",
+			DefaultLocale: "ja",
+			Name:          name + " Paginated Tenant",
+			Domain:        strings.ToLower(name) + "-paginated.example.com",
 		}))
 		if err != nil {
 			t.Fatalf("CreateTenant %d: %v", index, err)
@@ -146,16 +148,18 @@ func TestDBCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 
 	_, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
-		Name:   "First Tenant",
-		Domain: "dup-domain.example.com",
+		DefaultLocale: "ja",
+		Name:          "First Tenant",
+		Domain:        "dup-domain.example.com",
 	}))
 	if err != nil {
 		t.Fatalf("first CreateTenant: %v", err)
 	}
 
 	_, err = client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
-		Name:   "Second Tenant",
-		Domain: "dup-domain.example.com",
+		DefaultLocale: "ja",
+		Name:          "Second Tenant",
+		Domain:        "dup-domain.example.com",
 	}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
@@ -170,18 +174,20 @@ func TestDBCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 
 	_, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
-		Name:        "First Tenant",
-		Domain:      "first.example.com",
-		AdminDomain: "admin.shared.example.com",
+		DefaultLocale: "ja",
+		Name:          "First Tenant",
+		Domain:        "first.example.com",
+		AdminDomain:   "admin.shared.example.com",
 	}))
 	if err != nil {
 		t.Fatalf("first CreateTenant: %v", err)
 	}
 
 	_, err = client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
-		Name:        "Second Tenant",
-		Domain:      "second.example.com",
-		AdminDomain: "admin.shared.example.com",
+		DefaultLocale: "ja",
+		Name:          "Second Tenant",
+		Domain:        "second.example.com",
+		AdminDomain:   "admin.shared.example.com",
 	}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
@@ -196,8 +202,9 @@ func TestDBSuspendAndResumeTenant(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 
 	createResp, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
-		Name:   "Lifecycle Tenant",
-		Domain: "lifecycle.example.com",
+		DefaultLocale: "ja",
+		Name:          "Lifecycle Tenant",
+		Domain:        "lifecycle.example.com",
 	}))
 	if err != nil {
 		t.Fatalf("CreateTenant: %v", err)
@@ -230,8 +237,9 @@ func TestDBCreateTenantRejectsEmptyDomain(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 
 	_, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
-		Name:   "No Domain",
-		Domain: "",
+		DefaultLocale: "ja",
+		Name:          "No Domain",
+		Domain:        "",
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))

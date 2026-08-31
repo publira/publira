@@ -123,6 +123,12 @@ export type ListPlatformTenantAdminInvitationsResult =
 
 export interface CreatePlatformTenantInput {
   adminDomain?: string;
+  /**
+   * UI locale the new tenant starts on. Required: the API rejects a create
+   * request that does not name one, so the caller decides the language rather
+   * than inheriting whatever the server would have picked.
+   */
+  defaultLocale: Locale;
   domain: string;
   initialAdminEmails?: string[];
   locale: Locale;
@@ -471,10 +477,11 @@ export const createPlatformTenant = async (
     const response = await apiClient.tenants.createTenant(
       {
         adminDomain,
+        defaultLocale: input.defaultLocale,
         domain,
         initialAdminEmails,
         name,
-      } as never,
+      },
       buildSessionHeaders(sid)
     );
 

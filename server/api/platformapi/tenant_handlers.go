@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/publicid"
@@ -190,6 +191,10 @@ func (s *platformServer) CreateTenant(
 	if domain == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domain is required"))
 	}
+	defaultLocale, err := locale.Normalize(req.Msg.DefaultLocale)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	adminDomain := nullableTrimmedString(req.Msg.AdminDomain)
 	initialAdminEmails := make([]string, 0, len(req.Msg.InitialAdminEmails))
 	seenInitialAdminEmail := make(map[string]struct{}, len(req.Msg.InitialAdminEmails))
@@ -222,10 +227,10 @@ func (s *platformServer) CreateTenant(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Platform defaults are applied explicitly instead of relying on the
-	// column defaults, so an install that changed either starts every new
-	// tenant on them.
-	defaultTimezone, defaultLocale := platformconfig.Defaults(ctx, txq)
+	// The time zone is applied explicitly instead of relying on the column
+	// default, so an install that changed it starts every new tenant on it.
+	// The locale comes from the request: the server never picks a language.
+	defaultTimezone := platformconfig.DefaultTimeZone(ctx, txq)
 
 	tenant, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Tenant, error) {
 		return txq.CreateTenant(ctx, dbmodels.CreateTenantParams{

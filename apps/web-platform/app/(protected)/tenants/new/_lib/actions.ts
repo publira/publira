@@ -16,6 +16,7 @@ import {
 } from "#lib/form-schemas";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import type { PlatformMessages } from "#lib/locale";
+import { readPlatformDefaultLocale } from "#lib/platform-settings";
 import { createPlatformTenant } from "#lib/tenants";
 
 const createTenantFormSchema = (messages: PlatformMessages) =>
@@ -53,9 +54,21 @@ export const createTenantAction = async (
     };
   }
 
-  const result = await withPlatformSessionReauth(() =>
-    createPlatformTenant({ ...parsed.data, locale })
-  );
+  const result = await withPlatformSessionReauth(async () => {
+    // The API requires the new tenant's locale, so it is stated here rather
+    // than left to the server. The creation form gains its own selector in
+    // #1246; until then the configured platform default is that decision.
+    const platformDefault = await readPlatformDefaultLocale(locale);
+    if (!platformDefault.ok) {
+      return { message: platformDefault.message, ok: false as const };
+    }
+
+    return createPlatformTenant({
+      ...parsed.data,
+      defaultLocale: platformDefault.defaultLocale,
+      locale,
+    });
+  });
 
   if (!result.ok) {
     return { message: result.message, ok: false };

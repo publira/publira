@@ -100,7 +100,7 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 	expectIntegrationAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com"}))
+	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com", DefaultLocale: "ja"}))
 	if err != nil {
 		t.Fatalf("CreateTenant: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestCreateTenantPublicIDAttemptsExhaustedIsInternal(t *testing.T) {
 	mock.ExpectRollback()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com"}))
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com", DefaultLocale: "ja"}))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("CreateTenant code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}
@@ -159,7 +159,7 @@ func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 	mock.ExpectRollback()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Domain Duplicate Tenant", Domain: "existing.example.com"}))
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Domain Duplicate Tenant", Domain: "existing.example.com", DefaultLocale: "ja"}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
 	}
@@ -184,7 +184,7 @@ func TestCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 	mock.ExpectRollback()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Subdomain Duplicate Tenant", Domain: "sub001.example.com", AdminDomain: "admin.sub001.example.com"}))
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Subdomain Duplicate Tenant", Domain: "sub001.example.com", AdminDomain: "admin.sub001.example.com", DefaultLocale: "ja"}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
 	}
@@ -194,14 +194,16 @@ func TestCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 	assertIntegrationExpectations(t, mock)
 }
 
-func TestCreateTenantAppliesPlatformDefaultLocale(t *testing.T) {
+// The locale stored is the one the request names, not the platform default:
+// the settings row here says "ja" and the tenant is still created as "en".
+func TestCreateTenantStoresRequestedLocale(t *testing.T) {
 	ts, mock := newIntegrationTestServer(t)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 	mock.ExpectBegin()
-	expectPlatformConfigLookup(mock, tenanttz.Default, "en", now)
+	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "en.example.com", Valid: true}, sql.NullString{}, "English Tenant", tenanttz.Default, "en").
@@ -212,7 +214,7 @@ func TestCreateTenantAppliesPlatformDefaultLocale(t *testing.T) {
 	expectIntegrationAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "English Tenant", Domain: "en.example.com"}))
+	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "English Tenant", Domain: "en.example.com", DefaultLocale: "  en  "}))
 	if err != nil {
 		t.Fatalf("CreateTenant: %v", err)
 	}
@@ -220,6 +222,40 @@ func TestCreateTenantAppliesPlatformDefaultLocale(t *testing.T) {
 		t.Fatalf("tenant.public_id = %q, want 4ERDqTx5YB8m", resp.Msg.Tenant.PublicId)
 	}
 	assertIntegrationExpectations(t, mock)
+}
+
+// A create request that names no locale, or an unsupported one, is rejected
+// before the transaction opens: the column has no default left to fall back on.
+func TestCreateTenantRejectsMissingOrUnsupportedLocale(t *testing.T) {
+	tests := []struct {
+		name          string
+		defaultLocale string
+	}{
+		{name: "missing", defaultLocale: ""},
+		{name: "blank", defaultLocale: "   "},
+		{name: "unknown code", defaultLocale: "fr"},
+		{name: "wrong case", defaultLocale: "EN"},
+		{name: "bcp47 region", defaultLocale: "en-US"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, mock := newIntegrationTestServer(t)
+			now := time.Now()
+			expectIntegrationAuth(mock, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), integrationPlatformRole, now)
+
+			client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+			_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{
+				Name:          "New Tenant",
+				Domain:        "new.example.com",
+				DefaultLocale: tt.defaultLocale,
+			}))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("CreateTenant code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+			}
+			assertIntegrationExpectations(t, mock)
+		})
+	}
 }
 
 func TestSuspendTenantSuccess(t *testing.T) {

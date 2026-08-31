@@ -10,10 +10,10 @@ import (
 	localegen "github.com/publira/publira/server/internal/locale/gen"
 )
 
-// Default mirrors the tenants.default_locale and platform_config.default_locale
-// column defaults in db/migrations. The platform default row is the source of
-// truth for new tenants, so this constant is only the last resort for when that
-// row cannot be read.
+// Default is the locale a read falls back to when neither the stored row nor
+// the platform settings row yields one. It is not a creation default: both
+// default_locale columns dropped theirs, and every write path names the locale
+// it means. Removing this last read-side fallback is tracked in #1251.
 const Default = "ja"
 
 // Supported is generated from locales/index.json.
@@ -23,10 +23,10 @@ var Supported = localegen.Supported
 var ErrInvalid = errors.New("default_locale must be a supported locale")
 
 // Resolve returns the tenant default locale to expose through the API. Stored
-// values are NOT NULL with a non-blank CHECK, so the fallback only guards rows
-// written before those constraints existed. platformDefault yields the
-// platform-wide default and is called only when the stored value is unusable,
-// which keeps the platform settings row off the hot read path; a nil
+// values are NOT NULL and constrained to the supported codes, so the fallback
+// only guards rows written before those constraints existed. platformDefault
+// yields the platform-wide default and is called only when the stored value is
+// unusable, which keeps the platform settings row off the hot read path; a nil
 // platformDefault, or one that yields a blank value, falls back to Default.
 func Resolve(stored string, platformDefault func() string) string {
 	if trimmed := strings.TrimSpace(stored); trimmed != "" {

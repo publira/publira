@@ -23,9 +23,11 @@ message GetPlatformSettingsResponse {
 
 message UpdatePlatformSettingsRequest {
   string default_timezone = 1;
-  // Presence-aware so a timezone-only save can omit the field. When set,
-  // unknown or blank codes are rejected before any write.
-  optional string default_locale = 2;
+  // Required: the settings row has no column default for the locale, so a save
+  // that omitted it could not create the row at all. A timezone-only screen
+  // sends back the locale it read. Unknown or blank codes are rejected before
+  // any write.
+  string default_locale = 2;
 }
 
 message UpdatePlatformSettingsResponse {

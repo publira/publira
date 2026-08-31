@@ -54,6 +54,10 @@ message CreateTenantRequest {
   string domain = 3;
   repeated string initial_admin_emails = 4;
   string admin_domain = 5;
+  // UI locale code (ja, en) the new tenant starts on. Required: the server
+  // never picks a language on the caller's behalf, so a blank or unsupported
+  // code is rejected instead of falling back to a default.
+  string default_locale = 6;
   reserved 2;
 }
 

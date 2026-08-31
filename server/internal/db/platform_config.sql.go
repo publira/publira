@@ -7,7 +7,6 @@ package dbmodels
 
 import (
 	"context"
-	"database/sql"
 )
 
 const getPlatformConfig = `-- name: GetPlatformConfig :one
@@ -31,77 +30,28 @@ func (q *Queries) GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 	return i, err
 }
 
-const upsertPlatformDefaultLocale = `-- name: UpsertPlatformDefaultLocale :one
-INSERT INTO platform_config (singleton, default_locale, updated_at)
-VALUES (TRUE, $1, NOW()) ON CONFLICT (singleton) DO
-UPDATE
-SET default_locale = EXCLUDED.default_locale,
-    updated_at = NOW()
-RETURNING singleton, default_timezone, default_locale, created_at, updated_at
-`
-
-// プラットフォーム既定ロケールを作成または更新する
-func (q *Queries) UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertPlatformDefaultLocale, defaultLocale)
-	var i PlatformConfig
-	err := row.Scan(
-		&i.Singleton,
-		&i.DefaultTimezone,
-		&i.DefaultLocale,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const upsertPlatformDefaultTimezone = `-- name: UpsertPlatformDefaultTimezone :one
-INSERT INTO platform_config (singleton, default_timezone, updated_at)
-VALUES (TRUE, $1, NOW()) ON CONFLICT (singleton) DO
-UPDATE
-SET default_timezone = EXCLUDED.default_timezone,
-    updated_at = NOW()
-RETURNING singleton, default_timezone, default_locale, created_at, updated_at
-`
-
-// プラットフォーム既定タイムゾーン (IANA 名) を作成または更新する
-func (q *Queries) UpsertPlatformDefaultTimezone(ctx context.Context, defaultTimezone string) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertPlatformDefaultTimezone, defaultTimezone)
-	var i PlatformConfig
-	err := row.Scan(
-		&i.Singleton,
-		&i.DefaultTimezone,
-		&i.DefaultLocale,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const upsertPlatformSettings = `-- name: UpsertPlatformSettings :one
 INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
 VALUES (
         TRUE,
         $1,
-        COALESCE($2::text, 'ja'),
+        $2,
         NOW()
     ) ON CONFLICT (singleton) DO
 UPDATE
 SET default_timezone = EXCLUDED.default_timezone,
-    default_locale = COALESCE(
-        $2::text,
-        platform_config.default_locale
-    ),
+    default_locale = EXCLUDED.default_locale,
     updated_at = NOW()
 RETURNING singleton, default_timezone, default_locale, created_at, updated_at
 `
 
 type UpsertPlatformSettingsParams struct {
-	DefaultTimezone string         `json:"default_timezone"`
-	DefaultLocale   sql.NullString `json:"default_locale"`
+	DefaultTimezone string `json:"default_timezone"`
+	DefaultLocale   string `json:"default_locale"`
 }
 
 // プラットフォーム既定タイムゾーンと既定ロケールを原子的に作成または更新する。
-// default_locale が NULL なら既存値（新規行なら列 DEFAULT の ja）を残す。
+// default_locale は列 DEFAULT を持たないため、呼び出し側が必ず明示する。
 func (q *Queries) UpsertPlatformSettings(ctx context.Context, arg UpsertPlatformSettingsParams) (PlatformConfig, error) {
 	row := q.db.QueryRowContext(ctx, upsertPlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
 	var i PlatformConfig
