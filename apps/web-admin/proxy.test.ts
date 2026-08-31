@@ -95,6 +95,24 @@ describe("web-admin proxy", () => {
     expect(mockResolveTenantId).not.toHaveBeenCalled();
   });
 
+  it("answers GET /favicon.ico with 404 without resolving the tenant", async () => {
+    const { NextRequest } = await import("next/server");
+    const { config, proxy } = await import("./proxy");
+
+    // The branch below only runs for a path the matcher covers; excluding
+    // `/favicon.ico` again would send it back into the `[tenant_id]` tree.
+    expect(unstable_doesMiddlewareMatch({ config, url: "/favicon.ico" })).toBe(
+      true
+    );
+
+    const response = await proxy(
+      new NextRequest("https://admin.example.com/favicon.ico")
+    );
+
+    expect(response.status).toBe(404);
+    expect(mockResolveTenantId).not.toHaveBeenCalled();
+  });
+
   it.each(["/livez", "/readyz"])(
     "ヘルス probe %s はテナント解決なしで next する",
     async (path) => {

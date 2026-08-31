@@ -61,13 +61,16 @@ export const adminLocaleCookieOptions = {
 const resolveTenantFallbackLocale = async (
   tenantId: string
 ): Promise<Locale> => {
-  const sessionId = await getAccessToken();
-  if (!sessionId) {
+  // The format check comes first because it needs nothing from the request:
+  // reading the session for an id that is about to be rejected spends an
+  // uncached read on an answer that is already known.
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !isTenantIdFormat(normalizedTenantId)) {
     return DEFAULT_LOCALE;
   }
 
-  const normalizedTenantId = tenantId.trim();
-  if (!normalizedTenantId || !isTenantIdFormat(normalizedTenantId)) {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
     return DEFAULT_LOCALE;
   }
 

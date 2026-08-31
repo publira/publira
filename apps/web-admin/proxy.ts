@@ -43,6 +43,16 @@ export const proxy = async (request: NextRequest) => {
     return new NextResponse("Not Found", { status: 404 });
   }
 
+  // The console ships no favicon, and a path the matcher skips still reaches
+  // the app router — where the only route that matches is `/[tenant_id]`, with
+  // `favicon.ico` standing in for the tenant. Every browser asks for it on
+  // every page, so answering here is what keeps that tree from rendering, and
+  // its `generateMetadata` from reading request state, once per page view.
+  // Serving an icon means adding the file convention and dropping this branch.
+  if (pathname === "/favicon.ico") {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
   let tenantId: string | null;
   try {
     tenantId = await resolveTenantId(
@@ -97,7 +107,5 @@ export const proxy = async (request: NextRequest) => {
 };
 
 export const config = {
-  matcher: [
-    "/((?!api/v1/revalidate(?:/|$)|_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!api/v1/revalidate(?:/|$)|_next/static|_next/image).*)"],
 };
