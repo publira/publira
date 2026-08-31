@@ -126,6 +126,37 @@ func TestRunBuildsFeatureSnapshotsPerTenant(t *testing.T) {
 	}
 }
 
+func TestRunTruncatesTheAffinityListToTheConfiguredLimit(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	tenant := pg.SeedTenant(t, "FEATTOPN0001", "topn-features.example.com", "Top-N Feature Tenant")
+	quiet := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "FEATTOPNSER1"})
+	busy := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "FEATTOPNSER2"})
+	reader := pg.SeedEndUser(t, tenant.ID, "FEATTOPNRDR1", "reader@topn-features.example.com", "Top-N Reader")
+
+	// The quieter series is seeded first and sorts earlier by id, so only the
+	// event count can put the busy one at the head of the list.
+	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "series_view", userID: reader.ID, seriesID: quiet.ID, debounceBucket: 1, occurredAt: at("2026-08-23T01:00:00Z")})
+	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "series_view", userID: reader.ID, seriesID: busy.ID, debounceBucket: 2, occurredAt: at("2026-08-24T01:00:00Z")})
+	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "series_view", userID: reader.ID, seriesID: busy.ID, debounceBucket: 3, occurredAt: at("2026-08-25T01:00:00Z")})
+
+	options := buildOptions()
+	options.TopSeriesLimit = 1
+	if _, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), options); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// The totals still span both series; only top_series is truncated.
+	assertUser(t, loadUserFeatures(t, pg.DB), userKey{tenantID: tenant.ID, userID: reader.ID}, userFeatures{
+		WindowDays: windowDays, WindowStart: windowStart, WindowEnd: referenceDate,
+		EventCount: 3, ViewCount: 3, SeriesCount: 2, LastEventAt: "2026-08-25T01:00:00Z",
+		TopSeries: []topSeriesEntry{
+			{SeriesID: busy.ID, EventCount: 2, ViewCount: 2, LastEventAt: "2026-08-25T01:00:00Z"},
+		},
+	})
+}
+
 func TestRunLeavesEmptySnapshotsForATenantWithoutSignal(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

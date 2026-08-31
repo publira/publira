@@ -26,6 +26,11 @@ const (
 	// one user's features small enough to fetch on a request path.
 	DefaultTopSeriesLimit = 10
 
+	// lockTimeout bounds how long one tenant waits for the advisory lock. A
+	// cron one-shot has no deadline of its own, so without this an overlapping
+	// run would block forever with a transaction open instead of exiting.
+	lockTimeout = "30s"
+
 	// FeatureVersion stamps every row this package writes. Bump it whenever
 	// the shape or the meaning of a field changes, so a reader can tell a
 	// freshly built row from one an older build left behind.
@@ -51,7 +56,9 @@ type Options struct {
 	TopSeriesLimit int
 }
 
-// Result describes one complete build run.
+// Result describes one build run. Every count covers the tenants the run
+// actually finished: each tenant commits on its own, so on an error the counts
+// describe the work that survived rather than the work that was planned.
 type Result struct {
 	TenantCount  int
 	UserRowCount int64
@@ -91,12 +98,13 @@ func (b *Builder) Run(ctx context.Context, opts Options) (Result, error) {
 		return Result{}, fmt.Errorf("list tenants: %w", err)
 	}
 
-	result := Result{TenantCount: len(tenants)}
+	var result Result
 	for _, tenantID := range tenants {
 		userRows, itemRows, err := b.buildTenant(ctx, tenantID, referenceDate, windowDays, topSeriesLimit)
 		if err != nil {
-			return Result{}, fmt.Errorf("build features for tenant %s at %s: %w", tenantID, referenceDate, err)
+			return result, fmt.Errorf("build features for tenant %s at %s: %w", tenantID, referenceDate, err)
 		}
+		result.TenantCount++
 		result.UserRowCount += userRows
 		result.ItemRowCount += itemRows
 	}
@@ -149,12 +157,17 @@ func (b *Builder) buildTenant(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	if _, err := tx.ExecContext(ctx, "SELECT set_config('lock_timeout', $1, true)", lockTimeout); err != nil {
+		return 0, 0, fmt.Errorf("set lock timeout: %w", err)
+	}
 	// This lock belongs inside the transaction: it protects the delete/insert
-	// replacement from a concurrent cron invocation for the same tenant.
+	// replacement from a concurrent cron invocation for the same tenant. The
+	// timeout above turns an overlapping run into a failed run rather than one
+	// that waits out the day holding a transaction open.
 	if _, err := tx.ExecContext(ctx, `
 		SELECT pg_advisory_xact_lock(hashtextextended($1::text || ':recommend-features', 0))
 	`, tenantID); err != nil {
-		return 0, 0, fmt.Errorf("lock tenant: %w", err)
+		return 0, 0, fmt.Errorf("lock tenant (waited up to %s): %w", lockTimeout, err)
 	}
 
 	sources, err := countSources(ctx, tx, tenantID, referenceDate, windowDays)
@@ -190,12 +203,19 @@ func (b *Builder) buildTenant(
 }
 
 // replaceSnapshot clears this tenant's rows and rebuilds them from the window.
-// The delete takes the tenant id alone, which is why it must stay args[0].
-func replaceSnapshot(ctx context.Context, tx *sql.Tx, deleteSQL, insertSQL string, args ...any) (int64, error) {
-	if _, err := tx.ExecContext(ctx, deleteSQL, args[0]); err != nil {
+// The delete takes the tenant id alone; the insert takes it as $1 followed by
+// the rest of its parameters.
+func replaceSnapshot(
+	ctx context.Context,
+	tx *sql.Tx,
+	deleteSQL, insertSQL string,
+	tenantID uuid.UUID,
+	insertArgs ...any,
+) (int64, error) {
+	if _, err := tx.ExecContext(ctx, deleteSQL, tenantID); err != nil {
 		return 0, fmt.Errorf("delete previous snapshot: %w", err)
 	}
-	inserted, err := tx.ExecContext(ctx, insertSQL, args...)
+	inserted, err := tx.ExecContext(ctx, insertSQL, append([]any{tenantID}, insertArgs...)...)
 	if err != nil {
 		return 0, fmt.Errorf("insert rebuilt snapshot: %w", err)
 	}

@@ -21,7 +21,9 @@ Environment variables:
 
 Run it after `aggregate-content-stats` for the same day: the item snapshot reads the daily stats that batch produces.
 
-The structured log records the reference date, window, feature version, tenant count, and how many user and item rows were written. A tenant whose window holds source rows but produces no feature rows fails the run before the transaction commits, so a bad read cannot silently empty a good snapshot.
+The structured log records the reference date, window, feature version, and how many tenants and user and item rows the run finished — on failure too, since each tenant commits on its own. A tenant whose window holds source rows but produces no feature rows fails the run before the transaction commits, so a bad read cannot silently empty a good snapshot.
+
+Two runs cannot rebuild the same tenant at once. The second waits up to 30 seconds for the first to finish that tenant and then fails, rather than blocking for the rest of the day with a transaction open.
 
 ## Feature contract
 

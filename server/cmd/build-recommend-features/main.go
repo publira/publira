@@ -65,6 +65,9 @@ func main() {
 		logger.Error("recommend feature build failed",
 			"reference_date", referenceDate.Format(time.DateOnly),
 			"window_days", windowDays,
+			"tenant_count", result.TenantCount,
+			"user_row_count", result.UserRowCount,
+			"item_row_count", result.ItemRowCount,
 			"error", err,
 		)
 		os.Exit(1)
