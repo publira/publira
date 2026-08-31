@@ -34,7 +34,7 @@ describe("POST /api/v1/views", () => {
     mockRecordContentView.mockReturnValue(Promise.resolve());
   });
 
-  it("同一オリジンの beacon を受け取り、テナントは経路から決める", async () => {
+  it("accepts a same-origin beacon and takes the tenant from the path", async () => {
     const response = await POST(
       beacon({ kind: "episode", publicId: "EP_001" }),
       params()
@@ -48,7 +48,7 @@ describe("POST /api/v1/views", () => {
     });
   });
 
-  it("他オリジンからの beacon は記録しない", async () => {
+  it("records nothing for a beacon from another origin", async () => {
     const response = await POST(
       beacon(
         { kind: "series", publicId: "SR_001" },
@@ -61,14 +61,14 @@ describe("POST /api/v1/views", () => {
     expect(mockRecordContentView).not.toHaveBeenCalled();
   });
 
-  it("本文が壊れていても 400 で返し、記録しない", async () => {
+  it("answers 400 and records nothing for an unparsable body", async () => {
     const response = await POST(beacon("not json"), params());
 
     expect(response.status).toBe(400);
     expect(mockRecordContentView).not.toHaveBeenCalled();
   });
 
-  it("知らない種別は記録しない", async () => {
+  it("records nothing for a kind this app does not serve", async () => {
     const response = await POST(
       beacon({ kind: "author", publicId: "AU_001" }),
       params()
@@ -78,7 +78,7 @@ describe("POST /api/v1/views", () => {
     expect(mockRecordContentView).not.toHaveBeenCalled();
   });
 
-  it("proxy を通らない不正なテナント ID では記録しない", async () => {
+  it("records nothing for a tenant id the proxy would never rewrite", async () => {
     const response = await POST(
       beacon({ kind: "series", publicId: "SR_001" }),
       params("not-a-tenant")

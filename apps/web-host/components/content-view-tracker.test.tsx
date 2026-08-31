@@ -22,14 +22,14 @@ const sentBody = async (call: number): Promise<unknown> => {
 };
 
 describe("ContentViewTracker", () => {
-  it("開かれたページの閲覧を 1 度だけ報告する", async () => {
+  it("reports the open page once, however often it re-renders", async () => {
     const { rerender } = render(
       <ContentViewTracker kind="episode" publicId="EP_001" />
     );
     rerender(<ContentViewTracker kind="episode" publicId="EP_001" />);
 
     expect(sendBeacon).toHaveBeenCalledTimes(1);
-    // テナントは proxy が書き換えたセグメントから決まるので、本文には載せない。
+    // The tenant comes from the segment the proxy rewrote, never the body.
     expect(sendBeacon.mock.calls[0][0]).toBe("/api/v1/views");
     await expect(sentBody(0)).resolves.toEqual({
       kind: "episode",
@@ -37,7 +37,7 @@ describe("ContentViewTracker", () => {
     });
   });
 
-  it("別のエピソードへ移ったら改めて報告する", async () => {
+  it("reports again once the reader moves to another episode", async () => {
     const { rerender } = render(
       <ContentViewTracker kind="episode" publicId="EP_001" />
     );
@@ -50,7 +50,7 @@ describe("ContentViewTracker", () => {
     });
   });
 
-  it("ブラウザがキューに載せられなくてもページを壊さない", () => {
+  it("leaves the page intact when the browser cannot queue it", () => {
     sendBeacon.mockReturnValueOnce(false);
 
     expect(() =>

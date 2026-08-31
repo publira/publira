@@ -62,7 +62,7 @@ describe("recordContentView", () => {
     mockGetSeriesDetail.mockResolvedValue({});
   });
 
-  it("匿名の読者に actor を採番し、Cookie に残して API へ転送する", async () => {
+  it("mints an actor for a signed-out reader, stores it, and forwards it", async () => {
     const set = cookieStore();
 
     await recordContentView({
@@ -76,7 +76,7 @@ describe("recordContentView", () => {
     ];
     expect(written.name).toBe(VIEW_ACTOR_COOKIE_NAME);
     expect(written.value).toMatch(UUID_PATTERN);
-    // 生イベントの保持期間より長く、放置された識別子は失効する。
+    // Outlives the raw events, and expires rather than living on forever.
     expect(written.maxAge).toBe(180 * 24 * 60 * 60);
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith(
@@ -85,7 +85,7 @@ describe("recordContentView", () => {
     );
   });
 
-  it("すでに持っている actor は採番し直さない", async () => {
+  it("keeps the actor the reader already carries", async () => {
     const set = cookieStore(STORED_ACTOR_ID);
 
     await recordContentView({
@@ -102,7 +102,7 @@ describe("recordContentView", () => {
   });
 
   it.each(["not-a-uuid", "00000000-0000-0000-0000-000000000000"])(
-    "API が受け付けない値 %s は転送せず採番し直す",
+    "replaces %s, which the API would not accept, instead of forwarding it",
     async (stored) => {
       const set = cookieStore(stored);
 
@@ -119,7 +119,7 @@ describe("recordContentView", () => {
     }
   );
 
-  it("ログイン中は Bearer だけを送り、匿名 actor を作らない", async () => {
+  it("sends only the bearer for a signed-in reader, minting no actor", async () => {
     const set = cookieStore();
     mockResolveAccessToken.mockResolvedValue("header.payload.signature");
 
@@ -135,7 +135,7 @@ describe("recordContentView", () => {
     });
   });
 
-  it("RPC が失敗しても読者のページには影響しない", async () => {
+  it("leaves the reader's page alone when the RPC fails", async () => {
     cookieStore(STORED_ACTOR_ID);
     mockGetEpisodeDetail.mockRejectedValue(new Error("unavailable"));
 
