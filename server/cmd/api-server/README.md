@@ -7,7 +7,7 @@ The public ConnectRPC API server.
 From the repository root:
 
 ```bash
-make dev-api
+task server:dev-api
 ```
 
 From the `server` directory:
@@ -19,8 +19,8 @@ go run ./cmd/api-server
 Using a pre-built binary:
 
 ```bash
-cd server && make build
-./bin/api-server
+task server:build
+./server/bin/api-server
 ```
 
 ## Main environment variables
