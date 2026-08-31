@@ -1,81 +1,81 @@
 # mobile
 
-Flutter によるエンドユーザー向けモバイルアプリ (iOS / Android) です。
+The end-user mobile app for iOS and Android, built with Flutter.
 
-## 役割
+## Role
 
-- `web-host` と同等の閲覧体験をモバイルで提供する
-- テナント別テーマ・ブランド表現をモバイル UI に反映する
-- API は `packages/api-client/` で生成されるスキーマと整合させる
+- Provide a mobile reading experience equivalent to `web-host`
+- Reflect each tenant's theme and brand in the mobile UI
+- Keep APIs aligned with the schema generated in `packages/api-client/`
 
-## 前提条件
+## Prerequisites
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.41 以上)
-- Xcode (iOS ビルド時)
-- Android Studio または Android SDK (Android ビルド時)
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.41 or later)
+- Xcode (for iOS builds)
+- Android Studio or the Android SDK (for Android builds)
 
-## セットアップ
+## Setup
 
 ### Dev Container
 
-リポジトリルートの `task setup`（Dev Container の `postCreate` から実行）に `flutter pub get` が含まれます。追加の手動操作は不要です。
+`task setup` at the repository root (also run by the Dev Container's `postCreate`) includes `flutter pub get`. No additional manual steps are needed.
 
-依存だけ更新する場合:
+To refresh dependencies only:
 
 ```bash
-# リポジトリルートから
+# From the repository root
 task mobile:deps
 
-# または mobile 配下で
+# Or from mobile/
 cd mobile
 flutter pub get
 ```
 
-### ローカル（Dev Container 以外）
+### Local machine (outside the Dev Container)
 
-Flutter SDK を入れたうえで:
+After installing the Flutter SDK:
 
 ```bash
 cd mobile
 flutter pub get
 ```
 
-またはルートから `task mobile:deps` / `task setup` でも同様です。
+Alternatively, run `task mobile:deps` or `task setup` from the repository root.
 
-## 開発
+## Development
 
 ```bash
-# iOS シミュレータで起動
+# Run on an iOS simulator
 flutter run -d ios
 
-# Android エミュレータで起動
+# Run on an Android emulator
 flutter run -d android
 
-# Web (Chrome) で起動
+# Run on the web (Chrome)
 flutter run -d chrome
 ```
 
-## 品質ゲート（format / analyze / test）
+## Quality gates (format / analyze / test)
 
-CI と同じ検証はルートから次のコマンドで再現できます。
+Run these commands from the repository root to reproduce the same checks as CI.
 
 ```bash
-# 依存解決（clone 直後や pubspec 変更後）
+# Resolve dependencies (after cloning or changing pubspec)
 task mobile:deps
 
-# format チェック + analyze（info も fail）+ flutter test
+# Format check + analyze (including info) + flutter test
 task mobile:check
 ```
 
-個別に実行する場合:
+To run them separately:
 
 ```bash
 task mobile:format    # dart format --output=none --set-exit-if-changed .
 task mobile:analyze   # flutter analyze --fatal-infos
-task mobile:test      # flutter test（unit / widget / HTTP fixture）
+task mobile:test      # flutter test (unit / widget / HTTP fixture)
 ```
 
-`mobile/` 配下で直接 Flutter を使う場合:
+To use Flutter directly under `mobile/`:
 
 ```bash
 cd mobile
@@ -85,101 +85,100 @@ flutter analyze --fatal-infos
 flutter test
 ```
 
-PR で `mobile/**` が変更されると CI の `Test / Mobile` ジョブが同じゲートを実行します。  
-Android エミュレータ上の integration test は `Test / Mobile E2E` です（`PUBLIRA_LIVE_API=true task mobile:test-integration`）。CI ジョブが公開 API と dev seed の起動・終了を担当します。
+When a PR changes `mobile/**`, CI's `Test / Mobile` job runs the same gates. `Test / Mobile E2E` runs integration tests on an Android emulator (`PUBLIRA_LIVE_API=true task mobile:test-integration`). The CI job starts and stops the public API and development seeds.
 
-CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/README.md](../.github/workflows/README.md)
+For the full CI job layout, path filters, and triage, see [.github/workflows/README.md](../.github/workflows/README.md).
 
-## ディレクトリ構成
+## Directory layout
 
 ```
 mobile/
 ├── lib/
-│   ├── main.dart                 # エントリポイント
+│   ├── main.dart                 # Entry point
 │   ├── app.dart                  # MaterialApp.router + CatalogScope
-│   ├── router.dart               # go_router 定義
-│   ├── config.dart               # --dart-define の API / image / tenant
-│   ├── api/                      # Connect JSON クライアント
+│   ├── router.dart               # go_router definition
+│   ├── config.dart               # --dart-define API / image / tenant configuration
+│   ├── api/                      # Connect JSON client
 │   ├── catalog/                  # CatalogRepository
-│   ├── models/                   # シリーズ / エピソード本文
-│   ├── screens/                  # カタログ / シリーズ詳細 / ビューア
-│   └── viewer/                   # ページ送りリーダー
-├── test/                         # ウィジェット / HTTP fixture
-├── integration_test/             # デバイス上の画面遷移
-├── scripts/                      # mobile E2E ライフサイクル
-├── android/                      # Android 固有ファイル
-├── ios/                          # iOS 固有ファイル
-├── web/                          # Web 固有ファイル
+│   ├── models/                   # Series / episode body
+│   ├── screens/                  # Catalog / series detail / viewer
+│   └── viewer/                   # Paged reader
+├── test/                         # Widget / HTTP fixtures
+├── integration_test/             # On-device navigation
+├── scripts/                      # Mobile E2E lifecycle
+├── android/                      # Android-specific files
+├── ios/                          # iOS-specific files
+├── web/                          # Web-specific files
 ├── pubspec.yaml
 └── analysis_options.yaml
 ```
 
-## 画面遷移
+## Navigation
 
-`go_router` で以下を定義しています。カタログは公開 API（Connect JSON）から読みます。
+The following routes are defined with `go_router`. The catalog reads from the public API (Connect JSON).
 
-| パス                                    | 画面               |
-| --------------------------------------- | ------------------ |
-| `/`                                     | カタログ一覧       |
-| `/series/:seriesId`                     | シリーズ詳細       |
-| `/series/:seriesId/episodes/:episodeId` | エピソードビューア |
+| Path                                    | Screen         |
+| --------------------------------------- | -------------- |
+| `/`                                     | Catalog list   |
+| `/series/:seriesId`                     | Series details |
+| `/series/:seriesId/episodes/:episodeId` | Episode viewer |
 
-一覧はローディング / 空 / 通信エラー（再試行）、詳細はローディング / 見つからない / 通信エラーを出します。ビューアはこれに加えて、未購入の有料話（`EPISODE_ACCESS_LOCKED`）とページのない話それぞれの案内を出します。
+The list displays loading, empty, and network-error-with-retry states. Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
-## ビューア
+## Viewer
 
-エピソード本文は `GetEpisodeDetail` が返す画像を、右から左へめくるページ送りで表示します（web-host のリーダーと同じ読み方向）。
+The viewer displays the images returned by `GetEpisodeDetail` as episode content, paging from right to left (the same reading direction as the `web-host` reader).
 
-- 1 画面につき 1 ページ。左半分のタップ・左スワイプ・`次のページ` ボタンで次のページへ進みます
-- ページの箱は API が返す `width` / `height` から先に確保するので、画像が届いてもレイアウトが動きません。サイズを持たない画像はビューポート全体を仮の箱にします
-- ページ単位で読み込み中 / 失敗（再読み込み）を出すため、1 ページの失敗が本文全体を落としません
-- 画像は image-server から取得します。テナントは `X-Forwarded-Host`、読者は `Authorization: Bearer`（`PUBLIRA_ACCESS_TOKEN`）で伝えます。有料話の画像 URL に API が付けたメディアトークンはそのまま使います
+- One page per screen. Tap the left half, swipe left, or use the `Next page` button to advance
+- The page container reserves space from the API's `width` / `height` before the image arrives, so the layout does not shift. Images without dimensions use the entire viewport as a provisional container
+- Each page has its own loading and failure-with-retry state, so one failed page does not fail the entire episode body
+- Images come from image-server. The tenant is sent in `X-Forwarded-Host` and the reader in `Authorization: Bearer` (`PUBLIRA_ACCESS_TOKEN`). Preserve the media token that the API adds to a paid episode image URL
 
-## 公開 API への接続
+## Connecting to the public API
 
-`--dart-define` でテスト用 API と tenant host を切り替えます。
+Use `--dart-define` to switch the test API and tenant host.
 
-| 定義 | 既定 | 意味 |
+| Definition | Default | Meaning |
 | --- | --- | --- |
-| `PUBLIRA_API_BASE_URL` | `http://127.0.0.1:8000` | 公開 API の Connect HTTP（`api-server` の 8000。8100 の gRPC ではない） |
-| `PUBLIRA_IMAGE_BASE_URL` | `http://127.0.0.1:8200` | エピソード本文画像を返す `image-server` |
-| `PUBLIRA_TENANT_HOST` | `localhost` | `GetTenantByDomain` に渡す host。dev seed は `localhost`。image-server へは `X-Forwarded-Host` として送ります |
-| `PUBLIRA_ACCESS_TOKEN` | 空 | 公開 audience の JWT。空なら匿名で、無料話だけが読めます |
-| `PUBLIRA_LIVE_API` | 未設定 | integration test が実 API の live グループを回すか |
+| `PUBLIRA_API_BASE_URL` | `http://127.0.0.1:8000` | Public API Connect HTTP (`api-server` port 8000, not gRPC port 8100) |
+| `PUBLIRA_IMAGE_BASE_URL` | `http://127.0.0.1:8200` | `image-server`, which returns episode-body images |
+| `PUBLIRA_TENANT_HOST` | `localhost` | Host passed to `GetTenantByDomain`; development seeds use `localhost`. Sent to image-server as `X-Forwarded-Host` |
+| `PUBLIRA_ACCESS_TOKEN` | Empty | JWT for the public audience. Empty means anonymous access, which can read only free episodes |
+| `PUBLIRA_LIVE_API` | Unset | Whether integration tests run their live group against the actual API |
 
 ```bash
-# ローカルの api-server（task dev / e2e スタック）
+# Local api-server (task dev / E2E stack)
 flutter run --dart-define=PUBLIRA_API_BASE_URL=http://127.0.0.1:8000 \
   --dart-define=PUBLIRA_IMAGE_BASE_URL=http://127.0.0.1:8200 \
   --dart-define=PUBLIRA_TENANT_HOST=localhost
 
-# Android エミュレータからホストの api-server へ
+# Host api-server from an Android emulator
 flutter run -d android \
   --dart-define=PUBLIRA_API_BASE_URL=http://10.0.2.2:8000 \
   --dart-define=PUBLIRA_IMAGE_BASE_URL=http://10.0.2.2:8200 \
   --dart-define=PUBLIRA_TENANT_HOST=localhost
 ```
 
-## Integration test
+## Integration tests
 
-`integration_test/` は次を繰り返します。
+`integration_test/` repeatedly checks the following:
 
-- アプリ起動とカタログ初期表示
-- 一覧 → 詳細 → 戻る
-- 無料話のビューア表示とページ送り
-- 未購入の有料話のロック表示
-- 存在しないシリーズ
-- 空カタログ
-- 到達できない API
+- App launch and initial catalog display
+- List → detail → back
+- Viewer display and paging for a free episode
+- Locked display for an unpurchased paid episode
+- A series that does not exist
+- An empty catalog
+- An unreachable API
 
-既定はデバイス上の Connect fixture サーバーです。`PUBLIRA_LIVE_API=true` のときは dev seed（`Seed Series 001` / `SeedSERSAAA1`）に対する公開 API も回します。
+By default, it uses an on-device Connect fixture server. When `PUBLIRA_LIVE_API=true`, it also runs against the public API for the development seed (`Seed Series 001` / `SeedSERSAAA1`).
 
 ```bash
-# スタック起動 + integration test + teardown（エミュレータまたは実機が必要）
+# Start stack + integration tests + teardown (requires an emulator or device)
 task mobile:e2e
 
-# すでに API とデバイスがあるとき
+# When the API and device are already available
 task mobile:test-integration
 ```
 
-失敗時は `mobile/.run/artifacts/` に logcat とスクリーンショットを残します。CI の `Test / Mobile E2E` は公開 API と dev seed を起動してから `PUBLIRA_LIVE_API=true task mobile:test-integration` を Android エミュレータで実行し、失敗時に artifact `mobile-e2e-artifacts` を上げます。
+On failure, logcat and screenshots are left in `mobile/.run/artifacts/`. CI's `Test / Mobile E2E` starts the public API and development seeds, then runs `PUBLIRA_LIVE_API=true task mobile:test-integration` on an Android emulator and uploads the `mobile-e2e-artifacts` artifact on failure.
