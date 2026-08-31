@@ -3,7 +3,12 @@ import { SectionError } from "@publira/ui-components/section-error";
 import { notFound } from "next/navigation";
 
 import { resolveAccessToken } from "#lib/api-client";
-import type { EpisodeAccessState, EpisodeImageItem } from "#lib/catalog";
+import type {
+  EpisodeAccessState,
+  EpisodeDetail,
+  EpisodeImageItem,
+  EpisodeSeriesSummary,
+} from "#lib/catalog";
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 
@@ -15,23 +20,21 @@ export const EpisodeBody = async ({
   acceptsPayments,
   access,
   checkoutSessionId,
-  episodePublicId,
-  episodeTitle,
+  episode,
   images,
-  seriesPublicId,
+  series,
   tenantId,
 }: {
   acceptsPayments: boolean;
   access: EpisodeAccessState;
   checkoutSessionId: string;
-  episodePublicId: string;
-  episodeTitle: string;
+  episode: EpisodeDetail;
   images: EpisodeImageItem[];
-  seriesPublicId: string;
+  series: EpisodeSeriesSummary;
   tenantId: string;
 }) => {
   if (isPublicEpisodeBody(access)) {
-    return <EpisodeViewer episodeTitle={episodeTitle} images={images} />;
+    return <EpisodeViewer episode={episode} images={images} series={series} />;
   }
 
   const [locale, sessionId] = await Promise.all([
@@ -43,8 +46,8 @@ export const EpisodeBody = async ({
       <EpisodeBodyNotice>
         <EpisodeAccessGate
           acceptsPayments={acceptsPayments}
-          episodePublicId={episodePublicId}
-          seriesPublicId={seriesPublicId}
+          episodePublicId={episode.publicId}
+          seriesPublicId={series.publicId}
           signedIn={false}
           tenantId={tenantId}
         />
@@ -54,8 +57,8 @@ export const EpisodeBody = async ({
 
   const viewer = await getEpisodeViewer(
     tenantId,
-    seriesPublicId,
-    episodePublicId,
+    series.publicId,
+    episode.publicId,
     sessionId,
     locale,
     checkoutSessionId
@@ -76,7 +79,11 @@ export const EpisodeBody = async ({
   }
   if (viewer.value.access === "entitled") {
     return (
-      <EpisodeViewer episodeTitle={episodeTitle} images={viewer.value.images} />
+      <EpisodeViewer
+        episode={episode}
+        images={viewer.value.images}
+        series={series}
+      />
     );
   }
 
@@ -84,8 +91,8 @@ export const EpisodeBody = async ({
     <EpisodeBodyNotice>
       <EpisodeAccessGate
         acceptsPayments={acceptsPayments}
-        episodePublicId={episodePublicId}
-        seriesPublicId={seriesPublicId}
+        episodePublicId={episode.publicId}
+        seriesPublicId={series.publicId}
         signedIn
         tenantId={tenantId}
       />

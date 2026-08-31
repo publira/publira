@@ -124,10 +124,9 @@ const EpisodeContent = async (
                   ? purchaseSearchParams.session_id
                   : ""
               }
-              episodePublicId={episode.publicId}
-              episodeTitle={episode.title}
+              episode={episode}
               images={images}
-              seriesPublicId={series.publicId}
+              series={series}
               tenantId={tenantId}
             />
           </Suspense>

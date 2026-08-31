@@ -1,19 +1,26 @@
 import { getMessage } from "@publira/i18n";
 
-import type { EpisodeImageItem } from "#lib/catalog";
+import type {
+  EpisodeDetail,
+  EpisodeImageItem,
+  EpisodeSeriesSummary,
+} from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 
 import { VIEWER_HEIGHT_CLASS } from "../_lib/viewer-layout";
 import { toViewerPages } from "../_lib/viewer-pages";
 import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeComicViewer } from "./episode-comic-viewer";
+import { EpisodeReadRecorder } from "./episode-read-recorder";
 
 export const EpisodeViewer = async ({
-  episodeTitle,
+  episode,
   images,
+  series,
 }: {
-  episodeTitle: string;
+  episode: EpisodeDetail;
   images: EpisodeImageItem[];
+  series: EpisodeSeriesSummary;
 }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
@@ -54,10 +61,12 @@ export const EpisodeViewer = async ({
           progress: getMessage(messages, "host.episode.viewer.progress"),
           reload: getMessage(messages, "host.episode.viewer.reload"),
         }}
-        pages={toViewerPages(episodeTitle, images, (values) =>
+        pages={toViewerPages(episode.title, images, (values) =>
           getMessage(messages, "host.episode.viewer.page_title", values)
         )}
-      />
+      >
+        <EpisodeReadRecorder episode={episode} series={series} />
+      </EpisodeComicViewer>
     </div>
   );
 };
