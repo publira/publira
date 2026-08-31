@@ -1,24 +1,24 @@
 # email-templates
 
-React Email の共通レイアウトとテンプレートです。HTML / テキストへの変換は `renderEmail` が行い、SMTP 送信は Go 側の責務です（[#285](https://github.com/publira/publira/issues/285)）。
+The shared React Email layout and templates. `renderEmail` turns them into HTML and text; sending over SMTP is the Go side's job ([#285](https://github.com/publira/publira/issues/285)).
 
-`apps/email-renderer`（[#623](https://github.com/publira/publira/issues/623)）が `RenderEmail` RPC の入力をこのパッケージへ渡します。
+`apps/email-renderer` ([#623](https://github.com/publira/publira/issues/623)) passes the input of the `RenderEmail` RPC to this package.
 
-## 提供物
+## What it provides
 
 - `EmailLayout` / `EmailButton`
-- `sample` — レイアウト確認用
-- `tenant_admin_invitation` — テナント管理者招待（初版の業務テンプレート）
-- `resolveEmail` / `renderEmail` — proto の `template` / `data` を検証して描画
-- `loadEmailMessages` — ルート `locales/` から 1 ロケール分を `import()` する
+- `sample` — for checking the layout
+- `tenant_admin_invitation` — the tenant admin invitation, the first business template
+- `resolveEmail` / `renderEmail` — validate the proto's `template` and `data`, then render
+- `loadEmailMessages` — `import()` one locale out of the repo-root `locales/`
 
-テンプレート ID と変数名は Epic の仕様どおり snake_case です。文面はルート `locales/*.json` の `email.*` です。描画はカタログを引数で受け取り、パッケージは文面を埋め込みません。
+Template IDs and variable names are snake_case, as the epic specifies. The copy lives under `email.*` in the repo-root `locales/*.json`. Rendering takes the catalog as an argument; the package embeds no copy of its own.
 
-`locale` と `timeZone` も呼び出し側が渡します。未知の `locale` は `ja` です。`timeZone` は IANA 名で、招待の `expires_at`（RFC3339）をそのゾーンで表示します。
+`locale` and `timeZone` come from the caller too. An unknown `locale` falls back to `ja`. `timeZone` is an IANA name, and the invitation's `expires_at` (RFC3339) is displayed in that zone.
 
-呼び出し側は `Temporal` が必要です。テストは `temporal-polyfill/global` を読みます。`email-renderer` も同じポリフィルをプロセス起動時に読み込んでください。
+The caller needs `Temporal`. The tests load `temporal-polyfill/global`, and `email-renderer` should load the same polyfill at process start.
 
-## 使い方
+## Usage
 
 ```ts
 import { loadEmailMessages, renderEmail } from "@publira/email-templates";
@@ -46,10 +46,10 @@ result.html;
 result.text;
 ```
 
-## ビルド
+## Build
 
 ```bash
 pnpm --filter @publira/email-templates build
 ```
 
-`react` / `react-dom` は `peerDependencies` ではなく `dependencies` です。ビルド成果物の `dist/` は `react/jsx-runtime` と `react-email` を外部 import として残すため、`pnpm install --prod` だけで組んだ本番ツリー（`infra/docker/node/Dockerfile`）でも解決できる必要があります。利用側は現状 `apps/email-renderer` だけで、共有すべきホスト側の React インスタンスはありません。
+`react` and `react-dom` are `dependencies`, not `peerDependencies`. The built `dist/` leaves `react/jsx-runtime` and `react-email` as external imports, so they have to resolve in a production tree assembled with `pnpm install --prod` alone (`infra/docker/node/Dockerfile`). The only consumer today is `apps/email-renderer`, and there is no host React instance to share with.

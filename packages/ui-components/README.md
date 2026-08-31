@@ -1,53 +1,53 @@
 # @publira/ui-components
 
-web-admin / web-host などで共有利用する UI コンポーネント群です。
+The UI components shared by web-admin, web-host, and the other apps.
 
-## 方針
+## Principles
 
-- Base UI をベースにした実装を採用する
-- brand token (`@publira/brand/theme.css`) と整合するスタイルにする
-- 画面ごとの class の都度実装を減らすため、薄いラッパーを提供する
+- Build on Base UI
+- Keep the styles consistent with the brand tokens (`@publira/brand/theme.css`)
+- Provide thin wrappers so each screen writes fewer one-off classes
 
-## インストールと読み込み
+## Installing and loading
 
-通常は workspace 依存として追加し、グローバル CSS で styles を読み込みます。
+Add it as a workspace dependency and load the styles from the global CSS.
 
 ```css
 @import "@publira/ui-components/styles.css";
 ```
 
-## 主要コンポーネント
+## Main components
 
-### フォーム関連
+### Forms
 
-- [Button / LinkButton](./src/button) - ボタンコンポーネント
-- [Field / FieldLabel / FieldDescription / FieldError / FieldContent](./src/field) - フォームフィールド群
-- [Input](./src/input) - テキスト入力フィールド
-- [Textarea](./src/textarea) - 複数行テキスト入力フィールド
-- [Select](./src/select) - セレクトボックス
-- [Combobox / MultiCombobox](./src/combobox) - 検索可能な単一選択・複数選択
-- [Checkbox](./src/checkbox) - チェックボックス
-- [RadioGroup](./src/radio-group) - ラジオボタングループ
-- [Switch](./src/switch) - スイッチ（トグル）
-- [FormMessage](./src/form-message) - フォームメッセージ
-- [FormActions](./src/form-actions) - フォームアクション領域
-- [Skeleton / SkeletonText / SkeletonCard](./src/skeleton) - ローディング表示コンポーネント
+- [Button / LinkButton](./src/button) - buttons
+- [Field / FieldLabel / FieldDescription / FieldError / FieldContent](./src/field) - the form field parts
+- [Input](./src/input) - a text input
+- [Textarea](./src/textarea) - a multi-line text input
+- [Select](./src/select) - a select box
+- [Combobox / MultiCombobox](./src/combobox) - searchable single and multiple selection
+- [Checkbox](./src/checkbox) - a checkbox
+- [RadioGroup](./src/radio-group) - a group of radio buttons
+- [Switch](./src/switch) - a toggle switch
+- [FormMessage](./src/form-message) - a form message
+- [FormActions](./src/form-actions) - the form action area
+- [Skeleton / SkeletonText / SkeletonCard](./src/skeleton) - loading placeholders
 
-### その他
+### Everything else
 
-- [Badge / StatusChip](./src/badge) - 状態表示と補助ラベルのコンポーネント
-- [Dialog / ConfirmDialog](./src/dialog) - 確認操作に使うダイアログコンポーネント
-- [Table / TableHeader / TableBody / TableRow / TableHead / TableCell / TableEmptyRow / TableLoadingRow](./src/table) - テーブルプリミティブ
-- [Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter](./src/card) - カードコンポーネント
-- [EmptyState](./src/empty-state) - 空の状態を表示するコンポーネント
+- [Badge / StatusChip](./src/badge) - status indicators and supplementary labels
+- [Dialog / ConfirmDialog](./src/dialog) - the dialogs used to confirm an action
+- [Table / TableHeader / TableBody / TableRow / TableHead / TableCell / TableEmptyRow / TableLoadingRow](./src/table) - the table primitives
+- [Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter](./src/card) - cards
+- [EmptyState](./src/empty-state) - the empty state
 
-## 使用方法
+## Usage
 
-各コンポーネントの詳細な使用方法と例については、上記の主要コンポーネントリストから各コンポーネントのドキュメントを参照してください。
+For how to use a component and for examples, follow its link in the list above.
 
-### Subpath import
+### Subpath imports
 
-各コンポーネントは以下のように直接インポートできます：
+Every component can be imported directly:
 
 ```tsx
 import { Button } from "@publira/ui-components/button";
@@ -55,7 +55,7 @@ import { Input } from "@publira/ui-components/input";
 import { Card } from "@publira/ui-components/card";
 ```
 
-## 開発
+## Development
 
 ```bash
 pnpm --filter @publira/ui-components build

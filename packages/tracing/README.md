@@ -1,10 +1,10 @@
 # `@publira/tracing`
 
-Next.js アプリ (`web-host` / `web-admin` / `web-platform`) の `instrumentation.ts` から OpenTelemetry SDK を登録する共有パッケージです。Go 側の [`server/internal/tracing`](../../server/internal/tracing) と同じ環境変数・同じ既定値を使うので、1 つのデプロイ設定でスタック全体のトレースが揃います。
+The shared package that registers the OpenTelemetry SDK from the `instrumentation.ts` of the Next.js apps (`web-host` / `web-admin` / `web-platform`). It reads the same environment variables and uses the same defaults as [`server/internal/tracing`](../../server/internal/tracing) on the Go side, so a single deployment configuration lines the whole stack's traces up.
 
-登録の実体は [`@vercel/otel`](https://www.npmjs.com/package/@vercel/otel) です。Next.js が計装済みの span（inbound リクエスト、レンダリング、`fetch`）はこの登録だけで出ます。
+The registration itself is [`@vercel/otel`](https://www.npmjs.com/package/@vercel/otel). The spans Next.js already instruments (the inbound request, rendering, `fetch`) come out of this registration alone.
 
-## 使い方
+## Usage
 
 ```ts
 // apps/web-host/instrumentation.ts
@@ -16,62 +16,62 @@ export const register = async () => {
 };
 ```
 
-引数は `service.name` の既定値です。`OTEL_SERVICE_NAME` / `OTEL_RESOURCE_ATTRIBUTES` で上書きできます。`@vercel/otel` は Node.js ランタイムと Edge ランタイムの両方にビルドを持つため、どちらから呼ばれても壊れません。
+The argument is the default `service.name`; `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` override it. `@vercel/otel` ships builds for both the Node.js and the Edge runtime, so it does not break whichever one calls it.
 
-## 環境変数
+## Environment variables
 
-自前の変数は有効化フラグとデプロイ環境の 2 つだけで、あとは OpenTelemetry SDK 自身が読むため名前を変えていません。
+Only two variables are ours — the enable flag and the deployment environment. The OpenTelemetry SDK reads the rest itself, so those keep their own names.
 
-| 変数 | 用途 |
+| Variable | What it does |
 | --- | --- |
-| `PUBLIRA_TRACING_ENABLED` | トレースの有効化（`true` / `1` / `t`、大文字小文字は無視）。未設定・解釈できない値は無効 |
-| `PUBLIRA_DEPLOYMENT_ENVIRONMENT` | `development`（既定） / `staging` / `production`。`deployment.environment.name` と既定サンプリング率を決める |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | 送信先（例: `http://jaeger:4318`） |
-| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` / `http/json`。gRPC の OTLP は `@vercel/otel` にはありません |
-| `OTEL_SERVICE_NAME` / `OTEL_RESOURCE_ATTRIBUTES` | resource 属性の上書き |
-| `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG` | サンプラ。設定すると下記の既定を使わず SDK がこの値を解釈する |
-| `NEXT_OTEL_VERBOSE` | `1` で Next.js の詳細 span を出す（既定は出さない） |
+| `PUBLIRA_TRACING_ENABLED` | Enables tracing (`true` / `1` / `t`, case-insensitive). Unset or unparseable means disabled |
+| `PUBLIRA_DEPLOYMENT_ENVIRONMENT` | `development` (default) / `staging` / `production`. Decides `deployment.environment.name` and the default sampling rate |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Where to send spans (for example `http://jaeger:4318`) |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` / `http/json`. `@vercel/otel` has no gRPC OTLP |
+| `OTEL_SERVICE_NAME` / `OTEL_RESOURCE_ATTRIBUTES` | Overrides for the resource attributes |
+| `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG` | The sampler. Setting it bypasses the defaults below and lets the SDK interpret the value |
+| `NEXT_OTEL_VERBOSE` | `1` emits Next.js's detailed spans (off by default) |
 
-**既定は無効**です。`PUBLIRA_TRACING_ENABLED` を立てない限り `registerTracing` は何も登録せず、Next.js の計装は OpenTelemetry の no-op provider に記録します。収集基盤が無くてもアプリは起動し、リクエストも通ります。
+**Tracing is off by default.** Unless `PUBLIRA_TRACING_ENABLED` is set, `registerTracing` registers nothing and Next.js's instrumentation records into OpenTelemetry's no-op provider. The app starts and serves requests with no collector in place.
 
-## resource 属性
+## Resource attributes
 
-| キー | 値 |
+| Key | Value |
 | --- | --- |
-| `service.name` | `registerTracing` の引数（`publira-web-host` / `publira-web-admin` / `publira-web-platform`）。`OTEL_SERVICE_NAME` で上書き可能 |
-| `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`。未設定なら `development` |
-| `node.env` / `process.runtime.name` | `@vercel/otel` が付ける実行環境の情報 |
+| `service.name` | The argument to `registerTracing` (`publira-web-host` / `publira-web-admin` / `publira-web-platform`). Overridable with `OTEL_SERVICE_NAME` |
+| `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
+| `node.env` / `process.runtime.name` | Runtime information `@vercel/otel` adds |
 
-`@vercel/otel` は Vercel 上でなくても `cloud.provider=vercel` と `vercel.runtime` を付けます。self-host では意味のない値ですが、無害なので打ち消していません。
+`@vercel/otel` adds `cloud.provider=vercel` and `vercel.runtime` even off Vercel. The values mean nothing in a self-hosted deploy, but they are harmless, so we do not strip them.
 
-## サンプリング
+## Sampling
 
-Go 側と同じく親準拠（parent-based）で、root span の扱いだけがデプロイ環境で変わります。ブラウザからのリクエストでは Next.js アプリがトレースの起点なので、ここでの判断が下流の Go サービスにそのまま伝わります。
+As on the Go side, sampling is parent-based, and only the treatment of a root span changes with the deployment environment. For a request from a browser the Next.js app is where the trace starts, so the decision made here carries straight through to the Go services downstream.
 
-| `PUBLIRA_DEPLOYMENT_ENVIRONMENT`          | root span |
-| ----------------------------------------- | --------- |
-| `development`（既定）                     | 全件      |
-| それ以外（`staging` / `production` など） | 10%       |
+| `PUBLIRA_DEPLOYMENT_ENVIRONMENT`           | Root span |
+| ------------------------------------------ | --------- |
+| `development` (default)                    | All       |
+| Anything else (`staging`, `production`, …) | 10%       |
 
 ## `NEXT_OTEL_VERBOSE`
 
-Next.js は自前の許可リスト（`next/dist/server/lib/trace/constants.js` の `NextVanillaSpanAllowlist`）にある span だけを既定で出します。リクエストの root span、レンダリング、`fetch`、`generateMetadata`、コンポーネントツリーの構築、セグメントモジュールの解決、Route Handler、proxy はこれに含まれるので、通常の調査に必要な粒度は既定のままで揃います。
+By default Next.js emits only the spans on its own allowlist (`NextVanillaSpanAllowlist` in `next/dist/server/lib/trace/constants.js`). The request root span, rendering, `fetch`, `generateMetadata`, building the component tree, resolving segment modules, Route Handlers, and the proxy are all on it, so the default granularity already covers ordinary investigation.
 
-`NEXT_OTEL_VERBOSE=1` を付けると、許可リストの外にある内部 span（`BaseServer.renderToResponse`、`Router.executeRoute`、`AppRender.renderToReadableStream`、`LoadComponents.loadComponents` など）も出ます。Next.js 自体の内部を追いたいときだけ付けてください。
+`NEXT_OTEL_VERBOSE=1` also emits the internal spans outside the allowlist (`BaseServer.renderToResponse`, `Router.executeRoute`, `AppRender.renderToReadableStream`, `LoadComponents.loadComponents`, and so on). Set it only when you want to follow Next.js's own internals.
 
 ```bash
 NEXT_OTEL_VERBOSE=1 pnpm --dir apps/web-host dev
 ```
 
-既定で有効にしない理由は、1 リクエストあたりの span 数が大きく増え、アプリのコードでは動かしようのない内部段階でトレース UI が埋まるためです。自分のコードの遅さを探しているなら、付けないほうが読めます。
+It is not on by default because it multiplies the number of spans per request and fills the trace UI with internal stages that application code cannot move. If you are looking for slowness in your own code, it reads better without it.
 
-## トレースの繋がり方
+## How a trace is joined up
 
-| 区間 | 計装 |
+| Segment | Instrumentation |
 | --- | --- |
-| ブラウザ → Next.js の inbound | Next.js 組み込み（`GET /[tenant_id]/[locale]` などの root span） |
-| `proxy.ts` | Next.js 組み込み（`middleware GET`）。ページのレンダリングとは**別のトレース**になります |
-| SSR → Go API の Connect / gRPC | [`@publira/api-client`](../api-client) の tracing interceptor（client span と `traceparent` の送出） |
-| Go API の inbound・DB クエリ | [`server/internal/tracing`](../../server/README.md#distributed-tracing-opentelemetry) |
+| Browser → the Next.js inbound | Built into Next.js (a root span such as `GET /[tenant_id]/[locale]`) |
+| `proxy.ts` | Built into Next.js (`middleware GET`). It lands in a **separate trace** from the page render |
+| SSR → the Go API over Connect / gRPC | The tracing interceptor in [`@publira/api-client`](../api-client) (the client span and sending `traceparent`) |
+| The Go API's inbound and its DB queries | [`server/internal/tracing`](../../server/README.md#distributed-tracing-opentelemetry) |
 
-伝播は W3C Trace Context です。Go の Connect ハンドラは inbound の `traceparent` を親として信頼するので、Web アプリ → API → DB が 1 本のトレースになります。
+Propagation is W3C Trace Context. The Go Connect handlers trust an inbound `traceparent` as the parent, so the web app, the API, and the database land in a single trace.
