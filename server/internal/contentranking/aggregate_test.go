@@ -2,10 +2,11 @@ package contentranking
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/DATA-DOG/go-sqlmock"
 )
 
 func TestRunRejectsIncompleteOptions(t *testing.T) {
@@ -14,11 +15,20 @@ func TestRunRejectsIncompleteOptions(t *testing.T) {
 		t.Fatalf("missing database error = %v, want a database requirement", err)
 	}
 
-	// The reference date is checked before the connection is used, so an
-	// unopened handle is enough to reach it.
-	if _, err := New(&sql.DB{}).Run(context.Background(), Options{}); err == nil ||
+	// The reference date is checked before the connection is used. The mock
+	// expects nothing, so a run that reached the database would fail on the
+	// unexpected query rather than pass on a handle that was never touched.
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("open mock database: %v", err)
+	}
+	defer db.Close() //nolint:errcheck
+	if _, err := New(db).Run(context.Background(), Options{}); err == nil ||
 		!strings.Contains(err.Error(), "requires a reference date") {
 		t.Fatalf("missing reference date error = %v, want a reference date requirement", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unexpected database use: %v", err)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -159,6 +160,45 @@ func TestRunTruncatesItemsToTheConfiguredLimit(t *testing.T) {
 	})
 }
 
+func TestRunRanksTheRemainingTenantsAfterOneFails(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	// Tenant ids are UUIDv7 and Run walks them in id order, so the tenant
+	// seeded first is the one that fails first: anything the second tenant
+	// ends up with was written after that failure.
+	broken := pg.SeedTenant(t, "RANKBROKEN01", "broken-rankings.example.com", "Broken Ranking Tenant")
+	healthy := pg.SeedTenant(t, "RANKHEALTHY1", "healthy-rankings.example.com", "Healthy Ranking Tenant")
+	brokenSeries := pg.SeedSeries(t, broken.ID, testutil.SeriesSeed{PublicID: "RANKBROKENS1"})
+	healthySeries := pg.SeedSeries(t, healthy.ID, testutil.SeriesSeed{PublicID: "RANKHEALTHS1"})
+
+	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: broken.ID, statDate: referenceDate, entityType: "series", entityID: brokenSeries.ID,
+		viewCount: 7, uniqueViewerCount: 3})
+	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: healthy.ID, statDate: referenceDate, entityType: "series", entityID: healthySeries.ID,
+		viewCount: 2, uniqueViewerCount: 1})
+
+	rejectSnapshotsForTenant(t, pg.DB, broken.ID)
+
+	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), runOptions())
+	if err == nil || !strings.Contains(err.Error(), broken.ID.String()) {
+		t.Fatalf("Run error = %v, want a failure naming tenant %s", err, broken.ID)
+	}
+	if want := (Result{TenantCount: 1, SnapshotCount: 4, ItemCount: 2}); result != want {
+		t.Fatalf("result = %+v, want %+v", result, want)
+	}
+
+	snapshots := loadSnapshots(t, pg.DB)
+	if _, ok := snapshots[snapshotKey{tenantID: broken.ID, rankingKey: DailyRankingKey, entityType: "series"}]; ok {
+		t.Fatal("the failing tenant committed a snapshot")
+	}
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: healthy.ID, rankingKey: DailyRankingKey, entityType: "series"}, snapshot{
+		PeriodStart: referenceDate, PeriodEnd: referenceDate,
+		Items: []rankingItem{
+			{Rank: 1, EntityID: healthySeries.ID, Score: 4, ViewCount: 2, ViewerDays: 1, LastActiveDate: referenceDate},
+		},
+	})
+}
+
 func TestRunWritesEmptySnapshotsForATenantWithoutSignal(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -302,6 +342,43 @@ func insertStaleSnapshot(t *testing.T, db *sql.DB, tenantID uuid.UUID, rankingKe
 	`, uuid.Must(uuid.NewV7()), tenantID, rankingKey, periodStart, periodEnd, entityType, AlgorithmVersion); err != nil {
 		t.Fatalf("insert stale snapshot: %v", err)
 	}
+}
+
+// rejectSnapshotsForTenant makes every snapshot insert for one tenant fail, so
+// a test can watch what the run does with the tenants that come after it.
+func rejectSnapshotsForTenant(t *testing.T, db *sql.DB, tenantID uuid.UUID) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := db.ExecContext(ctx, `
+		CREATE FUNCTION reject_ranking_snapshot() RETURNS trigger LANGUAGE plpgsql AS $$
+		BEGIN
+			RAISE EXCEPTION 'ranking snapshot rejected by test trigger';
+		END;
+		$$
+	`); err != nil {
+		t.Fatalf("create rejection function: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, fmt.Sprintf(`
+		CREATE TRIGGER reject_ranking_snapshot
+		BEFORE INSERT ON content_ranking_snapshots
+		FOR EACH ROW WHEN (NEW.tenant_id = '%s'::uuid)
+		EXECUTE FUNCTION reject_ranking_snapshot()
+	`, tenantID)); err != nil {
+		t.Fatalf("create rejection trigger: %v", err)
+	}
+
+	t.Cleanup(func() {
+		cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelCleanup()
+		if _, err := db.ExecContext(cleanupCtx, "DROP TRIGGER IF EXISTS reject_ranking_snapshot ON content_ranking_snapshots"); err != nil {
+			t.Errorf("drop rejection trigger: %v", err)
+		}
+		if _, err := db.ExecContext(cleanupCtx, "DROP FUNCTION IF EXISTS reject_ranking_snapshot()"); err != nil {
+			t.Errorf("drop rejection function: %v", err)
+		}
+	})
 }
 
 type snapshotKey struct {

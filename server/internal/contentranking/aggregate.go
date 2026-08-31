@@ -85,7 +85,7 @@ type Options struct {
 
 // Result describes one ranking run. Every count covers the tenants the run
 // actually finished: each tenant commits on its own, so on an error the counts
-// describe the work that survived rather than the work that was planned.
+// describe the tenants that succeeded rather than the ones that were tried.
 type Result struct {
 	TenantCount   int
 	SnapshotCount int
@@ -115,6 +115,12 @@ var (
 // tenant. Each tenant is its own transaction, so a failure part-way through
 // leaves the tenants already ranked with a complete set of snapshots rather
 // than a half-written one.
+//
+// One tenant's failure does not stop the others. The cron that drives this
+// ranks yesterday and never comes back for a day it missed, so letting a lock
+// timeout on one tenant cost every tenant after it their snapshot would lose
+// that day for good. The run finishes what it can and returns every failure
+// together, so the exit status still reports the day as failed.
 func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 	if a == nil || a.db == nil {
 		return Result{}, errors.New("ranking aggregation requires a database")
@@ -137,16 +143,23 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 	}
 
 	var result Result
+	var failures []error
 	for _, tenantID := range tenants {
 		snapshots, items, err := a.rankTenant(ctx, tenantID, referenceDate, itemLimit)
 		if err != nil {
-			return result, fmt.Errorf("rank tenant %s at %s: %w", tenantID, referenceDate.Format(time.DateOnly), err)
+			failures = append(failures, fmt.Errorf("rank tenant %s at %s: %w", tenantID, referenceDate.Format(time.DateOnly), err))
+			// A cancelled context fails every remaining tenant the same way,
+			// so there is nothing left to salvage by carrying on.
+			if ctx.Err() != nil {
+				break
+			}
+			continue
 		}
 		result.TenantCount++
 		result.SnapshotCount += snapshots
 		result.ItemCount += items
 	}
-	return result, nil
+	return result, errors.Join(failures...)
 }
 
 func (a *Aggregator) requireBypassRLS(ctx context.Context) error {

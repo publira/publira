@@ -89,6 +89,8 @@ The structured log records the reference date, item limit, algorithm version, an
 
 One tenant's four snapshots are written in a single transaction, so a reader never sees this run's daily ranking beside the last run's weekly one. Two runs cannot rank the same tenant at once: the second waits up to 30 seconds for the first and then fails, rather than blocking for the rest of the day with a transaction open.
 
+A tenant that fails does not stop the others. The cron ranks yesterday and never returns for a day it missed, so one tenant's lock timeout must not cost every tenant after it their snapshot. The run finishes the tenants it can, reports every failure together, and still exits non-zero.
+
 ### Score formula
 
 A snapshot ranks whatever `content_daily_stats` recorded over its window. Each daily row contributes
@@ -146,7 +148,7 @@ Each entry of `items`:
 
 Each snapshot scans one tenant's `content_daily_stats` for its window and groups by entity. Every index on that table leads with `tenant_id`, so `idx_content_daily_stats_tenant_date`, `idx_content_daily_stats_tenant_entity`, and `idx_content_daily_stats_unique` are all eligible; which one the planner picks depends on how much data the table holds. On small data sets PostgreSQL may pick a sequential scan anyway, so add `SET enable_seqscan = off` when checking index eligibility with `EXPLAIN`.
 
-Every run keeps its four snapshots per tenant, including the empty ones a silent tenant produces: an empty leaderboard is the answer that a run happened and found nothing, which a missing row cannot say. Nothing deletes an old snapshot, so the table grows by four rows per tenant per run.
+Every run keeps its four snapshots per tenant, including the empty ones a silent tenant produces: an empty leaderboard is the answer that a run happened and found nothing, which a missing row cannot say. Nothing deletes an old snapshot, and each new period adds four rows per tenant — as does each new `algorithm_version`, which writes alongside the rows the previous one left. Re-running a period already covered replaces its rows instead of adding to them.
 
 The work is bounded by the daily rows a tenant produced over the window — at most one row per entity per day, capped by the size of the catalogue — not by raw event volume, so the eight window scans behind one tenant's four snapshots stay small next to the `aggregate-content-stats` run that feeds them. The budget is the daily cron interval, shared with the batches that must run before and after it; judge one run from the elapsed time in its completion log. If a run stops fitting, the fix is upstream of the scan — fewer tenants per invocation, or a materialised per-entity window rollup — because the item limit bounds only what is written, not what is read.
 

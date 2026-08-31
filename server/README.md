@@ -76,7 +76,7 @@ task server:test
 - プラットフォーム API サーバー: [cmd/platform-api-server/README.md](cmd/platform-api-server/README.md)
 - 公開画像サーバー: [cmd/image-server/README.md](cmd/image-server/README.md)
 - 管理画像サーバー: [cmd/admin-image-server/README.md](cmd/admin-image-server/README.md)
-- バッチ（予約公開 / 日次コンテンツ統計 / ランキング集計 / 閲覧イベントパージ / Recommend feature build）: [cmd/batch/README.md](cmd/batch/README.md)
+- Batch (scheduled publishing / daily content stats / ranking aggregation / content event purge / recommend feature build): [cmd/batch/README.md](cmd/batch/README.md)
 - Outbox ワーカー: [cmd/outbox-worker/README.md](cmd/outbox-worker/README.md)
 
 ## Graceful shutdown

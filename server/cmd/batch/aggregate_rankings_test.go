@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +24,25 @@ func TestResolveRankingDate(t *testing.T) {
 	var parseErr *time.ParseError
 	if _, err := resolveRankingDate(); !errors.As(err, &parseErr) {
 		t.Fatalf("invalid date error = %v, want ParseError", err)
+	}
+
+	// Unset is what the cron actually runs with, and it decides which day the
+	// ranking covers. t.Setenv above registered the restore, so clearing the
+	// variable here is safe.
+	if err := os.Unsetenv("PUBLIRA_CONTENT_RANKING_DATE"); err != nil {
+		t.Fatalf("unset ranking date: %v", err)
+	}
+	got, err = resolveRankingDate()
+	if err != nil {
+		t.Fatalf("default resolveRankingDate: %v", err)
+	}
+	// Asserted as properties rather than against a formatted date, so a run
+	// that straddles UTC midnight cannot fail on the day it read twice.
+	if got.Location() != time.UTC || !got.Equal(got.Truncate(24*time.Hour)) {
+		t.Fatalf("default date = %s, want a UTC midnight", got)
+	}
+	if age := time.Since(got); age < 24*time.Hour || age >= 48*time.Hour {
+		t.Fatalf("default date is %s old, want yesterday", age)
 	}
 }
 

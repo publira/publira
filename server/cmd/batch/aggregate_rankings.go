@@ -42,9 +42,11 @@ func runAggregateRankings(ctx context.Context, logger *slog.Logger, cfg *config.
 		logger.Error("ranking aggregation failed",
 			"reference_date", referenceDate.Format(time.DateOnly),
 			"item_limit", itemLimit,
+			"algorithm_version", contentranking.AlgorithmVersion,
 			"tenant_count", result.TenantCount,
 			"snapshot_count", result.SnapshotCount,
 			"item_count", result.ItemCount,
+			"duration", time.Since(started),
 			"error", err,
 		)
 		return err
