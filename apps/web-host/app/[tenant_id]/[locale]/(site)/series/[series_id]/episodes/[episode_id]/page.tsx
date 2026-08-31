@@ -10,6 +10,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { ContentViewTracker } from "#components/content-view-tracker";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
@@ -99,6 +100,11 @@ const EpisodeContent = async (
 
   return (
     <main>
+      <ContentViewTracker
+        kind="episode"
+        publicId={episode.publicId}
+        tenantId={tenantId}
+      />
       {/* The reader opens the page: everything else is what the reader may
           want after finishing, so it sits below the pages rather than above
           them. */}
