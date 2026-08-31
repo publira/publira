@@ -139,7 +139,7 @@ Depending on the repository's merge settings, GitHub uses the pull request title
 - **How to Test**: reproducible steps with the commands you actually ran.
 - **Checklist**: check only what is true. An unchecked box is honest; a checked one you did not do is not.
 
-Write the title and body in English even though replies to the user are Japanese.
+Write the title and body in English, whatever language the replies to the user are in.
 
 Because the body lands in the commit message, it needs the same AI disclosure as a commit. End the body with the trailer, as the last line, separated from the preceding text by a blank line:
 
