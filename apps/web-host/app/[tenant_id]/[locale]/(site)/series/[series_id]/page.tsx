@@ -10,6 +10,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { ContentViewTracker } from "#components/content-view-tracker";
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
@@ -84,6 +85,7 @@ const SeriesDetailContent = async (
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
+      <ContentViewTracker kind="series" publicId={series.publicId} />
       <nav className="mb-8">
         <LocaleLink
           href="/series"
