@@ -1,187 +1,189 @@
 # Publira
 
-## プロダクトビジョン
+English | [日本語](README.ja.md)
 
-IT リソースが限られる出版社向けに、自社ブランドで運用できるデジタル配信基盤 (マンガ・小説) を提供するマルチテナント型 SaaS です。出版社・編集者がクリエイターから受領した書籍情報を入稿し、エンドユーザーは Web / モバイルから閲覧します。
+## Product vision
 
-OSSとして、ポータビリティ・運用のしやすさ・ベンダーロックイン回避を重視します。
+Publira is a multi-tenant SaaS that gives publishers with limited IT resources a digital distribution platform (manga and novels) they can run under their own brand. Publishers and editors submit the book information they receive from creators, and end users read it on the web or on mobile.
 
-## ディレクトリ構造
+As an OSS project, it values portability, ease of operation, and freedom from vendor lock-in.
+
+## Directory structure
 
 ```text
 .
-├── apps/               # [Node.js] Web アプリ (Turborepo)
-│   ├── web-host/       # テナント公開サイト (カタログ/認証/マイページ)
-│   ├── web-admin/      # 出版社・編集者向け入稿/管理画面
-│   ├── web-platform/   # プラットフォーム運営者向け横断運用画面
-│   └── email-renderer/ # React Email を ConnectRPC で描画する Node サービス
-├── packages/           # [Node.js] 共有 UI / ユーティリティ
-├── e2e/                # [Playwright] Web 横断 E2E 基盤
-├── server/             # [Go] バックエンドシステム (単一モジュール)
+├── apps/               # [Node.js] Web apps (Turborepo)
+│   ├── web-host/       # Tenant-facing site (catalog / auth / my page)
+│   ├── web-admin/      # Submission and management console for publishers and editors
+│   ├── web-platform/   # Cross-tenant operations console for platform operators
+│   └── email-renderer/ # Node service that renders React Email over ConnectRPC
+├── packages/           # [Node.js] Shared UI and utilities
+├── e2e/                # [Playwright] Cross-app E2E foundation
+├── server/             # [Go] Backend system (single module)
 │   ├── cmd/
-│   │   ├── api-server/       # ConnectRPC API サーバー
-│   │   ├── batch/            # 全バッチジョブを束ねた単一バイナリ（サブコマンドで選択）
-│   │   └── outbox-worker/    # Outbox + River 常駐ワーカー
-│   ├── gen/            # buf 自動生成コード (Go)
+│   │   ├── api-server/       # ConnectRPC API server
+│   │   ├── batch/            # Single binary bundling every batch job (selected by subcommand)
+│   │   └── outbox-worker/    # Outbox + River resident worker
+│   ├── gen/            # buf generated code (Go)
 │   └── internal/
-│       └── db/         # sqlc 自動生成コード (DB/Go)
+│       └── db/         # sqlc generated code (DB/Go)
 ├── infra/
-│   └── docker/         # 本番用 Dockerfile（ロール別・ルートからビルド）
-├── mobile/             # [Flutter] モバイルアプリ (iOS/Android)
-├── proto/              # Protocol Buffers スキーマ定義
-├── locales/            # 共有 UI メッセージ（JSON。Go / Web / Flutter が同じファイルを読む）
-└── db/                 # PostgreSQL migration/クエリ
+│   └── docker/         # Production Dockerfiles (per role, built from the repository root)
+├── mobile/             # [Flutter] Mobile app (iOS/Android)
+├── proto/              # Protocol Buffers schema definitions
+├── locales/            # Shared UI messages (JSON, read by Go / Web / Flutter alike)
+└── db/                 # PostgreSQL migrations and queries
 ```
 
-## 技術スタック
+## Tech stack
 
 - Frontend: Next.js (App Router), React, TypeScript, Tailwind CSS
 - Backend: Go 1.26, ConnectRPC (HTTP/2), sqlc
 - Mobile: Flutter
 - Database: PostgreSQL, golang-migrate
-- Cache: Redis（Next.js `cacheHandler` / `cacheHandlers` の共有ストア）
-- Storage/Image: S3 互換ストレージ
+- Cache: Redis (shared store for the Next.js `cacheHandler` / `cacheHandlers`)
+- Storage/Image: S3-compatible storage
 - Infrastructure: Dev Containers, Docker, Make
 
-## ドキュメント案内
+## Documentation map
 
-- エージェント向け規約（Effect / lint など）: [AGENTS.md](AGENTS.md)
-- Web アプリ: [apps/README.md](apps/README.md)
-- 共有パッケージ: [packages/README.md](packages/README.md)
-- Go バックエンド: [server/README.md](server/README.md)
-- モバイル: [mobile/README.md](mobile/README.md)
-- CI ワークフロー全体（ジョブ構成・path filter・トリアージ）: [.github/workflows/README.md](.github/workflows/README.md)
-- Dockerfile 配置規約・ビルド検証（本番イメージ）: [infra/docker/README.md](infra/docker/README.md)
-- E2E（Playwright 基盤・CI）: [e2e/README.md](e2e/README.md)
-- 開発環境 bootstrap チェック（空 DB volume からの `task setup` / `task dev` 検証）: [e2e/bootstrap/README.md](e2e/bootstrap/README.md)
-- 開発環境 Traefik ルーティング疎通（ホスト / `/api` / `/images`）: [e2e/routing/README.md](e2e/routing/README.md)
+- Conventions for agents (Effects, lint, and so on): [AGENTS.md](AGENTS.md)
+- Web apps: [apps/README.md](apps/README.md)
+- Shared packages: [packages/README.md](packages/README.md)
+- Go backend: [server/README.md](server/README.md)
+- Mobile: [mobile/README.md](mobile/README.md)
+- CI workflows as a whole (job layout, path filters, triage): [.github/workflows/README.md](.github/workflows/README.md)
+- Dockerfile layout conventions and build verification (production images): [infra/docker/README.md](infra/docker/README.md)
+- E2E (Playwright foundation, CI): [e2e/README.md](e2e/README.md)
+- Development environment bootstrap check (`task setup` / `task dev` from an empty DB volume): [e2e/bootstrap/README.md](e2e/bootstrap/README.md)
+- Traefik routing connectivity in the development environment (host, `/api`, `/images`): [e2e/routing/README.md](e2e/routing/README.md)
 
-## セットアップ
+## Setup
 
 ```bash
 task setup
 ```
 
-`task setup` は依存インストール（`pnpm` / Go / Flutter `pub get`）と DB 初期化を実行します。Dev Container では `postCreate` から自動実行されるため、`mobile/` の依存解決も追加操作なしで済みます。
+`task setup` installs dependencies (`pnpm`, Go, Flutter `pub get`) and initializes the database. In the Dev Container it runs automatically from `postCreate`, so the dependencies of `mobile/` are resolved without any extra step.
 
-Dev Container では `migrate` CLI (golang-migrate) と `wait4x`（E2E / bootstrap の HTTP readiness 待ち）を同梱しています。DB 変更は `db/migrations/` に `.up.sql` / `.down.sql` で追加してください。
+The Dev Container bundles the `migrate` CLI (golang-migrate) and `wait4x` (HTTP readiness waits for E2E and bootstrap). Add database changes to `db/migrations/` as `.up.sql` / `.down.sql` files.
 
-## worktree ごとの開発環境プロファイル
+## Per-worktree development environment profile
 
-複数の worktree を並行利用するときは、共有の既定開発環境を使わず、worktree ごとにプロファイルを選びます。プロファイルは PostgreSQL database、Valkey logical database、RustFS bucket、全サービスのポート、Cookie 名、認証／再検証 secret をまとめて分離します。既定の `task setup` / `task dev` は従来どおり共有環境を使います。
+When you work in several worktrees in parallel, pick a profile per worktree instead of sharing the default development environment. A profile separates the PostgreSQL database, the Valkey logical database, the RustFS bucket, the ports of every service, the cookie names, and the authentication and revalidation secrets. The plain `task setup` / `task dev` keep using the shared environment as before.
 
 ```bash
-# 新しい worktree で一度だけ（識別子は小文字英数字と -）
+# Once per new worktree (the identifier takes lowercase alphanumerics and -)
 task dev-env:create NAME=issue-1178
 
-# database migration/seed と専用 bucket の作成。再実行しても安全です。
+# Database migration/seed and creation of the dedicated bucket. Safe to re-run.
 task dev-env:init
 
-# API、image server、worker、email-renderer、3 つの Next.js app をまとめて起動
+# Start the API, image server, worker, email-renderer, and the three Next.js apps together
 task dev-env:start
 
-# 表示した URL、ログ、割り当て済み DB/Redis/bucket を確認
+# Show the URLs, the logs, and the assigned DB/Redis/bucket
 task dev-env:show
 
-# 終了時。データは保持します。
+# When you are done. Data is kept.
 task dev-env:stop
 ```
 
-単独アプリを起動する場合も、同じ環境変数を先に読み込みます。各 Next.js app の `pnpm dev` は `PORT` を尊重するため、手で既定ポートの衝突を解消する必要はありません。
+Load the same environment variables first when starting a single app as well. `pnpm dev` in each Next.js app honors `PORT`, so you do not have to resolve default port collisions by hand.
 
 ```bash
 eval "$(task --silent dev-env:env)"
 pnpm --dir apps/web-host dev
 ```
 
-`task dev-env:list` は全プロファイルと選択中 worktree を表示します。破棄は `task dev-env:destroy NAME=<name>` です。対象がどの worktree からも選択されておらず停止済みであることを確認し、名前の再入力後にその profile の database、Redis DB、bucket だけを削除します。共有開発環境、E2E、他 profile は操作しません。
+`task dev-env:list` shows every profile and the worktree that selected it. To discard one, run `task dev-env:destroy NAME=<name>`. It checks that no worktree has the target selected and that it is stopped, then deletes only that profile's database, Redis DB, and bucket after you retype the name. It does not touch the shared development environment, E2E, or other profiles.
 
-プロファイルの秘密情報と実行ログは既定で `~/.publira/dev-env` に保存されます。保存場所は `PUBLIRA_DEV_ENV_HOME`、PostgreSQL の管理接続は `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` で必要な場合だけ上書きできます。どちらも開発環境スクリプトだけが読む変数です。
+A profile's secrets and run logs are stored under `~/.publira/dev-env` by default. Override the location with `PUBLIRA_DEV_ENV_HOME` and the PostgreSQL admin connection with `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` only when you need to. Both are read solely by the development environment scripts.
 
-コーディングエージェントは [`skills/dev-env-profile`](skills/dev-env-profile/SKILL.md) を開発開始時に使用します。
+Coding agents use [`skills/dev-env-profile`](skills/dev-env-profile/SKILL.md) when they start development.
 
-## ローカル DB 初期化
+## Local database initialization
 
 ```bash
 task db:setup
 ```
 
-`db:setup` は次を順に実行します。
+`db:setup` runs the following in order.
 
-1. migration 適用 (`db/migrations/`)
-2. baseline seed 適用 (`db/seeds/baseline/`)
+1. Apply migrations (`db/migrations/`)
+2. Apply the baseline seed (`db/seeds/baseline/`)
 
-### migration と seed の責務
+### Responsibilities of migrations and seeds
 
-- migration: スキーマの変更（DDL）
-- seed: ローカル開発・画面確認用の初期データ（DML、冪等）
+- Migration: schema changes (DDL)
+- Seed: initial data for local development and screen checks (DML, idempotent)
 
-seed の詳細と固定ログイン情報は `db/seeds/README.md` を参照してください。
+See `db/seeds/README.md` for the details of the seed and the fixed login credentials.
 
-## 開発用メール確認 (Mailpit)
+## Checking mail in development (Mailpit)
 
-Dev Container 起動時に Mailpit コンテナも起動します。
+A Mailpit container starts together with the Dev Container.
 
 - Mailpit UI: `http://localhost:8025`
-- SMTP (コンテナ内から): `host=mailpit`, `port=1025`
+- SMTP (from inside a container): `host=mailpit`, `port=1025`
 
-ローカル seed (`task db:setup`) では platform/tenant SMTP の初期値が Mailpit 向けになります。
+In the local seed (`task db:setup`), the initial platform/tenant SMTP settings point at Mailpit.
 
-1. `task db:setup` を実行して初期データを反映
-2. `task dev` (または API/Web 個別タスク) を起動
-3. SMTP テスト送信や通知送信を実行
-4. Mailpit UI (`http://localhost:8025`) で受信メールを確認
+1. Run `task db:setup` to load the initial data
+2. Start `task dev` (or the individual API/Web tasks)
+3. Send an SMTP test message or a notification
+4. Check the received mail in the Mailpit UI (`http://localhost:8025`)
 
-## セッション Cookie の暗号鍵 (`PUBLIRA_AUTH_SECRET`)
+## Session cookie encryption key (`PUBLIRA_AUTH_SECRET`)
 
-3 つの Next.js アプリ（web-host / web-admin / web-platform）は、ログインセッションを `@publira/web-session` の JWE (`dir` + `A256GCM`) で封じます。その鍵が `PUBLIRA_AUTH_SECRET` です。
+The three Next.js apps (web-host / web-admin / web-platform) seal the login session with the JWE (`dir` + `A256GCM`) of `@publira/web-session`. `PUBLIRA_AUTH_SECRET` is that key.
 
-- **必須**です。コード側にフォールバックは無く、未設定または 32 バイト未満なら暗号化・復号が例外になります（`resolveAuthSecret()`）
-- Cookie の payload には API のアクセストークンが入るため、鍵が漏れるとセッションの偽造と復号ができます。環境ごとに払い出してください（例: `openssl rand -base64 32`）
-- Dev Container では `.devcontainer/compose.yaml` が開発専用の値を app コンテナに渡します。`turbo.json` の `dev` は `passThroughEnv: ["PUBLIRA_*"]` なので `task dev` にそのまま届きます
-- E2E は `e2e/scripts/lib.sh`、bootstrap チェックは `e2e/bootstrap/scripts/lib.sh` がそれぞれのスタック用の値を export します
+- It is **required**. There is no fallback in the code, and encryption and decryption throw when it is unset or shorter than 32 bytes (`resolveAuthSecret()`)
+- The cookie payload carries the API access token, so leaking the key allows both forging and decrypting a session. Issue one per environment (for example, `openssl rand -base64 32`)
+- In the Dev Container, `.devcontainer/compose.yaml` passes a development-only value to the app container. `dev` in `turbo.json` sets `passThroughEnv: ["PUBLIRA_*"]`, so it reaches `task dev` as is
+- E2E exports its own value for its stack from `e2e/scripts/lib.sh`, and the bootstrap check from `e2e/bootstrap/scripts/lib.sh`
 
-リポジトリに書いてある値は **ローカル開発・テスト専用**です。本番へ持ち込まないでください。
+The values written in this repository are **for local development and testing only**. Do not carry them into production.
 
-## API アクセストークンの署名鍵 (`PUBLIRA_AUTH_JWT_SECRET`)
+## API access token signing key (`PUBLIRA_AUTH_JWT_SECRET`)
 
-Go の API サーバー（api-server / admin-api-server / platform-api-server）と画像サーバー（image-server / admin-image-server）は、ログイン時に **HS256 の JWT アクセストークン**を発行し、以降のリクエストで検証します。その署名鍵が `PUBLIRA_AUTH_JWT_SECRET` です。
+The Go API servers (api-server / admin-api-server / platform-api-server) and the image servers (image-server / admin-image-server) issue an **HS256 JWT access token** at login and verify it on subsequent requests. `PUBLIRA_AUTH_JWT_SECRET` is that signing key.
 
-- **必須**です。コード側にフォールバックは無く、未設定または 32 バイト未満なら 5 つのサーバーはいずれも起動時に終了します（`auth.NewTokenManagerFromEnv()`）
-- 鍵が漏れると任意の `sub` / `aud` を持つトークンを偽造でき、公開 API・管理 API・プラットフォーム API・画像サーバーを呼べます。環境ごとに払い出してください（例: `openssl rand -base64 32`）
-- Cookie 側の `PUBLIRA_AUTH_SECRET` とは別の鍵です。あちらは Next.js がセッション Cookie を封じる JWE 鍵で、読み手も用途も違います
-- Dev Container では `.devcontainer/compose.yaml` が開発専用の値を app コンテナに渡します
-- E2E は `e2e/scripts/lib.sh` が export し、各 API サーバーの起動スクリプトが `env` で渡します。bootstrap チェックは `e2e/bootstrap/scripts/lib.sh` が export します
+- It is **required**. There is no fallback in the code, and all five servers exit at startup when it is unset or shorter than 32 bytes (`auth.NewTokenManagerFromEnv()`)
+- Leaking the key allows forging a token with an arbitrary `sub` / `aud` and calling the public API, the admin API, the platform API, and the image servers. Issue one per environment (for example, `openssl rand -base64 32`)
+- It is a different key from the cookie-side `PUBLIRA_AUTH_SECRET`, which is the JWE key Next.js uses to seal the session cookie: different readers, different purpose
+- In the Dev Container, `.devcontainer/compose.yaml` passes a development-only value to the app container
+- For E2E, `e2e/scripts/lib.sh` exports it and each API server's start script passes it through `env`. The bootstrap check exports it from `e2e/bootstrap/scripts/lib.sh`
 
-リポジトリに書いてある値は **ローカル開発・テスト専用**です。本番へ持ち込まないでください。
+The values written in this repository are **for local development and testing only**. Do not carry them into production.
 
-## Next.js 共有キャッシュ (Redis)
+## Next.js shared cache (Redis)
 
-self-host / multi-instance 向けに、Next.js のサーバー側キャッシュを **Redis** で共有します（`@publira/next-cache-handlers`）。
+For self-hosted and multi-instance deployments, the server-side cache of Next.js is shared through **Redis** (`@publira/next-cache-handlers`).
 
-| 設定 | 用途 |
+| Setting | Purpose |
 | --- | --- |
-| `cacheHandlers`（複数形） | `"use cache"` / `"use cache: remote"` |
-| `cacheHandler`（単数） | ISR・Route Handler・`fetch`、および `next/image` 最適化結果（`images.customCacheHandler: true`） |
+| `cacheHandlers` (plural) | `"use cache"` / `"use cache: remote"` |
+| `cacheHandler` (singular) | ISR, Route Handlers, `fetch`, and the `next/image` optimization results (`images.customCacheHandler: true`) |
 
-- Dev Container では `redis` サービスが起動し、app コンテナに `PUBLIRA_REDIS_URL=redis://redis:6379` が渡ります（認証を設定していないため、ホストには公開しません）
-- 中身を直接見たいときは `docker compose -f .devcontainer/compose.yaml exec redis redis-cli`
-- `redis://localhost:6379` は `@publira/next-cache-handlers` が `PUBLIRA_REDIS_URL` 未設定時に使うライブラリ側の既定値です
-- キー空間は `PUBLIRA_CACHE_APP`（例: `web-host`）でアプリ別に分離
-- 詳細: [packages/next-cache-handlers/README.md](packages/next-cache-handlers/README.md)
+- In the Dev Container the `redis` service starts and `PUBLIRA_REDIS_URL=redis://redis:6379` is passed to the app container (it is not exposed to the host because no authentication is configured)
+- To look inside directly: `docker compose -f .devcontainer/compose.yaml exec redis redis-cli`
+- `redis://localhost:6379` is the library-side default that `@publira/next-cache-handlers` uses when `PUBLIRA_REDIS_URL` is unset
+- The key space is separated per app by `PUBLIRA_CACHE_APP` (for example, `web-host`)
+- Details: [packages/next-cache-handlers/README.md](packages/next-cache-handlers/README.md)
 
-## 開発用オブジェクトストレージ (RustFS)
+## Object storage for development (RustFS)
 
-Dev Container 起動時に S3 互換の **RustFS** コンテナも起動し、アプリは本番と同じ経路で動きます（エピソード画像のアップロードと image-server の配信）。
+An S3-compatible **RustFS** container also starts with the Dev Container, so the apps take the same path as in production (episode image uploads and delivery by the image-server).
 
-- コンソール UI: `http://localhost:9001/rustfs/console/`
-- S3 エンドポイント（コンテナ内から）: `http://rustfs:9000`（path-style。ホストには公開しません）
-- バケット: `publira`。`task setup` / `task dev` が `task storage:init` で冪等に作成します
-- データは `rustfs-data` volume に永続します
+- Console UI: `http://localhost:9001/rustfs/console/`
+- S3 endpoint (from inside a container): `http://rustfs:9000` (path-style; not exposed to the host)
+- Bucket: `publira`. `task setup` / `task dev` create it idempotently through `task storage:init`
+- Data is persisted in the `rustfs-data` volume
 
-app コンテナに渡す既定値は `.devcontainer/compose.yaml` にあります。
+The defaults passed to the app container live in `.devcontainer/compose.yaml`.
 
-| 変数                                          | 既定値                    |
+| Variable                                      | Default                   |
 | --------------------------------------------- | ------------------------- |
 | `PUBLIRA_S3_BUCKET`                           | `publira`                 |
 | `PUBLIRA_S3_ENDPOINT`                         | `http://rustfs:9000`      |
@@ -189,43 +191,43 @@ app コンテナに渡す既定値は `.devcontainer/compose.yaml` にありま�
 | `AWS_REGION`                                  | `us-east-1`               |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | `publira` / `publirapass` |
 
-このアクセスキーは **ローカル開発専用**です（RustFS コンテナにしか通用しません）。本番の S3 は IAM ロールや別途払い出した資格情報を使い、この値を持ち込まないでください。バケット作成には aws CLI を使うため、Dev Container では `aws-cli` feature を同梱しています。
+These access keys are **for local development only** (they work against nothing but the RustFS container). Production S3 uses IAM roles or separately issued credentials; do not carry these values there. Creating the bucket uses the aws CLI, so the Dev Container bundles the `aws-cli` feature.
 
-サーバー側の環境変数一覧は [server/README.md](server/README.md) を参照してください。
+See [server/README.md](server/README.md) for the list of server-side environment variables.
 
-## 分散トレーシング (Jaeger)
+## Distributed tracing (Jaeger)
 
-Dev Container 起動時に **Jaeger** コンテナも起動し、Go サーバー群 (`server/cmd/*`) と Next.js アプリ (`apps/web-*`) が OpenTelemetry で span を送ります。ブラウザのリクエストが Next.js の root span から SSR の Connect RPC、Go 側の RPC span、DB クエリの子 span まで 1 本のトレースに繋がるので、「どの層で時間を使ったか」を UI 上で追えます。
+A **Jaeger** container also starts with the Dev Container, and the Go servers (`server/cmd/*`) and the Next.js apps (`apps/web-*`) send spans over OpenTelemetry. A browser request is connected into a single trace from the Next.js root span through the SSR Connect RPC, the Go-side RPC span, and the child spans of the DB queries, so you can follow "which layer spent the time" in the UI.
 
 - Jaeger UI: `http://localhost:16686`
-- OTLP 受信 (コンテナ内から): `http://jaeger:4318`（ホストには公開しません）
-- 保存はインメモリなので、コンテナを再起動すると過去のトレースは消えます
+- OTLP intake (from inside a container): `http://jaeger:4318` (not exposed to the host)
+- Storage is in-memory, so past traces disappear when the container restarts
 
-app コンテナに渡す既定値は `.devcontainer/compose.yaml` にあります。
+The defaults passed to the app container live in `.devcontainer/compose.yaml`.
 
-| 変数                          | 既定値               |
+| Variable                      | Default              |
 | ----------------------------- | -------------------- |
 | `PUBLIRA_TRACING_ENABLED`     | `true`               |
 | `OTEL_TRACES_EXPORTER`        | `otlp`               |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf`      |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://jaeger:4318` |
 
-`PUBLIRA_TRACING_ENABLED` 以外は OpenTelemetry SDK 自身が読む変数なので、名前は OpenTelemetry のドキュメントどおりです。トレースは既定で無効で、この dev スタックが明示的に有効化しています。`PUBLIRA_DEPLOYMENT_ENVIRONMENT` は未設定のままなので `development` 扱いになり、root span は全件サンプルされます。
+Everything except `PUBLIRA_TRACING_ENABLED` is read by the OpenTelemetry SDK itself, so the names follow the OpenTelemetry documentation. Tracing is disabled by default, and this dev stack enables it explicitly. `PUBLIRA_DEPLOYMENT_ENVIRONMENT` is left unset, so the environment counts as `development` and every root span is sampled.
 
-Traefik は `web` エントリポイント（`localhost:3080`）に届いたリクエストから `traceparent` / `tracestate` / `baggage` を落とします。Go サーバーも Next.js アプリも inbound の `traceparent` を親として信頼するので、信頼境界を gateway に置くためです。`curl` に自分で `traceparent` を付けて `3080` を叩いてもそのトレース ID にはならず、受け側で新しい root span が始まります。
+Traefik drops `traceparent` / `tracestate` / `baggage` from the requests that arrive at the `web` entry point (`localhost:3080`). Both the Go servers and the Next.js apps trust an inbound `traceparent` as the parent, so the trust boundary is placed at the gateway. Attaching your own `traceparent` to a `curl` against `3080` does not produce that trace ID; a new root span begins at the receiving end.
 
-### 見かた
+### How to read it
 
-1. 有効な dev プロファイルでスタックを起動する（`task dev-env:start`。プロファイルごとの URL が表示されます）
-2. ブラウザで表示された host の URL を開く
-3. Jaeger UI (`http://localhost:16686`) の Service で `publira-web-host` を選び、直近のトレースを開く
+1. Start the stack with an active dev profile (`task dev-env:start`; it prints the URLs of the profile)
+2. Open the printed host URL in a browser
+3. In the Jaeger UI (`http://localhost:16686`), select `publira-web-host` under Service and open a recent trace
 
-`GET /[tenant_id]/[locale]` の root span の下に、SSR が呼んだ `CatalogService/ListPublishedSeries` などの client span、その子として `publira-api-server` の同名 server span、さらに `db.query` が並びます。1 本の中で service が切り替わっていれば、Web → API → DB の伝播が効いています。`proxy.ts` の処理は `middleware GET` を root とする別のトレースになります。
+Under the root span of `GET /[tenant_id]/[locale]` you find the client spans SSR called, such as `CatalogService/ListPublishedSeries`, the identically named server spans of `publira-api-server` as their children, and `db.query` below those. When the service changes within one trace, propagation from Web to API to DB is working. The processing of `proxy.ts` forms a separate trace rooted at `middleware GET`.
 
-Next.js 自体の内部 span（`BaseServer.renderToResponse` / `Router.executeRoute` など）まで見たいときだけ `NEXT_OTEL_VERBOSE=1` を付けて起動してください。既定で出さないのは、1 リクエストあたりの span 数が大きく増え、アプリのコードでは動かしようのない段階でトレースが埋まるためです。
+Start with `NEXT_OTEL_VERBOSE=1` only when you want to see the internal spans of Next.js itself (`BaseServer.renderToResponse`, `Router.executeRoute`, and so on). It is off by default because the number of spans per request grows a lot and the trace fills up at a stage the application code cannot influence.
 
 ```bash
 NEXT_OTEL_VERBOSE=1 pnpm --dir apps/web-host dev
 ```
 
-属性・span 命名・サンプリング方針は [#502](https://github.com/publira/publira/issues/502) の設計合意に従います。設定と計装の詳細は Go 側が [server/README.md](server/README.md#分散トレーシング-opentelemetry)、Next.js 側が [packages/tracing/README.md](packages/tracing/README.md) です。
+Attributes, span naming, and the sampling policy follow the design agreed in [#502](https://github.com/publira/publira/issues/502). For the details of the configuration and instrumentation, see [server/README.md](server/README.md#分散トレーシング-opentelemetry) for the Go side and [packages/tracing/README.md](packages/tracing/README.md) for the Next.js side.
