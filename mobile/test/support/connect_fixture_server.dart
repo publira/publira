@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:publira/api/image_cipher.dart';
+
 /// In-process Connect JSON server that speaks the public catalog/domain RPCs.
 ///
 /// Used by widget-adjacent HTTP tests and by `integration_test` so both
@@ -41,7 +43,19 @@ class ConnectFixtureServer {
   static const memberPassword = 'memberpass';
   static const memberName = 'Sample Member';
   static const memberPublicId = 'SeedMMBRAAA1';
-  static const memberAccessToken = 'fixture-access-token';
+
+  /// Unsigned JWT whose `sub` is [memberPublicId]. It is shaped like the real
+  /// public-audience token because image-server derives a page's content key
+  /// from the token itself, so a fixture that is not a JWT could not be
+  /// decrypted by the reader.
+  static const memberAccessToken =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+      '.eyJzdWIiOiJTZWVkTU1CUkFBQTEifQ'
+      '.fixture-signature';
+
+  /// Key id the fixture reports for an encrypted page, standing in for
+  /// image-server's per-rendition cache key.
+  static const imageKeyId = 'fixture-image-key';
 
   /// 1x1 transparent PNG, enough for `Image.network` to decode a real page on
   /// a device.
@@ -214,10 +228,7 @@ class ConnectFixtureServer {
     final path = request.uri.path;
     if (request.method == 'GET' && path.startsWith('/images/')) {
       lastImageRequestHeaders = request.headers;
-      request.response.statusCode = HttpStatus.ok;
-      request.response.headers.contentType = ContentType('image', 'png');
-      request.response.add(pageBytes);
-      await request.response.close();
+      await _writeImage(request);
       return;
     }
     if (request.method != 'POST') {
@@ -370,6 +381,46 @@ class ConnectFixtureServer {
     }
     return request.headers.value(HttpHeaders.authorizationHeader) ==
         'Bearer $token';
+  }
+
+  /// Answers a page the way image-server does.
+  ///
+  /// A request carrying a reader's token gets the encrypted stream, so the
+  /// reader has to reverse it before anything is drawn; an anonymous request
+  /// for a free page gets the PNG itself, which is also what image-server
+  /// sends while it runs with `PUBLIRA_IMAGE_ENCRYPTION` off.
+  Future<void> _writeImage(HttpRequest request) async {
+    final authorization =
+        request.headers.value(HttpHeaders.authorizationHeader) ?? '';
+    final token = authorization.startsWith('Bearer ')
+        ? authorization.substring('Bearer '.length)
+        : '';
+    final subject = token.isEmpty ? null : subjectFromJwt(token);
+
+    request.response.statusCode = HttpStatus.ok;
+    if (subject == null) {
+      request.response.headers.contentType = ContentType('image', 'png');
+      request.response.add(pageBytes);
+      await request.response.close();
+      return;
+    }
+
+    request.response.headers
+      ..contentType = ContentType('application', 'octet-stream')
+      ..set(imageEncryptionHeader, imageEncryptionAlgorithm)
+      ..set(imageContentTypeHeader, 'image/png')
+      ..set(imageKeyIdHeader, imageKeyId);
+    // The stream is its own inverse, so encrypting is the same call the
+    // reader makes to decrypt.
+    request.response.add(
+      decryptImageBytes(
+        ciphertext: pageBytes,
+        keyId: imageKeyId,
+        subject: subject,
+        token: token,
+      ),
+    );
+    await request.response.close();
   }
 
   Future<void> _write(HttpRequest request, int status, Object body) async {

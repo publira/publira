@@ -257,6 +257,17 @@ void main() {
               'Bearer ${ConnectFixtureServer.memberAccessToken}',
           description: 'an authorized image-server request',
         );
+        // The fixture answers an authorized page the way image-server does
+        // for an entitled body: encrypted. A frame on screen is therefore
+        // proof the device decrypted it rather than drawing what it was sent.
+        await pumpUntilTrue(
+          tester,
+          () => tester
+              .widgetList<RawImage>(find.byType(RawImage))
+              .any((raw) => raw.image != null),
+          description: 'a decrypted page to reach the screen',
+        );
+        expect(find.byKey(const ValueKey('episode-page-error')), findsNothing);
         await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });

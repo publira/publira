@@ -98,7 +98,7 @@ mobile/
 │   ├── app.dart                  # MaterialApp.router + AuthScope + CatalogScope
 │   ├── router.dart               # go_router definition
 │   ├── config.dart               # --dart-define API / image / tenant configuration
-│   ├── api/                      # Connect JSON client and tenant lookup
+│   ├── api/                      # Connect JSON client, tenant lookup, page fetch and decryption
 │   ├── auth/                     # Session, secure storage, AuthController
 │   ├── catalog/                  # CatalogRepository
 │   ├── models/                   # Series / episode body
@@ -138,6 +138,10 @@ The viewer displays the images returned by `GetEpisodeDetail` as episode content
 - The page container reserves space from the API's `width` / `height` before the image arrives, so the layout does not shift. Images without dimensions use the entire viewport as a provisional container
 - Each page has its own loading and failure-with-retry state, so one failed page does not fail the entire episode body
 - Images come from image-server. The tenant is sent in `X-Forwarded-Host` and the reader in `Authorization: Bearer`, using the token of whoever is signed in. Preserve the media token that the API adds to a paid episode image URL
+- A page of a paid, entitled body arrives encrypted: `application/octet-stream` plus `X-Publira-Image-Encryption`, `X-Publira-Image-Content-Type`, and `X-Publira-Image-Key-Id`. The app reverses that stream before decoding the page. Its content key is derived from the credential the request itself carried, so image-server never sends a key: read the `Authorization` bearer first and the media token in the URL only when there is no header, the order image-server resolves the two in
+- A response without `X-Publira-Image-Encryption` is decoded as it arrives, which is what keeps the reader working while image-server runs with `PUBLIRA_IMAGE_ENCRYPTION` off. A page whose stream cannot be reversed fails on its own and offers a retry, the same way a failed fetch does
+- Pages are requested with an `Accept` that offers WebP and leaves AVIF out, because image-server's converter negotiates the rendition from that header and Flutter has no AVIF codec
+- Leaving the reader evicts the episode's pages from the shared image cache, so a body's decoded pixels are not left behind whatever is read next
 
 ## Sign-in
 
