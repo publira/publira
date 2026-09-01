@@ -5,10 +5,12 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { tenant_id } from "next/root-params";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
 
+import { TenantLangScript } from "#components/tenant-lang-script";
 import { getLocale, loadAdminMessages } from "#lib/locale";
-import { findTenantDisplayLocale, getTenantName } from "#lib/public-api";
+import { getTenantName } from "#lib/public-api";
 import { isTenantIdFormat } from "#lib/tenant-id-format";
 
 import "../globals.css";
@@ -58,44 +60,36 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 /**
- * `lang` is the tenant's stored default locale, corrected to the operator's own
- * choice by the inline script before the browser paints.
+ * `lang` is written by scripts rather than rendered, and this layout stays
+ * synchronous.
  *
- * The console keeps that choice in a cookie rather than in the URL, and under
- * Cache Components a `cookies()` read here would leave every route without a
- * static shell — there is no child `<Suspense>` boundary an `<html>` attribute
- * could move into. The tenant default has no such problem: it is a cached read
- * keyed by the `tenant_id` root parameter, so each tenant's shell prerenders
- * with its own language, and the script then narrows it to the cookie.
- * `suppressHydrationWarning` is what lets the DOM the script produced win over
- * the attribute React rendered. The script's source and the reasoning behind it
- * live in `@publira/i18n`.
+ * Both values the attribute could take need a read — the operator's cookie, and
+ * the tenant's stored default — and a root layout that awaits blocks the whole
+ * tree. An `<html>` attribute is never worth that, so neither read happens
+ * here: `LOCALE_LANG_SCRIPT` applies the cookie while the document is still
+ * being parsed, and {@link TenantLangScript} streams in the tenant default for
+ * an operator who has chosen nothing. `suppressHydrationWarning` is what lets
+ * the DOM those scripts produce win over what React rendered.
  *
- * A tenant whose default cannot be read leaves `lang` unset rather than
- * claiming a language: a wrong one tells a screen reader to pronounce the page
- * in a language it is not written in, which is worse than saying nothing.
+ * Until one of them runs the document names no language, which is the honest
+ * state: a `lang` the page is not written in tells a screen reader to pronounce
+ * it in the wrong language, and that is worse for that reader than none.
  */
-const TenantRootLayout = async ({ children }: { children: ReactNode }) => {
-  const tenantId = await tenant_id();
-  const normalizedTenantId =
-    typeof tenantId === "string" ? tenantId.trim() : "";
-  const lang = isTenantIdFormat(normalizedTenantId)
-    ? await findTenantDisplayLocale(normalizedTenantId)
-    : null;
-
-  return (
-    <html lang={lang ?? undefined} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
-        {/* Dynamic per-tenant overrides from GET /theme.css (short Cache-Control). */}
-        {/* oxlint-disable-next-line next/no-css-tags, react-doctor/nextjs-no-css-link -- runtime tenant theme route */}
-        <link href="/theme.css" rel="stylesheet" />
-      </head>
-      <body className="min-h-dvh bg-background text-foreground antialiased">
-        {children}
-      </body>
-    </html>
-  );
-};
+const TenantRootLayout = ({ children }: { children: ReactNode }) => (
+  <html suppressHydrationWarning>
+    <head>
+      <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
+      {/* Dynamic per-tenant overrides from GET /theme.css (short Cache-Control). */}
+      {/* oxlint-disable-next-line next/no-css-tags, react-doctor/nextjs-no-css-link -- runtime tenant theme route */}
+      <link href="/theme.css" rel="stylesheet" />
+    </head>
+    <body className="min-h-dvh bg-background text-foreground antialiased">
+      <Suspense fallback={null}>
+        <TenantLangScript />
+      </Suspense>
+      {children}
+    </body>
+  </html>
+);
 
 export default TenantRootLayout;

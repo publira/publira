@@ -108,32 +108,45 @@ export default defineConfig({
        * `/[tenant_id]/...`, so the same document lives at
        * `app/[tenant_id]/layout.tsx` — one directory deep, which `*` matches
        * without also covering `(protected)/layout.tsx`.
+       *
+       * `tenant-lang-script.tsx` injects the second one. A root layout must
+       * not be `async`, so the tenant's stored default cannot be rendered as
+       * an attribute there and travels as a streamed script instead; its
+       * source is built from a `Locale` by `@publira/i18n`, so no
+       * request-derived value reaches it either.
        */
-      files: ["apps/*/app/layout.tsx", "apps/web-admin/app/*/layout.tsx"],
+      files: [
+        "apps/*/app/layout.tsx",
+        "apps/web-admin/app/*/layout.tsx",
+        "apps/web-admin/components/tenant-lang-script.tsx",
+      ],
       rules: {
         "react/no-danger": "off",
       },
     },
     {
       /**
-       * `web-platform` ships its document with no `lang`, and the inline script
-       * writes one once it has read the cookie.
+       * Both consoles ship their document with no `lang`, and scripts write one
+       * once a locale has been read.
        *
-       * The console's locale is the operator's cookie, falling back to the
-       * stored platform default — and neither is readable from a root layout
-       * that has to stay in the static shell: `cookies()` is request-time, and
-       * `GetPlatformSettings` needs the session that the login screen under
-       * this layout exists to create. `web-admin` has a cached, session-free
-       * tenant read to name a language with; this console has none.
+       * Every value the attribute could take needs a read — the operator's
+       * cookie, and the stored default behind it — and a root layout that
+       * awaits blocks the whole tree. An `<html>` attribute is never worth
+       * that, so both layouts stay synchronous and the reads travel as
+       * scripts: `LOCALE_LANG_SCRIPT` for the cookie, and in `web-admin` a
+       * streamed `<TenantLangScript>` for the tenant default.
        *
-       * So the attribute is left off rather than filled with a guess. A `lang`
-       * the document is not written in tells a screen reader to pronounce the
-       * page in the wrong language, which is worse for the reader this rule
-       * protects than an absent one, and it is what AGENTS.md means by not
-       * misreporting an unresolved locale as a language. Resolving it properly
-       * is #1249.
+       * Until one runs the document names no language. A `lang` the document
+       * is not written in tells a screen reader to pronounce the page in the
+       * wrong language, which is worse for the reader this rule protects than
+       * an absent one, and it is what AGENTS.md means by not misreporting an
+       * unresolved locale as a language. `web-platform` has no stored default
+       * it can read without a session at all; that half is #1249.
        */
-      files: ["apps/web-platform/app/layout.tsx"],
+      files: [
+        "apps/web-platform/app/layout.tsx",
+        "apps/web-admin/app/*/layout.tsx",
+      ],
       rules: {
         "jsx-a11y/html-has-lang": "off",
         "jsx-a11y/lang": "off",
