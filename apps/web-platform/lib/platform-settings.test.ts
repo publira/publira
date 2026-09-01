@@ -316,8 +316,12 @@ describe("platform-settings", () => {
 
   it("keeps the saved language through an outage", async () => {
     // The operator is reading an error screen; arriving in another language
-    // would make the outage look like a setting they had changed.
-    mockResolveAccessToken.mockResolvedValue("");
+    // would make the outage look like a setting they had changed. The signed-in
+    // read is what confirmed the language, so an outage after it must not
+    // renegotiate one from the browser.
+    mockGetPlatformSettingsApi.mockResolvedValueOnce({
+      settings: { defaultLocale: "ja", defaultTimezone: "Asia/Tokyo" },
+    });
     mockHeaders.mockResolvedValue(
       new Headers({ "accept-language": "en-US,en;q=0.9" })
     );
@@ -326,6 +330,7 @@ describe("platform-settings", () => {
 
     await expect(getPlatformDisplayLocale()).resolves.toBe("ja");
 
+    mockResolveAccessToken.mockResolvedValue("");
     mockCheckSetupStatusApi.mockRejectedValue(
       new ConnectError("platform api unavailable", Code.Unavailable)
     );

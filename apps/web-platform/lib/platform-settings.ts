@@ -19,7 +19,7 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
-import { resolveSetupDefaultLocale } from "./setup-status";
+import { readSetupDefaultLocale } from "./setup-status";
 
 /**
  * Loaded lazily so this module can keep exporting
@@ -64,6 +64,14 @@ export type UpdatePlatformDefaultLocaleResult =
  * the console screens that format their timestamps with it.
  */
 export const platformSettingsCacheTag = "platform:settings";
+
+/**
+ * The last locale {@link getPlatformDisplayLocale} resolved, for this server
+ * process. `undefined` while it has never resolved one — a freshly started
+ * instance, or one that has only ever seen the API down. The same shape
+ * `resolveSetupCompleted` uses to keep routing through an outage.
+ */
+let lastConfirmedDisplayLocale: Locale | undefined;
 
 /**
  * The server rejects an unknown IANA name with `invalid_argument` and names the
@@ -214,24 +222,33 @@ export const getPlatformDisplayTimeZone = async (): Promise<string> => {
  * The saved setting is the answer, and it stays the answer without a session:
  * `GetPlatformSettings` needs one, but `CheckSetupStatus` does not and reports
  * the same value, so the login screen renders in the language the platform
- * saved rather than one guessed for whoever is looking at it. That read also
- * survives an outage by reporting the last locale it confirmed, so the error
- * screen an outage produces arrives in the language the operator was already
- * reading.
+ * saved rather than one guessed for whoever is looking at it.
  *
- * Only a platform that has saved nothing falls through to `Accept-Language` —
- * before setup there is no console language yet, and the browser's preference
- * is the one thing that says anything about the operator about to choose one.
+ * When neither read answers, {@link lastConfirmedDisplayLocale} carries the
+ * console through: an outage does not change what the platform saved, and the
+ * operator reading the error screen it produces should not watch the console
+ * change language on them.
+ *
+ * Only a platform that has saved nothing — before setup, or a process that has
+ * never had an answer at all — falls through to `Accept-Language`, where the
+ * browser's preference is the one thing that says anything about the operator
+ * about to choose a language.
  */
 export const getPlatformDisplayLocale = async (): Promise<Locale> => {
   const settings = await readPlatformSettings();
   if (settings) {
+    lastConfirmedDisplayLocale = settings.defaultLocale;
     return settings.defaultLocale;
   }
 
-  const saved = await resolveSetupDefaultLocale();
+  const saved = await readSetupDefaultLocale();
   if (saved) {
+    lastConfirmedDisplayLocale = saved;
     return saved;
+  }
+
+  if (lastConfirmedDisplayLocale) {
+    return lastConfirmedDisplayLocale;
   }
 
   const requestHeaders = await headers();
