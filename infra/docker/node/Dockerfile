@@ -22,7 +22,7 @@
 FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS base
 
 # renovate: datasource=npm depName=pnpm versioning=semver
-ARG PNPM_VERSION=11.24.0
+ARG PNPM_VERSION=11.25.0
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates \
