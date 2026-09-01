@@ -41,6 +41,14 @@ test.describe("web-admin console error boundary", () => {
   // web-admin project; it stops admin-api-server, not the public API.
   test.describe.configure({ mode: "serial" });
 
+  // The error screen is client-rendered, and the root layout cannot put the
+  // tenant's stored default in `<html lang>` without awaiting — which would
+  // block the whole tree for an attribute. An operator who has chosen no
+  // language therefore reads it in whatever the browser asks for, so the
+  // browser language is pinned to make the Japanese copy below the expected
+  // copy. Carrying the stored default to the client is #1249.
+  test.use({ locale: "ja-JP" });
+
   test.afterAll(() => {
     runAdminApiServerScript("start-wait");
   });

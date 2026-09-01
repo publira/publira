@@ -5,10 +5,8 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { tenant_id } from "next/root-params";
-import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { TenantLangScript } from "#components/tenant-lang-script";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantName } from "#lib/public-api";
 import { isTenantIdFormat } from "#lib/tenant-id-format";
@@ -67,13 +65,16 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * the tenant's stored default — and a root layout that awaits blocks the whole
  * tree. An `<html>` attribute is never worth that, so neither read happens
  * here: `LOCALE_LANG_SCRIPT` applies the cookie while the document is still
- * being parsed, and {@link TenantLangScript} streams in the tenant default for
- * an operator who has chosen nothing. `suppressHydrationWarning` is what lets
- * the DOM those scripts produce win over what React rendered.
+ * being parsed, and `suppressHydrationWarning` is what lets the DOM it produces
+ * win over what React rendered.
  *
- * Until one of them runs the document names no language, which is the honest
- * state: a `lang` the page is not written in tells a screen reader to pronounce
- * it in the wrong language, and that is worse for that reader than none.
+ * An operator who has chosen no language leaves the document naming none, which
+ * is the honest state: a `lang` the page is not written in tells a screen reader
+ * to pronounce it in the wrong language, and that is worse for that reader than
+ * none. Streaming the tenant default in later is not the answer — a client
+ * component can pick its own locale before that arrives, and then the catalog it
+ * loads disagrees with the one the server rendered. Carrying the stored default
+ * to the client is #1249.
  */
 const TenantRootLayout = ({ children }: { children: ReactNode }) => (
   <html suppressHydrationWarning>
@@ -84,9 +85,6 @@ const TenantRootLayout = ({ children }: { children: ReactNode }) => (
       <link href="/theme.css" rel="stylesheet" />
     </head>
     <body className="min-h-dvh bg-background text-foreground antialiased">
-      <Suspense fallback={null}>
-        <TenantLangScript />
-      </Suspense>
       {children}
     </body>
   </html>

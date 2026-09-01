@@ -65,25 +65,6 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
  */
 export const LOCALE_LANG_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${LOCALE_COOKIE_NAME}=([^;]*)/);if(!m){return}var l=decodeURIComponent(m[1]).trim();if(${JSON.stringify(getLocales())}.indexOf(l)<0){return}document.documentElement.lang=l}catch(e){}})()`;
 
-/**
- * Source of a script that applies a locale the server resolved to
- * `<html lang>`, for an app whose root layout cannot name one synchronously.
- *
- * A root layout must not be `async`: awaiting there blocks the whole tree, and
- * an attribute is never worth that. So the value travels as a script from a
- * component under `<Suspense>` instead, and the document gets its language
- * once that resolves rather than holding everything up until it does.
- *
- * It never overwrites a language already on the element, so the reader's own
- * cookie — applied by {@link LOCALE_LANG_SCRIPT} while the document is still
- * being parsed — wins no matter which script runs first.
- *
- * `locale` is a {@link Locale}, so only a code from `locales/index.json`
- * reaches the source, and it is quoted rather than interpolated bare.
- */
-export const defaultLocaleLangScript = (locale: Locale): string =>
-  `(function(){try{if(document.documentElement.lang){return}document.documentElement.lang=${JSON.stringify(locale)}}catch(e){}})()`;
-
 const LOCALE_SET: ReadonlySet<string> = new Set(getLocales());
 
 /**

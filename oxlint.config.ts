@@ -108,18 +108,8 @@ export default defineConfig({
        * `/[tenant_id]/...`, so the same document lives at
        * `app/[tenant_id]/layout.tsx` — one directory deep, which `*` matches
        * without also covering `(protected)/layout.tsx`.
-       *
-       * `tenant-lang-script.tsx` injects the second one. A root layout must
-       * not be `async`, so the tenant's stored default cannot be rendered as
-       * an attribute there and travels as a streamed script instead; its
-       * source is built from a `Locale` by `@publira/i18n`, so no
-       * request-derived value reaches it either.
        */
-      files: [
-        "apps/*/app/layout.tsx",
-        "apps/web-admin/app/*/layout.tsx",
-        "apps/web-admin/components/tenant-lang-script.tsx",
-      ],
+      files: ["apps/*/app/layout.tsx", "apps/web-admin/app/*/layout.tsx"],
       rules: {
         "react/no-danger": "off",
       },
@@ -132,16 +122,15 @@ export default defineConfig({
        * Every value the attribute could take needs a read — the operator's
        * cookie, and the stored default behind it — and a root layout that
        * awaits blocks the whole tree. An `<html>` attribute is never worth
-       * that, so both layouts stay synchronous and the reads travel as
-       * scripts: `LOCALE_LANG_SCRIPT` for the cookie, and in `web-admin` a
-       * streamed `<TenantLangScript>` for the tenant default.
+       * that, so both layouts stay synchronous and the cookie travels as a
+       * script (`LOCALE_LANG_SCRIPT`) instead.
        *
-       * Until one runs the document names no language. A `lang` the document
+       * Until it runs the document names no language. A `lang` the document
        * is not written in tells a screen reader to pronounce the page in the
        * wrong language, which is worse for the reader this rule protects than
        * an absent one, and it is what AGENTS.md means by not misreporting an
-       * unresolved locale as a language. `web-platform` has no stored default
-       * it can read without a session at all; that half is #1249.
+       * unresolved locale as a language. Carrying the stored default to the
+       * document — which the client boundaries also read — is #1249.
        */
       files: [
         "apps/web-platform/app/layout.tsx",

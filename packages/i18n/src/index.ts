@@ -1,6 +1,5 @@
 export { negotiateInitialLocale } from "./accept-language";
 export {
-  defaultLocaleLangScript,
   formatMessage,
   getLocales,
   getLocaleLabel,
