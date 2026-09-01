@@ -57,6 +57,11 @@ message AdminAuthServiceGetTenantByDomainRequest {
 message AdminAuthServiceGetTenantByDomainResponse {
   // Primary key (UUID) for internal routing / TenantContext.
   string tenant_id = 1;
+  // The tenant's saved default locale (ja, en) so the console proxy can publish
+  // the display language in the round trip it already makes. Never empty: a
+  // stored code naming no supported locale fails this RPC rather than answering
+  // another language.
+  string default_locale = 2;
 }
 
 message AdminAuthServiceGetTenantRequest {

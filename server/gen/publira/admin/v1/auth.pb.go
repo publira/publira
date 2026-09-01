@@ -549,7 +549,12 @@ func (x *AdminAuthServiceGetTenantByDomainRequest) GetDomains() []string {
 type AdminAuthServiceGetTenantByDomainResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Primary key (UUID) for internal routing / TenantContext.
-	TenantId      string `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	TenantId string `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// The tenant's saved default locale (ja, en) so the console proxy can publish
+	// the display language in the round trip it already makes. Never empty: a
+	// stored code naming no supported locale fails this RPC rather than answering
+	// another language.
+	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -587,6 +592,13 @@ func (*AdminAuthServiceGetTenantByDomainResponse) Descriptor() ([]byte, []int) {
 func (x *AdminAuthServiceGetTenantByDomainResponse) GetTenantId() string {
 	if x != nil {
 		return x.TenantId
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceGetTenantByDomainResponse) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
 	}
 	return ""
 }
@@ -1474,9 +1486,10 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\x1dAdminAuthServiceGetMeResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\"D\n" +
 	"(AdminAuthServiceGetTenantByDomainRequest\x12\x18\n" +
-	"\adomains\x18\x01 \x03(\tR\adomains\"H\n" +
+	"\adomains\x18\x01 \x03(\tR\adomains\"o\n" +
 	")AdminAuthServiceGetTenantByDomainResponse\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"[\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12%\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"[\n" +
 	" AdminAuthServiceGetTenantRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\x84\x01\n" +
 	"\x16AdminAuthServiceTenant\x12\x1b\n" +

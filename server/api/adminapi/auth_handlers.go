@@ -21,6 +21,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
@@ -437,8 +438,14 @@ func (s *adminServer) GetTenantByDomain(
 		return nil, s.internalDBError(ctx, "failed to get tenant by domain", err)
 	}
 
+	defaultLocale, err := locale.Resolve(tenant.DefaultLocale)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+	}
+
 	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantByDomainResponse{
-		TenantId: tenant.ID.String(),
+		TenantId:      tenant.ID.String(),
+		DefaultLocale: defaultLocale,
 	}), nil
 }
 
