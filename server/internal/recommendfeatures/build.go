@@ -77,6 +77,10 @@ func New(db *sql.DB) *Builder {
 // features would leave them serving a snapshot a day older for nothing. The
 // run finishes what it can and returns every failure together, so the exit
 // status still reports the build as failed.
+//
+// A cancelled context is the one failure that does stop the run: every tenant
+// left would fail for that same reason, so the loop ends at the tenant that
+// hit it rather than working through the rest.
 func (b *Builder) Run(ctx context.Context, opts Options) (Result, error) {
 	if b == nil || b.db == nil {
 		return Result{}, errors.New("recommend feature build requires a database")

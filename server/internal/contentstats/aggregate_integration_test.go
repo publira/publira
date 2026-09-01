@@ -103,7 +103,13 @@ func TestRunAggregatesTheRemainingTenantsAfterOneFails(t *testing.T) {
 	insertEvent(t, pg.DB, eventSeed{tenantID: broken.ID, eventType: "episode_view", userID: brokenViewer.ID, seriesID: brokenSeries.ID, episodeID: brokenEpisode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
 	insertEvent(t, pg.DB, eventSeed{tenantID: healthy.ID, eventType: "episode_view", userID: healthyViewer.ID, seriesID: healthySeries.ID, episodeID: healthyEpisode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
 
-	rejectDailyStatsForTenant(t, pg.DB, broken.ID)
+	// The failing tenant already has a row for this day, which its transaction
+	// deletes before the rejected insert. Finding it unchanged afterwards is
+	// what proves the failure rolled the deletion back rather than leaving the
+	// tenant with nothing at all.
+	insertStaleStat(t, pg.DB, broken.ID, statDate, "episode", brokenEpisode.ID)
+
+	rejectDailyStatsForTenants(t, pg.DB, broken.ID)
 
 	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), statDate)
 	if err == nil || !strings.Contains(err.Error(), broken.ID.String()) {
@@ -114,11 +120,80 @@ func TestRunAggregatesTheRemainingTenantsAfterOneFails(t *testing.T) {
 	}
 
 	stats := loadStats(t, pg.DB, statDate)
-	if _, ok := stats[statKey{tenantID: broken.ID, entityType: "episode", entityID: brokenEpisode.ID}]; ok {
+	assertStat(t, stats, broken.ID, "episode", brokenEpisode.ID, stat{viewCount: staleViewCount})
+	if _, ok := stats[statKey{tenantID: broken.ID, entityType: "series", entityID: brokenSeries.ID}]; ok {
 		t.Fatal("the failing tenant committed stats")
 	}
 	assertStat(t, stats, healthy.ID, "episode", healthyEpisode.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1})
 	assertStat(t, stats, healthy.ID, "series", healthySeries.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1})
+}
+
+func TestRunReportsEveryFailedTenant(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	statDate := time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)
+	firstBroken := pg.SeedTenant(t, "STATSBROKEN2", "broken2-stats.example.com", "First Broken Stats Tenant")
+	secondBroken := pg.SeedTenant(t, "STATSBROKEN3", "broken3-stats.example.com", "Second Broken Stats Tenant")
+	healthy := pg.SeedTenant(t, "STATSHEALTH2", "healthy2-stats.example.com", "Healthy Stats Tenant")
+	seedViewedEpisode(t, pg, firstBroken.ID, "BRK2", statDate)
+	seedViewedEpisode(t, pg, secondBroken.ID, "BRK3", statDate)
+	seedViewedEpisode(t, pg, healthy.ID, "HLT2", statDate)
+
+	rejectDailyStatsForTenants(t, pg.DB, firstBroken.ID, secondBroken.ID)
+
+	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), statDate)
+	if err == nil {
+		t.Fatal("Run error = nil, want failures for both broken tenants")
+	}
+	// Both ids have to be in the joined error: an operator reading the log
+	// decides which tenants to rebuild from it, and a run that named only the
+	// first would hide the second.
+	for _, tenantID := range []uuid.UUID{firstBroken.ID, secondBroken.ID} {
+		if !strings.Contains(err.Error(), tenantID.String()) {
+			t.Errorf("Run error = %v, want it to name tenant %s", err, tenantID)
+		}
+	}
+	if want := (Result{TenantCount: 1, RowCount: 2}); result != want {
+		t.Fatalf("result = %+v, want %+v", result, want)
+	}
+	if got := len(loadStats(t, pg.DB, statDate)); got != 2 {
+		t.Fatalf("daily stats rows = %d, want the healthy tenant's 2", got)
+	}
+}
+
+func TestRunStopsAtACancelledContext(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	statDate := time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)
+	// The first tenant blocks on the advisory lock a concurrent run is holding
+	// until the context deadline cancels the wait. The second must then be left
+	// alone rather than tried and failed for the same expired context.
+	blocked := pg.SeedTenant(t, "STATSBLOCK01", "blocked-stats.example.com", "Blocked Stats Tenant")
+	untried := pg.SeedTenant(t, "STATSUNTRIED", "untried-stats.example.com", "Untried Stats Tenant")
+	untriedSeries := pg.SeedSeries(t, untried.ID, testutil.SeriesSeed{PublicID: "STATSUNTRSER"})
+	untriedEpisode := pg.SeedEpisode(t, untried.ID, untriedSeries.ID, testutil.EpisodeSeed{PublicID: "STATSUNTREPI"})
+	untriedViewer := pg.SeedEndUser(t, untried.ID, "STATSUNTRVWR", "viewer@untried-stats.example.com", "Untried Viewer")
+	insertEvent(t, pg.DB, eventSeed{tenantID: untried.ID, eventType: "episode_view", userID: untriedViewer.ID, seriesID: untriedSeries.ID, episodeID: untriedEpisode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
+
+	holdTenantLock(t, pg.DB, blocked.ID.String()+":"+statDate.Format(time.DateOnly))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	result, err := New(pg.OpenPlatformDB(t)).Run(ctx, statDate)
+	if err == nil || !strings.Contains(err.Error(), blocked.ID.String()) {
+		t.Fatalf("Run error = %v, want a failure naming tenant %s", err, blocked.ID)
+	}
+	if strings.Contains(err.Error(), untried.ID.String()) {
+		t.Fatalf("Run error = %v, want the tenants after the cancellation left untried", err)
+	}
+	if want := (Result{}); result != want {
+		t.Fatalf("result = %+v, want %+v", result, want)
+	}
+	if got := len(loadStats(t, pg.DB, statDate)); got != 0 {
+		t.Fatalf("daily stats rows = %d, want none", got)
+	}
 }
 
 func TestRunRejectsTenantScopedRole(t *testing.T) {
@@ -191,9 +266,68 @@ func assertPlanUsesIndex(t *testing.T, db *sql.DB, query string, tenantID uuid.U
 	}
 }
 
-// rejectDailyStatsForTenant makes every stats insert for one tenant fail, so a
-// test can watch what the run does with the tenants that come after it.
-func rejectDailyStatsForTenant(t *testing.T, db *sql.DB, tenantID uuid.UUID) {
+// staleViewCount marks a stats row a test seeded before the run, so an
+// assertion can tell the row the run left alone from one it rebuilt.
+const staleViewCount = 999
+
+// seedViewedEpisode gives one tenant a single episode view on statDate, which
+// aggregates to exactly two rows: the episode and the series holding it.
+func seedViewedEpisode(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID, prefix string, statDate time.Time) {
+	t.Helper()
+	series := pg.SeedSeries(t, tenantID, testutil.SeriesSeed{PublicID: "STATSSER" + prefix})
+	episode := pg.SeedEpisode(t, tenantID, series.ID, testutil.EpisodeSeed{PublicID: "STATSEPI" + prefix})
+	viewer := pg.SeedEndUser(t, tenantID, "STATSVWR"+prefix, "viewer-"+prefix+"@stats.example.com", "Viewer "+prefix)
+	insertEvent(t, pg.DB, eventSeed{tenantID: tenantID, eventType: "episode_view", userID: viewer.ID,
+		seriesID: series.ID, episodeID: episode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
+}
+
+// insertStaleStat plants the row a previous run would have left behind, so a
+// test can tell a rolled-back rebuild from one that deleted and never replaced.
+func insertStaleStat(t *testing.T, db *sql.DB, tenantID uuid.UUID, statDate time.Time, entityType string, entityID uuid.UUID) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, view_count)
+		VALUES ($1, $2, $3::date, $4, $5, $6)
+	`, uuid.Must(uuid.NewV7()), tenantID, statDate.Format(time.DateOnly), entityType, entityID, staleViewCount); err != nil {
+		t.Fatalf("insert stale stat: %v", err)
+	}
+}
+
+// holdTenantLock takes one batch's advisory lock on a connection of its own and
+// keeps it for the rest of the test, standing in for a run that overlaps this
+// one. A batch that asks for the same key waits until its context gives up.
+func holdTenantLock(t *testing.T, db *sql.DB, key string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		t.Fatalf("open lock holder connection: %v", err)
+	}
+	// Session scoped rather than transaction scoped: nothing here commits, and
+	// the lock has to outlive this call.
+	if _, err := conn.ExecContext(ctx, "SELECT pg_advisory_lock(hashtextextended($1::text, 0))", key); err != nil {
+		t.Fatalf("take advisory lock: %v", err)
+	}
+
+	t.Cleanup(func() {
+		cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelCleanup()
+		if _, err := conn.ExecContext(cleanupCtx, "SELECT pg_advisory_unlock(hashtextextended($1::text, 0))", key); err != nil {
+			t.Errorf("release advisory lock: %v", err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Errorf("close lock holder connection: %v", err)
+		}
+	})
+}
+
+// rejectDailyStatsForTenants makes every stats insert for the named tenants
+// fail, so a test can watch what the run does with the tenants around them.
+func rejectDailyStatsForTenants(t *testing.T, db *sql.DB, tenantIDs ...uuid.UUID) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -207,12 +341,16 @@ func rejectDailyStatsForTenant(t *testing.T, db *sql.DB, tenantID uuid.UUID) {
 	`); err != nil {
 		t.Fatalf("create rejection function: %v", err)
 	}
+	quoted := make([]string, 0, len(tenantIDs))
+	for _, tenantID := range tenantIDs {
+		quoted = append(quoted, fmt.Sprintf("'%s'::uuid", tenantID))
+	}
 	if _, err := db.ExecContext(ctx, fmt.Sprintf(`
 		CREATE TRIGGER reject_daily_stat
 		BEFORE INSERT ON content_daily_stats
-		FOR EACH ROW WHEN (NEW.tenant_id = '%s'::uuid)
+		FOR EACH ROW WHEN (NEW.tenant_id IN (%s))
 		EXECUTE FUNCTION reject_daily_stat()
-	`, tenantID)); err != nil {
+	`, strings.Join(quoted, ", "))); err != nil {
 		t.Fatalf("create rejection trigger: %v", err)
 	}
 

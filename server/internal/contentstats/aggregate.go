@@ -45,6 +45,10 @@ func New(db *sql.DB) *Aggregator {
 // lock timeout on one tenant cost every tenant after it their stats would lose
 // that day for good. The run finishes what it can and returns every failure
 // together, so the exit status still reports the day as failed.
+//
+// A cancelled context is the one failure that does stop the run: every tenant
+// left would fail for that same reason, so the loop ends at the tenant that
+// hit it rather than working through the rest.
 func (a *Aggregator) Run(ctx context.Context, statDate time.Time) (Result, error) {
 	if a == nil || a.db == nil {
 		return Result{}, errors.New("content stats aggregator requires a database")
