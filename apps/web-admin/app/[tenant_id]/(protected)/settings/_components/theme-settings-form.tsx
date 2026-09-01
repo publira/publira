@@ -33,6 +33,7 @@ import type { AdminMessageKey } from "#lib/locale";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { ThemeSettingsActionState } from "../settings-types";
+import { ThemePreview } from "./theme-preview";
 
 interface ThemeSettingsFormProps {
   action: (
@@ -368,6 +369,20 @@ export const ThemeSettingsForm = ({
 
   return (
     <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {getMessage(messages, "admin.settings.theme.preview.title")}
+          </CardTitle>
+          <CardDescription>
+            {getMessage(messages, "admin.settings.theme.preview.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ThemePreview theme={colors} />
+        </CardContent>
+      </Card>
+
       <form action={formAction} className="contents">
         <input name="tenant_id" type="hidden" value={tenantId} />
 
