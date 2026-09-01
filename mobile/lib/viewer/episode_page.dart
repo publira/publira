@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:publira/api/episode_image_client.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/viewer/episode_image.dart';
 import 'package:publira/viewer/page_fit.dart';
 
 /// One page of the body, drawn inside the box [fitPageSize] reserves for it.
@@ -14,6 +16,7 @@ class EpisodePage extends StatefulWidget {
     required this.image,
     required this.viewport,
     required this.headers,
+    required this.client,
   });
 
   final EpisodeImageItem image;
@@ -23,6 +26,9 @@ class EpisodePage extends StatefulWidget {
   /// a paid body, the reader.
   final Map<String, String> headers;
 
+  /// Fetches the page, decrypting it when the body is a paid one.
+  final EpisodeImageClient client;
+
   @override
   State<EpisodePage> createState() => _EpisodePageState();
 }
@@ -30,8 +36,11 @@ class EpisodePage extends StatefulWidget {
 class _EpisodePageState extends State<EpisodePage> {
   var _attempt = 0;
 
-  NetworkImage get _provider =>
-      NetworkImage(widget.image.url.toString(), headers: widget.headers);
+  EpisodeImage get _provider => EpisodeImage(
+    widget.image.url,
+    headers: widget.headers,
+    client: widget.client,
+  );
 
   void _retry() {
     // A failed fetch stays in the image cache, so a rebuilt widget would show

@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:publira/api/episode_image_client.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/viewer/episode_image.dart';
 import 'package:publira/viewer/episode_page.dart';
 
 /// Paged body reader.
@@ -13,10 +17,15 @@ class EpisodeReader extends StatefulWidget {
     super.key,
     required this.images,
     required this.imageHeaders,
+    this.imageClient,
   });
 
   final List<EpisodeImageItem> images;
   final Map<String, String> imageHeaders;
+
+  /// Fetches and decrypts the pages. The reader opens its own client when this
+  /// is null, and closes only the one it opened.
+  final EpisodeImageClient? imageClient;
 
   @override
   State<EpisodeReader> createState() => _EpisodeReaderState();
@@ -24,10 +33,32 @@ class EpisodeReader extends StatefulWidget {
 
 class _EpisodeReaderState extends State<EpisodeReader> {
   final _controller = PageController();
+  late final EpisodeImageClient _client;
   var _index = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _client = widget.imageClient ?? EpisodeImageClient();
+  }
+
+  @override
   void dispose() {
+    // A decoded page is megabytes of pixels, and the image cache is shared by
+    // the whole app: hand the episode's pages back when the reader closes
+    // instead of leaving them to age out behind whatever is read next.
+    for (final image in widget.images) {
+      unawaited(
+        EpisodeImage(
+          image.url,
+          headers: widget.imageHeaders,
+          client: _client,
+        ).evict(),
+      );
+    }
+    if (widget.imageClient == null) {
+      _client.close();
+    }
     _controller.dispose();
     super.dispose();
   }
@@ -83,6 +114,7 @@ class _EpisodeReaderState extends State<EpisodeReader> {
                   image: widget.images[index],
                   viewport: viewport,
                   headers: widget.imageHeaders,
+                  client: _client,
                 ),
               ),
             ),
