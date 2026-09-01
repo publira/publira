@@ -3,6 +3,7 @@ package contentstats
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -82,6 +83,44 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	}
 }
 
+func TestRunAggregatesTheRemainingTenantsAfterOneFails(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	statDate := time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)
+	// Tenant ids are UUIDv7 and Run walks them in id order, so the tenant
+	// seeded first is the one that fails first: anything the second tenant
+	// ends up with was written after that failure.
+	broken := pg.SeedTenant(t, "STATSBROKEN1", "broken-stats.example.com", "Broken Stats Tenant")
+	healthy := pg.SeedTenant(t, "STATSHEALTH1", "healthy-stats.example.com", "Healthy Stats Tenant")
+	brokenSeries := pg.SeedSeries(t, broken.ID, testutil.SeriesSeed{PublicID: "STATSBROKSER"})
+	brokenEpisode := pg.SeedEpisode(t, broken.ID, brokenSeries.ID, testutil.EpisodeSeed{PublicID: "STATSBROKEP1"})
+	healthySeries := pg.SeedSeries(t, healthy.ID, testutil.SeriesSeed{PublicID: "STATSHEALSER"})
+	healthyEpisode := pg.SeedEpisode(t, healthy.ID, healthySeries.ID, testutil.EpisodeSeed{PublicID: "STATSHEALEP1"})
+	brokenViewer := pg.SeedEndUser(t, broken.ID, "STATSBROKVWR", "viewer@broken-stats.example.com", "Broken Viewer")
+	healthyViewer := pg.SeedEndUser(t, healthy.ID, "STATSHEALVWR", "viewer@healthy-stats.example.com", "Healthy Viewer")
+
+	insertEvent(t, pg.DB, eventSeed{tenantID: broken.ID, eventType: "episode_view", userID: brokenViewer.ID, seriesID: brokenSeries.ID, episodeID: brokenEpisode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
+	insertEvent(t, pg.DB, eventSeed{tenantID: healthy.ID, eventType: "episode_view", userID: healthyViewer.ID, seriesID: healthySeries.ID, episodeID: healthyEpisode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
+
+	rejectDailyStatsForTenant(t, pg.DB, broken.ID)
+
+	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), statDate)
+	if err == nil || !strings.Contains(err.Error(), broken.ID.String()) {
+		t.Fatalf("Run error = %v, want a failure naming tenant %s", err, broken.ID)
+	}
+	if want := (Result{TenantCount: 1, RowCount: 2}); result != want {
+		t.Fatalf("result = %+v, want %+v", result, want)
+	}
+
+	stats := loadStats(t, pg.DB, statDate)
+	if _, ok := stats[statKey{tenantID: broken.ID, entityType: "episode", entityID: brokenEpisode.ID}]; ok {
+		t.Fatal("the failing tenant committed stats")
+	}
+	assertStat(t, stats, healthy.ID, "episode", healthyEpisode.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1})
+	assertStat(t, stats, healthy.ID, "series", healthySeries.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1})
+}
+
 func TestRunRejectsTenantScopedRole(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -150,6 +189,43 @@ func assertPlanUsesIndex(t *testing.T, db *sql.DB, query string, tenantID uuid.U
 	if !strings.Contains(plan.String(), index) {
 		t.Fatalf("plan does not use %s:\n%s", index, plan.String())
 	}
+}
+
+// rejectDailyStatsForTenant makes every stats insert for one tenant fail, so a
+// test can watch what the run does with the tenants that come after it.
+func rejectDailyStatsForTenant(t *testing.T, db *sql.DB, tenantID uuid.UUID) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := db.ExecContext(ctx, `
+		CREATE FUNCTION reject_daily_stat() RETURNS trigger LANGUAGE plpgsql AS $$
+		BEGIN
+			RAISE EXCEPTION 'daily stat rejected by test trigger';
+		END;
+		$$
+	`); err != nil {
+		t.Fatalf("create rejection function: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, fmt.Sprintf(`
+		CREATE TRIGGER reject_daily_stat
+		BEFORE INSERT ON content_daily_stats
+		FOR EACH ROW WHEN (NEW.tenant_id = '%s'::uuid)
+		EXECUTE FUNCTION reject_daily_stat()
+	`, tenantID)); err != nil {
+		t.Fatalf("create rejection trigger: %v", err)
+	}
+
+	t.Cleanup(func() {
+		cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelCleanup()
+		if _, err := db.ExecContext(cleanupCtx, "DROP TRIGGER IF EXISTS reject_daily_stat ON content_daily_stats"); err != nil {
+			t.Errorf("drop rejection trigger: %v", err)
+		}
+		if _, err := db.ExecContext(cleanupCtx, "DROP FUNCTION IF EXISTS reject_daily_stat()"); err != nil {
+			t.Errorf("drop rejection function: %v", err)
+		}
+	})
 }
 
 type eventSeed struct {

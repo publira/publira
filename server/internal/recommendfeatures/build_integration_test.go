@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -169,6 +170,50 @@ func TestRunLeavesEmptySnapshotsForATenantWithoutSignal(t *testing.T) {
 	if want := (Result{TenantCount: 1}); result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
+}
+
+func TestRunBuildsTheRemainingTenantsAfterOneFails(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	// Tenant ids are UUIDv7 and Run walks them in id order, so the tenant
+	// seeded first is the one that fails first: anything the second tenant
+	// ends up with was written after that failure.
+	broken := pg.SeedTenant(t, "FEATBROKEN01", "broken-features.example.com", "Broken Feature Tenant")
+	healthy := pg.SeedTenant(t, "FEATHEALTHY1", "healthy-features.example.com", "Healthy Feature Tenant")
+	brokenSeries := pg.SeedSeries(t, broken.ID, testutil.SeriesSeed{PublicID: "FEATBROKSER1"})
+	healthySeries := pg.SeedSeries(t, healthy.ID, testutil.SeriesSeed{PublicID: "FEATHEALSER1"})
+	healthyReader := pg.SeedEndUser(t, healthy.ID, "FEATHEALRDR1", "reader@healthy-features.example.com", "Healthy Reader")
+
+	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: broken.ID, statDate: referenceDate, entityType: "series", entityID: brokenSeries.ID, viewCount: 5, uniqueViewerCount: 2})
+	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: healthy.ID, statDate: referenceDate, entityType: "series", entityID: healthySeries.ID, viewCount: 2, uniqueViewerCount: 1})
+	insertEvent(t, pg.DB, eventSeed{tenantID: healthy.ID, eventType: "series_view", userID: healthyReader.ID, seriesID: healthySeries.ID, debounceBucket: 1, occurredAt: at("2026-08-26T01:00:00Z")})
+
+	rejectItemFeaturesForTenant(t, pg.DB, broken.ID)
+
+	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), buildOptions())
+	if err == nil || !strings.Contains(err.Error(), broken.ID.String()) {
+		t.Fatalf("Run error = %v, want a failure naming tenant %s", err, broken.ID)
+	}
+	if want := (Result{TenantCount: 1, UserRowCount: 1, ItemRowCount: 1}); result != want {
+		t.Fatalf("result = %+v, want %+v", result, want)
+	}
+
+	items := loadItemFeatures(t, pg.DB)
+	if _, ok := items[itemKey{tenantID: broken.ID, entityType: "series", entityID: brokenSeries.ID}]; ok {
+		t.Fatal("the failing tenant committed item features")
+	}
+	assertItem(t, items, itemKey{tenantID: healthy.ID, entityType: "series", entityID: healthySeries.ID}, itemFeatures{
+		WindowDays: windowDays, WindowStart: windowStart, WindowEnd: referenceDate,
+		ViewCount: 2, ViewerDays: 1, ActiveDays: 1, LastActiveDate: referenceDate,
+	})
+	assertUser(t, loadUserFeatures(t, pg.DB), userKey{tenantID: healthy.ID, userID: healthyReader.ID}, userFeatures{
+		WindowDays: windowDays, WindowStart: windowStart, WindowEnd: referenceDate,
+		EventCount: 1, ViewCount: 1, SeriesCount: 1, LastEventAt: "2026-08-26T01:00:00Z",
+		TopSeries: []topSeriesEntry{
+			{SeriesID: healthySeries.ID, EventCount: 1, ViewCount: 1, LastEventAt: "2026-08-26T01:00:00Z"},
+		},
+	})
 }
 
 func TestRunRejectsTenantScopedRole(t *testing.T) {
@@ -340,6 +385,44 @@ func insertItemFeatures(t *testing.T, db *sql.DB, tenantID uuid.UUID, entityType
 	`, tenantID, entityType, entityID, FeatureVersion); err != nil {
 		t.Fatalf("insert item features: %v", err)
 	}
+}
+
+// rejectItemFeaturesForTenant makes every item feature insert for one tenant
+// fail, so a test can watch what the run does with the tenants that come after
+// it.
+func rejectItemFeaturesForTenant(t *testing.T, db *sql.DB, tenantID uuid.UUID) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := db.ExecContext(ctx, `
+		CREATE FUNCTION reject_item_features() RETURNS trigger LANGUAGE plpgsql AS $$
+		BEGIN
+			RAISE EXCEPTION 'item features rejected by test trigger';
+		END;
+		$$
+	`); err != nil {
+		t.Fatalf("create rejection function: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, fmt.Sprintf(`
+		CREATE TRIGGER reject_item_features
+		BEFORE INSERT ON item_recommend_features
+		FOR EACH ROW WHEN (NEW.tenant_id = '%s'::uuid)
+		EXECUTE FUNCTION reject_item_features()
+	`, tenantID)); err != nil {
+		t.Fatalf("create rejection trigger: %v", err)
+	}
+
+	t.Cleanup(func() {
+		cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelCleanup()
+		if _, err := db.ExecContext(cleanupCtx, "DROP TRIGGER IF EXISTS reject_item_features ON item_recommend_features"); err != nil {
+			t.Errorf("drop rejection trigger: %v", err)
+		}
+		if _, err := db.ExecContext(cleanupCtx, "DROP FUNCTION IF EXISTS reject_item_features()"); err != nil {
+			t.Errorf("drop rejection function: %v", err)
+		}
+	})
 }
 
 func nullableUUID(value uuid.UUID) any {

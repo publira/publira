@@ -70,6 +70,13 @@ func New(db *sql.DB) *Builder {
 // Run replaces both feature snapshots for every tenant. Each tenant is its own
 // transaction, so a failure part-way through leaves the tenants already built
 // with a complete snapshot rather than a half-written one.
+//
+// One tenant's failure does not stop the others. The cron that drives this
+// builds yesterday's window and never comes back for a day it missed, so
+// letting a lock timeout on one tenant cost every tenant after it their
+// features would leave them serving a snapshot a day older for nothing. The
+// run finishes what it can and returns every failure together, so the exit
+// status still reports the build as failed.
 func (b *Builder) Run(ctx context.Context, opts Options) (Result, error) {
 	if b == nil || b.db == nil {
 		return Result{}, errors.New("recommend feature build requires a database")
@@ -96,16 +103,23 @@ func (b *Builder) Run(ctx context.Context, opts Options) (Result, error) {
 	}
 
 	var result Result
+	var failures []error
 	for _, tenantID := range tenants {
 		userRows, itemRows, err := b.buildTenant(ctx, tenantID, referenceDate, windowDays, topSeriesLimit)
 		if err != nil {
-			return result, fmt.Errorf("build features for tenant %s at %s: %w", tenantID, referenceDate, err)
+			failures = append(failures, fmt.Errorf("build features for tenant %s at %s: %w", tenantID, referenceDate, err))
+			// A cancelled context fails every remaining tenant the same way,
+			// so there is nothing left to salvage by carrying on.
+			if ctx.Err() != nil {
+				break
+			}
+			continue
 		}
 		result.TenantCount++
 		result.UserRowCount += userRows
 		result.ItemRowCount += itemRows
 	}
-	return result, nil
+	return result, errors.Join(failures...)
 }
 
 func (b *Builder) requireBypassRLS(ctx context.Context) error {

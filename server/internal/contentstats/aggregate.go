@@ -22,7 +22,9 @@ type Aggregator struct {
 	db *sql.DB
 }
 
-// Result describes one complete aggregate run.
+// Result describes one aggregate run. Every count covers the tenants the run
+// actually finished: each tenant commits on its own, so on an error the counts
+// describe the tenants that succeeded rather than the ones that were tried.
 type Result struct {
 	TenantCount int
 	RowCount    int64
@@ -34,7 +36,15 @@ func New(db *sql.DB) *Aggregator {
 }
 
 // Run replaces the stats for statDate for every tenant. statDate is interpreted
-// as a UTC calendar day; content_daily_stats is a UTC daily aggregate.
+// as a UTC calendar day; content_daily_stats is a UTC daily aggregate. Each
+// tenant is its own transaction, so a failure part-way through leaves the
+// tenants already rebuilt with a complete day rather than a half-written one.
+//
+// One tenant's failure does not stop the others. The cron that drives this
+// rebuilds yesterday and never comes back for a day it missed, so letting a
+// lock timeout on one tenant cost every tenant after it their stats would lose
+// that day for good. The run finishes what it can and returns every failure
+// together, so the exit status still reports the day as failed.
 func (a *Aggregator) Run(ctx context.Context, statDate time.Time) (Result, error) {
 	if a == nil || a.db == nil {
 		return Result{}, errors.New("content stats aggregator requires a database")
@@ -49,15 +59,23 @@ func (a *Aggregator) Run(ctx context.Context, statDate time.Time) (Result, error
 		return Result{}, fmt.Errorf("list tenants: %w", err)
 	}
 
-	result := Result{TenantCount: len(tenants)}
+	var result Result
+	var failures []error
 	for _, tenantID := range tenants {
 		rows, err := a.aggregateTenant(ctx, tenantID, date)
 		if err != nil {
-			return Result{}, fmt.Errorf("aggregate tenant %s for %s: %w", tenantID, date, err)
+			failures = append(failures, fmt.Errorf("aggregate tenant %s for %s: %w", tenantID, date, err))
+			// A cancelled context fails every remaining tenant the same way,
+			// so there is nothing left to salvage by carrying on.
+			if ctx.Err() != nil {
+				break
+			}
+			continue
 		}
+		result.TenantCount++
 		result.RowCount += rows
 	}
-	return result, nil
+	return result, errors.Join(failures...)
 }
 
 func (a *Aggregator) requireBypassRLS(ctx context.Context) error {
