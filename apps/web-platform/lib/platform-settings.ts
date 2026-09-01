@@ -19,7 +19,7 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
-import { readSetupDefaultLocale } from "./setup-status";
+import { resolveSetupDefaultLocale } from "./setup-status";
 
 /**
  * Loaded lazily so this module can keep exporting
@@ -214,7 +214,10 @@ export const getPlatformDisplayTimeZone = async (): Promise<string> => {
  * The saved setting is the answer, and it stays the answer without a session:
  * `GetPlatformSettings` needs one, but `CheckSetupStatus` does not and reports
  * the same value, so the login screen renders in the language the platform
- * saved rather than one guessed for whoever is looking at it.
+ * saved rather than one guessed for whoever is looking at it. That read also
+ * survives an outage by reporting the last locale it confirmed, so the error
+ * screen an outage produces arrives in the language the operator was already
+ * reading.
  *
  * Only a platform that has saved nothing falls through to `Accept-Language` —
  * before setup there is no console language yet, and the browser's preference
@@ -226,7 +229,7 @@ export const getPlatformDisplayLocale = async (): Promise<Locale> => {
     return settings.defaultLocale;
   }
 
-  const saved = await readSetupDefaultLocale();
+  const saved = await resolveSetupDefaultLocale();
   if (saved) {
     return saved;
   }

@@ -48,7 +48,7 @@ describe("platform-settings", () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
     mockHeaders.mockResolvedValue(new Headers());
     mockCheckSetupStatusApi.mockResolvedValue({
-      defaultLocale: "",
+      defaultLocale: "ja",
       setupCompleted: true,
     });
   });
@@ -312,6 +312,25 @@ describe("platform-settings", () => {
 
     await expect(getPlatformDisplayLocale()).resolves.toBe("en");
     expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();
+  });
+
+  it("keeps the saved language through an outage", async () => {
+    // The operator is reading an error screen; arriving in another language
+    // would make the outage look like a setting they had changed.
+    mockResolveAccessToken.mockResolvedValue("");
+    mockHeaders.mockResolvedValue(
+      new Headers({ "accept-language": "en-US,en;q=0.9" })
+    );
+
+    const { getPlatformDisplayLocale } = await import("./platform-settings");
+
+    await expect(getPlatformDisplayLocale()).resolves.toBe("ja");
+
+    mockCheckSetupStatusApi.mockRejectedValue(
+      new ConnectError("platform api unavailable", Code.Unavailable)
+    );
+
+    await expect(getPlatformDisplayLocale()).resolves.toBe("ja");
   });
 
   it("negotiates from Accept-Language only before anything is saved", async () => {

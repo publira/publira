@@ -5,6 +5,7 @@ import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
+import { LRUCache } from "lru-cache";
 import { cacheLife, cacheTag } from "next/cache";
 
 const publicApiClient = createPublicApiClient({
@@ -105,20 +106,43 @@ export const findTenantDisplayLocale = async (
 };
 
 /**
+ * The last locale the public API confirmed for each tenant, for this server
+ * process.
+ *
+ * Bounded because the console serves many tenants and this outlives any one
+ * request; the size is a ceiling on distinct tenants seen recently, not a
+ * freshness window — a tenant that saves a new default gets it from the cached
+ * read above, which `tenant:<id>:site` revalidates.
+ */
+const lastConfirmedTenantLocale = new LRUCache<string, Locale>({ max: 500 });
+
+/**
  * The tenant's default UI locale.
  *
- * Throws when the tenant cannot be read, or names a locale this build serves no
- * catalog for. The console has no second language to offer: rendering the
- * operator a page in one nobody chose would hide the outage behind chrome that
- * looks like it worked.
+ * An outage does not change what the tenant saved, so it must not change the
+ * language the console renders in — and it must not stop the console rendering
+ * at all. This read is the one the shell resolves before any `<Suspense>`
+ * boundary exists, where a throw answers a bare 500 instead of reaching the
+ * error screen (#672), so a failed read reports the last locale the API did
+ * confirm rather than giving up.
+ *
+ * Only a process that has never had an answer for this tenant throws: there is
+ * then nothing that says what language the console is in, and a page in one
+ * nobody chose would hide the outage behind chrome that looks like it worked.
  */
 export const getTenantDisplayLocale = async (
   tenantId: string
 ): Promise<Locale> => {
   const defaultLocale = await findTenantDisplayLocale(tenantId);
-  if (!defaultLocale) {
-    throw new Error(`tenant default locale is unavailable: ${tenantId}`);
+  if (defaultLocale) {
+    lastConfirmedTenantLocale.set(tenantId, defaultLocale);
+    return defaultLocale;
   }
 
-  return defaultLocale;
+  const lastConfirmed = lastConfirmedTenantLocale.get(tenantId);
+  if (lastConfirmed) {
+    return lastConfirmed;
+  }
+
+  throw new Error(`tenant default locale is unavailable: ${tenantId}`);
 };
