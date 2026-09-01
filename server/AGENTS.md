@@ -25,6 +25,16 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 4. `batch publish-episodes` is a ticker batch, not a job queue. The Outbox worker (`cmd/outbox-worker`) is a long-lived River process, process-separated from the APIs.
 5. Never commit hand-edits under `gen/` or `internal/db/`. Regenerate instead.
 
+## UI locale: no default
+
+`internal/locale` has no `Default`, and adding one back under any name is what [#1243](https://github.com/publira/publira/issues/1243) removed. `locale.Resolve` reports `ErrUnresolved` for a stored value naming no supported code, and every caller fails on it: an RPC with `internalError` (`CodeInternal`), the invitation job with `Permanent`. Never with another language — a wrong locale shows the reader a page they cannot read and hides the fault that produced it.
+
+The contrast with `tenanttz.Default` is deliberate: a timestamp rendered in the wrong zone is off by hours and still legible, so the time zone keeps its last-resort constant.
+
+Each path takes the locale from the row it is about — `tenants.default_locale` for anything tenant-facing, the job payload for work that has no such row. `platformconfig.DefaultLocale` answers the platform console's own display language and stands in for no other row; tenant creation takes the locale from its request, and `CreateInitialUser` from the operator's choice on the setup screen.
+
+No lint covers this. The read paths are in `api/*/`, `internal/outbox/`, and `internal/platformconfig/`; the frontend half of the same rule is the **UI locale** section of [`apps/AGENTS.md`](../apps/AGENTS.md).
+
 ## Verification after Go changes
 
 Run verification from the **repository root** unless noted. Prefer Task targets so commands stay consistent with CI.

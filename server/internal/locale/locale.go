@@ -10,43 +10,46 @@ import (
 	localegen "github.com/publira/publira/server/internal/locale/gen"
 )
 
-// Default is the locale a read falls back to when neither the stored row nor
-// the platform settings row yields one. It is not a creation default: both
-// default_locale columns dropped theirs, and every write path names the locale
-// it means. Removing this last read-side fallback is tracked in #1251.
-const Default = "ja"
-
 // Supported is generated from locales/index.json.
 var Supported = localegen.Supported
 
-// ErrInvalid is returned when a value is not a supported UI locale code.
+// ErrInvalid is returned when an incoming value is not a supported UI locale
+// code. It belongs to a request the caller can correct.
 var ErrInvalid = errors.New("default_locale must be a supported locale")
 
-// Resolve returns the tenant default locale to expose through the API. Stored
-// values are NOT NULL and constrained to the supported codes, so the fallback
-// only guards rows written before those constraints existed. platformDefault
-// yields the platform-wide default and is called only when the stored value is
-// unusable, which keeps the platform settings row off the hot read path; a nil
-// platformDefault, or one that yields a blank value, falls back to Default.
-func Resolve(stored string, platformDefault func() string) string {
-	if trimmed := strings.TrimSpace(stored); trimmed != "" {
-		return trimmed
+// ErrUnresolved is returned when a stored value names no supported UI locale.
+// There is no replacement default under any name: a path that cannot resolve a
+// locale reports the failure instead of picking a language for the reader.
+var ErrUnresolved = errors.New("stored default_locale names no supported locale")
+
+// Resolve returns the stored locale to render in and expose through the API.
+// Both default_locale columns are NOT NULL with a non-blank CHECK, and every
+// write path validates against Supported, so a value this rejects is a data
+// fault rather than an unstated preference: a row written around the API, or a
+// build carrying no catalog for the code it names.
+func Resolve(stored string) (string, error) {
+	trimmed, ok := supported(stored)
+	if !ok {
+		return "", ErrUnresolved
 	}
-	if platformDefault != nil {
-		if trimmed := strings.TrimSpace(platformDefault()); trimmed != "" {
-			return trimmed
-		}
-	}
-	return Default
+	return trimmed, nil
 }
 
 // Normalize validates an incoming locale code and returns the value to store.
-// Blank input is rejected instead of falling back to the default so that
-// callers cannot silently reset a configured tenant locale.
+// Blank input is rejected instead of falling back to a default so that callers
+// cannot silently reset a configured tenant locale.
 func Normalize(raw string) (string, error) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" || !slices.Contains(Supported, trimmed) {
+	trimmed, ok := supported(raw)
+	if !ok {
 		return "", ErrInvalid
 	}
 	return trimmed, nil
+}
+
+func supported(raw string) (string, bool) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" || !slices.Contains(Supported, trimmed) {
+		return "", false
+	}
+	return trimmed, true
 }

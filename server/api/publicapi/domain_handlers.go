@@ -9,7 +9,6 @@ import (
 	"connectrpc.com/connect"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	"github.com/publira/publira/server/internal/locale"
-	"github.com/publira/publira/server/internal/platformconfig"
 )
 
 func (s *apiServer) GetTenantByDomain(
@@ -36,8 +35,13 @@ func (s *apiServer) GetTenantByDomain(
 		return nil, s.internalDBError(ctx, "failed to get tenant by domain", err, "domains", domains)
 	}
 
+	defaultLocale, err := locale.Resolve(tenant.DefaultLocale)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+	}
+
 	return connect.NewResponse(&publirav1.GetTenantByDomainResponse{
 		TenantId:      tenant.ID.String(),
-		DefaultLocale: locale.Resolve(tenant.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, s.queriesFor(ctx))),
+		DefaultLocale: defaultLocale,
 	}), nil
 }

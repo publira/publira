@@ -81,8 +81,9 @@ export type GetTenantResponse = Message<"publira.v1.GetTenantResponse"> & {
   timezone: string;
 
   /**
-   * UI locale code used when the visitor has not chosen one (ja, en). Never
-   * empty; the default is applied when unset.
+   * UI locale code used when the visitor has not chosen one (ja, en). The
+   * tenant's own saved value, never a stand-in: a stored code naming no
+   * supported locale fails this RPC rather than answering another language.
    *
    * @generated from field: string default_locale = 9;
    */

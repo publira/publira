@@ -30,7 +30,9 @@ message GetTenantDefaultLocaleRequest {
 }
 
 message GetTenantDefaultLocaleResponse {
-  // UI locale code (ja, en). Never empty; the default is applied when unset.
+  // UI locale code (ja, en). The tenant's own saved value: a stored code
+  // naming no supported locale fails this RPC rather than answering another
+  // language.
   string default_locale = 1;
 }
 

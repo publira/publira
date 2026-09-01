@@ -15,47 +15,54 @@ type localeIndex struct {
 	} `json:"locales"`
 }
 
-func TestResolve(t *testing.T) {
-	platformDefault := func(value string) func() string {
-		return func() string { return value }
-	}
-
+func TestResolveAcceptsStoredSupportedLocales(t *testing.T) {
 	tests := []struct {
-		name            string
-		stored          string
-		platformDefault func() string
-		want            string
+		name   string
+		stored string
+		want   string
 	}{
-		{name: "configured value is kept", stored: "en", platformDefault: platformDefault("ja"), want: "en"},
-		{name: "surrounding spaces are trimmed", stored: "  en  ", platformDefault: platformDefault("ja"), want: "en"},
-		{name: "empty falls back to the platform default", stored: "", platformDefault: platformDefault("en"), want: "en"},
-		{name: "blank falls back to the platform default", stored: "   ", platformDefault: platformDefault("en"), want: "en"},
-		{name: "blank platform default falls back to Default", stored: "", platformDefault: platformDefault("  "), want: Default},
-		{name: "missing platform default falls back to Default", stored: "", platformDefault: nil, want: Default},
+		{name: "configured value is kept", stored: "en", want: "en"},
+		{name: "surrounding spaces are trimmed", stored: "  en  ", want: "en"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Resolve(tt.stored, tt.platformDefault); got != tt.want {
+			got, err := Resolve(tt.stored)
+			if err != nil {
+				t.Fatalf("Resolve(%q): %v", tt.stored, err)
+			}
+			if got != tt.want {
 				t.Fatalf("Resolve(%q) = %q, want %q", tt.stored, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestResolveSkipsPlatformDefaultForConfiguredValue(t *testing.T) {
-	called := 0
-	got := Resolve("en", func() string {
-		called++
-		return "ja"
-	})
-	if got != "en" {
-		t.Fatalf("Resolve = %q, want en", got)
+// There is no locale of last resort: a stored value naming no supported locale
+// is reported so the caller can fail, rather than being answered with a
+// language nobody chose.
+func TestResolveRejectsUnusableStoredValues(t *testing.T) {
+	tests := []struct {
+		name   string
+		stored string
+	}{
+		{name: "empty", stored: ""},
+		{name: "blank", stored: "   "},
+		{name: "unsupported code", stored: "fr"},
+		{name: "wrong case", stored: "EN"},
+		{name: "bcp47 region", stored: "ja-JP"},
 	}
-	// The platform settings row must stay off the read path when the tenant has
-	// a usable locale of its own.
-	if called != 0 {
-		t.Fatalf("platform default was consulted %d times, want 0", called)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Resolve(tt.stored)
+			if !errors.Is(err, ErrUnresolved) {
+				t.Fatalf("Resolve(%q) error = %v, want ErrUnresolved", tt.stored, err)
+			}
+			if got != "" {
+				t.Fatalf("Resolve(%q) = %q, want empty", tt.stored, got)
+			}
+		})
 	}
 }
 
@@ -108,27 +115,23 @@ func TestNormalizeRejectsInvalidCodes(t *testing.T) {
 	}
 }
 
-func TestDefaultIsValid(t *testing.T) {
-	got, err := Normalize(Default)
-	if err != nil {
-		t.Fatalf("Normalize(Default): %v", err)
-	}
-	if got != Default {
-		t.Fatalf("Normalize(Default) = %q, want %q", got, Default)
-	}
-}
-
-func TestSupportedMatchesNormalize(t *testing.T) {
+// A code an operator may save has to be one a later read can resolve, or the
+// setting would break the very screens that offered it.
+func TestSupportedCodesRoundTripThroughNormalizeAndResolve(t *testing.T) {
 	if len(Supported) == 0 {
 		t.Fatal("Supported is empty")
 	}
 	for _, code := range Supported {
-		got, err := Normalize(code)
+		saved, err := Normalize(code)
 		if err != nil {
 			t.Fatalf("Normalize(%q): %v", code, err)
 		}
+		got, err := Resolve(saved)
+		if err != nil {
+			t.Fatalf("Resolve(%q): %v", saved, err)
+		}
 		if got != code {
-			t.Fatalf("Normalize(%q) = %q, want %q", code, got, code)
+			t.Fatalf("Resolve(Normalize(%q)) = %q, want %q", code, got, code)
 		}
 	}
 }

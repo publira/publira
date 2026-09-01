@@ -14,6 +14,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/publicid"
 )
 
@@ -35,17 +36,15 @@ func (s *platformServer) CheckSetupStatus(
 // savedDefaultLocale reports the platform's stored default locale, or "" when
 // there is none to report.
 //
-// Deliberately not platformconfig.DefaultLocale: that answers locale.Default
-// for a row it could not read, which is the whole point of an unauthenticated
-// caller asking. The console has to tell "the platform saved ja" from "nobody
-// has saved anything yet", because only the second is a reason to fall back to
-// what the visitor's browser asked for.
+// The failure is answered with "" rather than propagated, which is what
+// separates this read from every other one: the caller is an unauthenticated
+// visitor on the setup screen, and a platform that has saved nothing yet is the
+// normal state there. The console has to tell "the platform saved ja" from
+// "nobody has saved anything", because only the second is a reason to fall back
+// to what the visitor's browser asked for. Neither is a reason to name a
+// language the platform never chose.
 func savedDefaultLocale(ctx context.Context, q Querier) string {
-	config, err := q.GetPlatformConfig(ctx)
-	if err != nil {
-		return ""
-	}
-	saved, err := locale.Normalize(config.DefaultLocale)
+	saved, err := platformconfig.DefaultLocale(ctx, q)
 	if err != nil {
 		return ""
 	}

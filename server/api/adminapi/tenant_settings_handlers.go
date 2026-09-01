@@ -96,8 +96,13 @@ func (s *adminServer) GetTenantDefaultLocale(
 		return nil, err
 	}
 
+	defaultLocale, err := locale.Resolve(tenant.DefaultLocale)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+	}
+
 	return connect.NewResponse(&publiraadminv1.GetTenantDefaultLocaleResponse{
-		DefaultLocale: locale.Resolve(tenant.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, s.queriesFor(ctx))),
+		DefaultLocale: defaultLocale,
 	}), nil
 }
 
@@ -135,7 +140,14 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 		}
 	}
 
+	// The stored row rather than the request: what the console renders next is
+	// what the update actually persisted.
+	savedLocale, err := locale.Resolve(updated.DefaultLocale)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+	}
+
 	return connect.NewResponse(&publiraadminv1.UpdateTenantDefaultLocaleResponse{
-		DefaultLocale: locale.Resolve(updated.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, s.queriesFor(ctx))),
+		DefaultLocale: savedLocale,
 	}), nil
 }

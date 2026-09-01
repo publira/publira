@@ -11,8 +11,9 @@ message GetTenantByDomainRequest {
 message GetTenantByDomainResponse {
   // Primary key (UUID) for internal routing / TenantContext.
   string tenant_id = 1;
-  // Resolved tenant default locale (ja, en) so the host proxy can pick a
-  // redirect in one round trip. Never empty.
+  // The tenant's saved default locale (ja, en) so the host proxy can pick a
+  // redirect in one round trip. Never empty: a stored code naming no supported
+  // locale fails this RPC rather than answering another language.
   string default_locale = 2;
 }
 

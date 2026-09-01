@@ -2,7 +2,6 @@ package publicapi
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"regexp"
 	"testing"
@@ -43,53 +42,39 @@ func TestGetTenantByDomainReturnsDefaultLocale(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
-func TestGetTenantByDomainFallsBackToPlatformDefault(t *testing.T) {
-	testServer, mock := newTestPublicServer(t)
-	tenantID := uuid.Must(uuid.NewV7())
-	now := time.Now()
-
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantByDomainsQuery)).
-		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", nil, "Asia/Tokyo", ""))
-	expectPlatformConfigLookup(mock, "Asia/Tokyo", "en", now)
-
-	client := publirav1connect.NewDomainServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenantByDomain(context.Background(), connect.NewRequest(&publirav1.GetTenantByDomainRequest{
-		Domains: []string{"tenant.example.com"},
-	}))
-	if err != nil {
-		t.Fatalf("GetTenantByDomain: %v", err)
+// Domain resolution is the first read of every storefront request, and its
+// answer decides the language the whole site renders in. A stored value naming
+// no supported locale ends the request instead of handing the site one nobody
+// chose.
+func TestGetTenantByDomainFailsOnAnUnusableStoredLocale(t *testing.T) {
+	tests := []struct {
+		name   string
+		stored string
+	}{
+		{name: "blank", stored: ""},
+		{name: "unsupported code", stored: "fr"},
 	}
-	if resp.Msg.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
-	}
-	assertPublicExpectations(t, mock)
-}
 
-func TestGetTenantByDomainFallsBackToDefaultLocale(t *testing.T) {
-	testServer, mock := newTestPublicServer(t)
-	tenantID := uuid.Must(uuid.NewV7())
-	now := time.Now()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now()
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantByDomainsQuery)).
-		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", nil, "Asia/Tokyo", ""))
-	mock.ExpectQuery(regexp.QuoteMeta(getPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
+			mock.ExpectQuery(regexp.QuoteMeta(getTenantByDomainsQuery)).
+				WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
+					AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", nil, "Asia/Tokyo", tt.stored))
 
-	client := publirav1connect.NewDomainServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenantByDomain(context.Background(), connect.NewRequest(&publirav1.GetTenantByDomainRequest{
-		Domains: []string{"tenant.example.com"},
-	}))
-	if err != nil {
-		t.Fatalf("GetTenantByDomain: %v", err)
+			client := publirav1connect.NewDomainServiceClient(testServer.Client(), testServer.URL)
+			_, err := client.GetTenantByDomain(context.Background(), connect.NewRequest(&publirav1.GetTenantByDomainRequest{
+				Domains: []string{"tenant.example.com"},
+			}))
+			if connect.CodeOf(err) != connect.CodeInternal {
+				t.Fatalf("GetTenantByDomain code = %v, want internal (err=%v)", connect.CodeOf(err), err)
+			}
+			assertPublicExpectations(t, mock)
+		})
 	}
-	if resp.Msg.DefaultLocale == "" {
-		t.Fatal("default_locale is empty, want a resolved locale")
-	}
-	if resp.Msg.DefaultLocale != "ja" {
-		t.Fatalf("default_locale = %q, want ja", resp.Msg.DefaultLocale)
-	}
-	assertPublicExpectations(t, mock)
 }
 
 func TestGetTenantByDomainDatabaseErrorIsHidden(t *testing.T) {

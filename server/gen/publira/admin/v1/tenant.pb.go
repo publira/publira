@@ -254,7 +254,9 @@ func (x *GetTenantDefaultLocaleRequest) GetTenant() *v1.TenantContext {
 
 type GetTenantDefaultLocaleResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// UI locale code (ja, en). Never empty; the default is applied when unset.
+	// UI locale code (ja, en). The tenant's own saved value: a stored code
+	// naming no supported locale fails this RPC rather than answering another
+	// language.
 	DefaultLocale string `protobuf:"bytes,1,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

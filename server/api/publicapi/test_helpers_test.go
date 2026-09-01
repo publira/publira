@@ -116,17 +116,6 @@ func contentRankingSnapshotColumns() []string {
 	return []string{"id", "tenant_id", "ranking_key", "period_start", "period_end", "entity_type", "items", "algorithm_version", "computed_at"}
 }
 
-const getPlatformConfigQuery = "-- name: GetPlatformConfig :one\n"
-
-func publicPlatformConfigColumns() []string {
-	return []string{"singleton", "default_timezone", "default_locale", "created_at", "updated_at"}
-}
-
-func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLocale string, now time.Time) {
-	mock.ExpectQuery(regexp.QuoteMeta(getPlatformConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(publicPlatformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now))
-}
-
 func contentEventColumns() []string {
 	return []string{
 		"id", "tenant_id", "event_type", "user_id", "anonymous_id", "actor_key",

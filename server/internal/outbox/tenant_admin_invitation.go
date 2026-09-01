@@ -202,9 +202,17 @@ func renderTenantAdminInvitation(ctx context.Context, queries *dbmodels.Queries,
 	if tenantName == "" {
 		tenantName = "Publira"
 	}
+	// The invitation is worded in the tenant's saved language, and in no other:
+	// a stored code the renderer has no catalog for is a permanent failure the
+	// operator has to fix, not a reason to mail the invitee in a language their
+	// tenant never chose.
+	tenantLocale, err := locale.Resolve(tenant.DefaultLocale)
+	if err != nil {
+		return emailrenderer.Email{}, Permanent(fmt.Errorf("resolve default locale of tenant %s: %w", tenant.ID, err))
+	}
 	return renderer.Render(ctx, emailrenderer.Request{
 		Template: "tenant_admin_invitation",
-		Locale:   locale.Resolve(tenant.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, queries)),
+		Locale:   tenantLocale,
 		Data:     map[string]any{"expires_at": invitation.ExpiresAt.UTC().Format(time.RFC3339Nano), "invite_url": inviteURL, "tenant_name": tenantName},
 		TimeZone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 	})

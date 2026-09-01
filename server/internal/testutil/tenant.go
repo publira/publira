@@ -21,6 +21,10 @@ type Tenant struct {
 	Domain      string
 	AdminDomain string
 	Name        string
+	// DefaultLocale is the locale [SeedTenant] stated for the row, so a test
+	// asserting what an API answers names the seeded value rather than a
+	// constant of its own.
+	DefaultLocale string
 }
 
 // TenantUser is a seeded users row together with the tenant role it holds.
@@ -66,11 +70,12 @@ func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Te
 	}
 
 	return Tenant{
-		ID:          tenant.ID,
-		PublicID:    tenant.PublicID,
-		Domain:      tenant.Domain,
-		AdminDomain: adminDomain,
-		Name:        tenant.Name,
+		ID:            tenant.ID,
+		PublicID:      tenant.PublicID,
+		Domain:        tenant.Domain,
+		AdminDomain:   adminDomain,
+		Name:          tenant.Name,
+		DefaultLocale: tenant.DefaultLocale,
 	}
 }
 

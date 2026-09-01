@@ -10,7 +10,6 @@ import (
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
-	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -69,8 +68,8 @@ func TestDBGetTenantReturnsItsOwnBranding(t *testing.T) {
 	if resp.Msg.Timezone != tenanttz.Default {
 		t.Fatalf("timezone = %q, want the column default %q", resp.Msg.Timezone, tenanttz.Default)
 	}
-	if resp.Msg.DefaultLocale != locale.Default {
-		t.Fatalf("default_locale = %q, want the column default %q", resp.Msg.DefaultLocale, locale.Default)
+	if resp.Msg.DefaultLocale != first.DefaultLocale {
+		t.Fatalf("default_locale = %q, want the stored value %q", resp.Msg.DefaultLocale, first.DefaultLocale)
 	}
 }
 
@@ -103,11 +102,8 @@ func TestDBGetTenantByDomainResolvesTheFirstMatchingHost(t *testing.T) {
 	if resp.Msg.TenantId != second.ID.String() {
 		t.Fatalf("tenant_id = %q, want tenant B (%s), the first candidate that matches", resp.Msg.TenantId, second.ID)
 	}
-	if resp.Msg.DefaultLocale == "" {
-		t.Fatal("default_locale is empty, want a resolved locale")
-	}
-	if resp.Msg.DefaultLocale != locale.Default {
-		t.Fatalf("default_locale = %q, want %s", resp.Msg.DefaultLocale, locale.Default)
+	if resp.Msg.DefaultLocale != second.DefaultLocale {
+		t.Fatalf("default_locale = %q, want the stored value %q of the matched tenant", resp.Msg.DefaultLocale, second.DefaultLocale)
 	}
 
 	_, err = client.GetTenantByDomain(context.Background(), connect.NewRequest(&publirav1.GetTenantByDomainRequest{

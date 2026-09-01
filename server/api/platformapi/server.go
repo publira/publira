@@ -43,6 +43,13 @@ type platformServer struct {
 // failures are logged and replaced with a generic client-facing message so
 // driver details never leave the server.
 func (s *platformServer) internalDBError(ctx context.Context, msg string, err error, keyvals ...any) error {
+	return s.internalError(ctx, msg, err, keyvals...)
+}
+
+// internalError is internalDBError for a failure the database reported no
+// problem with — a stored value the server cannot make sense of, say. The
+// caller sees the same generic message either way.
+func (s *platformServer) internalError(ctx context.Context, msg string, err error, keyvals ...any) error {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
 	}
