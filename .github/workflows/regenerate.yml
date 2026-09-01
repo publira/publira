@@ -1,0 +1,108 @@
+name: Regenerate
+
+env:
+  # Keep these pins equal to the ones in ci.yml: the stacked pull request has to
+  # be produced by the same toolchain the `Check` job then verifies it with.
+  # renovate: datasource=github-releases depName=go-task/task versioning=semver-coerced
+  TASK_VERSION: 3.53.1
+  # renovate: datasource=github-releases depName=sqlc-dev/sqlc versioning=semver-coerced
+  SQLC_VERSION: 1.31.1
+  # renovate: datasource=github-releases depName=bufbuild/buf versioning=semver-coerced
+  BUF_VERSION: 1.72.0
+
+on:
+  pull_request:
+    # The generator versions live in `buf.gen.yaml` (remote plugin pins) and in
+    # the `env` block of ci.yml (`SQLC_VERSION`, `BUF_VERSION`). This file is
+    # watched as well so a change to it validates itself.
+    paths:
+      - "buf.gen.yaml"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/regenerate.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    name: Stacked regeneration
+    # A fork gets a read-only GITHUB_TOKEN, so the push would fail; and a run on
+    # a stacked branch would only ever stack on itself.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.event.pull_request.head.ref, 'regen/')
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The branch tip, not the `pull_request` merge ref: the stacked branch
+          # has to be a descendant of the original branch and nothing else.
+          ref: ${{ github.event.pull_request.head.ref }}
+          # `task gen` runs the pull request's own Taskfile.yaml, so the write
+          # token must not be left in the local git config for it to reach.
+          # create-pull-request configures its own credential from `token`.
+          persist-credentials: false
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / Install sqlc
+        uses: sqlc-dev/setup-sqlc@bac53b7fb28c039a6c7f5736fd1e89744021bdd6 # v5.0.0
+        with:
+          sqlc-version: ${{ env.SQLC_VERSION }}
+
+      - name: Setup / Install buf
+        uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
+        with:
+          setup_only: true
+          version: ${{ env.BUF_VERSION }}
+
+      # `task gen` is `sqlc generate` plus `buf generate`, the same command the
+      # `Check` job tells a human to run. Both generators are covered in one
+      # step because either one producing no diff costs nothing.
+      - name: Generate / sqlc and protobuf
+        run: task gen
+
+      # The original branch is never written to: Renovate force-pushes when it
+      # rebases, which would drop a commit placed there. With no diff the action
+      # creates nothing, and closes a stacked pull request left over from an
+      # earlier run.
+      - name: Open stacked pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: ${{ github.event.pull_request.head.ref }}
+          branch: regen/${{ github.event.pull_request.head.ref }}
+          delete-branch: true
+          commit-message: "chore(gen): regenerate for the updated generator versions"
+          title: "chore(gen): regenerate for the updated generator versions"
+          body: |
+            ## Summary
+
+            Regenerated output for #${{ github.event.pull_request.number }}, which updates a generator version without regenerating. The base of this pull request is that branch, so merge this one first and the original afterwards.
+
+            ## Changes
+
+            - Ran `task gen` and committed the resulting `server/gen/**`, `packages/api-client/src/gen/**`, and `server/internal/db/**`
+
+            ## How to Test
+
+            - Check out this branch, run `task gen`, and confirm the working tree stays clean
+
+            ## Checklist
+
+            - [x] I used a Conventional Commits style PR title.
+            - [ ] I tested my changes locally.
+            - [ ] I updated docs if needed.
+          labels: area/infra
+          add-paths: |
+            packages/api-client/src/gen/**
+            server/gen/**
+            server/internal/db/**
