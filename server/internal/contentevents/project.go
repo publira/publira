@@ -16,7 +16,7 @@ const DefaultProjectionBatchSize = 1000
 
 // projectionQuerier is the one generated query a reconciliation run needs.
 type projectionQuerier interface {
-	ProjectPendingEpisodeCompleteEvents(ctx context.Context, limit int32) (int64, error)
+	ProjectPendingEpisodeCompleteEvents(ctx context.Context, limit int32) (dbmodels.ProjectPendingEpisodeCompleteEventsRow, error)
 }
 
 // Projector files the analytics event for every episode_reads row that has
@@ -33,13 +33,16 @@ type Projector struct {
 // ProjectionOptions describes one reconciliation run.
 type ProjectionOptions struct {
 	// BatchSize is the row limit of a single statement. Zero means
-	// DefaultProjectionBatchSize.
-	BatchSize int
+	// DefaultProjectionBatchSize. It is int32 because it becomes a PostgreSQL
+	// LIMIT: a wider type would let a caller wrap into a negative limit that
+	// the database rejects.
+	BatchSize int32
 }
 
 // ProjectionResult describes what one reconciliation run did.
 type ProjectionResult struct {
-	// RowCount is the number of events written.
+	// RowCount is the number of events written. It is smaller than the reads
+	// claimed when the request path wrote one of them first.
 	RowCount int64
 	// BatchCount is how many statements ran. It is at least one, because a run
 	// always probes for unprojected reads.
@@ -76,16 +79,17 @@ func (p *Projector) Run(ctx context.Context, opts ProjectionOptions) (Projection
 
 	var result ProjectionResult
 	for {
-		projected, err := p.queries.ProjectPendingEpisodeCompleteEvents(ctx, int32(batchSize))
+		batch, err := p.queries.ProjectPendingEpisodeCompleteEvents(ctx, batchSize)
 		if err != nil {
 			return result, fmt.Errorf("project pending episode reads: %w", err)
 		}
-		result.RowCount += projected
+		result.RowCount += batch.InsertedCount
 		result.BatchCount++
-		// A short batch means the scan reached the end of the unprojected
-		// reads, or that a concurrent request-path write already claimed some
-		// of them. Either way this run is done.
-		if projected < int64(batchSize) {
+		// Continuation follows the reads this batch claimed, not the events it
+		// wrote. A request-path write that lands mid-statement makes the second
+		// smaller than the first, and looping on it would end the run with
+		// reads still unprojected.
+		if batch.CandidateCount < int64(batchSize) {
 			return result, nil
 		}
 		if err := ctx.Err(); err != nil {

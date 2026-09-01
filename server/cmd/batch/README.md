@@ -63,14 +63,14 @@ go run ./server/cmd/batch project-episode-reads
 
 Environment variables:
 
-- `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_EVENTS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
-- `PUBLIRA_EPISODE_READ_PROJECTION_BATCH_SIZE`: rows per statement. Defaults to `1000`; a non-numeric or non-positive value is rejected.
+- `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_EVENTS_DB_URL`, then `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_EPISODE_READ_PROJECTION_BATCH_SIZE`: rows per statement. Defaults to `1000`; anything that is not a positive 32-bit integer is rejected, because the value becomes a PostgreSQL `LIMIT`.
 
 Run it before `aggregate-content-stats` for the same day, so a completion whose event was lost is counted on the day it happened rather than never: the projection copies `episode_reads.read_at` into `occurred_at`, so a late run still files the event on the correct day, but only a rebuild of that day picks it up.
 
 ### Query plan
 
-The anti-join reads `episode_reads` oldest-first and probes `idx_content_events_source_unique` per row. A backlog is bounded by the batch size, so a first run over a large table is many short statements rather than one long one.
+The anti-join reads `episode_reads` oldest-first and probes `idx_content_events_source_unique` per row. A backlog is bounded by the batch size, so a first run over a large table is many short statements rather than one long one. A run continues while a statement claimed a full batch of reads, not while it wrote a full batch of events: the two differ when the API projected one of the claimed reads first, and stopping on the smaller number would end the run with reads still pending.
 
 ## aggregate-content-stats
 

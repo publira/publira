@@ -618,10 +618,17 @@ type Querier interface {
 	// makes a run resumable — every batch takes the oldest unprojected reads — so
 	// repeated runs converge instead of revisiting the same window.
 	//
+	// Both counts come back because they answer different questions and can differ.
+	// candidate_count is how many unprojected reads this batch claimed, and is what
+	// tells the caller whether the backlog is exhausted; inserted_count is how many
+	// events were actually written. A request-path write that lands between this
+	// statement's select and its insert makes the second smaller than the first, so
+	// a caller that looped on inserted_count would stop with reads still pending.
+	//
 	// id is uuidv7() rather than a value passed in because the statement inserts a
 	// whole batch; content_events ids are UUIDv7 so that events sharing an
 	// occurred_at still order by when they were recorded.
-	ProjectPendingEpisodeCompleteEvents(ctx context.Context, limit int32) (int64, error)
+	ProjectPendingEpisodeCompleteEvents(ctx context.Context, limit int32) (ProjectPendingEpisodeCompleteEventsRow, error)
 	// Projects the Stripe-confirmed purchase without trusting webhook metadata for
 	// the actor or content target. purchases stays the source of truth: its user
 	// is copied directly and the episode resolves its owning series. A retry is a

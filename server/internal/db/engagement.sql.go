@@ -1398,47 +1398,65 @@ func (q *Queries) ProjectEpisodeCompleteEvent(ctx context.Context, arg ProjectEp
 	return i, err
 }
 
-const projectPendingEpisodeCompleteEvents = `-- name: ProjectPendingEpisodeCompleteEvents :execrows
-INSERT INTO content_events (
-    id,
-    tenant_id,
-    event_type,
-    user_id,
-    series_id,
-    episode_id,
-    source_table,
-    source_id,
-    payload,
-    occurred_at
-)
-SELECT
-    uuidv7(),
-    r.tenant_id,
-    'episode_complete',
-    r.user_id,
-    e.series_id,
-    r.episode_id,
-    'episode_reads',
-    r.id,
-    '{}'::jsonb,
-    r.read_at
-FROM episode_reads r
-JOIN episodes e
-    ON e.tenant_id = r.tenant_id
-    AND e.id = r.episode_id
-WHERE NOT EXISTS (
-        SELECT 1
-        FROM content_events ce
-        WHERE ce.tenant_id = r.tenant_id
-            AND ce.source_table = 'episode_reads'
-            AND ce.source_id = r.id
+const projectPendingEpisodeCompleteEvents = `-- name: ProjectPendingEpisodeCompleteEvents :one
+WITH candidates AS (
+    SELECT r.id,
+        r.tenant_id,
+        r.user_id,
+        r.episode_id,
+        r.read_at,
+        e.series_id
+    FROM episode_reads r
+    JOIN episodes e
+        ON e.tenant_id = r.tenant_id
+        AND e.id = r.episode_id
+    WHERE NOT EXISTS (
+            SELECT 1
+            FROM content_events ce
+            WHERE ce.tenant_id = r.tenant_id
+                AND ce.source_table = 'episode_reads'
+                AND ce.source_id = r.id
+        )
+    ORDER BY r.read_at, r.id
+    LIMIT $1
+), inserted AS (
+    INSERT INTO content_events (
+        id,
+        tenant_id,
+        event_type,
+        user_id,
+        series_id,
+        episode_id,
+        source_table,
+        source_id,
+        payload,
+        occurred_at
     )
-ORDER BY r.read_at, r.id
-LIMIT $1
-ON CONFLICT (tenant_id, source_table, source_id)
-WHERE source_id IS NOT NULL
-DO NOTHING
+    SELECT
+        uuidv7(),
+        c.tenant_id,
+        'episode_complete',
+        c.user_id,
+        c.series_id,
+        c.episode_id,
+        'episode_reads',
+        c.id,
+        '{}'::jsonb,
+        c.read_at
+    FROM candidates c
+    ON CONFLICT (tenant_id, source_table, source_id)
+    WHERE source_id IS NOT NULL
+    DO NOTHING
+    RETURNING 1
+)
+SELECT (SELECT count(*) FROM candidates)::bigint AS candidate_count,
+    (SELECT count(*) FROM inserted)::bigint AS inserted_count
 `
+
+type ProjectPendingEpisodeCompleteEventsRow struct {
+	CandidateCount int64 `json:"candidate_count"`
+	InsertedCount  int64 `json:"inserted_count"`
+}
 
 // Reconciles episode_reads rows whose projection never landed, across every
 // tenant. The request path writes the event outside the transaction that
@@ -1452,15 +1470,21 @@ DO NOTHING
 // makes a run resumable — every batch takes the oldest unprojected reads — so
 // repeated runs converge instead of revisiting the same window.
 //
+// Both counts come back because they answer different questions and can differ.
+// candidate_count is how many unprojected reads this batch claimed, and is what
+// tells the caller whether the backlog is exhausted; inserted_count is how many
+// events were actually written. A request-path write that lands between this
+// statement's select and its insert makes the second smaller than the first, so
+// a caller that looped on inserted_count would stop with reads still pending.
+//
 // id is uuidv7() rather than a value passed in because the statement inserts a
 // whole batch; content_events ids are UUIDv7 so that events sharing an
 // occurred_at still order by when they were recorded.
-func (q *Queries) ProjectPendingEpisodeCompleteEvents(ctx context.Context, limit int32) (int64, error) {
-	result, err := q.db.ExecContext(ctx, projectPendingEpisodeCompleteEvents, limit)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+func (q *Queries) ProjectPendingEpisodeCompleteEvents(ctx context.Context, limit int32) (ProjectPendingEpisodeCompleteEventsRow, error) {
+	row := q.db.QueryRowContext(ctx, projectPendingEpisodeCompleteEvents, limit)
+	var i ProjectPendingEpisodeCompleteEventsRow
+	err := row.Scan(&i.CandidateCount, &i.InsertedCount)
+	return i, err
 }
 
 const projectPurchaseContentEvent = `-- name: ProjectPurchaseContentEvent :one
