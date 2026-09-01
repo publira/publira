@@ -127,29 +127,6 @@ func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLo
 		WillReturnRows(sqlmock.NewRows(publicPlatformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now))
 }
 
-// expectEpisodeViewEventInsert registers the soft PV write that follows every
-// successful GetEpisodeDetail, whatever the body's access came out as. Empty
-// rows stand for the ON CONFLICT DO NOTHING case, which the handler treats as
-// the debounce working rather than a failure.
-func expectEpisodeViewEventInsert(mock sqlmock.Sqlmock, tenantID, seriesID, episodeID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedEpisodeViewEventQuery)).
-		WithArgs(
-			sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), sqlmock.AnyArg(),
-			seriesID, episodeID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-		).
-		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
-}
-
-// expectSeriesViewEventInsert is the GetSeriesDetail counterpart.
-func expectSeriesViewEventInsert(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedSeriesViewEventQuery)).
-		WithArgs(
-			sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), sqlmock.AnyArg(),
-			seriesID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-		).
-		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
-}
-
 func contentEventColumns() []string {
 	return []string{
 		"id", "tenant_id", "event_type", "user_id", "anonymous_id", "actor_key",

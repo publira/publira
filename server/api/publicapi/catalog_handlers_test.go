@@ -692,7 +692,6 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
 			AddRow(seriesImageID, "portrait", "md", "image/webp", int64(3072), int32(768), int32(1024)))
-	expectSeriesViewEventInsert(mock, tenantID, seriesID)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
@@ -848,17 +847,15 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 	normalSeriesID := uuid.Must(uuid.NewV7())
 
 	tests := []struct {
-		episodeID uuid.UUID
-		name      string
-		publicID  string
-		rows      *sqlmock.Rows
-		wantCode  connect.Code
+		name     string
+		publicID string
+		rows     *sqlmock.Rows
+		wantCode connect.Code
 	}{
 		{
 			// Paid episode without session: metadata OK, body locked (no images).
-			episodeID: normalEpisodeID,
-			name:      "normal-paid-locked",
-			publicID:  "EPISODE001",
+			name:     "normal-paid-locked",
+			publicID: "EPISODE001",
 			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}).
 				AddRow(normalEpisodeID, "EPISODE001", "Episode Title", int32(1), normalSeriesID, int32(100), int32(24), "published", nil, time.Now().UTC(), "SERIES001", "Series Title"),
 		},
@@ -899,9 +896,6 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
-			if tc.wantCode == 0 {
-				expectEpisodeViewEventInsert(mock, tenantID, normalSeriesID, tc.episodeID)
-			}
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
@@ -1062,8 +1056,6 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}).
 						AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, int32(1), now, "image/png", int64(1024), int32(1200), int32(1800)))
 			}
-
-			expectEpisodeViewEventInsert(mock, tenantID, seriesID, episodeID)
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			var req *connect.Request[publirav1.GetEpisodeDetailRequest]

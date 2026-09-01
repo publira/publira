@@ -29,6 +29,8 @@ const (
 	FollowServiceName = "publira.v1.FollowService"
 	// RatingServiceName is the fully-qualified name of the RatingService service.
 	RatingServiceName = "publira.v1.RatingService"
+	// ContentViewServiceName is the fully-qualified name of the ContentViewService service.
+	ContentViewServiceName = "publira.v1.ContentViewService"
 	// PurchaseServiceName is the fully-qualified name of the PurchaseService service.
 	PurchaseServiceName = "publira.v1.PurchaseService"
 )
@@ -84,6 +86,9 @@ const (
 	// RatingServiceRateContentProcedure is the fully-qualified name of the RatingService's RateContent
 	// RPC.
 	RatingServiceRateContentProcedure = "/publira.v1.RatingService/RateContent"
+	// ContentViewServiceRecordContentViewProcedure is the fully-qualified name of the
+	// ContentViewService's RecordContentView RPC.
+	ContentViewServiceRecordContentViewProcedure = "/publira.v1.ContentViewService/RecordContentView"
 	// PurchaseServiceStartEpisodeCheckoutProcedure is the fully-qualified name of the PurchaseService's
 	// StartEpisodeCheckout RPC.
 	PurchaseServiceStartEpisodeCheckoutProcedure = "/publira.v1.PurchaseService/StartEpisodeCheckout"
@@ -723,6 +728,114 @@ type UnimplementedRatingServiceHandler struct{}
 
 func (UnimplementedRatingServiceHandler) RateContent(context.Context, *connect.Request[v1.RateContentRequest]) (*connect.Response[v1.RateContentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.RatingService.RateContent is not implemented"))
+}
+
+// ContentViewServiceClient is a client for the publira.v1.ContentViewService service.
+type ContentViewServiceClient interface {
+	// Records one soft page view for a currently public series or episode.
+	//
+	// A view is recorded here rather than as a side effect of GetSeriesDetail /
+	// GetEpisodeDetail, because those reads are cached by their callers: a cache
+	// fill carries no reader and would otherwise mint an actor of its own, and a
+	// cache hit never reaches this server at all. This RPC is called once per
+	// page a reader actually opened.
+	//
+	// Optional authentication. A signed-in reader is attributed to their account
+	// and everyone else to the publira_aid cookie, which is minted and returned
+	// in Set-Cookie when the request carries none. A bearer this server cannot
+	// verify does not fail the call: the view falls back to the cookie, and is
+	// recorded only if one came with it, because minting an identifier for a
+	// caller that presented a session of its own would open a new actor per
+	// request.
+	//
+	// Cross-tenant, unpublished, and missing targets are all surfaced as
+	// NotFound, matching FollowService and RatingService, so a view cannot be
+	// used to probe for hidden content.
+	RecordContentView(context.Context, *connect.Request[v1.RecordContentViewRequest]) (*connect.Response[v1.RecordContentViewResponse], error)
+}
+
+// NewContentViewServiceClient constructs a client for the publira.v1.ContentViewService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewContentViewServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ContentViewServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	contentViewServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("ContentViewService").Methods()
+	return &contentViewServiceClient{
+		recordContentView: connect.NewClient[v1.RecordContentViewRequest, v1.RecordContentViewResponse](
+			httpClient,
+			baseURL+ContentViewServiceRecordContentViewProcedure,
+			connect.WithSchema(contentViewServiceMethods.ByName("RecordContentView")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// contentViewServiceClient implements ContentViewServiceClient.
+type contentViewServiceClient struct {
+	recordContentView *connect.Client[v1.RecordContentViewRequest, v1.RecordContentViewResponse]
+}
+
+// RecordContentView calls publira.v1.ContentViewService.RecordContentView.
+func (c *contentViewServiceClient) RecordContentView(ctx context.Context, req *connect.Request[v1.RecordContentViewRequest]) (*connect.Response[v1.RecordContentViewResponse], error) {
+	return c.recordContentView.CallUnary(ctx, req)
+}
+
+// ContentViewServiceHandler is an implementation of the publira.v1.ContentViewService service.
+type ContentViewServiceHandler interface {
+	// Records one soft page view for a currently public series or episode.
+	//
+	// A view is recorded here rather than as a side effect of GetSeriesDetail /
+	// GetEpisodeDetail, because those reads are cached by their callers: a cache
+	// fill carries no reader and would otherwise mint an actor of its own, and a
+	// cache hit never reaches this server at all. This RPC is called once per
+	// page a reader actually opened.
+	//
+	// Optional authentication. A signed-in reader is attributed to their account
+	// and everyone else to the publira_aid cookie, which is minted and returned
+	// in Set-Cookie when the request carries none. A bearer this server cannot
+	// verify does not fail the call: the view falls back to the cookie, and is
+	// recorded only if one came with it, because minting an identifier for a
+	// caller that presented a session of its own would open a new actor per
+	// request.
+	//
+	// Cross-tenant, unpublished, and missing targets are all surfaced as
+	// NotFound, matching FollowService and RatingService, so a view cannot be
+	// used to probe for hidden content.
+	RecordContentView(context.Context, *connect.Request[v1.RecordContentViewRequest]) (*connect.Response[v1.RecordContentViewResponse], error)
+}
+
+// NewContentViewServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewContentViewServiceHandler(svc ContentViewServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	contentViewServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("ContentViewService").Methods()
+	contentViewServiceRecordContentViewHandler := connect.NewUnaryHandler(
+		ContentViewServiceRecordContentViewProcedure,
+		svc.RecordContentView,
+		connect.WithSchema(contentViewServiceMethods.ByName("RecordContentView")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/publira.v1.ContentViewService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ContentViewServiceRecordContentViewProcedure:
+			contentViewServiceRecordContentViewHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedContentViewServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedContentViewServiceHandler struct{}
+
+func (UnimplementedContentViewServiceHandler) RecordContentView(context.Context, *connect.Request[v1.RecordContentViewRequest]) (*connect.Response[v1.RecordContentViewResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.ContentViewService.RecordContentView is not implemented"))
 }
 
 // PurchaseServiceClient is a client for the publira.v1.PurchaseService service.

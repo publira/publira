@@ -1,18 +1,14 @@
+import { ContentViewTargetType } from "@publira/api-client/public/catalog";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { recordContentView, VIEW_ACTOR_COOKIE_NAME } from "./view-events";
 
-const {
-  mockCookies,
-  mockGetEpisodeDetail,
-  mockGetSeriesDetail,
-  mockResolveAccessToken,
-} = vi.hoisted(() => ({
-  mockCookies: vi.fn(),
-  mockGetEpisodeDetail: vi.fn(),
-  mockGetSeriesDetail: vi.fn(),
-  mockResolveAccessToken: vi.fn(),
-}));
+const { mockCookies, mockRecordContentView, mockResolveAccessToken } =
+  vi.hoisted(() => ({
+    mockCookies: vi.fn(),
+    mockRecordContentView: vi.fn(),
+    mockResolveAccessToken: vi.fn(),
+  }));
 
 vi.mock("next/headers", () => ({
   cookies: mockCookies,
@@ -20,9 +16,8 @@ vi.mock("next/headers", () => ({
 
 vi.mock("./api-client", () => ({
   apiClient: {
-    catalog: {
-      getEpisodeDetail: mockGetEpisodeDetail,
-      getSeriesDetail: mockGetSeriesDetail,
+    contentView: {
+      recordContentView: mockRecordContentView,
     },
   },
   resolveAccessToken: mockResolveAccessToken,
@@ -45,10 +40,8 @@ const cookieStore = (stored?: string) => {
   return set;
 };
 
-const forwardedHeaders = (
-  rpc: ReturnType<typeof vi.fn>
-): Record<string, string> => {
-  const [, options] = rpc.mock.calls[0] as [
+const forwardedHeaders = (): Record<string, string> => {
+  const [, options] = mockRecordContentView.mock.calls[0] as [
     unknown,
     { headers: Record<string, string> },
   ];
@@ -58,8 +51,7 @@ const forwardedHeaders = (
 describe("recordContentView", () => {
   beforeEach(() => {
     mockResolveAccessToken.mockResolvedValue("");
-    mockGetEpisodeDetail.mockResolvedValue({});
-    mockGetSeriesDetail.mockResolvedValue({});
+    mockRecordContentView.mockResolvedValue({});
   });
 
   it("mints an actor for a signed-out reader, stores it, and forwards it", async () => {
@@ -79,8 +71,11 @@ describe("recordContentView", () => {
     // Outlives the raw events, and expires rather than living on forever.
     expect(written.maxAge).toBe(180 * 24 * 60 * 60);
 
-    expect(mockGetEpisodeDetail).toHaveBeenCalledWith(
-      { publicId: "EP_001", tenant: { tenantId: TENANT_ID } },
+    expect(mockRecordContentView).toHaveBeenCalledWith(
+      {
+        target: { publicId: "EP_001", type: ContentViewTargetType.EPISODE },
+        tenant: { tenantId: TENANT_ID },
+      },
       { headers: { Cookie: `publira_aid=${written.value}` } }
     );
   });
@@ -95,8 +90,11 @@ describe("recordContentView", () => {
     });
 
     expect(set).not.toHaveBeenCalled();
-    expect(mockGetSeriesDetail).toHaveBeenCalledWith(
-      { publicId: "SR_001", tenant: { tenantId: TENANT_ID } },
+    expect(mockRecordContentView).toHaveBeenCalledWith(
+      {
+        target: { publicId: "SR_001", type: ContentViewTargetType.SERIES },
+        tenant: { tenantId: TENANT_ID },
+      },
       { headers: { Cookie: `publira_aid=${STORED_ACTOR_ID}` } }
     );
   });
@@ -113,9 +111,7 @@ describe("recordContentView", () => {
       });
 
       expect(set).toHaveBeenCalledTimes(1);
-      expect(forwardedHeaders(mockGetSeriesDetail).Cookie).not.toContain(
-        stored
-      );
+      expect(forwardedHeaders().Cookie).not.toContain(stored);
     }
   );
 
@@ -130,14 +126,14 @@ describe("recordContentView", () => {
     });
 
     expect(set).not.toHaveBeenCalled();
-    expect(forwardedHeaders(mockGetEpisodeDetail)).toEqual({
+    expect(forwardedHeaders()).toEqual({
       Authorization: "Bearer header.payload.signature",
     });
   });
 
   it("leaves the reader's page alone when the RPC fails", async () => {
     cookieStore(STORED_ACTOR_ID);
-    mockGetEpisodeDetail.mockRejectedValue(new Error("unavailable"));
+    mockRecordContentView.mockRejectedValue(new Error("unavailable"));
 
     await expect(
       recordContentView({

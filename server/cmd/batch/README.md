@@ -108,7 +108,7 @@ faded by `0.5 ^ (days before the last day of the window / 3)`, and an entity's s
 
 The weights order the signals by how much a reader committed: paying for an episode says the most, following a series next, and a view least. A distinct viewer counts double a repeat view, so a title read once by many outranks one refreshed by a few. Ratings only ever add — above neutral is a bonus, below it contributes nothing rather than pushing a title down a popularity chart — because a low rating is a quality signal, not an unpopularity one.
 
-Views are whatever `content_daily_stats` holds, which today is soft PV (a successful episode or series detail read). Separating hard PV out is a later change, and it is one that would change the meaning of `view_count`: bump `algorithm_version` with it.
+Views are whatever `content_daily_stats` holds, which today is soft PV (a reader opening an episode or series detail page, reported through `RecordContentView`). Separating hard PV out is a later change, and it is one that would change the meaning of `view_count`: bump `algorithm_version` with it.
 
 The fade is measured against the end of the window, never against now, so re-running a past day reproduces that day's snapshot exactly. The order is fully determined — score, then purchases, then viewers, then entity id — so two runs over unchanged stats agree on every position, not just on the set of entities.
 

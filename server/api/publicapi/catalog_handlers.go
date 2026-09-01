@@ -670,8 +670,6 @@ func (s *apiServer) GetSeriesDetail(
 		res.Msg.Episodes = append(res.Msg.Episodes, item)
 	}
 
-	viewerUserID := s.viewerUserID(ctx, req.Msg.Tenant, req.Header())
-	s.instrumentViewEvent(ctx, res.Header(), req.Header(), tenant.ID, row.ID, uuid.NullUUID{}, viewerUserID)
 	return res, nil
 }
 
@@ -694,10 +692,6 @@ func (s *apiServer) GetEpisodeDetail(
 	access := publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED
 	includeImages := false
 	mediaToken := ""
-	// Attribution for the soft PV recorded at the end of this handler. A
-	// bearer is resolved for a free episode too, where it decides only whose
-	// view this is rather than what the reader may see.
-	var viewerUserID uuid.NullUUID
 	if row.Price == 0 {
 		access = publirav1.EpisodeAccess_EPISODE_ACCESS_FREE
 		includeImages = true
@@ -717,41 +711,38 @@ func (s *apiServer) GetEpisodeDetail(
 				"episode_public_id", req.Msg.PublicId,
 				"code", connect.CodeOf(authErr).String(),
 			)
-		} else {
-			viewerUserID = uuid.NullUUID{UUID: session.User.ID, Valid: true}
-			if row.Price > 0 {
-				hasAccess, accessErr := s.queriesFor(ctx).UserHasEpisodeContentAccess(ctx, dbmodels.UserHasEpisodeContentAccessParams{
-					TenantID:  tenant.ID,
-					UserID:    session.User.ID,
-					EpisodeID: row.ID,
-				})
-				if accessErr != nil {
-					return nil, s.internalDBError(ctx, "failed to check episode content access", accessErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
-				}
-				if hasAccess.Valid && hasAccess.Bool {
-					access = publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED
-					includeImages = true
-					// The reader fetches these images from image-server with an
-					// <img>, which cannot carry the bearer this RPC was called
-					// with. The token below is what makes that request identify
-					// the same reader; image-server still checks the grant.
-					token, _, tokenErr := s.tokens.IssueMediaToken(
-						session.User.PublicID,
-						tenant.ID.String(),
-						row.ID.String(),
-						session.User.CredentialsVersion,
-						time.Now(),
+		} else if row.Price > 0 {
+			hasAccess, accessErr := s.queriesFor(ctx).UserHasEpisodeContentAccess(ctx, dbmodels.UserHasEpisodeContentAccessParams{
+				TenantID:  tenant.ID,
+				UserID:    session.User.ID,
+				EpisodeID: row.ID,
+			})
+			if accessErr != nil {
+				return nil, s.internalDBError(ctx, "failed to check episode content access", accessErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+			}
+			if hasAccess.Valid && hasAccess.Bool {
+				access = publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED
+				includeImages = true
+				// The reader fetches these images from image-server with an
+				// <img>, which cannot carry the bearer this RPC was called
+				// with. The token below is what makes that request identify
+				// the same reader; image-server still checks the grant.
+				token, _, tokenErr := s.tokens.IssueMediaToken(
+					session.User.PublicID,
+					tenant.ID.String(),
+					row.ID.String(),
+					session.User.CredentialsVersion,
+					time.Now(),
+				)
+				if tokenErr != nil {
+					s.logger.ErrorContext(ctx, "failed to issue episode media token",
+						"tenant_id", tenant.ID.String(),
+						"episode_public_id", req.Msg.PublicId,
+						"error", tokenErr,
 					)
-					if tokenErr != nil {
-						s.logger.ErrorContext(ctx, "failed to issue episode media token",
-							"tenant_id", tenant.ID.String(),
-							"episode_public_id", req.Msg.PublicId,
-							"error", tokenErr,
-						)
-						return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
-					}
-					mediaToken = token
+					return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 				}
+				mediaToken = token
 			}
 		}
 	}
@@ -775,8 +766,6 @@ func (s *apiServer) GetEpisodeDetail(
 		}
 	}
 
-	s.instrumentViewEvent(ctx, res.Header(), req.Header(), tenant.ID, row.SeriesID,
-		uuid.NullUUID{UUID: row.ID, Valid: true}, viewerUserID)
 	return res, nil
 }
 
