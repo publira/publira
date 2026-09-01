@@ -43,6 +43,10 @@ jobs:
           # The branch tip, not the `pull_request` merge ref: the stacked branch
           # has to be a descendant of the original branch and nothing else.
           ref: ${{ github.event.pull_request.head.ref }}
+          # `task gen` runs the pull request's own Taskfile.yaml, so the write
+          # token must not be left in the local git config for it to reach.
+          # create-pull-request configures its own credential from `token`.
+          persist-credentials: false
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
