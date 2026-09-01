@@ -1,21 +1,31 @@
 import { expect, test } from "@playwright/test";
 
-import { signInAsSeedAdmin } from "../src/admin";
-import { WEB_ADMIN_BASE_URL } from "../src/urls";
+import { signInAsNotificationInboxAdmin } from "../src/admin";
+import { applyScenarioSql } from "../src/db";
+import { NOTIFICATION_INBOX_SCENARIO } from "../src/scenarios/notification-inbox";
+import { WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL } from "../src/urls";
 
-const adminUrl = (pathname: string): string =>
-  `${WEB_ADMIN_BASE_URL}${pathname}`;
+const inboxUrl = (pathname: string): string =>
+  `${WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL}${pathname}`;
 
 /**
  * The admin inbox (#881) is a different screen from announcement delivery.
- * Seed data has no inbox rows, so the empty bell menu and empty list are the
- * path this suite can assert without waiting on #862.
+ * There are no inbox rows to assert against yet, so the empty bell menu and
+ * empty list are the path this suite can take without waiting on #862.
+ *
+ * The admin is the inbox tenant's own (#1380): publishing an episode notifies
+ * every admin of that episode's tenant, so the dev seed admin's bell stops
+ * being empty the moment `admin.publish-flow` runs beside this file.
  */
 test.describe("web-admin notification bell", () => {
+  test.beforeAll(() => {
+    applyScenarioSql(NOTIFICATION_INBOX_SCENARIO);
+  });
+
   test("shows the empty bell menu and notification list, leaving the announcements screen intact", async ({
     page,
   }) => {
-    await signInAsSeedAdmin(page, "/");
+    await signInAsNotificationInboxAdmin(page, "/");
 
     const bell = page.getByRole("button", {
       name: "通知、未読はありません",
@@ -45,7 +55,7 @@ test.describe("web-admin notification bell", () => {
       page.getByRole("link", { name: "お知らせを作成" })
     ).toHaveCount(0);
 
-    await page.goto(adminUrl("/announcements"));
+    await page.goto(inboxUrl("/announcements"));
     await expect(page).toHaveURL(/\/announcements\/?$/u);
     await expect(page.getByRole("heading", { name: "お知らせ" })).toBeVisible();
     await expect(

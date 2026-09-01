@@ -1,19 +1,33 @@
 import { expect, test } from "@playwright/test";
 
-import { signInAsSeedMember } from "../src/host";
-import { hostPath } from "../src/urls";
+import { applyScenarioSql } from "../src/db";
+import { signInAsNotificationInboxMember } from "../src/host";
+import { NOTIFICATION_INBOX_SCENARIO } from "../src/scenarios/notification-inbox";
+import { hostPath, WEB_HOST_NOTIFICATION_INBOX_BASE_URL } from "../src/urls";
+
+const inboxUrl = (pathname: string): string =>
+  `${WEB_HOST_NOTIFICATION_INBOX_BASE_URL}${hostPath(pathname)}`;
 
 /**
- * The host inbox (#883) is header chrome plus `/notifications`. Seed data
- * has no inbox rows, so the empty bell and empty list are the path this suite
- * can assert without waiting on #863. `/announcements` stays the delivery list.
+ * The host inbox (#883) is header chrome plus `/notifications`. There are no
+ * inbox rows to assert against yet, so the empty bell and empty list are the
+ * path this suite can take without waiting on #863. `/announcements` stays the
+ * delivery list.
+ *
+ * The member is the inbox tenant's own (#1380): publishing an episode notifies
+ * every member and admin of that episode's tenant, so the dev seed member's
+ * bell stops being empty the moment `admin.publish-flow` runs beside this file.
  */
 
 test.describe("web-host notification bell", () => {
+  test.beforeAll(() => {
+    applyScenarioSql(NOTIFICATION_INBOX_SCENARIO);
+  });
+
   test("shows the empty bell menu and notification list, leaving the announcements screen intact", async ({
     page,
   }) => {
-    await signInAsSeedMember(page, "/notifications");
+    await signInAsNotificationInboxMember(page, "/notifications");
 
     const bell = page.getByRole("button", { name: "通知、未読はありません" });
     await expect(bell).toBeVisible();
@@ -33,7 +47,7 @@ test.describe("web-host notification bell", () => {
       page.getByRole("main").getByText("通知はまだありません。")
     ).toBeVisible();
 
-    await page.goto(hostPath("/announcements"));
+    await page.goto(inboxUrl("/announcements"));
     await expect(page).toHaveURL(/\/announcements\/?$/u);
     await expect(
       page.getByRole("heading", { exact: true, level: 1, name: "お知らせ" })
@@ -44,7 +58,7 @@ test.describe("web-host notification bell", () => {
   test("/notifications redirects to login while signed out", async ({
     page,
   }) => {
-    await page.goto(hostPath("/notifications"));
+    await page.goto(inboxUrl("/notifications"));
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
     await expect(
       page.getByRole("link", { name: "通知、未読はありません" })
