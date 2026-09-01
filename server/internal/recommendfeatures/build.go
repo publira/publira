@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/batchlock"
 )
 
 const (
@@ -25,11 +27,6 @@ const (
 	// what online inference reads to pick candidates, so it is capped to keep
 	// one user's features small enough to fetch on a request path.
 	DefaultTopSeriesLimit = 10
-
-	// lockTimeout bounds how long one tenant waits for the advisory lock. A
-	// cron one-shot has no deadline of its own, so without this an overlapping
-	// run would block forever with a transaction open instead of exiting.
-	lockTimeout = "30s"
 
 	// FeatureVersion stamps every row this package writes. Bump it whenever
 	// the shape or the meaning of a field changes, so a reader can tell a
@@ -157,17 +154,12 @@ func (b *Builder) buildTenant(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if _, err := tx.ExecContext(ctx, "SELECT set_config('lock_timeout', $1, true)", lockTimeout); err != nil {
-		return 0, 0, fmt.Errorf("set lock timeout: %w", err)
-	}
 	// This lock belongs inside the transaction: it protects the delete/insert
-	// replacement from a concurrent cron invocation for the same tenant. The
-	// timeout above turns an overlapping run into a failed run rather than one
+	// replacement from a concurrent cron invocation for the same tenant. Its
+	// bounded wait turns an overlapping run into a failed run rather than one
 	// that waits out the day holding a transaction open.
-	if _, err := tx.ExecContext(ctx, `
-		SELECT pg_advisory_xact_lock(hashtextextended($1::text || ':recommend-features', 0))
-	`, tenantID); err != nil {
-		return 0, 0, fmt.Errorf("lock tenant (waited up to %s): %w", lockTimeout, err)
+	if err := batchlock.TakeTenant(ctx, tx, tenantID.String()+":recommend-features"); err != nil {
+		return 0, 0, err
 	}
 
 	sources, err := countSources(ctx, tx, tenantID, referenceDate, windowDays)
