@@ -16,7 +16,7 @@ Code, identifiers, commit messages, and quoted technical terms stay as-is in eit
 
 Every Markdown document this repository owns — every `README.md` and `AGENTS.md`, the skills under `skills/`, the pull request template — is written in English, and so are the labels of automated tests: the first argument of Vitest's `describe` / `it`, Playwright's `test` / `test.describe`, Go's `t.Run`, and Flutter's `test` / `group` / `testWidgets`. The only exception is the root `README.md`, which is paired with a Japanese translation at `README.ja.md`; no other directory gets a `*.ja.md`.
 
-Japanese survives where it is the subject rather than the prose: user-facing UI strings, including the ones quoted in a code example, the values in `locales/*.json`, and Japanese test fixtures. Identifiers, API names, paths, and environment variable names are never translated in either direction.
+Japanese survives only where it is quoted as code rather than written as prose: a UI string inside a code example, the values in `locales/*.json`, and Japanese test fixtures. Prose that names a screen element uses its English label — the UI ships `locales/en.json`, so a Japanese label is not a string an English reader can find on screen. Take the wording from `locales/en.json`, or describe the element in English when that screen has no English copy yet. Identifiers, API names, paths, and environment variable names are never translated in either direction.
 
 No lint covers this. Japanese README files and test labels predating the rule are still being translated under [#1283](https://github.com/publira/publira/issues/1283), so an existing Japanese one is a leftover, not a precedent.
 

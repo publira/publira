@@ -246,7 +246,7 @@ The boundary goes **outside** the `<Suspense>`, not inside, so `retry()` puts th
 </SectionErrorBoundary>
 ```
 
-Title the fallback after the section it replaces (「おすすめ作品を表示できませんでした」), so a reader can tell which part of the page is missing.
+Title the fallback after the section it replaces ("Could not show the recommended works"), so a reader can tell which part of the page is missing.
 
 ### NG (do not)
 
@@ -284,7 +284,7 @@ if (listErrorMessage) {
 }
 ```
 
-Two things follow from the list being gone rather than empty, and both are already true of every `*Manager`: the `EmptyState` is not rendered next to the error (a failed read still hands the component an empty array, and「まだ登録されていません」next to the error reads as "there is no data"), and the pager is hidden (its tokens are empty then, so "前へ / 次へ" chrome next to the error looks like the list exists).
+Two things follow from the list being gone rather than empty, and both are already true of every `*Manager`: the `EmptyState` is not rendered next to the error (a failed read still hands the component an empty array, and "No series have been registered yet." next to the error reads as "there is no data"), and the pager is hidden (its tokens are empty then, so "Previous / Next" chrome next to the error looks like the list exists).
 
 Form components keep `FormMessage` for the row above: `creatorsErrorMessage`, `usersErrorMessage`, `loadErrorMessage` and friends stay where they are, next to the control they degrade.
 
@@ -292,7 +292,7 @@ The `catchError` call itself stays in each app rather than in `@publira/ui-compo
 
 ## Live regions in a form: `<p role="status">`, never `<output>`
 
-A live region rendered inside a form — `FormMessage` above all — must not be an `<output>`. `<output>` is a resettable element, and resetting a form replaces such an element's children with a single text node holding its default value. React resets a form on its own once the Action passed to it settles, so the elements React rendered inside the `<output>` are detached on the very first submission; every message written after that goes to nodes the document no longer holds. `className` sits on the element itself and keeps updating, which is what makes the symptom confusing: the border turns red while the body still reads「保存しました。」(#1070).
+A live region rendered inside a form — `FormMessage` above all — must not be an `<output>`. `<output>` is a resettable element, and resetting a form replaces such an element's children with a single text node holding its default value. React resets a form on its own once the Action passed to it settles, so the elements React rendered inside the `<output>` are detached on the very first submission; every message written after that goes to nodes the document no longer holds. `className` sits on the element itself and keeps updating, which is what makes the symptom confusing: the border turns red while the body still reads "Saved." (#1070).
 
 Use `<p role="status">`. That is the role `<output>` carried implicitly, so `getByRole("status")` in unit tests and e2e keeps matching.
 
@@ -456,8 +456,8 @@ The switcher writes the cookie from a Server Action. Never write `document.cooki
 
 Worked examples:
 
-- `web-platform`: `lib/locale.ts` / `lib/locale-action.ts` and the 表示言語 card on `/settings/general` ([#867](https://github.com/publira/publira/issues/867))
-- `web-admin`: `lib/locale.ts` (`getLocale()`) / `lib/locale-action.ts` and the 表示言語 card on `/settings` ([#868](https://github.com/publira/publira/issues/868))
+- `web-platform`: `lib/locale.ts` / `lib/locale-action.ts` and the Display language card on `/settings/general` ([#867](https://github.com/publira/publira/issues/867))
+- `web-admin`: `lib/locale.ts` (`getLocale()`) / `lib/locale-action.ts` and the Display language card on `/settings` ([#868](https://github.com/publira/publira/issues/868))
 
 ### A URL-locale app (`web-host`)
 
