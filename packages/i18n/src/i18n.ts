@@ -35,22 +35,47 @@ export const LOCALE_COOKIE_NAME = profileCookieName("publira_locale");
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 /**
+ * Cookie that carries the display locale the **server** resolved for a cookie
+ * app, so the browser can name it without a read of its own.
+ *
+ * It is not a choice and must never be treated as one: the app's proxy writes
+ * the stored console default it just read, and {@link LOCALE_COOKIE_NAME}
+ * always wins over it. Two things in the browser have no way to reach that
+ * stored value otherwise — `<html lang>`, which the root layout cannot resolve
+ * without costing every route its static shell, and the client error boundary,
+ * which renders precisely when the API that holds the value is unreachable.
+ * Without it both fall back to `Accept-Language`, so a console whose saved
+ * language is `ja` answers an outage in English.
+ *
+ * The server never resolves a locale *from* this cookie. It reads the setting
+ * itself, and this is the copy it leaves behind for the browser.
+ */
+export const RESOLVED_LOCALE_COOKIE_NAME = profileCookieName(
+  "publira_resolved_locale"
+);
+
+/**
  * Source of the inline `<head>` script that applies the locale cookie to
  * `<html lang>` before the browser paints.
  *
  * An app that keeps the locale in a cookie cannot resolve `<html lang>` on the
  * server: under Cache Components a `cookies()` read above every `<Suspense>`
  * boundary leaves the route with no static shell, and the `<html>` element has
- * no child boundary the read could move into. So the root layout renders a
- * statically known attribute and this script corrects it while the document is
- * still being parsed — the pattern Next.js documents for cookie-driven
- * `<html>` attributes ("How to prevent flash before hydration").
+ * no child boundary the read could move into. So the root layout renders only
+ * what it knows statically — in both consoles, no `lang` at all — and this
+ * script writes the attribute while the document is still being parsed, the
+ * pattern Next.js documents for cookie-driven `<html>` attributes ("How to
+ * prevent flash before hydration").
  *
- * The only thing the script ever writes is a locale the reader chose: it
- * applies the cookie value when, and only when, that value is one of
- * {@link getLocales}. A missing, empty, undecodable, or unsupported cookie
- * leaves the attribute exactly as the server rendered it, so nothing here turns
- * "no locale was chosen" into a language.
+ * Two cookies can name that locale, and the script reads them in the order the
+ * server resolves them: {@link LOCALE_COOKIE_NAME}, the reader's own choice,
+ * then {@link RESOLVED_LOCALE_COOKIE_NAME}, the stored console default the
+ * proxy resolved for this request. A value is applied when, and only when, it
+ * is one of {@link getLocales}; when neither cookie names one the attribute is
+ * left exactly as the server rendered it, so nothing here turns "no locale was
+ * resolved" into a language. An undecodable value stops the script rather than
+ * falling through — a cookie that cannot be read says nothing about which of
+ * the two it was meant to be.
  *
  * Two things follow for the caller. The element needs
  * `suppressHydrationWarning`, because the DOM no longer matches what React
@@ -63,7 +88,7 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
  * Everything interpolated below is a constant of this module, so no
  * request-derived value reaches the script source.
  */
-export const LOCALE_LANG_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${LOCALE_COOKIE_NAME}=([^;]*)/);if(!m){return}var l=decodeURIComponent(m[1]).trim();if(${JSON.stringify(getLocales())}.indexOf(l)<0){return}document.documentElement.lang=l}catch(e){}})()`;
+export const LOCALE_LANG_SCRIPT = `(function(){try{var s=${JSON.stringify(getLocales())};var p=function(n){var m=document.cookie.match(new RegExp("(?:^|; )"+n+"=([^;]*)"));if(!m){return""}var l=decodeURIComponent(m[1]).trim();return s.indexOf(l)<0?"":l};var l=p(${JSON.stringify(LOCALE_COOKIE_NAME)})||p(${JSON.stringify(RESOLVED_LOCALE_COOKIE_NAME)});if(l){document.documentElement.lang=l}}catch(e){}})()`;
 
 const LOCALE_SET: ReadonlySet<string> = new Set(getLocales());
 

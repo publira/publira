@@ -5,7 +5,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
+import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -20,13 +20,28 @@ import { loadPlatformMessages } from "./locale";
 const isSetupStatusUnknownError = (error: unknown): boolean =>
   isRpcError(error, Code.NotFound, Code.FailedPrecondition);
 
-const readSetupStatus = async (): Promise<boolean | null> => {
+/**
+ * What `CheckSetupStatus` answers, as the console uses it.
+ *
+ * `completed` is `null` while the platform has not been initialized yet, and
+ * `defaultLocale` is `null` until a language has been saved — which is the same
+ * moment, since `CreateInitialUser` writes the settings row.
+ */
+interface SetupStatusResponse {
+  completed: boolean | null;
+  defaultLocale: Locale | null;
+}
+
+const readSetupStatus = async (): Promise<SetupStatusResponse> => {
   try {
     const response = await apiClient.setup.checkSetupStatus({});
-    return response.setupCompleted;
+    return {
+      completed: response.setupCompleted,
+      defaultLocale: parseLocale(response.defaultLocale.trim()) ?? null,
+    };
   } catch (error) {
     if (isSetupStatusUnknownError(error)) {
-      return null;
+      return { completed: null, defaultLocale: null };
     }
     throw error;
   }
@@ -44,7 +59,8 @@ export const isSetupCompleted = async (): Promise<SetupStatus> => {
   "use cache: private";
 
   try {
-    return { available: true, completed: await readSetupStatus() };
+    const { completed } = await readSetupStatus();
+    return { available: true, completed };
   } catch {
     // A cache fill must not throw: the page can render its API-unavailable
     // message, while a successful read on the next request replaces it.
@@ -59,6 +75,14 @@ export const isSetupCompleted = async (): Promise<SetupStatus> => {
  * one that has only ever seen the API down.
  */
 let lastKnownSetupState: boolean | null | undefined;
+
+/**
+ * The last saved default locale the platform API answered with, for this server
+ * process. `null` while it has never answered one, which on a platform that is
+ * set up means the API has been down for every request since this instance
+ * started.
+ */
+let lastKnownDefaultLocale: Locale | null = null;
 
 /**
  * Setup state for `proxy.ts`, which has to keep routing while the platform API
@@ -76,14 +100,31 @@ let lastKnownSetupState: boolean | null | undefined;
  * the fallback: the API is asked on every request and only a failure reads the
  * stored value, so a platform that finishes setup is routed on the new state at
  * once.
+ *
+ * `defaultLocale` rides along because this is the one platform read that
+ * happens on every request without a session: the proxy hands it to the browser
+ * (`lib/resolved-locale.ts`), which is how `<html lang>` and the client error
+ * boundary come to name the saved language instead of the visitor's. It follows
+ * the same rule as the routing state — an outage keeps the last confirmed
+ * language rather than dropping to none, because the outage did not change what
+ * the platform saved.
  */
-export const resolveSetupCompleted = async (): Promise<boolean | null> => {
+export const resolveSetupState = async (): Promise<SetupStatusResponse> => {
   try {
-    const completed = await readSetupStatus();
-    lastKnownSetupState = completed;
-    return completed;
+    const status = await readSetupStatus();
+    lastKnownSetupState = status.completed;
+    if (status.defaultLocale) {
+      lastKnownDefaultLocale = status.defaultLocale;
+    }
+    return {
+      completed: status.completed,
+      defaultLocale: status.defaultLocale ?? lastKnownDefaultLocale,
+    };
   } catch {
-    return lastKnownSetupState === undefined ? true : lastKnownSetupState;
+    return {
+      completed: lastKnownSetupState === undefined ? true : lastKnownSetupState,
+      defaultLocale: lastKnownDefaultLocale,
+    };
   }
 };
 

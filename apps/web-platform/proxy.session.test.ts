@@ -10,12 +10,12 @@ import {
   vi,
 } from "vitest";
 
-const { mockResolveSetupCompleted } = vi.hoisted(() => ({
-  mockResolveSetupCompleted: vi.fn(),
+const { mockResolveSetupState } = vi.hoisted(() => ({
+  mockResolveSetupState: vi.fn(),
 }));
 
 vi.mock("./lib/setup", () => ({
-  resolveSetupCompleted: mockResolveSetupCompleted,
+  resolveSetupState: mockResolveSetupState,
 }));
 
 const PUBLIRA_AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
@@ -78,7 +78,10 @@ describe("web-platform proxy session handling", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSetupCompleted.mockResolvedValue(true);
+    mockResolveSetupState.mockResolvedValue({
+      completed: true,
+      defaultLocale: "ja",
+    });
   });
 
   it("clears undecryptable cookies without allowing protected routes", async () => {
@@ -170,7 +173,10 @@ describe("web-platform proxy session handling", () => {
   });
 
   it("clears invalid cookies and redirects to /setup when setup is incomplete", async () => {
-    mockResolveSetupCompleted.mockResolvedValue(false);
+    mockResolveSetupState.mockResolvedValue({
+      completed: false,
+      defaultLocale: "ja",
+    });
     const { proxy } = await import("./proxy");
 
     const response = await proxy(

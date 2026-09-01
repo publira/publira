@@ -73,8 +73,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * to pronounce it in the wrong language, and that is worse for that reader than
  * none. Streaming the tenant default in later is not the answer — a client
  * component can pick its own locale before that arrives, and then the catalog it
- * loads disagrees with the one the server rendered. Carrying the stored default
- * to the client is #1249.
+ * loads disagrees with the one the server rendered.
  */
 const TenantRootLayout = ({ children }: { children: ReactNode }) => (
   <html suppressHydrationWarning>

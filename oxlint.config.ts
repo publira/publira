@@ -91,6 +91,18 @@ export default defineConfig({
     },
     {
       /**
+       * The client error boundary resolves its locale from `document.cookie` —
+       * the platform API is unreachable by the time it renders, so there is
+       * nothing else left to read. Its test has to put the cookies there the
+       * way a browser would; a cookie library would only be testing itself.
+       */
+      files: ["apps/web-platform/components/client-message.test.tsx"],
+      rules: {
+        "unicorn/no-document-cookie": "off",
+      },
+    },
+    {
+      /**
        * The locale cookie has to reach `<html lang>` before the browser paints,
        * and under Cache Components the root layout cannot read it — a
        * `cookies()` call above every `<Suspense>` boundary leaves the route
@@ -100,7 +112,7 @@ export default defineConfig({
        * Next.js documents for cookie-driven `<html>` attributes.
        *
        * The injected source is `LOCALE_LANG_SCRIPT`, a constant built from
-       * `getLocales` and `LOCALE_COOKIE_NAME` in `@publira/i18n`. No
+       * `getLocales` and the locale cookie names in `@publira/i18n`. No
        * request-derived value reaches it, and the script writes an attribute
        * rather than markup. See AGENTS.md "UI ロケール" (#867, #868).
        *
@@ -122,15 +134,17 @@ export default defineConfig({
        * Every value the attribute could take needs a read — the operator's
        * cookie, and the stored default behind it — and a root layout that
        * awaits blocks the whole tree. An `<html>` attribute is never worth
-       * that, so both layouts stay synchronous and the cookie travels as a
-       * script (`LOCALE_LANG_SCRIPT`) instead.
+       * that, so both layouts stay synchronous and the locale travels as
+       * cookies the script (`LOCALE_LANG_SCRIPT`) applies instead:
+       * `web-platform` publishes the stored default from its proxy, so the
+       * script names it even for an operator who has chosen nothing.
        *
-       * Until it runs the document names no language. A `lang` the document
-       * is not written in tells a screen reader to pronounce the page in the
-       * wrong language, which is worse for the reader this rule protects than
-       * an absent one, and it is what AGENTS.md means by not misreporting an
-       * unresolved locale as a language. Carrying the stored default to the
-       * document — which the client boundaries also read — is #1249.
+       * Until it runs the document names no language, and a document that
+       * carries neither cookie keeps naming none. A `lang` the document is not
+       * written in tells a screen reader to pronounce the page in the wrong
+       * language, which is worse for the reader this rule protects than an
+       * absent one, and it is what AGENTS.md means by not misreporting an
+       * unresolved locale as a language.
        */
       files: [
         "apps/web-platform/app/layout.tsx",
