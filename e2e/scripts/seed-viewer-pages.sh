@@ -24,7 +24,12 @@ e2e_log "applying ${SCENARIO_SQL}"
 psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${SCENARIO_SQL}"
 
 # display_order is the reading order, and page-NN.jpg is numbered the same way.
-mapfile -t object_keys < <(
+#
+# A command substitution rather than `mapfile < <(psql …)`: process substitution
+# runs psql in a subshell whose exit status `set -e` never sees, so a query that
+# failed after writing some rows would seed a partial page set and still report
+# success.
+object_keys_text="$(
   psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -t -A -c "
     SELECT eiv.object_key
     FROM episode_images ei
@@ -33,10 +38,21 @@ mapfile -t object_keys < <(
     WHERE e.public_id = 'SeedEPSDAAA2'
     ORDER BY ei.display_order ASC
   "
-)
+)"
 
-if [[ "${#object_keys[@]}" -eq 0 ]]; then
+fixtures=("${FIXTURE_DIR}"/page-*.jpg)
+
+# An episode read half way through is worse than one that never loaded, so the
+# row count has to account for every fixture before anything is uploaded.
+if [[ -z "${object_keys_text}" ]]; then
   e2e_err "050_viewer_pages left no episode images for SeedEPSDAAA2"
+  exit 1
+fi
+
+mapfile -t object_keys <<<"${object_keys_text}"
+
+if [[ "${#object_keys[@]}" -ne "${#fixtures[@]}" ]]; then
+  e2e_err "050_viewer_pages left ${#object_keys[@]} episode images for SeedEPSDAAA2, expected ${#fixtures[@]}"
   exit 1
 fi
 

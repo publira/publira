@@ -75,7 +75,9 @@ services:
     image: traefik:v3.7.12@sha256:9c2a54d87f76f5c2f5f2682c68394af92fb12c0a2686798d6462a3f84bd78eaf
     network_mode: host
     command:
-      - "--entrypoints.web.address=:${E2E_EDGE_PORT:-3080}"
+      # Loopback, like every published port above: a bare `:port` would listen
+      # on every interface, which host networking makes the real ones.
+      - "--entrypoints.web.address=127.0.0.1:${E2E_EDGE_PORT:-3080}"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
     volumes:
