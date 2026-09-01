@@ -34,11 +34,17 @@ class EpisodeReader extends StatefulWidget {
 class _EpisodeReaderState extends State<EpisodeReader> {
   final _controller = PageController();
   late final EpisodeImageClient _client;
+
+  /// Decided once, beside the client it describes. Re-deriving it at disposal
+  /// would read a `imageClient` the parent may have changed since, and then
+  /// either leak the client this reader opened or close one it never owned.
+  late final bool _ownsClient;
   var _index = 0;
 
   @override
   void initState() {
     super.initState();
+    _ownsClient = widget.imageClient == null;
     _client = widget.imageClient ?? EpisodeImageClient();
   }
 
@@ -56,7 +62,7 @@ class _EpisodeReaderState extends State<EpisodeReader> {
         ).evict(),
       );
     }
-    if (widget.imageClient == null) {
+    if (_ownsClient) {
       _client.close();
     }
     _controller.dispose();

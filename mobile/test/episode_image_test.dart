@@ -157,6 +157,76 @@ void main() {
     );
   });
 
+  test('a provider keeps the media token out of what it prints', () {
+    // The token in the query reads the paid body, so a failed page must not
+    // write it into the device log or a crash report built from one.
+    final token = jwtWithSubject('USRPUBLIC0001');
+    final provider = EpisodeImage(
+      Uri.parse('${_page.url}?$mediaTokenQueryParam=$token'),
+      headers: headers,
+      client: EpisodeImageClient(
+        httpClient: MockClient((_) async => http.Response('', 404)),
+      ),
+    );
+
+    expect(provider.toString(), isNot(contains(token)));
+    expect(provider.toString(), isNot(contains('?')));
+    expect(provider.toString(), contains(_page.url.path));
+  });
+
+  testWidgets('a reader never closes a client it was handed', (tester) async {
+    final client = _RecordingClient(
+      MockClient(
+        (_) async => http.Response.bytes(
+          _png,
+          200,
+          headers: const {'content-type': 'image/png'},
+        ),
+      ),
+    );
+
+    await _pumpReader(
+      tester,
+      client: EpisodeImageClient(httpClient: client),
+      headers: headers,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+
+    expect(client.closed, isFalse);
+  });
+
+  testWidgets('a reader that was handed a client keeps not owning it', (
+    tester,
+  ) async {
+    // Ownership is settled when the client is adopted. A parent that stops
+    // passing one afterwards must not turn the reader into its owner.
+    final client = _RecordingClient(
+      MockClient(
+        (_) async => http.Response.bytes(
+          _png,
+          200,
+          headers: const {'content-type': 'image/png'},
+        ),
+      ),
+    );
+
+    await _pumpReader(
+      tester,
+      client: EpisodeImageClient(httpClient: client),
+      headers: headers,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EpisodeReader(images: [_page], imageHeaders: headers),
+      ),
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+
+    expect(client.closed, isFalse);
+  });
+
   testWidgets('closing the reader releases its decoded pages', (tester) async {
     final client = EpisodeImageClient(
       httpClient: MockClient(
@@ -177,6 +247,24 @@ void main() {
 
     expect(imageCache.currentSize, 0);
   });
+}
+
+/// Passes every request through and records whether it was ever closed.
+class _RecordingClient extends http.BaseClient {
+  _RecordingClient(this._inner);
+
+  final http.Client _inner;
+  var closed = false;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      _inner.send(request);
+
+  @override
+  void close() {
+    closed = true;
+    _inner.close();
+  }
 }
 
 Future<void> _pumpReader(

@@ -38,10 +38,26 @@ class EpisodeImage extends ImageProvider<EpisodeImage> {
     return MultiFrameImageStreamCompleter(
       codec: key._load(decode),
       scale: 1,
-      debugLabel: key.url.toString(),
-      informationCollector: () => [ErrorDescription('Page URL: ${key.url}')],
+      debugLabel: key._loggableUrl,
+      informationCollector: () => [
+        ErrorDescription('Page URL: ${key._loggableUrl}'),
+      ],
     );
   }
+
+  /// The page URL with its query dropped, for anything that gets written down.
+  ///
+  /// A paid page carries its media token there, and that token reads the body:
+  /// a failed page would otherwise leave a working credential in the device
+  /// log and in any crash report that picks the log up.
+  String get _loggableUrl => url.hasQuery
+      ? Uri(
+          scheme: url.scheme,
+          host: url.host,
+          port: url.hasPort ? url.port : null,
+          path: url.path,
+        ).toString()
+      : url.toString();
 
   Future<ui.Codec> _load(ImageDecoderCallback decode) async {
     final Uint8List bytes = await client.fetch(url, headers: headers);
@@ -72,5 +88,5 @@ class EpisodeImage extends ImageProvider<EpisodeImage> {
   );
 
   @override
-  String toString() => 'EpisodeImage("$url")';
+  String toString() => 'EpisodeImage("$_loggableUrl")';
 }
