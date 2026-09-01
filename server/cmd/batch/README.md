@@ -7,11 +7,12 @@ task server:build
 ./server/bin/batch aggregate-content-stats
 ```
 
-Without an argument, or with a name that is not one of the six below, the binary prints its usage to stderr and exits non-zero.
+Without an argument, or with a name that is not one of the seven below, the binary prints its usage to stderr and exits non-zero.
 
 | Subcommand | Lifetime | What it does |
 | --- | --- | --- |
 | `publish-episodes` | Ticker, until `SIGINT` / `SIGTERM` | Promotes episodes whose scheduled time has passed |
+| `project-episode-reads` | One-shot | Files the missing `episode_complete` events for stored `episode_reads` |
 | `aggregate-content-stats` | One-shot | Rebuilds one UTC day of `content_daily_stats` |
 | `aggregate-rankings` | One-shot | Rebuilds the daily and weekly `content_ranking_snapshots` |
 | `purge-content-events` | One-shot | Deletes `content_events` rows past their retention window |
@@ -44,6 +45,32 @@ Environment variables:
 ### Next.js revalidation
 
 With `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` all set, the cache tags of every episode that reaches its publication time are sent to `POST /api/v1/revalidate` on all `web-*` apps. Tags are sent as they are, without a tenant ID restriction. The destinations are private network URLs; neither the public domain nor Traefik is involved. If any URL is unset or malformed, revalidation is disabled and the worker starts after logging the reason.
+
+## project-episode-reads
+
+Files the analytics counterpart of every stored episode read that does not have one yet, across every tenant.
+
+The API writes that event itself when a member finishes an episode, beside the `episode_reads` row it came from, and swallows the failure if the write does not land — the member's read is already stored, and failing their request over an engagement number would be the worse trade. This job is what closes the gap that leaves, so `content_daily_stats` counts a completion that lost its event.
+
+It is safe to run at any cadence, including alongside the API. The projection is keyed by `(source_table, source_id)` on the read it came from, so a read that already has its event is neither selected nor accepted a second time; running the job again after it has caught up writes nothing.
+
+The role needs `BYPASSRLS` (or superuser), the same one the aggregate uses.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/batch project-episode-reads
+```
+
+Environment variables:
+
+- `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_EVENTS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_EPISODE_READ_PROJECTION_BATCH_SIZE`: rows per statement. Defaults to `1000`; a non-numeric or non-positive value is rejected.
+
+Run it before `aggregate-content-stats` for the same day, so a completion whose event was lost is counted on the day it happened rather than never: the projection copies `episode_reads.read_at` into `occurred_at`, so a late run still files the event on the correct day, but only a rebuild of that day picks it up.
+
+### Query plan
+
+The anti-join reads `episode_reads` oldest-first and probes `idx_content_events_source_unique` per row. A backlog is bounded by the batch size, so a first run over a large table is many short statements rather than one long one.
 
 ## aggregate-content-stats
 

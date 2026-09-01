@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// One episode's read-through over the reported period.
+//
+// complete_count and member_view_count are the numerator and denominator of
+// the rate, and are counted over the same cohort — signed-in members — so the
+// two can be divided. The rate itself is not carried: it is the client's to
+// render, including what it shows when the denominator is zero.
+message EpisodeReadThrough {
+  string series_public_id = 1;
+  string series_title = 2;
+  string episode_public_id = 3;
+  string episode_title = 4;
+  // Members who finished this episode for the first time during the period.
+  int64 complete_count = 5;
+  // Views of this episode by signed-in members during the period.
+  int64 member_view_count = 6;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListEpisodeReadThroughRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListEpisodeReadThroughResponse {
+  // Ordered by complete_count, highest first.
+  repeated EpisodeReadThrough episodes = 1;
+  // The reported period, as inclusive UTC calendar dates (YYYY-MM-DD). The
+  // aggregate behind this report is a UTC daily one, so the period it covers
+  // is stated in the same days rather than in the console's time zone.
+  string period_start = 2;
+  string period_end = 3;
+  // The same two counts over every episode in the period. They stay the same
+  // on every page, because the rate for the period is not the rate of whatever
+  // rows one page happens to hold.
+  int64 total_complete_count = 4;
+  int64 total_member_view_count = 5;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 6;
+  // Token for the next page. Empty on the last page.
+  string next_token = 7;
+}
+
+service AdminEngagementService {
+  rpc ListEpisodeReadThrough(ListEpisodeReadThroughRequest) returns (ListEpisodeReadThroughResponse) {}
+}

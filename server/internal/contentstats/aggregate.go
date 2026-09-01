@@ -157,7 +157,7 @@ func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate 
 			 WHERE tenant_id = $1
 			   AND occurred_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
 			   AND occurred_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
-			   AND event_type IN ('episode_view', 'series_view', 'rating', 'favorite')),
+			   AND event_type IN ('episode_view', 'series_view', 'episode_complete', 'rating', 'favorite')),
 			(SELECT count(*)
 			 FROM purchases
 			 WHERE tenant_id = $1
@@ -173,6 +173,8 @@ WITH episode_events AS (
 		ce.episode_id AS entity_id,
 		count(*) FILTER (WHERE ce.event_type = 'episode_view') AS view_count,
 		count(DISTINCT ce.actor_key) FILTER (WHERE ce.event_type = 'episode_view') AS unique_viewer_count,
+		count(*) FILTER (WHERE ce.event_type = 'episode_view' AND ce.user_id IS NOT NULL) AS member_view_count,
+		count(*) FILTER (WHERE ce.event_type = 'episode_complete') AS complete_count,
 		count(*) FILTER (WHERE ce.event_type = 'rating') AS rating_count,
 		COALESCE(sum(ce.rating_score) FILTER (WHERE ce.event_type = 'rating'), 0) AS rating_sum
 	FROM content_events ce
@@ -180,7 +182,7 @@ WITH episode_events AS (
 	WHERE ce.tenant_id = $1
 		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
 		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
-		AND ce.event_type IN ('episode_view', 'rating')
+		AND ce.event_type IN ('episode_view', 'episode_complete', 'rating')
 		AND ce.episode_id IS NOT NULL
 	GROUP BY ce.episode_id
 ), purchases_by_episode AS (
@@ -196,7 +198,9 @@ WITH episode_events AS (
 		COALESCE(ee.entity_id, pe.entity_id) AS entity_id,
 		COALESCE(ee.view_count, 0) AS view_count,
 		COALESCE(ee.unique_viewer_count, 0) AS unique_viewer_count,
+		COALESCE(ee.member_view_count, 0) AS member_view_count,
 		COALESCE(pe.purchase_count, 0) AS purchase_count,
+		COALESCE(ee.complete_count, 0) AS complete_count,
 		COALESCE(ee.rating_count, 0) AS rating_count,
 		COALESCE(ee.rating_sum, 0) AS rating_sum
 	FROM episode_events ee
@@ -221,7 +225,9 @@ WITH episode_events AS (
 	SELECT
 		e.series_id AS entity_id,
 		sum(es.view_count) AS view_count,
+		sum(es.member_view_count) AS member_view_count,
 		sum(es.purchase_count) AS purchase_count,
+		sum(es.complete_count) AS complete_count,
 		sum(es.rating_count) AS rating_count,
 		sum(es.rating_sum) AS rating_sum
 	FROM episode_stats es
@@ -258,7 +264,9 @@ WITH episode_events AS (
 		entity_id,
 		view_count,
 		unique_viewer_count,
+		member_view_count,
 		purchase_count,
+		complete_count,
 		rating_count,
 		rating_sum,
 		0::bigint AS favorite_count
@@ -269,7 +277,9 @@ WITH episode_events AS (
 		se.entity_id,
 		COALESCE(sd.view_count, 0) + COALESCE(sr.view_count, 0) AS view_count,
 		COALESCE(sv.unique_viewer_count, 0) AS unique_viewer_count,
+		COALESCE(sr.member_view_count, 0) AS member_view_count,
 		COALESCE(sr.purchase_count, 0) AS purchase_count,
+		COALESCE(sr.complete_count, 0) AS complete_count,
 		COALESCE(sd.rating_count, 0) + COALESCE(sr.rating_count, 0) AS rating_count,
 		COALESCE(sd.rating_sum, 0) + COALESCE(sr.rating_sum, 0) AS rating_sum,
 		COALESCE(sd.favorite_count, 0) AS favorite_count
@@ -280,15 +290,19 @@ WITH episode_events AS (
 )
 INSERT INTO content_daily_stats (
 	id, tenant_id, stat_date, entity_type, entity_id,
-	view_count, unique_viewer_count, purchase_count, rating_count, rating_sum, favorite_count
+	view_count, unique_viewer_count, member_view_count, purchase_count, complete_count,
+	rating_count, rating_sum, favorite_count
 )
 SELECT
 	gen_random_uuid(), $1, $2::date, entity_type, entity_id,
-	view_count, unique_viewer_count, purchase_count, rating_count, rating_sum, favorite_count
+	view_count, unique_viewer_count, member_view_count, purchase_count, complete_count,
+	rating_count, rating_sum, favorite_count
 FROM rebuilt_stats
 WHERE view_count > 0
 	OR unique_viewer_count > 0
+	OR member_view_count > 0
 	OR purchase_count > 0
+	OR complete_count > 0
 	OR rating_count > 0
 	OR rating_sum > 0
 	OR favorite_count > 0

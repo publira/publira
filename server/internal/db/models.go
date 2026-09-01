@@ -65,7 +65,9 @@ type ContentDailyStat struct {
 	EntityID          uuid.UUID `json:"entity_id"`
 	ViewCount         int64     `json:"view_count"`
 	UniqueViewerCount int64     `json:"unique_viewer_count"`
+	MemberViewCount   int64     `json:"member_view_count"`
 	PurchaseCount     int64     `json:"purchase_count"`
+	CompleteCount     int64     `json:"complete_count"`
 	RatingCount       int64     `json:"rating_count"`
 	RatingSum         int64     `json:"rating_sum"`
 	FavoriteCount     int64     `json:"favorite_count"`
@@ -190,6 +192,7 @@ type EpisodeListing struct {
 }
 
 type EpisodeRead struct {
+	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`
 	UserID    uuid.UUID `json:"user_id"`
 	EpisodeID uuid.UUID `json:"episode_id"`

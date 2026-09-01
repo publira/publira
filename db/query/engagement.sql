@@ -22,6 +22,9 @@
 --     -> idx_content_events_tenant_series_occurred_at
 --   ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
 --     -> no index; sorts one tenant's published series (see the note there)
+--   ListEpisodeReadThroughDesc / ListEpisodeReadThroughAsc
+--     -> idx_content_daily_stats_tenant_date for the window, then a sort on the
+--        aggregate it groups (see the note there)
 
 -- name: InsertContentEvent :one
 INSERT INTO content_events (
@@ -186,6 +189,107 @@ WHERE source_id IS NOT NULL
 DO NOTHING
 RETURNING *;
 
+-- Projects one member's first completed read as the analytics event for that
+-- read. episode_reads stays the source of truth for the business state: its
+-- user, episode, and first read time are copied, and the owning series is
+-- resolved from the catalog rather than taken from the caller.
+--
+-- The pair (source_table, source_id) is what makes this replayable. A repeated
+-- notification returns the same episode_reads row, so the projection lands on
+-- the same source key and the unique index turns the second attempt into a
+-- no-op. Nothing here depends on knowing whether the read row was new.
+-- name: ProjectEpisodeCompleteEvent :one
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    payload,
+    occurred_at
+)
+SELECT
+    sqlc.arg('id'),
+    r.tenant_id,
+    'episode_complete',
+    r.user_id,
+    e.series_id,
+    r.episode_id,
+    'episode_reads',
+    r.id,
+    '{}'::jsonb,
+    r.read_at
+FROM episode_reads r
+JOIN episodes e
+    ON e.tenant_id = r.tenant_id
+    AND e.id = r.episode_id
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND r.user_id = sqlc.arg('user_id')
+    AND r.episode_id = sqlc.arg('episode_id')
+ON CONFLICT (tenant_id, source_table, source_id)
+WHERE source_id IS NOT NULL
+DO NOTHING
+RETURNING *;
+
+-- Reconciles episode_reads rows whose projection never landed, across every
+-- tenant. The request path writes the event outside the transaction that
+-- stored the read and swallows its failure, so a completion can outlive its
+-- event; this is how that gap closes.
+--
+-- The anti-join and the unique index answer the same question at different
+-- times, and both are needed: the anti-join keeps the statement from proposing
+-- rows that already exist, and ON CONFLICT keeps a concurrent request-path
+-- write from turning this run into a duplicate key error. Ordering by read_at
+-- makes a run resumable — every batch takes the oldest unprojected reads — so
+-- repeated runs converge instead of revisiting the same window.
+--
+-- id is uuidv7() rather than a value passed in because the statement inserts a
+-- whole batch; content_events ids are UUIDv7 so that events sharing an
+-- occurred_at still order by when they were recorded.
+-- name: ProjectPendingEpisodeCompleteEvents :execrows
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    payload,
+    occurred_at
+)
+SELECT
+    uuidv7(),
+    r.tenant_id,
+    'episode_complete',
+    r.user_id,
+    e.series_id,
+    r.episode_id,
+    'episode_reads',
+    r.id,
+    '{}'::jsonb,
+    r.read_at
+FROM episode_reads r
+JOIN episodes e
+    ON e.tenant_id = r.tenant_id
+    AND e.id = r.episode_id
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM content_events ce
+        WHERE ce.tenant_id = r.tenant_id
+            AND ce.source_table = 'episode_reads'
+            AND ce.source_id = r.id
+    )
+ORDER BY r.read_at, r.id
+LIMIT sqlc.arg('limit')
+ON CONFLICT (tenant_id, source_table, source_id)
+WHERE source_id IS NOT NULL
+DO NOTHING;
+
 -- Ratings are append-only, like every other content_events row: a member who
 -- changes their score inserts another event instead of updating the previous
 -- one, so the history stays reconstructable and nothing has to be deleted.
@@ -276,7 +380,9 @@ INSERT INTO content_daily_stats (
     entity_id,
     view_count,
     unique_viewer_count,
+    member_view_count,
     purchase_count,
+    complete_count,
     rating_count,
     rating_sum,
     favorite_count
@@ -288,7 +394,9 @@ INSERT INTO content_daily_stats (
     sqlc.arg('entity_id'),
     sqlc.arg('view_count'),
     sqlc.arg('unique_viewer_count'),
+    sqlc.arg('member_view_count'),
     sqlc.arg('purchase_count'),
+    sqlc.arg('complete_count'),
     sqlc.arg('rating_count'),
     sqlc.arg('rating_sum'),
     sqlc.arg('favorite_count')
@@ -296,7 +404,9 @@ INSERT INTO content_daily_stats (
 ON CONFLICT (tenant_id, stat_date, entity_type, entity_id) DO UPDATE
 SET view_count = EXCLUDED.view_count,
     unique_viewer_count = EXCLUDED.unique_viewer_count,
+    member_view_count = EXCLUDED.member_view_count,
     purchase_count = EXCLUDED.purchase_count,
+    complete_count = EXCLUDED.complete_count,
     rating_count = EXCLUDED.rating_count,
     rating_sum = EXCLUDED.rating_sum,
     favorite_count = EXCLUDED.favorite_count,
@@ -317,6 +427,121 @@ FROM content_daily_stats
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND stat_date = sqlc.arg('stat_date')
 ORDER BY entity_type, entity_id;
+
+-- The read-through report the console shows, over a closed range of UTC stat
+-- dates. Both halves of the rate come from the same cohort: complete_count is
+-- the members who finished the episode in the range, member_view_count the
+-- views those same signed-in members opened it with. view_count is not usable
+-- here — it counts anonymous readers, who cannot produce a completion at all.
+--
+-- No index can serve this scan: the sort key is an aggregate of the rows the
+-- query itself groups, the way ListRecommendedSeriesIDs sorts by a rank its own
+-- JSON supplies. It stays bounded by one tenant's episode rows inside the
+-- report window, which idx_content_daily_stats_tenant_date narrows first.
+--
+-- (complete_count, entity_id) is unique because entity_id alone is, so the
+-- keyset scan can neither skip nor repeat episodes that tie on completions.
+-- name: ListEpisodeReadThroughDesc :many
+WITH totals AS (
+    SELECT s.entity_id,
+        sum(s.complete_count)::bigint AS complete_count,
+        sum(s.member_view_count)::bigint AS member_view_count
+    FROM content_daily_stats s
+    WHERE s.tenant_id = sqlc.arg('tenant_id')
+        AND s.entity_type = 'episode'
+        AND s.stat_date >= sqlc.arg('period_start')
+        AND s.stat_date <= sqlc.arg('period_end')
+    GROUP BY s.entity_id
+    HAVING sum(s.complete_count) > 0 OR sum(s.member_view_count) > 0
+)
+SELECT t.entity_id AS episode_id,
+    t.complete_count,
+    t.member_view_count,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    sr.public_id AS series_public_id,
+    sr.title AS series_title
+FROM totals t
+    JOIN episodes e ON e.tenant_id = sqlc.arg('tenant_id') AND e.id = t.entity_id
+    JOIN series sr ON sr.tenant_id = e.tenant_id AND sr.id = e.series_id
+WHERE (
+        sqlc.narg('cursor_entity_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (t.complete_count, t.entity_id) <= (
+                sqlc.narg('cursor_complete_count')::bigint,
+                sqlc.narg('cursor_entity_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (t.complete_count, t.entity_id) < (
+                sqlc.narg('cursor_complete_count')::bigint,
+                sqlc.narg('cursor_entity_id')::uuid
+            )
+        )
+    )
+ORDER BY t.complete_count DESC, t.entity_id DESC
+LIMIT sqlc.arg('limit');
+
+-- ListEpisodeReadThroughDesc walked the other way, to build a previous page.
+-- The order it describes is the same one.
+-- name: ListEpisodeReadThroughAsc :many
+WITH totals AS (
+    SELECT s.entity_id,
+        sum(s.complete_count)::bigint AS complete_count,
+        sum(s.member_view_count)::bigint AS member_view_count
+    FROM content_daily_stats s
+    WHERE s.tenant_id = sqlc.arg('tenant_id')
+        AND s.entity_type = 'episode'
+        AND s.stat_date >= sqlc.arg('period_start')
+        AND s.stat_date <= sqlc.arg('period_end')
+    GROUP BY s.entity_id
+    HAVING sum(s.complete_count) > 0 OR sum(s.member_view_count) > 0
+)
+SELECT t.entity_id AS episode_id,
+    t.complete_count,
+    t.member_view_count,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    sr.public_id AS series_public_id,
+    sr.title AS series_title
+FROM totals t
+    JOIN episodes e ON e.tenant_id = sqlc.arg('tenant_id') AND e.id = t.entity_id
+    JOIN series sr ON sr.tenant_id = e.tenant_id AND sr.id = e.series_id
+WHERE (
+        sqlc.narg('cursor_entity_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (t.complete_count, t.entity_id) >= (
+                sqlc.narg('cursor_complete_count')::bigint,
+                sqlc.narg('cursor_entity_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (t.complete_count, t.entity_id) > (
+                sqlc.narg('cursor_complete_count')::bigint,
+                sqlc.narg('cursor_entity_id')::uuid
+            )
+        )
+    )
+ORDER BY t.complete_count ASC, t.entity_id ASC
+LIMIT sqlc.arg('limit');
+
+-- The tenant-wide numerator and denominator for the same window. This is the
+-- headline metric rather than a page count, so it does not fall under the "no
+-- total for a cursor list" rule: it stays the same value on every page, and a
+-- rate assembled from one page's rows would describe that page instead of the
+-- period.
+-- name: GetEpisodeReadThroughTotals :one
+SELECT COALESCE(sum(complete_count), 0)::bigint AS complete_count,
+    COALESCE(sum(member_view_count), 0)::bigint AS member_view_count
+FROM content_daily_stats
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND entity_type = 'episode'
+    AND stat_date >= sqlc.arg('period_start')
+    AND stat_date <= sqlc.arg('period_end');
 
 -- name: UpsertUserRecommendFeatures :one
 INSERT INTO user_recommend_features (

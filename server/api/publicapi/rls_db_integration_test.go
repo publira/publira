@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -84,7 +86,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	})
 	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	env.PG.SeedPurchase(t, first.ID, member.ID, episode.ID, episode.Price)
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (tenant_id, user_id, episode_id) VALUES ($1, $2, $3)", first.ID, member.ID, episode.ID); err != nil {
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID); err != nil {
 		t.Fatalf("seed episode read: %v", err)
 	}
 	env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})

@@ -78,6 +78,12 @@ CREATE TABLE creator_follows (
 
 -- TABLE: content_daily_stats
 -- L2: daily per-item aggregates consumed by the ranking and feature builds.
+--
+-- complete_count and member_view_count are the two halves of the read-through
+-- rate and are deliberately measured over the same cohort: signed-in members.
+-- view_count and unique_viewer_count count every actor including anonymous
+-- readers, so neither can be the denominator of a rate whose numerator only
+-- members can produce.
 CREATE TABLE content_daily_stats (
     id uuid NOT NULL,
     tenant_id uuid NOT NULL,
@@ -86,13 +92,15 @@ CREATE TABLE content_daily_stats (
     entity_id uuid NOT NULL,
     view_count bigint DEFAULT 0 NOT NULL,
     unique_viewer_count bigint DEFAULT 0 NOT NULL,
+    member_view_count bigint DEFAULT 0 NOT NULL,
     purchase_count bigint DEFAULT 0 NOT NULL,
+    complete_count bigint DEFAULT 0 NOT NULL,
     rating_count bigint DEFAULT 0 NOT NULL,
     rating_sum bigint DEFAULT 0 NOT NULL,
     favorite_count bigint DEFAULT 0 NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT content_daily_stats_entity_type_check CHECK (((entity_type)::text = ANY ((ARRAY['series'::character varying, 'episode'::character varying])::text[]))),
-    CONSTRAINT content_daily_stats_nonneg_check CHECK (((view_count >= 0) AND (unique_viewer_count >= 0) AND (purchase_count >= 0) AND (rating_count >= 0) AND (rating_sum >= 0) AND (favorite_count >= 0)))
+    CONSTRAINT content_daily_stats_nonneg_check CHECK (((view_count >= 0) AND (unique_viewer_count >= 0) AND (member_view_count >= 0) AND (purchase_count >= 0) AND (complete_count >= 0) AND (rating_count >= 0) AND (rating_sum >= 0) AND (favorite_count >= 0)))
 );
 
 -- TABLE: content_events
@@ -192,7 +200,14 @@ CREATE TABLE episode_follows (
 -- TABLE: episode_reads
 -- A member's first completed read of an episode. The composite primary key
 -- makes repeated and concurrent completion notifications idempotent.
+--
+-- id is a surrogate key, not the identity of the read: the composite key is
+-- what a repeated notification collides on, so the row keeps the id it was
+-- first inserted with. That stability is what it is for. content_events files
+-- the analytics projection of this row under (source_table, source_id), and a
+-- composite key cannot fit in source_id.
 CREATE TABLE episode_reads (
+    id uuid NOT NULL,
     tenant_id uuid NOT NULL,
     user_id uuid NOT NULL,
     episode_id uuid NOT NULL,
@@ -864,6 +879,10 @@ ALTER TABLE ONLY episode_follows
 -- CONSTRAINT: episode_reads episode_reads_pkey
 ALTER TABLE ONLY episode_reads
     ADD CONSTRAINT episode_reads_pkey PRIMARY KEY (tenant_id, user_id, episode_id);
+
+-- CONSTRAINT: episode_reads episode_reads_id_key
+ALTER TABLE ONLY episode_reads
+    ADD CONSTRAINT episode_reads_id_key UNIQUE (id);
 
 -- CONSTRAINT: episodes episodes_pkey
 ALTER TABLE ONLY episodes

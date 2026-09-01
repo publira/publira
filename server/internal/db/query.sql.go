@@ -8694,13 +8694,13 @@ func (q *Queries) MarkPlatformUserPasswordResetTokenCompleted(ctx context.Contex
 }
 
 const markPublishedEpisodeAsRead = `-- name: MarkPublishedEpisodeAsRead :one
-INSERT INTO episode_reads (tenant_id, user_id, episode_id)
-SELECT $1, $2, e.id
+INSERT INTO episode_reads (id, tenant_id, user_id, episode_id)
+SELECT $1, $2, $3, e.id
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
-WHERE s.tenant_id = $1
-    AND e.public_id = $3
+WHERE s.tenant_id = $2
+    AND e.public_id = $4
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -8712,16 +8712,16 @@ WHERE s.tenant_id = $1
         OR EXISTS (
             SELECT 1
             FROM purchases p
-            WHERE p.tenant_id = $1
-                AND p.user_id = $2
+            WHERE p.tenant_id = $2
+                AND p.user_id = $3
                 AND p.episode_id = e.id
                 AND (p.expires_at IS NULL OR p.expires_at > NOW())
         )
         OR EXISTS (
             SELECT 1
             FROM access_tickets at
-            WHERE at.tenant_id = $1
-                AND at.user_id = $2
+            WHERE at.tenant_id = $2
+                AND at.user_id = $3
                 AND at.episode_id = e.id
                 AND at.revoked_at IS NULL
                 AND (at.expires_at IS NULL OR at.expires_at > NOW())
@@ -8729,10 +8729,11 @@ WHERE s.tenant_id = $1
     )
 ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
 SET read_at = episode_reads.read_at
-RETURNING tenant_id, user_id, episode_id, read_at
+RETURNING id, tenant_id, user_id, episode_id, read_at
 `
 
 type MarkPublishedEpisodeAsReadParams struct {
+	ID              uuid.UUID `json:"id"`
 	TenantID        uuid.UUID `json:"tenant_id"`
 	UserID          uuid.UUID `json:"user_id"`
 	EpisodePublicID string    `json:"episode_public_id"`
@@ -8740,10 +8741,20 @@ type MarkPublishedEpisodeAsReadParams struct {
 
 // Inserts the first completed read only after checking publication and body
 // access in the same statement. A duplicate returns the preserved read_at.
+//
+// The returned id is likewise the one the first insert stored, so a repeated
+// notification projects onto the same content_events row rather than a second
+// completion for the same member and episode.
 func (q *Queries) MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublishedEpisodeAsReadParams) (EpisodeRead, error) {
-	row := q.db.QueryRowContext(ctx, markPublishedEpisodeAsRead, arg.TenantID, arg.UserID, arg.EpisodePublicID)
+	row := q.db.QueryRowContext(ctx, markPublishedEpisodeAsRead,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.EpisodePublicID,
+	)
 	var i EpisodeRead
 	err := row.Scan(
+		&i.ID,
 		&i.TenantID,
 		&i.UserID,
 		&i.EpisodeID,

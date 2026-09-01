@@ -362,6 +362,17 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(dashboardPath, dashboardHandler)
+	engagementPath, engagementHandler := publiraadminv1connect.NewAdminEngagementServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(engagementPath, engagementHandler)
 	pagesPath, pagesHandler := publiraadminv1connect.NewAdminPagesServiceHandler(
 		server,
 		traced,

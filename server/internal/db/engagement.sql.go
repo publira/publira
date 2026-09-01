@@ -15,7 +15,7 @@ import (
 )
 
 const getContentDailyStatsByEntity = `-- name: GetContentDailyStatsByEntity :one
-SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, purchase_count, rating_count, rating_sum, favorite_count, updated_at
+SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at
 FROM content_daily_stats
 WHERE tenant_id = $1
     AND stat_date = $2
@@ -46,7 +46,9 @@ func (q *Queries) GetContentDailyStatsByEntity(ctx context.Context, arg GetConte
 		&i.EntityID,
 		&i.ViewCount,
 		&i.UniqueViewerCount,
+		&i.MemberViewCount,
 		&i.PurchaseCount,
+		&i.CompleteCount,
 		&i.RatingCount,
 		&i.RatingSum,
 		&i.FavoriteCount,
@@ -125,6 +127,39 @@ func (q *Queries) GetContentRankingSnapshot(ctx context.Context, arg GetContentR
 		&i.AlgorithmVersion,
 		&i.ComputedAt,
 	)
+	return i, err
+}
+
+const getEpisodeReadThroughTotals = `-- name: GetEpisodeReadThroughTotals :one
+SELECT COALESCE(sum(complete_count), 0)::bigint AS complete_count,
+    COALESCE(sum(member_view_count), 0)::bigint AS member_view_count
+FROM content_daily_stats
+WHERE tenant_id = $1
+    AND entity_type = 'episode'
+    AND stat_date >= $2
+    AND stat_date <= $3
+`
+
+type GetEpisodeReadThroughTotalsParams struct {
+	TenantID    uuid.UUID `json:"tenant_id"`
+	PeriodStart time.Time `json:"period_start"`
+	PeriodEnd   time.Time `json:"period_end"`
+}
+
+type GetEpisodeReadThroughTotalsRow struct {
+	CompleteCount   int64 `json:"complete_count"`
+	MemberViewCount int64 `json:"member_view_count"`
+}
+
+// The tenant-wide numerator and denominator for the same window. This is the
+// headline metric rather than a page count, so it does not fall under the "no
+// total for a cursor list" rule: it stays the same value on every page, and a
+// rate assembled from one page's rows would describe that page instead of the
+// period.
+func (q *Queries) GetEpisodeReadThroughTotals(ctx context.Context, arg GetEpisodeReadThroughTotalsParams) (GetEpisodeReadThroughTotalsRow, error) {
+	row := q.db.QueryRowContext(ctx, getEpisodeReadThroughTotals, arg.TenantID, arg.PeriodStart, arg.PeriodEnd)
+	var i GetEpisodeReadThroughTotalsRow
+	err := row.Scan(&i.CompleteCount, &i.MemberViewCount)
 	return i, err
 }
 
@@ -295,6 +330,9 @@ type InsertContentEventParams struct {
 //	  -> idx_content_events_tenant_series_occurred_at
 //	ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
 //	  -> no index; sorts one tenant's published series (see the note there)
+//	ListEpisodeReadThroughDesc / ListEpisodeReadThroughAsc
+//	  -> idx_content_daily_stats_tenant_date for the window, then a sort on the
+//	     aggregate it groups (see the note there)
 func (q *Queries) InsertContentEvent(ctx context.Context, arg InsertContentEventParams) (ContentEvent, error) {
 	row := q.db.QueryRowContext(ctx, insertContentEvent,
 		arg.ID,
@@ -633,7 +671,7 @@ func (q *Queries) InsertRatingEvent(ctx context.Context, arg InsertRatingEventPa
 }
 
 const listContentDailyStatsByTenantDate = `-- name: ListContentDailyStatsByTenantDate :many
-SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, purchase_count, rating_count, rating_sum, favorite_count, updated_at
+SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at
 FROM content_daily_stats
 WHERE tenant_id = $1
     AND stat_date = $2
@@ -662,7 +700,9 @@ func (q *Queries) ListContentDailyStatsByTenantDate(ctx context.Context, arg Lis
 			&i.EntityID,
 			&i.ViewCount,
 			&i.UniqueViewerCount,
+			&i.MemberViewCount,
 			&i.PurchaseCount,
+			&i.CompleteCount,
 			&i.RatingCount,
 			&i.RatingSum,
 			&i.FavoriteCount,
@@ -775,6 +815,227 @@ func (q *Queries) ListContentEventsByTenantTypeOccurredAt(ctx context.Context, a
 			&i.Payload,
 			&i.OccurredAt,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEpisodeReadThroughAsc = `-- name: ListEpisodeReadThroughAsc :many
+WITH totals AS (
+    SELECT s.entity_id,
+        sum(s.complete_count)::bigint AS complete_count,
+        sum(s.member_view_count)::bigint AS member_view_count
+    FROM content_daily_stats s
+    WHERE s.tenant_id = $1
+        AND s.entity_type = 'episode'
+        AND s.stat_date >= $6
+        AND s.stat_date <= $7
+    GROUP BY s.entity_id
+    HAVING sum(s.complete_count) > 0 OR sum(s.member_view_count) > 0
+)
+SELECT t.entity_id AS episode_id,
+    t.complete_count,
+    t.member_view_count,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    sr.public_id AS series_public_id,
+    sr.title AS series_title
+FROM totals t
+    JOIN episodes e ON e.tenant_id = $1 AND e.id = t.entity_id
+    JOIN series sr ON sr.tenant_id = e.tenant_id AND sr.id = e.series_id
+WHERE (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (t.complete_count, t.entity_id) >= (
+                $4::bigint,
+                $2::uuid
+            )
+        )
+        OR (
+            NOT $3::boolean
+            AND (t.complete_count, t.entity_id) > (
+                $4::bigint,
+                $2::uuid
+            )
+        )
+    )
+ORDER BY t.complete_count ASC, t.entity_id ASC
+LIMIT $5
+`
+
+type ListEpisodeReadThroughAscParams struct {
+	TenantID            uuid.UUID     `json:"tenant_id"`
+	CursorEntityID      uuid.NullUUID `json:"cursor_entity_id"`
+	CursorInclusive     bool          `json:"cursor_inclusive"`
+	CursorCompleteCount sql.NullInt64 `json:"cursor_complete_count"`
+	Limit               int32         `json:"limit"`
+	PeriodStart         time.Time     `json:"period_start"`
+	PeriodEnd           time.Time     `json:"period_end"`
+}
+
+type ListEpisodeReadThroughAscRow struct {
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	CompleteCount   int64     `json:"complete_count"`
+	MemberViewCount int64     `json:"member_view_count"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	SeriesTitle     string    `json:"series_title"`
+}
+
+// ListEpisodeReadThroughDesc walked the other way, to build a previous page.
+// The order it describes is the same one.
+func (q *Queries) ListEpisodeReadThroughAsc(ctx context.Context, arg ListEpisodeReadThroughAscParams) ([]ListEpisodeReadThroughAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodeReadThroughAsc,
+		arg.TenantID,
+		arg.CursorEntityID,
+		arg.CursorInclusive,
+		arg.CursorCompleteCount,
+		arg.Limit,
+		arg.PeriodStart,
+		arg.PeriodEnd,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodeReadThroughAscRow
+	for rows.Next() {
+		var i ListEpisodeReadThroughAscRow
+		if err := rows.Scan(
+			&i.EpisodeID,
+			&i.CompleteCount,
+			&i.MemberViewCount,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEpisodeReadThroughDesc = `-- name: ListEpisodeReadThroughDesc :many
+WITH totals AS (
+    SELECT s.entity_id,
+        sum(s.complete_count)::bigint AS complete_count,
+        sum(s.member_view_count)::bigint AS member_view_count
+    FROM content_daily_stats s
+    WHERE s.tenant_id = $1
+        AND s.entity_type = 'episode'
+        AND s.stat_date >= $6
+        AND s.stat_date <= $7
+    GROUP BY s.entity_id
+    HAVING sum(s.complete_count) > 0 OR sum(s.member_view_count) > 0
+)
+SELECT t.entity_id AS episode_id,
+    t.complete_count,
+    t.member_view_count,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    sr.public_id AS series_public_id,
+    sr.title AS series_title
+FROM totals t
+    JOIN episodes e ON e.tenant_id = $1 AND e.id = t.entity_id
+    JOIN series sr ON sr.tenant_id = e.tenant_id AND sr.id = e.series_id
+WHERE (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (t.complete_count, t.entity_id) <= (
+                $4::bigint,
+                $2::uuid
+            )
+        )
+        OR (
+            NOT $3::boolean
+            AND (t.complete_count, t.entity_id) < (
+                $4::bigint,
+                $2::uuid
+            )
+        )
+    )
+ORDER BY t.complete_count DESC, t.entity_id DESC
+LIMIT $5
+`
+
+type ListEpisodeReadThroughDescParams struct {
+	TenantID            uuid.UUID     `json:"tenant_id"`
+	CursorEntityID      uuid.NullUUID `json:"cursor_entity_id"`
+	CursorInclusive     bool          `json:"cursor_inclusive"`
+	CursorCompleteCount sql.NullInt64 `json:"cursor_complete_count"`
+	Limit               int32         `json:"limit"`
+	PeriodStart         time.Time     `json:"period_start"`
+	PeriodEnd           time.Time     `json:"period_end"`
+}
+
+type ListEpisodeReadThroughDescRow struct {
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	CompleteCount   int64     `json:"complete_count"`
+	MemberViewCount int64     `json:"member_view_count"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	SeriesTitle     string    `json:"series_title"`
+}
+
+// The read-through report the console shows, over a closed range of UTC stat
+// dates. Both halves of the rate come from the same cohort: complete_count is
+// the members who finished the episode in the range, member_view_count the
+// views those same signed-in members opened it with. view_count is not usable
+// here — it counts anonymous readers, who cannot produce a completion at all.
+//
+// No index can serve this scan: the sort key is an aggregate of the rows the
+// query itself groups, the way ListRecommendedSeriesIDs sorts by a rank its own
+// JSON supplies. It stays bounded by one tenant's episode rows inside the
+// report window, which idx_content_daily_stats_tenant_date narrows first.
+//
+// (complete_count, entity_id) is unique because entity_id alone is, so the
+// keyset scan can neither skip nor repeat episodes that tie on completions.
+func (q *Queries) ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisodeReadThroughDescParams) ([]ListEpisodeReadThroughDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodeReadThroughDesc,
+		arg.TenantID,
+		arg.CursorEntityID,
+		arg.CursorInclusive,
+		arg.CursorCompleteCount,
+		arg.Limit,
+		arg.PeriodStart,
+		arg.PeriodEnd,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodeReadThroughDescRow
+	for rows.Next() {
+		var i ListEpisodeReadThroughDescRow
+		if err := rows.Scan(
+			&i.EpisodeID,
+			&i.CompleteCount,
+			&i.MemberViewCount,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
 		); err != nil {
 			return nil, err
 		}
@@ -1056,6 +1317,152 @@ func (q *Queries) ListRecommendedSeriesIDsReversed(ctx context.Context, arg List
 	return items, nil
 }
 
+const projectEpisodeCompleteEvent = `-- name: ProjectEpisodeCompleteEvent :one
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    payload,
+    occurred_at
+)
+SELECT
+    $1,
+    r.tenant_id,
+    'episode_complete',
+    r.user_id,
+    e.series_id,
+    r.episode_id,
+    'episode_reads',
+    r.id,
+    '{}'::jsonb,
+    r.read_at
+FROM episode_reads r
+JOIN episodes e
+    ON e.tenant_id = r.tenant_id
+    AND e.id = r.episode_id
+WHERE r.tenant_id = $2
+    AND r.user_id = $3
+    AND r.episode_id = $4
+ON CONFLICT (tenant_id, source_table, source_id)
+WHERE source_id IS NOT NULL
+DO NOTHING
+RETURNING id, tenant_id, event_type, user_id, anonymous_id, actor_key, series_id, episode_id, debounce_bucket, rating_score, source_table, source_id, payload, occurred_at, created_at
+`
+
+type ProjectEpisodeCompleteEventParams struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// Projects one member's first completed read as the analytics event for that
+// read. episode_reads stays the source of truth for the business state: its
+// user, episode, and first read time are copied, and the owning series is
+// resolved from the catalog rather than taken from the caller.
+//
+// The pair (source_table, source_id) is what makes this replayable. A repeated
+// notification returns the same episode_reads row, so the projection lands on
+// the same source key and the unique index turns the second attempt into a
+// no-op. Nothing here depends on knowing whether the read row was new.
+func (q *Queries) ProjectEpisodeCompleteEvent(ctx context.Context, arg ProjectEpisodeCompleteEventParams) (ContentEvent, error) {
+	row := q.db.QueryRowContext(ctx, projectEpisodeCompleteEvent,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.EpisodeID,
+	)
+	var i ContentEvent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EventType,
+		&i.UserID,
+		&i.AnonymousID,
+		&i.ActorKey,
+		&i.SeriesID,
+		&i.EpisodeID,
+		&i.DebounceBucket,
+		&i.RatingScore,
+		&i.SourceTable,
+		&i.SourceID,
+		&i.Payload,
+		&i.OccurredAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const projectPendingEpisodeCompleteEvents = `-- name: ProjectPendingEpisodeCompleteEvents :execrows
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    payload,
+    occurred_at
+)
+SELECT
+    uuidv7(),
+    r.tenant_id,
+    'episode_complete',
+    r.user_id,
+    e.series_id,
+    r.episode_id,
+    'episode_reads',
+    r.id,
+    '{}'::jsonb,
+    r.read_at
+FROM episode_reads r
+JOIN episodes e
+    ON e.tenant_id = r.tenant_id
+    AND e.id = r.episode_id
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM content_events ce
+        WHERE ce.tenant_id = r.tenant_id
+            AND ce.source_table = 'episode_reads'
+            AND ce.source_id = r.id
+    )
+ORDER BY r.read_at, r.id
+LIMIT $1
+ON CONFLICT (tenant_id, source_table, source_id)
+WHERE source_id IS NOT NULL
+DO NOTHING
+`
+
+// Reconciles episode_reads rows whose projection never landed, across every
+// tenant. The request path writes the event outside the transaction that
+// stored the read and swallows its failure, so a completion can outlive its
+// event; this is how that gap closes.
+//
+// The anti-join and the unique index answer the same question at different
+// times, and both are needed: the anti-join keeps the statement from proposing
+// rows that already exist, and ON CONFLICT keeps a concurrent request-path
+// write from turning this run into a duplicate key error. Ordering by read_at
+// makes a run resumable — every batch takes the oldest unprojected reads — so
+// repeated runs converge instead of revisiting the same window.
+//
+// id is uuidv7() rather than a value passed in because the statement inserts a
+// whole batch; content_events ids are UUIDv7 so that events sharing an
+// occurred_at still order by when they were recorded.
+func (q *Queries) ProjectPendingEpisodeCompleteEvents(ctx context.Context, limit int32) (int64, error) {
+	result, err := q.db.ExecContext(ctx, projectPendingEpisodeCompleteEvents, limit)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const projectPurchaseContentEvent = `-- name: ProjectPurchaseContentEvent :one
 INSERT INTO content_events (
     id,
@@ -1138,7 +1545,9 @@ INSERT INTO content_daily_stats (
     entity_id,
     view_count,
     unique_viewer_count,
+    member_view_count,
     purchase_count,
+    complete_count,
     rating_count,
     rating_sum,
     favorite_count
@@ -1153,17 +1562,21 @@ INSERT INTO content_daily_stats (
     $8,
     $9,
     $10,
-    $11
+    $11,
+    $12,
+    $13
 )
 ON CONFLICT (tenant_id, stat_date, entity_type, entity_id) DO UPDATE
 SET view_count = EXCLUDED.view_count,
     unique_viewer_count = EXCLUDED.unique_viewer_count,
+    member_view_count = EXCLUDED.member_view_count,
     purchase_count = EXCLUDED.purchase_count,
+    complete_count = EXCLUDED.complete_count,
     rating_count = EXCLUDED.rating_count,
     rating_sum = EXCLUDED.rating_sum,
     favorite_count = EXCLUDED.favorite_count,
     updated_at = NOW()
-RETURNING id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, purchase_count, rating_count, rating_sum, favorite_count, updated_at
+RETURNING id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at
 `
 
 type UpsertContentDailyStatsParams struct {
@@ -1174,7 +1587,9 @@ type UpsertContentDailyStatsParams struct {
 	EntityID          uuid.UUID `json:"entity_id"`
 	ViewCount         int64     `json:"view_count"`
 	UniqueViewerCount int64     `json:"unique_viewer_count"`
+	MemberViewCount   int64     `json:"member_view_count"`
 	PurchaseCount     int64     `json:"purchase_count"`
+	CompleteCount     int64     `json:"complete_count"`
 	RatingCount       int64     `json:"rating_count"`
 	RatingSum         int64     `json:"rating_sum"`
 	FavoriteCount     int64     `json:"favorite_count"`
@@ -1196,7 +1611,9 @@ func (q *Queries) UpsertContentDailyStats(ctx context.Context, arg UpsertContent
 		arg.EntityID,
 		arg.ViewCount,
 		arg.UniqueViewerCount,
+		arg.MemberViewCount,
 		arg.PurchaseCount,
+		arg.CompleteCount,
 		arg.RatingCount,
 		arg.RatingSum,
 		arg.FavoriteCount,
@@ -1210,7 +1627,9 @@ func (q *Queries) UpsertContentDailyStats(ctx context.Context, arg UpsertContent
 		&i.EntityID,
 		&i.ViewCount,
 		&i.UniqueViewerCount,
+		&i.MemberViewCount,
 		&i.PurchaseCount,
+		&i.CompleteCount,
 		&i.RatingCount,
 		&i.RatingSum,
 		&i.FavoriteCount,

@@ -31,6 +31,12 @@ export interface FormatDateTimeOptions {
   timeZone?: string;
 }
 
+export interface FormatPlainDateOptions {
+  fallback?: string;
+  /** UI locale the day is worded in. Required, for the reason above. */
+  locale: Locale;
+}
+
 export interface ToDateTimeLocalOptions {
   /** Returned when `value` is empty or not a valid absolute timestamp. Default: `""`. */
   fallback?: string;
@@ -290,4 +296,30 @@ export const endOfDayIsoString = (date: string, timeZone: string): string => {
   } catch {
     return "";
   }
+};
+
+/**
+ * Format a zone-less calendar day (`YYYY-MM-DD`) for display.
+ *
+ * Deliberately takes no time zone, unlike {@link formatDate}. There is no
+ * instant behind a plain date, so converting one into an instant first would
+ * move the day whenever the chosen zone disagreed with whatever produced it —
+ * exactly the bug that reporting a UTC aggregate in the tenant's zone creates.
+ * Returns `options.fallback` (default: the original `value`) for input that is
+ * not a calendar day.
+ */
+export const formatPlainDate = (
+  value: string,
+  options: FormatPlainDateOptions
+): string => {
+  const plainDate = plainDateOrNull(value);
+  if (!plainDate) {
+    return options.fallback ?? value;
+  }
+
+  // The formatter takes an instant, so the day is pinned to UTC purely to
+  // reach one: reading it back in UTC returns the same calendar day.
+  return getDateFormatter(toIntlLocale(options.locale), "UTC").format(
+    plainDate.toZonedDateTime("UTC").epochMilliseconds
+  );
 };

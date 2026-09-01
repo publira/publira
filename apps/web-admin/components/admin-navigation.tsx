@@ -1,4 +1,9 @@
-import { CollectionIcon, DashboardIcon, SettingsIcon } from "@publira/icons";
+import {
+  ChartIcon,
+  CollectionIcon,
+  DashboardIcon,
+  SettingsIcon,
+} from "@publira/icons";
 import type { NavSection } from "@publira/layouts/navigation";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -104,6 +109,20 @@ export const navigation: NavSection[] = [
         label: (
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="admin.nav.access_tickets_label" />
+          </Suspense>
+        ),
+      },
+      {
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-44" />}>
+            <Message message="admin.nav.engagement_description" />
+          </Suspense>
+        ),
+        href: "/engagement",
+        icon: ChartIcon,
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="admin.nav.engagement_label" />
           </Suspense>
         ),
       },

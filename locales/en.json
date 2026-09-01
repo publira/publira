@@ -405,6 +405,8 @@
       "creators_label": "Authors",
       "dashboard_description": "Publishing readiness and editing status",
       "dashboard_label": "Dashboard",
+      "engagement_description": "Episode completions and read-through rate",
+      "engagement_label": "Read-through",
       "labels_description": "Manage label information",
       "labels_label": "Labels",
       "operations": "Operations",
@@ -1203,6 +1205,32 @@
         "expires_at_past": "The expiry must be in the future.",
         "revoke_target": "The ticket to revoke is not valid.",
         "series_required": "Select a series."
+      }
+    },
+    "engagement": {
+      "title": "Read-through",
+      "page_description": "How many members finish each episode, and how often a member who opened one finished it.",
+      "section_error": "Could not display read-through",
+      "list_failed": "Could not load read-through. Please try again later.",
+      "summary_title": "This period",
+      "period": "{$start} - {$end}, counted in UTC calendar days.",
+      "definition": "Read-through rate is completions divided by member views over the period. Both count signed-in members only - an anonymous reader cannot be recorded as finishing an episode, so anonymous views are left out of the denominator as well. A completion is counted once per member and episode, on the day they first finished it. Where there are no member views the rate is shown as —, because no share can be taken of nothing.",
+      "complete_count_label": "Completions",
+      "member_view_count_label": "Member views",
+      "rate_label": "Read-through rate",
+      "rate_unavailable": "—",
+      "list_title": "Episodes",
+      "list_description": "Ordered by completions, highest first.",
+      "empty_title": "No episode was read in this period",
+      "empty_description": "Read-through appears here once the daily aggregate has run for a day on which a member opened or finished an episode.",
+      "pagination_aria": "Read-through pages",
+      "pagination_description": "Shows up to {$count} episodes per page.",
+      "columns": {
+        "series": "Series",
+        "episode": "Episode",
+        "complete_count": "Completions",
+        "member_view_count": "Member views",
+        "rate": "Read-through"
       }
     }
   },

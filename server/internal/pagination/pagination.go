@@ -17,6 +17,7 @@ import (
 	"errors"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,6 +52,16 @@ type Cursor struct {
 // value means that no boundary was supplied.
 type TimeUUIDKeys struct {
 	Time      time.Time
+	ID        uuid.UUID
+	Inclusive bool
+	Valid     bool
+}
+
+// CountUUIDKeys is a decoded (int64, uuid.UUID) keyset boundary, for a list
+// ordered by an aggregate the query computes rather than by a stored column.
+// Its zero value means that no boundary was supplied.
+type CountUUIDKeys struct {
+	Count     int64
 	ID        uuid.UUID
 	Inclusive bool
 	Valid     bool
@@ -140,6 +151,45 @@ func DecodeTimeUUID(cursor Cursor) (TimeUUIDKeys, error) {
 
 	return TimeUUIDKeys{
 		Time:      at.UTC(),
+		ID:        id,
+		Inclusive: inclusive,
+		Valid:     true,
+	}, nil
+}
+
+// EncodeCountUUID builds a token for an (int64, uuid.UUID) keyset boundary.
+func EncodeCountUUID(direction Direction, count int64, id uuid.UUID) string {
+	return Encode(direction, strconv.FormatInt(count, 10), id.String())
+}
+
+// EncodeCountUUIDRecovery builds a token that includes its boundary row once.
+func EncodeCountUUIDRecovery(direction Direction, count int64, id uuid.UUID) string {
+	return Encode(direction, strconv.FormatInt(count, 10), id.String(), inclusiveKey)
+}
+
+// DecodeCountUUID parses the keys of an (int64, uuid.UUID) cursor. Both regular
+// boundary tokens and inclusive recovery tokens are accepted.
+func DecodeCountUUID(cursor Cursor) (CountUUIDKeys, error) {
+	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
+		return CountUUIDKeys{}, ErrInvalidToken
+	}
+
+	inclusive := len(cursor.Keys) == 3
+	if inclusive && cursor.Keys[2] != inclusiveKey {
+		return CountUUIDKeys{}, ErrInvalidToken
+	}
+
+	count, err := strconv.ParseInt(cursor.Keys[0], 10, 64)
+	if err != nil {
+		return CountUUIDKeys{}, ErrInvalidToken
+	}
+	id, err := uuid.Parse(cursor.Keys[1])
+	if err != nil {
+		return CountUUIDKeys{}, ErrInvalidToken
+	}
+
+	return CountUUIDKeys{
+		Count:     count,
 		ID:        id,
 		Inclusive: inclusive,
 		Valid:     true,

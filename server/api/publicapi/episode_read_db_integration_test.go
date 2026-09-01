@@ -138,7 +138,7 @@ func TestDBEpisodeReadsAreMemberScopedByRLS(t *testing.T) {
 	second := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADD", "member-read-d@example.com", "Member D", "tenant_member")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREADD", Title: "Public series", Published: true})
 	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADH", Title: "Free", Status: testutil.EpisodeStatusPublished})
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (tenant_id, user_id, episode_id) VALUES ($1, $2, $3)", tenant.ID, first.ID, episode.ID); err != nil {
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), tenant.ID, first.ID, episode.ID); err != nil {
 		t.Fatalf("seed first member read: %v", err)
 	}
 
@@ -153,7 +153,7 @@ func TestDBEpisodeReadsAreMemberScopedByRLS(t *testing.T) {
 		if visible != 0 {
 			t.Fatalf("other member visible episode reads = %d, want 0", visible)
 		}
-		created, err := conn.ExecContext(ctx, "INSERT INTO episode_reads (tenant_id, user_id, episode_id) VALUES ($1, $2, $3)", tenant.ID, first.ID, episode.ID)
+		created, err := conn.ExecContext(ctx, "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), tenant.ID, first.ID, episode.ID)
 		if err == nil {
 			t.Fatalf("create a first member read as another member succeeded: %#v", created)
 		}
@@ -167,4 +167,56 @@ func TestDBEpisodeReadsAreMemberScopedByRLS(t *testing.T) {
 			t.Fatalf("other member updated %d episode reads, want 0", changed)
 		}
 	})
+}
+
+func TestDBEpisodeReadProjectsOneCompleteEventPerRead(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTREADE", "read-e.example.com", "Read E")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADE", "member-read-e@example.com", "Member E", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREADE", Title: "Public series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADI", Title: "Free episode", Status: testutil.EpisodeStatusPublished})
+	client := env.episodeReadClient()
+	token := tokenFor(t, tenant, member)
+
+	for range 3 {
+		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.PublicID, token)); err != nil {
+			t.Fatalf("MarkEpisodeAsRead: %v", err)
+		}
+	}
+
+	if got := env.countRows(t, "SELECT COUNT(*) FROM content_events WHERE tenant_id = $1 AND event_type = 'episode_complete'", tenant.ID); got != 1 {
+		t.Fatalf("episode_complete events = %d, want 1", got)
+	}
+
+	var (
+		readID     uuid.UUID
+		readAt     time.Time
+		eventUser  uuid.UUID
+		eventSerie uuid.UUID
+		sourceID   uuid.UUID
+		occurredAt time.Time
+	)
+	if err := env.PG.DB.QueryRowContext(context.Background(), `
+		SELECT r.id, r.read_at, ce.user_id, ce.series_id, ce.source_id, ce.occurred_at
+		FROM episode_reads r
+		JOIN content_events ce
+			ON ce.tenant_id = r.tenant_id
+			AND ce.source_table = 'episode_reads'
+			AND ce.source_id = r.id
+		WHERE r.tenant_id = $1 AND r.user_id = $2 AND r.episode_id = $3
+	`, tenant.ID, member.ID, episode.ID).Scan(&readID, &readAt, &eventUser, &eventSerie, &sourceID, &occurredAt); err != nil {
+		t.Fatalf("join the read to its projection: %v", err)
+	}
+	if sourceID != readID {
+		t.Fatalf("source_id = %s, want the episode_reads id %s", sourceID, readID)
+	}
+	if eventUser != member.ID {
+		t.Fatalf("event user_id = %s, want %s", eventUser, member.ID)
+	}
+	if eventSerie != series.ID {
+		t.Fatalf("event series_id = %s, want the episode's own series %s", eventSerie, series.ID)
+	}
+	if !occurredAt.Equal(readAt) {
+		t.Fatalf("occurred_at = %s, want the first read time %s", occurredAt, readAt)
+	}
 }

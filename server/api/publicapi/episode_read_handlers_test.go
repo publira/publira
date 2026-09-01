@@ -16,7 +16,10 @@ import (
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
 )
 
-const markPublishedEpisodeAsReadQuery = "-- name: MarkPublishedEpisodeAsRead :one\n"
+const (
+	markPublishedEpisodeAsReadQuery  = "-- name: MarkPublishedEpisodeAsRead :one\n"
+	projectEpisodeCompleteEventQuery = "-- name: ProjectEpisodeCompleteEvent :one\n"
+)
 
 type episodeReadFixture struct {
 	client   publirav1connect.EpisodeReadServiceClient
@@ -49,11 +52,17 @@ func (f *episodeReadFixture) mark(publicID string) (*connect.Response[publirav1.
 	}, f.tenantID.String()))
 }
 
+// expectMark stands in for a stored read and the analytics event that follows
+// it. The read id is generated in the handler, so it is matched by shape.
 func (f *episodeReadFixture) expectMark(publicID string, episodeID uuid.UUID, readAt time.Time) {
+	readID := uuid.Must(uuid.NewV7())
 	f.mock.ExpectQuery(regexp.QuoteMeta(markPublishedEpisodeAsReadQuery)).
-		WithArgs(f.tenantID, f.userID, publicID).
-		WillReturnRows(sqlmock.NewRows([]string{"tenant_id", "user_id", "episode_id", "read_at"}).
-			AddRow(f.tenantID, f.userID, episodeID, readAt))
+		WithArgs(sqlmock.AnyArg(), f.tenantID, f.userID, publicID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "episode_id", "read_at"}).
+			AddRow(readID, f.tenantID, f.userID, episodeID, readAt))
+	f.mock.ExpectQuery(regexp.QuoteMeta(projectEpisodeCompleteEventQuery)).
+		WithArgs(sqlmock.AnyArg(), f.tenantID, f.userID, episodeID).
+		WillReturnError(sql.ErrNoRows)
 }
 
 func TestMarkEpisodeAsReadStoresTheFirstReadAndReturnsPrivateResponse(t *testing.T) {
@@ -77,7 +86,7 @@ func TestMarkEpisodeAsReadStoresTheFirstReadAndReturnsPrivateResponse(t *testing
 func TestMarkEpisodeAsReadHidesUnavailableEpisodes(t *testing.T) {
 	fixture := newEpisodeReadFixture(t)
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(markPublishedEpisodeAsReadQuery)).
-		WithArgs(fixture.tenantID, fixture.userID, "UNAVAILABLE").
+		WithArgs(sqlmock.AnyArg(), fixture.tenantID, fixture.userID, "UNAVAILABLE").
 		WillReturnError(sql.ErrNoRows)
 
 	_, err := fixture.mark("UNAVAILABLE")
