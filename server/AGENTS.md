@@ -33,6 +33,8 @@ The contrast with `tenanttz.Default` is deliberate: a timestamp rendered in the 
 
 Each path takes the locale from the row it is about — `tenants.default_locale` for anything tenant-facing, the job payload for work that has no such row. `platformconfig.DefaultLocale` answers the platform console's own display language and stands in for no other row; tenant creation takes the locale from its request, and `CreateInitialUser` from the operator's choice on the setup screen.
 
+The one empty answer is `CheckSetupStatus` on a platform whose settings row does not exist yet: nothing has been saved, and the setup screen negotiates its first language from `Accept-Language`. A row that exists and names no supported locale is not that state and fails like every other read. Resolve the locale before anything that fails retriably, too — the invitation job does it before the SMTP settings, so an outage cannot disguise a locale no retry can fix.
+
 No lint covers this. The read paths are in `api/*/`, `internal/outbox/`, and `internal/platformconfig/`; the frontend half of the same rule is the **UI locale** section of [`apps/AGENTS.md`](../apps/AGENTS.md).
 
 ## Verification after Go changes

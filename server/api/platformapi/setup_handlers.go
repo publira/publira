@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/mail"
 	"strings"
@@ -27,28 +28,35 @@ func (s *platformServer) CheckSetupStatus(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to count platform users", err)
 	}
+	defaultLocale, err := savedDefaultLocale(ctx, queries)
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to resolve the saved platform default locale", err)
+	}
 	return connect.NewResponse(&publirasplatformv1.CheckSetupStatusResponse{
-		DefaultLocale:  savedDefaultLocale(ctx, queries),
+		DefaultLocale:  defaultLocale,
 		SetupCompleted: count > 0,
 	}), nil
 }
 
 // savedDefaultLocale reports the platform's stored default locale, or "" when
-// there is none to report.
+// the settings row does not exist yet.
 //
-// The failure is answered with "" rather than propagated, which is what
-// separates this read from every other one: the caller is an unauthenticated
-// visitor on the setup screen, and a platform that has saved nothing yet is the
-// normal state there. The console has to tell "the platform saved ja" from
-// "nobody has saved anything", because only the second is a reason to fall back
-// to what the visitor's browser asked for. Neither is a reason to name a
-// language the platform never chose.
-func savedDefaultLocale(ctx context.Context, q Querier) string {
+// Only the absent row answers "". The caller is an unauthenticated visitor on
+// the setup screen, where a platform that has saved nothing is the normal
+// state, and the console has to tell "the platform saved ja" from "nobody has
+// saved anything" because only the second is a reason to fall back to what the
+// visitor's browser asked for. A row that exists and names no supported locale
+// is neither: it is the same data fault GetPlatformSettings reports, and
+// answering "" would report it as a platform that never chose a language.
+func savedDefaultLocale(ctx context.Context, q Querier) (string, error) {
 	saved, err := platformconfig.DefaultLocale(ctx, q)
-	if err != nil {
-		return ""
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
 	}
-	return saved
+	if err != nil {
+		return "", err
+	}
+	return saved, nil
 }
 
 func (s *platformServer) CreateInitialUser(

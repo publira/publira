@@ -142,31 +142,46 @@ func (m *recordingInvitationMailer) SendRenderedEmail(context.Context, emailsett
 	return nil
 }
 
-// seedInvitationEvent prepares everything the invitation handler reloads: the
-// platform SMTP configuration it sends through, the invitation itself, and the
-// outbox event carrying its token.
-func seedInvitationEvent(t *testing.T, pg *testutil.PostgresEnv, tenant testutil.Tenant, idempotencyKey string) (dbmodels.OutboxEvent, emailsettings.SecretManager) {
+func newInvitationEncryptor(t *testing.T) emailsettings.SecretManager {
+	t.Helper()
+
+	encryptor, err := secretcrypto.NewManager(map[string][]byte{"test": make([]byte, 32)}, "test")
+	if err != nil {
+		t.Fatalf("NewManager: %v", err)
+	}
+	return encryptor
+}
+
+// seedPlatformSMTPConfig gives the handler somewhere to send through. A test
+// that leaves it out is exercising an invitation whose delivery settings cannot
+// be resolved.
+func seedPlatformSMTPConfig(t *testing.T, pg *testutil.PostgresEnv, encryptor emailsettings.SecretManager) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	password, err := encryptor.EncryptString("smtp-password")
+	if err != nil {
+		t.Fatalf("EncryptString: %v", err)
+	}
+	if _, err := dbmodels.New(pg.DB).UpsertPlatformSMTPConfig(ctx, dbmodels.UpsertPlatformSMTPConfigParams{
+		Host: "smtp.example.com", Port: 587, Username: "mailer", PasswordEncrypted: password,
+		Encryption: "starttls", FromAddress: "no-reply@example.com",
+	}); err != nil {
+		t.Fatalf("UpsertPlatformSMTPConfig: %v", err)
+	}
+}
+
+// seedInvitationEvent prepares what the invitation handler reloads: the
+// invitation itself and the outbox event carrying its token.
+func seedInvitationEvent(t *testing.T, pg *testutil.PostgresEnv, tenant testutil.Tenant, idempotencyKey string) dbmodels.OutboxEvent {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	queries := dbmodels.New(pg.DB)
-	encryptor, err := secretcrypto.NewManager(map[string][]byte{"test": make([]byte, 32)}, "test")
-	if err != nil {
-		t.Fatalf("NewManager: %v", err)
-	}
-	password, err := encryptor.EncryptString("smtp-password")
-	if err != nil {
-		t.Fatalf("EncryptString: %v", err)
-	}
-	if _, err := queries.UpsertPlatformSMTPConfig(ctx, dbmodels.UpsertPlatformSMTPConfigParams{
-		Host: "smtp.example.com", Port: 587, Username: "mailer", PasswordEncrypted: password,
-		Encryption: "starttls", FromAddress: "no-reply@example.com",
-	}); err != nil {
-		t.Fatalf("UpsertPlatformSMTPConfig: %v", err)
-	}
-
 	token := "invite-token"
 	invitation, err := queries.CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
 		ID: uuid.Must(uuid.NewV7()), TenantID: tenant.ID, Email: "admin@example.com",
@@ -187,7 +202,7 @@ func seedInvitationEvent(t *testing.T, pg *testutil.PostgresEnv, tenant testutil
 	if err != nil {
 		t.Fatalf("InsertOutboxEvent: %v", err)
 	}
-	return event, encryptor
+	return event
 }
 
 // setTenantDefaultLocale writes a value the API would refuse, which is the only
@@ -210,7 +225,9 @@ func TestTenantAdminInvitationEmailUsesTheTenantDefaultLocale(t *testing.T) {
 	pg.Reset(t)
 	tenant := pg.SeedTenant(t, "OUTBOXINV003", "outbox-locale.example.com", "Outbox Locale Tenant")
 	setTenantDefaultLocale(t, pg, tenant.ID, "en")
-	event, encryptor := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-locale")
+	encryptor := newInvitationEncryptor(t)
+	seedPlatformSMTPConfig(t, pg, encryptor)
+	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-locale")
 
 	renderer := &recordingInvitationRenderer{}
 	handler := outbox.NewTenantAdminInvitationHandler(outbox.TenantAdminInvitationHandlerConfig{
@@ -235,7 +252,9 @@ func TestTenantAdminInvitationEmailFailsPermanentlyOnAnUnusableLocale(t *testing
 	pg.Reset(t)
 	tenant := pg.SeedTenant(t, "OUTBOXINV004", "outbox-bad-locale.example.com", "Outbox Bad Locale Tenant")
 	setTenantDefaultLocale(t, pg, tenant.ID, "fr")
-	event, encryptor := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-bad-locale")
+	encryptor := newInvitationEncryptor(t)
+	seedPlatformSMTPConfig(t, pg, encryptor)
+	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-bad-locale")
 
 	renderer := &recordingInvitationRenderer{}
 	mailer := &recordingInvitationMailer{}
@@ -251,6 +270,33 @@ func TestTenantAdminInvitationEmailFailsPermanentlyOnAnUnusableLocale(t *testing
 	}
 	if len(renderer.requests) != 0 {
 		t.Fatalf("render requests = %d, want none", len(renderer.requests))
+	}
+	if mailer.sent != 0 {
+		t.Fatalf("mails sent = %d, want none", mailer.sent)
+	}
+}
+
+// The locale is resolved before the SMTP settings, so an outage that would fail
+// retriably cannot disguise a tenant locale that no retry can fix. Without that
+// ordering this event would be retried forever on the SMTP error alone.
+func TestTenantAdminInvitationEmailFailsPermanentlyOnAnUnusableLocaleWithoutSMTPSettings(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "OUTBOXINV005", "outbox-no-smtp.example.com", "Outbox No SMTP Tenant")
+	setTenantDefaultLocale(t, pg, tenant.ID, "fr")
+	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-no-smtp")
+
+	renderer := &recordingInvitationRenderer{}
+	mailer := &recordingInvitationMailer{}
+	handler := outbox.NewTenantAdminInvitationHandler(outbox.TenantAdminInvitationHandlerConfig{
+		DB: pg.DB, Encryptor: newInvitationEncryptor(t), Mailer: mailer, Renderer: renderer,
+	})
+	err := handler(context.Background(), event)
+	if err == nil {
+		t.Fatal("handler returned no error for a tenant locale no catalog covers")
+	}
+	if !outbox.IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a permanent failure rather than a retriable SMTP one", err)
 	}
 	if mailer.sent != 0 {
 		t.Fatalf("mails sent = %d, want none", mailer.sent)
