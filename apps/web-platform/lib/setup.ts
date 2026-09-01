@@ -77,10 +77,10 @@ export const isSetupCompleted = async (): Promise<SetupStatus> => {
 let lastKnownSetupState: boolean | null | undefined;
 
 /**
- * The last saved default locale the platform API answered with, for this server
- * process. `null` while it has never answered one, which on a platform that is
- * set up means the API has been down for every request since this instance
- * started.
+ * The last answer the platform API gave about the saved default locale, for
+ * this server process. `null` covers both "it answered, and no supported
+ * language is saved" and "it has never answered at all", because the proxy does
+ * the same thing with either: publish nothing.
  */
 let lastKnownDefaultLocale: Locale | null = null;
 
@@ -108,18 +108,17 @@ let lastKnownDefaultLocale: Locale | null = null;
  * the same rule as the routing state — an outage keeps the last confirmed
  * language rather than dropping to none, because the outage did not change what
  * the platform saved.
+ *
+ * Only an outage. An answer that names no supported language is an answer, and
+ * it replaces the remembered one: a platform whose saved code this build has no
+ * catalog for must not have the previous language published on its behalf.
  */
 export const resolveSetupState = async (): Promise<SetupStatusResponse> => {
   try {
     const status = await readSetupStatus();
     lastKnownSetupState = status.completed;
-    if (status.defaultLocale) {
-      lastKnownDefaultLocale = status.defaultLocale;
-    }
-    return {
-      completed: status.completed,
-      defaultLocale: status.defaultLocale ?? lastKnownDefaultLocale,
-    };
+    lastKnownDefaultLocale = status.defaultLocale;
+    return status;
   } catch {
     return {
       completed: lastKnownSetupState === undefined ? true : lastKnownSetupState,

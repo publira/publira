@@ -202,6 +202,30 @@ describe("resolveSetupState", () => {
       defaultLocale: null,
     });
   });
+
+  // Only an outage keeps the previous language. An answer naming a code this
+  // build cannot render is an answer, and publishing the language before it
+  // would put a language on screen the platform no longer names.
+  it("drops the remembered language once the API answers with one it cannot render", async () => {
+    mockCheckSetupStatus
+      .mockResolvedValueOnce({ defaultLocale: "ja", setupCompleted: true })
+      .mockResolvedValueOnce({ defaultLocale: "fr", setupCompleted: true })
+      .mockRejectedValueOnce(unavailable());
+    const { resolveSetupState } = await loadSetup();
+
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: "ja",
+    });
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: null,
+    });
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: null,
+    });
+  });
 });
 
 describe("createInitialUser", () => {
