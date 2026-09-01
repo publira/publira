@@ -30,7 +30,7 @@ describe("parseNotificationPayload", () => {
     });
   });
 
-  it("uses an empty payload for empty, malformed JSON, or invalid IDs", () => {
+  it("handles empty or unsupported JSON payloads and omits invalid IDs", () => {
     expect(parseNotificationPayload("")).toEqual({});
     expect(parseNotificationPayload("{")).toEqual({});
     expect(parseNotificationPayload("null")).toEqual({});
