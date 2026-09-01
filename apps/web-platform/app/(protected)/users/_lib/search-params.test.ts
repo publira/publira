@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildUsersPath, parseUsersFilters } from "./search-params";
 
 describe("parseUsersFilters", () => {
-  it("フィルタとページ token を正規化する", () => {
+  it("normalizes filters and the page token", () => {
     expect(
       parseUsersFilters({
         created_from: " 2026-03-01 ",
@@ -25,7 +25,7 @@ describe("parseUsersFilters", () => {
     });
   });
 
-  it("複数値や不正な値をデフォルトにする", () => {
+  it("uses defaults for multiple or invalid values", () => {
     expect(
       parseUsersFilters({
         created_from: "2026-02-30",
@@ -49,7 +49,7 @@ describe("parseUsersFilters", () => {
 });
 
 describe("buildUsersPath", () => {
-  it("フィルタとページ token を URL に保持する", () => {
+  it("keeps filters and the page token in the URL", () => {
     expect(
       buildUsersPath({
         createdFrom: "2026-03-01",
@@ -65,7 +65,7 @@ describe("buildUsersPath", () => {
     );
   });
 
-  it("条件がなければ一覧のルートを返す", () => {
+  it("returns the list root when there are no conditions", () => {
     expect(
       buildUsersPath({
         createdFrom: "",

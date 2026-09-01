@@ -11,7 +11,7 @@ const ja = await loadPlatformMessages("ja");
 const en = await loadPlatformMessages("en");
 
 describe("getTenantStatusLabel", () => {
-  it("active → 稼働中", () => {
+  it("returns the active label for active", () => {
     expect(getTenantStatusLabel("active", ja)).toBe("稼働中");
   });
 
@@ -19,19 +19,19 @@ describe("getTenantStatusLabel", () => {
     expect(getTenantStatusLabel("active", en)).toBe("Active");
   });
 
-  it("inactive → 無効", () => {
+  it("returns the inactive label for inactive", () => {
     expect(getTenantStatusLabel("inactive", ja)).toBe("無効");
   });
 
-  it("suspended → 停止中", () => {
+  it("returns the suspended label for suspended", () => {
     expect(getTenantStatusLabel("suspended", ja)).toBe("停止中");
   });
 
-  it("trial → トライアル", () => {
+  it("returns the trial label for trial", () => {
     expect(getTenantStatusLabel("trial", ja)).toBe("トライアル");
   });
 
-  it("未知の値はそのまま返す", () => {
+  it("returns unknown values unchanged", () => {
     expect(getTenantStatusLabel("unknown_status", ja)).toBe("unknown_status");
   });
 });
@@ -53,29 +53,29 @@ describe("getTenantStatusTone", () => {
     expect(getTenantStatusTone("trial")).toBe("info");
   });
 
-  it("未知の値 → info", () => {
+  it("returns info for unknown values", () => {
     expect(getTenantStatusTone("unknown")).toBe("info");
   });
 });
 
 describe("getTenantRoleLabel", () => {
-  it("tenant_admin → テナント管理者", () => {
+  it("returns the tenant administrator label for tenant_admin", () => {
     expect(getTenantRoleLabel("tenant_admin", ja)).toBe("テナント管理者");
   });
 
-  it("tenant_editor → 編集担当", () => {
+  it("returns the tenant editor label for tenant_editor", () => {
     expect(getTenantRoleLabel("tenant_editor", ja)).toBe("編集担当");
   });
 
-  it("tenant_member → メンバー", () => {
+  it("returns the tenant member label for tenant_member", () => {
     expect(getTenantRoleLabel("tenant_member", ja)).toBe("メンバー");
   });
 
-  it("tenant_owner → オーナー", () => {
+  it("returns the tenant owner label for tenant_owner", () => {
     expect(getTenantRoleLabel("tenant_owner", ja)).toBe("オーナー");
   });
 
-  it("未知の値はそのまま返す", () => {
+  it("returns unknown values unchanged", () => {
     expect(getTenantRoleLabel("custom_role", ja)).toBe("custom_role");
   });
 });

@@ -26,7 +26,7 @@ describe("parseLoginSearchParams", () => {
     });
   });
 
-  it("失効由来の /login では再ログイン理由を立てる", () => {
+  it("sets a reauthentication reason for expiry-related /login routes", () => {
     expect(
       parseLoginSearchParams({ next: "/tenants", reason: "session_revoked" })
     ).toEqual({
@@ -36,7 +36,7 @@ describe("parseLoginSearchParams", () => {
     });
   });
 
-  it("知らない reason は無視する", () => {
+  it("ignores an unknown reason", () => {
     expect(parseLoginSearchParams({ reason: "whatever" })).toEqual({
       nextPath: "/",
       passwordResetDone: false,

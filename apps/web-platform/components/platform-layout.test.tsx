@@ -94,7 +94,7 @@ describe("PlatformLocaleSwitcher", () => {
 });
 
 describe("PlatformNotificationBell", () => {
-  it("直近 5 件をメニューに表示し、通知一覧へ移動できる", async () => {
+  it("shows the five most recent notifications in the menu and links to the notification list", async () => {
     vi.mocked(getPlatformLocale).mockResolvedValue("ja");
     vi.mocked(countUnreadNotifications).mockResolvedValue({
       ok: true,

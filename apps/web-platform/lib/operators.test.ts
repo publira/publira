@@ -77,7 +77,7 @@ beforeEach(() => {
 });
 
 describe("listPlatformOperators", () => {
-  it("ページング引数を API に渡し、token と一覧を返す", async () => {
+  it("passes pagination arguments to the API and returns tokens and operators", async () => {
     mockListOperators.mockResolvedValueOnce(
       createListOperatorsResponse({
         nextToken: "next-page",
@@ -109,7 +109,7 @@ describe("listPlatformOperators", () => {
     );
   });
 
-  it("session を解決できない場合は API を呼ばずエラーを返す", async () => {
+  it("returns an error without calling the API when the session cannot be resolved", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(listPlatformOperators({ locale: "ja" })).resolves.toEqual({
@@ -123,7 +123,7 @@ describe("listPlatformOperators", () => {
     expect(mockListOperators).not.toHaveBeenCalled();
   });
 
-  it("locale=en では英語のセッションエラーを返す", async () => {
+  it("returns an English session error for locale=en", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(listPlatformOperators({ locale: "en" })).resolves.toEqual({
@@ -136,7 +136,7 @@ describe("listPlatformOperators", () => {
     });
   });
 
-  it("分類済み RPC エラーは共通文言で返す", async () => {
+  it("returns a shared message for classified RPC errors", async () => {
     mockListOperators.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -152,7 +152,7 @@ describe("listPlatformOperators", () => {
     });
   });
 
-  it("分類できない RPC エラーは伝播する", async () => {
+  it("propagates unclassified RPC errors", async () => {
     mockListOperators.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
@@ -164,13 +164,13 @@ describe("listPlatformOperators", () => {
 });
 
 describe("getPlatformOperator", () => {
-  it("不正な入力は RPC を呼ばずに null を返す", async () => {
+  it("returns null without calling RPC for invalid input", async () => {
     await expect(getPlatformOperator("   ", "ja")).resolves.toBeNull();
     expect(mockGetOperator).not.toHaveBeenCalled();
     expect(mockResolveAccessToken).not.toHaveBeenCalled();
   });
 
-  it("前後の空白を除いて GetOperator に渡す", async () => {
+  it("trims whitespace before passing input to GetOperator", async () => {
     mockGetOperator.mockResolvedValueOnce(
       createGetOperatorResponse(createOperator())
     );
@@ -186,7 +186,7 @@ describe("getPlatformOperator", () => {
     );
   });
 
-  it("一覧を走査せず GetOperator を1回だけ呼ぶ", async () => {
+  it("calls GetOperator only once without scanning the list", async () => {
     mockGetOperator.mockResolvedValueOnce(
       createGetOperatorResponse(
         createOperator({
@@ -212,7 +212,7 @@ describe("getPlatformOperator", () => {
     expect(mockListOperators).not.toHaveBeenCalled();
   });
 
-  it("対象がなければ null を返す", async () => {
+  it("returns null when the operator does not exist", async () => {
     mockGetOperator.mockRejectedValueOnce(
       new ConnectError("operator not found", Code.NotFound)
     );
@@ -220,7 +220,7 @@ describe("getPlatformOperator", () => {
     await expect(getPlatformOperator("UNKNOWN", "ja")).resolves.toBeNull();
   });
 
-  it("分類済み RPC エラーは null を返す", async () => {
+  it("returns null for classified RPC errors", async () => {
     mockGetOperator.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -228,7 +228,7 @@ describe("getPlatformOperator", () => {
     await expect(getPlatformOperator("OPERATOR001", "ja")).resolves.toBeNull();
   });
 
-  it("分類できない RPC エラーは伝播する", async () => {
+  it("propagates unclassified RPC errors", async () => {
     mockGetOperator.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );

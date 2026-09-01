@@ -14,7 +14,7 @@ vi.mock("./lib/setup", () => ({
 }));
 
 describe("web-platform proxy", () => {
-  it("GET /logout は setup 判定もセッション操作もせず 404 を返す", async () => {
+  it("returns 404 for GET /logout without setup checks or session operations", async () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
 
@@ -29,7 +29,7 @@ describe("web-platform proxy", () => {
     expect(mockResolveSetupCompleted).not.toHaveBeenCalled();
   });
 
-  it("未認証の GET /logout もログインへ送らず 404 を返す", async () => {
+  it("returns 404 for unauthenticated GET /logout without redirecting to login", async () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
 
@@ -43,7 +43,7 @@ describe("web-platform proxy", () => {
     expect(mockResolveSetupCompleted).not.toHaveBeenCalled();
   });
 
-  it("再検証パスを proxy matcher から除外する", async () => {
+  it("excludes revalidation paths from the proxy matcher", async () => {
     const { config } = await import("./proxy");
 
     expect(

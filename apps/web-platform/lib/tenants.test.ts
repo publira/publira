@@ -117,7 +117,7 @@ beforeEach(() => {
 });
 
 describe("listPlatformTenants", () => {
-  it("正常系: テナント一覧を返す", async () => {
+  it("returns tenant lists", async () => {
     mockListTenants.mockResolvedValueOnce(
       createListTenantsResponse({
         nextToken: "next-page",
@@ -157,7 +157,7 @@ describe("listPlatformTenants", () => {
     );
   });
 
-  it("ページング引数とフィルターを API に渡す", async () => {
+  it("passes pagination arguments and filters to the API", async () => {
     mockListTenants.mockResolvedValueOnce(
       createListTenantsResponse({
         nextToken: "",
@@ -193,7 +193,7 @@ describe("listPlatformTenants", () => {
     );
   });
 
-  it("sessionId を解決できない場合は API を呼ばずエラーを返す", async () => {
+  it("returns an error without calling the API when sessionId cannot be resolved", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(listPlatformTenants({ locale: "ja" })).resolves.toEqual({
@@ -208,7 +208,7 @@ describe("listPlatformTenants", () => {
     expect(mockListTenants).not.toHaveBeenCalled();
   });
 
-  it("locale=en では英語のセッションエラーを返す", async () => {
+  it("returns an English session error for locale=en", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(listPlatformTenants({ locale: "en" })).resolves.toEqual({
@@ -221,7 +221,7 @@ describe("listPlatformTenants", () => {
     });
   });
 
-  it("到達不能エラーは共通文言で返す", async () => {
+  it("returns a shared message for unavailable errors", async () => {
     mockListTenants.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -237,7 +237,7 @@ describe("listPlatformTenants", () => {
     });
   });
 
-  it("分類できない RPC エラーは伝播する", async () => {
+  it("propagates unclassified RPC errors", async () => {
     mockListTenants.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
@@ -247,7 +247,7 @@ describe("listPlatformTenants", () => {
 });
 
 describe("createPlatformTenant", () => {
-  it("正常系: payload と Authorization ヘッダーを付与して API を呼ぶ", async () => {
+  it("calls the API with the payload and Authorization header", async () => {
     mockCreateTenant.mockResolvedValueOnce({
       tenant: { publicId: "TENANT000001" },
     });
@@ -278,7 +278,7 @@ describe("createPlatformTenant", () => {
     );
   });
 
-  it("sessionId を解決できない場合は API を呼ばず失敗を返す", async () => {
+  it("returns a failure without calling the API when sessionId cannot be resolved", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(
@@ -296,7 +296,7 @@ describe("createPlatformTenant", () => {
     expect(mockCreateTenant).not.toHaveBeenCalled();
   });
 
-  it("details の無いドメイン重複は汎用メッセージにする", async () => {
+  it("uses a generic message for domain conflicts without details", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("domain already exists", Code.AlreadyExists)
     );
@@ -314,7 +314,7 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  it("details の無い管理画面ドメイン重複も汎用メッセージにする", async () => {
+  it("uses a generic message for admin domain conflicts without details", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("admin_domain already exists", Code.AlreadyExists)
     );
@@ -332,7 +332,7 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  it("domain の field violation を公開ドメイン重複として表示する", async () => {
+  it("shows a domain field violation as a public domain conflict", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("duplicate key", Code.AlreadyExists, undefined, [
         {
@@ -355,7 +355,7 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  it("locale=en では英語のドメイン重複メッセージを返す", async () => {
+  it("returns an English domain conflict message for locale=en", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("duplicate key", Code.AlreadyExists, undefined, [
         {
@@ -378,7 +378,7 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  it("admin_domain の field violation を管理画面ドメイン重複として表示する", async () => {
+  it("shows an admin_domain field violation as an admin domain conflict", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("duplicate key", Code.AlreadyExists, undefined, [
         {
@@ -401,7 +401,7 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  it("どちらのドメインも名指ししない重複は汎用文言にする", async () => {
+  it("uses a generic message for conflicts that name neither domain", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("duplicate key", Code.AlreadyExists)
     );
@@ -419,7 +419,7 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  it("入力エラーを入力内容エラーに変換する", async () => {
+  it("converts input errors to validation errors", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("invalid initial_admin_emails", Code.InvalidArgument)
     );
@@ -437,7 +437,7 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  it("テナント詳細を取得して整形する", async () => {
+  it("fetches and formats tenant details", async () => {
     mockGetTenant.mockResolvedValueOnce({
       tenant: {
         adminDomain: "admin.example.com",
@@ -467,7 +467,7 @@ describe("createPlatformTenant", () => {
     );
   });
 
-  it("見つからないテナントは失敗ではなく tenant: null で返す", async () => {
+  it("returns tenant: null rather than a failure for a missing tenant", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("tenant not found", Code.NotFound)
     );
@@ -478,7 +478,7 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  it("取得失敗は tenant: null と区別する", async () => {
+  it("distinguishes loading failures from tenant: null", async () => {
     // The page turns `tenant: null` into notFound(); an outage must not take
     // that branch, or an existing tenant reads as deleted.
     mockGetTenant.mockRejectedValueOnce(
@@ -493,7 +493,7 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  it("失効セッションの取得失敗は再ログインを求める", async () => {
+  it("requires reauthentication when loading fails for an expired session", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("invalid token", Code.Unauthenticated)
     );
@@ -506,7 +506,7 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  it("テナントメンバー一覧を取得する", async () => {
+  it("fetches tenant members", async () => {
     mockListTenantMembers.mockResolvedValueOnce({
       members: [
         {
@@ -544,7 +544,7 @@ describe("createPlatformTenant", () => {
     );
   });
 
-  it("停止/再開 API を呼び分ける", async () => {
+  it("calls the suspend or resume API as appropriate", async () => {
     mockSuspendTenant.mockResolvedValueOnce({});
     mockResumeTenant.mockResolvedValueOnce({});
 
@@ -561,7 +561,7 @@ describe("createPlatformTenant", () => {
     );
   });
 
-  it("メンバー追加時はエンドユーザーをメール検索して userPublicId に解決する", async () => {
+  it("resolves an end user by email to userPublicId when adding a member", async () => {
     mockAddTenantMember.mockResolvedValueOnce({});
 
     await expect(
@@ -583,7 +583,7 @@ describe("createPlatformTenant", () => {
     );
   });
 
-  it("メンバー追加時はメールを小文字正規化して送信する", async () => {
+  it("normalizes email to lowercase when adding a member", async () => {
     mockAddTenantMember.mockResolvedValueOnce({});
 
     await expect(
@@ -605,7 +605,7 @@ describe("createPlatformTenant", () => {
     );
   });
 
-  it("対象テナントに該当ユーザーがいない場合は見つからないエラーを返す", async () => {
+  it("returns a not-found error when the user is not in the tenant", async () => {
     mockAddTenantMember.mockRejectedValueOnce(
       new ConnectError("member not found", Code.NotFound)
     );
@@ -625,7 +625,7 @@ describe("createPlatformTenant", () => {
 });
 
 describe("tenant admin invitations", () => {
-  it("招待一覧を取得する", async () => {
+  it("fetches invitations", async () => {
     mockListTenantAdminInvitations.mockResolvedValueOnce({
       invitations: [
         {
@@ -674,7 +674,7 @@ describe("tenant admin invitations", () => {
     );
   });
 
-  it("ページング引数を API に渡す", async () => {
+  it("passes pagination arguments to the API", async () => {
     mockListTenantAdminInvitations.mockResolvedValueOnce({
       invitations: [],
       nextToken: "",
@@ -705,7 +705,7 @@ describe("tenant admin invitations", () => {
     );
   });
 
-  it("sessionId を解決できない場合は API を呼ばずエラーを返す", async () => {
+  it("returns an error without calling the API when sessionId cannot be resolved", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(
@@ -725,7 +725,7 @@ describe("tenant admin invitations", () => {
     expect(mockListTenantAdminInvitations).not.toHaveBeenCalled();
   });
 
-  it("到達不能エラーは共通文言で返す", async () => {
+  it("returns a shared message for unavailable errors", async () => {
     mockListTenantAdminInvitations.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -746,7 +746,7 @@ describe("tenant admin invitations", () => {
     });
   });
 
-  it("分類できない RPC エラーは伝播する", async () => {
+  it("propagates unclassified RPC errors", async () => {
     mockListTenantAdminInvitations.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
@@ -759,7 +759,7 @@ describe("tenant admin invitations", () => {
     ).rejects.toThrow("boom");
   });
 
-  it("招待作成が成功する", async () => {
+  it("creates an invitation", async () => {
     mockCreateTenantAdminInvitation.mockResolvedValueOnce({
       invitation: {
         acceptedAt: "",
@@ -794,7 +794,7 @@ describe("tenant admin invitations", () => {
     });
   });
 
-  it("招待再送が成功する", async () => {
+  it("resends an invitation", async () => {
     mockResendTenantAdminInvitation.mockResolvedValueOnce({
       invitation: {
         acceptedAt: "",
@@ -823,7 +823,7 @@ describe("tenant admin invitations", () => {
     });
   });
 
-  it("招待取り消しが成功する", async () => {
+  it("cancels an invitation", async () => {
     mockCancelTenantAdminInvitation.mockResolvedValueOnce({
       invitation: {
         acceptedAt: "",

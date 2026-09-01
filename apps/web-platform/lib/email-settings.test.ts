@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 describe("getPlatformEmailSettings", () => {
-  it("正常系: SMTP 設定を整形して返す", async () => {
+  it("formats and returns SMTP settings", async () => {
     mockGetPlatformEmailSettings.mockResolvedValueOnce({
       settings: {
         encryption: "starttls",
@@ -67,7 +67,7 @@ describe("getPlatformEmailSettings", () => {
     });
   });
 
-  it("sessionId が空のとき API を呼ばず失敗を返す", async () => {
+  it("returns a failure without calling the API when sessionId is empty", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(getPlatformEmailSettings("ja")).resolves.toEqual({
@@ -79,7 +79,7 @@ describe("getPlatformEmailSettings", () => {
     expect(mockGetPlatformEmailSettings).not.toHaveBeenCalled();
   });
 
-  it("locale=en では英語のセッションエラーを返す", async () => {
+  it("returns an English session error for locale=en", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(getPlatformEmailSettings("en")).resolves.toEqual({
@@ -91,7 +91,7 @@ describe("getPlatformEmailSettings", () => {
 });
 
 describe("updatePlatformEmailSettings", () => {
-  it("正常系: 保存 API を呼び出して更新後設定を返す", async () => {
+  it("calls the save API and returns updated settings", async () => {
     mockUpdatePlatformEmailSettings.mockResolvedValueOnce({
       settings: {
         encryption: "tls",
@@ -146,7 +146,7 @@ describe("updatePlatformEmailSettings", () => {
 });
 
 describe("sendPlatformSmtpTestEmail", () => {
-  it("正常系: 接続テスト API の送信先を返す", async () => {
+  it("returns the recipient from the connection test API", async () => {
     mockSendPlatformSmtpTestEmail.mockResolvedValueOnce({
       recipientEmail: "operator@example.com",
     });

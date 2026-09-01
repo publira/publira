@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 describe("PlatformDefaultLocaleForm", () => {
-  it("保存済みの既定言語を選択済みとして表示する", async () => {
+  it("shows the saved default language as selected", async () => {
     render(
       await PlatformDefaultLocaleForm({
         initialDefaultLocale: "en",
@@ -50,7 +50,7 @@ describe("PlatformDefaultLocaleForm", () => {
     ).toBe(false);
   });
 
-  it("取得に失敗した場合は編集できず理由を出す", async () => {
+  it("disables editing and shows the reason when loading fails", async () => {
     render(
       await PlatformDefaultLocaleForm({
         initialDefaultLocale: "ja",

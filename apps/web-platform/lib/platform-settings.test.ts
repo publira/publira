@@ -37,7 +37,7 @@ describe("platform-settings", () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
   });
 
-  it("取得に成功した場合は既定タイムゾーンと既定言語を返す", async () => {
+  it("returns the default time zone and locale when loading succeeds", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "en", defaultTimezone: "America/Los_Angeles" },
     });
@@ -58,7 +58,7 @@ describe("platform-settings", () => {
     expect(mockCacheTag).toHaveBeenCalledWith("platform:settings");
   });
 
-  it("セッションがない場合はデフォルトのタイムゾーン・言語とエラーを返す", async () => {
+  it("returns default time zone, locale, and an error when there is no session", async () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     const { getPlatformSettings } = await import("./platform-settings");
@@ -75,7 +75,7 @@ describe("platform-settings", () => {
     expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();
   });
 
-  it("locale=en では英語のセッションエラーを返す", async () => {
+  it("returns an English session error for locale=en", async () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     const { getPlatformSettings } = await import("./platform-settings");
@@ -91,7 +91,7 @@ describe("platform-settings", () => {
     });
   });
 
-  it("取得に失敗した場合もフォームが使えるようデフォルトを添えて返す", async () => {
+  it("returns defaults so the form remains usable when loading fails", async () => {
     mockGetPlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError("platform api unavailable", Code.Unavailable)
     );
@@ -105,7 +105,7 @@ describe("platform-settings", () => {
     expect(result.defaultLocale).toBe("ja");
   });
 
-  it("サポート外の既定言語はフォールバックの ja に落とす", async () => {
+  it("falls back to ja for an unsupported default locale", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "fr", defaultTimezone: "Asia/Tokyo" },
     });
@@ -117,7 +117,7 @@ describe("platform-settings", () => {
     expect(result.defaultLocale).toBe("ja");
   });
 
-  it("表示タイムゾーンは取得に失敗してもホストのゾーンに落ちない", async () => {
+  it("does not fall back to the host time zone when loading the display time zone fails", async () => {
     mockGetPlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError("platform api unavailable", Code.Unavailable)
     );
@@ -127,7 +127,7 @@ describe("platform-settings", () => {
     expect(await getPlatformDisplayTimeZone()).toBe("Asia/Tokyo");
   });
 
-  it("更新に成功した場合は保存された既定タイムゾーンを返す", async () => {
+  it("returns the saved default time zone when updating succeeds", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "en", defaultTimezone: "Asia/Tokyo" },
     });
@@ -164,7 +164,7 @@ describe("platform-settings", () => {
     expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
   });
 
-  it("更新時の invalid_argument はサーバのメッセージをそのまま返す", async () => {
+  it("returns the server message for invalid_argument during updates", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "ja", defaultTimezone: "Asia/Tokyo" },
     });
@@ -186,7 +186,7 @@ describe("platform-settings", () => {
     });
   });
 
-  it("権限がない場合は共通のエラーメッセージを返す", async () => {
+  it("returns a shared error message when permission is denied", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "ja", defaultTimezone: "Asia/Tokyo" },
     });
@@ -201,7 +201,7 @@ describe("platform-settings", () => {
 
     expect(result.ok).toBe(false);
   });
-  it("既定言語の更新は現在のタイムゾーンを読み直して一緒に送る", async () => {
+  it("reloads and sends the current time zone when updating the default locale", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "ja", defaultTimezone: "Europe/Paris" },
     });
@@ -222,7 +222,7 @@ describe("platform-settings", () => {
     );
   });
 
-  it("既定言語の更新前の読み取りに失敗した場合は保存しない", async () => {
+  it("does not save when reading before a default locale update fails", async () => {
     mockGetPlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError("platform api unavailable", Code.Unavailable)
     );
@@ -235,7 +235,7 @@ describe("platform-settings", () => {
     expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
   });
 
-  it("既定言語の更新に失敗した場合は共通のエラーメッセージを返す", async () => {
+  it("returns a shared error message when updating the default locale fails", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "ja", defaultTimezone: "Asia/Tokyo" },
     });
@@ -256,7 +256,7 @@ describe("platform-settings", () => {
     });
   });
 
-  it("セッションがない場合は既定言語を保存しない", async () => {
+  it("does not save the default locale when there is no session", async () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     const { updatePlatformDefaultLocale } = await import("./platform-settings");

@@ -7,7 +7,7 @@ import {
 } from "./notification-copy";
 
 describe("parseNotificationPayload", () => {
-  it("既知のフィールドだけを取り出す", () => {
+  it("extracts only known fields", () => {
     expect(
       parseNotificationPayload(
         JSON.stringify({
@@ -30,7 +30,7 @@ describe("parseNotificationPayload", () => {
     });
   });
 
-  it("空・壊れた JSON・不正な ID は空の payload にする", () => {
+  it("handles empty or unsupported JSON payloads and omits invalid IDs", () => {
     expect(parseNotificationPayload("")).toEqual({});
     expect(parseNotificationPayload("{")).toEqual({});
     expect(parseNotificationPayload("null")).toEqual({});
@@ -46,7 +46,7 @@ describe("parseNotificationPayload", () => {
 });
 
 describe("notificationHref", () => {
-  it("tenant があればテナント詳細へ、なければリンクしない", () => {
+  it("links to tenant details when there is a tenant and does not link otherwise", () => {
     expect(notificationHref({ tenant_id: "SeedTNNTAAA1" })).toBe(
       "/tenants/SeedTNNTAAA1"
     );
@@ -58,7 +58,7 @@ describe("notificationHref", () => {
 });
 
 describe("notificationDisplay", () => {
-  it("公開失敗はテナント名とエピソード名から文言を組み立てる", () => {
+  it("builds publication failure copy from tenant and episode names", () => {
     expect(
       notificationDisplay("episode_publish_failed", {
         episode_title: "第1話",
@@ -80,7 +80,7 @@ describe("notificationDisplay", () => {
     });
   });
 
-  it("未知の type は落とさず generic にする", () => {
+  it("keeps unknown types as generic notifications", () => {
     expect(
       notificationDisplay("invite_accepted", { tenant_id: "SeedTNNTAAA1" })
     ).toEqual({

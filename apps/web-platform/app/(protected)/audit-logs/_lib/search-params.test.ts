@@ -5,7 +5,7 @@ import { buildAuditLogsPath, parseAuditLogFilters } from "./search-params";
 const allowedActions = new Set(["operator_created", "tenant_created"]);
 
 describe("parseAuditLogFilters", () => {
-  it("正規化したフィルタとページ token を返す", () => {
+  it("returns normalized filters and page token", () => {
     expect(
       parseAuditLogFilters(
         {
@@ -22,7 +22,7 @@ describe("parseAuditLogFilters", () => {
     });
   });
 
-  it("不正値を既定値にする", () => {
+  it("falls back to defaults for invalid values", () => {
     expect(
       parseAuditLogFilters(
         {
@@ -41,7 +41,7 @@ describe("parseAuditLogFilters", () => {
 });
 
 describe("buildAuditLogsPath", () => {
-  it("フィルタとページ token を URL に保持する", () => {
+  it("keeps filters and page token in the URL", () => {
     expect(
       buildAuditLogsPath({
         action: "operator_created",
@@ -53,7 +53,7 @@ describe("buildAuditLogsPath", () => {
     );
   });
 
-  it("条件がなければ一覧のルートを返す", () => {
+  it("returns the list root when there are no conditions", () => {
     expect(
       buildAuditLogsPath({ action: "", actorUserPublicId: "", token: "" })
     ).toBe("/audit-logs");

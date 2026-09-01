@@ -88,7 +88,7 @@ afterEach(() => {
 });
 
 describe("NotificationManager", () => {
-  it("最初のページが空なら未着として案内する", async () => {
+  it("shows an empty state when the first page is empty", async () => {
     render(
       await NotificationManager({
         notifications: [],
@@ -102,7 +102,7 @@ describe("NotificationManager", () => {
     expect(screen.queryByText("すべて既読にする")).toBeNull();
   });
 
-  it("ページ送りの先が空でも一覧全体が空だとは案内しない", async () => {
+  it("does not show an empty state when a later page is empty", async () => {
     render(
       await NotificationManager({
         notifications: [],
@@ -119,7 +119,7 @@ describe("NotificationManager", () => {
     expect(previous.getAttribute("href")).toBe("/notifications?token=previous");
   });
 
-  it("未読行とリンク、既読ボタンを描画する", async () => {
+  it("renders unread rows, links, and read buttons", async () => {
     render(
       await NotificationManager({
         nextHref: "/notifications?token=next",
@@ -156,7 +156,7 @@ describe("NotificationManager", () => {
     ).toBe("/notifications?token=next");
   });
 
-  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", async () => {
+  it("shows only an error when loading fails", async () => {
     render(
       await NotificationManager({
         listErrorMessage: "通知一覧を取得できませんでした。",
@@ -180,7 +180,7 @@ describe("NotificationManager", () => {
     expect(screen.queryByText("すべて既読にする")).toBeNull();
   });
 
-  it("作成日時をプラットフォーム既定タイムゾーンの壁時計で表示する", async () => {
+  it("shows creation times in the platform default time zone", async () => {
     render(
       await NotificationManager({
         notifications: [notification("n1")],

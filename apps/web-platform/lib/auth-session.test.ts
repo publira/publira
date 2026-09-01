@@ -43,7 +43,7 @@ describe("web-platform auth-session", () => {
     setReturnTo("/tenants?token=abc");
   });
 
-  it("redirectToLogin は proxy が記録したパスと失効理由を付けて /login へ送る", async () => {
+  it("redirects to /login with the proxy-recorded path and expiry reason", async () => {
     const { redirectToLogin } = await importAuthSession();
 
     await expect(redirectToLogin()).rejects.toThrow(/NEXT_REDIRECT/u);
@@ -52,7 +52,7 @@ describe("web-platform auth-session", () => {
     );
   });
 
-  it("redirectToLogin は外部 URL を返送先にしない", async () => {
+  it("does not use an external URL as the redirect target", async () => {
     setReturnTo("https://evil.example.com");
     const { redirectToLogin } = await importAuthSession();
 
@@ -62,7 +62,7 @@ describe("web-platform auth-session", () => {
     );
   });
 
-  it("redirectToLogin はヘッダーが無ければコンソール直下へ戻す", async () => {
+  it("redirects to the console root when there is no header", async () => {
     setReturnTo();
     const { redirectToLogin } = await importAuthSession();
 
@@ -72,7 +72,7 @@ describe("web-platform auth-session", () => {
     );
   });
 
-  it("redirectToLoginIfSessionRejected は失効した読み取りだけを再ログインへ送る", async () => {
+  it("redirects only expired reads to login", async () => {
     const { redirectToLoginIfSessionRejected } = await importAuthSession();
 
     // Any one of the reads a screen awaits is enough to end the session.
@@ -91,7 +91,7 @@ describe("web-platform auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("requirePlatformSession はトークンがあればそれを返す", async () => {
+  it("returns the token when requirePlatformSession finds one", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("session-token");
     const { requirePlatformSession } = await importAuthSession();
 
@@ -99,7 +99,7 @@ describe("web-platform auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("requirePlatformSession はトークンが無ければ再ログインへ送る", async () => {
+  it("redirects to login when requirePlatformSession finds no token", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
     const { requirePlatformSession } = await importAuthSession();
 
@@ -109,7 +109,7 @@ describe("web-platform auth-session", () => {
     );
   });
 
-  it("withPlatformSessionReauth は成功値をそのまま返す", async () => {
+  it("returns successful values unchanged", async () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
     const { withPlatformSessionReauth } = await importAuthSession();
 
@@ -119,7 +119,7 @@ describe("web-platform auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("withPlatformSessionReauth は Unauthenticated のときだけ再ログインへ送る", async () => {
+  it("redirects to login only for Unauthenticated errors", async () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
     const { withPlatformSessionReauth } = await importAuthSession();
 
@@ -133,7 +133,7 @@ describe("web-platform auth-session", () => {
     );
   });
 
-  it("withPlatformSessionReauth はビジネスエラーを再認証扱いにしない", async () => {
+  it("does not treat business errors as reauthentication errors", async () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
     const { withPlatformSessionReauth } = await importAuthSession();
 
@@ -149,7 +149,7 @@ describe("web-platform auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("withPlatformSessionReauth は RPC 以外の失敗も伝播する", async () => {
+  it("propagates non-RPC errors", async () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
     const { withPlatformSessionReauth } = await importAuthSession();
 
@@ -159,7 +159,7 @@ describe("web-platform auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("withPlatformSessionReauth は Cookie が無ければ RPC を呼ばずに再ログインへ送る", async () => {
+  it("redirects to login without calling RPC when there is no cookie", async () => {
     // A missing cookie never reaches the API, so the mutation would answer with
     // the form error this flow replaces instead of throwing Unauthenticated.
     mockResolveAccessToken.mockResolvedValue("");

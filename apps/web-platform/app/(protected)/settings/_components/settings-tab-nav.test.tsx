@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 describe("SettingsTabNav", () => {
-  it("プラットフォーム設定のタブだけを並べる", () => {
+  it("lists only platform settings tabs", () => {
     render(
       <SettingsTabNav
         current="general"
@@ -33,7 +33,7 @@ describe("SettingsTabNav", () => {
     );
   });
 
-  it("自分のアカウント設定はタブに混ぜない", () => {
+  it("does not include personal account settings tabs", () => {
     render(
       <SettingsTabNav
         current="general"

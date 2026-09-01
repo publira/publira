@@ -4,13 +4,13 @@ import { z } from "zod";
 import { cursorPageHref, cursorTokenSchema } from "./cursor-token";
 
 describe("cursorTokenSchema", () => {
-  it("不透明な token を変更せず返す", () => {
+  it("returns opaque tokens unchanged", () => {
     const token = ` ${"x".repeat(256)} `;
 
     expect(cursorTokenSchema.parse(token)).toBe(token);
   });
 
-  it("複数値や未指定の token を空値にする", () => {
+  it("uses an empty value for multiple or missing tokens", () => {
     expect(cursorTokenSchema.parse(["first", "second"])).toBe("");
     expect(z.object({ token: cursorTokenSchema }).parse({})).toEqual({
       token: "",
@@ -19,13 +19,13 @@ describe("cursorTokenSchema", () => {
 });
 
 describe("cursorPageHref", () => {
-  it("token をクエリ文字列として安全にエスケープする", () => {
+  it("safely escapes tokens for query strings", () => {
     expect(cursorPageHref("/operators", "next/page")).toBe(
       "/operators?token=next%2Fpage"
     );
   });
 
-  it("token が空なら先頭ページへ戻す", () => {
+  it("returns to the first page when the token is empty", () => {
     expect(cursorPageHref("/operators", "")).toBe("/operators");
   });
 });

@@ -16,13 +16,13 @@ import {
 const PUBLIRA_AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
 
 describe("sanitizeRedirectPath", () => {
-  it("同一オリジンのパスはそのまま通す", () => {
+  it("keeps same-origin paths unchanged", () => {
     expect(sanitizeRedirectPath("/tenants?token=abc")).toBe(
       "/tenants?token=abc"
     );
   });
 
-  it("外部へ出る書き方はコンソール直下に丸める", () => {
+  it("normalizes external destinations to the console root", () => {
     // Browsers can read `/\evil.example` as the protocol-relative form.
     expect(sanitizeRedirectPath("https://evil.example")).toBe("/");
     expect(sanitizeRedirectPath("//evil.example")).toBe("/");
@@ -30,20 +30,20 @@ describe("sanitizeRedirectPath", () => {
     expect(sanitizeRedirectPath(null)).toBe("/");
   });
 
-  it("/login 自身へは戻さない", () => {
+  it("does not return to /login itself", () => {
     expect(sanitizeRedirectPath("/login?next=%2Ftenants")).toBe("/");
   });
 });
 
 describe("buildLoginPath", () => {
-  it("戻り先を sanitize して付ける", () => {
+  it("sanitizes and adds the return destination", () => {
     expect(buildLoginPath("/tenants?token=abc")).toBe(
       "/login?next=%2Ftenants%3Ftoken%3Dabc"
     );
     expect(buildLoginPath("https://evil.example")).toBe("/login?next=%2F");
   });
 
-  it("失効由来のときだけマーカーを付ける", () => {
+  it("adds a marker only when caused by expiry", () => {
     expect(buildLoginPath("/tenants", { revoked: true })).toBe(
       "/login?next=%2Ftenants&reason=session_revoked"
     );
@@ -51,7 +51,7 @@ describe("buildLoginPath", () => {
 });
 
 describe("buildReturnToPath / buildLoginUrl", () => {
-  it("クエリ文字列ごと戻り先にする", () => {
+  it("uses the return destination with its query string", () => {
     const requestUrl = new URL("https://platform.example.com/users?status=x");
 
     expect(buildReturnToPath(requestUrl)).toBe("/users?status=x");
@@ -60,7 +60,7 @@ describe("buildReturnToPath / buildLoginUrl", () => {
     );
   });
 
-  it("/login からの戻り先はコンソール直下にする", () => {
+  it("uses the console root as the return destination from /login", () => {
     const requestUrl = new URL("https://platform.example.com/login?next=%2Fa");
 
     expect(buildLoginUrl(requestUrl).searchParams.get("next")).toBe("/");
@@ -68,7 +68,7 @@ describe("buildReturnToPath / buildLoginUrl", () => {
 });
 
 describe("isSessionRevokedRedirect", () => {
-  it("失効マーカーの有無を見る", () => {
+  it("checks for the expiry marker", () => {
     expect(
       isSessionRevokedRedirect(
         new URL("https://platform.example.com/login?reason=session_revoked")
@@ -81,7 +81,7 @@ describe("isSessionRevokedRedirect", () => {
 });
 
 describe("isUnauthenticatedError / rethrowUnauthenticatedRpcError", () => {
-  it("Unauthenticated だけを再認証扱いにする", () => {
+  it("treats only Unauthenticated as requiring reauthentication", () => {
     const rejected = new ConnectError("invalid token", Code.Unauthenticated);
     const businessError = new ConnectError("bad input", Code.InvalidArgument);
 
@@ -117,7 +117,7 @@ describe("hasActivePlatformSessionCookie", () => {
       PUBLIRA_AUTH_SECRET
     );
 
-  it("復号でき期限内の Cookie だけを有効とみなす", async () => {
+  it("accepts only decryptable, unexpired cookies as valid", async () => {
     const active = await sealed(
       Temporal.Now.instant().add({ minutes: 5 }).toString()
     );

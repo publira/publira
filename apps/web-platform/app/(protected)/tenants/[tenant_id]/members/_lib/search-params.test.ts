@@ -7,7 +7,7 @@ import {
 } from "./search-params";
 
 describe("parseMemberInvitationFilters", () => {
-  it("ページ token をそのまま受け取る", () => {
+  it("accepts the page token unchanged", () => {
     expect(
       parseMemberInvitationFilters({
         members_token: " members-token ",
@@ -19,13 +19,13 @@ describe("parseMemberInvitationFilters", () => {
     });
   });
 
-  it("cursor token は長さや前後空白を含めて変更しない", () => {
+  it("keeps the cursor token unchanged including length and whitespace", () => {
     const token = ` ${"x".repeat(256)} `;
 
     expect(parseMemberInvitationFilters({ token }).token).toBe(token);
   });
 
-  it("複数値や未指定は空文字にする", () => {
+  it("uses an empty string for multiple or missing values", () => {
     expect(
       parseMemberInvitationFilters({
         members_token: ["first", "second"],
@@ -43,7 +43,7 @@ describe("parseMemberInvitationFilters", () => {
 });
 
 describe("buildMemberInvitationsPath", () => {
-  it("招待とメンバーの token を URL に保持する", () => {
+  it("keeps invitation and member tokens in the URL", () => {
     expect(
       buildMemberInvitationsPath("tenant_seifuu", {
         membersToken: "members/page",
@@ -54,7 +54,7 @@ describe("buildMemberInvitationsPath", () => {
     );
   });
 
-  it("token がなければメンバー画面のルートを返す", () => {
+  it("returns the members root when there is no token", () => {
     expect(
       buildMemberInvitationsPath("tenant_seifuu", {
         membersToken: "",
@@ -63,7 +63,7 @@ describe("buildMemberInvitationsPath", () => {
     ).toBe("/tenants/tenant_seifuu/members");
   });
 
-  it("tenant id を URL エンコードする", () => {
+  it("URL-encodes the tenant ID", () => {
     expect(
       buildMemberInvitationsPath("tenant/with space", {
         membersToken: "",
@@ -74,7 +74,7 @@ describe("buildMemberInvitationsPath", () => {
 });
 
 describe("buildMembersPath", () => {
-  it("メンバー一覧の token を URL に保持する", () => {
+  it("keeps the member list token in the URL", () => {
     expect(
       buildMembersPath("tenant_seifuu", {
         membersToken: "members-next",
