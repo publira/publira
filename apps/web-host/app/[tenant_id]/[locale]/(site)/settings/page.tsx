@@ -1,4 +1,4 @@
-import { getMessage, parseLocale } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { redirect } from "next/navigation";
@@ -14,6 +14,7 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { getLocale, loadHostMessages } from "#lib/locale";
+import { requireFormLocale } from "#lib/locale-form";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
@@ -32,7 +33,7 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   await assertSameOrigin();
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
-  const submittedLocale = parseLocale(formData.get("locale"));
+  const submittedLocale = requireFormLocale(formData.get("locale"));
   const messages = await loadHostMessages(submittedLocale);
   const parsed = parseDeleteAccountForm(messages, formData);
   if (!parsed.success) {

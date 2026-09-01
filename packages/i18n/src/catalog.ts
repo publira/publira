@@ -9,7 +9,7 @@
 
 import { CATALOGS } from "./gen/locale-catalogs";
 import type { LocaleMessages } from "./gen/locale-catalogs";
-import { getMessage, parseLocale } from "./i18n";
+import { getMessage } from "./i18n";
 import type { Locale, MessageKey } from "./i18n";
 
 export type SharedMessages = LocaleMessages;
@@ -25,13 +25,19 @@ const RPC_MESSAGE_KEYS = {
 
 export type SharedRpcDisposition = keyof typeof RPC_MESSAGE_KEYS;
 
-/** The catalog for `locale`. Unknown values fall back to `ja`. */
-export const sharedCatalog = (locale?: Locale | string): SharedMessages =>
-  CATALOGS[parseLocale(locale)];
+/**
+ * The catalog for `locale`.
+ *
+ * `locale` is required: a caller that cannot name one has a locale to resolve
+ * rather than a catalog to read, and defaulting the argument here would answer
+ * every such caller in the same language regardless of the reader.
+ */
+export const sharedCatalog = (locale: Locale): SharedMessages =>
+  CATALOGS[locale];
 
 export const sharedMessage = (
   key: MessageKey<SharedMessages>,
-  locale?: Locale | string
+  locale: Locale
 ): string => getMessage(sharedCatalog(locale), key);
 
 /**
@@ -40,7 +46,7 @@ export const sharedMessage = (
  */
 export const sharedRpcErrorMessage = (
   disposition: SharedRpcDisposition | string,
-  locale?: Locale | string
+  locale: Locale
 ): string | undefined => {
   if (!Object.hasOwn(RPC_MESSAGE_KEYS, disposition)) {
     return undefined;

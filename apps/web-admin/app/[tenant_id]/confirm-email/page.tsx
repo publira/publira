@@ -15,7 +15,8 @@ import { getTenantId } from "#lib/tenant-id";
 import { parseConfirmEmailSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.auth.confirm_email.title") };

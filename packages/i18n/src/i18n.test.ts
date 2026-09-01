@@ -6,7 +6,6 @@ import enCatalog from "../../../locales/en.json" with { type: "json" };
 import localeIndex from "../../../locales/index.json" with { type: "json" };
 import jaCatalog from "../../../locales/ja.json" with { type: "json" };
 import {
-  DEFAULT_LOCALE,
   formatMessage,
   getLocales,
   getMessage,
@@ -42,6 +41,12 @@ const enMatchesJa: ExactCatalog<typeof enCatalog, typeof jaCatalog> = enCatalog;
 const missing: unknown = undefined;
 
 /**
+ * What the layout rendered into `<html lang>` before the script ran. Any value
+ * will do — the point of each assertion is whether the script replaced it.
+ */
+const RENDERED_LANG = "rendered";
+
+/**
  * Run the script source the way a browser would, against a `document` stub.
  * Asserting on the string instead would pass on a script that never runs, and
  * a context is how the browser gets it — not a call this module makes.
@@ -49,7 +54,7 @@ const missing: unknown = undefined;
 const applyLangScript = (cookie: string): string => {
   const documentStub = {
     cookie,
-    documentElement: { lang: DEFAULT_LOCALE },
+    documentElement: { lang: RENDERED_LANG },
   };
   runInNewContext(LOCALE_LANG_SCRIPT, { document: documentStub });
 
@@ -67,7 +72,6 @@ describe("getLocales", () => {
     for (const { code, label } of localeIndex.locales) {
       expect(getLocaleLabel(code as Locale)).toBe(label);
     }
-    expect(DEFAULT_LOCALE).toBe("ja");
     expect(LOCALE_COOKIE_NAME).toBe("publira_locale");
     expect(LOCALE_COOKIE_MAX_AGE).toBe(31_536_000);
   });
@@ -86,18 +90,18 @@ describe("LOCALE_LANG_SCRIPT", () => {
     expect(applyLangScript("publira_locale=%20en%20")).toBe("en");
   });
 
-  it("leaves the rendered default in place for anything else", () => {
-    expect(applyLangScript("")).toBe("ja");
-    expect(applyLangScript("theme=dark")).toBe("ja");
-    expect(applyLangScript("publira_locale=fr")).toBe("ja");
-    expect(applyLangScript("publira_locale=")).toBe("ja");
-    expect(applyLangScript("publira_locale=%E2%98%83")).toBe("ja");
+  it("leaves what the server rendered in place for anything else", () => {
+    expect(applyLangScript("")).toBe(RENDERED_LANG);
+    expect(applyLangScript("theme=dark")).toBe(RENDERED_LANG);
+    expect(applyLangScript("publira_locale=fr")).toBe(RENDERED_LANG);
+    expect(applyLangScript("publira_locale=")).toBe(RENDERED_LANG);
+    expect(applyLangScript("publira_locale=%E2%98%83")).toBe(RENDERED_LANG);
     // A name that merely ends with the cookie name is a different cookie.
-    expect(applyLangScript("not_publira_locale=en")).toBe("ja");
+    expect(applyLangScript("not_publira_locale=en")).toBe(RENDERED_LANG);
   });
 
   it("survives a cookie value that cannot be decoded", () => {
-    expect(applyLangScript("publira_locale=%E0%A4%A")).toBe("ja");
+    expect(applyLangScript("publira_locale=%E0%A4%A")).toBe(RENDERED_LANG);
   });
 });
 
@@ -125,13 +129,13 @@ describe("parseLocale", () => {
     expect(parseLocale("en")).toBe("en");
   });
 
-  it("falls back to ja for unknown values", () => {
-    expect(parseLocale("fr")).toBe("ja");
-    expect(parseLocale("ja-JP")).toBe("ja");
-    expect(parseLocale("")).toBe("ja");
-    expect(parseLocale(null)).toBe("ja");
-    expect(parseLocale(missing)).toBe("ja");
-    expect(parseLocale({ locale: "en" })).toBe("ja");
+  it("returns undefined instead of converting an unknown value", () => {
+    expect(parseLocale("fr")).toBeUndefined();
+    expect(parseLocale("ja-JP")).toBeUndefined();
+    expect(parseLocale("")).toBeUndefined();
+    expect(parseLocale(null)).toBeUndefined();
+    expect(parseLocale(missing)).toBeUndefined();
+    expect(parseLocale({ locale: "en" })).toBeUndefined();
   });
 });
 
@@ -141,13 +145,13 @@ describe("parseLocaleCookie", () => {
     expect(parseLocaleCookie("ja")).toBe("ja");
   });
 
-  it("trims whitespace and falls back to ja", () => {
+  it("trims whitespace and reports an unset cookie as undefined", () => {
     expect(parseLocaleCookie("  en  ")).toBe("en");
-    expect(parseLocaleCookie("")).toBe("ja");
-    expect(parseLocaleCookie("   ")).toBe("ja");
-    expect(parseLocaleCookie("de")).toBe("ja");
-    expect(parseLocaleCookie(null)).toBe("ja");
-    expect(parseLocaleCookie(missing as string | undefined)).toBe("ja");
+    expect(parseLocaleCookie("")).toBeUndefined();
+    expect(parseLocaleCookie("   ")).toBeUndefined();
+    expect(parseLocaleCookie("de")).toBeUndefined();
+    expect(parseLocaleCookie(null)).toBeUndefined();
+    expect(parseLocaleCookie(missing as string | undefined)).toBeUndefined();
   });
 });
 
@@ -175,22 +179,6 @@ describe("loadMessages", () => {
 
     expect(imported).toEqual(["en"]);
     expect(catalog).toEqual(enFixture);
-  });
-
-  it("falls back to the ja importer for an unknown locale string", async () => {
-    const imported: Locale[] = [];
-    await loadMessages<MessageTree>("fr", {
-      en: () => {
-        imported.push("en");
-        return Promise.resolve(enFixture);
-      },
-      ja: () => {
-        imported.push("ja");
-        return Promise.resolve(fixture);
-      },
-    });
-
-    expect(imported).toEqual(["ja"]);
   });
 
   it("unwraps a default export from import()", async () => {

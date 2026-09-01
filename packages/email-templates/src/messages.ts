@@ -13,7 +13,7 @@ export type EmailMessageKey = MessageKey<Messages>;
  * Load one locale from the repo-root catalog. The generated registry keeps
  * static import specifiers in one place (see `locales/README.md`).
  */
-export const loadEmailMessages = (locale: Locale | string): Promise<Messages> =>
+export const loadEmailMessages = (locale: Locale): Promise<Messages> =>
   loadLocaleMessages(locale) as Promise<Messages>;
 
 export const emailMessage = (

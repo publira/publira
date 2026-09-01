@@ -1,5 +1,5 @@
 import "./globals.css";
-import { DEFAULT_LOCALE, LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { LOCALE_LANG_SCRIPT } from "@publira/i18n";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -10,19 +10,22 @@ export const metadata: Metadata = {
 };
 
 /**
- * `lang` is rendered as the default locale and corrected by the inline script
- * before the browser paints.
+ * `lang` is left unset and written by the inline script before the browser
+ * paints.
  *
  * The console keeps its locale in a cookie rather than in the URL, and under
  * Cache Components a `cookies()` read here would leave every route without a
  * static shell — there is no child `<Suspense>` boundary an `<html>` attribute
- * could move into. Reading the cookie in the script instead keeps the shell
- * static; `suppressHydrationWarning` is what lets the DOM the script produced
- * win over the attribute React rendered. The script's source and the reasoning
- * behind it live in `@publira/i18n`.
+ * could move into. So the document ships without a `lang`, and the script sets
+ * it from the cookie while the page is still being parsed;
+ * `suppressHydrationWarning` is what lets the DOM the script produced win over
+ * what React rendered. Naming a language here instead would be a guess, and a
+ * wrong `lang` tells a screen reader to pronounce the page in a language it is
+ * not written in — worse than saying nothing. The script's source and the
+ * reasoning behind it live in `@publira/i18n`.
  */
 const RootLayout = ({ children }: LayoutProps<"/">) => (
-  <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+  <html suppressHydrationWarning>
     <head>
       <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
     </head>

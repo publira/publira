@@ -9,13 +9,19 @@ const fallback = "保存に失敗しました。時間をおいて再試行し�
 describe("rpcErrorMessage", () => {
   it("returns the shared message for a mapped category", () => {
     expect(
-      rpcErrorMessage(new ConnectError("x", Code.Unauthenticated), fallback)
+      rpcErrorMessage(new ConnectError("x", Code.Unauthenticated), fallback, {
+        locale: "ja",
+      })
     ).toBe("セッションが無効です。再ログインしてください。");
     expect(
-      rpcErrorMessage(new ConnectError("x", Code.PermissionDenied), fallback)
+      rpcErrorMessage(new ConnectError("x", Code.PermissionDenied), fallback, {
+        locale: "ja",
+      })
     ).toBe("この操作を行う権限がありません。");
     expect(
-      rpcErrorMessage(new ConnectError("x", Code.InvalidArgument), fallback)
+      rpcErrorMessage(new ConnectError("x", Code.InvalidArgument), fallback, {
+        locale: "ja",
+      })
     ).toBe("入力内容に誤りがあります。");
   });
 
@@ -52,17 +58,13 @@ describe("rpcErrorMessage", () => {
     ).toBe("Could not connect to the server. Please try again later.");
   });
 
-  it("an unknown locale falls back to Japanese", () => {
-    expect(
-      rpcErrorMessage(new ConnectError("x", Code.Unauthenticated), fallback, {
-        locale: "fr",
-      })
-    ).toBe("セッションが無効です。再ログインしてください。");
-  });
-
   it("a category without a shared message returns the fallback", () => {
     expect(
-      rpcErrorMessage(new ConnectError("x", Code.FailedPrecondition), fallback)
+      rpcErrorMessage(
+        new ConnectError("x", Code.FailedPrecondition),
+        fallback,
+        { locale: "ja" }
+      )
     ).toBe(fallback);
     expect(
       rpcErrorMessage(
@@ -71,18 +73,12 @@ describe("rpcErrorMessage", () => {
         { locale: "en" }
       )
     ).toBe(fallback);
-    expect(rpcErrorMessage(new Error("boom"), fallback)).toBe(fallback);
+    expect(rpcErrorMessage(new Error("boom"), fallback, { locale: "ja" })).toBe(
+      fallback
+    );
   });
 
   it("overrides take precedence over the shared message", () => {
-    expect(
-      rpcErrorMessage(new ConnectError("x", Code.NotFound), fallback, {
-        "not-found": "指定したエピソードが見つかりません。",
-      })
-    ).toBe("指定したエピソードが見つかりません。");
-  });
-
-  it("options.overrides takes precedence over locale", () => {
     expect(
       rpcErrorMessage(new ConnectError("x", Code.NotFound), fallback, {
         locale: "en",

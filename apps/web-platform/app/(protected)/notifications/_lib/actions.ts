@@ -1,6 +1,6 @@
 "use server";
 
-import { VALIDATION_ERROR_MESSAGE } from "@publira/utils/field-errors";
+import { validationErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
@@ -31,7 +31,7 @@ export const markNotificationAsReadAction = async (
   );
   if (!parsed.success) {
     return {
-      message: VALIDATION_ERROR_MESSAGE,
+      message: validationErrorMessage("ja"),
       ok: false,
     };
   }

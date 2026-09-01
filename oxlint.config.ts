@@ -116,10 +116,37 @@ export default defineConfig({
     },
     {
       /**
+       * Both consoles ship their document with no `lang`, and scripts write one
+       * once a locale has been read.
+       *
+       * Every value the attribute could take needs a read — the operator's
+       * cookie, and the stored default behind it — and a root layout that
+       * awaits blocks the whole tree. An `<html>` attribute is never worth
+       * that, so both layouts stay synchronous and the cookie travels as a
+       * script (`LOCALE_LANG_SCRIPT`) instead.
+       *
+       * Until it runs the document names no language. A `lang` the document
+       * is not written in tells a screen reader to pronounce the page in the
+       * wrong language, which is worse for the reader this rule protects than
+       * an absent one, and it is what AGENTS.md means by not misreporting an
+       * unresolved locale as a language. Carrying the stored default to the
+       * document — which the client boundaries also read — is #1249.
+       */
+      files: [
+        "apps/web-platform/app/layout.tsx",
+        "apps/web-admin/app/*/layout.tsx",
+      ],
+      rules: {
+        "jsx-a11y/html-has-lang": "off",
+        "jsx-a11y/lang": "off",
+      },
+    },
+    {
+      /**
        * The locale Action writes a UI preference, not privileged state: it
        * stores one value from `getLocales()` in `publira_locale`, and every read parses that
-       * cookie again (`parseLocaleCookie`), so a forged or hand-edited value
-       * resolves to `ja` rather than reaching application code. Requiring a
+       * cookie again (`parseLocaleCookie`), so a forged or hand-edited value is
+       * discarded rather than reaching application code. Requiring a
        * session would tie a display setting to sign-in without protecting
        * anything. Every other cookie write in these apps stays covered — the
        * override names this one file per app. See AGENTS.md "UI ロケール"

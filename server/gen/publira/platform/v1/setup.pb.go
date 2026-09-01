@@ -63,8 +63,17 @@ type CheckSetupStatusResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// true の場合: 既にセットアップ済み (ユーザーが存在する)
 	SetupCompleted bool `protobuf:"varint,1,opt,name=setup_completed,json=setupCompleted,proto3" json:"setup_completed,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// UI locale code (ja, en) the console renders in for a visitor who has not
+	// signed in. The login screen has no session to read the platform settings
+	// with, and this RPC is the unauthenticated read it already makes, so the
+	// saved language travels with the status rather than being guessed there.
+	//
+	// Empty until the platform is set up: the settings row is created with the
+	// first operator, so before that there is no saved language to report and
+	// the setup screen negotiates one from Accept-Language instead.
+	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CheckSetupStatusResponse) Reset() {
@@ -102,6 +111,13 @@ func (x *CheckSetupStatusResponse) GetSetupCompleted() bool {
 		return x.SetupCompleted
 	}
 	return false
+}
+
+func (x *CheckSetupStatusResponse) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
+	}
+	return ""
 }
 
 // 初期管理ユーザー作成リクエスト
@@ -218,9 +234,10 @@ var File_publira_platform_v1_setup_proto protoreflect.FileDescriptor
 const file_publira_platform_v1_setup_proto_rawDesc = "" +
 	"\n" +
 	"\x1fpublira/platform/v1/setup.proto\x12\x13publira.platform.v1\"\x19\n" +
-	"\x17CheckSetupStatusRequest\"C\n" +
+	"\x17CheckSetupStatusRequest\"j\n" +
 	"\x18CheckSetupStatusResponse\x12'\n" +
-	"\x0fsetup_completed\x18\x01 \x01(\bR\x0esetupCompleted\"\x87\x01\n" +
+	"\x0fsetup_completed\x18\x01 \x01(\bR\x0esetupCompleted\x12%\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"\x87\x01\n" +
 	"\x18CreateInitialUserRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +

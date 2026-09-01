@@ -41,7 +41,7 @@ export interface ResolveEmailInput {
 export interface ResolveEmailFailure {
   message: string;
   ok: false;
-  reason: "invalid_data" | "unknown_template";
+  reason: "invalid_data" | "unknown_template" | "unsupported_locale";
 }
 
 export interface ResolveEmailSuccess {
@@ -93,6 +93,14 @@ export const resolveEmail = (input: ResolveEmailInput): ResolveEmailResult => {
   }
 
   const locale = parseLocale(input.locale);
+  if (locale === undefined) {
+    return {
+      message: `unsupported locale: ${input.locale}`,
+      ok: false,
+      reason: "unsupported_locale",
+    };
+  }
+
   const { messages, timeZone } = input;
 
   switch (input.template) {

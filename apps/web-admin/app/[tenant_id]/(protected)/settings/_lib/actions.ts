@@ -533,7 +533,7 @@ export const updateTenantIconAction = async (
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
@@ -596,7 +596,7 @@ export const updateTenantLogoAction = async (
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
@@ -663,7 +663,7 @@ export const updateTenantTimezoneAction = async (
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
@@ -719,7 +719,7 @@ export const updateTenantDefaultLocaleAction = async (
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }

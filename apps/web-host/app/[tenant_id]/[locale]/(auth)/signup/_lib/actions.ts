@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage, parseLocale } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -18,7 +18,7 @@ import {
   setEmailFlashCookie,
   SIGNUP_PENDING_EMAIL_COOKIE,
 } from "#lib/email-flash-cookie";
-import { localeFormSchema } from "#lib/locale-form";
+import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
@@ -62,7 +62,8 @@ export const signupAction = async (
   await assertSameOrigin();
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
-  const messages = await loadHostMessages(parseLocale(formData.get("locale")));
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+  const messages = await loadHostMessages(submittedLocale);
   const parsed = signupFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
@@ -75,7 +76,7 @@ export const signupAction = async (
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
       ok: false,
     };
   }

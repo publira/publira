@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"regexp"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 const testCountPlatformUsersQuery = "-- name: CountPlatformUsers :one\n"
@@ -21,6 +23,7 @@ func TestCheckSetupStatusNotCompleted(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
 
 	resp, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
 	if err != nil {
@@ -28,6 +31,11 @@ func TestCheckSetupStatusNotCompleted(t *testing.T) {
 	}
 	if resp.Msg.SetupCompleted {
 		t.Fatalf("setup_completed = true, want false")
+	}
+	// No settings row yet, so there is no saved language to report and the
+	// setup screen negotiates one from Accept-Language instead.
+	if resp.Msg.DefaultLocale != "" {
+		t.Fatalf("default_locale = %q, want empty", resp.Msg.DefaultLocale)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -37,6 +45,7 @@ func TestCheckSetupStatusCompleted(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	expectPlatformConfigLookup(mock, tenanttz.Default, "en", time.Now())
 
 	resp, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
 	if err != nil {
@@ -44,6 +53,30 @@ func TestCheckSetupStatusCompleted(t *testing.T) {
 	}
 	if !resp.Msg.SetupCompleted {
 		t.Fatalf("setup_completed = false, want true")
+	}
+	// The login screen renders in the language the platform saved, not in the
+	// one the visitor's browser happens to ask for.
+	if resp.Msg.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// A code the row should never hold is reported as no saved language rather than
+// passed through: the console cannot render a locale it has no catalog for.
+func TestCheckSetupStatusIgnoresAnUnsupportedSavedLocale(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+
+	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	expectPlatformConfigLookup(mock, tenanttz.Default, "fr", time.Now())
+
+	resp, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+	if err != nil {
+		t.Fatalf("CheckSetupStatus: %v", err)
+	}
+	if resp.Msg.DefaultLocale != "" {
+		t.Fatalf("default_locale = %q, want empty", resp.Msg.DefaultLocale)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

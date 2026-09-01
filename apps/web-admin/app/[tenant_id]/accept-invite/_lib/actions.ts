@@ -7,11 +7,12 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getActionLocale } from "#lib/action-messages";
 import { acceptTenantAdminInvitation } from "#lib/admin-auth";
 import { inviteTokenFormSchema, tenantIdFormSchema } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
 import { optionalTrimmedString } from "#lib/form-schemas";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { loadAdminMessages } from "#lib/locale";
 import type { AdminMessages } from "#lib/locale";
 
 const acceptInviteFormSchema = (messages: AdminMessages) =>
@@ -68,7 +69,7 @@ export const acceptInviteAction = async (
   formData: FormData
 ): Promise<FormActionState> => {
   await assertSameOrigin();
-  const locale = await getLocale();
+  const locale = await getActionLocale(formData);
   const messages = await loadAdminMessages(locale);
   const parsed = acceptInviteFormSchema(messages).safeParse(
     toFormDataInput(formData, {
@@ -93,9 +94,9 @@ export const acceptInviteAction = async (
   const result = await acceptTenantAdminInvitation(
     tenantId,
     token,
+    locale,
     accountExists ? undefined : name,
-    accountExists ? undefined : password,
-    locale
+    accountExists ? undefined : password
   );
 
   if (!result.ok) {

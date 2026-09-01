@@ -30,7 +30,8 @@ import { SeriesManager } from "./_components/series-manager";
 type SeriesPageProps = PageProps<"/[tenant_id]/series">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.series.title") };
@@ -57,7 +58,7 @@ const SeriesManagerData = async ({
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
   const [listResult, timeZone] = await Promise.all([
-    listSeries(tenantId, { token }, locale),
+    listSeries(tenantId, locale, { token }),
     getTenantDisplayTimeZone(tenantId),
   ]);
 

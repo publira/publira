@@ -16,7 +16,8 @@ import { loginAction } from "./_lib/actions";
 import { parseLoginSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.auth.login.title") };

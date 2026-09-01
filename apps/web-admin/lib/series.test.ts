@@ -37,7 +37,7 @@ describe("listSeries", () => {
     });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", {
+    const result = await listSeries("TENANT001", "ja", {
       limit: 20,
       token: "current-page",
     });
@@ -62,7 +62,7 @@ describe("listSeries", () => {
     mockListSeries.mockResolvedValue({ series: [] });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001");
+    const result = await listSeries("TENANT001", "ja", {});
 
     expect(mockListSeries).toHaveBeenCalledWith(
       {
@@ -89,7 +89,7 @@ describe("listSeries", () => {
     });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001");
+    const result = await listSeries("TENANT001", "ja", {});
 
     expect(result.series.map((item) => item.publicId)).toEqual([
       "SERIES002",
@@ -103,7 +103,9 @@ describe("listSeries", () => {
     );
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", { token: "current-page" });
+    const result = await listSeries("TENANT001", "ja", {
+      token: "current-page",
+    });
 
     expect(result).toMatchObject({
       nextToken: "",
@@ -142,7 +144,7 @@ describe("listAllSeries", () => {
       });
 
     const { listAllSeries } = await import("./series");
-    const result = await listAllSeries("TENANT001");
+    const result = await listAllSeries("TENANT001", "ja");
 
     expect(mockListSeries).toHaveBeenNthCalledWith(
       1,
@@ -175,7 +177,7 @@ describe("listAllSeries", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listAllSeries } = await import("./series");
-    const result = await listAllSeries("TENANT001");
+    const result = await listAllSeries("TENANT001", "ja");
 
     expect(mockListSeries).not.toHaveBeenCalled();
     expect(result).toMatchObject({
@@ -200,7 +202,7 @@ describe("listAllSeries", () => {
       });
 
     const { listAllSeries } = await import("./series");
-    const result = await listAllSeries("TENANT001");
+    const result = await listAllSeries("TENANT001", "ja");
 
     expect(result).toMatchObject({
       ok: false,

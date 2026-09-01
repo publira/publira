@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage, parseLocale } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -14,7 +14,7 @@ import {
   tenantIdFormSchema,
 } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
-import { localeFormSchema } from "#lib/locale-form";
+import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
@@ -77,7 +77,7 @@ export const confirmPasswordAction = async (
   });
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
-  const submittedLocale = parseLocale(input.locale);
+  const submittedLocale = requireFormLocale(input.locale);
   const messages = await loadHostMessages(submittedLocale);
   const parsed = confirmPasswordFormSchema(messages).safeParse(input);
   if (!parsed.success) {

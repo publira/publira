@@ -4,7 +4,6 @@ import { z } from "zod";
 import {
   toFieldErrors,
   toFormErrorMessage,
-  VALIDATION_ERROR_MESSAGE,
   validationErrorMessage,
 } from "./field-errors";
 
@@ -69,24 +68,31 @@ describe("toFormErrorMessage", () => {
       throw new Error("expected the schema to reject this input");
     }
 
-    expect(toFormErrorMessage(parsed.error)).toBe(
+    expect(toFormErrorMessage(parsed.error, { locale: "ja" })).toBe(
       "終了日は開始日以降にしてください。"
     );
   });
 
   it("falls back to the first field message", () => {
-    expect(toFormErrorMessage(parseFailure({ port: 587, title: "" }))).toBe(
-      "タイトルは必須です。"
-    );
+    expect(
+      toFormErrorMessage(parseFailure({ port: 587, title: "" }), {
+        locale: "ja",
+      })
+    ).toBe("タイトルは必須です。");
   });
 
   it("uses the shared wording when nothing else is available", () => {
     const error = new z.ZodError([]);
 
-    expect(toFormErrorMessage(error)).toBe(VALIDATION_ERROR_MESSAGE);
-    expect(toFormErrorMessage(error, { fallback: "保存できません。" })).toBe(
-      "保存できません。"
+    expect(toFormErrorMessage(error, { locale: "ja" })).toBe(
+      validationErrorMessage("ja")
     );
+    expect(
+      toFormErrorMessage(error, {
+        fallback: "保存できません。",
+        locale: "ja",
+      })
+    ).toBe("保存できません。");
   });
 
   it("uses the locale-specific shared wording when asked", () => {
@@ -99,9 +105,8 @@ describe("toFormErrorMessage", () => {
 });
 
 describe("validationErrorMessage", () => {
-  it("keeps the Japanese default when locale is omitted", () => {
-    expect(validationErrorMessage()).toBe("入力内容を確認してください。");
-    expect(VALIDATION_ERROR_MESSAGE).toBe(validationErrorMessage());
+  it("returns Japanese when locale is ja", () => {
+    expect(validationErrorMessage("ja")).toBe("入力内容を確認してください。");
   });
 
   it("returns English when locale is en", () => {

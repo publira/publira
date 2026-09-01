@@ -11,6 +11,15 @@ message CheckSetupStatusRequest {}
 message CheckSetupStatusResponse {
   // true の場合: 既にセットアップ済み (ユーザーが存在する)
   bool setup_completed = 1;
+  // UI locale code (ja, en) the console renders in for a visitor who has not
+  // signed in. The login screen has no session to read the platform settings
+  // with, and this RPC is the unauthenticated read it already makes, so the
+  // saved language travels with the status rather than being guessed there.
+  //
+  // Empty until the platform is set up: the settings row is created with the
+  // first operator, so before that there is no saved language to report and
+  // the setup screen negotiates one from Accept-Language instead.
+  string default_locale = 2;
 }
 
 // 初期管理ユーザー作成リクエスト

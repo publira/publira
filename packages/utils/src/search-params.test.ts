@@ -130,11 +130,13 @@ describe("searchParamEnum", () => {
   });
 
   it("fails without a fallback", () => {
-    expect(searchParamEnum(["asc"]).safeParse("desc").success).toBe(false);
+    expect(
+      searchParamEnum(["asc"], { locale: "ja" }).safeParse("desc").success
+    ).toBe(false);
   });
 
-  it("rejects with the Japanese shared wording by default", () => {
-    const parsed = searchParamEnum(["asc"]).safeParse("desc");
+  it("rejects with the Japanese shared wording when locale is ja", () => {
+    const parsed = searchParamEnum(["asc"], { locale: "ja" }).safeParse("desc");
     expect(parsed.success).toBe(false);
     if (parsed.success) {
       throw new Error("expected the schema to reject this input");

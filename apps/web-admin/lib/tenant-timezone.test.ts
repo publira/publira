@@ -47,7 +47,7 @@ describe("tenant-timezone", () => {
 
     const { getTenantTimezone } = await import("./tenant-timezone");
 
-    const result = await getTenantTimezone("TENANT001");
+    const result = await getTenantTimezone("TENANT001", "ja");
 
     expect(result).toEqual({ ok: true, timezone: "America/Los_Angeles" });
     expect(mockGetTenantTimezoneApi).toHaveBeenCalledWith(
@@ -62,7 +62,7 @@ describe("tenant-timezone", () => {
 
     const { getTenantTimezone } = await import("./tenant-timezone");
 
-    const result = await getTenantTimezone("TENANT001");
+    const result = await getTenantTimezone("TENANT001", "ja");
 
     expect(result).toEqual({
       message: "セッションが無効です。再ログインしてください。",
@@ -80,7 +80,7 @@ describe("tenant-timezone", () => {
 
     const { getTenantTimezone } = await import("./tenant-timezone");
 
-    const result = await getTenantTimezone("TENANT001");
+    const result = await getTenantTimezone("TENANT001", "ja");
 
     expect(result.ok).toBe(false);
     expect(result.timezone).toBe("Asia/Tokyo");
@@ -93,10 +93,13 @@ describe("tenant-timezone", () => {
 
     const { updateTenantTimezone } = await import("./tenant-timezone");
 
-    const result = await updateTenantTimezone({
-      tenantId: "TENANT001",
-      timezone: "Europe/Paris",
-    });
+    const result = await updateTenantTimezone(
+      {
+        tenantId: "TENANT001",
+        timezone: "Europe/Paris",
+      },
+      "ja"
+    );
 
     expect(result).toEqual({ ok: true, timezone: "Europe/Paris" });
     expect(mockUpdateTenantTimezoneApi).toHaveBeenCalledWith(
@@ -115,10 +118,13 @@ describe("tenant-timezone", () => {
 
     const { updateTenantTimezone } = await import("./tenant-timezone");
 
-    const result = await updateTenantTimezone({
-      tenantId: "TENANT001",
-      timezone: "Asia/Nowhere",
-    });
+    const result = await updateTenantTimezone(
+      {
+        tenantId: "TENANT001",
+        timezone: "Asia/Nowhere",
+      },
+      "ja"
+    );
 
     expect(result).toEqual({
       message: "timezone must be a valid IANA time zone name",
@@ -133,10 +139,13 @@ describe("tenant-timezone", () => {
 
     const { updateTenantTimezone } = await import("./tenant-timezone");
 
-    const result = await updateTenantTimezone({
-      tenantId: "TENANT001",
-      timezone: "Europe/Paris",
-    });
+    const result = await updateTenantTimezone(
+      {
+        tenantId: "TENANT001",
+        timezone: "Europe/Paris",
+      },
+      "ja"
+    );
 
     expect(result.ok).toBe(false);
   });

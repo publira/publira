@@ -46,7 +46,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001");
+    const result = await getDashboard("TENANT001", "ja");
 
     expect(result).toEqual({
       ok: true,
@@ -78,7 +78,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001");
+    const result = await getDashboard("TENANT001", "ja");
 
     expect(result).toEqual({
       ok: true,
@@ -96,7 +96,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001");
+    const result = await getDashboard("TENANT001", "ja");
 
     expect(result).toEqual({
       message: "セッションが無効です。再ログインしてください。",
@@ -113,7 +113,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001");
+    const result = await getDashboard("TENANT001", "ja");
 
     expect(result).toEqual({
       message: "セッションが無効です。再ログインしてください。",
@@ -129,7 +129,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001");
+    const result = await getDashboard("TENANT001", "ja");
 
     expect(result).toEqual({
       message:
@@ -146,7 +146,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    await expect(getDashboard("TENANT001")).rejects.toThrow("boom");
+    await expect(getDashboard("TENANT001", "ja")).rejects.toThrow("boom");
   });
 
   it("maps an episode in draft status", async () => {
@@ -170,7 +170,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001");
+    const result = await getDashboard("TENANT001", "ja");
 
     if (!result.ok) {
       throw new Error("Expected ok result");

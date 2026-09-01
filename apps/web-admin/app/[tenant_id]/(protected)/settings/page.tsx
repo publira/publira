@@ -36,7 +36,8 @@ import {
 } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.settings.basic_title") };
@@ -128,7 +129,9 @@ const SettingsForms = async () => {
       <TenantDefaultLocaleForm
         action={updateTenantDefaultLocaleAction}
         canEdit={canEdit}
-        initialDefaultLocale={defaultLocaleResult.defaultLocale}
+        initialDefaultLocale={
+          defaultLocaleResult.ok ? defaultLocaleResult.defaultLocale : undefined
+        }
         loadErrorMessage={
           defaultLocaleResult.ok ? undefined : defaultLocaleResult.message
         }

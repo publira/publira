@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage, parseLocale } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { sessionCookieOptions } from "@publira/web-session";
@@ -19,7 +19,7 @@ import {
 } from "#lib/auth-input";
 import { getPublicSessionCacheTag } from "#lib/auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
-import { localeFormSchema } from "#lib/locale-form";
+import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
@@ -51,7 +51,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
   await assertSameOrigin();
   // The locale field falls back rather than failing, so the rejection below can
   // be worded in the reader's language even when the rest of the form is not.
-  const submittedLocale = parseLocale(formData.get("locale"));
+  const submittedLocale = requireFormLocale(formData.get("locale"));
   const messages = await loadHostMessages(submittedLocale);
   const loginFailed = getMessage(messages, "host.auth.errors.login_failed");
   const parsed = loginFormSchema(messages).safeParse(

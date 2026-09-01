@@ -97,6 +97,7 @@ describe("toggleFollowAction", () => {
       null,
       formData({
         intent: "unfollow",
+        locale: "ja",
         publicId: "AUTHOR01",
         returnTo: "/authors/AUTHOR01",
         targetKind: "author",
@@ -126,6 +127,7 @@ describe("toggleFollowAction", () => {
       null,
       formData({
         intent: "unfollow",
+        locale: "ja",
         publicId: "SERIES01",
         returnTo: "/settings/follows",
         targetKind: "series",
@@ -153,6 +155,7 @@ describe("toggleFollowAction", () => {
       null,
       formData({
         intent: "follow",
+        locale: "ja",
         publicId: "SERIES01",
         returnTo: "/series/SERIES01",
         targetKind: "episode",
@@ -179,6 +182,7 @@ describe("toggleFollowAction", () => {
       null,
       formData({
         intent: "follow",
+        locale: "ja",
         publicId: "MISSING01",
         returnTo: "/series/MISSING01",
         targetKind: "series",

@@ -9,6 +9,11 @@ import type { FollowListItem } from "#lib/follow-list";
 
 import { FollowList } from "./follow-list";
 
+vi.mock("#components/locale-provider", () => ({
+  useLocale: () => "ja",
+  useTenantDefaultLocale: () => "ja",
+}));
+
 vi.mock("next/link", () => ({
   default: ({
     children,

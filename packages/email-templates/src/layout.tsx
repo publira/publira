@@ -1,4 +1,3 @@
-import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import type { CSSProperties, ReactNode } from "react";
 import {
@@ -53,7 +52,7 @@ const footerStyle: CSSProperties = {
 
 export interface EmailLayoutProps {
   children: ReactNode;
-  locale: Locale | string;
+  locale: Locale;
   messages: Messages;
   preview: string;
 }
@@ -63,24 +62,20 @@ export const EmailLayout = ({
   locale,
   messages,
   preview,
-}: EmailLayoutProps) => {
-  const resolvedLocale = parseLocale(locale);
-
-  return (
-    <Html dir="ltr" lang={resolvedLocale}>
-      <Head />
-      <Preview>{preview}</Preview>
-      <Body lang={resolvedLocale} style={bodyStyle}>
-        <Container style={containerStyle}>
-          <Text style={brandStyle}>
-            {emailMessage(messages, "email.layout.brand")}
-          </Text>
-          <Section style={cardStyle}>{children}</Section>
-          <Text style={footerStyle}>
-            {emailMessage(messages, "email.layout.footer")}
-          </Text>
-        </Container>
-      </Body>
-    </Html>
-  );
-};
+}: EmailLayoutProps) => (
+  <Html dir="ltr" lang={locale}>
+    <Head />
+    <Preview>{preview}</Preview>
+    <Body lang={locale} style={bodyStyle}>
+      <Container style={containerStyle}>
+        <Text style={brandStyle}>
+          {emailMessage(messages, "email.layout.brand")}
+        </Text>
+        <Section style={cardStyle}>{children}</Section>
+        <Text style={footerStyle}>
+          {emailMessage(messages, "email.layout.footer")}
+        </Text>
+      </Container>
+    </Body>
+  </Html>
+);

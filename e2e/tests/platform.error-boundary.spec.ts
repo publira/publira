@@ -38,6 +38,13 @@ const setupApiUnavailableMessage =
  * screen is measured here too. The proxy resolves the setup state on every
  * path it matches, and a read that throws there answers a bare 500 for the
  * whole console before any page renders.
+ *
+ * The browser language is pinned for this whole file. Both screens below word
+ * themselves from `Accept-Language`: `/setup` because it runs before any locale
+ * is stored (#1246), and the error screen because it is client-rendered — an
+ * outage takes the saved default out of reach and the root layout cannot put it
+ * in `<html lang>` without costing every route its static shell. Making the
+ * error screen follow the saved language instead is #1249.
  */
 test.describe("web-platform console error boundary", () => {
   // Isolated project `platform-error-boundary` (see playwright.config.ts).
@@ -48,6 +55,8 @@ test.describe("web-platform console error boundary", () => {
   test.afterAll(() => {
     runPlatformApiServerScript("start-wait");
   });
+
+  test.use({ locale: "ja-JP" });
 
   test("a direct visit while the platform API is down shows the error screen, and retry recovers", async ({
     page,
@@ -104,28 +113,21 @@ test.describe("web-platform console error boundary", () => {
     }
   });
 
-  // `/setup` runs before any locale is stored, so it renders in whatever
-  // `Accept-Language` asks for (#1246). Pinning the context locale is what
-  // makes the Japanese copy below the expected copy.
-  test.describe("with a Japanese browser", () => {
-    test.use({ locale: "ja-JP" });
+  test("/setup shows the connection error and no form while the platform API is down", async ({
+    page,
+  }) => {
+    try {
+      runPlatformApiServerScript("stop");
 
-    test("/setup shows the connection error and no form while the platform API is down", async ({
-      page,
-    }) => {
-      try {
-        runPlatformApiServerScript("stop");
+      const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/setup`);
 
-        const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/setup`);
-
-        expect(response?.status(), await page.content()).toBe(200);
-        await expect(page.getByText(setupApiUnavailableMessage)).toBeVisible();
-        await expect(
-          page.getByRole("button", { name: "管理ユーザーを作成する" })
-        ).toHaveCount(0);
-      } finally {
-        runPlatformApiServerScript("start-wait");
-      }
-    });
+      expect(response?.status(), await page.content()).toBe(200);
+      await expect(page.getByText(setupApiUnavailableMessage)).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "管理ユーザーを作成する" })
+      ).toHaveCount(0);
+    } finally {
+      runPlatformApiServerScript("start-wait");
+    }
   });
 });

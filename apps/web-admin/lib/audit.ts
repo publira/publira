@@ -4,7 +4,7 @@ import type {
 } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -152,11 +152,11 @@ const mapAuditActorCandidate = (
 
 export const listAuditActorCandidates = async (
   tenantId: string,
+  locale: Locale,
   options: {
     limit?: number;
     query?: string;
-  } = {},
-  locale: Locale = DEFAULT_LOCALE
+  } = {}
 ): Promise<ListAuditActorCandidatesResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -197,8 +197,8 @@ export const listAuditActorCandidates = async (
 
 export const listAuditLogs = async (
   tenantId: string,
-  filters: AuditLogFilters = {},
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale,
+  filters: AuditLogFilters = {}
 ): Promise<ListAuditLogsResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {

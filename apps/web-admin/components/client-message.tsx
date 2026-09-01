@@ -3,6 +3,8 @@
 import {
   getMessage,
   LOCALE_COOKIE_NAME,
+  negotiateInitialLocale,
+  parseLocale,
   parseLocaleCookie,
 } from "@publira/i18n";
 import type { Locale, MessageValues } from "@publira/i18n";
@@ -28,6 +30,27 @@ const readDocumentLocale = (): string => {
   } catch {
     return match[1];
   }
+};
+
+/**
+ * The locale this chunk renders in, from the browser alone.
+ *
+ * The cookie is the operator's own choice, and `<html lang>` is the tenant
+ * default the root layout resolved for this document — the script has already
+ * narrowed it to the cookie by the time any component runs. Only a tenant whose
+ * default could not be read leaves both empty, and then the browser's own
+ * `Accept-Language` preference is the last thing still standing.
+ */
+const readClientLocale = (): Locale => {
+  if (typeof document === "undefined") {
+    return negotiateInitialLocale(null);
+  }
+
+  return (
+    parseLocaleCookie(readDocumentLocale()) ??
+    parseLocale(document.documentElement.lang) ??
+    negotiateInitialLocale(navigator.languages.join(","))
+  );
 };
 
 /**
@@ -60,10 +83,9 @@ const adminCatalog = (locale: Locale): Promise<AdminMessages> => {
  * error boundary has no boundary of its own above it, so a suspend with
  * nothing to fall back to leaves React unable to flush the error screen at all.
  *
- * The tenant default locale is out of reach here — resolving it needs the
- * admin API, and the boundary that renders this is the one the API failing
- * brought up. An operator who has never switched languages therefore reads
- * the error screen in `ja` even when their tenant defaults to `en`.
+ * The admin API is out of reach here — the boundary that renders this is the
+ * one its failing brought up — so the locale comes from the browser
+ * ({@link readClientLocale}) rather than from a fresh read.
  */
 export const ClientMessage = ({
   message,
@@ -72,8 +94,7 @@ export const ClientMessage = ({
   message: AdminMessageKey;
   values?: MessageValues;
 }) => {
-  const locale = parseLocaleCookie(readDocumentLocale());
-  const messages = use(adminCatalog(locale));
+  const messages = use(adminCatalog(readClientLocale()));
 
   return getMessage(messages, message, values);
 };

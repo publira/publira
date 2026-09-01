@@ -30,7 +30,8 @@ import { parseAccessTicketFilters } from "./_lib/search-params";
 type AccessTicketsPageProps = PageProps<"/[tenant_id]/access-tickets">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.access_tickets.title") };
@@ -68,16 +69,12 @@ const TicketManagerData = async ({
   const filters = parseAccessTicketFilters(sp);
   const locale = await getLocale(tenantId);
   const [listResult, timeZone] = await Promise.all([
-    listAccessTickets(
-      tenantId,
-      {
-        activeOnly: filters.active,
-        episodePublicId: filters.episode,
-        token: filters.token,
-        userPublicId: filters.user,
-      },
-      locale
-    ),
+    listAccessTickets(tenantId, locale, {
+      activeOnly: filters.active,
+      episodePublicId: filters.episode,
+      token: filters.token,
+      userPublicId: filters.user,
+    }),
     getTenantDisplayTimeZone(tenantId),
   ]);
 

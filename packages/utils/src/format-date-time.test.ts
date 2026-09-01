@@ -24,41 +24,57 @@ describe("DEFAULT_TIME_ZONE", () => {
 describe("formatDateTime", () => {
   it("formats the same UTC instant differently per IANA time zone", () => {
     // 10:00 UTC → 19:00 JST, 03:00 PDT (America/Los_Angeles, UTC-7 in March)
-    expect(formatDateTime(UTC_INSTANT, { timeZone: "Asia/Tokyo" })).toBe(
-      "2024/03/10 19:00"
-    );
     expect(
-      formatDateTime(UTC_INSTANT, { timeZone: "America/Los_Angeles" })
+      formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: "Asia/Tokyo" })
+    ).toBe("2024/03/10 19:00");
+    expect(
+      formatDateTime(UTC_INSTANT, {
+        locale: "ja",
+        timeZone: "America/Los_Angeles",
+      })
     ).toBe("2024/03/10 3:00");
-    expect(formatDateTime(UTC_INSTANT, { timeZone: "UTC" })).toBe(
+    expect(formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: "UTC" })).toBe(
       "2024/03/10 10:00"
     );
   });
 
   it("defaults timeZone to Asia/Tokyo when omitted", () => {
-    expect(formatDateTime(UTC_INSTANT)).toBe("2024/03/10 19:00");
-    expect(formatDateTime(UTC_INSTANT, { timeZone: DEFAULT_TIME_ZONE })).toBe(
-      formatDateTime(UTC_INSTANT)
+    expect(formatDateTime(UTC_INSTANT, { locale: "ja" })).toBe(
+      "2024/03/10 19:00"
     );
+    expect(
+      formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: DEFAULT_TIME_ZONE })
+    ).toBe(formatDateTime(UTC_INSTANT, { locale: "ja" }));
   });
 
   it("accepts offset-bearing ISO strings", () => {
     expect(
-      formatDateTime("2024-03-10T19:00:00+09:00", { timeZone: "Asia/Tokyo" })
+      formatDateTime("2024-03-10T19:00:00+09:00", {
+        locale: "ja",
+        timeZone: "Asia/Tokyo",
+      })
     ).toBe("2024/03/10 19:00");
   });
 
   it("returns fallback for empty or invalid values", () => {
-    expect(formatDateTime("", { fallback: "-" })).toBe("-");
-    expect(formatDateTime("not-a-date", { fallback: "-" })).toBe("-");
-    expect(formatDateTime("not-a-date")).toBe("not-a-date");
+    expect(formatDateTime("", { fallback: "-", locale: "ja" })).toBe("-");
+    expect(formatDateTime("not-a-date", { fallback: "-", locale: "ja" })).toBe(
+      "-"
+    );
+    expect(formatDateTime("not-a-date", { locale: "ja" })).toBe("not-a-date");
   });
 
   it("rejects zone-less timestamps (no host-local Date.parse)", () => {
     // Without Z/offset, Instant.from fails; must not interpret via host TZ.
-    expect(formatDateTime("2024-03-10T10:00", { fallback: "-" })).toBe("-");
-    expect(formatDateTime("2024-03-10T10:00:00", { fallback: "-" })).toBe("-");
-    expect(formatDateTime("2024-03-10", { fallback: "-" })).toBe("-");
+    expect(
+      formatDateTime("2024-03-10T10:00", { fallback: "-", locale: "ja" })
+    ).toBe("-");
+    expect(
+      formatDateTime("2024-03-10T10:00:00", { fallback: "-", locale: "ja" })
+    ).toBe("-");
+    expect(formatDateTime("2024-03-10", { fallback: "-", locale: "ja" })).toBe(
+      "-"
+    );
   });
 
   it("uses the UI locale for Intl instead of a fixed ja-JP", () => {
@@ -69,15 +85,8 @@ describe("formatDateTime", () => {
 
     const ja = formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: "UTC" });
     const en = formatDateTime(UTC_INSTANT, { locale: "en", timeZone: "UTC" });
-    const omitted = formatDateTime(UTC_INSTANT, { timeZone: "UTC" });
-    const unknown = formatDateTime(UTC_INSTANT, {
-      locale: "fr",
-      timeZone: "UTC",
-    });
 
     expect(ja).toBe("2024/03/10 10:00");
-    expect(omitted).toBe(ja);
-    expect(unknown).toBe(ja);
     expect(en).not.toBe(ja);
     expect(en).toBe(
       new Intl.DateTimeFormat("en-US", {
@@ -93,23 +102,25 @@ describe("formatDate", () => {
   it("uses the calendar day of the given zone, not the UTC day", () => {
     // 2024-03-10T23:00Z is already 2024-03-11 in Tokyo and still 03-10 in LA.
     const lateInstant = "2024-03-10T23:00:00.000Z";
-    expect(formatDate(lateInstant, { timeZone: "Asia/Tokyo" })).toBe(
-      "2024/03/11"
-    );
-    expect(formatDate(lateInstant, { timeZone: "America/Los_Angeles" })).toBe(
+    expect(
+      formatDate(lateInstant, { locale: "ja", timeZone: "Asia/Tokyo" })
+    ).toBe("2024/03/11");
+    expect(
+      formatDate(lateInstant, { locale: "ja", timeZone: "America/Los_Angeles" })
+    ).toBe("2024/03/10");
+    expect(formatDate(lateInstant, { locale: "ja", timeZone: "UTC" })).toBe(
       "2024/03/10"
     );
-    expect(formatDate(lateInstant, { timeZone: "UTC" })).toBe("2024/03/10");
   });
 
   it("defaults timeZone to Asia/Tokyo when omitted", () => {
-    expect(formatDate(UTC_INSTANT)).toBe("2024/03/10");
+    expect(formatDate(UTC_INSTANT, { locale: "ja" })).toBe("2024/03/10");
   });
 
   it("returns fallback for empty or invalid values", () => {
-    expect(formatDate("", { fallback: "-" })).toBe("-");
-    expect(formatDate("not-a-date", { fallback: "-" })).toBe("-");
-    expect(formatDate("2024-03-10", { fallback: "-" })).toBe("-");
+    expect(formatDate("", { fallback: "-", locale: "ja" })).toBe("-");
+    expect(formatDate("not-a-date", { fallback: "-", locale: "ja" })).toBe("-");
+    expect(formatDate("2024-03-10", { fallback: "-", locale: "ja" })).toBe("-");
   });
 
   it("uses the UI locale for Intl instead of a fixed ja-JP", () => {
@@ -123,7 +134,6 @@ describe("formatDate", () => {
     const en = formatDate(lateInstant, { locale: "en", timeZone: "UTC" });
 
     expect(ja).toBe("2024/03/10");
-    expect(formatDate(lateInstant, { timeZone: "UTC" })).toBe(ja);
     expect(en).not.toBe(ja);
     expect(en).toBe(
       new Intl.DateTimeFormat("en-US", {
@@ -383,12 +393,12 @@ describe("DST boundaries (America/Los_Angeles)", () => {
 
   it("formats instants correctly on both sides of spring-forward", () => {
     // Just before transition (still PST, UTC-8): 2024-03-10T09:59:00Z → 01:59
-    expect(formatDateTime("2024-03-10T09:59:00Z", { timeZone: zone })).toBe(
-      "2024/03/10 1:59"
-    );
+    expect(
+      formatDateTime("2024-03-10T09:59:00Z", { locale: "ja", timeZone: zone })
+    ).toBe("2024/03/10 1:59");
     // Just after (PDT, UTC-7): 2024-03-10T10:00:00Z → 03:00
-    expect(formatDateTime("2024-03-10T10:00:00Z", { timeZone: zone })).toBe(
-      "2024/03/10 3:00"
-    );
+    expect(
+      formatDateTime("2024-03-10T10:00:00Z", { locale: "ja", timeZone: zone })
+    ).toBe("2024/03/10 3:00");
   });
 });

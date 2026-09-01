@@ -18,12 +18,14 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getTenantId } from "#lib/tenant-id";
 
 import { PageForm } from "../_components/page-form";
 import { createPageAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.pages.new_title") };

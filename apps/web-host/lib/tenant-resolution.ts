@@ -22,6 +22,20 @@ interface TenantCacheValue {
   tenant: ResolvedTenant | null;
 }
 
+const toResolvedTenant = (
+  defaultLocale: string,
+  tenantId: string
+): ResolvedTenant => {
+  const locale = parseLocale(defaultLocale);
+  if (locale === undefined) {
+    throw new Error(
+      `tenant default locale is not supported: ${defaultLocale} (${tenantId})`
+    );
+  }
+
+  return { defaultLocale: locale, tenantId };
+};
+
 export const createTenantResolver = (
   publicApiClient: PublicApiClient,
   options?: {
@@ -53,10 +67,11 @@ export const createTenantResolver = (
       });
       const tenantId = response.tenantId?.trim() || null;
       // The API documents `default_locale` as never empty, and falls back to
-      // the platform setting itself. `parseLocale` only catches a value this
-      // build does not serve.
+      // the platform setting itself, so a value that fails to parse is one this
+      // build does not serve. The proxy redirects a locale-less URL to this
+      // code, and there is no second choice worth sending a reader to.
       const tenant = tenantId
-        ? { defaultLocale: parseLocale(response.defaultLocale), tenantId }
+        ? toResolvedTenant(response.defaultLocale, tenantId)
         : null;
       tenantCache.set(cacheKey, { tenant });
       return tenant;

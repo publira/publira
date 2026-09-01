@@ -61,6 +61,7 @@ describe("notification actions", () => {
     const result = await markNotificationAsReadAction(
       null,
       formData({
+        locale: "ja",
         notificationId,
         tenantId,
       })
@@ -87,6 +88,7 @@ describe("notification actions", () => {
     const result = await markNotificationAsReadAction(
       null,
       formData({
+        locale: "ja",
         notificationId: "not-a-uuid",
         tenantId,
       })
@@ -109,7 +111,7 @@ describe("notification actions", () => {
     const { markAllNotificationsAsReadAction } = await import("./actions");
     const result = await markAllNotificationsAsReadAction(
       null,
-      formData({ tenantId })
+      formData({ locale: "ja", tenantId })
     );
 
     expect(result).toEqual({
@@ -136,7 +138,7 @@ describe("notification actions", () => {
     const { markAllNotificationsAsReadAction } = await import("./actions");
     const result = await markAllNotificationsAsReadAction(
       null,
-      formData({ tenantId })
+      formData({ locale: "ja", tenantId })
     );
 
     expect(result).toEqual({

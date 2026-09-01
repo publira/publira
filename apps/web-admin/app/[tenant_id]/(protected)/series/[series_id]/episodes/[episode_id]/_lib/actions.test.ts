@@ -1,4 +1,3 @@
-import { DEFAULT_LOCALE } from "@publira/i18n";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -18,6 +17,14 @@ const {
   mockUpdateEpisodePublishSchedule: vi.fn(),
   mockUploadEpisodePages: vi.fn(),
 }));
+
+vi.mock("#lib/action-messages", async () => {
+  const { sharedCatalog } = await import("@publira/i18n/catalog");
+  return {
+    getActionLocale: () => Promise.resolve("ja"),
+    getActionMessages: () => Promise.resolve(sharedCatalog("ja")),
+  };
+});
 
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
@@ -103,7 +110,7 @@ describe("episode actions", () => {
         publishAt: "2099-06-01T10:00:00Z",
         tenantId: "TENANT001",
       },
-      DEFAULT_LOCALE
+      "ja"
     );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?schedule_updated=1"
@@ -131,7 +138,7 @@ describe("episode actions", () => {
         publishAt: "2099-06-01T17:00:00Z",
         tenantId: "TENANT001",
       },
-      DEFAULT_LOCALE
+      "ja"
     );
     expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
   });
@@ -217,7 +224,7 @@ describe("episode actions", () => {
         ]),
         tenantId: "TENANT001",
       },
-      DEFAULT_LOCALE
+      "ja"
     );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?pages_uploaded=1"
@@ -259,7 +266,7 @@ describe("episode actions", () => {
         imageIds: ["IMG1", "IMG2"],
         tenantId: "TENANT001",
       },
-      DEFAULT_LOCALE
+      "ja"
     );
     expect(result).toEqual({ ok: true });
   });

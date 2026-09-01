@@ -21,13 +21,35 @@ func (s *platformServer) CheckSetupStatus(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CheckSetupStatusRequest],
 ) (*connect.Response[publirasplatformv1.CheckSetupStatusResponse], error) {
-	count, err := s.queriesFor(ctx).CountPlatformUsers(ctx)
+	queries := s.queriesFor(ctx)
+	count, err := queries.CountPlatformUsers(ctx)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to count platform users", err)
 	}
 	return connect.NewResponse(&publirasplatformv1.CheckSetupStatusResponse{
+		DefaultLocale:  savedDefaultLocale(ctx, queries),
 		SetupCompleted: count > 0,
 	}), nil
+}
+
+// savedDefaultLocale reports the platform's stored default locale, or "" when
+// there is none to report.
+//
+// Deliberately not platformconfig.DefaultLocale: that answers locale.Default
+// for a row it could not read, which is the whole point of an unauthenticated
+// caller asking. The console has to tell "the platform saved ja" from "nobody
+// has saved anything yet", because only the second is a reason to fall back to
+// what the visitor's browser asked for.
+func savedDefaultLocale(ctx context.Context, q Querier) string {
+	config, err := q.GetPlatformConfig(ctx)
+	if err != nil {
+		return ""
+	}
+	saved, err := locale.Normalize(config.DefaultLocale)
+	if err != nil {
+		return ""
+	}
+	return saved
 }
 
 func (s *platformServer) CreateInitialUser(

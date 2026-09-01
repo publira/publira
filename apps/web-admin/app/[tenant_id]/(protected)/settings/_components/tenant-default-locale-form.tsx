@@ -37,7 +37,8 @@ interface TenantDefaultLocaleFormProps {
     formData: FormData
   ) => Promise<TenantDefaultLocaleActionState>;
   canEdit: boolean;
-  initialDefaultLocale: Locale;
+  /** The saved value, absent when the settings read failed. */
+  initialDefaultLocale?: Locale;
   loadErrorMessage?: string;
   options: readonly TenantDefaultLocaleFormOption[];
 }
@@ -58,9 +59,9 @@ export const TenantDefaultLocaleForm = ({
   const [state, formAction, isPending] = useActionState(action, null);
   const [defaultLocale, setDefaultLocale] = useState(initialDefaultLocale);
 
-  // A failed read hands the form `DEFAULT_LOCALE` as a stand-in, not the
-  // stored value, so saving from that state would overwrite the real default
-  // with the fallback. Editing stays closed until the read succeeds.
+  // A failed read hands the form the app's fallback locale as a stand-in, not
+  // the stored value, so saving from that state would overwrite the real
+  // default with it. Editing stays closed until the read succeeds.
   const hasLoadError = Boolean(loadErrorMessage);
   const fieldsDisabled = !canEdit || hasLoadError;
 

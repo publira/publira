@@ -77,7 +77,7 @@ export type TenantAdminInvitationData = z.output<
 
 export interface TenantAdminInvitationEmailProps {
   data: TenantAdminInvitationData;
-  locale: Locale | string;
+  locale: Locale;
   messages: Messages;
   timeZone: string;
 }
@@ -97,7 +97,7 @@ export const tenantAdminInvitationPreview = (
 
 const formatExpiry = (
   expiresAt: string,
-  locale: Locale | string,
+  locale: Locale,
   timeZone: string
 ): string => formatDateTime(expiresAt, { locale, timeZone });
 

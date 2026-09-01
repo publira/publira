@@ -26,7 +26,8 @@ import { AnnouncementForm } from "../_components/announcement-form";
 import { createAnnouncementAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.announcements.new_title") };

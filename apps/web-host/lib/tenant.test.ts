@@ -188,15 +188,15 @@ describe("tenant", () => {
     expect(info?.defaultLocale).toBe("en");
   });
 
-  it("Only locales that this build does not distribute are reduced to ja", async () => {
+  it("refuses a locale this build serves no catalog for", async () => {
     mockGetTenant.mockResolvedValueOnce({
       ...tenantResponse,
       defaultLocale: "fr",
     });
 
-    const info = await getTenantSiteInfo("TENANT_001");
-
-    expect(info?.defaultLocale).toBe("ja");
+    // The chrome degrades the way any unreadable tenant does; the callers that
+    // need a language to render in are the ones that hear about it.
+    await expect(getTenantSiteInfo("TENANT_001")).resolves.toBeNull();
   });
 
   it("Return tenant settings as default locale", async () => {
@@ -205,11 +205,13 @@ describe("tenant", () => {
     await expect(getTenantDefaultLocale("TENANT_001")).resolves.toBe("en");
   });
 
-  it("The default locale is ja even when the tenant cannot be obtained.", async () => {
+  it("reports an unreadable tenant instead of naming a locale", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("upstream is down", Code.Unavailable)
     );
 
-    await expect(getTenantDefaultLocale("TENANT_001")).resolves.toBe("ja");
+    await expect(getTenantDefaultLocale("TENANT_001")).rejects.toThrow(
+      "tenant default locale is unavailable"
+    );
   });
 });

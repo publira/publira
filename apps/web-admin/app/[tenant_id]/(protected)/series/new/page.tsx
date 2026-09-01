@@ -28,7 +28,8 @@ import { SeriesForm } from "../_components/series-form";
 import { createSeriesAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.series.new_title") };
@@ -56,7 +57,7 @@ const NewSeriesFormData = async () => {
       // Only `defaultReadingPeriodHours` is read here, and that comes from the
       // tenant rather than the page, so the smallest page the API allows is
       // enough.
-      listSeries(tenantId, { limit: 1 }, locale),
+      listSeries(tenantId, locale, { limit: 1 }),
       // Walk every cursor page so the Combobox can search past the first 100.
       listAllCreators(tenantId, locale),
       listAllLabels(tenantId, locale),

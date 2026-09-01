@@ -14,7 +14,8 @@ import { AcceptInviteForm } from "./_components/accept-invite-form";
 import { parseAcceptInviteSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.auth.accept_invite.title") };
@@ -28,7 +29,8 @@ interface AcceptInvitePageProps {
 }
 
 const AcceptInviteFormContent = async ({ token }: { token: string }) => {
-  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
   const invitation = await getTenantAdminInvitationState(tenantId, token);
 

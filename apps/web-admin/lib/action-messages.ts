@@ -1,4 +1,3 @@
-import { DEFAULT_LOCALE } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
 import { getLocale, loadAdminMessages } from "./locale";
@@ -7,19 +6,22 @@ import type { AdminMessages } from "./locale";
 /**
  * The UI locale a Server Action's response should be worded in.
  *
- * The raw form value only selects a tenant-default fallback locale. `getLocale`
- * validates it before it can reach the admin API; each Action still validates
- * the complete form independently before mutating data.
+ * `next/root-params` is unavailable in a Server Action, so the tenant id
+ * travels in the form. `getLocale` validates it before it reaches any API;
+ * each Action still validates the complete form independently before mutating
+ * data.
+ *
+ * A submission with no tenant id did not come from a console screen, and an
+ * Action that cannot name the operator's language has none to answer in, so
+ * both throw rather than picking one.
  */
-export const getActionLocale = async (formData: FormData): Promise<Locale> => {
+export const getActionLocale = (formData: FormData): Promise<Locale> => {
   const tenantId = formData.get("tenant_id");
-  try {
-    return await getLocale(typeof tenantId === "string" ? tenantId : undefined);
-  } catch {
-    // Server Actions always have request storage. The fallback keeps direct
-    // callers (for example isolated validation tests) deterministic as well.
-    return DEFAULT_LOCALE;
+  if (typeof tenantId !== "string") {
+    throw new TypeError("tenant_id is missing from the submitted form");
   }
+
+  return getLocale(tenantId);
 };
 
 /**

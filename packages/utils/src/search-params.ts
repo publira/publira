@@ -75,17 +75,26 @@ export interface SearchParamStringArrayOptions {
   truncate?: boolean;
 }
 
-export interface SearchParamEnumOptions<F extends string> {
-  /** Returned when the value is absent or outside `values`. Omit to fail instead. */
-  fallback?: F;
-  /**
-   * UI locale for the rejection message when `fallback` is omitted.
-   * Unknown values fall back to `ja`.
-   */
-  locale?: Locale | string;
+/**
+ * A locale is needed only to word the rejection, so it is required exactly
+ * when there is no `fallback` to return instead. A filter that always has a
+ * default never surfaces the message and has no locale to plumb in for it.
+ */
+export type SearchParamEnumOptions<F extends string> = {
   /** Maximum length in UTF-16 code units. Default: {@link DEFAULT_MAX_LENGTH}. */
   maxLength?: number;
-}
+} & (
+  | {
+      /** Returned when the value is absent or outside `values`. */
+      fallback: F;
+      locale?: undefined;
+    }
+  | {
+      fallback?: undefined;
+      /** UI locale the rejection message is worded in. */
+      locale: Locale;
+    }
+);
 
 export interface SearchParamNumberOptions {
   /**
@@ -260,18 +269,23 @@ export const searchParamStringArray = (
  */
 export const searchParamEnum = <T extends string, F extends string = never>(
   values: Iterable<T>,
-  options?: SearchParamEnumOptions<F>
+  options: SearchParamEnumOptions<F>
 ): z.ZodType<F | T, unknown> => {
   const allowed: ReadonlySet<string> = new Set<string>(values);
-  const maxLength = options?.maxLength ?? DEFAULT_MAX_LENGTH;
+  const maxLength = options.maxLength ?? DEFAULT_MAX_LENGTH;
+  const { fallback, locale } = options;
+  const rejection = locale && sharedMessage("errors.disallowed_value", locale);
   const schema = z.preprocess(
     (value) => normalizeSingle(value, maxLength, false),
-    z.string().refine((value): value is T => allowed.has(value), {
-      message: sharedMessage("errors.disallowed_value", options?.locale),
-    })
+    z
+      .string()
+      .refine(
+        (value): value is T => allowed.has(value),
+        rejection ? { message: rejection } : undefined
+      )
   );
 
-  return withFallback<T, F>(schema, options?.fallback);
+  return withFallback<T, F>(schema, fallback);
 };
 
 /** Numeric query value (offset, limit, page size). */

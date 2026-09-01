@@ -1,6 +1,5 @@
 "use client";
 
-import { DEFAULT_LOCALE } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { createContext, use, useMemo } from "react";
 import type { ReactNode } from "react";
@@ -10,10 +9,18 @@ interface LocaleContextValue {
   locale: Locale;
 }
 
-const LocaleContext = createContext<LocaleContextValue>({
-  defaultLocale: DEFAULT_LOCALE,
-  locale: DEFAULT_LOCALE,
-});
+const LocaleContext = createContext<LocaleContextValue | null>(null);
+
+const useLocaleContext = (): LocaleContextValue => {
+  const value = use(LocaleContext);
+  if (!value) {
+    throw new Error(
+      "useLocale must be called under <LocaleProvider>: the locale comes from the [locale] root parameter, and there is nothing to guess it from."
+    );
+  }
+
+  return value;
+};
 
 /**
  * Carries the `[locale]` root parameter to Client Components.
@@ -54,8 +61,8 @@ export const LocaleProvider = ({
  * Prefer this over prop-drilling in Client Components.
  * Server Components should use `getLocale()` from `#lib/locale` instead.
  */
-export const useLocale = (): Locale => use(LocaleContext).locale;
+export const useLocale = (): Locale => useLocaleContext().locale;
 
 /** Tenant default locale, used to construct canonical public URLs. */
 export const useTenantDefaultLocale = (): Locale =>
-  use(LocaleContext).defaultLocale;
+  useLocaleContext().defaultLocale;

@@ -7,13 +7,11 @@ import type en from "../../../../locales/en.json";
 
 export type SharedMessages = typeof ja | typeof en;
 
-export declare const sharedCatalog: (
-  locale?: Locale | string
-) => SharedMessages;
+export declare const sharedCatalog: (locale: Locale) => SharedMessages;
 
 export declare const sharedMessage: (
   key: MessageKey<SharedMessages>,
-  locale?: Locale | string
+  locale: Locale
 ) => string;
 
 export { sharedRpcErrorMessage } from "../../dist/catalog.mjs";

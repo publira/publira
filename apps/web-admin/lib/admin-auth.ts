@@ -10,7 +10,7 @@ import {
   rpcErrorHasFieldViolation,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
@@ -140,7 +140,7 @@ export const loginAdmin = async (
   email: string,
   password: string,
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale
 ): Promise<AdminLoginResult> => {
   const messages = await loadAdminMessages(locale);
   try {
@@ -277,9 +277,9 @@ export const getTenantAdminInvitationState = async (
 export const acceptTenantAdminInvitation = async (
   tenantId: string,
   token: string,
+  locale: Locale,
   name?: string,
-  password?: string,
-  locale: Locale = DEFAULT_LOCALE
+  password?: string
 ): Promise<AcceptTenantAdminInvitationResult> => {
   const messages = await loadAdminMessages(locale);
   const normalizedToken = token.trim();
@@ -333,7 +333,7 @@ export const acceptTenantAdminInvitation = async (
 export const requestAdminPasswordReset = async (
   tenantId: string,
   email: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale
 ): Promise<AdminPasswordResetRequestResult> => {
   const messages = await loadAdminMessages(locale);
   const normalizedEmail = email.trim();
@@ -380,7 +380,7 @@ export const confirmAdminPasswordReset = async (
   tenantId: string,
   token: string,
   newPassword: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale
 ): Promise<AdminPasswordResetConfirmResult> => {
   const normalizedToken = token.trim();
   const normalizedPassword = newPassword.trim();
@@ -445,7 +445,7 @@ export const requestAdminEmailChange = async (
   currentEmail: string,
   newEmail: string,
   currentPassword: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale
 ): Promise<AdminEmailChangeRequestResult> => {
   const messages = await loadAdminMessages(locale);
   const normalizedCurrentEmail = currentEmail.trim();

@@ -56,7 +56,7 @@ describe("audit lib", () => {
     });
 
     const { listAuditLogs } = await import("./audit");
-    const result = await listAuditLogs("TENANT001", {
+    const result = await listAuditLogs("TENANT001", "ja", {
       action: " series_created ",
       actorUserPublicId: " USER001 ",
       limit: 10,
@@ -100,7 +100,7 @@ describe("audit lib", () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { listAuditLogs } = await import("./audit");
-    const result = await listAuditLogs("TENANT001", { token: "token" });
+    const result = await listAuditLogs("TENANT001", "ja", { token: "token" });
 
     expect(mockListAuditLogs).not.toHaveBeenCalled();
     expect(result).toEqual({
@@ -122,7 +122,7 @@ describe("audit lib", () => {
     });
 
     const { listAuditLogs } = await import("./audit");
-    await listAuditLogs("TENANT001", {
+    await listAuditLogs("TENANT001", "ja", {
       createdFrom: "2026-08-10",
       createdTo: "2026-08-10",
     });

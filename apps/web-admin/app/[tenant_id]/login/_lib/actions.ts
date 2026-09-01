@@ -12,6 +12,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getActionLocale } from "#lib/action-messages";
 import { ADMIN_SESSION_COOKIE_NAME, loginAdmin } from "#lib/admin-auth";
 import {
   emailFormSchema,
@@ -20,7 +21,7 @@ import {
   tenantIdFormSchema,
 } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { loadAdminMessages } from "#lib/locale";
 import type { AdminMessages } from "#lib/locale";
 
 const loginFormSchema = (messages: AdminMessages) =>
@@ -41,7 +42,7 @@ const buildLoginErrorPath = (message: string, nextPath: string): string => {
 
 export const loginAction = async (formData: FormData): Promise<void> => {
   await assertSameOrigin();
-  const locale = await getLocale();
+  const locale = await getActionLocale(formData);
   const messages = await loadAdminMessages(locale);
   const input = toFormDataInput(formData, {
     email: "value",
@@ -58,7 +59,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     redirect(
       buildLoginErrorPath(
         tenantIdResult.success
-          ? toFormErrorMessage(parsed.error)
+          ? toFormErrorMessage(parsed.error, { locale })
           : getMessage(messages, "admin.auth.errors.tenant_missing"),
         nextPath
       )

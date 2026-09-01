@@ -47,7 +47,7 @@ describe("tenant-default-locale", () => {
 
     const { getTenantDefaultLocale } = await import("./tenant-default-locale");
 
-    const result = await getTenantDefaultLocale("TENANT001");
+    const result = await getTenantDefaultLocale("TENANT001", "ja");
 
     expect(result).toEqual({ defaultLocale: "en", ok: true });
     expect(mockGetTenantDefaultLocaleApi).toHaveBeenCalledWith(
@@ -59,15 +59,14 @@ describe("tenant-default-locale", () => {
     );
   });
 
-  it("returns the fallback locale and an error when there is no session", async () => {
+  it("reports a missing session without naming a saved locale", async () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { getTenantDefaultLocale } = await import("./tenant-default-locale");
 
-    const result = await getTenantDefaultLocale("TENANT001");
+    const result = await getTenantDefaultLocale("TENANT001", "ja");
 
     expect(result).toEqual({
-      defaultLocale: "ja",
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
       requiresSignIn: true,
@@ -75,17 +74,17 @@ describe("tenant-default-locale", () => {
     expect(mockGetTenantDefaultLocaleApi).not.toHaveBeenCalled();
   });
 
-  it("returns the fallback locale alongside the failure", async () => {
+  it("reports a failed read without naming a saved locale", async () => {
     mockGetTenantDefaultLocaleApi.mockRejectedValueOnce(
       new ConnectError("tenant unavailable", Code.Unavailable)
     );
 
     const { getTenantDefaultLocale } = await import("./tenant-default-locale");
 
-    const result = await getTenantDefaultLocale("TENANT001");
+    const result = await getTenantDefaultLocale("TENANT001", "ja");
 
     expect(result.ok).toBe(false);
-    expect(result.defaultLocale).toBe("ja");
+    expect(result).not.toHaveProperty("defaultLocale");
   });
 
   it("returns the saved default locale on a successful update", async () => {
@@ -96,10 +95,13 @@ describe("tenant-default-locale", () => {
     const { updateTenantDefaultLocale } =
       await import("./tenant-default-locale");
 
-    const result = await updateTenantDefaultLocale({
-      defaultLocale: "en",
-      tenantId: "TENANT001",
-    });
+    const result = await updateTenantDefaultLocale(
+      {
+        defaultLocale: "en",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result).toEqual({ defaultLocale: "en", ok: true });
     expect(mockUpdateTenantDefaultLocaleApi).toHaveBeenCalledWith(
@@ -119,10 +121,13 @@ describe("tenant-default-locale", () => {
     const { updateTenantDefaultLocale } =
       await import("./tenant-default-locale");
 
-    const result = await updateTenantDefaultLocale({
-      defaultLocale: "en",
-      tenantId: "TENANT001",
-    });
+    const result = await updateTenantDefaultLocale(
+      {
+        defaultLocale: "en",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result).toEqual({
       message: "入力内容に誤りがあります。",
@@ -138,10 +143,13 @@ describe("tenant-default-locale", () => {
     const { updateTenantDefaultLocale } =
       await import("./tenant-default-locale");
 
-    const result = await updateTenantDefaultLocale({
-      defaultLocale: "en",
-      tenantId: "TENANT001",
-    });
+    const result = await updateTenantDefaultLocale(
+      {
+        defaultLocale: "en",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(result.ok).toBe(false);
   });
@@ -155,42 +163,16 @@ describe("tenant-default-locale", () => {
     );
   });
 
-  it("returns the default locale of the tenant as the display locale", async () => {
-    mockGetTenantDefaultLocaleApi.mockResolvedValueOnce({
-      defaultLocale: "en",
-    });
-
-    const { getTenantDisplayLocale } = await import("./tenant-default-locale");
-
-    await expect(getTenantDisplayLocale("TENANT001")).resolves.toBe("en");
-  });
-
-  it("still renders in the default locale when the tenant cannot be fetched", async () => {
-    mockGetTenantDefaultLocaleApi.mockRejectedValueOnce(
-      new ConnectError("tenant unavailable", Code.Unavailable)
-    );
-
-    const { getTenantDisplayLocale } = await import("./tenant-default-locale");
-
-    await expect(getTenantDisplayLocale("TENANT001")).resolves.toBe("ja");
-  });
-
-  it("still renders in the default locale when the tenant id is empty", async () => {
-    const { getTenantDisplayLocale } = await import("./tenant-default-locale");
-
-    await expect(getTenantDisplayLocale("  ")).resolves.toBe("ja");
-    expect(mockGetTenantDefaultLocaleApi).not.toHaveBeenCalled();
-  });
-
-  it("normalizes an unknown code to the default locale", async () => {
+  it("treats a code this build does not serve as a failed read", async () => {
     mockGetTenantDefaultLocaleApi.mockResolvedValueOnce({
       defaultLocale: "fr",
     });
 
     const { getTenantDefaultLocale } = await import("./tenant-default-locale");
 
-    const result = await getTenantDefaultLocale("TENANT001");
+    const result = await getTenantDefaultLocale("TENANT001", "ja");
 
-    expect(result).toEqual({ defaultLocale: "ja", ok: true });
+    expect(result.ok).toBe(false);
+    expect(result).not.toHaveProperty("defaultLocale");
   });
 });

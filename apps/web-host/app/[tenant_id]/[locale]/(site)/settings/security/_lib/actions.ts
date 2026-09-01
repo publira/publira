@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage, parseLocale } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
   toFormErrorMessage,
@@ -21,7 +21,7 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { localeFormSchema } from "#lib/locale-form";
+import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
 import type { HostMessages } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
@@ -58,7 +58,7 @@ export const requestEmailChangeAction = async (
   await assertSameOrigin();
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
-  const submittedLocale = parseLocale(formData.get("locale"));
+  const submittedLocale = requireFormLocale(formData.get("locale"));
   const messages = await loadHostMessages(submittedLocale);
   const parsed = requestEmailChangeFormSchema(messages).safeParse(
     toFormDataInput(formData, {
@@ -76,6 +76,7 @@ export const requestEmailChangeAction = async (
       "error",
       toFormErrorMessage(parsed.error, {
         fallback: validationErrorMessage(submittedLocale),
+        locale: submittedLocale,
       })
     );
     redirect(errorPath);

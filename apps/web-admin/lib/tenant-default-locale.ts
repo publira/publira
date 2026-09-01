@@ -1,6 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage, parseLocale } from "@publira/i18n";
+import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -18,12 +18,10 @@ export type GetTenantDefaultLocaleResult =
   | {
       ok: false;
       message: string;
-      defaultLocale: Locale;
       /**
-       * The API rejected the session — the settings screen raises the login
-       * redirect. {@link getTenantDisplayLocale} ignores it on purpose: a
-       * cookie-less request can still render in the fallback locale without
-       * interrupting a page whose own read will report the same rejection.
+       * No `defaultLocale`. A read that failed has no saved language to report,
+       * and the settings screen would otherwise offer to save a value nobody
+       * chose over the stored one.
        */
       requiresSignIn: boolean;
     };
@@ -47,12 +45,12 @@ const sessionErrorMessage = (messages: SharedMessages): string =>
 export const tenantDefaultLocaleCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:default-locale`;
 
-const resolveDefaultLocale = (value: string | undefined): Locale =>
+const resolveDefaultLocale = (value: string | undefined): Locale | undefined =>
   parseLocale(value?.trim());
 
 export const getTenantDefaultLocale = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale
 ): Promise<GetTenantDefaultLocaleResult> => {
   "use cache: private";
 
@@ -61,7 +59,6 @@ export const getTenantDefaultLocale = async (
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      defaultLocale: DEFAULT_LOCALE,
       message: sessionErrorMessage(messages),
       ok: false,
       requiresSignIn: !sessionId,
@@ -78,14 +75,19 @@ export const getTenantDefaultLocale = async (
       withSessionHeaders(sessionId)
     );
 
-    return {
-      defaultLocale: resolveDefaultLocale(response.defaultLocale),
-      ok: true,
-    };
+    const defaultLocale = resolveDefaultLocale(response.defaultLocale);
+    if (defaultLocale === undefined) {
+      return {
+        message: genericLoadErrorMessage(messages),
+        ok: false,
+        requiresSignIn: false,
+      };
+    }
+
+    return { defaultLocale, ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      defaultLocale: DEFAULT_LOCALE,
       message: rpcErrorMessage(error, genericLoadErrorMessage(messages), {
         locale,
       }),
@@ -95,29 +97,12 @@ export const getTenantDefaultLocale = async (
   }
 };
 
-/**
- * Locale the console falls back to when the operator has not chosen one
- * (#1046). One entry point, so a cookie-less request never hard-codes `ja`
- * by omission.
- *
- * An unavailable tenant read degrades to {@link DEFAULT_LOCALE} rather than
- * guessing. The read is tagged `tenant:<id>:default-locale`, which `updateTag`
- * invalidates when the value is saved, so a change reaches every screen in
- * the same session.
- */
-export const getTenantDisplayLocale = async (
-  tenantId: string
-): Promise<Locale> => {
-  const result = await getTenantDefaultLocale(tenantId);
-  return result.defaultLocale;
-};
-
 export const updateTenantDefaultLocale = async (
   input: {
     tenantId: string;
     defaultLocale: Locale;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale
 ): Promise<UpdateTenantDefaultLocaleResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -134,11 +119,12 @@ export const updateTenantDefaultLocale = async (
       },
       withSessionHeaders(sessionId)
     );
+    const saved = resolveDefaultLocale(response.defaultLocale);
+    if (saved === undefined) {
+      return { message: genericUpdateErrorMessage(messages), ok: false };
+    }
 
-    return {
-      defaultLocale: resolveDefaultLocale(response.defaultLocale),
-      ok: true,
-    };
+    return { defaultLocale: saved, ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);

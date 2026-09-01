@@ -30,7 +30,8 @@ import { PageManager } from "./_components/page-manager";
 type PagesPageProps = PageProps<"/[tenant_id]/pages">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
   const messages = await loadAdminMessages(locale);
 
   return { title: getMessage(messages, "admin.pages.title") };
@@ -57,7 +58,7 @@ const PageManagerData = async ({
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
   const [listResult, timeZone] = await Promise.all([
-    listPages(tenantId, { token }, locale),
+    listPages(tenantId, locale, { token }),
     getTenantDisplayTimeZone(tenantId),
   ]);
 

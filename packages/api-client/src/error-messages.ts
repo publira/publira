@@ -19,31 +19,11 @@ export type RpcErrorMessageOverrides = Partial<
 >;
 
 export interface RpcErrorMessageOptions {
-  /**
-   * UI locale (`ja` | `en`). Unknown values fall back to `ja`.
-   * Omit to keep the Japanese shared wording.
-   */
-  locale?: Locale | string;
+  /** UI locale the shared wording is read in. */
+  locale: Locale;
   /** Replaces the shared wording for individual categories. */
   overrides?: RpcErrorMessageOverrides;
 }
-
-const isRpcErrorMessageOptions = (
-  value: RpcErrorMessageOptions | RpcErrorMessageOverrides
-): value is RpcErrorMessageOptions =>
-  Object.hasOwn(value, "locale") || Object.hasOwn(value, "overrides");
-
-const resolveRpcErrorMessageOptions = (
-  overridesOrOptions?: RpcErrorMessageOptions | RpcErrorMessageOverrides
-): RpcErrorMessageOptions | undefined => {
-  if (!overridesOrOptions) {
-    return undefined;
-  }
-  if (isRpcErrorMessageOptions(overridesOrOptions)) {
-    return overridesOrOptions;
-  }
-  return { overrides: overridesOrOptions };
-};
 
 /**
  * Localized copy for a caught RPC error.
@@ -54,20 +34,21 @@ const resolveRpcErrorMessageOptions = (
  *
  * `fallback` is the operation-specific message ("著者の保存に失敗しました。…")
  * used when the category has no shared wording. Pass `overrides` to replace
- * the shared wording for individual categories. The third argument may also
- * be the overrides map itself, matching the pre-locale signature.
+ * the shared wording for individual categories.
+ *
+ * `locale` is required. A caller that cannot name one cannot word `fallback`
+ * either, so it has a locale to resolve before it has an error to report.
  */
 export const rpcErrorMessage = (
   error: unknown,
   fallback: string,
-  overridesOrOptions?: RpcErrorMessageOptions | RpcErrorMessageOverrides
+  options: RpcErrorMessageOptions
 ): string => {
-  const options = resolveRpcErrorMessageOptions(overridesOrOptions);
   const disposition = rpcErrorDisposition(error);
 
   return (
-    options?.overrides?.[disposition] ??
-    sharedRpcErrorMessage(disposition, options?.locale) ??
+    options.overrides?.[disposition] ??
+    sharedRpcErrorMessage(disposition, options.locale) ??
     fallback
   );
 };

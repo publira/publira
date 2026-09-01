@@ -43,7 +43,7 @@ export type SampleEmailData = z.output<typeof sampleEmailDataSchema>;
 
 export interface SampleEmailProps {
   data: SampleEmailData;
-  locale: Locale | string;
+  locale: Locale;
   messages: Messages;
 }
 

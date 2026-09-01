@@ -42,6 +42,18 @@ SET copyright_text = EXCLUDED.copyright_text,
     site_tagline = EXCLUDED.site_tagline,
     updated_at = NOW();
 
+-- The platform settings row. `CreateInitialUser` writes it alongside the first
+-- operator, so a platform bootstrapped through the setup screen always has one;
+-- this seed inserts the operator directly, and without this a seeded platform
+-- would be in a state real bootstrap cannot produce — set up, yet with no saved
+-- display language for the console to open in.
+INSERT INTO platform_config (singleton, default_timezone, default_locale)
+VALUES (TRUE, 'Asia/Tokyo', 'ja')
+ON CONFLICT (singleton) DO UPDATE
+SET default_timezone = EXCLUDED.default_timezone,
+    default_locale = EXCLUDED.default_locale,
+    updated_at = NOW();
+
 WITH platform_user_seed AS (
     SELECT '018f0e6b-1000-7000-8000-000000000001'::uuid AS id
 )

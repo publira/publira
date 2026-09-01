@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, getMessage, LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { getMessage, LOCALE_LANG_SCRIPT } from "@publira/i18n";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -19,24 +19,20 @@ export const generateStaticParams = () =>
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await tenant_id();
   if (typeof tenantId !== "string") {
-    const messages = await loadAdminMessages(DEFAULT_LOCALE);
-
-    return { title: getMessage(messages, "admin.shell.title") };
+    return {};
   }
   guardPlaceholder(tenantId);
 
-  // A segment that is not a tenant UUID never went through `proxy.ts`, so
-  // there is no tenant and no session behind it and the title is the
-  // locale-independent fallback whichever way the locale resolves. Resolving it
-  // anyway would read the session — uncached data that this route's otherwise
-  // fully prerenderable shell has no `<Suspense>` boundary to hold, which is
-  // what Cache Components reports as `blocking-prerender-metadata-dynamic`.
-  // Deciding before the read keeps the metadata static instead.
+  // A segment that is not a tenant UUID never went through `proxy.ts`, so there
+  // is no tenant behind it, no stored default locale to word a title in, and
+  // the route below answers 404. Resolving one anyway would read the session —
+  // uncached data that this route's otherwise fully prerenderable shell has no
+  // `<Suspense>` boundary to hold, which is what Cache Components reports as
+  // `blocking-prerender-metadata-dynamic`. Deciding before the read keeps the
+  // metadata static, and the not-found page titles itself.
   const normalizedTenantId = tenantId.trim();
   if (!isTenantIdFormat(normalizedTenantId)) {
-    const messages = await loadAdminMessages(DEFAULT_LOCALE);
-
-    return { title: getMessage(messages, "admin.shell.title") };
+    return {};
   }
 
   // The title is copy, so it follows the cookie like every other string. It
@@ -62,19 +58,26 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 /**
- * `lang` is rendered as the default locale and corrected by the inline script
- * before the browser paints.
+ * `lang` is written by scripts rather than rendered, and this layout stays
+ * synchronous.
  *
- * The console keeps its locale in a cookie rather than in the URL, and under
- * Cache Components a `cookies()` read here would leave every route without a
- * static shell — there is no child `<Suspense>` boundary an `<html>` attribute
- * could move into. Reading the cookie in the script instead keeps the shell
- * static; `suppressHydrationWarning` is what lets the DOM the script produced
- * win over the attribute React rendered. The script's source and the reasoning
- * behind it live in `@publira/i18n`.
+ * Both values the attribute could take need a read — the operator's cookie, and
+ * the tenant's stored default — and a root layout that awaits blocks the whole
+ * tree. An `<html>` attribute is never worth that, so neither read happens
+ * here: `LOCALE_LANG_SCRIPT` applies the cookie while the document is still
+ * being parsed, and `suppressHydrationWarning` is what lets the DOM it produces
+ * win over what React rendered.
+ *
+ * An operator who has chosen no language leaves the document naming none, which
+ * is the honest state: a `lang` the page is not written in tells a screen reader
+ * to pronounce it in the wrong language, and that is worse for that reader than
+ * none. Streaming the tenant default in later is not the answer — a client
+ * component can pick its own locale before that arrives, and then the catalog it
+ * loads disagrees with the one the server rendered. Carrying the stored default
+ * to the client is #1249.
  */
 const TenantRootLayout = ({ children }: { children: ReactNode }) => (
-  <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+  <html suppressHydrationWarning>
     <head>
       <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
       {/* Dynamic per-tenant overrides from GET /theme.css (short Cache-Control). */}

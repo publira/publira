@@ -3,7 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { DEFAULT_LOCALE, getMessage } from "@publira/i18n";
+import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -68,9 +68,42 @@ const parseErrorMessage = (
   });
 };
 
+/**
+ * The saved zone with no copy attached, so reading it needs no locale.
+ *
+ * {@link getTenantTimezone} words its failures for the settings screen, which
+ * makes it the wrong entry point for the screens that only want the zone: they
+ * would have to resolve a language to read a value that is not a sentence.
+ */
+const readTenantTimezone = async (tenantId: string): Promise<string | null> => {
+  "use cache: private";
+
+  const sessionId = await getAccessToken();
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
+    return null;
+  }
+
+  cacheTag(tenantTimezoneCacheTag(normalizedTenantId));
+
+  try {
+    const response = await apiClient.tenantSettings.getTenantTimezone(
+      {
+        tenant: { tenantId: normalizedTenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return response.timezone.trim() || null;
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return null;
+  }
+};
+
 export const getTenantTimezone = async (
   tenantId: string,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale
 ): Promise<GetTenantTimezoneResult> => {
   "use cache: private";
 
@@ -132,8 +165,8 @@ export const getTenantTimezone = async (
 export const getTenantDisplayTimeZone = async (
   tenantId: string
 ): Promise<string> => {
-  const result = await getTenantTimezone(tenantId);
-  return result.timezone;
+  const timezone = await readTenantTimezone(tenantId);
+  return timezone ?? DEFAULT_TIME_ZONE;
 };
 
 export const updateTenantTimezone = async (
@@ -141,7 +174,7 @@ export const updateTenantTimezone = async (
     tenantId: string;
     timezone: string;
   },
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale
 ): Promise<UpdateTenantTimezoneResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

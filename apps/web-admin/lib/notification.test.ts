@@ -66,7 +66,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001", {
+    const result = await listNotifications("TENANT001", "ja", {
       limit: 20,
       token: "current-page",
     });
@@ -90,7 +90,7 @@ describe("notification lib", () => {
     mockListNotificationsApi.mockResolvedValue({ notifications: [] });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001");
+    const result = await listNotifications("TENANT001", "ja", {});
 
     expect(mockListNotificationsApi).toHaveBeenCalledWith(
       {
@@ -113,7 +113,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001");
+    const result = await listNotifications("TENANT001", "ja", {});
 
     expect(result.ok).toBe(true);
     expect(result.notifications).toEqual([
@@ -144,7 +144,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001");
+    const result = await listNotifications("TENANT001", "ja", {});
 
     expect(result.notifications).toEqual([
       {
@@ -168,7 +168,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001");
+    const result = await listNotifications("TENANT001", "ja", {});
 
     expect(result.notifications.map((item) => item.id)).toEqual(["n2", "n1"]);
   });
@@ -179,7 +179,7 @@ describe("notification lib", () => {
     );
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001");
+    const result = await listNotifications("TENANT001", "ja", {});
 
     expect(result).toEqual({
       message: "この操作を行う権限がありません。",
@@ -198,14 +198,14 @@ describe("notification lib", () => {
 
     const { listNotifications } = await import("./notification");
 
-    await expect(listNotifications("TENANT001")).rejects.toThrow();
+    await expect(listNotifications("TENANT001", "ja", {})).rejects.toThrow();
   });
 
   it("returns a result with no token when there is no session", async () => {
     mockGetSessionId.mockResolvedValue("");
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001", {
+    const result = await listNotifications("TENANT001", "ja", {
       token: "current-page",
     });
 
@@ -222,7 +222,7 @@ describe("notification lib", () => {
     mockCountUnreadNotificationsApi.mockResolvedValue({ unreadCount: 3 });
 
     const { countUnreadNotifications } = await import("./notification");
-    const result = await countUnreadNotifications("TENANT001");
+    const result = await countUnreadNotifications("TENANT001", "ja");
 
     expect(mockCountUnreadNotificationsApi).toHaveBeenCalledWith(
       { tenant: { tenantId: "TENANT001" } },
@@ -237,7 +237,7 @@ describe("notification lib", () => {
     );
 
     const { countUnreadNotifications } = await import("./notification");
-    const result = await countUnreadNotifications("TENANT001");
+    const result = await countUnreadNotifications("TENANT001", "ja");
 
     expect(result).toEqual({
       message:
@@ -253,17 +253,20 @@ describe("notification lib", () => {
 
     const { countUnreadNotifications } = await import("./notification");
 
-    await expect(countUnreadNotifications("TENANT001")).rejects.toThrow();
+    await expect(countUnreadNotifications("TENANT001", "ja")).rejects.toThrow();
   });
 
   it("passes the notification_id when marking one notification as read", async () => {
     mockMarkNotificationAsReadApi.mockResolvedValue({ marked: true });
 
     const { markNotificationAsRead } = await import("./notification");
-    const result = await markNotificationAsRead({
-      notificationId: "11111111-1111-4111-8111-111111111111",
-      tenantId: "TENANT001",
-    });
+    const result = await markNotificationAsRead(
+      {
+        notificationId: "11111111-1111-4111-8111-111111111111",
+        tenantId: "TENANT001",
+      },
+      "ja"
+    );
 
     expect(mockMarkNotificationAsReadApi).toHaveBeenCalledWith(
       {
@@ -279,7 +282,7 @@ describe("notification lib", () => {
     mockMarkAllNotificationsAsReadApi.mockResolvedValue({ markedCount: 4 });
 
     const { markAllNotificationsAsRead } = await import("./notification");
-    const result = await markAllNotificationsAsRead("TENANT001");
+    const result = await markAllNotificationsAsRead("TENANT001", "ja");
 
     expect(result).toEqual({ markedCount: 4, ok: true });
   });

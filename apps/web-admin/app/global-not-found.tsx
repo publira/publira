@@ -1,8 +1,12 @@
+import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import "./globals.css";
+
+/** The one locale this document renders, named where `lang` is set from it. */
+const NOT_FOUND_LOCALE: Locale = "ja";
 
 /**
  * App-wide 404 for URLs that match no route at all. Next.js skips the normal
@@ -23,29 +27,32 @@ import "./globals.css";
  * attribute at `en` would only mislabel the Japanese text below.
  */
 export const metadata: Metadata = {
-  description: sharedMessage("admin.not_found.metadata_description"),
-  title: sharedMessage("admin.not_found.title"),
+  description: sharedMessage(
+    "admin.not_found.metadata_description",
+    NOT_FOUND_LOCALE
+  ),
+  title: sharedMessage("admin.not_found.title", NOT_FOUND_LOCALE),
 };
 
 const GlobalNotFound = () => (
-  <html lang="ja">
+  <html lang={NOT_FOUND_LOCALE}>
     <body className="min-h-dvh bg-background text-foreground antialiased">
       <main className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
         <p className="text-sm tracking-wide text-muted-foreground uppercase">
           404 Not Found
         </p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">
-          {sharedMessage("admin.not_found.title")}
+          {sharedMessage("admin.not_found.title", NOT_FOUND_LOCALE)}
         </h1>
         <p className="mt-4 text-muted-foreground">
-          {sharedMessage("admin.not_found.description")}
+          {sharedMessage("admin.not_found.description", NOT_FOUND_LOCALE)}
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
             className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground transition hover:bg-muted"
             href="/"
           >
-            {sharedMessage("admin.common.back_to_dashboard")}
+            {sharedMessage("admin.common.back_to_dashboard", NOT_FOUND_LOCALE)}
           </Link>
         </div>
       </main>
