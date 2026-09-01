@@ -33,6 +33,11 @@ var subcommands = []subcommand{
 		run:     runPublishEpisodes,
 	},
 	{
+		name:    "project-episode-reads",
+		summary: "File the missing episode_complete events for stored episode reads",
+		run:     runProjectEpisodeReads,
+	},
+	{
 		name:    "aggregate-content-stats",
 		summary: "Rebuild one UTC day of content_daily_stats for every tenant",
 		run:     runAggregateContentStats,

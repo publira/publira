@@ -13,14 +13,17 @@ export {
   endOfDayIsoString,
   formatDate,
   formatDateTime,
+  formatPlainDate,
   fromDateTimeLocalValue,
   parseInstant,
   startOfDayIsoString,
   toDateTimeLocalValue,
   toInstantIsoString,
   type FormatDateTimeOptions,
+  type FormatPlainDateOptions,
   type ToDateTimeLocalOptions,
 } from "./format-date-time";
+export { formatPercent, type FormatPercentOptions } from "./format-number";
 export { getTenantDomainCandidates } from "./tenant-domain";
 export {
   DEFAULT_TENANT_THEME_COLORS,

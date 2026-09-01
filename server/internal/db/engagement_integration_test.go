@@ -796,3 +796,129 @@ func insertEpisodeView(ctx context.Context, db *sql.DB, seed engagementSeed, use
 	`, id, seed.tenantID, userID, seriesID, episodeID, bucket)
 	return id, err
 }
+
+// upsertReadThroughStats files one episode's day with only the two columns the
+// read-through report reads.
+func upsertReadThroughStats(
+	t *testing.T,
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID, episodeID uuid.UUID,
+	statDate time.Time,
+	completeCount, memberViewCount int64,
+) {
+	t.Helper()
+	if _, err := queries.UpsertContentDailyStats(ctx, dbmodels.UpsertContentDailyStatsParams{
+		ID:              uuid.Must(uuid.NewV7()),
+		TenantID:        tenantID,
+		StatDate:        statDate,
+		EntityType:      "episode",
+		EntityID:        episodeID,
+		CompleteCount:   completeCount,
+		MemberViewCount: memberViewCount,
+	}); err != nil {
+		t.Fatalf("upsert read-through stats: %v", err)
+	}
+}
+
+func TestEpisodeReadThroughSumsTheWindowAndPagesByCompletions(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "RTH00001")
+	_, secondEpisode := mustInsertSeriesAndEpisode(t, ctx, pg.DB, seed.tenantID, "SERRTH2", "EPRTH2")
+	_, thirdEpisode := mustInsertSeriesAndEpisode(t, ctx, pg.DB, seed.tenantID, "SERRTH3", "EPRTH3")
+	other := seedEngagementCatalog(t, ctx, pg.DB, "RTH00002")
+	queries := dbmodels.New(pg.DB)
+
+	periodStart := time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
+	periodEnd := time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
+
+	// Two days inside the window sum; the day after it must not.
+	upsertReadThroughStats(t, ctx, queries, seed.tenantID, seed.episodeID, periodStart, 4, 10)
+	upsertReadThroughStats(t, ctx, queries, seed.tenantID, seed.episodeID, periodEnd, 3, 6)
+	upsertReadThroughStats(t, ctx, queries, seed.tenantID, seed.episodeID, periodEnd.AddDate(0, 0, 1), 99, 99)
+	upsertReadThroughStats(t, ctx, queries, seed.tenantID, secondEpisode, periodStart, 2, 8)
+	upsertReadThroughStats(t, ctx, queries, seed.tenantID, thirdEpisode, periodStart, 1, 0)
+	upsertReadThroughStats(t, ctx, queries, other.tenantID, other.episodeID, periodStart, 50, 50)
+
+	totals, err := queries.GetEpisodeReadThroughTotals(ctx, dbmodels.GetEpisodeReadThroughTotalsParams{
+		TenantID:    seed.tenantID,
+		PeriodStart: periodStart,
+		PeriodEnd:   periodEnd,
+	})
+	if err != nil {
+		t.Fatalf("totals: %v", err)
+	}
+	if totals.CompleteCount != 10 || totals.MemberViewCount != 24 {
+		t.Fatalf("totals = (%d, %d), want (10, 24)", totals.CompleteCount, totals.MemberViewCount)
+	}
+
+	listParams := dbmodels.ListEpisodeReadThroughDescParams{
+		TenantID:    seed.tenantID,
+		PeriodStart: periodStart,
+		PeriodEnd:   periodEnd,
+		Limit:       2,
+	}
+	first, err := queries.ListEpisodeReadThroughDesc(ctx, listParams)
+	if err != nil {
+		t.Fatalf("list desc: %v", err)
+	}
+	if len(first) != 2 {
+		t.Fatalf("first page rows = %d, want 2", len(first))
+	}
+	if first[0].EpisodeID != seed.episodeID || first[0].CompleteCount != 7 || first[0].MemberViewCount != 16 {
+		t.Fatalf("first row = %+v, want the summed window of the top episode", first[0])
+	}
+	if first[1].EpisodeID != secondEpisode {
+		t.Fatalf("second row = %s, want %s", first[1].EpisodeID, secondEpisode)
+	}
+
+	// The keyset resumes strictly after the boundary row.
+	boundary := first[len(first)-1]
+	nextParams := listParams
+	nextParams.CursorEntityID = uuid.NullUUID{UUID: boundary.EpisodeID, Valid: true}
+	nextParams.CursorCompleteCount = sql.NullInt64{Int64: boundary.CompleteCount, Valid: true}
+	next, err := queries.ListEpisodeReadThroughDesc(ctx, nextParams)
+	if err != nil {
+		t.Fatalf("list desc page 2: %v", err)
+	}
+	if len(next) != 1 || next[0].EpisodeID != thirdEpisode {
+		t.Fatalf("second page = %+v, want only %s", next, thirdEpisode)
+	}
+
+	// The ascending query walks back to the page the cursor came from.
+	backParams := dbmodels.ListEpisodeReadThroughAscParams{
+		TenantID:            seed.tenantID,
+		PeriodStart:         periodStart,
+		PeriodEnd:           periodEnd,
+		Limit:               2,
+		CursorEntityID:      uuid.NullUUID{UUID: next[0].EpisodeID, Valid: true},
+		CursorCompleteCount: sql.NullInt64{Int64: next[0].CompleteCount, Valid: true},
+	}
+	back, err := queries.ListEpisodeReadThroughAsc(ctx, backParams)
+	if err != nil {
+		t.Fatalf("list asc: %v", err)
+	}
+	if len(back) != 2 {
+		t.Fatalf("backward page rows = %d, want 2", len(back))
+	}
+	if back[0].EpisodeID != secondEpisode || back[1].EpisodeID != seed.episodeID {
+		t.Fatalf("backward page = (%s, %s), want (%s, %s) in ascending order",
+			back[0].EpisodeID, back[1].EpisodeID, secondEpisode, seed.episodeID)
+	}
+
+	// An inclusive recovery cursor returns the boundary row itself.
+	recoveryParams := backParams
+	recoveryParams.CursorInclusive = true
+	recovery, err := queries.ListEpisodeReadThroughAsc(ctx, recoveryParams)
+	if err != nil {
+		t.Fatalf("list asc recovery: %v", err)
+	}
+	if len(recovery) == 0 || recovery[0].EpisodeID != thirdEpisode {
+		t.Fatalf("recovery page = %+v, want the boundary row %s first", recovery, thirdEpisode)
+	}
+}

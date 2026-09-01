@@ -230,7 +230,7 @@ Persistence retries, final drops, queue overflows, and shutdown drain deadlines 
 
 | Key | Value |
 | --- | --- |
-| `service.name` | A default per process (`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`). `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
+| `service.name` | A default per process (`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`). `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
 | `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 
@@ -394,13 +394,39 @@ There is no RPC for withdrawing a rating. Which rating counts is decided on read
 
 The daily aggregation (`rating_count` / `rating_sum` in `content_daily_stats`) is a **flow metric** that counts only the ratings that occurred on that day, not the average rating (a stock) the item holds at that point. A reader who rates again is counted on both days, and a reader who does not change their rating is counted on no day after the first. Use the `DISTINCT ON` above when you need the stock average.
 
+## Completion events and read-through
+
+`EpisodeReadService.MarkEpisodeAsRead` stores the business state — one `episode_reads` row per member and episode, keeping the first read time. Each stored read is also projected into `content_events` as an `episode_complete` event, which is what the aggregates and the ranking read; the two are kept apart so retention, re-aggregation, and metric definitions do not have to share one table.
+
+| Item | Value |
+| --- | --- |
+| Event type | `episode_complete` |
+| actor | `user_id` (sign-in required, so a completion has no anonymous form) |
+| Source | `source_table = 'episode_reads'`, `source_id = episode_reads.id`. The partial UNIQUE index on `(tenant_id, source_table, source_id)` is what makes the projection replayable |
+| `occurred_at` | The read's own `read_at`, so a late projection still files the event on the day the member finished |
+| `series_id` | Resolved from `episodes` rather than taken from client input |
+| Failure | Swallowed. The read is already stored, and `batch project-episode-reads` files whatever the request path lost |
+
+### Read-through rate
+
+`content_daily_stats` carries the two halves of the rate per episode, rolled up to the series by summing its episodes:
+
+| Column | Meaning |
+| --- | --- |
+| `complete_count` | `episode_complete` events on that day |
+| `member_view_count` | `episode_view` events on that day whose `user_id` is set |
+
+The rate is `complete_count / member_view_count` over a range of days, and the cohort is what makes the division meaningful: only a signed-in member can be recorded as finishing an episode, so `view_count` and `unique_viewer_count` — which include anonymous readers — cannot be the denominator. A period with no member views has no rate at all rather than a rate of zero; the console shows an em dash there. `AdminEngagementService.ListEpisodeReadThrough` reports the last 28 complete UTC days.
+
+Both columns are a **flow** of the day, like `rating_count`, so they sum across a date range. What does not sum is a count of distinct people: a member who opened an episode on two days is two member views, and the completion they may have contributed is filed on one day only.
+
 ## API server separation
 
 - Public API server: `server/cmd/api-server`
   - Public services: `CatalogService`, `AuthService`
   - Default port: `:8000`
 - Admin API server: `server/cmd/admin-api-server`
-  - Admin services: `AdminSeriesService`, `AdminAuthService`
+  - Admin services: `AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`
   - Default port: `:8001` (changeable with `PUBLIRA_ADMIN_API_ADDR`)
   - Next.js revalidation on a publication state change: set `PUBLIRA_REVALIDATE_TOKEN`
   - The destinations are the internal URLs of every `web-*` app (`PUBLIRA_WEB_*_INTERNAL_URL`)
@@ -417,6 +443,7 @@ Each API server connects with its own dedicated PostgreSQL login user, which kee
 | admin-api | `publira_admin` | `PUBLIRA_ADMIN_DB_URL` | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable` |
 | api (public) | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
 | outbox-worker | Equivalent to BYPASSRLS (superuser locally) | `PUBLIRA_WORKER_DB_URL` (falling back to `PUBLIRA_DB_URL`) | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
+| batch project-episode-reads | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`, falling back to `PUBLIRA_CONTENT_EVENTS_DB_URL` → `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch aggregate-content-stats | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch aggregate-rankings | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch purge-content-events | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_EVENTS_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |

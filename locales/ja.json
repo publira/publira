@@ -405,6 +405,8 @@
       "creators_label": "著者",
       "dashboard_description": "公開準備と編集状況の概況",
       "dashboard_label": "ダッシュボード",
+      "engagement_description": "エピソードの完読数と読了率",
+      "engagement_label": "読了率",
       "labels_description": "レーベル情報の管理",
       "labels_label": "レーベル",
       "operations": "運用",
@@ -1203,6 +1205,32 @@
         "expires_at_past": "有効期限は未来の日時を指定してください。",
         "revoke_target": "失効対象が不正です。",
         "series_required": "シリーズを選択してください。"
+      }
+    },
+    "engagement": {
+      "title": "読了率",
+      "page_description": "各エピソードを読み終えた会員数と、開いた会員のうちどれだけが読み終えたか。",
+      "section_error": "読了率を表示できませんでした",
+      "list_failed": "読了率を取得できませんでした。しばらくしてから再度お試しください。",
+      "summary_title": "集計期間",
+      "period": "{$start}～{$end}（UTC の暦日で集計）",
+      "definition": "読了率は、期間内の完読数を同じ期間の会員閲覧数で割った値です。どちらもログイン中の会員だけを数えます。匿名の読者は完読を記録できないため、匿名の閲覧も分母に含めません。完読は会員とエピソードの組み合わせごとに 1 回だけ、初めて読み終えた日に数えます。会員閲覧数が 0 のときは割合を取る対象がないため、読了率は — と表示します。",
+      "complete_count_label": "完読数",
+      "member_view_count_label": "会員閲覧数",
+      "rate_label": "読了率",
+      "rate_unavailable": "—",
+      "list_title": "エピソード",
+      "list_description": "完読数の多い順に並べています。",
+      "empty_title": "この期間に読まれたエピソードはありません",
+      "empty_description": "会員がエピソードを開いたか読み終えた日の日次集計が実行されると、ここに読了率が表示されます。",
+      "pagination_aria": "読了率のページ",
+      "pagination_description": "1 ページに最大 {$count} 件表示します。",
+      "columns": {
+        "series": "シリーズ",
+        "episode": "エピソード",
+        "complete_count": "完読数",
+        "member_view_count": "会員閲覧数",
+        "rate": "読了率"
       }
     }
   },

@@ -37,6 +37,12 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "rating", userID: firstViewer.ID, seriesID: series.ID, episodeID: episode.ID, ratingScore: 2, occurredAt: statDate.Add(7 * time.Hour)})
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "rating", userID: secondViewer.ID, seriesID: series.ID, episodeID: episode.ID, ratingScore: 3, occurredAt: statDate.Add(8 * time.Hour)})
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "favorite", userID: secondViewer.ID, seriesID: series.ID, occurredAt: statDate.Add(9 * time.Hour)})
+	// An anonymous read of the same episode: it counts as a view, but it can
+	// never become a completion, so it must stay out of member_view_count.
+	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "episode_view", anonymousID: uuid.Must(uuid.NewV7()), seriesID: series.ID, episodeID: episode.ID, debounceBucket: 6, occurredAt: statDate.Add(9*time.Hour + 30*time.Minute)})
+	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "episode_complete", userID: firstViewer.ID, seriesID: series.ID, episodeID: episode.ID, occurredAt: statDate.Add(9*time.Hour + 40*time.Minute)})
+	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "episode_complete", userID: secondViewer.ID, seriesID: series.ID, episodeID: episode.ID, occurredAt: statDate.Add(9*time.Hour + 50*time.Minute)})
+	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "episode_complete", userID: firstViewer.ID, seriesID: series.ID, episodeID: secondEpisode.ID, occurredAt: statDate.Add(9*time.Hour + 55*time.Minute)})
 	insertPurchase(t, pg.DB, tenant.ID, firstViewer.ID, episode.ID, statDate.Add(10*time.Hour))
 	insertPurchase(t, pg.DB, tenant.ID, secondViewer.ID, episode.ID, statDate.Add(11*time.Hour))
 	insertEvent(t, pg.DB, eventSeed{tenantID: otherTenant.ID, eventType: "episode_view", userID: otherViewer.ID, seriesID: otherSeries.ID, episodeID: otherEpisode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
@@ -51,13 +57,17 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	}
 
 	stats := loadStats(t, pg.DB, statDate)
-	assertStat(t, stats, tenant.ID, "episode", episode.ID, stat{viewCount: 3, uniqueViewerCount: 2, purchaseCount: 2, ratingCount: 2, ratingSum: 5})
-	assertStat(t, stats, tenant.ID, "episode", secondEpisode.ID, stat{viewCount: 1, uniqueViewerCount: 1})
+	assertStat(t, stats, tenant.ID, "episode", episode.ID, stat{viewCount: 4, uniqueViewerCount: 3, memberViewCount: 3, purchaseCount: 2, completeCount: 2, ratingCount: 2, ratingSum: 5})
+	assertStat(t, stats, tenant.ID, "episode", secondEpisode.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1, completeCount: 1})
 	// The same reader viewed the series and two episodes, so the series rollup
 	// must union actors rather than summing the per-episode distinct counts.
-	assertStat(t, stats, tenant.ID, "series", series.ID, stat{viewCount: 5, uniqueViewerCount: 2, purchaseCount: 2, ratingCount: 3, ratingSum: 10, favoriteCount: 1})
-	assertStat(t, stats, otherTenant.ID, "episode", otherEpisode.ID, stat{viewCount: 1, uniqueViewerCount: 1})
-	assertStat(t, stats, otherTenant.ID, "series", otherSeries.ID, stat{viewCount: 1, uniqueViewerCount: 1})
+	// member_view_count rolls up the episode views only: a series_view is not
+	// a view of anything a member could finish, so putting it in the
+	// denominator would make the series read-through rate lower than the
+	// episodes it is made of.
+	assertStat(t, stats, tenant.ID, "series", series.ID, stat{viewCount: 6, uniqueViewerCount: 3, memberViewCount: 4, purchaseCount: 2, completeCount: 3, ratingCount: 3, ratingSum: 10, favoriteCount: 1})
+	assertStat(t, stats, otherTenant.ID, "episode", otherEpisode.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1})
+	assertStat(t, stats, otherTenant.ID, "series", otherSeries.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1})
 
 	// A second full rebuild must replace, not duplicate, the same day's rows.
 	result, err = aggregator.Run(context.Background(), statDate)
@@ -95,7 +105,7 @@ func TestSourceQueriesHaveEligibleIndexes(t *testing.T) {
 		WHERE tenant_id = $1
 			AND occurred_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
 			AND occurred_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
-			AND event_type IN ('episode_view', 'series_view', 'rating', 'favorite')
+			AND event_type IN ('episode_view', 'series_view', 'episode_complete', 'rating', 'favorite')
 	`, tenant.ID, statDate, "idx_content_events_tenant_type_occurred_at")
 	assertPlanUsesIndex(t, pg.DB, `
 		SELECT episode_id, count(*)
@@ -143,9 +153,12 @@ func assertPlanUsesIndex(t *testing.T, db *sql.DB, query string, tenantID uuid.U
 }
 
 type eventSeed struct {
-	tenantID       uuid.UUID
-	eventType      string
+	tenantID  uuid.UUID
+	eventType string
+	// Exactly one of userID / anonymousID identifies the actor, the way
+	// content_events' own actor check requires.
 	userID         uuid.UUID
+	anonymousID    uuid.UUID
 	seriesID       uuid.UUID
 	episodeID      uuid.UUID
 	debounceBucket int64
@@ -162,6 +175,14 @@ func insertEvent(t *testing.T, db *sql.DB, seed eventSeed) {
 	if seed.episodeID != uuid.Nil {
 		episodeID = seed.episodeID
 	}
+	var userID any
+	if seed.userID != uuid.Nil {
+		userID = seed.userID
+	}
+	var anonymousID any
+	if seed.anonymousID != uuid.Nil {
+		anonymousID = seed.anonymousID
+	}
 	var debounceBucket any
 	if seed.debounceBucket != 0 {
 		debounceBucket = seed.debounceBucket
@@ -172,10 +193,10 @@ func insertEvent(t *testing.T, db *sql.DB, seed eventSeed) {
 	}
 	if _, err := db.ExecContext(ctx, `
 		INSERT INTO content_events (
-			id, tenant_id, event_type, user_id, series_id, episode_id,
+			id, tenant_id, event_type, user_id, anonymous_id, series_id, episode_id,
 			debounce_bucket, rating_score, occurred_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.eventType, seed.userID, seed.seriesID, episodeID, debounceBucket, ratingScore, seed.occurredAt); err != nil {
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.eventType, userID, anonymousID, seed.seriesID, episodeID, debounceBucket, ratingScore, seed.occurredAt); err != nil {
 		t.Fatalf("insert %s event: %v", seed.eventType, err)
 	}
 }
@@ -195,7 +216,9 @@ func insertPurchase(t *testing.T, db *sql.DB, tenantID, userID, episodeID uuid.U
 type stat struct {
 	viewCount         int64
 	uniqueViewerCount int64
+	memberViewCount   int64
 	purchaseCount     int64
+	completeCount     int64
 	ratingCount       int64
 	ratingSum         int64
 	favoriteCount     int64
@@ -213,7 +236,8 @@ func loadStats(t *testing.T, db *sql.DB, statDate time.Time) map[statKey]stat {
 	defer cancel()
 	rows, err := db.QueryContext(ctx, `
 		SELECT tenant_id, entity_type, entity_id, view_count, unique_viewer_count,
-			purchase_count, rating_count, rating_sum, favorite_count
+			member_view_count, purchase_count, complete_count, rating_count,
+			rating_sum, favorite_count
 		FROM content_daily_stats
 		WHERE stat_date = $1
 	`, statDate.Format(time.DateOnly))
@@ -227,8 +251,9 @@ func loadStats(t *testing.T, db *sql.DB, statDate time.Time) map[statKey]stat {
 		var key statKey
 		var value stat
 		if err := rows.Scan(&key.tenantID, &key.entityType, &key.entityID,
-			&value.viewCount, &value.uniqueViewerCount, &value.purchaseCount,
-			&value.ratingCount, &value.ratingSum, &value.favoriteCount); err != nil {
+			&value.viewCount, &value.uniqueViewerCount, &value.memberViewCount,
+			&value.purchaseCount, &value.completeCount, &value.ratingCount,
+			&value.ratingSum, &value.favoriteCount); err != nil {
 			t.Fatalf("scan stat: %v", err)
 		}
 		stats[key] = value

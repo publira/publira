@@ -2064,8 +2064,12 @@ LIMIT 1;
 -- name: MarkPublishedEpisodeAsRead :one
 -- Inserts the first completed read only after checking publication and body
 -- access in the same statement. A duplicate returns the preserved read_at.
-INSERT INTO episode_reads (tenant_id, user_id, episode_id)
-SELECT sqlc.arg('tenant_id'), sqlc.arg('user_id'), e.id
+--
+-- The returned id is likewise the one the first insert stored, so a repeated
+-- notification projects onto the same content_events row rather than a second
+-- completion for the same member and episode.
+INSERT INTO episode_reads (id, tenant_id, user_id, episode_id)
+SELECT sqlc.arg('id'), sqlc.arg('tenant_id'), sqlc.arg('user_id'), e.id
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id

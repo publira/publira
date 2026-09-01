@@ -5,6 +5,7 @@ import {
   endOfDayIsoString,
   formatDate,
   formatDateTime,
+  formatPlainDate,
   fromDateTimeLocalValue,
   parseInstant,
   startOfDayIsoString,
@@ -400,5 +401,32 @@ describe("DST boundaries (America/Los_Angeles)", () => {
     expect(
       formatDateTime("2024-03-10T10:00:00Z", { locale: "ja", timeZone: zone })
     ).toBe("2024/03/10 3:00");
+  });
+});
+
+describe("formatPlainDate", () => {
+  it("renders the calendar day it was given, whatever the host zone", () => {
+    expect(formatPlainDate("2026-03-14", { locale: "ja" })).toBe("2026/03/14");
+  });
+
+  it("uses the UI locale rather than a fixed one", () => {
+    const ja = formatPlainDate("2026-03-14", { locale: "ja" });
+    const en = formatPlainDate("2026-03-14", { locale: "en" });
+
+    expect(en).not.toBe(ja);
+  });
+
+  it("returns fallback for a value that is not a calendar day", () => {
+    expect(formatPlainDate("", { fallback: "-", locale: "ja" })).toBe("-");
+    expect(formatPlainDate("2026-03", { fallback: "-", locale: "ja" })).toBe(
+      "-"
+    );
+    expect(
+      formatPlainDate("2026-03-14T00:00:00Z", { fallback: "-", locale: "ja" })
+    ).toBe("-");
+  });
+
+  it("falls back to the original value when no fallback is given", () => {
+    expect(formatPlainDate("not-a-date", { locale: "ja" })).toBe("not-a-date");
   });
 });

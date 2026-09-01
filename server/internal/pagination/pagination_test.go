@@ -246,3 +246,58 @@ func TestNeighbors(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeCountUUID(t *testing.T) {
+	id := uuid.MustParse("019d008d-184d-7d31-a78a-89728a746e38")
+
+	tests := []struct {
+		name      string
+		token     string
+		inclusive bool
+	}{
+		{
+			name:  "boundary",
+			token: pagination.EncodeCountUUID(pagination.Forward, 42, id),
+		},
+		{
+			name:      "inclusive recovery",
+			token:     pagination.EncodeCountUUIDRecovery(pagination.Backward, 42, id),
+			inclusive: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cursor, err := pagination.Decode(test.token)
+			if err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+			keys, err := pagination.DecodeCountUUID(cursor)
+			if err != nil {
+				t.Fatalf("DecodeCountUUID: %v", err)
+			}
+			if !keys.Valid || keys.Count != 42 || keys.ID != id || keys.Inclusive != test.inclusive {
+				t.Fatalf("keys = %+v, want count 42, ID %v, inclusive %t, valid", keys, id, test.inclusive)
+			}
+		})
+	}
+}
+
+func TestDecodeCountUUIDRejectsInvalidKeys(t *testing.T) {
+	id := "019d008d-184d-7d31-a78a-89728a746e38"
+	tests := map[string]pagination.Cursor{
+		"too few keys":   {Keys: []string{"42"}},
+		"too many keys":  {Keys: []string{"42", id, "inclusive", "extra"}},
+		"unknown marker": {Keys: []string{"42", id, "exclusive"}},
+		"invalid count":  {Keys: []string{"not-a-count", id}},
+		"invalid UUID":   {Keys: []string{"42", "not-a-uuid"}},
+	}
+
+	for name, cursor := range tests {
+		t.Run(name, func(t *testing.T) {
+			if _, err := pagination.DecodeCountUUID(cursor); !errors.Is(err, pagination.ErrInvalidToken) {
+				t.Fatalf("DecodeCountUUID(%+v) error = %v, want ErrInvalidToken", cursor, err)
+			}
+		})
+	}
+}

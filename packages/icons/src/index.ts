@@ -1,4 +1,5 @@
 export { BellIcon } from "./bell-icon";
+export { ChartIcon } from "./chart-icon";
 export { CheckIcon } from "./check-icon";
 export { ChevronDownIcon } from "./chevron-down-icon";
 export { ChevronLeftIcon } from "./chevron-left-icon";

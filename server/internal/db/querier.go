@@ -121,6 +121,12 @@ type Querier interface {
 	// publish or price gate.
 	GetEpisodeImageByIDForTenant(ctx context.Context, arg GetEpisodeImageByIDForTenantParams) (GetEpisodeImageByIDForTenantRow, error)
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error)
+	// The tenant-wide numerator and denominator for the same window. This is the
+	// headline metric rather than a page count, so it does not fall under the "no
+	// total for a cursor list" rule: it stays the same value on every page, and a
+	// rate assembled from one page's rows would describe that page instead of the
+	// period.
+	GetEpisodeReadThroughTotals(ctx context.Context, arg GetEpisodeReadThroughTotalsParams) (GetEpisodeReadThroughTotalsRow, error)
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
@@ -222,6 +228,9 @@ type Querier interface {
 	//     -> idx_content_events_tenant_series_occurred_at
 	//   ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
 	//     -> no index; sorts one tenant's published series (see the note there)
+	//   ListEpisodeReadThroughDesc / ListEpisodeReadThroughAsc
+	//     -> idx_content_daily_stats_tenant_date for the window, then a sort on the
+	//        aggregate it groups (see the note there)
 	InsertContentEvent(ctx context.Context, arg InsertContentEventParams) (ContentEvent, error)
 	// Fixed 30-minute epoch bucket. Same actor + episode + bucket is a no-op.
 	// :one returns no rows on conflict (same as CreateNotification).
@@ -328,6 +337,23 @@ type Querier interface {
 	ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescParams) ([]ListEndUsersDescRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)
 	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error)
+	// ListEpisodeReadThroughDesc walked the other way, to build a previous page.
+	// The order it describes is the same one.
+	ListEpisodeReadThroughAsc(ctx context.Context, arg ListEpisodeReadThroughAscParams) ([]ListEpisodeReadThroughAscRow, error)
+	// The read-through report the console shows, over a closed range of UTC stat
+	// dates. Both halves of the rate come from the same cohort: complete_count is
+	// the members who finished the episode in the range, member_view_count the
+	// views those same signed-in members opened it with. view_count is not usable
+	// here — it counts anonymous readers, who cannot produce a completion at all.
+	//
+	// No index can serve this scan: the sort key is an aggregate of the rows the
+	// query itself groups, the way ListRecommendedSeriesIDs sorts by a rank its own
+	// JSON supplies. It stays bounded by one tenant's episode rows inside the
+	// report window, which idx_content_daily_stats_tenant_date narrows first.
+	//
+	// (complete_count, entity_id) is unique because entity_id alone is, so the
+	// keyset scan can neither skip nor repeat episodes that tie on completions.
+	ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisodeReadThroughDescParams) ([]ListEpisodeReadThroughDescRow, error)
 	// 並び替えを伴う操作はシリーズ配下のエピソードを全件見る必要があるため、
 	// ページングしない一覧として残す。画面の一覧は下のキーセット走査を使う。
 	// 並びは ListEpisodes と同じ (order_index, id)。ReorderEpisodes がクライアントの
@@ -559,6 +585,10 @@ type Querier interface {
 	MarkPlatformUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
 	// Inserts the first completed read only after checking publication and body
 	// access in the same statement. A duplicate returns the preserved read_at.
+	//
+	// The returned id is likewise the one the first insert stored, so a repeated
+	// notification projects onto the same content_events row rather than a second
+	// completion for the same member and episode.
 	MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublishedEpisodeAsReadParams) (EpisodeRead, error)
 	MarkTenantAdminInvitationAccepted(ctx context.Context, arg MarkTenantAdminInvitationAcceptedParams) (TenantAdminInvitation, error)
 	MarkUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
@@ -566,6 +596,39 @@ type Querier interface {
 	MarkUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailVerificationTokenUsed(ctx context.Context, id uuid.UUID) error
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
+	// Projects one member's first completed read as the analytics event for that
+	// read. episode_reads stays the source of truth for the business state: its
+	// user, episode, and first read time are copied, and the owning series is
+	// resolved from the catalog rather than taken from the caller.
+	//
+	// The pair (source_table, source_id) is what makes this replayable. A repeated
+	// notification returns the same episode_reads row, so the projection lands on
+	// the same source key and the unique index turns the second attempt into a
+	// no-op. Nothing here depends on knowing whether the read row was new.
+	ProjectEpisodeCompleteEvent(ctx context.Context, arg ProjectEpisodeCompleteEventParams) (ContentEvent, error)
+	// Reconciles episode_reads rows whose projection never landed, across every
+	// tenant. The request path writes the event outside the transaction that
+	// stored the read and swallows its failure, so a completion can outlive its
+	// event; this is how that gap closes.
+	//
+	// The anti-join and the unique index answer the same question at different
+	// times, and both are needed: the anti-join keeps the statement from proposing
+	// rows that already exist, and ON CONFLICT keeps a concurrent request-path
+	// write from turning this run into a duplicate key error. Ordering by read_at
+	// makes a run resumable — every batch takes the oldest unprojected reads — so
+	// repeated runs converge instead of revisiting the same window.
+	//
+	// Both counts come back because they answer different questions and can differ.
+	// candidate_count is how many unprojected reads this batch claimed, and is what
+	// tells the caller whether the backlog is exhausted; inserted_count is how many
+	// events were actually written. A request-path write that lands between this
+	// statement's select and its insert makes the second smaller than the first, so
+	// a caller that looped on inserted_count would stop with reads still pending.
+	//
+	// id is uuidv7() rather than a value passed in because the statement inserts a
+	// whole batch; content_events ids are UUIDv7 so that events sharing an
+	// occurred_at still order by when they were recorded.
+	ProjectPendingEpisodeCompleteEvents(ctx context.Context, limit int32) (ProjectPendingEpisodeCompleteEventsRow, error)
 	// Projects the Stripe-confirmed purchase without trusting webhook metadata for
 	// the actor or content target. purchases stays the source of truth: its user
 	// is copied directly and the episode resolves its owning series. A retry is a

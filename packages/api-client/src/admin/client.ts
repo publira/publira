@@ -11,6 +11,7 @@ import { AdminAuthService } from "../gen/publira/admin/v1/auth_pb.js";
 import { AdminCreatorService } from "../gen/publira/admin/v1/creator_pb.js";
 import { AdminDashboardService } from "../gen/publira/admin/v1/dashboard_pb.js";
 import { AdminEmailSettingsService } from "../gen/publira/admin/v1/email_pb.js";
+import { AdminEngagementService } from "../gen/publira/admin/v1/engagement_pb.js";
 import { AdminLabelService } from "../gen/publira/admin/v1/label_pb.js";
 import { AdminNotificationService } from "../gen/publira/admin/v1/notification_pb.js";
 import { AdminPagesService } from "../gen/publira/admin/v1/page_pb.js";
@@ -39,6 +40,7 @@ export interface AdminApiClient {
   creator: Client<typeof AdminCreatorService>;
   dashboard: Client<typeof AdminDashboardService>;
   emailSettings: Client<typeof AdminEmailSettingsService>;
+  engagement: Client<typeof AdminEngagementService>;
   label: Client<typeof AdminLabelService>;
   announcement: Client<typeof AdminAnnouncementService>;
   notification: Client<typeof AdminNotificationService>;
@@ -90,6 +92,7 @@ export const createAdminApiClient = (
     creator: createClient(AdminCreatorService, transportInstance),
     dashboard: createClient(AdminDashboardService, transportInstance),
     emailSettings: createClient(AdminEmailSettingsService, transportInstance),
+    engagement: createClient(AdminEngagementService, transportInstance),
     label: createClient(AdminLabelService, transportInstance),
     notification: createClient(AdminNotificationService, transportInstance),
     pages: createClient(AdminPagesService, transportInstance),
