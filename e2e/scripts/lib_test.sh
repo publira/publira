@@ -38,6 +38,8 @@ stack_env() {
     -u E2E_PLATFORM_API_PORT \
     -u E2E_PLATFORM_API_GRPC_PORT \
     -u E2E_OUTBOX_WORKER_PORT \
+    -u E2E_IMAGE_SERVER_PORT \
+    -u E2E_EDGE_PORT \
     -u E2E_LOCK_HELD \
     "$@"
 }
@@ -72,10 +74,28 @@ fi
 worker_override_dir="$(compute_run_dir E2E_OUTBOX_WORKER_PORT=8013)"
 if [[ "${worker_override_dir}" == "${default_run_dir}" ]]; then
   fail "E2E_OUTBOX_WORKER_PORT override still uses ${worker_override_dir}"
-elif [[ "${worker_override_dir}" != *"-ow8013" ]]; then
+elif [[ "${worker_override_dir}" != *"-ow8013-"* ]]; then
   fail "E2E_OUTBOX_WORKER_PORT override dir ${worker_override_dir} does not encode ow8013"
 else
   pass "E2E_OUTBOX_WORKER_PORT override isolates RUN_DIR"
+fi
+
+edge_override_dir="$(compute_run_dir E2E_EDGE_PORT=3081)"
+if [[ "${edge_override_dir}" == "${default_run_dir}" ]]; then
+  fail "E2E_EDGE_PORT override still uses ${edge_override_dir}"
+elif [[ "${edge_override_dir}" != *"-edge3081" ]]; then
+  fail "E2E_EDGE_PORT override dir ${edge_override_dir} does not encode edge3081"
+else
+  pass "E2E_EDGE_PORT override isolates RUN_DIR"
+fi
+
+image_override_dir="$(compute_run_dir E2E_IMAGE_SERVER_PORT=8210)"
+if [[ "${image_override_dir}" == "${default_run_dir}" ]]; then
+  fail "E2E_IMAGE_SERVER_PORT override still uses ${image_override_dir}"
+elif [[ "${image_override_dir}" != *"-img8210-"* ]]; then
+  fail "E2E_IMAGE_SERVER_PORT override dir ${image_override_dir} does not encode img8210"
+else
+  pass "E2E_IMAGE_SERVER_PORT override isolates RUN_DIR"
 fi
 
 project_override_dir="$(compute_run_dir COMPOSE_PROJECT_NAME=publira-e2e-alt)"

@@ -29,6 +29,11 @@ export E2E_ADMIN_API_GRPC_PORT="${E2E_ADMIN_API_GRPC_PORT:-8101}"
 export E2E_PLATFORM_API_PORT="${E2E_PLATFORM_API_PORT:-8002}"
 export E2E_PLATFORM_API_GRPC_PORT="${E2E_PLATFORM_API_GRPC_PORT:-8102}"
 export E2E_OUTBOX_WORKER_PORT="${E2E_OUTBOX_WORKER_PORT:-8003}"
+export E2E_IMAGE_SERVER_PORT="${E2E_IMAGE_SERVER_PORT:-8200}"
+# Traefik entrypoint. `/images` belongs to image-server and everything else to
+# web-host, so the browser can reach both from one origin the way the Dev
+# Container edge serves them.
+export E2E_EDGE_PORT="${E2E_EDGE_PORT:-3080}"
 
 export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL:-postgres://publira_public:publicpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
@@ -56,6 +61,9 @@ export E2E_WEB_PLATFORM_BASE_URL="${E2E_WEB_PLATFORM_BASE_URL:-http://platform.l
 export E2E_PUBLIC_API_BASE_URL="${E2E_PUBLIC_API_BASE_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
 export E2E_ADMIN_API_BASE_URL="${E2E_ADMIN_API_BASE_URL:-http://127.0.0.1:${E2E_ADMIN_API_GRPC_PORT}}"
 export E2E_PLATFORM_API_BASE_URL="${E2E_PLATFORM_API_BASE_URL:-http://127.0.0.1:${E2E_PLATFORM_API_GRPC_PORT}}"
+# Same web-host, reached through the edge. Only the viewer performance suite
+# uses it, because it is the only one that needs `/images` to resolve.
+export E2E_WEB_HOST_EDGE_BASE_URL="${E2E_WEB_HOST_EDGE_BASE_URL:-http://localhost:${E2E_EDGE_PORT}}"
 
 # publish-episodes interval (seconds). Short so scheduled episodes can land in
 # the same Playwright run without multi-minute waits.
@@ -98,7 +106,9 @@ else
     [[ "${E2E_ADMIN_API_GRPC_PORT}" != "8101" ]] ||
     [[ "${E2E_PLATFORM_API_PORT}" != "8002" ]] ||
     [[ "${E2E_PLATFORM_API_GRPC_PORT}" != "8102" ]] ||
-    [[ "${E2E_OUTBOX_WORKER_PORT}" != "8003" ]]; then
+    [[ "${E2E_OUTBOX_WORKER_PORT}" != "8003" ]] ||
+    [[ "${E2E_IMAGE_SERVER_PORT}" != "8200" ]] ||
+    [[ "${E2E_EDGE_PORT}" != "3080" ]]; then
     _e2e_uses_default_stack=0
   fi
   if [[ "${_e2e_uses_default_stack}" -eq 1 ]]; then
@@ -106,7 +116,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-s3${E2E_RUSTFS_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}-ow${E2E_OUTBOX_WORKER_PORT}"
+    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-s3${E2E_RUSTFS_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}-ow${E2E_OUTBOX_WORKER_PORT}-img${E2E_IMAGE_SERVER_PORT}-edge${E2E_EDGE_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi
@@ -115,6 +125,10 @@ unset _E2E_RUN_DIR_FROM_ENV
 RUN_DIR="${E2E_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
 PID_DIR="${RUN_DIR}/pids"
+# Traefik reads its routers from a watched directory. The backend ports are
+# overridable, so the file is written per run rather than committed, and
+# compose mounts it through this variable.
+export E2E_TRAEFIK_DYNAMIC_DIR="${RUN_DIR}/traefik"
 
 # Lease for the compose project. Docker resources are keyed by
 # COMPOSE_PROJECT_NAME, so a second stack with the same project would
@@ -136,7 +150,7 @@ compose() {
 }
 
 ensure_run_dirs() {
-  mkdir -p "${LOG_DIR}" "${PID_DIR}"
+  mkdir -p "${LOG_DIR}" "${PID_DIR}" "${E2E_TRAEFIK_DYNAMIC_DIR}"
 }
 
 is_pid_running() {

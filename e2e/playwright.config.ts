@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 import {
   WEB_ADMIN_BASE_URL,
   WEB_HOST_BASE_URL,
+  WEB_HOST_EDGE_BASE_URL,
   WEB_PLATFORM_BASE_URL,
 } from "./src/urls";
 
@@ -18,6 +19,13 @@ const desktopChrome = devices["Desktop Chrome"];
  * parallel projects. See the isolated projects below.
  */
 const processIsolatedSpecs = /\.(?:outage|error-boundary)\./u;
+
+/**
+ * Timing suites. They report how long the browser took, so they must not share
+ * a machine with the other projects; the viewer-performance project below runs
+ * them after everything else has finished.
+ */
+const performanceSpecs = /\.viewer-performance\./u;
 
 /**
  * CI is ubicloud-standard-4 (4 vCPU). Three workers leave headroom for the
@@ -38,7 +46,12 @@ export default defineConfig({
   projects: [
     {
       name: "web-host",
-      testIgnore: [/admin\./u, /platform\./u, processIsolatedSpecs],
+      testIgnore: [
+        /admin\./u,
+        /platform\./u,
+        processIsolatedSpecs,
+        performanceSpecs,
+      ],
       use: {
         ...desktopChrome,
         baseURL: WEB_HOST_BASE_URL,
@@ -46,7 +59,7 @@ export default defineConfig({
     },
     {
       name: "web-admin",
-      testIgnore: [processIsolatedSpecs],
+      testIgnore: [processIsolatedSpecs, performanceSpecs],
       testMatch: [/admin\./u],
       timeout: 120_000,
       use: {
@@ -56,7 +69,7 @@ export default defineConfig({
     },
     {
       name: "web-platform",
-      testIgnore: [processIsolatedSpecs],
+      testIgnore: [processIsolatedSpecs, performanceSpecs],
       testMatch: [/platform\./u],
       timeout: 120_000,
       use: {
@@ -134,6 +147,24 @@ export default defineConfig({
       use: {
         ...desktopChrome,
         baseURL: WEB_PLATFORM_BASE_URL,
+      },
+    },
+    // Last, and on its own: it measures elapsed time, so nothing else may be
+    // competing for the CPU. Depending on the tail of every chain above is what
+    // empties the worker pool for it. Its baseURL is the Traefik edge, the only
+    // origin where `/images/episodes/{id}` resolves to image-server.
+    {
+      dependencies: [
+        "catalog-error-boundary",
+        "admin-error-boundary",
+        "platform-error-boundary",
+      ],
+      fullyParallel: false,
+      name: "viewer-performance",
+      testMatch: [performanceSpecs],
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_HOST_EDGE_BASE_URL,
       },
     },
   ],

@@ -162,10 +162,14 @@ jobs:
               - *docs_excluded
               - 'mobile/**'
               - 'e2e/compose.yaml'
+              # db-setup.sh seeds the viewer page fixtures, so this job runs
+              # them even though only Test / E2E measures the reader.
+              - 'e2e/fixtures/**'
               - 'e2e/scripts/api-server.sh'
               - 'e2e/scripts/db-setup.sh'
               - 'e2e/scripts/down.sh'
               - 'e2e/scripts/lib.sh'
+              - 'e2e/scripts/seed-viewer-pages.sh'
               - 'e2e/scripts/stop-apps.sh'
               - 'e2e/scripts/up.sh'
               - 'scripts/storage-init.sh'
