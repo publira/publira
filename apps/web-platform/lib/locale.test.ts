@@ -40,7 +40,8 @@ describe("web-platform locale", () => {
       await expect(getPlatformLocale()).resolves.toBe("en");
     });
 
-    it("falls back to ja when the platform default cannot be read", async () => {
+    // `ja` is the saved value like any other, not a fallback the console keeps.
+    it("uses a platform default of ja without treating it as a special case", async () => {
       const { getPlatformLocale } = await importLocale();
 
       await expect(getPlatformLocale()).resolves.toBe("ja");

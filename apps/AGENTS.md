@@ -388,7 +388,7 @@ The proxy answers before any page renders, so a proxy that rejects is a bare `50
 | App | What the proxy reads | While the API is down |
 | --- | --- | --- |
 | `web-admin` / `web-host` | `resolveTenantId()` | An in-process LRU keeps serving the hosts it has already resolved; a host it cannot resolve gets `503` + `Retry-After` from the proxy's own `try` / `catch` |
-| `web-platform` | `resolveSetupCompleted()` | Routing continues on the last state the platform API confirmed, so a protected path reaches the page and `app/error.tsx` renders the failure |
+| `web-platform` | `resolveSetupState()` | Routing continues on the last state the platform API confirmed, so a protected path reaches the page and `app/error.tsx` renders the failure. The saved default locale it also carries follows the same rule, so that screen keeps the console's language |
 
 Two rules follow:
 
@@ -411,6 +411,7 @@ So a path that cannot resolve a locale **fails** — a type error at the call si
 | The messages themselves | The repo-root `locales/{locale}.json`, shared with Go and Flutter |
 | Where the locale is resolved from | The `publira_locale` cookie in `web-platform` / `web-admin`; the URL's `locale` segment in `web-host` |
 | What a missing cookie falls through to | The stored default: the platform's in `web-platform`, the tenant's in `web-admin`. A read that fails is reported, not replaced |
+| How the browser learns that default | The `publira_resolved_locale` cookie the proxy publishes, which is all `<html lang>` and a client error boundary have to go on |
 
 The shared layer never reads request state: `cookies()` and `next/root-params` stay in the app.
 
@@ -419,7 +420,7 @@ The shared layer never reads request state: `cookies()` and `next/root-params` s
 - **Never read the locale inside `"use cache"`.** Pass it in as an argument so it becomes part of the cache key
 - **Waiting on a message means `Suspense` + `Skeleton`.** The static shell is locale-independent
 - **Never build an `import()` path with a template string.** Write one static path per locale (`loadMessages`'s importers)
-- **Cookie apps resolve cookie → stored console default.** A supported cookie always wins, `ja` included; only an unset or unknown value falls through to the default. `web-admin` reads the tenant's from the public `GetTenant`, which needs no session, so the login screen resolves the same value the signed-in console does. `web-platform`'s needs one, so its unauthenticated screens negotiate from `Accept-Language` instead — a statement about the visitor, not a language chosen for them. A read that fails throws
+- **Cookie apps resolve cookie → stored console default.** A supported cookie always wins, `ja` included; only an unset or unknown value falls through to the default. Both consoles resolve that default without a session — `web-admin` from the public `GetTenant`, `web-platform` from `CheckSetupStatus`, which reports the saved language beside the setup state — so a login screen renders in the same language the signed-in console does. Only a platform that has saved nothing yet negotiates from `Accept-Language`: a statement about the visitor, made where there is no stored answer to state instead. A read that cannot answer is a failure — `web-admin` throws, `web-platform` keeps the last language its API confirmed — never a fixed language stood in for it
 
 ### Localizing a screen
 
@@ -452,13 +453,14 @@ The shape a screen takes when its copy moves into the catalog. Worked example: `
 
 ### `<html lang>` in a cookie app
 
-The root layout cannot read the cookie: an `<html>` attribute has no child `<Suspense>` boundary to move the read into, and awaiting `cookies()` there costs every route below it its static shell. Three pieces solve it instead.
+The root layout cannot read the cookie: an `<html>` attribute has no child `<Suspense>` boundary to move the read into, and awaiting `cookies()` there costs every route below it its static shell. Four pieces solve it instead.
 
-1. The root layout renders whatever `lang` it can resolve _without_ a request-time read, with `suppressHydrationWarning`. `web-admin` has one — the tenant default, a cached read keyed by the `tenant_id` root parameter — so each tenant's shell prerenders in its own language. `web-platform` has none, so it renders no `lang` at all rather than a guess: a wrong `lang` tells a screen reader to pronounce the page in a language it is not written in, which is worse for that reader than an absent one
-2. `<head>` carries `LOCALE_LANG_SCRIPT` (a constant of `@publira/i18n`) as an inline script. The browser reads the cookie while parsing and replaces the attribute — but only when the cookie names a supported locale; anything else leaves what the server rendered alone
-3. The switcher writes `document.documentElement.lang` **after its Action resolves**. The script only runs on a full load, and a Server Action's re-render produces the same static attribute value, so React never touches the DOM. Writing it in the click handler would leave the document claiming a language that neither the cookie nor the copy on screen agrees with whenever the Action fails
+1. Both root layouts stay synchronous and render **no** `lang` at all, with `suppressHydrationWarning`. Every value the attribute could take needs a read, and a document that reaches the browser before one has happened names no language rather than guessing: a wrong `lang` tells a screen reader to pronounce the page in a language it is not written in, which is worse for that reader than an absent one
+2. `<head>` carries `LOCALE_LANG_SCRIPT` (a constant of `@publira/i18n`) as an inline script. While the document is still being parsed it applies the first supported locale it finds, in the order the server resolves them: `publira_locale`, the reader's own choice, then `publira_resolved_locale`. Anything else leaves what the server rendered alone
+3. The proxy publishes `publira_resolved_locale` — the stored console default it read to route the request anyway. `web-platform` does this in `lib/resolved-locale.ts`; `web-admin` publishes none yet, so its document names a language only once the operator has chosen one. The cookie is a copy of a server-resolved value, never a choice, so the chosen cookie always wins and no server path reads it back. It is also what the **client** error boundary resolves its copy from: that boundary renders when the API holding the setting is unreachable, so without the cookie it would word an outage from `Accept-Language` instead of in the console's own language
+4. The switcher writes `document.documentElement.lang` **after its Action resolves**. The script only runs on a full load, and a Server Action's re-render produces the same static attribute value, so React never touches the DOM. Writing it in the click handler would leave the document claiming a language that neither the cookie nor the copy on screen agrees with whenever the Action fails
 
-That third piece is why the cookie is not `httpOnly`. `instant = false` is not an option here (see **Never use `instant = false`**).
+That fourth piece is why the cookie is not `httpOnly`, and neither is the resolved one — the script and the error boundary read both from `document.cookie`. `instant = false` is not an option here (see **Never use `instant = false`**).
 
 `global-not-found.tsx` is outside all of this and keeps `lang="ja"`. It is a static page that never passes through a layout, and its body cannot follow the locale, so switching the attribute alone would only misreport the language of the text.
 

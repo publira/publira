@@ -69,7 +69,7 @@ export const platformSettingsCacheTag = "platform:settings";
  * The last locale {@link getPlatformDisplayLocale} resolved, for this server
  * process. `undefined` while it has never resolved one — a freshly started
  * instance, or one that has only ever seen the API down. The same shape
- * `resolveSetupCompleted` uses to keep routing through an outage.
+ * `resolveSetupState` uses to keep routing through an outage.
  */
 let lastConfirmedDisplayLocale: Locale | undefined;
 

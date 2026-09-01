@@ -10,7 +10,8 @@ import {
   PLATFORM_SESSION_COOKIE_NAME,
   RETURN_TO_HEADER_NAME,
 } from "./lib/auth-shared";
-import { resolveSetupCompleted } from "./lib/setup";
+import { applyResolvedLocaleCookie } from "./lib/resolved-locale";
+import { resolveSetupState } from "./lib/setup";
 
 const PUBLIC_PATHS = new Set([
   "/confirm-email",
@@ -40,10 +41,17 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.next();
   }
 
-  const setupCompleted = await resolveSetupCompleted();
+  // The saved default locale rides along on the read the routing decision needs
+  // anyway, and every response below carries it to the browser: it is the only
+  // way `<html lang>` and the client error boundary get to name the language the
+  // platform saved rather than the one the visitor's browser asked for.
+  const { completed: setupCompleted, defaultLocale } =
+    await resolveSetupState();
+  const withLocale = (response: NextResponse) =>
+    applyResolvedLocaleCookie(request, response, defaultLocale);
 
   if (!setupCompleted && pathname === "/login") {
-    return NextResponse.redirect(new URL("/setup", request.url));
+    return withLocale(NextResponse.redirect(new URL("/setup", request.url)));
   }
 
   const sessionCookie = request.cookies.get(
@@ -59,7 +67,7 @@ export const proxy = async (request: NextRequest) => {
     if (hasStoredSessionCookie && isSessionRevokedRedirect(request.nextUrl)) {
       response.cookies.delete(PLATFORM_SESSION_COOKIE_NAME);
     }
-    return response;
+    return withLocale(response);
   }
 
   if (await hasActivePlatformSessionCookie(sessionCookie)) {
@@ -71,7 +79,9 @@ export const proxy = async (request: NextRequest) => {
       RETURN_TO_HEADER_NAME,
       buildReturnToPath(request.nextUrl)
     );
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    return withLocale(
+      NextResponse.next({ request: { headers: requestHeaders } })
+    );
   }
 
   const response = setupCompleted
@@ -82,7 +92,7 @@ export const proxy = async (request: NextRequest) => {
   if (hasStoredSessionCookie) {
     response.cookies.delete(PLATFORM_SESSION_COOKIE_NAME);
   }
-  return response;
+  return withLocale(response);
 };
 
 export const config = {

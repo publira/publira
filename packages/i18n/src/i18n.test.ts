@@ -17,6 +17,7 @@ import {
   LOCALE_LANG_SCRIPT,
   parseLocale,
   parseLocaleCookie,
+  RESOLVED_LOCALE_COOKIE_NAME,
   toIntlLocale,
 } from "./i18n";
 import type { ExactCatalog, Locale, MessageTree } from "./i18n";
@@ -73,6 +74,7 @@ describe("getLocales", () => {
       expect(getLocaleLabel(code as Locale)).toBe(label);
     }
     expect(LOCALE_COOKIE_NAME).toBe("publira_locale");
+    expect(RESOLVED_LOCALE_COOKIE_NAME).toBe("publira_resolved_locale");
     expect(LOCALE_COOKIE_MAX_AGE).toBe(31_536_000);
   });
 
@@ -90,14 +92,34 @@ describe("LOCALE_LANG_SCRIPT", () => {
     expect(applyLangScript("publira_locale=%20en%20")).toBe("en");
   });
 
+  it("applies the locale the server resolved when nothing was chosen", () => {
+    expect(applyLangScript("publira_resolved_locale=ja")).toBe("ja");
+    expect(applyLangScript("publira_locale=; publira_resolved_locale=ja")).toBe(
+      "ja"
+    );
+    expect(
+      applyLangScript("publira_locale=fr; publira_resolved_locale=ja")
+    ).toBe("ja");
+  });
+
+  it("prefers the chosen locale over the one the server resolved", () => {
+    expect(
+      applyLangScript("publira_locale=en; publira_resolved_locale=ja")
+    ).toBe("en");
+  });
+
   it("leaves what the server rendered in place for anything else", () => {
     expect(applyLangScript("")).toBe(RENDERED_LANG);
     expect(applyLangScript("theme=dark")).toBe(RENDERED_LANG);
     expect(applyLangScript("publira_locale=fr")).toBe(RENDERED_LANG);
     expect(applyLangScript("publira_locale=")).toBe(RENDERED_LANG);
     expect(applyLangScript("publira_locale=%E2%98%83")).toBe(RENDERED_LANG);
+    expect(applyLangScript("publira_resolved_locale=fr")).toBe(RENDERED_LANG);
     // A name that merely ends with the cookie name is a different cookie.
     expect(applyLangScript("not_publira_locale=en")).toBe(RENDERED_LANG);
+    expect(applyLangScript("not_publira_resolved_locale=en")).toBe(
+      RENDERED_LANG
+    );
   });
 
   it("survives a cookie value that cannot be decoded", () => {

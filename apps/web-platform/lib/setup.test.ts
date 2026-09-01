@@ -33,7 +33,10 @@ describe("isSetupCompleted", () => {
   });
 
   it("returns true when the API returns setup_completed=true", async () => {
-    mockCheckSetupStatus.mockResolvedValueOnce({ setupCompleted: true });
+    mockCheckSetupStatus.mockResolvedValueOnce({
+      defaultLocale: "ja",
+      setupCompleted: true,
+    });
 
     await expect(isSetupCompleted()).resolves.toEqual({
       available: true,
@@ -42,7 +45,10 @@ describe("isSetupCompleted", () => {
   });
 
   it("returns false when the API returns setup_completed=false", async () => {
-    mockCheckSetupStatus.mockResolvedValueOnce({ setupCompleted: false });
+    mockCheckSetupStatus.mockResolvedValueOnce({
+      defaultLocale: "",
+      setupCompleted: false,
+    });
 
     await expect(isSetupCompleted()).resolves.toEqual({
       available: true,
@@ -82,27 +88,39 @@ const loadSetup = () => import("./setup");
  * Each case re-imports the module so the process-wide "last known state" starts
  * empty, which is what a freshly started server instance sees.
  */
-describe("resolveSetupCompleted", () => {
+describe("resolveSetupState", () => {
   beforeEach(() => {
     vi.resetModules();
     mockCheckSetupStatus.mockReset();
   });
 
-  it("returns the value from the API unchanged", async () => {
-    mockCheckSetupStatus.mockResolvedValue({ setupCompleted: false });
-    const { resolveSetupCompleted } = await loadSetup();
+  it("returns the values from the API unchanged", async () => {
+    mockCheckSetupStatus.mockResolvedValue({
+      defaultLocale: "en",
+      setupCompleted: false,
+    });
+    const { resolveSetupState } = await loadSetup();
 
-    await expect(resolveSetupCompleted()).resolves.toBe(false);
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: false,
+      defaultLocale: "en",
+    });
   });
 
   it("continues routing with the most recent API value when the connection fails", async () => {
     mockCheckSetupStatus
-      .mockResolvedValueOnce({ setupCompleted: false })
+      .mockResolvedValueOnce({ defaultLocale: "ja", setupCompleted: false })
       .mockRejectedValueOnce(unavailable());
-    const { resolveSetupCompleted } = await loadSetup();
+    const { resolveSetupState } = await loadSetup();
 
-    await expect(resolveSetupCompleted()).resolves.toBe(false);
-    await expect(resolveSetupCompleted()).resolves.toBe(false);
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: false,
+      defaultLocale: "ja",
+    });
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: false,
+      defaultLocale: "ja",
+    });
   });
 
   it("keeps null when the most recent known value is null and the connection fails", async () => {
@@ -111,29 +129,102 @@ describe("resolveSetupCompleted", () => {
         new ConnectError("setup not initialized", Code.FailedPrecondition)
       )
       .mockRejectedValueOnce(unavailable());
-    const { resolveSetupCompleted } = await loadSetup();
+    const { resolveSetupState } = await loadSetup();
 
-    await expect(resolveSetupCompleted()).resolves.toBeNull();
-    await expect(resolveSetupCompleted()).resolves.toBeNull();
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: null,
+      defaultLocale: null,
+    });
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: null,
+      defaultLocale: null,
+    });
   });
 
   it("treats connection errors before any API response as setup complete", async () => {
     mockCheckSetupStatus.mockRejectedValue(unavailable());
-    const { resolveSetupCompleted } = await loadSetup();
+    const { resolveSetupState } = await loadSetup();
 
-    await expect(resolveSetupCompleted()).resolves.toBe(true);
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: null,
+    });
   });
 
   it("uses the API response again after recovery", async () => {
     mockCheckSetupStatus
-      .mockResolvedValueOnce({ setupCompleted: false })
+      .mockResolvedValueOnce({ defaultLocale: "", setupCompleted: false })
       .mockRejectedValueOnce(unavailable())
-      .mockResolvedValueOnce({ setupCompleted: true });
-    const { resolveSetupCompleted } = await loadSetup();
+      .mockResolvedValueOnce({ defaultLocale: "ja", setupCompleted: true });
+    const { resolveSetupState } = await loadSetup();
 
-    await expect(resolveSetupCompleted()).resolves.toBe(false);
-    await expect(resolveSetupCompleted()).resolves.toBe(false);
-    await expect(resolveSetupCompleted()).resolves.toBe(true);
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: false,
+      defaultLocale: null,
+    });
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: false,
+      defaultLocale: null,
+    });
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: "ja",
+    });
+  });
+
+  // An outage does not change what the platform saved, and the console reading
+  // the error screen it produces must not change language on the operator.
+  it("keeps the saved language through an outage", async () => {
+    mockCheckSetupStatus
+      .mockResolvedValueOnce({ defaultLocale: "ja", setupCompleted: true })
+      .mockRejectedValue(unavailable());
+    const { resolveSetupState } = await loadSetup();
+
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: "ja",
+    });
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: "ja",
+    });
+  });
+
+  it("reports no language for a code this build has no catalog for", async () => {
+    mockCheckSetupStatus.mockResolvedValue({
+      defaultLocale: "fr",
+      setupCompleted: true,
+    });
+    const { resolveSetupState } = await loadSetup();
+
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: null,
+    });
+  });
+
+  // Only an outage keeps the previous language. An answer naming a code this
+  // build cannot render is an answer, and publishing the language before it
+  // would put a language on screen the platform no longer names.
+  it("drops the remembered language once the API answers with one it cannot render", async () => {
+    mockCheckSetupStatus
+      .mockResolvedValueOnce({ defaultLocale: "ja", setupCompleted: true })
+      .mockResolvedValueOnce({ defaultLocale: "fr", setupCompleted: true })
+      .mockRejectedValueOnce(unavailable());
+    const { resolveSetupState } = await loadSetup();
+
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: "ja",
+    });
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: null,
+    });
+    await expect(resolveSetupState()).resolves.toEqual({
+      completed: true,
+      defaultLocale: null,
+    });
   });
 });
 

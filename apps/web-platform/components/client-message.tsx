@@ -6,6 +6,7 @@ import {
   negotiateInitialLocale,
   parseLocale,
   parseLocaleCookie,
+  RESOLVED_LOCALE_COOKIE_NAME,
 } from "@publira/i18n";
 import type { Locale, MessageValues } from "@publira/i18n";
 import { use } from "react";
@@ -13,13 +14,13 @@ import { use } from "react";
 import { loadPlatformMessages } from "#lib/messages";
 import type { PlatformMessageKey, PlatformMessages } from "#lib/messages";
 
-const readDocumentLocale = (): string => {
+const readCookie = (name: string): string => {
   if (typeof document === "undefined") {
     return "";
   }
 
   const match = document.cookie.match(
-    new RegExp(`(?:^|; )${LOCALE_COOKIE_NAME}=([^;]*)`, "u")
+    new RegExp(`(?:^|; )${name}=([^;]*)`, "u")
   );
   if (!match?.[1]) {
     return "";
@@ -35,12 +36,17 @@ const readDocumentLocale = (): string => {
 /**
  * The locale this chunk renders in, from the browser alone.
  *
- * The cookie is the operator's own choice, and `<html lang>` is what the server
- * resolved for this document — the script in the root layout has already
- * written the cookie into it by the time any component runs. When neither says
- * anything this is a first visit with no session behind it, so the last word is
- * what the browser asked for, the same `Accept-Language` preference the server
- * negotiates from.
+ * The order is the one the server resolves in. `publira_locale` is the
+ * operator's own choice; `publira_resolved_locale` is the saved platform
+ * default, published by `proxy.ts` on every response precisely so this chunk
+ * can read it — the platform API is out of reach here, because the boundary
+ * that renders this is the one its failure brought up. `<html lang>` comes next
+ * for a document whose language was decided some other way (the switcher writes
+ * it once its Action resolves).
+ *
+ * Only a browser that has never had a console response — no cookie of either
+ * kind — falls through to what it asked for, the same `Accept-Language`
+ * preference the server negotiates from before a language has been saved.
  */
 const readClientLocale = (): Locale => {
   if (typeof document === "undefined") {
@@ -48,7 +54,8 @@ const readClientLocale = (): Locale => {
   }
 
   return (
-    parseLocaleCookie(readDocumentLocale()) ??
+    parseLocaleCookie(readCookie(LOCALE_COOKIE_NAME)) ??
+    parseLocaleCookie(readCookie(RESOLVED_LOCALE_COOKIE_NAME)) ??
     parseLocale(document.documentElement.lang) ??
     negotiateInitialLocale(navigator.languages.join(","))
   );

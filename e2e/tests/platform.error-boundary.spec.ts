@@ -23,8 +23,10 @@ const runPlatformApiServerScript = (action: "start-wait" | "stop"): void => {
 
 const dashboardHeading = "横断オペレーションの基準点";
 const rootErrorHeading = "Platform Console を表示できませんでした";
+// `/setup` runs before a language has been saved, so it is the one screen here
+// that follows the browser rather than the platform.
 const setupApiUnavailableMessage =
-  "APIサーバーに接続できません。サーバーの起動状態を確認してから再試行してください。";
+  "Cannot reach the API server. Check that it is running, then try again.";
 
 /**
  * Route-level error boundary for Platform Console.
@@ -39,12 +41,16 @@ const setupApiUnavailableMessage =
  * path it matches, and a read that throws there answers a bare 500 for the
  * whole console before any page renders.
  *
- * The browser language is pinned for this whole file. Both screens below word
- * themselves from `Accept-Language`: `/setup` because it runs before any locale
- * is stored (#1246), and the error screen because it is client-rendered — an
- * outage takes the saved default out of reach and the root layout cannot put it
- * in `<html lang>` without costing every route its static shell. Making the
- * error screen follow the saved language instead is #1249.
+ * The browser asks for English for this whole file. The console screens are
+ * asserted in Japanese, because that is the language this platform saved
+ * (`db/seeds/dev/001_tenant_users.sql`) and none of them may swap it for the
+ * visitor's; `/setup` is asserted in English, because it runs before a language
+ * has been saved and has nothing but `Accept-Language` to go on.
+ *
+ * The error screen is the case that needed work — it is client-rendered, so the
+ * outage that brings it up takes the saved default out of reach — and it
+ * reaches that language now through the `publira_resolved_locale` cookie the
+ * proxy publishes on every response.
  */
 test.describe("web-platform console error boundary", () => {
   // Isolated project `platform-error-boundary` (see playwright.config.ts).
@@ -56,7 +62,7 @@ test.describe("web-platform console error boundary", () => {
     runPlatformApiServerScript("start-wait");
   });
 
-  test.use({ locale: "ja-JP" });
+  test.use({ locale: "en-US" });
 
   test("a direct visit while the platform API is down shows the error screen, and retry recovers", async ({
     page,
@@ -68,6 +74,10 @@ test.describe("web-platform console error boundary", () => {
       page.getByRole("heading", { level: 1, name: dashboardHeading })
     ).toBeVisible();
 
+    // This operator has chosen no display language, so the document names one
+    // only because the proxy published what the platform saved.
+    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+
     try {
       runPlatformApiServerScript("stop");
 
@@ -76,6 +86,9 @@ test.describe("web-platform console error boundary", () => {
       // Not a bare 500 from the proxy: the console answers with its own error
       // screen, which it only gets to render because routing survived.
       expect(response?.status(), await page.content()).toBe(200);
+      // The platform API is what holds the saved language, and it is down: the
+      // error screen words itself from the cookie the proxy left behind rather
+      // than from the English this browser asks for.
       await expect(
         page.getByRole("heading", { name: rootErrorHeading })
       ).toBeVisible();
@@ -124,7 +137,7 @@ test.describe("web-platform console error boundary", () => {
       expect(response?.status(), await page.content()).toBe(200);
       await expect(page.getByText(setupApiUnavailableMessage)).toBeVisible();
       await expect(
-        page.getByRole("button", { name: "管理ユーザーを作成する" })
+        page.getByRole("button", { name: "Create administrator" })
       ).toHaveCount(0);
     } finally {
       runPlatformApiServerScript("start-wait");

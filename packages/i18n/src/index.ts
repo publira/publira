@@ -11,6 +11,7 @@ export {
   LOCALE_LANG_SCRIPT,
   parseLocale,
   parseLocaleCookie,
+  RESOLVED_LOCALE_COOKIE_NAME,
   toIntlLocale,
 } from "./i18n";
 export type {
