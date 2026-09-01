@@ -9,7 +9,7 @@
  * it above one would leave the route with no static shell under Cache
  * Components. `<html lang>` is handled separately, by the inline script in
  * `app/layout.tsx` (see `LOCALE_LANG_SCRIPT`), over the cookies `proxy.ts`
- * publishes (`lib/resolved-locale.ts`).
+ * publishes (`@publira/utils/resolved-locale`).
  */
 
 import {

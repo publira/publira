@@ -103,11 +103,11 @@ let lastKnownDefaultLocale: Locale | null = null;
  *
  * `defaultLocale` rides along because this is the one platform read that
  * happens on every request without a session: the proxy hands it to the browser
- * (`lib/resolved-locale.ts`), which is how `<html lang>` and the client error
- * boundary come to name the saved language instead of the visitor's. It follows
- * the same rule as the routing state — an outage keeps the last confirmed
- * language rather than dropping to none, because the outage did not change what
- * the platform saved.
+ * (`@publira/utils/resolved-locale`), which is how `<html lang>` and the client
+ * error boundary come to name the saved language instead of the visitor's. It
+ * follows the same rule as the routing state — an outage keeps the last
+ * confirmed language rather than dropping to none, because the outage did not
+ * change what the platform saved.
  *
  * Only an outage. An answer that names no supported language is an answer, and
  * it replaces the remembered one: a platform whose saved code this build has no

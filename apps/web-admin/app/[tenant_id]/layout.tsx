@@ -64,16 +64,19 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * Both values the attribute could take need a read — the operator's cookie, and
  * the tenant's stored default — and a root layout that awaits blocks the whole
  * tree. An `<html>` attribute is never worth that, so neither read happens
- * here: `LOCALE_LANG_SCRIPT` applies the cookie while the document is still
- * being parsed, and `suppressHydrationWarning` is what lets the DOM it produces
- * win over what React rendered.
+ * here: `LOCALE_LANG_SCRIPT` applies, while the document is still being parsed,
+ * the operator's own choice or, failing that, the tenant default `proxy.ts`
+ * published on this response (`@publira/utils/resolved-locale`), and
+ * `suppressHydrationWarning` is what lets the DOM it produces win over what
+ * React rendered.
  *
- * An operator who has chosen no language leaves the document naming none, which
- * is the honest state: a `lang` the page is not written in tells a screen reader
- * to pronounce it in the wrong language, and that is worse for that reader than
- * none. Streaming the tenant default in later is not the answer — a client
- * component can pick its own locale before that arrives, and then the catalog it
- * loads disagrees with the one the server rendered.
+ * A document that reaches the browser with neither cookie keeps naming no
+ * language, which is the honest state: a `lang` the page is not written in
+ * tells a screen reader to pronounce it in the wrong language, and that is
+ * worse for that reader than none. Streaming the tenant default in later is not
+ * the answer either — a client component can pick its own locale before that
+ * arrives, and then the catalog it loads disagrees with the one the server
+ * rendered.
  */
 const TenantRootLayout = ({ children }: { children: ReactNode }) => (
   <html suppressHydrationWarning>

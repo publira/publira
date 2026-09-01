@@ -15,6 +15,7 @@ The package that provides the shared frontend utilities.
 - `@publira/utils/field-errors`: the helper that maps a `safeParse` failure into a Server Action's ActionState shape. The shared validation copy is `validationErrorMessage(locale)` (omit the locale and you get the Japanese `VALIDATION_ERROR_MESSAGE`)
 - `@publira/utils/cached-read`: the helper that returns a failure as a value from a `"use cache"` read, and keeps that failure out of the cache
 - `@publira/utils/image-loader`: the custom loader that lets `next/image` use the image-server (Manael) for conversion and resizing
+- `@publira/utils/resolved-locale`: the helper a cookie console's `proxy.ts` publishes its server-resolved display locale to the browser with, so `<html lang>` and the client error boundary can name it
 
 ## Usage
 

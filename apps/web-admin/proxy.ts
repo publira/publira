@@ -1,5 +1,7 @@
+import type { Locale } from "@publira/i18n";
 import { getTenantDomainCandidates } from "@publira/utils";
 import { isHealthProbePath } from "@publira/utils/health";
+import { applyResolvedLocaleCookie } from "@publira/utils/resolved-locale";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -11,7 +13,7 @@ import {
   isSessionRevokedRedirect,
   RETURN_TO_HEADER_NAME,
 } from "./lib/admin-auth-shared";
-import { resolveTenantId } from "./lib/tenant";
+import { resolveTenantRouting } from "./lib/tenant";
 
 const PUBLIC_PATHS = new Set([
   "/accept-invite",
@@ -53,11 +55,17 @@ export const proxy = async (request: NextRequest) => {
     return new NextResponse("Not Found", { status: 404 });
   }
 
+  // The saved default locale rides along on the read the Host-to-tenant
+  // resolution needs anyway, and every response below carries it to the
+  // browser: it is the only way `<html lang>` and the client error boundary get
+  // to name the language the tenant saved rather than the one the visitor's
+  // browser asked for.
   let tenantId: string | null;
+  let defaultLocale: Locale | null;
   try {
-    tenantId = await resolveTenantId(
+    ({ defaultLocale, tenantId } = await resolveTenantRouting(
       getTenantDomainCandidates(request.headers)
-    );
+    ));
   } catch {
     return serviceUnavailableResponse();
   }
@@ -65,6 +73,9 @@ export const proxy = async (request: NextRequest) => {
   if (!tenantId) {
     return new NextResponse("Not Found", { status: 404 });
   }
+
+  const withLocale = (response: NextResponse) =>
+    applyResolvedLocaleCookie(request, response, defaultLocale);
 
   const rewriteUrl = request.nextUrl.clone();
   rewriteUrl.pathname = `/${tenantId}${pathname}`;
@@ -80,7 +91,7 @@ export const proxy = async (request: NextRequest) => {
     if (hasStoredSessionCookie && isSessionRevokedRedirect(request.nextUrl)) {
       response.cookies.delete(ADMIN_SESSION_COOKIE_NAME);
     }
-    return response;
+    return withLocale(response);
   }
 
   if (await hasActiveAdminSessionCookie(sessionCookie)) {
@@ -92,9 +103,11 @@ export const proxy = async (request: NextRequest) => {
       RETURN_TO_HEADER_NAME,
       buildReturnToPath(request.nextUrl)
     );
-    return NextResponse.rewrite(rewriteUrl, {
-      request: { headers: requestHeaders },
-    });
+    return withLocale(
+      NextResponse.rewrite(rewriteUrl, {
+        request: { headers: requestHeaders },
+      })
+    );
   }
 
   const response = NextResponse.redirect(buildLoginUrl(request.nextUrl));
@@ -103,7 +116,7 @@ export const proxy = async (request: NextRequest) => {
   if (hasStoredSessionCookie) {
     response.cookies.delete(ADMIN_SESSION_COOKIE_NAME);
   }
-  return response;
+  return withLocale(response);
 };
 
 export const config = {
