@@ -118,13 +118,13 @@ mobile/
 
 The following routes are defined with `go_router`. The catalog reads from the public API (Connect JSON).
 
-| Path                                    | Screen         |
-| --------------------------------------- | -------------- |
-| `/`                                     | Catalog list   |
-| `/sign-in`                              | Sign-in form   |
+| Path                                    | Screen                        |
+| --------------------------------------- | ----------------------------- |
+| `/`                                     | Catalog list                  |
+| `/sign-in`                              | Sign-in form                  |
 | `/account`                              | Signed-in reader and sign-out |
-| `/series/:seriesId`                     | Series details |
-| `/series/:seriesId/episodes/:episodeId` | Episode viewer |
+| `/series/:seriesId`                     | Series details                |
+| `/series/:seriesId/episodes/:episodeId` | Episode viewer                |
 
 The list displays loading, empty, and network-error-with-retry states. Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
