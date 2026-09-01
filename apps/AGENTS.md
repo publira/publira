@@ -223,6 +223,14 @@ The generated message is the mapper's **input** type only. The app-facing result
 
 A value that is not a generated message in the first place — an already-mapped app type, or JSON parsed out of a string field such as the platform notification `payload` — is outside this rule. Type it against whatever schema actually validates it.
 
+## `"use client"` is dropped from `@publira/ui-components`
+
+`tsdown` strips the `"use client"` directive when it bundles the package, so a component imported straight from `@publira/ui-components` is evaluated in the **server graph** whatever its source file says. Most of the package survives that: the `@base-ui/react` primitives it renders keep their own directive and become the client boundary underneath it.
+
+A component that creates a client function of its own does not survive it. `LocaleSwitcher` hands `<form action={...}>` a callback that writes `document.documentElement.lang` once the Action resolves; created in the server graph, that function has to be serialized into the client primitive below it, and `next dev` logs `Functions cannot be passed directly to Client Components` once per request while the screen still renders ([#1327](https://github.com/publira/publira/issues/1327)).
+
+Such a component is imported through an app-side `"use client"` module that only re-exports it — `components/locale-switcher-control.tsx`, `components/action-form.tsx` — and the Server Component imports that module instead. Next.js compiles the app's own file from source, so the directive stands and the whole subtree moves into the client graph; only the Server Action and the copy the server already resolved cross the boundary. `SectionErrorCatch` is the same split applied to `catchError`.
+
 ## Failure display: `SectionError` and `SectionErrorBoundary`
 
 A failure that only kills part of a page must not be hand-rolled into that page. Two shared pieces cover it (#647), and which one a screen reaches for follows from what it is holding:
