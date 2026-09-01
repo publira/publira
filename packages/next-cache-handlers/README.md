@@ -64,4 +64,3 @@ To raise the multi-instance hit rate for public data, prefer `"use cache: remote
 
 - [cacheHandler (singular)](https://nextjs.org/docs/app/api-reference/config/next-config-js/incrementalCacheHandlerPath)
 - [cacheHandlers (plural)](https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheHandlers)
-- Issue #532

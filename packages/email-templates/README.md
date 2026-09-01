@@ -1,8 +1,8 @@
 # email-templates
 
-The shared React Email layout and templates. `renderEmail` turns them into HTML and text; sending over SMTP is the Go side's job ([#285](https://github.com/publira/publira/issues/285)).
+The shared React Email layout and templates. `renderEmail` turns them into HTML and text; sending over SMTP is the Go side's job.
 
-`apps/email-renderer` ([#623](https://github.com/publira/publira/issues/623)) passes the input of the `RenderEmail` RPC to this package.
+`apps/email-renderer` passes the input of the `RenderEmail` RPC to this package.
 
 ## What it provides
 

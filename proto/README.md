@@ -4,7 +4,7 @@ This directory contains Protobuf definitions and contract decisions shared by mu
 
 ## Cursor pagination for list RPCs
 
-Use cursor pagination consistently for list RPCs ([#692](https://github.com/publira/publira/issues/692) / [#722](https://github.com/publira/publira/issues/722)). `offset` skips the requested number of rows, so later pages become slower. Inserts and deletes while paginating can also duplicate or omit records at the page boundary.
+Use cursor pagination consistently for list RPCs. `offset` skips the requested number of rows, so later pages become slower. Inserts and deletes while paginating can also duplicate or omit records at the page boundary.
 
 `ListPublishedSeries` (`publira/v1/catalog.proto`) was the first implementation of this pattern. Copy it for new list RPCs.
 

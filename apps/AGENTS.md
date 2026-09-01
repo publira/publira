@@ -105,7 +105,7 @@ Details and env (`PUBLIRA_TRACING_ENABLED`, `OTEL_EXPORTER_OTLP_*`, `NEXT_OTEL_V
 
 ## RPC errors: classify by `Code`, never by message text
 
-Connect errors are classified with `Code` only. `error.message.includes("not found")` breaks silently the day the server rewords its message, so it must not appear in app code (#645).
+Connect errors are classified with `Code` only. `error.message.includes("not found")` breaks silently the day the server rewords its message, so it must not appear in app code.
 
 Helpers and the shared copy live in `@publira/api-client/errors` and `@publira/api-client/error-messages`. Full API list and rationale: the Error classification section of `packages/api-client/README.md`.
 
@@ -125,7 +125,7 @@ The same rules apply to all three apps:
 
 ## RPC responses: `Pick` the generated message, never restate it
 
-A `lib/` mapper that turns an RPC response into an app-facing value declares its input as `Pick<GeneratedMessage, ...>`, naming exactly the fields that mapper reads. It must not restate the message shape as a hand-written structural type (#1072).
+A `lib/` mapper that turns an RPC response into an app-facing value declares its input as `Pick<GeneratedMessage, ...>`, naming exactly the fields that mapper reads. It must not restate the message shape as a hand-written structural type.
 
 The generated messages come from `@publira/api-client`:
 
@@ -135,7 +135,7 @@ The generated messages come from `@publira/api-client`:
 | A public service's own message — the `publira.v1` entities (`AnnouncementItem`, `MyFollow`, `MyPurchase`, `NotificationItem`, `PublishedAuthor`) | `@publira/api-client/public/types` (`web-host`), beside the `publira.types.v1` messages |
 | A platform service's own message — the `publira.platform.v1` entities (`Tenant`, `TenantMember`, `TenantAdminInvitation`, `EndUser`, `PlatformOperator`, `PlatformNotification`, `PlatformAuditLog`, `PlatformEmailSettings`, `PlatformSettings`, `DashboardRecentEvent`) | `@publira/api-client/platform/types` (`web-platform`) |
 
-The reason is not brevity. A restated input type is looser than the response it describes — every field written optional — and nothing attaches it to the proto. Rename or remove a field and that type still compiles, so the mapper's `?? ""` / `?? 0` quietly stands in for a field that no longer exists. For the image variants that is invisible: the empty `label` / `url` fails the mapper's own emptiness check, every variant is dropped, and the screen renders its no-image placeholder with nothing pointing at the cause (#1072). Named against the message, the same rename fails at the mapper during `pnpm preflight` — `TS2344` on the `Pick` key list, or `TS2339` on the property the body reads.
+The reason is not brevity. A restated input type is looser than the response it describes — every field written optional — and nothing attaches it to the proto. Rename or remove a field and that type still compiles, so the mapper's `?? ""` / `?? 0` quietly stands in for a field that no longer exists. For the image variants that is invisible: the empty `label` / `url` fails the mapper's own emptiness check, every variant is dropped, and the screen renders its no-image placeholder with nothing pointing at the cause. Named against the message, the same rename fails at the mapper during `pnpm preflight` — `TS2344` on the `Pick` key list, or `TS2339` on the property the body reads.
 
 Take the message from the `types` subpath by name. A subpath that does not exist yet is a missing re-export, not a reason to reach for `Awaited<ReturnType<PlatformApiClient["tenants"]["listTenants"]>>["tenants"][number]`: add the entity to `packages/api-client/src/<api>/types.ts` (plus the `exports` entry and the `tsdown` entry) and import it. Request and response wrappers stay on the per-service modules.
 
@@ -233,7 +233,7 @@ Such a component is imported through an app-side `"use client"` module that only
 
 ## Failure display: `SectionError` and `SectionErrorBoundary`
 
-A failure that only kills part of a page must not be hand-rolled into that page. Two shared pieces cover it (#647), and which one a screen reaches for follows from what it is holding:
+A failure that only kills part of a page must not be hand-rolled into that page. Two shared pieces cover it, and which one a screen reaches for follows from what it is holding:
 
 | What the screen has | Use |
 | --- | --- |
@@ -241,7 +241,7 @@ A failure that only kills part of a page must not be hand-rolled into that page.
 | An `ok: false` that leaves nothing to show around it — a detail route whose whole content is that one read | Render that app's `PageLoadError` |
 | A throw it never sees — a bug, or an uncached read that failed | Wrap the section's `<Suspense>` in that app's `SectionErrorBoundary` (`components/section-error-boundary.tsx`) |
 | A submission the server rejected | `FormMessage` next to the control — unchanged |
-| A form whose own choices or initial values failed to load — a `<select>`'s options, a settings form's saved state | `FormMessage` next to that control (#817). The form is still usable; the message says which input degraded, not that the section is gone |
+| A form whose own choices or initial values failed to load — a `<select>`'s options, a settings form's saved state | `FormMessage` next to that control. The form is still usable; the message says which input degraded, not that the section is gone |
 | Nothing to show yet | `EmptyState` — unchanged |
 
 The boundary goes **outside** the `<Suspense>`, not inside, so `retry()` puts that section's own skeleton back while the re-run is in flight:
@@ -279,7 +279,7 @@ try {
 <EmptyState description={result.message} title="データの取得に失敗しました" />;
 ```
 
-A list component that receives the failure as a prop (`listErrorMessage` and friends) renders `SectionError` itself, with the same title the pages use ([#817](https://github.com/publira/publira/issues/817)). The prop carries the message from `rpcErrorMessage`, so the component supplies the title and passes the prop through as `description`:
+A list component that receives the failure as a prop (`listErrorMessage` and friends) renders `SectionError` itself, with the same title the pages use. The prop carries the message from `rpcErrorMessage`, so the component supplies the title and passes the prop through as `description`:
 
 ```tsx
 if (listErrorMessage) {
@@ -300,7 +300,7 @@ The `catchError` call itself stays in each app rather than in `@publira/ui-compo
 
 ## Live regions in a form: `<p role="status">`, never `<output>`
 
-A live region rendered inside a form — `FormMessage` above all — must not be an `<output>`. `<output>` is a resettable element, and resetting a form replaces such an element's children with a single text node holding its default value. React resets a form on its own once the Action passed to it settles, so the elements React rendered inside the `<output>` are detached on the very first submission; every message written after that goes to nodes the document no longer holds. `className` sits on the element itself and keeps updating, which is what makes the symptom confusing: the border turns red while the body still reads "Saved." (#1070).
+A live region rendered inside a form — `FormMessage` above all — must not be an `<output>`. `<output>` is a resettable element, and resetting a form replaces such an element's children with a single text node holding its default value. React resets a form on its own once the Action passed to it settles, so the elements React rendered inside the `<output>` are detached on the very first submission; every message written after that goes to nodes the document no longer holds. `className` sits on the element itself and keeps updating, which is what makes the symptom confusing: the border turns red while the body still reads "Saved."
 
 Use `<p role="status">`. That is the role `<output>` carried implicitly, so `getByRole("status")` in unit tests and e2e keeps matching.
 
@@ -308,13 +308,13 @@ oxlint's `jsx-a11y/prefer-tag-over-role` asks for the opposite — `<output>` fo
 
 ## A `"use cache"` function must not throw
 
-Measured against the production build under Cache Components ([#672](https://github.com/publira/publira/issues/672)): **when a cache fill throws, Next.js fails the request that triggered it.** An awaiting `try` / `catch` does not save it, and neither does an outer cached function catching an inner one — both were measured returning a perfectly good element while the response was still a bare `500 Internal Server Error` document. The failure is only recoverable when a static shell has already been committed, and then only by a client error boundary (`SectionErrorBoundary`), which is why the catalog's `<Suspense>` sections survived an outage while its detail routes answered 500.
+Measured against the production build under Cache Components: **when a cache fill throws, Next.js fails the request that triggered it.** An awaiting `try` / `catch` does not save it, and neither does an outer cached function catching an inner one — both were measured returning a perfectly good element while the response was still a bare `500 Internal Server Error` document. The failure is only recoverable when a static shell has already been committed, and then only by a client error boundary (`SectionErrorBoundary`), which is why the catalog's `<Suspense>` sections survived an outage while its detail routes answered 500.
 
 "Has a committed shell" is not something a `lib/` helper can assume: the same read is awaited by a section inside `<Suspense>` and by `generateMetadata`, which resolves before anything is flushed. So the rule is unconditional.
 
 ### Why a throw before the shell is fatal
 
-The framework rule behind it, measured on the production standalone build for [#683](https://github.com/publira/publira/issues/683) by injecting a throw at each position:
+The framework rule behind it, measured on the production standalone build by injecting a throw at each position:
 
 | Where the throw happens | Direct hit |
 | --- | --- |
@@ -399,7 +399,7 @@ No lint covers this. The `*.error-boundary` e2e specs measure it: each stops tha
 
 ## UI locale
 
-The UI renders in `ja` or `en`. No i18n library is added (Epic [#864](https://github.com/publira/publira/issues/864)).
+The UI renders in `ja` or `en`. No i18n library is added.
 
 **Nothing turns a missing value into a locale.** `parseLocale` and `parseLocaleCookie` answer `undefined` for anything that is not one of `getLocales()`, and every API that renders copy — `loadMessages`, `sharedCatalog`, `sharedMessage`, `sharedRpcErrorMessage`, `formatDateTime`, `validationErrorMessage`, `toFormErrorMessage`, `rpcErrorMessage` — takes a required `Locale`. There is no repository-wide default to fall back on, and adding one back (under any name) is the thing [#1243](https://github.com/publira/publira/issues/1243) removed: a fixed `ja` shows Japanese to an English reader and hides the failure that produced it.
 
@@ -410,7 +410,7 @@ So a path that cannot resolve a locale **fails** — a type error at the call si
 | Locale parsing, catalog loading, `{$name}` interpolation | `@publira/i18n` (`parseLocale` / `parseLocaleCookie` / `loadMessages` / `getMessage`) |
 | The messages themselves | The repo-root `locales/{locale}.json`, shared with Go and Flutter |
 | Where the locale is resolved from | The `publira_locale` cookie in `web-platform` / `web-admin`; the URL's `locale` segment in `web-host` |
-| What a missing cookie falls through to | The stored default: the platform's in `web-platform` ([#1047](https://github.com/publira/publira/issues/1047)), the tenant's in `web-admin` ([#1046](https://github.com/publira/publira/issues/1046)). A read that fails is reported, not replaced |
+| What a missing cookie falls through to | The stored default: the platform's in `web-platform`, the tenant's in `web-admin`. A read that fails is reported, not replaced |
 
 The shared layer never reads request state: `cookies()` and `next/root-params` stay in the app.
 
@@ -423,7 +423,7 @@ The shared layer never reads request state: `cookies()` and `next/root-params` s
 
 ### Localizing a screen
 
-The shape a screen takes when its copy moves into the catalog. Worked example: `web-platform`'s auth and setup screens ([#871](https://github.com/publira/publira/issues/871)).
+The shape a screen takes when its copy moves into the catalog. Worked example: `web-platform`'s auth and setup screens.
 
 - **Give each string its own boundary, not each screen.** A `<Message>` component resolves one key, and the call site wraps it in the `<Suspense>` whose fallback stands in for that one string, so the card, the inputs, and the buttons around it stay in the static shell:
 
@@ -468,12 +468,12 @@ The switcher writes the cookie from a Server Action. Never write `document.cooki
 
 Worked examples:
 
-- `web-platform`: `lib/locale.ts` / `lib/locale-action.ts` and the Display language card on `/settings/general` ([#867](https://github.com/publira/publira/issues/867))
-- `web-admin`: `lib/locale.ts` (`getLocale()`) / `lib/locale-action.ts` and the Display language card on `/settings` ([#868](https://github.com/publira/publira/issues/868))
+- `web-platform`: `lib/locale.ts` / `lib/locale-action.ts` and the Display language card on `/settings/general`
+- `web-admin`: `lib/locale.ts` (`getLocale()`) / `lib/locale-action.ts` and the Display language card on `/settings`
 
 ### A URL-locale app (`web-host`)
 
-The public site keeps the locale in the path, not in a cookie ([#869](https://github.com/publira/publira/issues/869)). A reader shares a URL and gets the language it names, and every cache key downstream — CDN, `"use cache"`, the prerendered shell — already separates the two languages. None of the cookie machinery above applies: `<html lang>` is a root parameter, so the root layout renders it directly and there is no correction script and no `suppressHydrationWarning`.
+The public site keeps the locale in the path, not in a cookie. A reader shares a URL and gets the language it names, and every cache key downstream — CDN, `"use cache"`, the prerendered shell — already separates the two languages. None of the cookie machinery above applies: `<html lang>` is a root parameter, so the root layout renders it directly and there is no correction script and no `suppressHydrationWarning`.
 
 The route tree is `app/[tenant_id]/[locale]/...`, and `proxy.ts` rewrites a public `/{locale}{path}` onto it after resolving the tenant from the Host. Three rules follow from that shape:
 
@@ -498,7 +498,7 @@ Reading the locale, by context:
 
 ## Icons: `@publira/icons`, never inline `<svg>`
 
-Icons come from `@publira/icons`, a thin wrapper around `lucide-react`. App and package code must not hand-write `<svg>` in JSX, and must not import `lucide-react` directly — `packages/icons` is the only place allowed to (#690).
+Icons come from `@publira/icons`, a thin wrapper around `lucide-react`. App and package code must not hand-write `<svg>` in JSX, and must not import `lucide-react` directly — `packages/icons` is the only place allowed to.
 
 `pnpm check` fails on a `lucide-react` import (`no-restricted-imports`, with a `packages/icons/src/**` override). CI fails on `<svg>` in JSX, via a `git grep` step in the `Check` job.
 
@@ -543,7 +543,7 @@ import { CheckIcon } from "@publira/icons/check-icon";
 <CheckIcon className="size-3" />;
 ```
 
-Barrel vs subpath is existing drift, not a rule — follow whatever the surrounding file does (#690 leaves the split alone).
+Barrel vs subpath is existing drift, not a rule — follow whatever the surrounding file does.
 
 ### Adding and excepting
 

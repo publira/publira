@@ -2,11 +2,9 @@
 
 This check verifies the full path from setup in a clean environment through starting every development service, using the real development commands: `task setup` and `task dev`.
 
-Related: [#514](https://github.com/publira/publira/issues/514) / Epic [#512](https://github.com/publira/publira/issues/512)
-
 ## Why it is needed
 
-A PostgreSQL 18 data-directory change once disagreed with the Compose volume mount and prevented the database container from starting, causing `task setup` to fail ([#511](https://github.com/publira/publira/pull/511)). `pnpm preflight` cannot see this configuration issue, and Playwright E2E ([`../README.md`](../README.md)) uses its own `e2e/compose.yaml` stack rather than the Dev Container definition.
+A PostgreSQL 18 data-directory change once disagreed with the Compose volume mount and prevented the database container from starting, causing `task setup` to fail. `pnpm preflight` cannot see this configuration issue, and Playwright E2E ([`../README.md`](../README.md)) uses its own `e2e/compose.yaml` stack rather than the Dev Container definition.
 
 This check therefore starts **`.devcontainer/compose.yaml` itself** under a dedicated project name and reproduces the experience of beginning development with empty volumes.
 
@@ -84,7 +82,7 @@ Dev Container `rustfs` does not publish its S3 endpoint because app containers r
 
 The failing `[bootstrap] ERROR: …` message identifies the phase.
 
-1. **phase 1** — inspect the `db` image and volume in `.devcontainer/compose.yaml` for the same class of regression as [#511](https://github.com/publira/publira/pull/511).
+1. **phase 1** — inspect the `db` image and volume in `.devcontainer/compose.yaml` for the same class of regression as the data-directory change above.
 2. **phase 2** — investigate migrations or seeds in `db/migrations/` and `db/seeds/` ([`../../db/AGENTS.md`](../../db/AGENTS.md)).
 3. **phase 3** — data did not persist to the volume. Check the DB mount / `data_directory` relationship, or the `rustfs-data` volume and sentinel object.
 4. **phase 4** — inspect the named service in `readiness failed: <name>` and `.run/logs/task-dev.log`.
@@ -104,5 +102,5 @@ See [the workflow overview](../../.github/workflows/README.md) for all CI jobs.
 ## Out of scope
 
 - Major-version upgrades of existing database data
-- Individual UI scenarios ([`../README.md`](../README.md) and #515–#518)
-- Traefik routing verification ([#55](https://github.com/publira/publira/issues/55) → [`../routing/README.md`](../routing/README.md))
+- Individual UI scenarios ([`../README.md`](../README.md))
+- Traefik routing verification ([`../routing/README.md`](../routing/README.md))

@@ -4,8 +4,6 @@ This document defines where Dockerfiles for production and CI runtime images liv
 
 Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, including host CI (job layout, path filters, and triage): [`.github/workflows/README.md`](../../.github/workflows/README.md)
 
-Related: [#82](https://github.com/publira/publira/issues/82) (policy and placement), [#83](https://github.com/publira/publira/issues/83) (placement conventions), and [#87](https://github.com/publira/publira/issues/87) (build verification and CI integration).
-
 ## Adopted policy
 
 **Keep shared Dockerfiles grouped by runtime role under `infra/docker/<role>/`, and select the target with `ARG`.** The build context is always the **repository root** (`.`).

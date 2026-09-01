@@ -75,7 +75,7 @@ endOfDayIsoString("2024-03-10", tenantTimeZone); // the end of the same day (inc
 
 ### Picking and validating a time zone
 
-These are for a screen that lets someone choose an IANA name and saves it, such as the tenant time zone settings ([#565](https://github.com/publira/publira/issues/565)).
+These are for a screen that lets someone choose an IANA name and saves it, such as the tenant time zone settings.
 
 ```ts
 import { isValidTimeZone, listSupportedTimeZones } from "@publira/utils";
@@ -194,7 +194,7 @@ if (!parsed.success) {
 
 ## A failing `"use cache"` read (`cached-read`)
 
-Measured on a production build under Cache Components ([#672](https://github.com/publira/publira/issues/672)): **when filling a `"use cache"` entry throws, the request itself fails.** Neither a `try` / `catch` at the call site nor an enclosing cache function can save it, and only a committed static shell lets the client error boundary pick it up. So a cached read **returns the failure as a value instead of throwing**.
+Measured on a production build under Cache Components: **when filling a `"use cache"` entry throws, the request itself fails.** Neither a `try` / `catch` at the call site nor an enclosing cache function can save it, and only a committed static shell lets the client error boundary pick it up. So a cached read **returns the failure as a value instead of throwing**.
 
 ```ts
 import {
@@ -244,7 +244,7 @@ export const getTenantSiteInfo = async (
 ```
 
 - `cachedReadFailure` and `dropFailedCacheEntry` set `cacheLife({ expire: 0, revalidate: 0, stale: 0 })`, which **keeps the failure out of the cache** (`@publira/next-cache-handlers`'s `set` does not store an entry with `expire === 0`, and even if one were stored, `revalidate: 0` makes the next read a miss). Once the API recovers, the next read returns the real content immediately
-- The named profiles in `next.config.ts` are validated for things like `expire > revalidate` and a minimum `stale`, but **an inline `cacheLife()` call is not validated at all** (`next/dist/server/use-cache/cache-life.js` only records the explicit values). This combination of three values was measured on a production build in #672: it raises no error, and the failure is not stored
+- The named profiles in `next.config.ts` are validated for things like `expire > revalidate` and a minimum `stale`, but **an inline `cacheLife()` call is not validated at all** (`next/dist/server/use-cache/cache-life.js` only records the explicit values). This combination of three values was measured on a production build: it raises no error, and the failure is not stored
 - Classify the error **inside** the cache scope. An error that crosses a `"use cache"` boundary has its message replaced by a digest in production, which loses the `Code` (`rpcErrorDisposition()` / `rpcErrorMessage()`)
 - The caller renders `ok: false` as a `SectionError` or a `PageLoadError`. Which one each screen uses is in `apps/AGENTS.md`
 

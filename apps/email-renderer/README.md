@@ -22,7 +22,7 @@ It listens on `0.0.0.0:8080` by default. `PORT` changes the port and `HOST` the 
 
 ## Production image
 
-Build [`infra/docker/node/Dockerfile`](../../infra/docker/node/Dockerfile), the Dockerfile for long-running Node.js services, with the repository root as the build context ([#958](https://github.com/publira/publira/issues/958)).
+Build [`infra/docker/node/Dockerfile`](../../infra/docker/node/Dockerfile), the Dockerfile for long-running Node.js services, with the repository root as the build context.
 
 ```bash
 task docker:build:node APP_NAME=email-renderer PORT=8080
