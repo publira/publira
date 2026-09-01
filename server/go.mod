@@ -21,7 +21,7 @@ require (
 	github.com/riverqueue/river v0.47.0
 	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.47.0
 	github.com/riverqueue/river/rivertype v0.47.0
-	github.com/stripe/stripe-go/v86 v86.4.0
+	github.com/stripe/stripe-go/v86 v86.4.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.71.0
