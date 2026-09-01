@@ -29,7 +29,13 @@ func runAggregateContentStats(ctx context.Context, logger *slog.Logger, cfg *con
 	started := time.Now()
 	result, err := contentstats.New(db).Run(ctx, statDate)
 	if err != nil {
-		logger.Error("content stats aggregation failed", "stat_date", statDate.Format(time.DateOnly), "error", err)
+		logger.Error("content stats aggregation failed",
+			"stat_date", statDate.Format(time.DateOnly),
+			"tenant_count", result.TenantCount,
+			"row_count", result.RowCount,
+			"duration", time.Since(started),
+			"error", err,
+		)
 		return err
 	}
 	logger.Info("content stats aggregation completed",

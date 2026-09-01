@@ -90,9 +90,11 @@ Environment variables:
 - `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_CONTENT_STATS_DATE`: UTC date as `YYYY-MM-DD`. Defaults to yesterday (UTC).
 
-The structured log records the target date, the number of tenants processed, the rows created, and the elapsed time. If the input holds events or purchases but the aggregation comes out empty, the run deletes nothing, leaves the transaction uncommitted, and exits with an error.
+The structured log records the target date, how many tenants the run finished, the rows created, and the elapsed time — on failure too, since each tenant commits on its own. If the input holds events or purchases but the aggregation comes out empty, the run deletes nothing, leaves the transaction uncommitted, and exits with an error.
 
-Two runs cannot rebuild the same tenant and day at once. The second waits up to 30 seconds for the first and then fails, rather than blocking for the rest of the day with a transaction open. The failure ends the whole run, so the tenants after that one keep the stats they had until the next invocation.
+Two runs cannot rebuild the same tenant and day at once. The second waits up to 30 seconds for the first and then fails, rather than blocking for the rest of the day with a transaction open.
+
+A tenant that fails does not stop the others. The cron rebuilds yesterday and never returns for a day it missed, so one tenant's lock timeout must not cost every tenant after it their stats. The run finishes the tenants it can, reports every failure together, and still exits non-zero.
 
 ### Query plan
 
@@ -288,6 +290,8 @@ Run it after `aggregate-content-stats` for the same day: the item snapshot reads
 The structured log records the reference date, window, feature version, and how many tenants and user and item rows the run finished — on failure too, since each tenant commits on its own. A tenant whose window holds source rows but produces no feature rows fails the run before the transaction commits, so a bad read cannot silently empty a good snapshot.
 
 Two runs cannot rebuild the same tenant at once. The second waits up to 30 seconds for the first to finish that tenant and then fails, rather than blocking for the rest of the day with a transaction open.
+
+A tenant that fails does not stop the others. The cron builds yesterday's window and never returns for a day it missed, so one tenant's lock timeout must not leave every tenant after it on a snapshot a day older. The run finishes the tenants it can, reports every failure together, and still exits non-zero.
 
 ### Feature contract
 
