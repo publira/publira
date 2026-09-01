@@ -23,7 +23,7 @@ The reason is not style. `new Date("2030-01-01T10:00")` reads a zone-less string
 The zone must always be a decision, never an accident:
 
 - **Conversion helpers** (`toInstantIsoString`, `fromDateTimeLocalValue`, `toDateTimeLocalValue`, `startOfDayIsoString`, `endOfDayIsoString`) take `timeZone` as a **required parameter** — the signature forces the choice.
-- **Display helpers** (`formatDateTime`, `formatDate`) default to `DEFAULT_TIME_ZONE` only as a last-resort stand-in. Tenant-facing dates pass the resolved zone from `getTenantDisplayTimeZone` (web-admin [#566](https://github.com/publira/publira/issues/566), web-host [#567](https://github.com/publira/publira/issues/567)). Omitting `timeZone` on a tenant-facing call site is a bug.
+- **Display helpers** (`formatDateTime`, `formatDate`) default to `DEFAULT_TIME_ZONE` only as a last-resort stand-in. Tenant-facing dates pass the resolved zone from `getTenantDisplayTimeZone`. Omitting `timeZone` on a tenant-facing call site is a bug.
 - `DEFAULT_TIME_ZONE` remains the fallback when the tenant read is unavailable, so the wall clock never depends on the host zone. Pass it explicitly and say in a comment which zone it stands in for ("unavailable tenant read", "non-tenant context").
 
 Never re-add a fixed `+09:00`.
@@ -97,4 +97,4 @@ Some external APIs only accept a `Date` — cookie `expires`, the Next.js cache 
 - Adding a path to that override is a deliberate decision, and the entry needs a comment naming the API that forces it. "Temporal was inconvenient" is not a reason.
 - Do not silence the rule with an inline `oxlint-disable`.
 
-Helper implementations and the polyfill wiring: `packages/utils/README.md`, [#573](https://github.com/publira/publira/issues/573) / [#564](https://github.com/publira/publira/issues/564) / [#575](https://github.com/publira/publira/issues/575).
+Helper implementations and the polyfill wiring: `packages/utils/README.md`.

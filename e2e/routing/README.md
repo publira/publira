@@ -2,8 +2,6 @@
 
 This check detects routing regressions in development Traefik—the Docker labels and static configuration in `.devcontainer/compose.yaml`—without starting real applications. It also covers removal of inbound trace context, which is configured on the same path.
 
-Related: [#55](https://github.com/publira/publira/issues/55) / Epic [#512](https://github.com/publira/publira/issues/512)
-
 Playwright E2E ([`../README.md`](../README.md)) connects directly to application ports. Bootstrap ([`../bootstrap/README.md`](../bootstrap/README.md)) verifies `task setup` / `task dev`, but does not start Traefik. Neither is in this check's scope.
 
 ## Why it is needed

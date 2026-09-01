@@ -18,7 +18,15 @@ Every Markdown document this repository owns — every `README.md` and `AGENTS.m
 
 Japanese survives only where it is quoted as code rather than written as prose: a UI string inside a code example, the values in `locales/*.json`, and Japanese test fixtures. Prose that names a screen element uses its English label — the UI ships `locales/en.json`, so a Japanese label is not a string an English reader can find on screen. Take the wording from `locales/en.json`, or describe the element in English when that screen has no English copy yet. Identifiers, API names, paths, and environment variable names are never translated in either direction.
 
-No lint covers this. Japanese README files and test labels predating the rule are still being translated under [#1283](https://github.com/publira/publira/issues/1283), so an existing Japanese one is a leftover, not a precedent.
+No lint covers this. A Japanese README or test label that predates the rule is a leftover, not a precedent: rewrite it in English rather than matching it.
+
+## Issue references in documentation
+
+Long-lived documentation — every `AGENTS.md` and `README.md`, and the skills under `skills/` — states its rules and the reasons behind them, and does not cite the Issue it came out of. Such a citation is added every time an Issue is handled, so it accumulates into noise, and it goes stale the moment the work behind it lands. Provenance belongs in the pull request body and the commit message (`Fixes #NNN`), which are a correct snapshot of their moment and are never rewritten afterwards.
+
+A reference to an **open** Issue naming something still to be done — a defect not fixed yet, a lint rule that does not exist yet — stays, because "this is not solved" is information the reader needs; it is the same allowance a TODO comment gets in code. The test is therefore the Issue's state, not the shape of the number, and closing such an Issue includes deleting the reference and whatever sentence was written around it. An issue in another repository (`vercel/next.js#62046`), a non-Issue `#` such as `UTS #35`, and a number shown as an example of a format are not references of this kind.
+
+No lint covers this: `git grep` cannot tell an open Issue from a closed one, and a scheduled job asking the GitHub API about every number in every document would cost more upkeep than the rule is worth.
 
 ## Git commits
 
@@ -67,7 +75,7 @@ Skills owned by this repository live under `skills/*`; `.agents/skills/*` and `.
 | `skills/dev-env-profile` | Prepare or verify the isolated local development profile before worktree development |
 | `skills/organize-github-issues` | Create and normalize GitHub Issues with consistent types, fields, labels, and hierarchy |
 
-`CLAUDE.md` imports this file with `@AGENTS.md`, so every line here is loaded in every session. A coding standard therefore keeps only its norm and its enforcement here; its decision flow, tables, and NG/OK examples belong to the `coding-standards` skill (#668). Do not link to a skill's files from here — a skill reaches the agent through its own `name` and `description`, and a path in this file only makes the same content get read twice.
+`CLAUDE.md` imports this file with `@AGENTS.md`, so every line here is loaded in every session. A coding standard therefore keeps only its norm and its enforcement here; its decision flow, tables, and NG/OK examples belong to the `coding-standards` skill. Do not link to a skill's files from here — a skill reaches the agent through its own `name` and `description`, and a path in this file only makes the same content get read twice.
 
 ## Environment variables: `PUBLIRA_*`
 

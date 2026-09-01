@@ -57,7 +57,7 @@ import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/aut
 
 Use the shared helpers to walk a cursor list RPC page by page from an app. Pages are fetched one after another because each token depends on the previous response, and a repeated token plus the page and row limits keep a malformed response from looping forever.
 
-The defaults are `pageSize = 100`, `maxPages = 100`, and `maxRows = 10_000`. Hitting a limit or a repeated token stops the walk quietly rather than throwing. `findByPublicIdWithToken` returns `null` in that case too, so it cannot be told apart from "no such record". The proper way to fetch one record is the server's `Get*` RPC (#799).
+The defaults are `pageSize = 100`, `maxPages = 100`, and `maxRows = 10_000`. Hitting a limit or a repeated token stops the walk quietly rather than throwing. `findByPublicIdWithToken` returns `null` in that case too, so it cannot be told apart from "no such record". The proper way to fetch one record is the server's `Get*` RPC.
 
 `forEachPageWithToken` returns why it stopped: `completed` / `stopped-by-callback` / `max-pages` / `max-rows` / `repeated-token`.
 
@@ -115,7 +115,7 @@ The Go Connect handlers trust an inbound `traceparent` as the parent, so SSR →
 
 ## Error classification
 
-Classify an RPC error **by Connect's `Code`, always**. Matching on the message string, as in `error.message.includes("not found")`, breaks silently when the server's wording changes, and is forbidden (#645).
+Classify an RPC error **by Connect's `Code`, always**. Matching on the message string, as in `error.message.includes("not found")`, breaks silently when the server's wording changes, and is forbidden.
 
 ```ts
 import {

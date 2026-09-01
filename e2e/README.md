@@ -2,8 +2,6 @@
 
 This directory provides shared Playwright infrastructure and scenarios spanning the public catalogue and admin publishing flows. It also standardizes startup, readiness, CI, and artifacts.
 
-Related: [#513](https://github.com/publira/publira/issues/513) / [#516](https://github.com/publira/publira/issues/516) / Epic [#512](https://github.com/publira/publira/issues/512)
-
 Development bootstrap, from empty database volumes through `task setup` and all `task dev` services, uses a separate lifecycle without Playwright; [`bootstrap/README.md`](./bootstrap/README.md) is its source of truth (`task e2e:bootstrap`). Dev Container Traefik host-based routing also uses a separate non-Playwright lifecycle, exercising `.devcontainer/compose.yaml` labels against echo backends; [`routing/README.md`](./routing/README.md) is its source of truth (`task e2e:routing`).
 
 ## Prerequisites
