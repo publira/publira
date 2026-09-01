@@ -113,7 +113,9 @@ export const GetTenantDefaultLocaleRequestSchema: GenMessage<GetTenantDefaultLoc
  */
 export type GetTenantDefaultLocaleResponse = Message<"publira.admin.v1.GetTenantDefaultLocaleResponse"> & {
   /**
-   * UI locale code (ja, en). Never empty; the default is applied when unset.
+   * UI locale code (ja, en). The tenant's own saved value: a stored code
+   * naming no supported locale fails this RPC rather than answering another
+   * language.
    *
    * @generated from field: string default_locale = 1;
    */

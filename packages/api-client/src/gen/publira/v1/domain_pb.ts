@@ -41,8 +41,9 @@ export type GetTenantByDomainResponse = Message<"publira.v1.GetTenantByDomainRes
   tenantId: string;
 
   /**
-   * Resolved tenant default locale (ja, en) so the host proxy can pick a
-   * redirect in one round trip. Never empty.
+   * The tenant's saved default locale (ja, en) so the host proxy can pick a
+   * redirect in one round trip. Never empty: a stored code naming no supported
+   * locale fails this RPC rather than answering another language.
    *
    * @generated from field: string default_locale = 2;
    */

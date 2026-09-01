@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/mail"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/publicid"
 )
 
@@ -26,30 +28,35 @@ func (s *platformServer) CheckSetupStatus(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to count platform users", err)
 	}
+	defaultLocale, err := savedDefaultLocale(ctx, queries)
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to resolve the saved platform default locale", err)
+	}
 	return connect.NewResponse(&publirasplatformv1.CheckSetupStatusResponse{
-		DefaultLocale:  savedDefaultLocale(ctx, queries),
+		DefaultLocale:  defaultLocale,
 		SetupCompleted: count > 0,
 	}), nil
 }
 
 // savedDefaultLocale reports the platform's stored default locale, or "" when
-// there is none to report.
+// the settings row does not exist yet.
 //
-// Deliberately not platformconfig.DefaultLocale: that answers locale.Default
-// for a row it could not read, which is the whole point of an unauthenticated
-// caller asking. The console has to tell "the platform saved ja" from "nobody
-// has saved anything yet", because only the second is a reason to fall back to
-// what the visitor's browser asked for.
-func savedDefaultLocale(ctx context.Context, q Querier) string {
-	config, err := q.GetPlatformConfig(ctx)
-	if err != nil {
-		return ""
+// Only the absent row answers "". The caller is an unauthenticated visitor on
+// the setup screen, where a platform that has saved nothing is the normal
+// state, and the console has to tell "the platform saved ja" from "nobody has
+// saved anything" because only the second is a reason to fall back to what the
+// visitor's browser asked for. A row that exists and names no supported locale
+// is neither: it is the same data fault GetPlatformSettings reports, and
+// answering "" would report it as a platform that never chose a language.
+func savedDefaultLocale(ctx context.Context, q Querier) (string, error) {
+	saved, err := platformconfig.DefaultLocale(ctx, q)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
 	}
-	saved, err := locale.Normalize(config.DefaultLocale)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return saved
+	return saved, nil
 }
 
 func (s *platformServer) CreateInitialUser(

@@ -352,69 +352,36 @@ func TestGetTenantReturnsConfiguredDefaultLocale(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
-func TestGetTenantFallsBackToPlatformDefaultLocale(t *testing.T) {
-	testServer, mock := newTestPublicServer(t)
-
-	tenantID := uuid.Must(uuid.NewV7())
-	now := time.Now()
-	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "")
-
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
-		WithArgs(tenantID).
-		WillReturnError(sql.ErrNoRows)
-	expectPaymentsUnavailable(mock, tenantID)
-
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
-		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
-			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
-	expectPlatformConfigLookup(mock, "Asia/Tokyo", "en", now)
-
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
-	if err != nil {
-		t.Fatalf("GetTenant: %v", err)
+// The branding reads below tolerate a missing row; the locale does not. It is
+// resolved before any of them, so an unusable stored value fails the request
+// rather than reaching the storefront as another language.
+func TestGetTenantFailsOnAnUnusableStoredLocale(t *testing.T) {
+	tests := []struct {
+		name   string
+		stored string
+	}{
+		{name: "blank", stored: ""},
+		{name: "unsupported code", stored: "fr"},
 	}
-	if resp.Msg.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now()
+			expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, tt.stored)
+
+			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+			_, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			}))
+			if connect.CodeOf(err) != connect.CodeInternal {
+				t.Fatalf("GetTenant code = %v, want internal (err=%v)", connect.CodeOf(err), err)
+			}
+			assertPublicExpectations(t, mock)
+		})
 	}
-	assertPublicExpectations(t, mock)
-}
-
-func TestGetTenantFallsBackToDefaultLocale(t *testing.T) {
-	testServer, mock := newTestPublicServer(t)
-
-	tenantID := uuid.Must(uuid.NewV7())
-	now := time.Now()
-	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "")
-
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
-		WithArgs(tenantID).
-		WillReturnError(sql.ErrNoRows)
-	expectPaymentsUnavailable(mock, tenantID)
-
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
-		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
-			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
-	mock.ExpectQuery(regexp.QuoteMeta(getPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
-
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
-	if err != nil {
-		t.Fatalf("GetTenant: %v", err)
-	}
-	if resp.Msg.DefaultLocale == "" {
-		t.Fatal("default_locale is empty, want a resolved locale")
-	}
-	if resp.Msg.DefaultLocale != "ja" {
-		t.Fatalf("default_locale = %q, want ja", resp.Msg.DefaultLocale)
-	}
-	assertPublicExpectations(t, mock)
 }
 
 func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {

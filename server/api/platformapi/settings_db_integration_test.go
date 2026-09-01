@@ -9,7 +9,6 @@ import (
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
-	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -40,21 +39,16 @@ func tenantDefaultLocaleByPublicID(t *testing.T, pg *testutil.PostgresEnv, publi
 	return locale
 }
 
-// A database that has only had the migration applied carries no settings row, and
-// the default must still be the value tenants have always been created with.
-func TestDBGetPlatformSettingsDefaultsToAsiaTokyo(t *testing.T) {
+// A database that has only had the migration applied carries no settings row.
+// Real bootstrap writes one with the first operator, so this state has no saved
+// language to report and the read says so rather than naming one.
+func TestDBGetPlatformSettingsFailsWithoutASettingsRow(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
 
-	resp, err := client.GetPlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformSettingsRequest{}))
-	if err != nil {
-		t.Fatalf("GetPlatformSettings: %v", err)
-	}
-	if resp.Msg.Settings.DefaultTimezone != tenanttz.Default {
-		t.Fatalf("default_timezone = %q, want %s", resp.Msg.Settings.DefaultTimezone, tenanttz.Default)
-	}
-	if resp.Msg.Settings.DefaultLocale != locale.Default {
-		t.Fatalf("default_locale = %q, want %s", resp.Msg.Settings.DefaultLocale, locale.Default)
+	_, err := client.GetPlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformSettingsRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetPlatformSettings code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}
 }
 

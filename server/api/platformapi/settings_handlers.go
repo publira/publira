@@ -13,18 +13,29 @@ import (
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
-func platformSettingsFromConfig(config dbmodels.PlatformConfig) *publirasplatformv1.PlatformSettings {
+func platformSettingsFromConfig(config dbmodels.PlatformConfig) (*publirasplatformv1.PlatformSettings, error) {
+	defaultLocale, err := locale.Resolve(config.DefaultLocale)
+	if err != nil {
+		return nil, err
+	}
 	return &publirasplatformv1.PlatformSettings{
 		DefaultTimezone: tenanttz.Resolve(config.DefaultTimezone, nil),
-		DefaultLocale:   locale.Resolve(config.DefaultLocale, nil),
-	}
+		DefaultLocale:   defaultLocale,
+	}, nil
 }
 
 func (s *platformServer) GetPlatformSettings(
 	ctx context.Context,
 	_req *connect.Request[publirasplatformv1.GetPlatformSettingsRequest],
 ) (*connect.Response[publirasplatformv1.GetPlatformSettingsResponse], error) {
-	timezone, defaultLocale := platformconfig.Defaults(ctx, s.queriesFor(ctx))
+	// A settings row that cannot be read, or that names a locale this build has
+	// no catalog for, leaves the console nothing to display. It is told so
+	// rather than handed a language the operator never saved — which is what it
+	// would then offer to save back over the stored one.
+	timezone, defaultLocale, err := platformconfig.Defaults(ctx, s.queriesFor(ctx))
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to resolve platform settings", err)
+	}
 	return connect.NewResponse(&publirasplatformv1.GetPlatformSettingsResponse{
 		Settings: &publirasplatformv1.PlatformSettings{
 			DefaultTimezone: timezone,
@@ -54,6 +65,11 @@ func (s *platformServer) UpdatePlatformSettings(
 		return nil, s.internalDBError(ctx, "failed to update platform settings", err)
 	}
 
+	settings, err := platformSettingsFromConfig(updated)
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to resolve platform settings", err)
+	}
+
 	if actor, ok := platformActorFromContext(ctx); ok {
 		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
 			ActorPlatformUserID: actor.UserID,
@@ -67,6 +83,6 @@ func (s *platformServer) UpdatePlatformSettings(
 	}
 
 	return connect.NewResponse(&publirasplatformv1.UpdatePlatformSettingsResponse{
-		Settings: platformSettingsFromConfig(updated),
+		Settings: settings,
 	}), nil
 }

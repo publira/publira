@@ -90,11 +90,19 @@ func NewTenantAdminInvitationHandler(cfg TenantAdminInvitationHandlerConfig) Han
 			return nil
 		}
 
+		// Before the SMTP settings, which fail retriably: a tenant locale no
+		// catalog covers cannot become renderable on a later attempt, and an
+		// unrelated outage must not disguise it as one that can.
+		tenantLocale, err := locale.Resolve(tenant.DefaultLocale)
+		if err != nil {
+			return Permanent(fmt.Errorf("resolve default locale of tenant %s: %w", tenantID, err))
+		}
+
 		settings, err := resolveSMTPSettings(ctx, queries, tenantID, cfg.Encryptor)
 		if err != nil {
 			return fmt.Errorf("resolve smtp settings: %w", err)
 		}
-		rendered, err := renderTenantAdminInvitation(ctx, queries, cfg.Renderer, tenant, invitation, payload.Token)
+		rendered, err := renderTenantAdminInvitation(ctx, queries, cfg.Renderer, tenant, invitation, payload.Token, tenantLocale)
 		if err != nil {
 			return fmt.Errorf("render tenant admin invitation: %w", err)
 		}
@@ -193,7 +201,11 @@ func platformSMTPSettings(config dbmodels.PlatformSmtpConfig, password string) e
 	return settings
 }
 
-func renderTenantAdminInvitation(ctx context.Context, queries *dbmodels.Queries, renderer emailrenderer.Renderer, tenant dbmodels.Tenant, invitation dbmodels.TenantAdminInvitation, token string) (emailrenderer.Email, error) {
+// renderTenantAdminInvitation takes the locale rather than resolving it, so the
+// caller can fail on an unusable one before anything retriable is attempted. It
+// is the tenant's saved language and no other: mailing the invitee in a
+// language their tenant never chose is not a fallback.
+func renderTenantAdminInvitation(ctx context.Context, queries *dbmodels.Queries, renderer emailrenderer.Renderer, tenant dbmodels.Tenant, invitation dbmodels.TenantAdminInvitation, token, tenantLocale string) (emailrenderer.Email, error) {
 	inviteURL, err := tenantAdminInvitationURL(tenant, token)
 	if err != nil {
 		return emailrenderer.Email{}, err
@@ -204,7 +216,7 @@ func renderTenantAdminInvitation(ctx context.Context, queries *dbmodels.Queries,
 	}
 	return renderer.Render(ctx, emailrenderer.Request{
 		Template: "tenant_admin_invitation",
-		Locale:   locale.Resolve(tenant.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, queries)),
+		Locale:   tenantLocale,
 		Data:     map[string]any{"expires_at": invitation.ExpiresAt.UTC().Format(time.RFC3339Nano), "invite_url": inviteURL, "tenant_name": tenantName},
 		TimeZone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 	})

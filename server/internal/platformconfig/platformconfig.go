@@ -4,6 +4,7 @@ package platformconfig
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -18,24 +19,30 @@ type Querier interface {
 }
 
 // Defaults returns the platform-wide default time zone and locale from a
-// single read of the settings row. A missing or unreadable row (fresh
-// install, DB hiccup) falls back to tenanttz.Default and locale.Default so
-// read paths always get usable values instead of an unset state. Creation
-// paths must not use the locale half as a stand-in: tenant creation takes the
+// single read of the settings row.
+//
+// The two halves fail differently on purpose. A missing or unreadable row
+// (fresh install, DB hiccup) still yields tenanttz.Default, because a
+// timestamp shown in the wrong zone is off by hours and stays legible. The
+// locale has no such constant: the returned error is the only answer for a row
+// that cannot be read or names no supported locale, so callers report the
+// failure instead of rendering in a language nobody chose. Creation paths must
+// not use the locale half as a stand-in either — tenant creation takes the
 // locale from its request.
-func Defaults(ctx context.Context, q Querier) (timezone, defaultLocale string) {
-	timezone, defaultLocale = tenanttz.Default, locale.Default
+func Defaults(ctx context.Context, q Querier) (timezone, defaultLocale string, err error) {
+	timezone = tenanttz.Default
 	config, err := q.GetPlatformConfig(ctx)
 	if err != nil {
-		return timezone, defaultLocale
+		return timezone, "", fmt.Errorf("read platform config: %w", err)
 	}
 	if trimmed := strings.TrimSpace(config.DefaultTimezone); trimmed != "" {
 		timezone = trimmed
 	}
-	if trimmed := strings.TrimSpace(config.DefaultLocale); trimmed != "" {
-		defaultLocale = trimmed
+	defaultLocale, err = locale.Resolve(config.DefaultLocale)
+	if err != nil {
+		return timezone, "", err
 	}
-	return timezone, defaultLocale
+	return timezone, defaultLocale, nil
 }
 
 // DefaultTimeZone returns the platform-wide default IANA time zone. The
@@ -43,17 +50,15 @@ func Defaults(ctx context.Context, q Querier) (timezone, defaultLocale string) {
 // install, DB hiccup) falls back to tenanttz.Default so callers always get a
 // usable zone instead of an unset state.
 func DefaultTimeZone(ctx context.Context, q Querier) string {
-	timezone, _ := Defaults(ctx, q)
+	timezone, _, _ := Defaults(ctx, q)
 	return timezone
 }
 
-// DefaultLocale returns the platform-wide default UI locale. The singleton
-// row is the source of truth; a missing or unreadable row falls back to
-// locale.Default so read paths always get a usable locale instead of an unset
-// state.
-func DefaultLocale(ctx context.Context, q Querier) string {
-	_, defaultLocale := Defaults(ctx, q)
-	return defaultLocale
+// DefaultLocale returns the platform-wide default UI locale, or an error when
+// the settings row cannot be read or names no supported locale.
+func DefaultLocale(ctx context.Context, q Querier) (string, error) {
+	_, defaultLocale, err := Defaults(ctx, q)
+	return defaultLocale, err
 }
 
 // DefaultTimeZoneFunc returns a lazy accessor for DefaultTimeZone. Read paths
@@ -61,26 +66,14 @@ func DefaultLocale(ctx context.Context, q Querier) string {
 // only consulted for a tenant row that has no usable time zone of its own: the
 // settings row is then read at most once, and only when that actually happens.
 func DefaultTimeZoneFunc(ctx context.Context, q Querier) func() string {
-	return lazyDefault(ctx, q, DefaultTimeZone)
-}
-
-// DefaultLocaleFunc returns a lazy accessor for DefaultLocale. Read paths
-// use it as the fallback of locale.Resolve, where the platform default is
-// only consulted for a tenant row that has no usable locale of its own: the
-// settings row is then read at most once, and only when that actually happens.
-func DefaultLocaleFunc(ctx context.Context, q Querier) func() string {
-	return lazyDefault(ctx, q, DefaultLocale)
-}
-
-func lazyDefault(ctx context.Context, q Querier, read func(context.Context, Querier) string) func() string {
 	var (
-		once  sync.Once
-		value string
+		once     sync.Once
+		timezone string
 	)
 	return func() string {
 		once.Do(func() {
-			value = read(ctx, q)
+			timezone = DefaultTimeZone(ctx, q)
 		})
-		return value
+		return timezone
 	}
 }

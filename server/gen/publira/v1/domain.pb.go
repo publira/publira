@@ -69,8 +69,9 @@ type GetTenantByDomainResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Primary key (UUID) for internal routing / TenantContext.
 	TenantId string `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	// Resolved tenant default locale (ja, en) so the host proxy can pick a
-	// redirect in one round trip. Never empty.
+	// The tenant's saved default locale (ja, en) so the host proxy can pick a
+	// redirect in one round trip. Never empty: a stored code naming no supported
+	// locale fails this RPC rather than answering another language.
 	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

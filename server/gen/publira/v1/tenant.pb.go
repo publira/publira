@@ -79,8 +79,9 @@ type GetTenantResponse struct {
 	// IANA time zone name used to render tenant wall-clock date/time (e.g. Asia/Tokyo).
 	// Never empty; the default is applied when unset.
 	Timezone string `protobuf:"bytes,8,opt,name=timezone,proto3" json:"timezone,omitempty"`
-	// UI locale code used when the visitor has not chosen one (ja, en). Never
-	// empty; the default is applied when unset.
+	// UI locale code used when the visitor has not chosen one (ja, en). The
+	// tenant's own saved value, never a stand-in: a stored code naming no
+	// supported locale fails this RPC rather than answering another language.
 	DefaultLocale string `protobuf:"bytes,9,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
 	// Whether the tenant can currently accept episode payments. This never
 	// exposes payment-provider credentials or their configuration details.

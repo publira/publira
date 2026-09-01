@@ -62,18 +62,52 @@ func TestCheckSetupStatusCompleted(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// A code the row should never hold is reported as no saved language rather than
-// passed through: the console cannot render a locale it has no catalog for.
-func TestCheckSetupStatusIgnoresAnUnsupportedSavedLocale(t *testing.T) {
+// Only the absent row means "nobody has saved a language". A row that exists
+// and holds a code this build cannot render is the same data fault
+// GetPlatformSettings reports, and reporting it as an unset preference would
+// send the setup screen to Accept-Language for a platform that did choose.
+func TestCheckSetupStatusFailsOnAnUnusableSavedLocale(t *testing.T) {
+	tests := []struct {
+		name   string
+		stored string
+	}{
+		{name: "blank", stored: "   "},
+		{name: "unsupported code", stored: "fr"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+
+			mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+			expectPlatformConfigLookup(mock, tenanttz.Default, tt.stored, time.Now())
+
+			_, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+			if connect.CodeOf(err) != connect.CodeInternal {
+				t.Fatalf("CheckSetupStatus code = %v, want internal (err=%v)", connect.CodeOf(err), err)
+			}
+			assertOperatorHandlerExpectations(t, mock)
+		})
+	}
+}
+
+// The read that cannot reach the settings row at all is not the same as one
+// that read an unusable value: a platform mid-bootstrap has to keep answering
+// setup_completed, which is what routes the visitor to the setup screen.
+func TestCheckSetupStatusReportsNoLocaleForAnAbsentSettingsRow(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
 	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
-	expectPlatformConfigLookup(mock, tenanttz.Default, "fr", time.Now())
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
 
 	resp, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
 	if err != nil {
 		t.Fatalf("CheckSetupStatus: %v", err)
+	}
+	if !resp.Msg.SetupCompleted {
+		t.Fatal("setup_completed = false, want true")
 	}
 	if resp.Msg.DefaultLocale != "" {
 		t.Fatalf("default_locale = %q, want empty", resp.Msg.DefaultLocale)

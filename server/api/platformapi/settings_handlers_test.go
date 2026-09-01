@@ -43,21 +43,31 @@ func TestGetPlatformSettingsReturnsStoredTimezone(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// A fresh install has no settings row yet, and the API still has to answer with
-// a usable IANA name rather than an unset value.
-func TestGetPlatformSettingsFallsBackWhenRowIsMissing(t *testing.T) {
+// The settings screen is where the platform's saved language is edited. A row
+// it could not read leaves nothing to display, and answering with a stand-in is
+// how the screen would come to save a language nobody chose over the stored one.
+func TestGetPlatformSettingsFailsWhenRowIsMissing(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
 
-	resp, err := server.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
-	if err != nil {
-		t.Fatalf("GetPlatformSettings: %v", err)
+	_, err := server.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetPlatformSettings code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}
-	if resp.Msg.Settings.DefaultTimezone != tenanttz.Default {
-		t.Fatalf("default_timezone = %q, want %s", resp.Msg.Settings.DefaultTimezone, tenanttz.Default)
-	}
-	if resp.Msg.Settings.DefaultLocale != locale.Default {
-		t.Fatalf("default_locale = %q, want %s", resp.Msg.Settings.DefaultLocale, locale.Default)
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// A code no catalog in this build covers cannot be rendered, and the operator
+// has to be told rather than shown the console in another language.
+func TestGetPlatformSettingsFailsOnAnUnsupportedStoredLocale(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now()
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
+		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "Asia/Tokyo", "fr", now, now))
+
+	_, err := server.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetPlatformSettings code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

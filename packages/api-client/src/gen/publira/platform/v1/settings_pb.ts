@@ -29,9 +29,10 @@ export type PlatformSettings = Message<"publira.platform.v1.PlatformSettings"> &
 
   /**
    * UI locale code (ja, en) the platform console falls back to when the
-   * operator has chosen no display language of their own, and the fallback for
-   * a tenant row with no usable locale. Tenant creation states its own locale,
-   * so this is not a creation default. Never empty in a response.
+   * operator has chosen no display language of their own. It stands in for no
+   * other row: tenant creation states its own locale, and a tenant read
+   * resolves the tenant's. Never empty in a response — a settings row that
+   * names no supported locale fails the read instead.
    *
    * @generated from field: string default_locale = 2;
    */

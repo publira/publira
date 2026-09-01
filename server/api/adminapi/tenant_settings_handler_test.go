@@ -2,7 +2,6 @@ package adminapi
 
 import (
 	"context"
-	"database/sql"
 	"regexp"
 	"testing"
 	"time"
@@ -198,50 +197,39 @@ func TestGetTenantDefaultLocaleReturnsConfiguredValue(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestGetTenantDefaultLocaleFallsBackToPlatformDefault(t *testing.T) {
-	ts, mock := newTestAdminServer(t)
-	now := time.Now()
-	tenantID := uuid.Must(uuid.NewV7())
-	userID := uuid.Must(uuid.NewV7())
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
-	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "")
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
-	expectPlatformConfigLookup(mock, "Asia/Tokyo", "en", now)
+// tenants.default_locale is NOT NULL with a non-blank CHECK and every write
+// path validates it, so a row this cannot resolve is a data fault. It is
+// reported instead of being answered with the platform's language or any other
+// stand-in — the console would offer to save that back over the stored value.
+func TestGetTenantDefaultLocaleFailsOnAnUnusableStoredValue(t *testing.T) {
+	tests := []struct {
+		name   string
+		stored string
+	}{
+		{name: "blank", stored: ""},
+		{name: "unsupported code", stored: "fr"},
+	}
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantDefaultLocaleRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
-	if err != nil {
-		t.Fatalf("GetTenantDefaultLocale: %v", err)
-	}
-	if resp.Msg.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
-	}
-	assertExpectations(t, mock)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, mock := newTestAdminServer(t)
+			now := time.Now()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+			expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, tt.stored)
+			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
 
-func TestGetTenantDefaultLocaleFallsBackToDefault(t *testing.T) {
-	ts, mock := newTestAdminServer(t)
-	now := time.Now()
-	tenantID := uuid.Must(uuid.NewV7())
-	userID := uuid.Must(uuid.NewV7())
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
-	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "")
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
-	mock.ExpectQuery(regexp.QuoteMeta(getPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
-
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantDefaultLocaleRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
-	if err != nil {
-		t.Fatalf("GetTenantDefaultLocale: %v", err)
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+			_, err := client.GetTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantDefaultLocaleRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			}, sessionToken))
+			if connect.CodeOf(err) != connect.CodeInternal {
+				t.Fatalf("GetTenantDefaultLocale code = %v, want internal (err=%v)", connect.CodeOf(err), err)
+			}
+			assertExpectations(t, mock)
+		})
 	}
-	if resp.Msg.DefaultLocale != "ja" {
-		t.Fatalf("default_locale = %q, want ja", resp.Msg.DefaultLocale)
-	}
-	assertExpectations(t, mock)
 }
 
 func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
