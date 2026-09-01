@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
@@ -298,6 +301,386 @@ void main() {
     expect(
       entitled.imageRequestHeaders['authorization'],
       'Bearer ${ConnectFixtureServer.memberAccessToken}',
+    );
+  });
+
+  test(
+    'the tenant is resolved once and reused by the reads after it',
+    () async {
+      await catalog.listSeries();
+      await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+      await catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+      );
+
+      expect(server.requestsTo('GetTenantByDomain'), hasLength(1));
+    },
+  );
+
+  test('every read carries the resolved tenant in header and body', () async {
+    await catalog.listSeries();
+    await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+
+    final list = server.requestsTo('ListPublishedSeries').single;
+    expect(
+      list.headers['x-publira-tenant-id'],
+      ConnectFixtureServer.defaultTenantId,
+    );
+    expect(list.body['limit'], 20);
+    expect(list.body['tenant'], {
+      'tenantId': ConnectFixtureServer.defaultTenantId,
+    });
+
+    final detail = server.requestsTo('GetSeriesDetail').single;
+    expect(
+      detail.headers['x-publira-tenant-id'],
+      ConnectFixtureServer.defaultTenantId,
+    );
+    expect(detail.body['publicId'], ConnectFixtureServer.seedSeriesId);
+    expect(detail.body['tenant'], {
+      'tenantId': ConnectFixtureServer.defaultTenantId,
+    });
+  });
+
+  test('a failed tenant lookup is retried by the next read', () async {
+    server.tenantStatus = HttpStatus.serviceUnavailable;
+    server.tenantResponse = const {
+      'code': 'unavailable',
+      'message': 'domain service is down',
+    };
+
+    await expectLater(
+      catalog.listSeries(),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.network,
+        ),
+      ),
+    );
+
+    server.tenantStatus = HttpStatus.ok;
+    server.tenantResponse = null;
+
+    expect(await catalog.listSeries(), isNotEmpty);
+    expect(server.requestsTo('GetTenantByDomain'), hasLength(2));
+  });
+
+  test('listSeries maps a Connect internal error to unexpected', () async {
+    server.listStatus = HttpStatus.internalServerError;
+    server.listResponse = const {'code': 'internal', 'message': 'boom'};
+
+    expect(
+      () => catalog.listSeries(),
+      throwsA(
+        isA<CatalogFailure>()
+            .having(
+              (error) => error.kind,
+              'kind',
+              CatalogFailureKind.unexpected,
+            )
+            .having((error) => error.message, 'message', 'boom'),
+      ),
+    );
+  });
+
+  test('listSeries maps a timed-out request to network', () async {
+    const config = AppConfig(
+      apiBaseUrl: 'https://example.test',
+      tenantHost: 'localhost',
+      imageBaseUrl: imageBaseUrl,
+    );
+    final unresponsive = HttpCatalogRepository(
+      config: config,
+      client: ConnectClient(
+        baseUrl: config.apiBaseUrl,
+        timeout: const Duration(milliseconds: 20),
+        httpClient: MockClient((request) async {
+          if (request.url.path.endsWith('/GetTenantByDomain')) {
+            return http.Response(
+              jsonEncode(const {
+                'tenantId': ConnectFixtureServer.defaultTenantId,
+              }),
+              200,
+            );
+          }
+          await Future<void>.delayed(const Duration(seconds: 1));
+          return http.Response('{}', 200);
+        }),
+      ),
+    );
+
+    await expectLater(
+      unresponsive.listSeries(),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.network,
+        ),
+      ),
+    );
+  });
+
+  test('getSeries returns null when the reader may not see it', () async {
+    server.detailStatus = HttpStatus.forbidden;
+    server.detailResponse = const {
+      'code': 'permission_denied',
+      'message': 'series is not readable here',
+    };
+
+    expect(await catalog.getSeries(ConnectFixtureServer.seedSeriesId), isNull);
+  });
+
+  test('getEpisode returns null when the reader may not see it', () async {
+    server.episodeStatus = HttpStatus.forbidden;
+    server.episodeResponse = const {
+      'code': 'permission_denied',
+      'message': 'episode is not readable here',
+    };
+
+    expect(
+      await catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+      ),
+      isNull,
+    );
+  });
+
+  test('listSeries reads a series without a label as unlabelled', () async {
+    final items = await catalog.listSeries();
+    expect(items.last.labelName, isEmpty);
+  });
+
+  test('listSeries rejects a series with a blank public id', () async {
+    server.series = [
+      {'publicId': '   ', 'title': 'Blank public id'},
+    ];
+
+    expect(
+      () => catalog.listSeries(),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.unexpected,
+        ),
+      ),
+    );
+  });
+
+  test('getSeries orders episodes by orderIndex', () async {
+    server.detailResponse = {
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+      'episodes': [
+        {'publicId': 'EP10', 'title': 'Tenth', 'orderIndex': 10, 'price': 500},
+        {'publicId': 'EP01', 'title': 'First', 'orderIndex': 1, 'price': 0},
+      ],
+    };
+
+    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+
+    expect(detail!.episodes.map((episode) => episode.id), ['EP01', 'EP10']);
+    expect(detail.series.episodeCount, 2);
+  });
+
+  test('getSeries reads omitted numbers as zero', () async {
+    // protojson omits a zero, so an episode that is first and free arrives
+    // without `orderIndex` and without `price`.
+    server.detailResponse = {
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+      'episodes': [
+        {'publicId': 'EP01', 'title': 'First'},
+      ],
+    };
+
+    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+
+    expect(detail!.episodes.single.orderIndex, 0);
+    expect(detail.episodes.single.price, 0);
+  });
+
+  test('getSeries rejects a non-integer orderIndex', () async {
+    server.detailResponse = {
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+      'episodes': [
+        {'publicId': 'EP01', 'title': 'First', 'orderIndex': '1'},
+      ],
+    };
+
+    expect(
+      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.unexpected,
+        ),
+      ),
+    );
+  });
+
+  test('getSeries rejects an episode without a public id', () async {
+    server.detailResponse = {
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+      'episodes': [
+        {'title': 'No public id'},
+      ],
+    };
+
+    expect(
+      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.unexpected,
+        ),
+      ),
+    );
+  });
+
+  test('getSeries rejects an episodes field that is not a list', () async {
+    server.detailResponse = {
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+      'episodes': 'not a list',
+    };
+
+    expect(
+      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.unexpected,
+        ),
+      ),
+    );
+  });
+
+  test('getEpisode reports an access value this build does not know', () async {
+    server.episodeResponse = {
+      'episode': {'publicId': 'EP', 'title': 'Newly gated'},
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+      'access': 'EPISODE_ACCESS_SUBSCRIBED',
+    };
+
+    final detail = await catalog.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.seedEpisodeId,
+    );
+
+    expect(detail!.access, EpisodeAccess.unknown);
+    expect(detail.images, isEmpty);
+  });
+
+  test('getEpisode reads an omitted access as unknown', () async {
+    server.episodeResponse = {
+      'episode': {'publicId': 'EP', 'title': 'No access field'},
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+    };
+
+    final detail = await catalog.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.seedEpisodeId,
+    );
+
+    expect(detail!.access, EpisodeAccess.unknown);
+  });
+
+  test('getEpisode reads omitted page sizes as zero', () async {
+    server.episodeResponse = {
+      'episode': {'publicId': 'EP', 'title': 'Sizeless pages'},
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+      'access': 'EPISODE_ACCESS_FREE',
+      'images': [
+        {'id': 'a', 'imageUrl': '/images/episodes/a'},
+      ],
+    };
+
+    final detail = await catalog.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.seedEpisodeId,
+    );
+
+    expect(detail!.images.single.width, 0);
+    expect(detail.images.single.height, 0);
+    expect(detail.images.single.displayOrder, 0);
+  });
+
+  test('getEpisode rejects a page without an image url', () async {
+    server.episodeResponse = {
+      'episode': {'publicId': 'EP', 'title': 'Unreachable page'},
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+      'access': 'EPISODE_ACCESS_FREE',
+      'images': [
+        {'id': 'a'},
+      ],
+    };
+
+    expect(
+      () => catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+      ),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.unexpected,
+        ),
+      ),
+    );
+  });
+
+  test('getEpisode rejects a body without a series', () async {
+    server.episodeResponse = {
+      'episode': {'publicId': 'EP', 'title': 'Orphan'},
+      'access': 'EPISODE_ACCESS_FREE',
+    };
+
+    expect(
+      () => catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+      ),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.unexpected,
+        ),
+      ),
     );
   });
 }

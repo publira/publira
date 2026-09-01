@@ -192,6 +192,10 @@ class ConnectFixtureServer {
   /// The bearer `GetMe` accepts and `GetEpisodeDetail` unlocks for. Set it to
   /// another value to act out a token the API has stopped accepting.
   String? activeAccessToken;
+
+  /// Replace the whole body of the matching RPC, whichever status the RPC is
+  /// answering with, so a test can send a shape the client is not expecting or
+  /// an error code other than the default `unavailable`.
   Object? listResponse;
   Object? detailResponse;
   Object? episodeResponse;
@@ -203,6 +207,15 @@ class ConnectFixtureServer {
   /// Headers of the last `GET /images/...` request, so a test can assert what
   /// the reader sends to image-server.
   HttpHeaders? lastImageRequestHeaders;
+
+  /// Every Connect request answered so far, in order. A test reads it to
+  /// assert what the client sent, and how many times it sent it.
+  final List<RecordedRequest> requests = <RecordedRequest>[];
+
+  /// The recorded requests whose path ends in [procedure], such as
+  /// `GetTenantByDomain`.
+  Iterable<RecordedRequest> requestsTo(String procedure) =>
+      requests.where((request) => request.path.endsWith('/$procedure'));
 
   HttpServer? _server;
 
@@ -237,6 +250,15 @@ class ConnectFixtureServer {
       return;
     }
 
+    final body = await _readBody(request);
+    requests.add(
+      RecordedRequest(
+        path: path,
+        headers: _snapshotHeaders(request.headers),
+        body: body,
+      ),
+    );
+
     if (path.endsWith('/GetTenantByDomain')) {
       await _write(
         request,
@@ -266,7 +288,6 @@ class ConnectFixtureServer {
     }
 
     if (path.endsWith('/Login')) {
-      final body = await _readBody(request);
       if (body['email'] != memberEmail || body['password'] != memberPassword) {
         await _write(request, HttpStatus.unauthorized, {
           'code': 'unauthenticated',
@@ -292,7 +313,6 @@ class ConnectFixtureServer {
     }
 
     if (path.endsWith('/GetMe')) {
-      await _readBody(request);
       if (!_isAuthorized(request)) {
         await _write(request, HttpStatus.unauthorized, {
           'code': 'unauthenticated',
@@ -312,13 +332,15 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/GetSeriesDetail')) {
       if (detailStatus != HttpStatus.ok) {
-        await _write(request, detailStatus, {
-          'code': 'unavailable',
-          'message': 'unavailable',
-        });
+        await _write(
+          request,
+          detailStatus,
+          detailResponse ??
+              const {'code': 'unavailable', 'message': 'unavailable'},
+        );
         return;
       }
-      final publicId = await _readPublicId(request);
+      final publicId = _publicIdOf(body);
       final detail = details[publicId];
       if (detail == null) {
         await _write(request, HttpStatus.notFound, {
@@ -333,13 +355,15 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/GetEpisodeDetail')) {
       if (episodeStatus != HttpStatus.ok) {
-        await _write(request, episodeStatus, {
-          'code': 'unavailable',
-          'message': 'unavailable',
-        });
+        await _write(
+          request,
+          episodeStatus,
+          episodeResponse ??
+              const {'code': 'unavailable', 'message': 'unavailable'},
+        );
         return;
       }
-      final publicId = await _readPublicId(request);
+      final publicId = _publicIdOf(body);
       final episode = _isAuthorized(request)
           ? entitledEpisodes[publicId] ?? episodes[publicId]
           : episodes[publicId];
@@ -358,9 +382,16 @@ class ConnectFixtureServer {
     await request.response.close();
   }
 
-  Future<String> _readPublicId(HttpRequest request) async {
-    final body = await _readBody(request);
+  String _publicIdOf(Map<String, Object?> body) {
     return body['publicId'] as String? ?? '';
+  }
+
+  Map<String, String> _snapshotHeaders(HttpHeaders headers) {
+    final snapshot = <String, String>{};
+    headers.forEach((name, values) {
+      snapshot[name.toLowerCase()] = values.join(', ');
+    });
+    return snapshot;
   }
 
   Future<Map<String, Object?>> _readBody(HttpRequest request) async {
@@ -429,4 +460,23 @@ class ConnectFixtureServer {
     request.response.write(jsonEncode(body));
     await request.response.close();
   }
+}
+
+/// One Connect request [ConnectFixtureServer] answered, kept so a test can
+/// assert what the client sent and not only what it did with the answer.
+class RecordedRequest {
+  const RecordedRequest({
+    required this.path,
+    required this.headers,
+    required this.body,
+  });
+
+  /// Request path, ending in the Connect procedure name.
+  final String path;
+
+  /// Request headers, under lower-cased names.
+  final Map<String, String> headers;
+
+  /// Decoded JSON request body, empty when the request carried none.
+  final Map<String, Object?> body;
 }
