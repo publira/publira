@@ -79,6 +79,8 @@ To check it by hand, save a theme color and then request `GET /theme.css` on the
 - A page that fails to load shows a reload control inside the viewer and retries that page alone. The episode as a whole is not dropped
 - The viewer's height is owned by `VIEWER_HEIGHT_CLASS` in `_lib/viewer-layout.ts`, and the body skeleton reserves the same box. The episode information below it does not move after the first paint
 
+How fast it has to draw is a budget rather than a matter of taste: time to the first page, the response and the drawn page of a page turn, and a cumulative layout shift of zero, all asserted by `e2e/tests/host.viewer-performance.spec.ts` against a seeded episode served through image-server. The numbers, what each one covers, and how to measure them again are in [`e2e/README.md`](../../e2e/README.md).
+
 ### Site icon (`rel="icon"` / apple-touch-icon)
 
 `link rel="icon"` and `link rel="apple-touch-icon"` point at the delivery URL of the tenant icon (`/images/tenants/{media_id}/icon`) when one is set. image-server delivers the image, and shaping it into a square PNG is already done on the server at upload time, so web-host performs no conversion. A tenant with no icon set declares none and leaves it to the browser's default.

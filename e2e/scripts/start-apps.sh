@@ -82,6 +82,7 @@ for port in \
   "${E2E_PLATFORM_API_PORT}" \
   "${E2E_PLATFORM_API_GRPC_PORT}" \
   "${E2E_OUTBOX_WORKER_PORT}" \
+  "${E2E_IMAGE_SERVER_PORT}" \
   "${E2E_WEB_HOST_PORT}" \
   "${E2E_WEB_ADMIN_PORT}" \
   "${E2E_WEB_PLATFORM_PORT}"; do
@@ -98,12 +99,14 @@ done
 : >"${LOG_DIR}/platform-api-server.log"
 : >"${LOG_DIR}/publish-episodes.log"
 : >"${LOG_DIR}/outbox-worker.log"
+: >"${LOG_DIR}/image-server.log"
 
 bash "${E2E_SCRIPTS_DIR}/api-server.sh" start
 bash "${E2E_SCRIPTS_DIR}/admin-api-server.sh" start
 bash "${E2E_SCRIPTS_DIR}/platform-api-server.sh" start
 bash "${E2E_SCRIPTS_DIR}/publish-episodes.sh" start
 bash "${E2E_SCRIPTS_DIR}/outbox-worker.sh" start
+bash "${E2E_SCRIPTS_DIR}/image-server.sh" start
 
 # Bind hostname must match browser Host so Next internal rewrites are not
 # treated as external proxies (127.0.0.1 vs localhost → socket hang up).

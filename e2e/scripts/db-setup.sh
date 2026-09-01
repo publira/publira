@@ -16,4 +16,7 @@ e2e_log "running task db:setup against ${PUBLIRA_DB_URL}"
 e2e_log "running task storage:init"
 (cd "${REPO_ROOT}" && task storage:init)
 
+# After storage:init: the fixtures need the bucket to exist.
+bash "${E2E_SCRIPTS_DIR}/seed-viewer-pages.sh"
+
 e2e_log "database and storage ready"

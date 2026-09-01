@@ -25,6 +25,19 @@ export const WEB_HOST_BASE_URL = envUrl(
   "http://localhost:3000"
 );
 
+/**
+ * The same web-host, reached through the E2E Traefik edge.
+ *
+ * An episode body image is `/images/episodes/{id}` on the reader's own origin,
+ * and only the edge joins web-host and image-server under one host and port.
+ * Suites that never load a body image keep using WEB_HOST_BASE_URL, so one
+ * more hop does not sit in front of every navigation they time out on.
+ */
+export const WEB_HOST_EDGE_BASE_URL = envUrl(
+  "E2E_WEB_HOST_EDGE_BASE_URL",
+  "http://localhost:3080"
+);
+
 /** Tenant admin console (web-admin). Matches seed domain `admin.localhost`. */
 export const WEB_ADMIN_BASE_URL = envUrl(
   "E2E_WEB_ADMIN_BASE_URL",

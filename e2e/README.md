@@ -17,11 +17,11 @@ Development bootstrap, from empty database volumes through `task setup` and all 
   sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
   ```
 
-The default required host ports are `3000` (web-host), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8001` / `8101` (admin API), `8002` / `8102` (platform API), `8003` (outbox worker), `5433` (E2E Postgres), `6380` (E2E Redis), and `9003` (E2E RustFS / S3).
+The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8001` / `8101` (admin API), `8002` / `8102` (platform API), `8003` (outbox worker), `8200` (image-server), `5433` (E2E Postgres), `6380` (E2E Redis), and `9003` (E2E RustFS / S3).
 
 PIDs and logs default to `e2e/.run/`. When `E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
-Use distinct compose projects and **all** distinct ports for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process.
+Use distinct compose projects and **all** distinct ports (`E2E_IMAGE_SERVER_PORT` and `E2E_EDGE_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process.
 
 ## One-command run
 
@@ -37,10 +37,11 @@ This always tears down app processes and compose volumes, including on failure o
 | Command | Purpose |
 | --- | --- |
 | `task e2e:prepare` | Build server binaries and web apps; install Playwright Chromium. |
-| `task e2e:up` | Start Postgres, Redis, and RustFS only. |
-| `task e2e:db` | Migrate, apply development seed, and create the S3 bucket (`task storage:init`). |
-| `task e2e:start-apps` | Start APIs, `publish-episodes`, outbox worker, and the three web apps in the background. |
+| `task e2e:up` | Start Postgres, Redis, RustFS, and the Traefik edge only. |
+| `task e2e:db` | Migrate, apply development seed, create the S3 bucket (`task storage:init`), and seed the viewer's page fixtures. |
+| `task e2e:start-apps` | Start APIs, `publish-episodes`, outbox worker, image-server, and the three web apps in the background. |
 | `bash e2e/scripts/{api-server,admin-api-server,platform-api-server}.sh <start\|start-wait\|stop>` | Operate one API server for outage scenarios. |
+| `bash e2e/scripts/image-server.sh <start\|start-wait\|stop>` | Operate image-server on its own. |
 | `task e2e:wait-ready` | Wait for HTTP readiness with wait4x; failure is `readiness failed: …`. |
 | `task e2e:test` | Run Playwright only against a running stack. |
 | `task e2e:test-lib` | Verify `E2E_RUN_DIR` isolation and compose-project locks (no Docker required; also run by `task e2e`). |
@@ -64,16 +65,23 @@ For Next.js HMR during development, use `E2E_WEB_MODE=dev task e2e`; CI does not
 e2e/
 ├── bootstrap/             # Development bootstrap check (separate lifecycle, no Playwright)
 ├── routing/               # Dev Container Traefik check (separate lifecycle, no Playwright)
-├── compose.yaml           # postgres + redis + rustfs (project: publira-e2e)
+├── compose.yaml           # postgres + redis + rustfs + traefik (project: publira-e2e)
+├── fixtures/              # binary test data (viewer page images)
 ├── playwright.config.ts
 ├── scripts/               # lifecycle, API controls, readiness, test, and locking helpers
 ├── src/                   # app login, API control, DB, scenario, session, and URL helpers
 └── tests/                 # catalogue, admin, host, platform, and health scenarios
 ```
 
-- **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), and RustFS (S3-compatible, path-style, bucket `publira`).
-- **Host processes:** API, admin API, platform API, batch `publish-episodes`, outbox worker, and standalone `web-host`, `web-admin`, and `web-platform` (`node server.js`).
-- **Seed:** development `task db:setup`: public domain `localhost`, admin domain `admin.localhost`, tenant `Seed Tenant`, and platform user `platform@example.com`.
+- **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), RustFS (S3-compatible, path-style, bucket `publira`), and Traefik.
+- **Host processes:** API, admin API, platform API, batch `publish-episodes`, outbox worker, image-server, and standalone `web-host`, `web-admin`, and `web-platform` (`node server.js`).
+- **Seed:** development `task db:setup`: public domain `localhost`, admin domain `admin.localhost`, tenant `Seed Tenant`, and platform user `platform@example.com`. `task e2e:db` then runs `scripts/seed-viewer-pages.sh`, which applies `db/seeds/scenarios/050_viewer_pages.sql` and uploads `fixtures/viewer-pages/*.jpg` to the object keys those rows name, giving `Seed Episode 001-02` a body the canvas viewer can draw. It is deliberately not the series' first episode: 001-01 is the one other suites reach for, and mobile's live integration test reads its empty state as proof of a working round trip.
+
+### The edge
+
+Everything except the viewer performance suite talks to `web-host` directly on `:3000`. An episode body image, however, is `/images/episodes/{id}` on the reader's own origin, and only image-server can answer it, so one origin has to serve both. That is what the `traefik` service is for: it listens on `E2E_EDGE_PORT` (default `3080`), sends `/images` to image-server and everything else to web-host, and is the `baseURL` of the `viewer-performance` project alone. It runs with `network_mode: host` because its backends are host processes on loopback, and its routers are written to `$E2E_RUN_DIR/traefik/routes.yaml` by `up.sh` — a file provider substitutes no variables, and the backend ports are overridable.
+
+This mirrors the Dev Container's Traefik labels but does not verify them; [`routing/`](./routing/README.md) remains the source of truth for the real routing.
 
 Host-based URL constants are in `src/urls.ts`. web-host accepts one port and resolves the tenant through `Host` / `x-forwarded-host`; Chromium resolves `*.localhost` to loopback under RFC 6761, so neither DNS registration nor a hosts-file entry is needed. Use non-`localhost` hosts only through the browser (`page.goto`), because Node's `request` fixture uses OS name resolution.
 
@@ -81,7 +89,7 @@ Host-based URL constants are in `src/urls.ts`. web-host accepts one port and res
 
 `playwright.config.ts` uses `workers: 3` and `fullyParallel: false`: files run in parallel while tests within a file run serially. This matches CI's four-vCPU `ubicloud-standard-4`; temporarily serialize with `task e2e:test -- --workers=1`.
 
-Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
+Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects, and the `viewer-performance` timing project runs after all of those. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
 
 ## Readiness and failures
 
@@ -90,7 +98,48 @@ Specs that stop a shared process run in isolated projects after the ordinary `we
 | Readiness | `readiness failed: <name>` in logs; Playwright does not start. |
 | Playwright | `Playwright tests failed`; inspect `test-results/`, `playwright-report/`, and `.run/logs/`. |
 
-`wait-ready` verifies RustFS on `:9003/health`, public/admin/platform API readiness on `:8100`–`:8102`, and `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`. `task e2e:up` owns compose health checks for Postgres, Redis, and RustFS.
+`wait-ready` verifies RustFS on `:9003/health`, public/admin/platform API readiness on `:8100`–`:8102`, image-server on `:8200/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-host's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, and RustFS.
+
+## Viewer rendering performance
+
+`tests/host.viewer-performance.spec.ts` puts a budget on the canvas reader (`@publira/comic-viewer`, wired up in `apps/web-host/.../_components/episode-comic-viewer.tsx`) so a rendering regression fails a build instead of being noticed by a reader.
+
+### What is measured
+
+Every number is taken in the browser from `performance.now()`, inside `requestAnimationFrame`, because the viewer draws its bitmap in a layout effect and the frame after that is the frame a reader sees. The signals are the reader's own accessible output — `data-page-status` and `aria-busy` on the page canvas, and the `value` of the `<progress>` that reports reading position — so the suite does not reach into the viewer's internals.
+
+| Metric | From | To | Budget |
+| --- | --- | --- | --- |
+| First page drawn | Navigation start | The first page canvas is loaded and no longer busy | 2000 ms |
+| Page turn response | The `ArrowLeft` keydown | The reader reports the new spread | 200 ms |
+| Page turn drawn | The `ArrowLeft` keydown | The first page of the new spread is on the canvas | 600 ms |
+| Cumulative layout shift | Navigation start | After the turn has settled | 0.01 |
+
+The budgets are ceilings several times above what the reader costs on a warm dev-container stack (about 210 ms to the first page, and a single frame for both turn numbers), so a slower shared CI runner passes while a real regression does not. Change one only after measuring, and say in the pull request what got slower and why that is acceptable.
+
+Two of the metrics deserve their reasoning spelled out:
+
+- **Page turn drawn** normally lands on the same frame as the response, because the viewer has already fetched and decoded the next spread. That is the point: the assertion is that a turn never waits on the network, and the two numbers separate exactly when the prefetch pipeline stops working.
+- **Cumulative layout shift** must be zero. The body skeleton reserves the same box as the loaded reader (`_lib/viewer-layout.ts`), so nothing under the viewer may move as pages arrive. The suite also checks that the browser reports `layout-shift` at all, because an unsupported entry type would otherwise pass as a convincing `0` forever.
+
+The reader draws no low-resolution stand-in before the full page — `_lib/viewer-pages.ts` explains why the placeholder was dropped — so there is no placeholder-to-body swap to time. "First page drawn" covers the same ground.
+
+### How it runs
+
+The suite is its own Playwright project, `viewer-performance`. It depends on the tail of every other project chain, so it starts only once the rest of the suite has finished and has the machine to itself; a timing suite sharing three workers with the others would measure the others. Its `baseURL` is the Traefik edge, the one origin where `/images/episodes/{id}` resolves.
+
+image-server converts a page with Manael on the first request for a given size and format and serves the cached rendition afterwards, so `beforeAll` makes one discarded pass through the reader. Without it the numbers would report libvips throughput on a cold cache rather than the viewer, and delivery performance is not what this budget is about.
+
+### Taking the numbers again
+
+```bash
+task e2e:prepare
+task e2e:up && task e2e:db && task e2e:start-apps && task e2e:wait-ready
+task e2e:test -- --project=viewer-performance --no-deps
+task e2e:down
+```
+
+Each measurement is attached to the test result as a `viewer-performance:<metric>` annotation, so `--reporter=json` (or the HTML report) prints what the run actually measured rather than only whether it stayed under budget. Numbers from a machine that is also running a dev stack are not comparable with CI's; measure on an idle one.
 
 ## Adding scenarios
 
@@ -101,7 +150,7 @@ Specs that stop a shared process run in isolated projects after the ordinary `we
 5. Run `task e2e`, or keep the stack running and use `task e2e:test`.
 6. Changes to relevant paths run **Test / E2E**. Changes only in `e2e/routing/**` run **Test / Routing** (`task e2e:routing`) without Playwright.
 
-Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, web-host and web-admin authentication and publishing, and platform authentication and tenant operations. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`.
+Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, web-host and web-admin authentication and publishing, platform authentication and tenant operations, and the canvas viewer's rendering budget. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`; the viewer's pages come from `050_viewer_pages.sql`, which `task e2e:db` applies for every run rather than a suite applying it for itself.
 
 Outage specs must run through `task e2e:test`, which sources `lib.sh`. Filtering by file name can leave only isolated projects, so pass `--no-deps` when selecting an isolated project directly (for example, `--project=catalog-outage`).
 
@@ -112,7 +161,7 @@ Job: **Test / E2E** (`.github/workflows/ci.yml`)
 - Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, server, db, and related build inputs.
 - Failure artifact: `e2e-artifacts` (report, test results, and app logs).
 - Chromium only; `workers: 3`, `fullyParallel: false`, and one retry in CI.
-- Outage and error-boundary scenarios run as isolated dependent projects after the three ordinary projects.
+- Outage and error-boundary scenarios run as isolated dependent projects after the three ordinary projects, and `viewer-performance` runs last so nothing competes with it for the runner.
 - The required branch check is the final **Summary** job, as with all CI jobs.
 
 See [the workflow overview](../.github/workflows/README.md) for job layout, filters, and failure triage.

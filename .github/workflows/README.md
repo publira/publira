@@ -85,7 +85,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / TypeScript` | apps, locales, packages, package / lock / turbo config |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml` |
-| `Test / Mobile E2E` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init |
+| `Test / Mobile E2E` | mobile, E2E lifecycle scripts and page fixtures, domain proto, server, migrations/seeds, Taskfile, storage init |
 | `Test / E2E` | E2E except routing, web apps, packages, server, db, and build inputs |
 | `Test / Bootstrap` | Dev Container, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init |
 | `Test / Routing` | `.devcontainer/**`, `e2e/routing/**` |

@@ -78,6 +78,10 @@ wait_http "outbox-worker/readyz" \
   "http://127.0.0.1:${E2E_OUTBOX_WORKER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
+wait_http "image-server/readyz" \
+  "http://127.0.0.1:${E2E_IMAGE_SERVER_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
+
 # Use localhost (not 127.0.0.1) to match browser Host / server bind hostname.
 # Substring `ok`, matching the previous check_http_body.
 wait_http "web-host/livez" \
@@ -105,6 +109,12 @@ wait_http "web-platform/livez" \
 
 wait_http "web-platform/readyz" \
   "http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
+
+# The edge itself, last: it only answers once both of its backends do. The
+# viewer performance suite reads pages through this origin.
+wait_http "edge/web-host/readyz" \
+  "http://localhost:${E2E_EDGE_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 e2e_log "all readiness checks passed"
