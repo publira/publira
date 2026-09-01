@@ -2,8 +2,13 @@
 --
 -- The dev seed publishes episodes but no pages, so the reader opens on "no
 -- body images" and nothing about drawing a page can be observed. This gives
--- `Seed Episode 001-01` (SeedEPSDAAA1, free and already published) eight pages
+-- `Seed Episode 001-02` (SeedEPSDAAA2, free and already published) eight pages
 -- so the viewer has something to fetch, decode, and draw.
+--
+-- Not the first episode of the series: `Seed Episode 001-01` is the one other
+-- suites reach for, and mobile's live integration test reads its empty state as
+-- proof of a working round trip. An episode nothing else asserts on keeps this
+-- fixture from changing what those tests mean.
 --
 -- The rows only describe the pages. The objects themselves are uploaded by
 -- `e2e/scripts/seed-viewer-pages.sh`, which reads these object keys back out
@@ -21,7 +26,7 @@ SELECT
     page_number,
     ('0199a121-1121-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid AS image_id,
     ('0199a121-1121-7001-8000-' || lpad(page_number::text, 12, '0'))::uuid AS variant_id,
-    'tenants/SeedTNNTAAA1/episodes/SeedEPSDAAA1/page-'
+    'tenants/SeedTNNTAAA1/episodes/SeedEPSDAAA2/page-'
         || lpad(page_number::text, 2, '0')
         || '-original.jpg' AS object_key
 FROM generate_series(1, 8) AS page_number;
@@ -35,7 +40,7 @@ SELECT
 FROM viewer_page
     CROSS JOIN episodes episode
     JOIN series ON series.id = episode.series_id
-WHERE episode.public_id = 'SeedEPSDAAA1'
+WHERE episode.public_id = 'SeedEPSDAAA2'
 ON CONFLICT (id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     episode_id = EXCLUDED.episode_id,

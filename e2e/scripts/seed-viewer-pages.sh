@@ -30,13 +30,13 @@ mapfile -t object_keys < <(
     FROM episode_images ei
       JOIN episode_image_variants eiv ON eiv.episode_image_id = ei.id
       JOIN episodes e ON e.id = ei.episode_id
-    WHERE e.public_id = 'SeedEPSDAAA1'
+    WHERE e.public_id = 'SeedEPSDAAA2'
     ORDER BY ei.display_order ASC
   "
 )
 
 if [[ "${#object_keys[@]}" -eq 0 ]]; then
-  e2e_err "050_viewer_pages left no episode images for SeedEPSDAAA1"
+  e2e_err "050_viewer_pages left no episode images for SeedEPSDAAA2"
   exit 1
 fi
 
