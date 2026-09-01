@@ -92,6 +92,8 @@ Environment variables:
 
 The structured log records the target date, the number of tenants processed, the rows created, and the elapsed time. If the input holds events or purchases but the aggregation comes out empty, the run deletes nothing, leaves the transaction uncommitted, and exits with an error.
 
+Two runs cannot rebuild the same tenant and day at once. The second waits up to 30 seconds for the first and then fails, rather than blocking for the rest of the day with a transaction open. The failure ends the whole run, so the tenants after that one keep the stats they had until the next invocation.
+
 ### Query plan
 
 The event range for a day can use `idx_content_events_tenant_type_occurred_at`, and the purchase range `idx_purchases_tenant_purchased_at_episode`. On small data sets PostgreSQL may pick a sequential scan anyway, so add `SET enable_seqscan = off` when checking index eligibility with `EXPLAIN`.

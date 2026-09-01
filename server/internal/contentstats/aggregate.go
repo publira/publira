@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/batchlock"
 )
 
 // Aggregator rebuilds content_daily_stats from content_events and purchases.
@@ -101,10 +103,10 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenantID uuid.UUID, st
 
 	// This lock belongs inside the transaction: it protects the delete/insert
 	// replacement from a concurrent cron invocation for the same tenant/day.
-	if _, err := tx.ExecContext(ctx, `
-		SELECT pg_advisory_xact_lock(hashtextextended($1::text || ':' || $2::text, 0))
-	`, tenantID, statDate); err != nil {
-		return 0, fmt.Errorf("lock tenant date: %w", err)
+	// Its bounded wait turns an overlapping run into a failed run rather than
+	// one that waits out the day holding a transaction open.
+	if err := batchlock.TakeTenant(ctx, tx, tenantID.String()+":"+statDate); err != nil {
+		return 0, err
 	}
 
 	sources, err := countSources(ctx, tx, tenantID, statDate)

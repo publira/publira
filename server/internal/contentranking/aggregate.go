@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/batchlock"
 )
 
 const (
@@ -42,11 +44,6 @@ const (
 	// items array is fetched whole by whoever renders the ranking, so the
 	// snapshot holds a leaderboard rather than the entire catalogue.
 	DefaultItemLimit = 50
-
-	// lockTimeout bounds how long one tenant waits for the advisory lock. A
-	// cron one-shot has no deadline of its own, so without this an overlapping
-	// run would block forever with a transaction open instead of exiting.
-	lockTimeout = "30s"
 )
 
 // The score weights. They are constants rather than settings: a snapshot
@@ -216,17 +213,12 @@ func (a *Aggregator) rankTenant(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if _, err := tx.ExecContext(ctx, "SELECT set_config('lock_timeout', $1, true)", lockTimeout); err != nil {
-		return 0, 0, fmt.Errorf("set lock timeout: %w", err)
-	}
 	// This lock belongs inside the transaction: it keeps a concurrent cron
 	// invocation from rewriting the same tenant's snapshots underneath this
-	// one. The timeout above turns an overlapping run into a failed run rather
+	// one. Its bounded wait turns an overlapping run into a failed run rather
 	// than one that waits out the day holding a transaction open.
-	if _, err := tx.ExecContext(ctx, `
-		SELECT pg_advisory_xact_lock(hashtextextended($1::text || ':content-ranking', 0))
-	`, tenantID); err != nil {
-		return 0, 0, fmt.Errorf("lock tenant (waited up to %s): %w", lockTimeout, err)
+	if err := batchlock.TakeTenant(ctx, tx, tenantID.String()+":content-ranking"); err != nil {
+		return 0, 0, err
 	}
 
 	for _, w := range windows {
