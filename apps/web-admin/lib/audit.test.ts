@@ -35,7 +35,7 @@ describe("audit lib", () => {
     mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Tokyo");
   });
 
-  it("共通 token を RPC に渡して前後の token を返す", async () => {
+  it("passes the shared token to the RPC and returns the tokens on both sides", async () => {
     mockListAuditLogs.mockResolvedValue({
       auditLogs: [
         {
@@ -96,7 +96,7 @@ describe("audit lib", () => {
     });
   });
 
-  it("セッションが無い場合は空の token を返す", async () => {
+  it("returns empty tokens when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { listAuditLogs } = await import("./audit");
@@ -113,7 +113,7 @@ describe("audit lib", () => {
     });
   });
 
-  it("日付フィルタの日境界はテナントタイムゾーンで解釈する", async () => {
+  it("reads the day boundary of the date filter in the tenant time zone", async () => {
     mockGetTenantDisplayTimeZone.mockResolvedValue("America/Los_Angeles");
     mockListAuditLogs.mockResolvedValue({
       auditLogs: [],

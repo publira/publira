@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { fillInstantFromDateTimeLocal } from "./datetime-local-form";
 
 describe("fillInstantFromDateTimeLocal", () => {
-  it("表示中のタイムゾーンで壁時計を絶対時刻へ変換する", () => {
+  it("converts the wall clock to an absolute instant in the time zone on screen", () => {
     const form = document.createElement("form");
     const local = document.createElement("input");
     local.name = "publish_at_local";
@@ -24,7 +24,7 @@ describe("fillInstantFromDateTimeLocal", () => {
     expect(iso.value).toBe("2099-06-01T17:00:00Z");
   });
 
-  it("空の壁時計は空文字にする", () => {
+  it("turns an empty wall clock into an empty string", () => {
     const form = document.createElement("form");
     const local = document.createElement("input");
     local.name = "publish_at_local";

@@ -42,7 +42,7 @@ describe("listCreators", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+  it("passes the cursor token and the limit through and returns the tokens of the response", async () => {
     mockListCreators.mockResolvedValue({
       creators: [],
       nextToken: "next-page",
@@ -70,7 +70,7 @@ describe("listCreators", () => {
     });
   });
 
-  it("最初のページは空のトークンで取得する", async () => {
+  it("fetches the first page with an empty token", async () => {
     mockListCreators.mockResolvedValue({ creators: [] });
 
     const { listCreators } = await import("./creator");
@@ -92,7 +92,7 @@ describe("listCreators", () => {
     });
   });
 
-  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+  it("returns the keyset order of the server without re-sorting it", async () => {
     mockListCreators.mockResolvedValue({
       creators: [
         { name: "ぬ", profileText: "", publicId: "CREATOR002" },
@@ -109,7 +109,7 @@ describe("listCreators", () => {
     ]);
   });
 
-  it("取得に失敗してもトークンなしの結果を返す", async () => {
+  it("returns a result with no token when the fetch fails", async () => {
     const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockListCreators.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
@@ -134,7 +134,7 @@ describe("getCreator", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("一覧を走査せずGetCreatorを1回だけ呼ぶ", async () => {
+  it("calls GetCreator once instead of walking the list", async () => {
     mockGetCreator.mockResolvedValue({
       creator: {
         name: "Target",
@@ -170,7 +170,7 @@ describe("getCreator", () => {
     });
   });
 
-  it("セッションがない場合はRPCを呼ばずにエラーを返す", async () => {
+  it("returns an error without calling the RPC when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { getCreator } = await import("./creator");
@@ -189,7 +189,7 @@ describe("getCreator", () => {
 
   // 不在とテナント外はサーバーがどちらも not_found で返すため、区別せず
   // notFound へ落とす。
-  it("not_foundが返った場合はnotFoundを返す", async () => {
+  it("returns notFound when the RPC answers not_found", async () => {
     const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetCreator.mockRejectedValue(
       new ConnectError("creator not found", Code.NotFound)
@@ -204,7 +204,7 @@ describe("getCreator", () => {
     expect(result).toEqual({ notFound: true, ok: false });
   });
 
-  it("not_found以外の失敗はメッセージを返す", async () => {
+  it("returns a message for a failure other than not_found", async () => {
     const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetCreator.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
@@ -220,7 +220,7 @@ describe("getCreator", () => {
     expect(result).not.toMatchObject({ notFound: true });
   });
 
-  it("creatorが欠けた応答はエラーとして扱う", async () => {
+  it("treats a response with no creator as an error", async () => {
     mockGetCreator.mockResolvedValue({});
 
     const { getCreator } = await import("./creator");
@@ -243,7 +243,7 @@ describe("listAllCreators", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor をたどって101件目以降も含める", async () => {
+  it("follows the cursor to include the hundred-and-first entry onwards", async () => {
     mockListCreators
       .mockResolvedValueOnce({
         creators: creatorPage(100),
@@ -290,7 +290,7 @@ describe("listAllCreators", () => {
     ).toBe(true);
   });
 
-  it("セッションがない場合RPCを呼ばない", async () => {
+  it("does not call the RPC when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { listAllCreators } = await import("./creator");
@@ -307,7 +307,7 @@ describe("listAllCreators", () => {
     });
   });
 
-  it("nextToken が繰り返されたら部分結果を返さない", async () => {
+  it("returns no partial result when nextToken repeats itself", async () => {
     mockListCreators
       .mockResolvedValueOnce({
         creators: creatorPage(100),

@@ -14,7 +14,7 @@ const settings = (
 });
 
 describe("paymentSettingsStatus", () => {
-  it("ready な設定は利用可能にする", () => {
+  it("reports a ready configuration as usable", () => {
     expect(
       paymentSettingsStatus(
         settings({
@@ -27,19 +27,19 @@ describe("paymentSettingsStatus", () => {
     ).toBe("ready");
   });
 
-  it("有効でもシークレットが揃っていなければ設定不足にする", () => {
+  it("reports missing configuration when it is enabled without every secret", () => {
     expect(paymentSettingsStatus(settings({ enabled: true }))).toBe(
       "incomplete"
     );
   });
 
-  it("シークレットはあるが無効なら無効にする", () => {
+  it("reports it as disabled when the secrets are there but it is off", () => {
     expect(paymentSettingsStatus(settings({ secretKeyConfigured: true }))).toBe(
       "disabled"
     );
   });
 
-  it("何もなければ未設定にする", () => {
+  it("reports it as unconfigured when there is nothing", () => {
     expect(paymentSettingsStatus(emptyTenantPaymentSettings)).toBe("unset");
   });
 });

@@ -10,7 +10,7 @@ import {
 const ja = sharedCatalog("ja");
 
 describe("parseNotificationPayload", () => {
-  it("既知のフィールドだけを取り出す", () => {
+  it("picks out only the fields it knows", () => {
     expect(
       parseNotificationPayload(
         JSON.stringify({
@@ -29,7 +29,7 @@ describe("parseNotificationPayload", () => {
     });
   });
 
-  it("空・壊れた JSON・不正な ID は空の payload にする", () => {
+  it("turns empty text, broken JSON and an invalid id into an empty payload", () => {
     expect(parseNotificationPayload("")).toEqual({});
     expect(parseNotificationPayload("{")).toEqual({});
     expect(parseNotificationPayload("null")).toEqual({});
@@ -45,7 +45,7 @@ describe("parseNotificationPayload", () => {
 });
 
 describe("notificationHref", () => {
-  it("series と episode があれば編集画面へ、series だけならシリーズへ", () => {
+  it("links to the edit screen with a series and an episode, and to the series with a series alone", () => {
     expect(notificationHref({ episode_id: "EP01", series_id: "SR01" })).toBe(
       "/series/SR01/episodes/EP01"
     );
@@ -56,7 +56,7 @@ describe("notificationHref", () => {
 });
 
 describe("notificationDisplay", () => {
-  it("公開成功・失敗は type ごとに文言を組み立てる", () => {
+  it("builds the wording of a successful and a failed publication by type", () => {
     expect(
       notificationDisplay(
         "episode_published",
@@ -103,7 +103,7 @@ describe("notificationDisplay", () => {
     });
   });
 
-  it("未知の type は落とさず generic にする", () => {
+  it("keeps an unknown type as generic instead of dropping it", () => {
     expect(
       notificationDisplay("invite_accepted", { series_id: "SR01" }, ja)
     ).toEqual({

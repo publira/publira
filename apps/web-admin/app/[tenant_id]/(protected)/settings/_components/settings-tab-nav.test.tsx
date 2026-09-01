@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 describe("SettingsTabNav", () => {
-  it("テナント設定のタブだけを並べる", () => {
+  it("lists only the tenant settings tabs", () => {
     render(<SettingsTabNav current="basic" />);
 
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
@@ -34,7 +34,7 @@ describe("SettingsTabNav", () => {
     );
   });
 
-  it("自分のアカウント設定はタブに混ぜない", () => {
+  it("keeps the personal account settings out of the tabs", () => {
     render(<SettingsTabNav current="basic" />);
 
     expect(screen.queryByRole("link", { name: "アカウント" })).toBeNull();

@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe("CursorPageEmptyState", () => {
-  it("ページ送りが無ければ未登録として案内し、新規作成の導線も出す", () => {
+  it("says nothing is registered yet and offers the create link when there is no pager", () => {
     render(
       <CursorPageEmptyState
         actions={<button type="button">エピソードを新規作成</button>}
@@ -35,7 +35,7 @@ describe("CursorPageEmptyState", () => {
     expect(screen.getByRole("button")).toBeDefined();
   });
 
-  it("ページ送りがあれば一覧全体が空だとは案内しない", () => {
+  it("does not say the whole list is empty when there is a pager", () => {
     render(
       <CursorPageEmptyState
         actions={<button type="button">エピソードを新規作成</button>}

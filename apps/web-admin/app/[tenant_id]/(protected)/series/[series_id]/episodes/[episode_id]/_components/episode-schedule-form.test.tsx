@@ -27,7 +27,7 @@ afterEach(() => {
 describe("EpisodeScheduleForm", () => {
   const action = vi.fn(() => Promise.resolve(null));
 
-  it("scheduledAt をテナントタイムゾーンの壁時計として初期表示する", () => {
+  it("shows scheduledAt as a wall clock in the tenant time zone", () => {
     render(
       <EpisodeScheduleForm
         action={action}
@@ -43,7 +43,7 @@ describe("EpisodeScheduleForm", () => {
     expect(localInput.value).toBe("2030-01-01T10:00");
   });
 
-  it("予約が無いときは入力を空にする", () => {
+  it("leaves the input empty when nothing is scheduled", () => {
     render(
       <EpisodeScheduleForm
         action={action}
@@ -58,7 +58,7 @@ describe("EpisodeScheduleForm", () => {
     expect(localInput.value).toBe("");
   });
 
-  it("作成フォームと同時にマウントされても id が重複しない", () => {
+  it("keeps the ids unique when it is mounted alongside the create form", () => {
     render(
       <>
         <EpisodeForm

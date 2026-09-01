@@ -26,7 +26,7 @@ describe("tenant-detail", () => {
     mockGetSessionId.mockResolvedValue("session-token");
   });
 
-  it("tenantId と sessionId からテナント詳細を取得する", async () => {
+  it("fetches the tenant detail from the tenantId and the sessionId", async () => {
     mockGetTenant.mockResolvedValueOnce({
       tenant: {
         adminDomain: "admin.example.com",
@@ -58,7 +58,7 @@ describe("tenant-detail", () => {
     );
   });
 
-  it("tenant 名が空なら再ログインを求めずに失敗する", async () => {
+  it("fails without asking for a fresh login when the tenant name is empty", async () => {
     mockGetTenant.mockResolvedValueOnce({
       tenant: {
         domain: "example.com",
@@ -75,7 +75,7 @@ describe("tenant-detail", () => {
     });
   });
 
-  it("セッションが拒否されたら再ログインを求める", async () => {
+  it("asks for a fresh login when the session is rejected", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("invalid session", Code.Unauthenticated)
     );
@@ -88,7 +88,7 @@ describe("tenant-detail", () => {
     });
   });
 
-  it("テナントが見えない場合は再ログインを求めない", async () => {
+  it("does not ask for a fresh login when the tenant is not visible", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("tenant not found", Code.NotFound)
     );
@@ -101,7 +101,7 @@ describe("tenant-detail", () => {
     });
   });
 
-  it("分類できないエラーはそのまま送出する", async () => {
+  it("throws an error it cannot classify as it is", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );

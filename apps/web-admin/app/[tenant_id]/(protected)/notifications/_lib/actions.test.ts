@@ -49,7 +49,7 @@ describe("notification actions", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("単件既読に成功したらキャッシュタグを更新する", async () => {
+  it("revalidates the cache tag after marking one notification as read", async () => {
     mockMarkNotificationAsRead.mockResolvedValueOnce({ ok: true });
 
     const { markNotificationAsReadAction } = await import("./actions");
@@ -72,7 +72,7 @@ describe("notification actions", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith("notifications-TENANT001");
   });
 
-  it("不正な notification_id は API を呼ばない", async () => {
+  it("does not call the API for an invalid notification_id", async () => {
     const { markNotificationAsReadAction } = await import("./actions");
     const result = await markNotificationAsReadAction(
       null,
@@ -90,7 +90,7 @@ describe("notification actions", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
-  it("全件既読に成功したらキャッシュタグを更新する", async () => {
+  it("revalidates the cache tag after marking every notification as read", async () => {
     mockMarkAllNotificationsAsRead.mockResolvedValueOnce({
       markedCount: 2,
       ok: true,
@@ -113,7 +113,7 @@ describe("notification actions", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith("notifications-TENANT001");
   });
 
-  it("API が拒否したらメッセージを返し、タグは更新しない", async () => {
+  it("returns the message and leaves the cache tag alone when the API rejects the call", async () => {
     mockMarkAllNotificationsAsRead.mockResolvedValueOnce({
       message: "この操作を行う権限がありません。",
       ok: false,

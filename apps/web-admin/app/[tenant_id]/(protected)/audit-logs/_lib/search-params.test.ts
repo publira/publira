@@ -5,7 +5,7 @@ import { parseAuditLogFilters } from "./search-params";
 const allowedActions = new Set(["series_created"]);
 
 describe("parseAuditLogFilters", () => {
-  it("ページ token とフィルタを正規化する", () => {
+  it("normalizes the page token and the filters", () => {
     expect(
       parseAuditLogFilters(
         {
@@ -26,7 +26,7 @@ describe("parseAuditLogFilters", () => {
     });
   });
 
-  it("複数値や不正なフィルタを空値にする", () => {
+  it("empties repeated and invalid filter values", () => {
     expect(
       parseAuditLogFilters(
         {

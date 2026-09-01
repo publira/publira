@@ -87,7 +87,7 @@ describe("TicketForm", () => {
     mockListEpisodeOptionsAction.mockReset();
   });
 
-  it("シリーズを選べるときは combobox でエピソードを選び、未選択では発行できない", () => {
+  it("picks an episode from the combobox when series are available and blocks issuing until one is chosen", () => {
     render(
       <TicketForm action={action} series={[seriesA]} timeZone="Asia/Tokyo" />
     );
@@ -102,7 +102,7 @@ describe("TicketForm", () => {
     ).toBe(true);
   });
 
-  it("シリーズ一覧が空ならエピソード public_id の直接入力に落とす", () => {
+  it("falls back to typing the episode public_id when the series list is empty", () => {
     render(<TicketForm action={action} series={[]} timeZone="Asia/Tokyo" />);
 
     expect(screen.getByLabelText(/エピソード public_id/u)).toBeDefined();
@@ -114,7 +114,7 @@ describe("TicketForm", () => {
     ).toBeDefined();
   });
 
-  it("シリーズ取得失敗時も public_id 入力に落とし、エラーを出す", () => {
+  it("falls back to the public_id input and shows an error when the series fetch fails", () => {
     render(
       <TicketForm
         action={action}
@@ -130,7 +130,7 @@ describe("TicketForm", () => {
     ).toBeDefined();
   });
 
-  it("シリーズを選ぶとエピソード候補を読み、選べるようにする", async () => {
+  it("loads the episode choices and lets one be picked once a series is selected", async () => {
     mockListEpisodeOptionsAction.mockResolvedValue({
       episodes: [{ publicId: "EPISODE001", title: "第1話" }],
       ok: true,
@@ -166,7 +166,7 @@ describe("TicketForm", () => {
     });
   });
 
-  it("エピソード取得失敗時も選択UIを残し、再試行できる", async () => {
+  it("keeps the selection UI and offers a retry when the episode fetch fails", async () => {
     mockListEpisodeOptionsAction
       .mockResolvedValueOnce({
         episodes: [],
@@ -198,7 +198,7 @@ describe("TicketForm", () => {
     expect(mockListEpisodeOptionsAction).toHaveBeenCalledTimes(2);
   });
 
-  it("連続してシリーズを選んだとき、古い取得結果は捨てる", async () => {
+  it("discards the stale result when series are selected in quick succession", async () => {
     const firstLoad = Promise.withResolvers<{
       episodes: { publicId: string; title: string }[];
       ok: true;

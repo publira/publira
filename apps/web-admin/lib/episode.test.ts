@@ -47,7 +47,7 @@ beforeEach(() => {
 });
 
 describe("listEpisodes", () => {
-  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+  it("passes the cursor token and the limit through and returns the tokens of the response", async () => {
     mockListEpisodes.mockResolvedValue({
       episodes: [],
       nextToken: "next-page",
@@ -78,7 +78,7 @@ describe("listEpisodes", () => {
     });
   });
 
-  it("最初のページは既定のページサイズと空のトークンで取得する", async () => {
+  it("fetches the first page with the default page size and an empty token", async () => {
     mockListEpisodes.mockResolvedValue({ episodes: [] });
 
     const { listEpisodes } = await import("./episode");
@@ -104,7 +104,7 @@ describe("listEpisodes", () => {
     });
   });
 
-  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+  it("returns the keyset order of the server without re-sorting it", async () => {
     mockListEpisodes.mockResolvedValue({
       episodes: [episode("EPISODE003", 3), episode("EPISODE001", 1)],
     });
@@ -121,7 +121,7 @@ describe("listEpisodes", () => {
     ]);
   });
 
-  it("取得に失敗してもトークンなしの結果を返す", async () => {
+  it("returns a result with no token when the fetch fails", async () => {
     mockListEpisodes.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -143,7 +143,7 @@ describe("listEpisodes", () => {
 });
 
 describe("listAllEpisodes", () => {
-  it("cursor をたどって101件目以降も含め、サーバーの表示順を保つ", async () => {
+  it("follows the cursor past the hundredth entry and keeps the order of the server", async () => {
     const firstPage = Array.from({ length: 100 }, (_, index) =>
       episode(`EPISODE${String(index + 1).padStart(3, "0")}`, index + 1)
     );
@@ -182,7 +182,7 @@ describe("listAllEpisodes", () => {
     expect(result.episodes.at(-1)?.publicId).toBe("EPISODE101");
   });
 
-  it("セッションがない場合RPCを呼ばない", async () => {
+  it("does not call the RPC when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listAllEpisodes } = await import("./episode");
@@ -198,7 +198,7 @@ describe("listAllEpisodes", () => {
     });
   });
 
-  it("nextToken が繰り返されたら部分結果を返さない", async () => {
+  it("returns no partial result when nextToken repeats itself", async () => {
     mockListEpisodes
       .mockResolvedValueOnce({
         episodes: [episode("EPISODE001", 1)],
@@ -223,7 +223,7 @@ describe("listAllEpisodes", () => {
 });
 
 describe("getEpisode", () => {
-  it("単体取得 RPC を呼び、エピソードを返す", async () => {
+  it("calls the single-fetch RPC and returns the episode", async () => {
     mockGetEpisode.mockResolvedValue({
       episode: episode("EPISODE001", 1),
     });
@@ -259,7 +259,7 @@ describe("getEpisode", () => {
     });
   });
 
-  it("予約中の scheduledAt をそのまま返す", async () => {
+  it("returns the scheduledAt of a scheduled episode untouched", async () => {
     mockGetEpisode.mockResolvedValue({
       episode: {
         ...episode("EPISODE002", 2),
@@ -281,7 +281,7 @@ describe("getEpisode", () => {
     });
   });
 
-  it("不在・テナント外は notFound にする", async () => {
+  it("returns notFound for a missing episode and for one outside the tenant", async () => {
     mockGetEpisode.mockRejectedValue(
       new ConnectError("episode not found", Code.NotFound)
     );
@@ -298,7 +298,7 @@ describe("getEpisode", () => {
 });
 
 describe("mergeEpisodeOrder", () => {
-  it("ページ内の並びをシリーズ全体の同じ位置へ差し戻す", async () => {
+  it("writes the order within the page back to the same positions in the whole series", async () => {
     const { mergeEpisodeOrder } = await import("./episode");
 
     expect(
@@ -306,7 +306,7 @@ describe("mergeEpisodeOrder", () => {
     ).toEqual(["A", "B", "D", "C", "E"]);
   });
 
-  it("ページ外のエピソードが消えていても、ページの並びが保たれていれば書き込む", async () => {
+  it("writes when the order within the page still holds even though an episode outside it is gone", async () => {
     const { mergeEpisodeOrder } = await import("./episode");
 
     expect(mergeEpisodeOrder(["A", "C", "D"], ["C", "D"], ["D", "C"])).toEqual([
@@ -316,7 +316,7 @@ describe("mergeEpisodeOrder", () => {
     ]);
   });
 
-  it("ページがシリーズと合わなくなっていたら諦める", async () => {
+  it("gives up when the page no longer matches the series", async () => {
     const { mergeEpisodeOrder } = await import("./episode");
 
     // 既に削除されたエピソードを含むページ。
@@ -327,7 +327,7 @@ describe("mergeEpisodeOrder", () => {
     expect(mergeEpisodeOrder(["A", "B"], ["A"], ["B", "A"])).toBeNull();
   });
 
-  it("ページの間に別のエピソードが割り込んでいたら書き込まない", async () => {
+  it("does not write when another episode has slipped into the page", async () => {
     const { mergeEpisodeOrder } = await import("./episode");
 
     // 表示は [C, D] だったが、その間へ A と B が移動した。ID だけ見ると揃って
@@ -337,7 +337,7 @@ describe("mergeEpisodeOrder", () => {
     ).toBeNull();
   });
 
-  it("表示していた並びと現在の並びが食い違っていたら書き込まない", async () => {
+  it("does not write when the order on screen disagrees with the current one", async () => {
     const { mergeEpisodeOrder } = await import("./episode");
 
     // 表示は [C, D] だったが、別の操作で [D, C] へ入れ替わっていた。
@@ -348,7 +348,7 @@ describe("mergeEpisodeOrder", () => {
 });
 
 describe("reorderEpisodePage", () => {
-  it("シリーズ全体を読んでから、ページの並びを混ぜた全件を送る", async () => {
+  it("reads the whole series first and then sends every entry with the order of the page merged in", async () => {
     mockListEpisodes
       .mockResolvedValueOnce({
         episodes: [episode("EPISODE001", 1), episode("EPISODE002", 2)],
@@ -390,7 +390,7 @@ describe("reorderEpisodePage", () => {
     );
   });
 
-  it("並びが合わなくなっていたら RPC を呼ばない", async () => {
+  it("does not call the RPC when the order no longer matches", async () => {
     mockListEpisodes.mockResolvedValue({
       episodes: [episode("EPISODE001", 1)],
       nextToken: "",
@@ -408,7 +408,7 @@ describe("reorderEpisodePage", () => {
     expect(mockReorderEpisodes).not.toHaveBeenCalled();
   });
 
-  it("表示中に別の操作でページの並びが変わっていたら RPC を呼ばない", async () => {
+  it("does not call the RPC when another operation changed the order of the page meanwhile", async () => {
     // 画面が [EPISODE003, EPISODE004] を表示している間に、EPISODE001 と
     // EPISODE002 がその間へ移動した。
     mockListEpisodes.mockResolvedValue({
@@ -433,7 +433,7 @@ describe("reorderEpisodePage", () => {
     expect(mockReorderEpisodes).not.toHaveBeenCalled();
   });
 
-  it("サーバーが並びの競合を返したら書き込まず再読み込みを促す", async () => {
+  it("does not write and asks for a reload when the server reports an ordering conflict", async () => {
     mockListEpisodes.mockResolvedValue({
       episodes: [episode("EPISODE001", 1), episode("EPISODE002", 2)],
       nextToken: "",
@@ -457,7 +457,7 @@ describe("reorderEpisodePage", () => {
     });
   });
 
-  it("シリーズの読み出しに失敗したら RPC を呼ばない", async () => {
+  it("does not call the RPC when reading the series fails", async () => {
     mockListEpisodes.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );

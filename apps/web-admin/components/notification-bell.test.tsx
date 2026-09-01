@@ -65,7 +65,7 @@ afterEach(() => {
 });
 
 describe("NotificationBell", () => {
-  it("0 件なら件数を出さず、空状態と通知一覧への導線を表示する", async () => {
+  it("hides the count and shows the empty state with a link to the notification list when there is none", async () => {
     await renderBell();
 
     const trigger = screen.getByRole("button", {
@@ -82,7 +82,7 @@ describe("NotificationBell", () => {
     ).toBe("/notifications");
   });
 
-  it("未読があれば件数と直近通知の遷移先を表示する", async () => {
+  it("shows the count and where the latest notification leads when there are unread ones", async () => {
     await renderBell({
       notifications: [
         {
@@ -110,7 +110,7 @@ describe("NotificationBell", () => {
     expect(screen.getByText("未読")).toBeDefined();
   });
 
-  it("99 件を超えたら 99+ と出す", async () => {
+  it("shows 99+ beyond ninety-nine", async () => {
     await renderBell({ unreadCount: 120 });
 
     expect(
@@ -119,7 +119,7 @@ describe("NotificationBell", () => {
     expect(screen.getByText("99+")).toBeDefined();
   });
 
-  it("通知の取得に失敗してもメニューと全件への導線を保つ", async () => {
+  it("keeps the menu and the link to all notifications when the fetch fails", async () => {
     countUnreadNotifications.mockResolvedValue({ ok: true, unreadCount: 0 });
     listNotifications.mockResolvedValue({
       message: "通知一覧の取得に失敗しました。時間をおいて再試行してください。",

@@ -59,7 +59,7 @@ afterEach(() => {
 });
 
 describe("TenantPaymentSettingsForm", () => {
-  it("未設定を状態として表示する", () => {
+  it("shows an unconfigured tenant as its own status", () => {
     render(
       <TenantPaymentSettingsForm
         action={noopAction}
@@ -73,7 +73,7 @@ describe("TenantPaymentSettingsForm", () => {
     expect(screen.getByLabelText("Webhook 署名シークレット")).toBeDefined();
   });
 
-  it("利用可能な設定はヒントだけを表示し平文は出さない", () => {
+  it("shows only the hint and never the plaintext of a usable configuration", () => {
     render(
       <TenantPaymentSettingsForm
         action={noopAction}
@@ -91,7 +91,7 @@ describe("TenantPaymentSettingsForm", () => {
     ).toBe("text");
   });
 
-  it("有効でもシークレットが無ければ設定不足にする", () => {
+  it("reports missing configuration when it is enabled without a secret", () => {
     render(
       <TenantPaymentSettingsForm
         action={noopAction}
@@ -103,7 +103,7 @@ describe("TenantPaymentSettingsForm", () => {
     expect(screen.getByText("設定不足")).toBeDefined();
   });
 
-  it("保存済みでも無効なら無効と表示する", () => {
+  it("shows a saved but disabled configuration as disabled", () => {
     render(
       <TenantPaymentSettingsForm
         action={noopAction}
@@ -115,7 +115,7 @@ describe("TenantPaymentSettingsForm", () => {
     expect(screen.getByText("無効")).toBeDefined();
   });
 
-  it("テナント管理者でない場合は閲覧専用にする", () => {
+  it("stays read-only for someone who is not a tenant admin", () => {
     render(
       <TenantPaymentSettingsForm
         action={noopAction}
@@ -142,7 +142,7 @@ describe("TenantPaymentSettingsForm", () => {
     ).toBeDefined();
   });
 
-  it("取得に失敗した場合は編集できず理由を出す", () => {
+  it("blocks editing and shows the reason when the fetch fails", () => {
     render(
       <TenantPaymentSettingsForm
         action={noopAction}
@@ -158,7 +158,7 @@ describe("TenantPaymentSettingsForm", () => {
     ).toBe(true);
   });
 
-  it("変更するを押すと書き込み専用の入力になりヒントは残る", () => {
+  it("turns the fields write-only and keeps the hint once change is pressed", () => {
     render(
       <TenantPaymentSettingsForm
         action={noopAction}
@@ -181,7 +181,7 @@ describe("TenantPaymentSettingsForm", () => {
     expect(screen.getByDisplayValue("whsec_••••••••WXYZ")).toBeDefined();
   });
 
-  it("保存失敗をフォームに表示する", async () => {
+  it("shows a failed save on the form", async () => {
     const action = vi.fn().mockResolvedValue({
       message: "secret is required",
       ok: false,
@@ -202,7 +202,7 @@ describe("TenantPaymentSettingsForm", () => {
     });
   });
 
-  it("保存後は入力したシークレットを残さずヒントだけ表示する", async () => {
+  it("drops the typed secret after saving and shows only the hint", async () => {
     const leakedSecret = "plaintext-secret-value";
     const action = vi.fn().mockResolvedValue({
       message: "決済設定を保存しました。",

@@ -91,7 +91,7 @@ const renderBell = ({
   );
 
 describe("NotificationBellMenu", () => {
-  it("通知行から対象コンテンツへ遷移し、選択後はメニューを閉じる", () => {
+  it("goes from a notification row to its content and closes the menu after the choice", () => {
     renderBell({ state: "notification" });
     fireEvent.click(
       screen.getByRole("button", { name: "通知、未読はありません" })
@@ -108,7 +108,7 @@ describe("NotificationBellMenu", () => {
   it.each([
     ["loading", "通知を読み込んでいます。"],
     ["error", "通知を表示できませんでした。"],
-  ] as const)("%s 中も通知メニューを開ける", (state, message) => {
+  ] as const)("opens the notification menu even while %s", (state, message) => {
     renderBell({ state });
     fireEvent.click(
       screen.getByRole("button", { name: "通知、未読はありません" })
@@ -117,7 +117,7 @@ describe("NotificationBellMenu", () => {
     expect(screen.getByRole("link", { name: "もっと見る" })).toBeDefined();
   });
 
-  it("Escape で閉じるとトリガーへフォーカスが戻る", () => {
+  it("returns focus to the trigger when Escape closes it", () => {
     renderBell();
     const trigger = screen.getByRole("button", {
       name: "通知、未読はありません",

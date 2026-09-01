@@ -66,7 +66,7 @@ const fileInput = (): HTMLInputElement =>
   );
 
 describe("EpisodePagesForm", () => {
-  it("初期状態は pages モードでファイル入力が画像向けになる", () => {
+  it("starts in pages mode with the file input set for images", () => {
     const { container } = renderForm();
 
     const uploadMode = container.querySelector(
@@ -83,7 +83,7 @@ describe("EpisodePagesForm", () => {
     ).toBeTruthy();
   });
 
-  it("ZIP と ePub の切り替えで入力属性と文言が変わる", () => {
+  it("changes the input attributes and the wording when switching between ZIP and ePub", () => {
     renderForm();
 
     fireEvent.click(screen.getByRole("button", { name: "ZIP で入稿" }));
@@ -104,7 +104,7 @@ describe("EpisodePagesForm", () => {
     expect(screen.getByRole("button", { name: "ePub を入稿" })).toBeTruthy();
   });
 
-  it("ファイル選択後にファイル名を表示し、モード切り替えでクリアする", () => {
+  it("shows the file name after a file is chosen and clears it when the mode changes", () => {
     renderForm();
     const input = fileInput();
 
@@ -126,7 +126,7 @@ describe("EpisodePagesForm", () => {
     expect(screen.queryByText("page-2.png")).toBeNull();
   });
 
-  it("二重にマウントされても id が重複しない", () => {
+  it("keeps the ids unique when it is mounted twice", () => {
     renderBothForms();
 
     const ids = [...document.querySelectorAll("[id]")].map(
@@ -137,7 +137,7 @@ describe("EpisodePagesForm", () => {
     expect(ids).toHaveLength(new Set(ids).size);
   });
 
-  it("二重にマウントされてもラベルがそれぞれの入力を指す", () => {
+  it("points each label at its own input when it is mounted twice", () => {
     renderBothForms();
 
     const inputs = screen.getAllByLabelText<HTMLInputElement>(/ページ画像/u);

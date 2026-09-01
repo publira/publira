@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 describe("AnnouncementManager", () => {
-  it("最初のページが空なら未登録として案内する", () => {
+  it("says nothing is registered yet when the first page is empty", () => {
     render(
       <AnnouncementManager
         announcements={[]}
@@ -51,7 +51,7 @@ describe("AnnouncementManager", () => {
     expect(screen.queryByLabelText("お知らせ一覧のページ送り")).toBeNull();
   });
 
-  it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
+  it("does not say the whole list is empty when a later page is empty", () => {
     render(
       <AnnouncementManager
         announcements={[]}
@@ -71,7 +71,7 @@ describe("AnnouncementManager", () => {
     expect(screen.queryByRole("link", { name: "次へ" })).toBeNull();
   });
 
-  it("後続ページでも行とページ送りを描画する", () => {
+  it("renders the rows and the pager on a later page", () => {
     render(
       <AnnouncementManager
         nextHref="?token=next"
@@ -94,7 +94,7 @@ describe("AnnouncementManager", () => {
     ).toBe("?token=next");
   });
 
-  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", () => {
+  it("shows only the error and does not call the list empty when the fetch fails", () => {
     render(
       <AnnouncementManager
         listErrorMessage="お知らせ一覧を取得できませんでした。"
@@ -123,7 +123,7 @@ describe("AnnouncementManager", () => {
     expect(screen.queryByLabelText("お知らせ一覧のページ送り")).toBeNull();
   });
 
-  it("作成日時をテナントタイムゾーンの壁時計で表示する", () => {
+  it("shows the creation time as a wall clock in the tenant time zone", () => {
     render(
       <AnnouncementManager
         announcements={[announcement("n1")]}

@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 describe("TenantDefaultLocaleForm", () => {
-  it("保存済みの既定言語を選択済みとして表示する", () => {
+  it("shows the saved default locale as the selected one", () => {
     render(
       <TenantDefaultLocaleForm
         action={noopAction}
@@ -47,7 +47,7 @@ describe("TenantDefaultLocaleForm", () => {
     expect(trigger).toHaveProperty("disabled", false);
   });
 
-  it("テナント管理者でない場合は閲覧専用にする", () => {
+  it("stays read-only for someone who is not a tenant admin", () => {
     render(
       <TenantDefaultLocaleForm
         action={noopAction}
@@ -70,7 +70,7 @@ describe("TenantDefaultLocaleForm", () => {
     ).toBeDefined();
   });
 
-  it("取得に失敗した場合は編集できず理由を出す", () => {
+  it("blocks editing and shows the reason when the fetch fails", () => {
     render(
       <TenantDefaultLocaleForm
         action={noopAction}

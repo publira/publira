@@ -42,7 +42,7 @@ describe("listPages", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+  it("passes the cursor token and the limit through and returns the tokens of the response", async () => {
     mockListPages.mockResolvedValue({
       nextToken: "next-page",
       pages: [],
@@ -70,7 +70,7 @@ describe("listPages", () => {
     });
   });
 
-  it("最初のページは空のトークンで取得する", async () => {
+  it("fetches the first page with an empty token", async () => {
     mockListPages.mockResolvedValue({ pages: [] });
 
     const { listPages } = await import("./page");
@@ -92,7 +92,7 @@ describe("listPages", () => {
     });
   });
 
-  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+  it("returns the keyset order of the server without re-sorting it", async () => {
     mockListPages.mockResolvedValue({
       pages: [page("PAGE002", "ぬ"), page("PAGE001", "あ")],
     });
@@ -103,7 +103,7 @@ describe("listPages", () => {
     expect(result.pages.map((item) => item.id)).toEqual(["PAGE002", "PAGE001"]);
   });
 
-  it("セッションが無ければトークンなしの結果を返す", async () => {
+  it("returns a result with no token when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listPages } = await import("./page");
@@ -118,7 +118,7 @@ describe("listPages", () => {
     });
   });
 
-  it("取得に失敗してもトークンなしの結果を返す", async () => {
+  it("returns a result with no token when the fetch fails", async () => {
     mockListPages.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );

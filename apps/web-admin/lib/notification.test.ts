@@ -58,7 +58,7 @@ describe("notification lib", () => {
     mockGetSessionId.mockResolvedValue("session-token");
   });
 
-  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+  it("passes the cursor token and the limit through and returns the tokens of the response", async () => {
     mockListNotificationsApi.mockResolvedValue({
       nextToken: "next-page",
       notifications: [],
@@ -86,7 +86,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("最初のページは空のトークンと既定 limit で取得する", async () => {
+  it("fetches the first page with an empty token and the default limit", async () => {
     mockListNotificationsApi.mockResolvedValue({ notifications: [] });
 
     const { listNotifications } = await import("./notification");
@@ -107,7 +107,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("type と payload から表示用の文言とリンクを組み立てる", async () => {
+  it("builds the wording and the link to show from the type and the payload", async () => {
     mockListNotificationsApi.mockResolvedValue({
       notifications: [notification("n1", "2026-04-04T00:00:00Z")],
     });
@@ -129,7 +129,7 @@ describe("notification lib", () => {
     ]);
   });
 
-  it("未知 type も generic として残す", async () => {
+  it("keeps an unknown type as generic", async () => {
     mockListNotificationsApi.mockResolvedValue({
       notifications: [
         {
@@ -159,7 +159,7 @@ describe("notification lib", () => {
     ]);
   });
 
-  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+  it("returns the keyset order of the server without re-sorting it", async () => {
     mockListNotificationsApi.mockResolvedValue({
       notifications: [
         notification("n2", "2026-04-01T00:00:00Z"),
@@ -173,7 +173,7 @@ describe("notification lib", () => {
     expect(result.notifications.map((item) => item.id)).toEqual(["n2", "n1"]);
   });
 
-  it("権限エラーを分かりやすく返す", async () => {
+  it("returns a legible message for a permission error", async () => {
     mockListNotificationsApi.mockRejectedValue(
       new ConnectError("tenant admin role required", Code.PermissionDenied)
     );
@@ -191,7 +191,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("分類できないエラーはキャッシュ関数から throw せず、呼び出し側で再送出する", async () => {
+  it("does not throw an unclassifiable error out of the cached function and rethrows it at the caller", async () => {
     mockListNotificationsApi.mockRejectedValue(
       new ConnectError("boom", Code.Internal)
     );
@@ -201,7 +201,7 @@ describe("notification lib", () => {
     await expect(listNotifications("TENANT001")).rejects.toThrow();
   });
 
-  it("セッションが無ければトークンなしの結果を返す", async () => {
+  it("returns a result with no token when there is no session", async () => {
     mockGetSessionId.mockResolvedValue("");
 
     const { listNotifications } = await import("./notification");
@@ -218,7 +218,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("未読件数を返す", async () => {
+  it("returns the unread count", async () => {
     mockCountUnreadNotificationsApi.mockResolvedValue({ unreadCount: 3 });
 
     const { countUnreadNotifications } = await import("./notification");
@@ -231,7 +231,7 @@ describe("notification lib", () => {
     expect(result).toEqual({ ok: true, unreadCount: 3 });
   });
 
-  it("未読件数の取得失敗は空のベルとして返す", async () => {
+  it("returns an empty bell when the unread count cannot be fetched", async () => {
     mockCountUnreadNotificationsApi.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -248,7 +248,7 @@ describe("notification lib", () => {
     });
   });
 
-  it("未読件数の未分類エラーも呼び出し側で再送出する", async () => {
+  it("rethrows an unclassified error from the unread count at the caller as well", async () => {
     mockCountUnreadNotificationsApi.mockRejectedValue(new Error("boom"));
 
     const { countUnreadNotifications } = await import("./notification");
@@ -256,7 +256,7 @@ describe("notification lib", () => {
     await expect(countUnreadNotifications("TENANT001")).rejects.toThrow();
   });
 
-  it("単件既読に notification_id を渡す", async () => {
+  it("passes the notification_id when marking one notification as read", async () => {
     mockMarkNotificationAsReadApi.mockResolvedValue({ marked: true });
 
     const { markNotificationAsRead } = await import("./notification");
@@ -275,7 +275,7 @@ describe("notification lib", () => {
     expect(result).toEqual({ ok: true });
   });
 
-  it("全件既読の件数を返す", async () => {
+  it("returns how many notifications were marked as read", async () => {
     mockMarkAllNotificationsAsReadApi.mockResolvedValue({ markedCount: 4 });
 
     const { markAllNotificationsAsRead } = await import("./notification");

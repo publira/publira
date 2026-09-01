@@ -46,7 +46,7 @@ afterEach(() => {
   cleanup();
 });
 
-it("二重にマウントされても id が重複しない", () => {
+it("keeps the ids unique when it is mounted twice", () => {
   renderBothForms();
 
   const ids = [...document.querySelectorAll("[id]")].map(
@@ -57,7 +57,7 @@ it("二重にマウントされても id が重複しない", () => {
   expect(ids).toHaveLength(new Set(ids).size);
 });
 
-it("二重にマウントされてもラベルがそれぞれの入力を指す", () => {
+it("points each label at its own input when it is mounted twice", () => {
   renderBothForms();
 
   const titles = screen.getAllByLabelText<HTMLInputElement>(/タイトル/u);
@@ -66,7 +66,7 @@ it("二重にマウントされてもラベルがそれぞれの入力を指す"
   expect(titles.map((input) => input.value)).toEqual(["", ""]);
 });
 
-it("ロールとラベルから各入力を引ける", () => {
+it("finds each input by its role and label", () => {
   renderBothForms();
 
   expect(screen.getAllByRole("textbox", { name: /タイトル/u })).toHaveLength(2);

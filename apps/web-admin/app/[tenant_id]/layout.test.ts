@@ -44,7 +44,7 @@ describe("generateMetadata", () => {
     mockTenantId.mockReset();
   });
 
-  it("公開 API のテナント名でタイトルを組み立てる", async () => {
+  it("builds the title from the tenant name the public API returns", async () => {
     mockTenantId.mockResolvedValueOnce(tenantId);
     mockGetTenantName.mockResolvedValueOnce("サンプル出版社");
 
@@ -59,7 +59,7 @@ describe("generateMetadata", () => {
     expect(mockGetTenantName).toHaveBeenCalledWith(tenantId);
   });
 
-  it("文字列でない tenant_id では公開 API を呼ばずフォールバックする", async () => {
+  it("falls back without calling the public API for a tenant_id that is not a string", async () => {
     mockTenantId.mockResolvedValueOnce(null);
 
     const { generateMetadata } = await import("./layout");
@@ -68,7 +68,7 @@ describe("generateMetadata", () => {
     expect(mockGetTenantName).not.toHaveBeenCalled();
   });
 
-  it("UUID でない tenant_id では公開 API を呼ばずフォールバックする", async () => {
+  it("falls back without calling the public API for a tenant_id that is not a UUID", async () => {
     mockTenantId.mockResolvedValueOnce("favicon.ico");
 
     const { generateMetadata } = await import("./layout");
@@ -90,7 +90,7 @@ describe("generateMetadata", () => {
     expect(mockGetTenantName).toHaveBeenCalledWith(tenantId);
   });
 
-  it("generateStaticParams のプレースホルダでは notFound する", async () => {
+  it("calls notFound for the generateStaticParams placeholder", async () => {
     mockTenantId.mockResolvedValueOnce(STATIC_PARAM_PLACEHOLDER);
 
     const { generateMetadata } = await import("./layout");
