@@ -32,7 +32,8 @@ Implementation:
 | Displayed job | Contents | Details |
 | --- | --- | --- |
 | `Detect changes` | Evaluate path filters and select jobs and Docker matrix entries. | This file |
-| `Check` | Locale-catalog, `sqlc`, and buf-generated drift; package builds; `pnpm typegen`, `pnpm check`, literal-`<svg>` grep, and `pnpm typecheck`. | [`AGENTS.md`](../../AGENTS.md) |
+| `Lint and Format` | `pnpm check` across every file type that oxfmt supports. | [`AGENTS.md`](../../AGENTS.md) |
+| `Check` | Locale-catalog, `sqlc`, and buf-generated drift; package builds; `pnpm typegen`, literal-`<svg>` grep, and `pnpm typecheck`. | [`AGENTS.md`](../../AGENTS.md) |
 | `Lint / Go` | `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test` after package builds. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
@@ -62,11 +63,12 @@ Nightly full builds find cross-service drift that filters cannot catch. Host CI 
 
 `Detect changes` uses [dorny/paths-filter](https://github.com/dorny/paths-filter); `scripts/ci-plan-jobs.sh` turns the result into job flags and the Docker matrix.
 
-For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. Every filter also excludes Markdown (`**/*.md`), avoiding checks triggered by README-only changes. Outside those shared rules, the main filters are:
+For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. The heavyweight filters exclude Markdown (`**/*.md`), avoiding checks triggered by README-only changes; `Lint and Format` deliberately includes it. Outside those shared rules, the main filters are:
 
 | Job | Watched paths |
 | --- | --- |
-| `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, package / lock / turbo config, and lint / format config |
+| `Lint and Format` | Every path (including documentation); oxfmt ignores unsupported and configured-ignored files. |
+| `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config |
 | `Lint / Go` | `server/**` |
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, and generator config |
 | `Test / TypeScript` | apps, locales, packages, package / lock / turbo config |
@@ -79,20 +81,22 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Build` | apps, packages, server, and build inputs |
 | `Docker` | The role mapping in [Docker CI execution strategy](../../infra/docker/README.md#docker-ci-execution-strategy) |
 
-The shared exclusion is implemented as:
+The heavyweight-job exclusion is implemented as:
 
 ```yaml
 predicate-quantifier: "some-with-excludes"
 filters: |
   docs_excluded: &docs_excluded
     - '!**/*.md'
+  format:
+    - '**'
   check:
     - *docs_excluded
     - 'apps/**'
     …
 ```
 
-**`predicate-quantifier: "some-with-excludes"` is required.** Default `some` treats the negative pattern as merely another choice, so it does not exclude Markdown. `some-with-excludes` requires at least one positive match and no negative matches. Define `&docs_excluded` once and include `*docs_excluded` in every filter; the negative-only `docs_excluded` output is always false and is not read by `scripts/ci-plan-jobs.sh`.
+**`predicate-quantifier: "some-with-excludes"` is required.** Default `some` treats the negative pattern as merely another choice, so it does not exclude Markdown. `some-with-excludes` requires at least one positive match and no negative matches. Define `&docs_excluded` once and include `*docs_excluded` in every heavyweight filter; the negative-only `docs_excluded` output is always false and is not read by `scripts/ci-plan-jobs.sh`. `format` intentionally omits it, so documentation-only pull requests receive only the lightweight `Lint and Format` job.
 
 For `pull_request`, paths-filter obtains changed files through the GitHub API, so shallow history is sufficient. For `push`, it diffs `github.event.before`..HEAD locally, requiring the base commit. `Detect changes` sets `persist-credentials: false`, so the fallback fetch cannot authenticate; on pushes, use `fetch-depth: 0` to provide the base locally:
 
@@ -121,7 +125,8 @@ Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and rout
 
    | Job | Local command |
    | --- | --- |
-   | `Check` | `pnpm preflight` |
+   | `Lint and Format` | `pnpm check` |
+   | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, package build, `pnpm typegen`, and `pnpm typecheck` |
    | `Test / Go` | `task server:test-short` then `task server:test` |
    | `Test / TypeScript` | `pnpm build --filter "./packages/*"` then `pnpm test` |
    | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only |
@@ -139,7 +144,7 @@ Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and rout
 
 - [ ] Added or renamed jobs in `Summary` `needs` and aggregation loop (environment and display name)
 - [ ] Updated `scripts/ci-plan-jobs.sh` flags, output, and `workflow_dispatch` branch for a new path filter
-- [ ] Added `- *docs_excluded` to every new filter
+- [ ] Added `- *docs_excluded` to every new heavyweight filter
 - [ ] Updated the Jobs and Path filters tables in this document
 - [ ] Confirmed that a `Detect changes` checkout change still resolves the push base (the `fetch-depth` / `persist-credentials` combination)
 - [ ] Confirmed that `Summary` remains the required branch-ruleset check after changing a displayed job name
