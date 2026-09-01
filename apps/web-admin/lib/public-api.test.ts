@@ -33,7 +33,7 @@ describe("getTenantName", () => {
     vi.restoreAllMocks();
   });
 
-  it("公開 API のテナント名を返す", async () => {
+  it("returns the tenant name from the public API", async () => {
     mockGetTenant.mockResolvedValueOnce({
       tenantName: "  サンプル出版社  ",
       theme: undefined,
@@ -49,7 +49,7 @@ describe("getTenantName", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(`tenant:${tenantId}:site`);
   });
 
-  it("公開 API 障害時は null を返す", async () => {
+  it("returns null when the public API is down", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {
       /* expected outage log from getTenantPublicInfo */
     });
@@ -62,7 +62,7 @@ describe("getTenantName", () => {
     await expect(getTenantName(tenantId)).resolves.toBeNull();
   });
 
-  it("テナントが無いときは null を返す", async () => {
+  it("returns null when there is no tenant", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("not found", Code.NotFound)
     );

@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe("SeriesManager", () => {
-  it("最初のページが空なら未登録として案内する", () => {
+  it("says nothing is registered yet when the first page is empty", () => {
     render(
       <SeriesManager
         locale="ja"
@@ -41,7 +41,7 @@ describe("SeriesManager", () => {
     expect(screen.queryByLabelText("シリーズ一覧のページ送り")).toBeNull();
   });
 
-  it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
+  it("does not say the whole list is empty when a later page is empty", () => {
     render(
       <SeriesManager
         locale="ja"
@@ -59,7 +59,7 @@ describe("SeriesManager", () => {
     expect(screen.getByLabelText("シリーズ一覧のページ送り")).toBeDefined();
   });
 
-  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", () => {
+  it("shows only the error and does not call the list empty when the fetch fails", () => {
     render(
       <SeriesManager
         listErrorMessage="シリーズ一覧を取得できませんでした。"

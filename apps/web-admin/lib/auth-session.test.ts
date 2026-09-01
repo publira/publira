@@ -41,7 +41,7 @@ describe("web-admin auth-session", () => {
     setReturnTo("/series?token=abc");
   });
 
-  it("redirectToLogin は proxy が記録したパスと失効理由を付けて /login へ送る", async () => {
+  it("redirectToLogin sends to /login with the path the proxy recorded and the reason the session expired", async () => {
     const { redirectToLogin } = await importAuthSession();
 
     await expect(redirectToLogin()).rejects.toThrow(/NEXT_REDIRECT/u);
@@ -50,7 +50,7 @@ describe("web-admin auth-session", () => {
     );
   });
 
-  it("redirectToLogin は外部 URL を返送先にしない", async () => {
+  it("redirectToLogin never takes an external URL as the destination to return to", async () => {
     setReturnTo("https://evil.example.com");
     const { redirectToLogin } = await importAuthSession();
 
@@ -60,7 +60,7 @@ describe("web-admin auth-session", () => {
     );
   });
 
-  it("redirectToLogin はヘッダーが無ければコンソール直下へ戻す", async () => {
+  it("redirectToLogin returns to the console root when the header is missing", async () => {
     setReturnTo();
     const { redirectToLogin } = await importAuthSession();
 
@@ -70,7 +70,7 @@ describe("web-admin auth-session", () => {
     );
   });
 
-  it("redirectToLoginIfSessionRejected は失効した読み取りだけを再ログインへ送る", async () => {
+  it("redirectToLoginIfSessionRejected sends only an expired read to a fresh login", async () => {
     const { redirectToLoginIfSessionRejected } = await importAuthSession();
 
     // Any one of the reads a screen awaits is enough to end the session.
@@ -89,7 +89,7 @@ describe("web-admin auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("requireAdminSession はトークンがあればそれを返す", async () => {
+  it("requireAdminSession returns the token when there is one", async () => {
     mockGetAccessToken.mockResolvedValueOnce("session-token");
     const { requireAdminSession } = await importAuthSession();
 
@@ -97,7 +97,7 @@ describe("web-admin auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("requireAdminSession はトークンが無ければ再ログインへ送る", async () => {
+  it("requireAdminSession sends to a fresh login when there is no token", async () => {
     mockGetAccessToken.mockResolvedValueOnce("");
     const { requireAdminSession } = await importAuthSession();
 
@@ -107,7 +107,7 @@ describe("web-admin auth-session", () => {
     );
   });
 
-  it("withAdminSessionReauth は成功値をそのまま返す", async () => {
+  it("withAdminSessionReauth returns the successful value untouched", async () => {
     mockGetAccessToken.mockResolvedValue("session-token");
     const { withAdminSessionReauth } = await importAuthSession();
 
@@ -117,7 +117,7 @@ describe("web-admin auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("withAdminSessionReauth は Unauthenticated のときだけ再ログインへ送る", async () => {
+  it("withAdminSessionReauth sends to a fresh login only on Unauthenticated", async () => {
     mockGetAccessToken.mockResolvedValue("session-token");
     const { withAdminSessionReauth } = await importAuthSession();
 
@@ -131,7 +131,7 @@ describe("web-admin auth-session", () => {
     );
   });
 
-  it("withAdminSessionReauth はビジネスエラーを再認証扱いにしない", async () => {
+  it("withAdminSessionReauth does not treat a business error as a reauthentication", async () => {
     mockGetAccessToken.mockResolvedValue("session-token");
     const { withAdminSessionReauth } = await importAuthSession();
 
@@ -147,7 +147,7 @@ describe("web-admin auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("withAdminSessionReauth は RPC 以外の失敗も伝播する", async () => {
+  it("withAdminSessionReauth propagates a failure that is not an RPC error", async () => {
     mockGetAccessToken.mockResolvedValue("session-token");
     const { withAdminSessionReauth } = await importAuthSession();
 
@@ -157,7 +157,7 @@ describe("web-admin auth-session", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("withAdminSessionReauth は Cookie が無ければ RPC を呼ばずに再ログインへ送る", async () => {
+  it("withAdminSessionReauth sends to a fresh login without calling the RPC when the cookie is missing", async () => {
     // A missing cookie never reaches the API, so the mutation would answer with
     // the form error this flow replaces instead of throwing Unauthenticated.
     mockGetAccessToken.mockResolvedValue("");

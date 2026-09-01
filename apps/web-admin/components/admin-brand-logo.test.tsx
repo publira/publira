@@ -43,7 +43,7 @@ afterEach(() => {
 });
 
 describe("AdminBrandLogo", () => {
-  it("代替テキストをカタログから組み立てる", async () => {
+  it("builds the alternative text from the catalog", async () => {
     render(await AdminBrandLogo({ tenantName: "青枝出版", variant }));
 
     expect(screen.getByAltText("青枝出版のロゴ")).toBeDefined();

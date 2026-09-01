@@ -14,7 +14,7 @@ vi.mock("./lib/tenant", () => ({
 }));
 
 describe("web-admin proxy", () => {
-  it("未登録ドメインは 404 を返す", async () => {
+  it("returns 404 for an unregistered domain", async () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
 
@@ -27,7 +27,7 @@ describe("web-admin proxy", () => {
     expect(response.status).toBe(404);
   });
 
-  it("保護ルートでセッションがない場合はログインへ redirect する", async () => {
+  it("redirects to the login screen for a protected route with no session", async () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
 
@@ -47,23 +47,26 @@ describe("web-admin proxy", () => {
     "/forgot-password",
     "/confirm-password?token=test-token",
     "/confirm-email?token=test-token",
-  ])("公開ルート %s は未認証でも到達できる", async (path) => {
-    const { NextRequest } = await import("next/server");
-    const { proxy } = await import("./proxy");
+  ])(
+    "the public route %s is reachable without authentication",
+    async (path) => {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
 
-    mockResolveTenantId.mockResolvedValueOnce("tenant_001");
+      mockResolveTenantId.mockResolvedValueOnce("tenant_001");
 
-    const response = await proxy(
-      new NextRequest(`https://admin.example.com${path}`)
-    );
+      const response = await proxy(
+        new NextRequest(`https://admin.example.com${path}`)
+      );
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("x-middleware-rewrite")).toContain(
-      "/tenant_001"
-    );
-  });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("x-middleware-rewrite")).toContain(
+        "/tenant_001"
+      );
+    }
+  );
 
-  it("/notifications はお知らせへリダイレクトせず保護ルートとして扱う", async () => {
+  it("treats /notifications as a protected route instead of redirecting it to the announcements", async () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
 
@@ -80,7 +83,7 @@ describe("web-admin proxy", () => {
     expect(mockResolveTenantId).toHaveBeenCalledOnce();
   });
 
-  it("GET /logout はテナント解決もセッション操作もせず 404 を返す", async () => {
+  it("returns 404 for GET /logout without resolving the tenant or touching the session", async () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
 
@@ -114,7 +117,7 @@ describe("web-admin proxy", () => {
   });
 
   it.each(["/livez", "/readyz"])(
-    "ヘルス probe %s はテナント解決なしで next する",
+    "the health probe %s goes next without resolving the tenant",
     async (path) => {
       const { NextRequest } = await import("next/server");
       const { proxy } = await import("./proxy");
@@ -128,7 +131,7 @@ describe("web-admin proxy", () => {
     }
   );
 
-  it("再検証パスを proxy matcher から除外する", async () => {
+  it("keeps the revalidation path out of the proxy matcher", async () => {
     const { config } = await import("./proxy");
 
     expect(

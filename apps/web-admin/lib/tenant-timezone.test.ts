@@ -40,7 +40,7 @@ describe("tenant-timezone", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("取得に成功した場合はテナントのタイムゾーンを返す", async () => {
+  it("returns the time zone of the tenant on a successful fetch", async () => {
     mockGetTenantTimezoneApi.mockResolvedValueOnce({
       timezone: "America/Los_Angeles",
     });
@@ -57,7 +57,7 @@ describe("tenant-timezone", () => {
     expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT001:timezone");
   });
 
-  it("セッションがない場合はデフォルトのタイムゾーンとエラーを返す", async () => {
+  it("returns the default time zone and an error when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { getTenantTimezone } = await import("./tenant-timezone");
@@ -73,7 +73,7 @@ describe("tenant-timezone", () => {
     expect(mockGetTenantTimezoneApi).not.toHaveBeenCalled();
   });
 
-  it("取得に失敗した場合もフォームが使えるようデフォルトを添えて返す", async () => {
+  it("returns the default alongside the failure so the form stays usable", async () => {
     mockGetTenantTimezoneApi.mockRejectedValueOnce(
       new ConnectError("tenant unavailable", Code.Unavailable)
     );
@@ -86,7 +86,7 @@ describe("tenant-timezone", () => {
     expect(result.timezone).toBe("Asia/Tokyo");
   });
 
-  it("更新に成功した場合は保存されたタイムゾーンを返す", async () => {
+  it("returns the saved time zone on a successful update", async () => {
     mockUpdateTenantTimezoneApi.mockResolvedValueOnce({
       timezone: "Europe/Paris",
     });
@@ -105,7 +105,7 @@ describe("tenant-timezone", () => {
     );
   });
 
-  it("更新時の invalid_argument はサーバのメッセージをそのまま返す", async () => {
+  it("returns the message of the server as it is for invalid_argument on an update", async () => {
     mockUpdateTenantTimezoneApi.mockRejectedValueOnce(
       new ConnectError(
         "timezone must be a valid IANA time zone name",
@@ -126,7 +126,7 @@ describe("tenant-timezone", () => {
     });
   });
 
-  it("権限がない場合は共通の権限エラーメッセージを返す", async () => {
+  it("returns the shared permission error message without the permission", async () => {
     mockUpdateTenantTimezoneApi.mockRejectedValueOnce(
       new ConnectError("admin role required", Code.PermissionDenied)
     );
@@ -141,7 +141,7 @@ describe("tenant-timezone", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("tenantTimezoneCacheTag はテナント ID を正規化する", async () => {
+  it("tenantTimezoneCacheTag normalizes the tenant id", async () => {
     const { tenantTimezoneCacheTag } = await import("./tenant-timezone");
 
     expect(tenantTimezoneCacheTag("  TENANT001 ")).toBe(
@@ -149,7 +149,7 @@ describe("tenant-timezone", () => {
     );
   });
 
-  it("表示タイムゾーンとしてテナントのタイムゾーンを返す", async () => {
+  it("returns the time zone of the tenant as the display time zone", async () => {
     mockGetTenantTimezoneApi.mockResolvedValueOnce({
       timezone: "America/Los_Angeles",
     });
@@ -161,7 +161,7 @@ describe("tenant-timezone", () => {
     );
   });
 
-  it("テナントを取得できないときも既定タイムゾーンで表示する", async () => {
+  it("still renders in the default time zone when the tenant cannot be fetched", async () => {
     // Degrading to the host's zone would make the rendered wall clock depend on
     // where the container runs, which is the thing #564 removed.
     mockGetTenantTimezoneApi.mockRejectedValueOnce(
@@ -175,7 +175,7 @@ describe("tenant-timezone", () => {
     );
   });
 
-  it("テナント ID が空のときも既定タイムゾーンで表示する", async () => {
+  it("still renders in the default time zone when the tenant id is empty", async () => {
     const { getTenantDisplayTimeZone } = await import("./tenant-timezone");
 
     await expect(getTenantDisplayTimeZone("  ")).resolves.toBe("Asia/Tokyo");

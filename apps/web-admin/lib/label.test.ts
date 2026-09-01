@@ -35,7 +35,7 @@ describe("listLabels", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+  it("passes the cursor token and the limit through and returns the tokens of the response", async () => {
     mockListLabels.mockResolvedValue({
       labels: [],
       nextToken: "next-page",
@@ -63,7 +63,7 @@ describe("listLabels", () => {
     });
   });
 
-  it("最初のページは空のトークンで取得する", async () => {
+  it("fetches the first page with an empty token", async () => {
     mockListLabels.mockResolvedValue({ labels: [] });
 
     const { listLabels } = await import("./label");
@@ -85,7 +85,7 @@ describe("listLabels", () => {
     });
   });
 
-  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+  it("returns the keyset order of the server without re-sorting it", async () => {
     mockListLabels.mockResolvedValue({
       labels: [
         { name: "ぬ", publicId: "LABEL002" },
@@ -102,7 +102,7 @@ describe("listLabels", () => {
     ]);
   });
 
-  it("取得に失敗してもトークンなしの結果を返す", async () => {
+  it("returns a result with no token when the fetch fails", async () => {
     const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockListLabels.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
@@ -127,7 +127,7 @@ describe("getLabel", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("一覧を走査せずGetLabelを1回だけ呼ぶ", async () => {
+  it("calls GetLabel once instead of walking the list", async () => {
     mockGetLabel.mockResolvedValue({
       label: {
         eyeCatchImageUpdatedAt: "2026-01-02T03:04:05Z",
@@ -182,7 +182,7 @@ describe("getLabel", () => {
     });
   });
 
-  it("不正な入力はRPCを呼ばずにnotFoundを返す", async () => {
+  it("returns notFound for invalid input without calling the RPC", async () => {
     const { getLabel } = await import("./label");
     const result = await getLabel({
       publicId: "   ",
@@ -194,7 +194,7 @@ describe("getLabel", () => {
     expect(result).toEqual({ notFound: true, ok: false });
   });
 
-  it("セッションがない場合はRPCを呼ばずにエラーを返す", async () => {
+  it("returns an error without calling the RPC when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { getLabel } = await import("./label");
@@ -213,7 +213,7 @@ describe("getLabel", () => {
 
   // 不在とテナント外はサーバーがどちらも not_found で返すため、区別せず
   // notFound へ落とす。
-  it("not_foundが返った場合はnotFoundを返す", async () => {
+  it("returns notFound when the RPC answers not_found", async () => {
     const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetLabel.mockRejectedValue(
       new ConnectError("label not found", Code.NotFound)
@@ -228,7 +228,7 @@ describe("getLabel", () => {
     expect(result).toEqual({ notFound: true, ok: false });
   });
 
-  it("not_found以外の失敗はメッセージを返す", async () => {
+  it("returns a message for a failure other than not_found", async () => {
     const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetLabel.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
@@ -244,7 +244,7 @@ describe("getLabel", () => {
     expect(result).not.toMatchObject({ notFound: true });
   });
 
-  it("labelが欠けた応答はエラーとして扱う", async () => {
+  it("treats a response with no label as an error", async () => {
     mockGetLabel.mockResolvedValue({});
 
     const { getLabel } = await import("./label");
@@ -268,7 +268,7 @@ describe("listAllLabels", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor をたどって101件目以降も含める", async () => {
+  it("follows the cursor past the hundredth entry", async () => {
     const firstPage = Array.from({ length: 100 }, (_, index) => ({
       name: `Label ${String(index + 1).padStart(3, "0")}`,
       publicId: `LABEL${String(index + 1).padStart(3, "0")}`,
@@ -319,7 +319,7 @@ describe("listAllLabels", () => {
     );
   });
 
-  it("セッションがない場合RPCを呼ばない", async () => {
+  it("does not call the RPC when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { listAllLabels } = await import("./label");
@@ -336,7 +336,7 @@ describe("listAllLabels", () => {
     });
   });
 
-  it("nextToken が繰り返されたら部分結果を返さない", async () => {
+  it("returns no partial result when nextToken repeats itself", async () => {
     mockListLabels
       .mockResolvedValueOnce({
         labels: Array.from({ length: 100 }, (_, index) => ({

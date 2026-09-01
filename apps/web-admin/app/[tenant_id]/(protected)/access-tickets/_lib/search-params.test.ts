@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseAccessTicketFilters } from "./search-params";
 
 describe("parseAccessTicketFilters", () => {
-  it("ページ token とフィルタを正規化する", () => {
+  it("normalizes the page token and the filters", () => {
     expect(
       parseAccessTicketFilters({
         active: "1",
@@ -19,7 +19,7 @@ describe("parseAccessTicketFilters", () => {
     });
   });
 
-  it("複数値や不正なフィルタを空値にする", () => {
+  it("empties repeated and invalid filter values", () => {
     expect(
       parseAccessTicketFilters({
         active: "maybe",
@@ -35,7 +35,7 @@ describe("parseAccessTicketFilters", () => {
     });
   });
 
-  it("未指定はフィルタなしの最初のページとして扱う", () => {
+  it("treats missing search params as the first page with no filter", () => {
     expect(parseAccessTicketFilters({})).toEqual({
       active: false,
       episode: "",

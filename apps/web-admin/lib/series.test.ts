@@ -28,7 +28,7 @@ describe("listSeries", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+  it("passes the cursor token and the limit through and returns the tokens of the response", async () => {
     mockListSeries.mockResolvedValue({
       defaultReadingPeriodHours: 72,
       nextToken: "next-page",
@@ -58,7 +58,7 @@ describe("listSeries", () => {
     });
   });
 
-  it("最初のページは空のトークンで取得する", async () => {
+  it("fetches the first page with an empty token", async () => {
     mockListSeries.mockResolvedValue({ series: [] });
 
     const { listSeries } = await import("./series");
@@ -80,7 +80,7 @@ describe("listSeries", () => {
     });
   });
 
-  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+  it("returns the keyset order of the server without re-sorting it", async () => {
     mockListSeries.mockResolvedValue({
       series: [
         { creators: [], publicId: "SERIES002", synopsis: "", title: "ぬ" },
@@ -97,7 +97,7 @@ describe("listSeries", () => {
     ]);
   });
 
-  it("取得に失敗してもトークンなしの結果を返す", async () => {
+  it("returns a result with no token when the fetch fails", async () => {
     mockListSeries.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -121,7 +121,7 @@ describe("listAllSeries", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor をたどって101件目以降も含め、タイトル順に返す", async () => {
+  it("follows the cursor past the hundredth entry and returns them in title order", async () => {
     const firstPage = Array.from({ length: 100 }, (_, index) => ({
       creators: [],
       publicId: `SERIES${String(index + 1).padStart(3, "0")}`,
@@ -171,7 +171,7 @@ describe("listAllSeries", () => {
     expect(nuIndex).toBeGreaterThan(aIndex);
   });
 
-  it("セッションがない場合RPCを呼ばない", async () => {
+  it("does not call the RPC when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listAllSeries } = await import("./series");
@@ -184,7 +184,7 @@ describe("listAllSeries", () => {
     });
   });
 
-  it("nextToken が繰り返されたら部分結果を返さない", async () => {
+  it("returns no partial result when nextToken repeats itself", async () => {
     mockListSeries
       .mockResolvedValueOnce({
         nextToken: "page-2",

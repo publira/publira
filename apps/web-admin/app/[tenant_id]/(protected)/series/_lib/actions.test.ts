@@ -46,7 +46,7 @@ describe("series actions", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("基本情報更新: 画像未選択でも更新 API を呼び出せる", async () => {
+  it("updating the basics calls the update API even when no image is chosen", async () => {
     mockUpdateSeries.mockResolvedValueOnce({
       ok: true,
       series: {
@@ -98,7 +98,7 @@ describe("series actions", () => {
     expect(mockRedirect).toHaveBeenCalledWith("/series/SERIES001?updated=1");
   });
 
-  it("基本情報更新: オフセット付き published_at はその瞬間のまま送る", async () => {
+  it("updating the basics sends an offset-bearing published_at as the same instant", async () => {
     mockUpdateSeries.mockResolvedValueOnce({
       ok: true,
       series: {
@@ -134,7 +134,7 @@ describe("series actions", () => {
     );
   });
 
-  it("基本情報更新: datetime-local の壁時計はテナントタイムゾーンとして解釈する", async () => {
+  it("updating the basics reads the datetime-local wall clock in the tenant time zone", async () => {
     mockGetTenantDisplayTimeZone.mockResolvedValue("America/Los_Angeles");
     mockUpdateSeries.mockResolvedValueOnce({
       ok: true,
@@ -173,7 +173,7 @@ describe("series actions", () => {
     expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
   });
 
-  it("基本情報更新: 日時として解釈できない published_at はエラーにする", async () => {
+  it("updating the basics rejects a published_at that cannot be read as a date and time", async () => {
     const { updateSeriesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
@@ -194,7 +194,7 @@ describe("series actions", () => {
     expect(mockUpdateSeries).not.toHaveBeenCalled();
   });
 
-  it("アイキャッチ更新: 画像も削除指定も無い場合はエラー", async () => {
+  it("updating the cover image returns an error when neither an image nor a removal is given", async () => {
     const { updateSeriesEyeCatchAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");

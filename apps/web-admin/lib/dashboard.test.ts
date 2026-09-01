@@ -25,7 +25,7 @@ describe("dashboard", () => {
     mockGetSessionId.mockResolvedValue("session-token");
   });
 
-  it("テナントIDからダッシュボードのデータを取得する", async () => {
+  it("fetches the dashboard data for the tenant id", async () => {
     mockGetDashboardApi.mockResolvedValueOnce({
       queue: [
         {
@@ -73,7 +73,7 @@ describe("dashboard", () => {
     );
   });
 
-  it("stats が未定義のときはデフォルト値を使う", async () => {
+  it("falls back to the default values when stats is undefined", async () => {
     mockGetDashboardApi.mockResolvedValueOnce({ queue: [], stats: undefined });
 
     const { getDashboard } = await import("./dashboard");
@@ -91,7 +91,7 @@ describe("dashboard", () => {
     });
   });
 
-  it("セッションがなければエラーを返す", async () => {
+  it("returns an error when there is no session", async () => {
     mockGetSessionId.mockResolvedValue("");
 
     const { getDashboard } = await import("./dashboard");
@@ -106,7 +106,7 @@ describe("dashboard", () => {
     expect(mockGetDashboardApi).not.toHaveBeenCalled();
   });
 
-  it("API エラー（未認証）のときはエラーを返す", async () => {
+  it("returns an error on an unauthenticated API error", async () => {
     mockGetDashboardApi.mockRejectedValueOnce(
       new ConnectError("invalid session", Code.Unauthenticated)
     );
@@ -122,7 +122,7 @@ describe("dashboard", () => {
     });
   });
 
-  it("到達不能エラーは共通文言で返す", async () => {
+  it("returns the shared wording for an unreachable error", async () => {
     mockGetDashboardApi.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -139,7 +139,7 @@ describe("dashboard", () => {
     });
   });
 
-  it("分類できない RPC エラーは伝播する", async () => {
+  it("propagates an RPC error it cannot classify", async () => {
     mockGetDashboardApi.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
@@ -149,7 +149,7 @@ describe("dashboard", () => {
     await expect(getDashboard("TENANT001")).rejects.toThrow("boom");
   });
 
-  it("draft ステータスのエピソードが正しくマップされる", async () => {
+  it("maps an episode in draft status", async () => {
     mockGetDashboardApi.mockResolvedValueOnce({
       queue: [
         {

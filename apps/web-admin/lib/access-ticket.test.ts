@@ -48,7 +48,7 @@ describe("listAccessTickets", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+  it("passes the cursor token and the limit through and returns the tokens of the response", async () => {
     mockListAccessTickets.mockResolvedValue({
       nextToken: "next-page",
       previousToken: "previous-page",
@@ -79,7 +79,7 @@ describe("listAccessTickets", () => {
     });
   });
 
-  it("最初のページは空のトークンで取得する", async () => {
+  it("fetches the first page with an empty token", async () => {
     mockListAccessTickets.mockResolvedValue({ tickets: [] });
 
     const { listAccessTickets } = await import("./access-ticket");
@@ -104,7 +104,7 @@ describe("listAccessTickets", () => {
     });
   });
 
-  it("activeOnly はページ送りと同時に渡せる", async () => {
+  it("passes activeOnly together with the pagination", async () => {
     mockListAccessTickets.mockResolvedValue({ tickets: [] });
 
     const { listAccessTickets } = await import("./access-ticket");
@@ -128,7 +128,7 @@ describe("listAccessTickets", () => {
     );
   });
 
-  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+  it("returns the keyset order of the server without re-sorting it", async () => {
     mockListAccessTickets.mockResolvedValue({
       tickets: [
         ticket("TICKET002", "2026-04-01T00:00:00Z"),
@@ -145,7 +145,7 @@ describe("listAccessTickets", () => {
     ]);
   });
 
-  it("セッションが無ければトークンなしの結果を返す", async () => {
+  it("returns a result with no token when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listAccessTickets } = await import("./access-ticket");
@@ -162,7 +162,7 @@ describe("listAccessTickets", () => {
     });
   });
 
-  it("取得に失敗してもトークンなしの結果を返す", async () => {
+  it("returns a result with no token when the fetch fails", async () => {
     mockListAccessTickets.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );

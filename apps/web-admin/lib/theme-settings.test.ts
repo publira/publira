@@ -121,7 +121,7 @@ describe("theme-settings", () => {
     mockGetSessionId.mockResolvedValue("session-token");
   });
 
-  it("テーマ取得に成功した場合は設定を返す", async () => {
+  it("returns the settings on a successful theme fetch", async () => {
     mockGetTenantThemeApi.mockResolvedValueOnce({ theme: fullTheme });
 
     const { getTenantThemeSettings } = await import("./theme-settings");
@@ -144,7 +144,7 @@ describe("theme-settings", () => {
     );
   });
 
-  it("セッションがない場合はエラーを返す", async () => {
+  it("returns an error when there is no session", async () => {
     mockGetSessionId.mockResolvedValue("");
 
     const { getTenantThemeSettings } = await import("./theme-settings");
@@ -159,7 +159,7 @@ describe("theme-settings", () => {
     expect(mockGetTenantThemeApi).not.toHaveBeenCalled();
   });
 
-  it("更新時に invalid_argument エラーをそのまま返す", async () => {
+  it("returns an invalid_argument error from an update as it is", async () => {
     mockUpsertTenantThemeApi.mockRejectedValueOnce(
       new ConnectError(
         "theme.primary_color must be a hex color",
@@ -181,7 +181,7 @@ describe("theme-settings", () => {
     });
   });
 
-  it("更新に成功した場合は保存されたテーマを返す", async () => {
+  it("returns the saved theme on a successful update", async () => {
     const updatedTheme = { ...fullTheme, primaryColor: "#1f6570" };
     mockUpsertTenantThemeApi.mockResolvedValueOnce({ theme: updatedTheme });
 
@@ -200,7 +200,7 @@ describe("theme-settings", () => {
     });
   });
 
-  it("icon が設定されている場合はそのバリアントも返す", async () => {
+  it("returns the variants of the icon as well when one is set", async () => {
     const stored = storedImageResponse("/images/tenants/icon-1", "icon");
     mockGetTenantThemeApi.mockResolvedValueOnce({
       theme: {
@@ -222,7 +222,7 @@ describe("theme-settings", () => {
     });
   });
 
-  it("寸法のないバリアントは未設定として扱う", async () => {
+  it("treats a variant with no dimensions as unset", async () => {
     // プレビューは保存時の width / height でレイアウトするため、寸法のない
     // バリアントを通すと 0x0 の見えない画像になる。未設定として扱う。
     const stored = storedImageResponse("/images/tenants/icon-1", "icon");
@@ -246,7 +246,7 @@ describe("theme-settings", () => {
     });
   });
 
-  it("icon をアップロードすると保存後のバリアントを返す", async () => {
+  it("returns the variants after saving once the icon is uploaded", async () => {
     const stored = storedImageResponse("/images/tenants/icon-2", "icon");
     mockUploadTenantIconApi.mockResolvedValueOnce({
       theme: {
@@ -279,7 +279,7 @@ describe("theme-settings", () => {
     );
   });
 
-  it("icon の削除に成功した場合はバリアントなしを返す", async () => {
+  it("returns no variants once the icon is removed", async () => {
     mockDeleteTenantIconApi.mockResolvedValueOnce({ theme: fullTheme });
 
     const { deleteTenantIcon } = await import("./theme-settings");
@@ -293,7 +293,7 @@ describe("theme-settings", () => {
     );
   });
 
-  it("icon が拒否されてもサーバの英文はそのまま出さない", async () => {
+  it("does not pass the untranslated server message through when the icon is rejected", async () => {
     mockUploadTenantIconApi.mockRejectedValueOnce(
       new ConnectError(
         "icon image must be at least 32x32",
@@ -315,7 +315,7 @@ describe("theme-settings", () => {
     }
   });
 
-  it("ロゴが設定されている場合はそのバリアントも返す", async () => {
+  it("returns the variants of the logo as well when one is set", async () => {
     const stored = storedImageResponse("/images/tenants/logo-1", "logo");
     mockGetTenantThemeApi.mockResolvedValueOnce({
       theme: {
@@ -337,7 +337,7 @@ describe("theme-settings", () => {
     });
   });
 
-  it("ロゴをアップロードすると保存後のバリアントを返す", async () => {
+  it("returns the variants after saving once the logo is uploaded", async () => {
     const stored = storedImageResponse("/images/tenants/logo-2", "logo");
     mockUploadTenantLogoApi.mockResolvedValueOnce({
       theme: {
@@ -370,7 +370,7 @@ describe("theme-settings", () => {
     );
   });
 
-  it("ロゴの削除に成功した場合はバリアントなしを返す", async () => {
+  it("returns no variants once the logo is removed", async () => {
     mockDeleteTenantLogoApi.mockResolvedValueOnce({ theme: fullTheme });
 
     const { deleteTenantLogo } = await import("./theme-settings");
@@ -384,7 +384,7 @@ describe("theme-settings", () => {
     );
   });
 
-  it("シェル用ロゴは設定済みならバリアントを返す", async () => {
+  it("returns the variants of the shell logo when one is set", async () => {
     const stored = storedImageResponse("/images/tenants/logo-1", "logo");
     mockGetTenantThemeApi.mockResolvedValueOnce({
       theme: {
@@ -401,7 +401,7 @@ describe("theme-settings", () => {
     );
   });
 
-  it("シェル用ロゴは未設定なら null", async () => {
+  it("gives null for the shell logo when none is set", async () => {
     mockGetTenantThemeApi.mockResolvedValueOnce({ theme: fullTheme });
 
     const { getTenantThemeLogo } = await import("./theme-settings");
@@ -409,7 +409,7 @@ describe("theme-settings", () => {
     await expect(getTenantThemeLogo("TENANT001")).resolves.toBeNull();
   });
 
-  it("シェル用ロゴはテーマ取得失敗でも null に落とす", async () => {
+  it("falls back to null for the shell logo when the theme fetch fails", async () => {
     mockGetTenantThemeApi.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
@@ -419,7 +419,7 @@ describe("theme-settings", () => {
     await expect(getTenantThemeLogo("TENANT001")).resolves.toBeNull();
   });
 
-  it("ロゴが拒否されてもサーバの英文はそのまま出さない", async () => {
+  it("does not pass the untranslated server message through when the logo is rejected", async () => {
     mockUploadTenantLogoApi.mockRejectedValueOnce(
       new ConnectError(
         "logo image must be at least 32x32",

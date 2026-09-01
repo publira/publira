@@ -55,7 +55,7 @@ describe("announcement lib", () => {
     mockListTenantUsersApi.mockResolvedValue({ users: [] });
   });
 
-  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+  it("passes the cursor token and the limit through and returns the tokens of the response", async () => {
     mockListAnnouncementsApi.mockResolvedValue({
       announcements: [],
       nextToken: "next-page",
@@ -83,7 +83,7 @@ describe("announcement lib", () => {
     });
   });
 
-  it("最初のページは空のトークンと既定 limit で取得する", async () => {
+  it("fetches the first page with an empty token and the default limit", async () => {
     mockListAnnouncementsApi.mockResolvedValue({ announcements: [] });
 
     const { listAnnouncements } = await import("./announcement");
@@ -105,7 +105,7 @@ describe("announcement lib", () => {
     });
   });
 
-  it("お知らせ一覧を正しく変換する", async () => {
+  it("converts the announcement list", async () => {
     mockListAnnouncementsApi.mockResolvedValue({
       announcements: [
         {
@@ -139,7 +139,7 @@ describe("announcement lib", () => {
     ]);
   });
 
-  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+  it("returns the keyset order of the server without re-sorting it", async () => {
     mockListAnnouncementsApi.mockResolvedValue({
       announcements: [
         announcement("n2", "2026-04-01T00:00:00Z"),
@@ -153,7 +153,7 @@ describe("announcement lib", () => {
     expect(result.announcements.map((item) => item.id)).toEqual(["n2", "n1"]);
   });
 
-  it("権限エラーを分かりやすく返す", async () => {
+  it("returns a legible message for a permission error", async () => {
     mockListAnnouncementsApi.mockRejectedValue(
       new ConnectError("tenant admin role required", Code.PermissionDenied)
     );
@@ -171,7 +171,7 @@ describe("announcement lib", () => {
     });
   });
 
-  it("セッションが無ければトークンなしの結果を返す", async () => {
+  it("returns a result with no token when there is no session", async () => {
     mockGetSessionId.mockResolvedValue("");
 
     const { listAnnouncements } = await import("./announcement");
@@ -188,7 +188,7 @@ describe("announcement lib", () => {
     });
   });
 
-  it("取得に失敗してもトークンなしの結果を返す", async () => {
+  it("returns a result with no token when the fetch fails", async () => {
     mockListAnnouncementsApi.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -206,7 +206,7 @@ describe("announcement lib", () => {
     });
   });
 
-  it("一覧取得では対象ユーザーを読まない", async () => {
+  it("does not read the target users while listing announcements", async () => {
     mockListAnnouncementsApi.mockResolvedValue({ announcements: [] });
 
     const { listAnnouncements } = await import("./announcement");
@@ -216,7 +216,7 @@ describe("announcement lib", () => {
     expect(mockListTenantUsersApi).not.toHaveBeenCalled();
   });
 
-  it("対象ユーザーは cursor をたどって全ページ集める", async () => {
+  it("follows the cursor to collect every page of target users", async () => {
     mockListTenantUsersApi
       .mockResolvedValueOnce({
         nextToken: "page-2",
@@ -260,7 +260,7 @@ describe("announcement lib", () => {
     });
   });
 
-  it("対象ユーザーを全ページ読めなければ選択肢を出さない", async () => {
+  it("offers no choices when the target users cannot be read to the last page", async () => {
     // 同じ token が返り続ける壊れた応答。途中まで集めた候補を「全員」として
     // 見せると、載っていない相手を選べないことに気付けない。
     mockListTenantUsersApi.mockResolvedValue({
@@ -279,7 +279,7 @@ describe("announcement lib", () => {
     });
   });
 
-  it("対象ユーザーの取得に失敗したらメッセージを返す", async () => {
+  it("returns a message when the target users cannot be fetched", async () => {
     mockListTenantUsersApi.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -296,7 +296,7 @@ describe("announcement lib", () => {
     });
   });
 
-  it("お知らせ作成成功時に件数を返す", async () => {
+  it("returns the count once the announcement is created", async () => {
     mockCreateAnnouncementsApi.mockResolvedValue({
       announcements: [{ id: "n1" }, { id: "n2" }],
     });

@@ -52,7 +52,7 @@ afterEach(() => {
 });
 
 describe("NotificationManager", () => {
-  it("最初のページが空なら未着として案内する", () => {
+  it("says nothing has arrived when the first page is empty", () => {
     render(
       <NotificationManager
         locale="ja"
@@ -69,7 +69,7 @@ describe("NotificationManager", () => {
     expect(screen.queryByText("すべて既読にする TENANT001")).toBeNull();
   });
 
-  it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
+  it("does not say the whole list is empty when a later page is empty", () => {
     render(
       <NotificationManager
         locale="ja"
@@ -89,7 +89,7 @@ describe("NotificationManager", () => {
     expect(previous.getAttribute("href")).toBe("?token=previous");
   });
 
-  it("未読行とリンク、既読ボタンを描画する", () => {
+  it("renders the unread row, its link and the mark-as-read button", () => {
     render(
       <NotificationManager
         locale="ja"
@@ -129,7 +129,7 @@ describe("NotificationManager", () => {
     ).toBe("?token=next");
   });
 
-  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", () => {
+  it("shows only the error and does not call the list empty when the fetch fails", () => {
     render(
       <NotificationManager
         listErrorMessage="通知一覧を取得できませんでした。"
@@ -173,7 +173,7 @@ describe("NotificationManager", () => {
     expect(screen.queryByText("通知一覧")).toBeNull();
   });
 
-  it("作成日時をテナントタイムゾーンの壁時計で表示する", () => {
+  it("shows the creation time as a wall clock in the tenant time zone", () => {
     render(
       <NotificationManager
         locale="ja"

@@ -50,7 +50,7 @@ afterEach(() => {
 });
 
 describe("TicketManager", () => {
-  it("最初のページが空なら未登録として案内する", () => {
+  it("says nothing is registered yet when the first page is empty", () => {
     render(
       <TicketManager
         locale="ja"
@@ -66,7 +66,7 @@ describe("TicketManager", () => {
     ).toBeNull();
   });
 
-  it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
+  it("does not say the whole list is empty when a later page is empty", () => {
     render(
       <TicketManager
         locale="ja"
@@ -86,7 +86,7 @@ describe("TicketManager", () => {
     expect(screen.queryByRole("link", { name: "次へ" })).toBeNull();
   });
 
-  it("有効チケットの状態とメモを一覧に出す", () => {
+  it("lists the status and the note of an active ticket", () => {
     render(
       <TicketManager
         locale="ja"
@@ -107,7 +107,7 @@ describe("TicketManager", () => {
     expect(screen.getByText("失効 TICKET001")).toBeDefined();
   });
 
-  it("後続ページでも行ごとの操作とページ送りを描画する", () => {
+  it("renders the per-row actions and the pager on a later page", () => {
     render(
       <TicketManager
         locale="ja"
@@ -128,7 +128,7 @@ describe("TicketManager", () => {
     ).toBe("?token=next");
   });
 
-  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", () => {
+  it("shows only the error and does not call the list empty when the fetch fails", () => {
     render(
       <TicketManager
         locale="ja"

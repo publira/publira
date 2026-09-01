@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 describe("TenantBrandLogo", () => {
-  it("ロゴ画像を表示する", () => {
+  it("shows the logo image", () => {
     render(<TenantBrandLogo alt="青枝出版のロゴ" variant={variant} />);
 
     expect(
@@ -30,7 +30,7 @@ describe("TenantBrandLogo", () => {
     ).toBe(true);
   });
 
-  it("読み込みに失敗したら何も出さない", () => {
+  it("renders nothing when the image fails to load", () => {
     render(<TenantBrandLogo alt="青枝出版のロゴ" variant={variant} />);
 
     fireEvent.error(screen.getByAltText("青枝出版のロゴ"));

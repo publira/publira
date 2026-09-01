@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 describe("TenantTimezoneForm", () => {
-  it("保存済みのタイムゾーンを選択済みとして表示する", () => {
+  it("shows the saved time zone as the selected one", () => {
     render(
       <TenantTimezoneForm
         action={noopAction}
@@ -41,7 +41,7 @@ describe("TenantTimezoneForm", () => {
     expect(input.disabled).toBe(false);
   });
 
-  it("列挙されないエイリアスが保存されていても選択済みのまま表示する", () => {
+  it("keeps a saved alias that is not enumerated as the selected one", () => {
     render(
       <TenantTimezoneForm
         action={noopAction}
@@ -55,7 +55,7 @@ describe("TenantTimezoneForm", () => {
     );
   });
 
-  it("テナント管理者でない場合は閲覧専用にする", () => {
+  it("stays read-only for someone who is not a tenant admin", () => {
     render(
       <TenantTimezoneForm
         action={noopAction}
@@ -79,7 +79,7 @@ describe("TenantTimezoneForm", () => {
     ).toBeDefined();
   });
 
-  it("取得に失敗した場合は入力欄の横に理由を出す", () => {
+  it("shows the reason beside the field when the fetch fails", () => {
     render(
       <TenantTimezoneForm
         action={noopAction}

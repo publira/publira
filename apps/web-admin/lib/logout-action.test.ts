@@ -47,7 +47,7 @@ describe("logoutAction", () => {
     mockGetAccessToken.mockResolvedValue("tok_abc");
   });
 
-  it("upstream を revoke して Cookie を消し、ログインへ redirect する", async () => {
+  it("revokes upstream, clears the cookie and redirects to the login screen", async () => {
     const { logoutAction } = await import("./logout-action");
 
     await logoutAction("TENANT001");
@@ -59,7 +59,7 @@ describe("logoutAction", () => {
     expect(mockRedirect).toHaveBeenCalledWith("/login");
   });
 
-  it("revoke が失敗しても Cookie 削除と redirect は行う", async () => {
+  it("still clears the cookie and redirects when the revoke fails", async () => {
     mockLogoutAdmin.mockRejectedValueOnce(new Error("upstream down"));
 
     const { logoutAction } = await import("./logout-action");

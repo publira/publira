@@ -51,14 +51,14 @@ beforeEach(() => {
 });
 
 describe("getAdminCurrentUser", () => {
-  it("空の accessToken では再ログインを求める", async () => {
+  it("asks for a fresh login for an empty accessToken", async () => {
     mockGetAccessToken.mockResolvedValueOnce("");
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: true });
     expect(mockGetMe).not.toHaveBeenCalled();
   });
 
-  it("空白のみの accessToken でも再ログインを求める", async () => {
+  it("asks for a fresh login for a whitespace-only accessToken", async () => {
     // getAccessToken は常にトリム済みの値を返すため、空白のみのケースは空文字と同等
     mockGetAccessToken.mockResolvedValueOnce("");
     const result = await getAdminCurrentUser("tenant_001");
@@ -66,13 +66,13 @@ describe("getAdminCurrentUser", () => {
     expect(mockGetMe).not.toHaveBeenCalled();
   });
 
-  it("API が user を返さない場合は再ログインを求めずに失敗する", async () => {
+  it("fails without asking for a fresh login when the API returns no user", async () => {
     mockGetMe.mockResolvedValueOnce({});
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: false });
   });
 
-  it("API が publicId 空の user を返した場合は再ログインを求めない", async () => {
+  it("does not ask for a fresh login when the API returns a user with an empty publicId", async () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "テスト", publicId: "", role: "admin" },
     });
@@ -80,7 +80,7 @@ describe("getAdminCurrentUser", () => {
     expect(result).toEqual({ ok: false, requiresSignIn: false });
   });
 
-  it("有効なレスポンスからユーザー情報を返す", async () => {
+  it("returns the user read from a valid response", async () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "山田太郎", publicId: "user-001", role: "admin" },
     });
@@ -91,7 +91,7 @@ describe("getAdminCurrentUser", () => {
     });
   });
 
-  it("getAccessToken が返した access token をそのまま API に渡す", async () => {
+  it("passes the access token from getAccessToken straight to the API", async () => {
     mockGetAccessToken.mockResolvedValueOnce("valid-token");
     mockGetMe.mockResolvedValueOnce({
       user: { name: "テスト", publicId: "user-001", role: "admin" },
@@ -105,7 +105,7 @@ describe("getAdminCurrentUser", () => {
     );
   });
 
-  it("権限エラーは再ログインを求めずに失敗する", async () => {
+  it("fails without asking for a fresh login on a permission error", async () => {
     mockGetMe.mockRejectedValueOnce(
       new ConnectError("forbidden", Code.PermissionDenied)
     );
@@ -113,7 +113,7 @@ describe("getAdminCurrentUser", () => {
     expect(result).toEqual({ ok: false, requiresSignIn: false });
   });
 
-  it("セッションが拒否されたら再ログインを求める", async () => {
+  it("asks for a fresh login when the session is rejected", async () => {
     mockGetMe.mockRejectedValueOnce(
       new ConnectError("invalid token", Code.Unauthenticated)
     );
@@ -121,14 +121,14 @@ describe("getAdminCurrentUser", () => {
     expect(result).toEqual({ ok: false, requiresSignIn: true });
   });
 
-  it("想定外エラーは再throwする", async () => {
+  it("rethrows an unexpected error", async () => {
     mockGetMe.mockRejectedValueOnce(new Error("Network error"));
     await expect(getAdminCurrentUser("tenant_001")).rejects.toThrow(
       "Network error"
     );
   });
 
-  it("name と role が空文字の場合も publicId があれば返す", async () => {
+  it("returns a user whose name and role are empty as long as it has a publicId", async () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "  ", publicId: "user-002", role: "" },
     });
@@ -141,13 +141,13 @@ describe("getAdminCurrentUser", () => {
 });
 
 describe("isAdminSessionValid", () => {
-  it("空の accessToken に対して false を返す", async () => {
+  it("returns false for an empty accessToken", async () => {
     mockGetAccessToken.mockResolvedValueOnce("");
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(false);
   });
 
-  it("有効なユーザーが取得できる場合 true を返す", async () => {
+  it("returns true when a valid user comes back", async () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "テスト", publicId: "user-001", role: "admin" },
     });
@@ -155,7 +155,7 @@ describe("isAdminSessionValid", () => {
     expect(result).toBe(true);
   });
 
-  it("想定内エラーは false を返す", async () => {
+  it("returns false on an expected error", async () => {
     mockGetMe.mockRejectedValueOnce(
       new ConnectError("forbidden", Code.PermissionDenied)
     );
@@ -163,7 +163,7 @@ describe("isAdminSessionValid", () => {
     expect(result).toBe(false);
   });
 
-  it("想定外エラーは再throwする", async () => {
+  it("rethrows an unexpected error", async () => {
     mockGetMe.mockRejectedValueOnce(new Error("Unauthorized"));
     await expect(isAdminSessionValid("tenant_001")).rejects.toThrow(
       "Unauthorized"
@@ -172,25 +172,25 @@ describe("isAdminSessionValid", () => {
 });
 
 describe("isTenantAdminRole", () => {
-  it("tenant_admin を許可する", () => {
+  it("allows tenant_admin", () => {
     expect(isTenantAdminRole("tenant_admin")).toBe(true);
   });
 
-  it("admin も許可する", () => {
+  it("allows admin as well", () => {
     expect(isTenantAdminRole("admin")).toBe(true);
   });
 
-  it("editor を拒否する", () => {
+  it("rejects editor", () => {
     expect(isTenantAdminRole("editor")).toBe(false);
   });
 
-  it("大文字混在と空白を正規化して判定する", () => {
+  it("normalizes mixed case and whitespace before deciding", () => {
     expect(isTenantAdminRole("  TENANT_ADMIN ")).toBe(true);
   });
 });
 
 describe("tenant admin invitation", () => {
-  it("招待状態を取得できる", async () => {
+  it("reads the state of an invitation", async () => {
     mockGetTenantAdminInvitationState.mockResolvedValueOnce({
       accountExists: true,
       email: "admin@example.com",
@@ -208,7 +208,7 @@ describe("tenant admin invitation", () => {
     });
   });
 
-  it("招待承諾が成功する", async () => {
+  it("accepts an invitation", async () => {
     mockAcceptTenantAdminInvitation.mockResolvedValueOnce({
       accepted: true,
       accountCreated: true,
@@ -223,7 +223,7 @@ describe("tenant admin invitation", () => {
     });
   });
 
-  it("期限切れエラーを変換する", async () => {
+  it("translates an expired error", async () => {
     mockAcceptTenantAdminInvitation.mockRejectedValueOnce(
       new ConnectError("invitation expired", Code.FailedPrecondition)
     );
@@ -238,7 +238,7 @@ describe("tenant admin invitation", () => {
 });
 
 describe("admin password reset", () => {
-  it("再設定メール送信が成功する", async () => {
+  it("sends the password reset mail", async () => {
     mockRequestPasswordReset.mockResolvedValueOnce({ requested: true });
 
     await expect(
@@ -246,7 +246,7 @@ describe("admin password reset", () => {
     ).resolves.toEqual({ ok: true, requested: true });
   });
 
-  it("再設定メール送信の入力エラーを変換する", async () => {
+  it("translates an input error from sending the password reset mail", async () => {
     mockRequestPasswordReset.mockRejectedValueOnce(
       new ConnectError("invalid email address", Code.InvalidArgument)
     );
@@ -259,7 +259,7 @@ describe("admin password reset", () => {
     });
   });
 
-  it("パスワード再設定が成功する", async () => {
+  it("resets the password", async () => {
     mockConfirmPasswordReset.mockResolvedValueOnce({ confirmed: true });
 
     await expect(
@@ -267,7 +267,7 @@ describe("admin password reset", () => {
     ).resolves.toEqual({ confirmed: true, ok: true });
   });
 
-  it("期限切れトークンを期限切れ導線に変換する", async () => {
+  it("turns an expired token into the expired path", async () => {
     mockConfirmPasswordReset.mockRejectedValueOnce(
       new ConnectError("password reset token expired", Code.FailedPrecondition)
     );
@@ -282,7 +282,7 @@ describe("admin password reset", () => {
     });
   });
 
-  it("不正トークンを無効導線に変換する", async () => {
+  it("turns an invalid token into the invalid path", async () => {
     mockConfirmPasswordReset.mockRejectedValueOnce(
       new ConnectError("password reset token not found", Code.NotFound)
     );

@@ -20,7 +20,7 @@ describe("tenant", () => {
     vi.unstubAllEnvs();
   });
 
-  it("admin ドメイン候補で tenantId を解決する", async () => {
+  it("resolves the tenantId from the admin domain candidates", async () => {
     mockGetTenantByDomain.mockResolvedValueOnce({
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
@@ -36,7 +36,7 @@ describe("tenant", () => {
     });
   });
 
-  it("未登録ドメインでは null を返す", async () => {
+  it("returns null for an unregistered domain", async () => {
     mockGetTenantByDomain.mockRejectedValueOnce(
       new ConnectError("tenant not found", Code.NotFound)
     );
@@ -48,7 +48,7 @@ describe("tenant", () => {
     ).resolves.toBeNull();
   });
 
-  it("想定外エラーは再送出する", async () => {
+  it("rethrows an unexpected error", async () => {
     mockGetTenantByDomain.mockRejectedValueOnce(new Error("db timeout"));
 
     const { resolveTenantId } = await import("./tenant");

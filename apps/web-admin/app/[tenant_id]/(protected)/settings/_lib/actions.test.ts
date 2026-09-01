@@ -105,7 +105,7 @@ describe("updateTenantThemeSettingsAction", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("低コントラストの配色を API に送らず、両方の入力欄に理由を表示する", async () => {
+  it("keeps a low-contrast color pair out of the API and shows the reason on both fields", async () => {
     const { updateTenantThemeSettingsAction } = await import("./actions");
 
     const result = await updateTenantThemeSettingsAction(
@@ -131,7 +131,7 @@ describe("updateTenantThemeSettingsAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
-  it("デフォルト配色を保存できる", async () => {
+  it("saves the default colors", async () => {
     mockUpdateTenantThemeSettings.mockResolvedValueOnce({
       icon: null,
       logo: null,
@@ -171,7 +171,7 @@ describe("updateTenantTimezoneAction", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("有効な IANA 名を保存し、キャッシュタグを更新する", async () => {
+  it("saves a valid IANA name and revalidates the cache tag", async () => {
     mockUpdateTenantTimezone.mockResolvedValueOnce({
       ok: true,
       timezone: "America/Los_Angeles",
@@ -202,7 +202,7 @@ describe("updateTenantTimezoneAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:timezone");
   });
 
-  it("列挙されないエイリアスもサーバと同じく保存できる", async () => {
+  it("saves an alias that is not enumerated just as the server does", async () => {
     mockUpdateTenantTimezone.mockResolvedValueOnce({
       ok: true,
       timezone: "Asia/Calcutta",
@@ -230,12 +230,15 @@ describe("updateTenantTimezoneAction", () => {
   });
 
   it.each([
-    { label: "未知の IANA 名", timezone: "Asia/Nowhere" },
+    { label: "an unknown IANA name", timezone: "Asia/Nowhere" },
     // `Local` は Go の time.LoadLocation では通るが、API プロセス自身のゾーンを
     // 指すためテナント設定にはならない。オフセット表記は逆に Temporal だけが通す。
-    { label: "サーバプロセスのゾーンを指す Local", timezone: "Local" },
-    { label: "オフセット表記", timezone: "+09:00" },
-  ])("$label は API を呼ばずに拒否する", async ({ timezone }) => {
+    {
+      label: "Local, which names the zone of the server process",
+      timezone: "Local",
+    },
+    { label: "an offset notation", timezone: "+09:00" },
+  ])("rejects $label without calling the API", async ({ timezone }) => {
     const { updateTenantTimezoneAction } = await import("./actions");
 
     const result = await updateTenantTimezoneAction(
@@ -251,7 +254,7 @@ describe("updateTenantTimezoneAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
-  it("未選択のまま送信した場合は選択を促す", async () => {
+  it("asks for a choice when the form is submitted with nothing selected", async () => {
     const { updateTenantTimezoneAction } = await import("./actions");
 
     const result = await updateTenantTimezoneAction(
@@ -266,7 +269,7 @@ describe("updateTenantTimezoneAction", () => {
     expect(mockUpdateTenantTimezone).not.toHaveBeenCalled();
   });
 
-  it("テナント ID がない場合は保存しない", async () => {
+  it("does not save when the tenant id is missing", async () => {
     const { updateTenantTimezoneAction } = await import("./actions");
 
     const result = await updateTenantTimezoneAction(
@@ -281,7 +284,7 @@ describe("updateTenantTimezoneAction", () => {
     expect(mockUpdateTenantTimezone).not.toHaveBeenCalled();
   });
 
-  it("保存に失敗した場合はメッセージを返し、キャッシュタグを更新しない", async () => {
+  it("returns the message and leaves the cache tag alone when the save fails", async () => {
     mockUpdateTenantTimezone.mockResolvedValueOnce({
       message: "権限がありません。",
       ok: false,
@@ -306,7 +309,7 @@ describe("updateTenantDefaultLocaleAction", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("対応ロケールを保存し、キャッシュタグを更新する", async () => {
+  it("saves the supported locale and revalidates the cache tag", async () => {
     mockUpdateTenantDefaultLocale.mockResolvedValueOnce({
       defaultLocale: "en",
       ok: true,
@@ -340,11 +343,11 @@ describe("updateTenantDefaultLocaleAction", () => {
   });
 
   it.each([
-    { label: "未知のロケール", locale: "fr" },
-    { label: "大文字のコード", locale: "EN" },
-    { label: "BCP 47 タグ", locale: "ja-JP" },
-    { label: "空文字", locale: "  " },
-  ])("$label は API を呼ばずに拒否する", async ({ locale }) => {
+    { label: "an unknown locale", locale: "fr" },
+    { label: "an uppercase code", locale: "EN" },
+    { label: "a BCP 47 tag", locale: "ja-JP" },
+    { label: "an empty string", locale: "  " },
+  ])("rejects $label without calling the API", async ({ locale }) => {
     const { updateTenantDefaultLocaleAction } = await import("./actions");
 
     const result = await updateTenantDefaultLocaleAction(
@@ -360,7 +363,7 @@ describe("updateTenantDefaultLocaleAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
-  it("テナント ID がない場合は保存しない", async () => {
+  it("does not save when the tenant id is missing", async () => {
     const { updateTenantDefaultLocaleAction } = await import("./actions");
 
     const result = await updateTenantDefaultLocaleAction(
@@ -375,7 +378,7 @@ describe("updateTenantDefaultLocaleAction", () => {
     expect(mockUpdateTenantDefaultLocale).not.toHaveBeenCalled();
   });
 
-  it("保存に失敗した場合はメッセージを返し、キャッシュタグを更新しない", async () => {
+  it("returns the message and leaves the cache tag alone when the save fails", async () => {
     mockUpdateTenantDefaultLocale.mockResolvedValueOnce({
       message: "権限がありません。",
       ok: false,
@@ -410,7 +413,7 @@ describe("updateTenantPaymentSettingsAction", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("シークレットを置換して保存し、キャッシュタグを更新する", async () => {
+  it("replaces and saves the secret, then revalidates the cache tag", async () => {
     mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
       ok: true,
       settings: storedPaymentSettings,
@@ -449,7 +452,7 @@ describe("updateTenantPaymentSettingsAction", () => {
     );
   });
 
-  it("空のシークレットは未変更として送り、登録済みなら有効化できる", async () => {
+  it("sends an empty secret as unchanged and can still enable an already registered one", async () => {
     mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
       ok: true,
       settings: storedPaymentSettings,
@@ -481,7 +484,7 @@ describe("updateTenantPaymentSettingsAction", () => {
     );
   });
 
-  it("未設定のまま有効化するとフィールドエラーを返し API を呼ばない", async () => {
+  it("returns a field error and skips the API when enabling without any configuration", async () => {
     const { updateTenantPaymentSettingsAction } = await import("./actions");
 
     const result = await updateTenantPaymentSettingsAction(
@@ -504,7 +507,7 @@ describe("updateTenantPaymentSettingsAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
-  it("テナント ID がない場合は保存しない", async () => {
+  it("does not save when the tenant id is missing", async () => {
     const { updateTenantPaymentSettingsAction } = await import("./actions");
 
     const result = await updateTenantPaymentSettingsAction(
@@ -522,7 +525,7 @@ describe("updateTenantPaymentSettingsAction", () => {
     expect(mockUpdateTenantPaymentSettings).not.toHaveBeenCalled();
   });
 
-  it("保存に失敗した場合はメッセージを返し、キャッシュタグを更新しない", async () => {
+  it("returns the message and leaves the cache tag alone when the save fails", async () => {
     mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
       message: "この操作を行う権限がありません。",
       ok: false,
@@ -593,7 +596,7 @@ describe("updateTenantIconAction", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("選択された画像をアップロードし、公開サイトと設定画面のキャッシュを更新する", async () => {
+  it("uploads the chosen image and revalidates the cache of the public site and the settings screen", async () => {
     mockUploadTenantIcon.mockResolvedValueOnce({
       icon: storedImage("/images/tenants/icon-1"),
       ok: true,
@@ -625,7 +628,7 @@ describe("updateTenantIconAction", () => {
     );
   });
 
-  it("削除では画像を送らずに削除 API を呼ぶ", async () => {
+  it("calls the delete API without sending an image on removal", async () => {
     mockDeleteTenantIcon.mockResolvedValueOnce({ icon: null, ok: true });
 
     const { updateTenantIconAction } = await import("./actions");
@@ -644,7 +647,7 @@ describe("updateTenantIconAction", () => {
     expect(mockUploadTenantIcon).not.toHaveBeenCalled();
   });
 
-  it("画像を選ばずにアップロードした場合は API を呼ばない", async () => {
+  it("does not call the API when uploading without choosing an image", async () => {
     const { updateTenantIconAction } = await import("./actions");
 
     const result = await updateTenantIconAction(
@@ -660,7 +663,7 @@ describe("updateTenantIconAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
-  it("上限を超えるファイルは読み込まずに拒否する", async () => {
+  it("rejects a file over the size limit without reading it", async () => {
     const file = oversizedPngFile();
     const arrayBuffer = vi.spyOn(file, "arrayBuffer");
 
@@ -679,7 +682,7 @@ describe("updateTenantIconAction", () => {
     expect(mockUploadTenantIcon).not.toHaveBeenCalled();
   });
 
-  it("受け付けない MIME type のファイルは拒否する", async () => {
+  it("rejects a file whose MIME type is not accepted", async () => {
     const file = new File([new Uint8Array([1])], "icon.svg", {
       type: "image/svg+xml",
     });
@@ -698,7 +701,7 @@ describe("updateTenantIconAction", () => {
     expect(mockUploadTenantIcon).not.toHaveBeenCalled();
   });
 
-  it("アップロードに失敗した場合はキャッシュを更新しない", async () => {
+  it("leaves the cache alone when the upload fails", async () => {
     mockUploadTenantIcon.mockResolvedValueOnce({
       message: "アイコンのアップロードに失敗しました。",
       ok: false,
@@ -740,7 +743,7 @@ describe("updateTenantLogoAction", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("選択された画像をアップロードし、公開サイトと設定画面のキャッシュを更新する", async () => {
+  it("uploads the chosen image and revalidates the cache of the public site and the settings screen", async () => {
     mockUploadTenantLogo.mockResolvedValueOnce({
       logo: storedImage("/images/tenants/logo-1"),
       ok: true,
@@ -772,7 +775,7 @@ describe("updateTenantLogoAction", () => {
     );
   });
 
-  it("削除では画像を送らずに削除 API を呼ぶ", async () => {
+  it("calls the delete API without sending an image on removal", async () => {
     mockDeleteTenantLogo.mockResolvedValueOnce({ logo: null, ok: true });
 
     const { updateTenantLogoAction } = await import("./actions");
@@ -791,7 +794,7 @@ describe("updateTenantLogoAction", () => {
     expect(mockUploadTenantLogo).not.toHaveBeenCalled();
   });
 
-  it("画像を選ばずにアップロードした場合は API を呼ばない", async () => {
+  it("does not call the API when uploading without choosing an image", async () => {
     const { updateTenantLogoAction } = await import("./actions");
 
     const result = await updateTenantLogoAction(
@@ -807,7 +810,7 @@ describe("updateTenantLogoAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
-  it("上限を超えるファイルは読み込まずに拒否する", async () => {
+  it("rejects a file over the size limit without reading it", async () => {
     const file = oversizedPngFile();
     const arrayBuffer = vi.spyOn(file, "arrayBuffer");
 
@@ -826,7 +829,7 @@ describe("updateTenantLogoAction", () => {
     expect(mockUploadTenantLogo).not.toHaveBeenCalled();
   });
 
-  it("受け付けない MIME type のファイルは拒否する", async () => {
+  it("rejects a file whose MIME type is not accepted", async () => {
     const file = new File([new Uint8Array([1])], "logo.svg", {
       type: "image/svg+xml",
     });
@@ -845,7 +848,7 @@ describe("updateTenantLogoAction", () => {
     expect(mockUploadTenantLogo).not.toHaveBeenCalled();
   });
 
-  it("アップロードに失敗した場合はキャッシュを更新しない", async () => {
+  it("leaves the cache alone when the upload fails", async () => {
     mockUploadTenantLogo.mockResolvedValueOnce({
       message: "ロゴのアップロードに失敗しました。",
       ok: false,

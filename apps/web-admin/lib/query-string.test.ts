@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildQueryString } from "./query-string";
 
 describe("buildQueryString", () => {
-  it("空値のみの場合は空文字を返す", () => {
+  it("returns an empty string when every value is empty", () => {
     expect(
       buildQueryString({
         action: "",
@@ -13,7 +13,7 @@ describe("buildQueryString", () => {
     ).toBe("");
   });
 
-  it("trim した値のみをクエリ化する", () => {
+  it("puts only the trimmed values into the query", () => {
     expect(
       buildQueryString({
         action: " series_created ",
@@ -22,7 +22,7 @@ describe("buildQueryString", () => {
     ).toBe("?action=series_created&actor=user_001");
   });
 
-  it("特殊文字を含む値をエンコードする", () => {
+  it("encodes a value that holds special characters", () => {
     expect(
       buildQueryString({
         actor: "Taro & Hanako",

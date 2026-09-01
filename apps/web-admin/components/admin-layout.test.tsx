@@ -78,7 +78,7 @@ afterEach(() => {
 });
 
 describe("AdminLayout", () => {
-  it("ロゴがあるときはヘッダとサイドバーに出し、テナント名も残す", () => {
+  it("puts the logo in the header and the sidebar and keeps the tenant name", () => {
     render(
       <AdminLayout logo={logo} tenant={tenant} tenantId="tenant-id">
         <p>本文</p>
@@ -91,7 +91,7 @@ describe("AdminLayout", () => {
     expect(screen.queryByText("Admin Console")).toBeNull();
   });
 
-  it("ロゴがないときはテナント名をブランドにし、製品名は出さない", () => {
+  it("makes the tenant name the brand and hides the product name when there is no logo", () => {
     render(
       <AdminLayout logo={null} tenant={tenant} tenantId="tenant-id">
         <p>本文</p>
@@ -110,7 +110,7 @@ describe("AdminUser", () => {
     ["ja", "青枝 花子のアカウントメニュー"],
     ["en", "Account menu for 青枝 花子"],
   ] as const)(
-    "%s のアカウントメニューの aria-label に氏名を補間する",
+    "interpolates the name into the aria-label of the account menu in %s",
     async (locale, expected) => {
       vi.mocked(getLocale).mockResolvedValue(locale);
       vi.mocked(getAdminCurrentUser).mockResolvedValue({
@@ -134,7 +134,7 @@ describe("AdminLocaleSwitcher", () => {
     ["ja", "表示言語: 日本語"],
     ["en", "Display language: English"],
   ] as const)(
-    "%s の現在の表示言語をヘッダートリガーに示す",
+    "shows the current display locale on the header trigger in %s",
     async (locale, expected) => {
       vi.mocked(getLocale).mockResolvedValue(locale);
 

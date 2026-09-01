@@ -6,7 +6,7 @@ import {
 } from "./version-diff";
 
 describe("buildVersionDiff", () => {
-  it("added と removed を行単位で返す", () => {
+  it("returns the added and the removed lines", () => {
     const result = buildVersionDiff(
       ["# Title", "", "new line", "last"].join("\n"),
       ["# Title", "", "old line", "last"].join("\n")
@@ -25,7 +25,7 @@ describe("buildVersionDiff", () => {
 });
 
 describe("getDefaultComparisonVersionId", () => {
-  it("公開版があるときは公開版を優先する", () => {
+  it("prefers the published version when there is one", () => {
     const versions = [{ id: "latest" }, { id: "published" }, { id: "older" }];
 
     expect(getDefaultComparisonVersionId("published", versions)).toBe(
@@ -33,7 +33,7 @@ describe("getDefaultComparisonVersionId", () => {
     );
   });
 
-  it("公開版が先頭なら 2 件目を返す", () => {
+  it("returns the second entry when the published version comes first", () => {
     const versions = [{ id: "published" }, { id: "older" }];
 
     expect(getDefaultComparisonVersionId("published", versions)).toBe("older");

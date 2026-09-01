@@ -49,7 +49,7 @@ describe("episode actions", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("公開スケジュール更新: hidden パラメータ不足でエラーを返す", async () => {
+  it("updating the publish schedule returns an error when a hidden parameter is missing", async () => {
     const { updateEpisodeScheduleAction } = await import("./actions");
     const formData = new FormData();
     formData.set("series_public_id", "SERIES001");
@@ -67,7 +67,7 @@ describe("episode actions", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("公開スケジュール更新: publish_at が不正形式ならエラーを返す", async () => {
+  it("updating the publish schedule returns an error when publish_at is malformed", async () => {
     const { updateEpisodeScheduleAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
@@ -85,7 +85,7 @@ describe("episode actions", () => {
     expect(mockUpdateEpisodePublishSchedule).not.toHaveBeenCalled();
   });
 
-  it("公開スケジュール更新: 成功時は API 呼び出し後にリダイレクトする", async () => {
+  it("updating the publish schedule calls the API and then redirects on success", async () => {
     mockUpdateEpisodePublishSchedule.mockResolvedValueOnce({ ok: true });
 
     const { updateEpisodeScheduleAction } = await import("./actions");
@@ -110,7 +110,7 @@ describe("episode actions", () => {
     );
   });
 
-  it("公開スケジュール更新: datetime-local の壁時計はテナントタイムゾーンとして解釈する", async () => {
+  it("updating the publish schedule reads the datetime-local wall clock in the tenant time zone", async () => {
     mockGetTenantDisplayTimeZone.mockResolvedValue("America/Los_Angeles");
     mockUpdateEpisodePublishSchedule.mockResolvedValueOnce({ ok: true });
 
@@ -136,7 +136,7 @@ describe("episode actions", () => {
     expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
   });
 
-  it("公開スケジュール更新: 日付のみの publish_at は形式エラーにする", async () => {
+  it("updating the publish schedule rejects a date-only publish_at as malformed", async () => {
     const { updateEpisodeScheduleAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
@@ -154,7 +154,7 @@ describe("episode actions", () => {
     expect(mockUpdateEpisodePublishSchedule).not.toHaveBeenCalled();
   });
 
-  it("ページ入稿: pages モードでファイル未選択ならエラーを返す", async () => {
+  it("submitting pages returns an error when no file is chosen in pages mode", async () => {
     const { uploadEpisodePagesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
@@ -172,7 +172,7 @@ describe("episode actions", () => {
     expect(mockUploadEpisodePages).not.toHaveBeenCalled();
   });
 
-  it("ページ入稿: zip モードで拡張子不正ならエラーを返す", async () => {
+  it("submitting pages returns an error when the extension is wrong in zip mode", async () => {
     const { uploadEpisodePagesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
@@ -194,7 +194,7 @@ describe("episode actions", () => {
     expect(mockUploadEpisodePages).not.toHaveBeenCalled();
   });
 
-  it("ページ入稿: pages モード成功時は API 呼び出し後にリダイレクトする", async () => {
+  it("submitting pages calls the API and then redirects on success in pages mode", async () => {
     mockUploadEpisodePages.mockResolvedValueOnce({ ok: true });
 
     const { uploadEpisodePagesAction } = await import("./actions");
@@ -224,7 +224,7 @@ describe("episode actions", () => {
     );
   });
 
-  it("画像並び替え: 不正な ordered_image_ids ならエラーを返す", async () => {
+  it("reordering images returns an error for invalid ordered_image_ids", async () => {
     const { reorderEpisodeImagesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
@@ -241,7 +241,7 @@ describe("episode actions", () => {
     expect(mockReorderEpisodeImages).not.toHaveBeenCalled();
   });
 
-  it("画像並び替え: 成功時は reorder API の結果を反映する", async () => {
+  it("reordering images reflects the result of the reorder API on success", async () => {
     mockReorderEpisodeImages.mockResolvedValueOnce({ ok: true });
 
     const { reorderEpisodeImagesAction } = await import("./actions");

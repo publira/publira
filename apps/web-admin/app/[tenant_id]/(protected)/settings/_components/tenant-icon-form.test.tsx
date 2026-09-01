@@ -47,7 +47,7 @@ afterEach(() => {
 });
 
 describe("TenantIconForm", () => {
-  it("保存済みのアイコンをプレビューし、削除もできるようにする", () => {
+  it("previews the saved icon and offers to remove it", () => {
     render(
       <TenantIconForm
         action={noopAction}
@@ -63,7 +63,7 @@ describe("TenantIconForm", () => {
     expect(screen.getByRole("button", { name: "削除" })).toBeDefined();
   });
 
-  it("未設定のときはプレビューも削除操作も出さない", () => {
+  it("shows neither the preview nor the remove action when nothing is set", () => {
     render(<TenantIconForm action={noopAction} initialIcon={null} />);
 
     expect(screen.queryByAltText("現在のアイコン")).toBeNull();
@@ -71,7 +71,7 @@ describe("TenantIconForm", () => {
     expect(screen.getByText("アイコンは設定されていません。")).toBeDefined();
   });
 
-  it("アップロードと削除を同じフォームの intent で送り分ける", () => {
+  it("tells upload and removal apart by the intent of the same form", () => {
     render(
       <TenantIconForm
         action={noopAction}
@@ -94,7 +94,7 @@ describe("TenantIconForm", () => {
     expect(remove.value).toBe("delete");
   });
 
-  it("保存に成功したら、保存されたアイコンをプレビューに反映する", async () => {
+  it("reflects the saved icon in the preview once the save succeeds", async () => {
     const action = vi.fn().mockResolvedValue({
       icon: brandingImage("/images/tenants/icon-2"),
       message: "アイコンを保存しました。",
@@ -119,7 +119,7 @@ describe("TenantIconForm", () => {
     });
   });
 
-  it("送信が失敗しても、直前に保存されたアイコンを残す", async () => {
+  it("keeps the last saved icon when the submission fails", async () => {
     // 失敗した Action state は icon を持たないので、表示をそこから導くと
     // 保存済みの画像が消える。保持しているのは最後に成功した画像である。
     const action = vi
@@ -166,7 +166,7 @@ describe("TenantIconForm", () => {
     ).toBe(true);
   });
 
-  it("initialIcon が差し替わったら、そのプレビューに追従する", () => {
+  it("follows the new preview when initialIcon is replaced", () => {
     const { rerender } = render(
       <TenantIconForm action={noopAction} initialIcon={null} />
     );

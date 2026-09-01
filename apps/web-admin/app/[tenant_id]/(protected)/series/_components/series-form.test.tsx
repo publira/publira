@@ -72,7 +72,7 @@ afterEach(() => {
   cleanup();
 });
 
-it("二重にマウントされても id が重複しない", () => {
+it("keeps the ids unique when it is mounted twice", () => {
   renderBothForms();
 
   const ids = [...document.querySelectorAll("[id]")].map(
@@ -83,7 +83,7 @@ it("二重にマウントされても id が重複しない", () => {
   expect(ids).toHaveLength(new Set(ids).size);
 });
 
-it("二重にマウントされてもラベルがそれぞれの入力を指す", () => {
+it("points each label at its own input when it is mounted twice", () => {
   renderBothForms();
 
   const titles = screen.getAllByLabelText<HTMLInputElement>(/タイトル/u);
@@ -95,7 +95,7 @@ it("二重にマウントされてもラベルがそれぞれの入力を指す"
 // The e2e suite locates these fields by role and label instead of by id, so
 // that the hidden bfcache page's fields stay out of its way (`seriesFormFields`
 // in `e2e/src/admin.ts`).
-it("ロールとラベルから各入力を引ける", () => {
+it("finds each input by its role and label", () => {
   renderBothForms();
 
   expect(screen.getAllByRole("textbox", { name: /タイトル/u })).toHaveLength(2);
@@ -112,7 +112,7 @@ it("ロールとラベルから各入力を引ける", () => {
   expect(screen.getAllByLabelText(/公開日時/u)).toHaveLength(2);
 });
 
-it("保護レイアウトから渡されたテナントロケールで表示する", () => {
+it("renders in the tenant locale handed down by the protected layout", () => {
   renderBase(
     <AdminLocaleProvider locale="en">
       <SeriesForm

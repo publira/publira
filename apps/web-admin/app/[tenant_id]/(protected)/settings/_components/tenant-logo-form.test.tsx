@@ -47,7 +47,7 @@ afterEach(() => {
 });
 
 describe("TenantLogoForm", () => {
-  it("保存済みのロゴをプレビューし、削除もできるようにする", () => {
+  it("previews the saved logo and offers to remove it", () => {
     render(
       <TenantLogoForm
         action={noopAction}
@@ -61,7 +61,7 @@ describe("TenantLogoForm", () => {
     expect(screen.getByRole("button", { name: "削除" })).toBeDefined();
   });
 
-  it("未設定のときはプレビューも削除操作も出さない", () => {
+  it("shows neither the preview nor the remove action when nothing is set", () => {
     render(<TenantLogoForm action={noopAction} initialLogo={null} />);
 
     expect(screen.queryByAltText("現在のロゴ")).toBeNull();
@@ -69,7 +69,7 @@ describe("TenantLogoForm", () => {
     expect(screen.getByText("ロゴは設定されていません。")).toBeDefined();
   });
 
-  it("アップロードと削除を同じフォームの intent で送り分ける", () => {
+  it("tells upload and removal apart by the intent of the same form", () => {
     render(
       <TenantLogoForm
         action={noopAction}
@@ -92,7 +92,7 @@ describe("TenantLogoForm", () => {
     expect(remove.value).toBe("delete");
   });
 
-  it("保存に成功したら、保存されたロゴをプレビューに反映する", async () => {
+  it("reflects the saved logo in the preview once the save succeeds", async () => {
     const action = vi.fn().mockResolvedValue({
       logo: brandingImage("/images/tenants/logo-2"),
       message: "ロゴを保存しました。",
@@ -117,7 +117,7 @@ describe("TenantLogoForm", () => {
     });
   });
 
-  it("送信が失敗しても、直前に保存されたロゴを残す", async () => {
+  it("keeps the last saved logo when the submission fails", async () => {
     // 失敗した Action state は logo を持たないので、表示をそこから導くと
     // 保存済みの画像が消える。保持しているのは最後に成功した画像である。
     const action = vi
@@ -162,7 +162,7 @@ describe("TenantLogoForm", () => {
     ).toBe(true);
   });
 
-  it("initialLogo が差し替わったら、そのプレビューに追従する", () => {
+  it("follows the new preview when initialLogo is replaced", () => {
     const { rerender } = render(
       <TenantLogoForm action={noopAction} initialLogo={null} />
     );
