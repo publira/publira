@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/config.dart';
+import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/router.dart';
 
 import '../test/support/connect_fixture_server.dart';
@@ -20,8 +24,11 @@ void main() {
 
   group('fixture public API', () {
     late ConnectFixtureServer server;
+    late Directory offlineRoot;
 
     setUp(() async {
+      // Its own directory per test, so no test reads what another one saved.
+      offlineRoot = await Directory.systemTemp.createTemp('publira-offline-');
       server = ConnectFixtureServer(
         series: ConnectFixtureServer.populatedSeries(),
         details: ConnectFixtureServer.populatedDetails(),
@@ -33,6 +40,7 @@ void main() {
 
     tearDown(() async {
       await server.close();
+      await removeDirectory(offlineRoot);
     });
 
     Future<void> pumpApp(
@@ -55,6 +63,7 @@ void main() {
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
           store: InMemorySessionStore(),
+          offline: FileOfflineLibrary(root: () async => offlineRoot),
         ),
       );
       await tester.pump();
@@ -373,7 +382,9 @@ void main() {
       });
     });
 
-    testWidgets('unreachable API shows a retryable error', (tester) async {
+    testWidgets('an unreachable API with nothing saved offers a retry', (
+      tester,
+    ) async {
       await withFailureScreenshot(tester, 'fixture-error', () async {
         final closedBaseUrl = server.baseUrl;
         await server.close();
@@ -385,13 +396,23 @@ void main() {
           tester,
           find.byKey(const ValueKey('catalog-error')),
         );
-        expect(find.textContaining('カタログを表示できませんでした'), findsOneWidget);
+        expect(find.textContaining('オフラインのため'), findsOneWidget);
         expect(find.byKey(const ValueKey('catalog-retry')), findsOneWidget);
       });
     });
   });
 
   group('live public API', skip: !_liveApi, () {
+    late Directory offlineRoot;
+
+    setUp(() async {
+      offlineRoot = await Directory.systemTemp.createTemp('publira-offline-');
+    });
+
+    tearDown(() async {
+      await removeDirectory(offlineRoot);
+    });
+
     const liveBaseUrl = String.fromEnvironment(
       'PUBLIRA_API_BASE_URL',
       defaultValue: AppConfig.androidEmulatorApiBaseUrl,
@@ -415,6 +436,7 @@ void main() {
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
           store: InMemorySessionStore(),
+          offline: FileOfflineLibrary(root: () async => offlineRoot),
         ),
       );
       await tester.pump();
@@ -607,4 +629,287 @@ void main() {
       expect(await const SecureSessionStore().read(), isNull);
     });
   });
+
+  group('offline reading', () {
+    late ConnectFixtureServer server;
+    late Directory offlineRoot;
+    late FileOfflineLibrary offline;
+    var launch = 0;
+
+    setUp(() async {
+      offlineRoot = await Directory.systemTemp.createTemp('publira-offline-');
+      offline = FileOfflineLibrary(root: () async => offlineRoot);
+      launch = 0;
+      server = ConnectFixtureServer(
+        series: ConnectFixtureServer.populatedSeries(),
+        details: ConnectFixtureServer.populatedDetails(),
+        episodes: ConnectFixtureServer.populatedEpisodes(),
+        entitledEpisodes: ConnectFixtureServer.populatedEntitledEpisodes(),
+      );
+      await server.start();
+    });
+
+    tearDown(() async {
+      await server.close();
+      await removeDirectory(offlineRoot);
+    });
+
+    /// Pumps the app the way a launch would.
+    ///
+    /// Each call carries its own key so the second one builds a fresh tree
+    /// rather than updating the first: what is being tested is what survives
+    /// between launches, which is only what reached the device.
+    Future<void> pumpLaunch(
+      WidgetTester tester, {
+      required String apiBaseUrl,
+      String? initialLocation,
+      AuthSession? session,
+    }) async {
+      launch++;
+      await tester.pumpWidget(
+        PubliraApp.fromConfig(
+          key: ValueKey('launch-$launch'),
+          config: AppConfig(
+            apiBaseUrl: apiBaseUrl,
+            tenantHost: 'localhost',
+            imageBaseUrl: apiBaseUrl,
+          ),
+          router: createAppRouter(
+            initialLocation: initialLocation ?? AppRoutes.catalog,
+          ),
+          store: InMemorySessionStore(session: session),
+          offline: offline,
+        ),
+      );
+      await tester.pump();
+    }
+
+    /// The name the library keeps page [page] of [episodeId] under.
+    String pageKey(String episodeId, int page) => episodePageKey(
+      Uri.parse('${server.baseUrl}/images/episodes/$episodeId-page-$page'),
+    );
+
+    Future<void> waitForSavedPage(WidgetTester tester, String key) {
+      return pumpUntilTrueAsync(
+        tester,
+        () async => await offline.readPage(key) != null,
+        description: 'the page to reach the device',
+      );
+    }
+
+    AuthSession memberSession() => AuthSession(
+      accessToken: ConnectFixtureServer.memberAccessToken,
+      userPublicId: ConnectFixtureServer.memberPublicId,
+      userName: ConnectFixtureServer.memberName,
+      expiresAt: DateTime.now().toUtc().add(const Duration(hours: 24)),
+    );
+
+    testWidgets('a free episode read online turns again with the API gone', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'offline-free-episode', () async {
+        await pumpLaunch(
+          tester,
+          apiBaseUrl: server.baseUrl,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+        await waitForSavedPage(
+          tester,
+          pageKey(ConnectFixtureServer.seedEpisodeId, 1),
+        );
+
+        final closedBaseUrl = server.baseUrl;
+        await server.close();
+
+        await pumpLaunch(
+          tester,
+          apiBaseUrl: closedBaseUrl,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+
+        expect(
+          find.byKey(const ValueKey('episode-viewer-error')),
+          findsNothing,
+        );
+        expect(
+          find.text('1 / ${ConnectFixtureServer.seedEpisodePageCount}'),
+          findsOneWidget,
+        );
+      });
+    });
+
+    testWidgets('the catalog opens from the device with the API gone', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'offline-catalog', () async {
+        await pumpLaunch(tester, apiBaseUrl: server.baseUrl);
+        await pumpUntilFound(
+          tester,
+          find.text(ConnectFixtureServer.seedSeriesTitle),
+        );
+
+        final closedBaseUrl = server.baseUrl;
+        await server.close();
+
+        await pumpLaunch(tester, apiBaseUrl: closedBaseUrl);
+        await pumpUntilFound(
+          tester,
+          find.text(ConnectFixtureServer.seedSeriesTitle),
+        );
+
+        expect(find.byKey(const ValueKey('catalog-error')), findsNothing);
+      });
+    });
+
+    testWidgets('an unsaved episode says so rather than failing blankly', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'offline-unsaved-episode', () async {
+        final closedBaseUrl = server.baseUrl;
+        await server.close();
+
+        await pumpLaunch(
+          tester,
+          apiBaseUrl: closedBaseUrl,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-viewer-error')),
+        );
+
+        // Scoped to the viewer: a deep link builds the series screen under it,
+        // and that screen has nothing saved to show either.
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('episode-viewer-error')),
+            matching: find.textContaining('オフラインのため'),
+          ),
+          findsOneWidget,
+        );
+      });
+    });
+
+    testWidgets('a paid episode saved by a member stops opening once they '
+        'sign out', (tester) async {
+      await withFailureScreenshot(tester, 'offline-signed-out', () async {
+        await pumpLaunch(
+          tester,
+          apiBaseUrl: server.baseUrl,
+          session: memberSession(),
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+        await waitForSavedPage(
+          tester,
+          pageKey(ConnectFixtureServer.paidEpisodeId, 1),
+        );
+
+        final closedBaseUrl = server.baseUrl;
+        await server.close();
+
+        await pumpLaunch(
+          tester,
+          apiBaseUrl: closedBaseUrl,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-viewer-error')),
+        );
+
+        expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('episode-viewer-error')),
+            matching: find.textContaining('オフラインのため'),
+          ),
+          findsOneWidget,
+        );
+      });
+    });
+
+    testWidgets('an episode the API takes back leaves the device', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'offline-revoked', () async {
+        await pumpLaunch(
+          tester,
+          apiBaseUrl: server.baseUrl,
+          session: memberSession(),
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+        await waitForSavedPage(
+          tester,
+          pageKey(ConnectFixtureServer.paidEpisodeId, 1),
+        );
+
+        // The access ticket has lapsed: the API answers the same reader with
+        // the locked body it serves anyone without one.
+        server.entitledEpisodes = const {};
+
+        await pumpLaunch(
+          tester,
+          apiBaseUrl: server.baseUrl,
+          session: memberSession(),
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-locked')),
+        );
+
+        expect(
+          await offline.readEpisode(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+          isNull,
+        );
+      });
+    });
+  });
+}
+
+/// Removes a temporary directory a test wrote under, if it is still there.
+Future<void> removeDirectory(Directory directory) async {
+  if (await directory.exists()) {
+    await directory.delete(recursive: true);
+  }
 }

@@ -11,6 +11,10 @@ import 'package:publira/auth/session_store.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/config.dart';
+import 'package:publira/offline/file_offline_library.dart';
+import 'package:publira/offline/offline_catalog_repository.dart';
+import 'package:publira/offline/offline_library.dart';
+import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/router.dart';
 
 /// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
@@ -22,6 +26,7 @@ class PubliraApp extends StatefulWidget {
     required this.router,
     required this.catalog,
     required this.auth,
+    this.offline,
   });
 
   /// Wires the app to the public API described by [config].
@@ -31,13 +36,19 @@ class PubliraApp extends StatefulWidget {
   /// [TenantResolver] means the tenant is looked up once per run. [store] is
   /// the session's home, which an on-device test replaces so it does not carry
   /// a session from one test to the next.
+  ///
+  /// [offline] is what the device keeps for reading without a network, which
+  /// an on-device test replaces so it does not carry saved episodes from one
+  /// test to the next.
   factory PubliraApp.fromConfig({
     Key? key,
     AppConfig? config,
     GoRouter? router,
     SessionStore store = const SecureSessionStore(),
+    OfflineLibrary? offline,
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
+    final library = offline ?? FileOfflineLibrary();
     late final AuthController auth;
     final client = ConnectClient(
       baseUrl: resolved.apiBaseUrl,
@@ -58,18 +69,27 @@ class PubliraApp extends StatefulWidget {
     return PubliraApp(
       key: key,
       router: router ?? createAppRouter(),
-      catalog: HttpCatalogRepository(
-        config: resolved,
-        client: client,
-        tenants: tenants,
+      catalog: OfflineCatalogRepository(
+        origin: HttpCatalogRepository(
+          config: resolved,
+          client: client,
+          tenants: tenants,
+        ),
+        library: library,
+        readerId: () => auth.session?.userPublicId ?? '',
       ),
       auth: auth,
+      offline: library,
     );
   }
 
   final GoRouter router;
   final CatalogRepository catalog;
   final AuthController auth;
+
+  /// What the device holds for reading without a network, `null` on a run that
+  /// keeps nothing.
+  final OfflineLibrary? offline;
 
   @override
   State<PubliraApp> createState() => _PubliraAppState();
@@ -114,16 +134,19 @@ class _PubliraAppState extends State<PubliraApp> {
   Widget build(BuildContext context) {
     return AuthScope(
       controller: widget.auth,
-      child: CatalogScope(
-        repository: widget.catalog,
-        child: MaterialApp.router(
-          title: 'Publira',
-          scaffoldMessengerKey: _messengerKey,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-            useMaterial3: true,
+      child: OfflineScope(
+        library: widget.offline,
+        child: CatalogScope(
+          repository: widget.catalog,
+          child: MaterialApp.router(
+            title: 'Publira',
+            scaffoldMessengerKey: _messengerKey,
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+              useMaterial3: true,
+            ),
+            routerConfig: widget.router,
           ),
-          routerConfig: widget.router,
         ),
       ),
     );

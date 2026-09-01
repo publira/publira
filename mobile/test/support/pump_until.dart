@@ -58,3 +58,21 @@ Future<void> pumpUntilNoPendingFrameCallbacks(
     timeout: timeout,
   );
 }
+
+/// [pumpUntilTrue] for state only an asynchronous read can see, such as what
+/// the offline library has written to the device.
+Future<void> pumpUntilTrueAsync(
+  WidgetTester tester,
+  Future<bool> Function() condition, {
+  String description = 'condition',
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    await tester.pump(const Duration(milliseconds: 50));
+    if (await condition()) {
+      return;
+    }
+  }
+  fail('Timed out waiting for $description');
+}

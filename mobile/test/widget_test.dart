@@ -3,15 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
 import 'package:publira/catalog/catalog_failure.dart';
+import 'package:publira/models/episode_detail.dart';
+import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
+import 'support/fake_offline_library.dart';
 import 'support/pump_until.dart';
 
 void main() {
   late GoRouter router;
   late FakeCatalogRepository catalog;
+  late InMemoryOfflineLibrary offline;
 
   setUp(() {
     router = createAppRouter();
@@ -19,11 +23,17 @@ void main() {
       series: fixtureSeries,
       details: fixtureDetails(),
     );
+    offline = InMemoryOfflineLibrary();
   });
 
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.pumpWidget(
-      PubliraApp(router: router, catalog: catalog, auth: fakeAuthController()),
+      PubliraApp(
+        router: router,
+        catalog: catalog,
+        auth: fakeAuthController(),
+        offline: offline,
+      ),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -144,5 +154,48 @@ void main() {
     await pumpUntilFound(tester, find.text('エピソード一覧'));
 
     expect(find.text(fixtureSeries.first.title), findsWidgets);
+  });
+
+  testWidgets('a saved episode is marked on the series detail screen', (
+    tester,
+  ) async {
+    final series = fixtureSeries.first;
+    final saved = fixtureDetail(series).episodes.first;
+    await offline.writeEpisode(
+      SavedEpisode(
+        ownerId: '',
+        checkedAt: DateTime.now(),
+        detail: EpisodeDetail(
+          episode: saved,
+          seriesId: series.id,
+          seriesTitle: series.title,
+          access: EpisodeAccess.free,
+          images: const [],
+        ),
+      ),
+    );
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(series.id),
+    );
+
+    await pumpApp(tester);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('episode-saved-offline')),
+    );
+
+    expect(find.byKey(const ValueKey('episode-saved-offline')), findsOneWidget);
+  });
+
+  testWidgets('a catalog with nothing saved says the device is offline', (
+    tester,
+  ) async {
+    catalog = FakeCatalogRepository(
+      listError: const CatalogFailure(CatalogFailureKind.notSaved),
+    );
+    await pumpApp(tester);
+
+    expect(find.byKey(const ValueKey('catalog-error')), findsOneWidget);
+    expect(find.textContaining('オフラインのため'), findsOneWidget);
   });
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:publira/api/episode_image_client.dart';
+import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/viewer/episode_image.dart';
 import 'package:publira/viewer/episode_page.dart';
@@ -18,6 +19,7 @@ class EpisodeReader extends StatefulWidget {
     required this.images,
     required this.imageHeaders,
     this.imageClient,
+    this.pageStore,
   });
 
   final List<EpisodeImageItem> images;
@@ -26,6 +28,11 @@ class EpisodeReader extends StatefulWidget {
   /// Fetches and decrypts the pages. The reader opens its own client when this
   /// is null, and closes only the one it opened.
   final EpisodeImageClient? imageClient;
+
+  /// Where the client the reader opens keeps its pages, so this episode turns
+  /// again without a network. Ignored when [imageClient] is given, which
+  /// brings its own.
+  final EpisodePageStore? pageStore;
 
   @override
   State<EpisodeReader> createState() => _EpisodeReaderState();
@@ -45,7 +52,7 @@ class _EpisodeReaderState extends State<EpisodeReader> {
   void initState() {
     super.initState();
     _ownsClient = widget.imageClient == null;
-    _client = widget.imageClient ?? EpisodeImageClient();
+    _client = widget.imageClient ?? EpisodeImageClient(pages: widget.pageStore);
   }
 
   @override
