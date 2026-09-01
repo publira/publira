@@ -85,8 +85,8 @@ catalogs:
       specifier: 4.1.11
       version: 4.1.11
     zod:
-      specifier: 4.5.1
-      version: 4.5.1
+      specifier: 4.5.2
+      version: 4.5.2
 
 importers:
 
@@ -206,7 +206,7 @@ importers:
         version: 1.0.4
       zod:
         specifier: 'catalog:'
-        version: 4.5.1
+        version: 4.5.2
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -306,7 +306,7 @@ importers:
         version: 1.0.4
       zod:
         specifier: 'catalog:'
-        version: 4.5.1
+        version: 4.5.2
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -394,7 +394,7 @@ importers:
         version: 1.0.4
       zod:
         specifier: 'catalog:'
-        version: 4.5.1
+        version: 4.5.2
     devDependencies:
       '@buf/googleapis_googleapis.bufbuild_es':
         specifier: 'catalog:'
@@ -521,7 +521,7 @@ importers:
         version: 1.0.4
       zod:
         specifier: 'catalog:'
-        version: 4.5.1
+        version: 4.5.2
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -669,7 +669,7 @@ importers:
         version: 6.2.1(@opentelemetry/api@1.9.1)
       zod:
         specifier: 'catalog:'
-        version: 4.5.1
+        version: 4.5.2
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -819,7 +819,7 @@ importers:
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(jsdom@30.0.1)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
-        version: 4.5.1
+        version: 4.5.2
 
   packages/web-session:
     dependencies:
@@ -5082,8 +5082,8 @@ packages:
   yuku-parser@0.8.7:
     resolution: {integrity: sha512-vRD9nwt4L3aYpxNqeSC4WqLv58xrXef0Ong1Mc45CTXTIpvLafx7JO05sczmQZwdLEZvywrLOGdNC5+Rp5N1BQ==}
 
-  zod@4.5.1:
-    resolution: {integrity: sha512-P3GqeAEOEDqKvafVGLezbg+39YW/ze4xrD4qdS0adOY8eoI3zfjv1PQM4UwQzgT8mZKXEbqtVt8K+ZKGqkMFKg==}
+  zod@4.5.2:
+    resolution: {integrity: sha512-XkYXCol10+ba/6F/cueWV+TezUeOqXW0hdeJt5CdXjTYeAgAQg5N03RQdJ80mhfFE72+pblvYMW4wy2Qp4Qbrg==}
 
   zod@4.5.4:
     resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
@@ -9385,7 +9385,7 @@ snapshots:
       '@yuku-parser/binding-win32-arm64': 0.8.7
       '@yuku-parser/binding-win32-x64': 0.8.7
 
-  zod@4.5.1: {}
+  zod@4.5.2: {}
 
   zod@4.5.4: {}
 
