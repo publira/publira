@@ -4,7 +4,7 @@ The package that provides Publira's brand tokens.
 
 ## What it provides
 
-- `theme.css`: the color and font tokens used from Tailwind v4's `@theme`
+- `theme.css`: the color and font tokens used from Tailwind v4's `@theme`, and `.publira-theme-scope`, which re-derives those tokens on one element so a subtree can be painted from a `--publira-color-*` set other than the document's
 
 ## Usage
 

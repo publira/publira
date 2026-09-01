@@ -40,3 +40,50 @@
   --color-info: var(--publira-color-info, #2b5e9f);
   --color-info-foreground: var(--publira-color-info-foreground, #f3f8ff);
 }
+
+/**
+ * Paints one subtree from a `--publira-color-*` set of its own, for a preview
+ * that must show a theme other than the document's.
+ *
+ * `@theme` resolves every `--color-*` token once, on `:root`, so a descendant
+ * inherits the value that was already substituted there and overriding
+ * `--publira-color-*` further down has no effect. Re-deriving the tokens here
+ * makes the substitution happen on this element instead. Each `var()` is
+ * written without a fallback on purpose: an unset `--publira-color-*` leaves
+ * the token invalid at computed-value time, which for a custom property means
+ * the inherited value — the document's own token.
+ */
+.publira-theme-scope {
+  --color-background: var(--publira-color-background);
+  --color-foreground: var(--publira-color-foreground);
+
+  --color-surface: var(--publira-color-surface);
+  --color-surface-foreground: var(--publira-color-surface-foreground);
+  --color-card: var(--publira-color-card);
+  --color-card-foreground: var(--publira-color-card-foreground);
+  --color-popover: var(--publira-color-popover);
+  --color-popover-foreground: var(--publira-color-popover-foreground);
+
+  --color-primary: var(--publira-color-primary);
+  --color-primary-foreground: var(--publira-color-primary-foreground);
+  --color-secondary: var(--publira-color-secondary);
+  --color-secondary-foreground: var(--publira-color-secondary-foreground);
+
+  --color-accent: var(--publira-color-accent);
+  --color-accent-foreground: var(--publira-color-accent-foreground);
+  --color-muted: var(--publira-color-muted);
+  --color-muted-foreground: var(--publira-color-muted-foreground);
+
+  --color-border: var(--publira-color-border);
+  --color-input: var(--publira-color-input);
+  --color-ring: var(--publira-color-ring);
+
+  --color-success: var(--publira-color-success);
+  --color-success-foreground: var(--publira-color-success-foreground);
+  --color-warning: var(--publira-color-warning);
+  --color-warning-foreground: var(--publira-color-warning-foreground);
+  --color-destructive: var(--publira-color-destructive);
+  --color-destructive-foreground: var(--publira-color-destructive-foreground);
+  --color-info: var(--publira-color-info);
+  --color-info-foreground: var(--publira-color-info-foreground);
+}

@@ -730,6 +730,29 @@
       "theme_error": "Could not display the theme",
       "theme": {
         "color_picker": "Color picker",
+        "preview": {
+          "title": "Public site preview",
+          "description": "The colors you are editing, shown on the parts a public site is built from. It follows every edit, and the public site keeps its current colors until you save the theme.",
+          "site_name": "Aozora Books",
+          "works": {
+            "first": {
+              "title": "The Lighthouse at the End of Summer",
+              "author": "Mio Kusakabe",
+              "synopsis": "A letter that arrives twenty years late sends a lighthouse keeper back to the summer he never finished."
+            },
+            "second": {
+              "title": "Notes from the Night Bakery",
+              "author": "Ren Shirakawa",
+              "synopsis": "A bakery that opens only after midnight, and the regulars who bring their unfinished stories to the counter."
+            }
+          },
+          "status": {
+            "success": "Purchased",
+            "warning": "Ending soon",
+            "destructive": "No longer on sale",
+            "info": "Announcement"
+          }
+        },
         "submit": "Save the theme",
         "colors": {
           "primary": {
