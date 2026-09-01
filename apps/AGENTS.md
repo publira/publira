@@ -401,7 +401,7 @@ No lint covers this. The `*.error-boundary` e2e specs measure it: each stops tha
 
 The UI renders in `ja` or `en`. No i18n library is added.
 
-**Nothing turns a missing value into a locale.** `parseLocale` and `parseLocaleCookie` answer `undefined` for anything that is not one of `getLocales()`, and every API that renders copy — `loadMessages`, `sharedCatalog`, `sharedMessage`, `sharedRpcErrorMessage`, `formatDateTime`, `validationErrorMessage`, `toFormErrorMessage`, `rpcErrorMessage` — takes a required `Locale`. There is no repository-wide default to fall back on, and adding one back (under any name) is the thing [#1243](https://github.com/publira/publira/issues/1243) removed: a fixed `ja` shows Japanese to an English reader and hides the failure that produced it.
+**Nothing turns a missing value into a locale.** `parseLocale` and `parseLocaleCookie` answer `undefined` for anything that is not one of `getLocales()`, and every API that renders copy — `loadMessages`, `sharedCatalog`, `sharedMessage`, `sharedRpcErrorMessage`, `formatDateTime`, `validationErrorMessage`, `toFormErrorMessage`, `rpcErrorMessage` — takes a required `Locale`. There is no repository-wide default to fall back on, and adding one back — under any name — is forbidden: a fixed `ja` shows Japanese to an English reader and hides the failure that produced it.
 
 So a path that cannot resolve a locale **fails** — a type error at the call site, a thrown read, a `notFound()`, or a result that reports the failure instead of naming a language. What it must never do is pick one.
 

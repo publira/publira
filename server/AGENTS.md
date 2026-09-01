@@ -27,7 +27,7 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 
 ## UI locale: no default
 
-`internal/locale` has no `Default`, and adding one back under any name is what [#1243](https://github.com/publira/publira/issues/1243) removed. `locale.Resolve` reports `ErrUnresolved` for a stored value naming no supported code, and every caller fails on it: an RPC with `internalError` (`CodeInternal`), the invitation job with `Permanent`. Never with another language — a wrong locale shows the reader a page they cannot read and hides the fault that produced it.
+`internal/locale` has no `Default`, and adding one back under any name is forbidden. `locale.Resolve` reports `ErrUnresolved` for a stored value naming no supported code, and every caller fails on it: an RPC with `internalError` (`CodeInternal`), the invitation job with `Permanent`. Never with another language — a wrong locale shows the reader a page they cannot read and hides the fault that produced it.
 
 The contrast with `tenanttz.Default` is deliberate: a timestamp rendered in the wrong zone is off by hours and still legible, so the time zone keeps its last-resort constant.
 
