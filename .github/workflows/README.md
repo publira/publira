@@ -5,6 +5,7 @@
 | `CI` | [`ci.yml`](./ci.yml) | Validation jobs described below. |
 | `Skills Update` | [`skills-update.yml`](./skills-update.yml) | Weekly pull requests that update agent skills. |
 | `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue-maintenance automation. |
+| `Regenerate` | [`regenerate.yml`](./regenerate.yml) | Stacked pull requests that regenerate output for a generator version bump. |
 
 ## Organize issues
 
@@ -15,6 +16,16 @@
 | `Close completed epics` | Close an `epic` Issue as `completed` when all native sub-issues are closed. |
 
 `Close completed epics` is triggered by a closed Issue and manual `workflow_dispatch` (which scans open `epic` Issues if no number is supplied). It considers only `epic` parents with at least one sub-issue, walks nested Epic ancestors in one run, and is serialized to avoid missed simultaneous closures. A `GITHUB_TOKEN` close does not trigger another run.
+
+## Regenerate
+
+[`regenerate.yml`](./regenerate.yml), named `Regenerate`, keeps generated output in step with the generators that produce it. Renovate raises the pinned remote plugin versions in `buf.gen.yaml` and the `SQLC_VERSION` / `BUF_VERSION` values in the `env` block of [`ci.yml`](./ci.yml), but it does not regenerate, so those pull requests arrive with the previous output still committed. This workflow runs `task gen` on such a pull request and, when the result differs from the committed tree, opens a **stacked pull request** whose base is the original branch and whose only content is the regenerated files.
+
+It is triggered by `pull_request` on `buf.gen.yaml`, `ci.yml`, and itself, and it skips forks (their `GITHUB_TOKEN` is read-only) and branches that start with `regen/` (a stacked branch must not stack on itself). Tool setup uses the same actions and the same pinned versions as the `Check` job, so the regenerated files match what that job then verifies.
+
+The original branch is never written to. Renovate force-pushes when it rebases, which would discard a commit placed there. The stacked branch is a separate `regen/<original branch>` ref, rebuilt by [`peter-evans/create-pull-request`](https://github.com/peter-evans/create-pull-request) on every run: a second run updates the existing pull request instead of opening another one, and a run that produces no diff opens nothing and closes a pull request left over from an earlier run.
+
+The stacked pull request is opened by `github-actions[bot]`, so its checks start only after a user with write permission approves the run. `CI` needs no trigger change to see it: GitHub treats a pull request whose base is another open pull request's branch as part of a stack and starts workflows as if it targeted the stack's base, which is `main`. Merge the stacked pull request into the original branch first, then the original pull request into `main`. Merging into a Renovate branch marks that branch as modified, and Renovate then stops updating it until someone ticks its rebase checkbox — which regenerates the branch and drops the regenerated commit with it.
 
 # CI workflow
 
