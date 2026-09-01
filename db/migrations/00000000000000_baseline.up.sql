@@ -1185,6 +1185,9 @@ CREATE INDEX idx_audit_logs_tenant_created_at ON audit_logs USING btree (tenant_
 -- INDEX: idx_creator_image_variants_creator_image_id
 CREATE INDEX idx_creator_image_variants_creator_image_id ON creator_image_variants USING btree (creator_image_id);
 
+-- INDEX: idx_creator_image_variants_object_key
+CREATE INDEX idx_creator_image_variants_object_key ON creator_image_variants USING btree (object_key);
+
 -- INDEX: idx_creator_image_variants_tenant_id
 CREATE INDEX idx_creator_image_variants_tenant_id ON creator_image_variants USING btree (tenant_id);
 
@@ -1258,6 +1261,9 @@ CREATE UNIQUE INDEX idx_content_ranking_snapshots_unique ON content_ranking_snap
 -- INDEX: idx_episode_image_variants_episode_image_id
 CREATE INDEX idx_episode_image_variants_episode_image_id ON episode_image_variants USING btree (episode_image_id);
 
+-- INDEX: idx_episode_image_variants_object_key
+CREATE INDEX idx_episode_image_variants_object_key ON episode_image_variants USING btree (object_key);
+
 -- INDEX: idx_episode_images_episode_id
 CREATE INDEX idx_episode_images_episode_id ON episode_images USING btree (episode_id, display_order);
 
@@ -1284,6 +1290,9 @@ CREATE INDEX idx_episodes_tenant_id ON episodes USING btree (tenant_id);
 
 -- INDEX: idx_label_image_variants_label_image_id
 CREATE INDEX idx_label_image_variants_label_image_id ON label_image_variants USING btree (label_image_id);
+
+-- INDEX: idx_label_image_variants_object_key
+CREATE INDEX idx_label_image_variants_object_key ON label_image_variants USING btree (object_key);
 
 -- INDEX: idx_label_image_variants_tenant_id
 CREATE INDEX idx_label_image_variants_tenant_id ON label_image_variants USING btree (tenant_id);
@@ -1402,6 +1411,9 @@ CREATE INDEX idx_series_creators_tenant_id ON series_creators USING btree (tenan
 -- INDEX: idx_series_image_variants_series_image_id
 CREATE INDEX idx_series_image_variants_series_image_id ON series_image_variants USING btree (series_image_id);
 
+-- INDEX: idx_series_image_variants_object_key
+CREATE INDEX idx_series_image_variants_object_key ON series_image_variants USING btree (object_key);
+
 -- INDEX: idx_series_image_variants_tenant_id
 CREATE INDEX idx_series_image_variants_tenant_id ON series_image_variants USING btree (tenant_id);
 
@@ -1450,6 +1462,9 @@ CREATE UNIQUE INDEX idx_tenant_admin_invitations_tenant_token_hash ON tenant_adm
 
 -- INDEX: idx_tenant_image_variants_tenant_image_id
 CREATE INDEX idx_tenant_image_variants_tenant_image_id ON tenant_image_variants USING btree (tenant_image_id);
+
+-- INDEX: idx_tenant_image_variants_object_key
+CREATE INDEX idx_tenant_image_variants_object_key ON tenant_image_variants USING btree (object_key);
 
 -- INDEX: idx_tenant_image_variants_tenant_id
 CREATE INDEX idx_tenant_image_variants_tenant_id ON tenant_image_variants USING btree (tenant_id);

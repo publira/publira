@@ -37,6 +37,14 @@ The one empty answer is `CheckSetupStatus` on a platform whose settings row does
 
 No lint covers this. The read paths are in `api/*/`, `internal/outbox/`, and `internal/platformconfig/`; the frontend half of the same rule is the **UI locale** section of [`apps/AGENTS.md`](../apps/AGENTS.md).
 
+## Stored objects must be named by a row the sweep knows
+
+`batch purge-orphan-images` treats the database as the authority over the bucket: it walks every object under `tenants/` and deletes the ones no `*_image_variants` row names. A new upload path that writes under that prefix without a row in one of those tables therefore has its objects deleted a day later, silently.
+
+So a new kind of stored object either records its key in one of the existing `*_image_variants` tables, or brings its own table and a clause in `ListReferencedObjectKeys` (`db/query/storage.sql`) — never a bare `Upload` with the key kept somewhere else. Where the row points at an image an entity elects (an icon, an eye catch), add the matching `DeleteUnreferenced*Images` query too, so a replaced image's row stops protecting its objects.
+
+No lint covers this. The reclamation logic is `internal/orphanimages`, documented in [`cmd/batch/README.md`](cmd/batch/README.md).
+
 ## Verification after Go changes
 
 Run verification from the **repository root** unless noted. Prefer Task targets so commands stay consistent with CI.
