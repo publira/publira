@@ -92,11 +92,11 @@ export default defineConfig({
     {
       /**
        * The client error boundary resolves its locale from `document.cookie` —
-       * the platform API is unreachable by the time it renders, so there is
+       * the console's API is unreachable by the time it renders, so there is
        * nothing else left to read. Its test has to put the cookies there the
        * way a browser would; a cookie library would only be testing itself.
        */
-      files: ["apps/web-platform/components/client-message.test.tsx"],
+      files: ["apps/*/components/client-message.test.tsx"],
       rules: {
         "unicorn/no-document-cookie": "off",
       },
@@ -107,8 +107,8 @@ export default defineConfig({
        * and under Cache Components the root layout cannot read it — a
        * `cookies()` call above every `<Suspense>` boundary leaves the route
        * with no static shell, and an `<html>` attribute has no child boundary
-       * to move into. So the layout renders the default locale and an inline
-       * `<head>` script corrects it during parsing, which is the pattern
+       * to move into. So the layout renders no locale at all and an inline
+       * `<head>` script writes one during parsing, which is the pattern
        * Next.js documents for cookie-driven `<html>` attributes.
        *
        * The injected source is `LOCALE_LANG_SCRIPT`, a constant built from
@@ -135,9 +135,9 @@ export default defineConfig({
        * cookie, and the stored default behind it — and a root layout that
        * awaits blocks the whole tree. An `<html>` attribute is never worth
        * that, so both layouts stay synchronous and the locale travels as
-       * cookies the script (`LOCALE_LANG_SCRIPT`) applies instead:
-       * `web-platform` publishes the stored default from its proxy, so the
-       * script names it even for an operator who has chosen nothing.
+       * cookies the script (`LOCALE_LANG_SCRIPT`) applies instead: both
+       * consoles publish the stored default from their proxy, so the script
+       * names it even for an operator who has chosen nothing.
        *
        * Until it runs the document names no language, and a document that
        * carries neither cookie keeps naming none. A `lang` the document is not

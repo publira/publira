@@ -41,13 +41,14 @@ test.describe("web-admin console error boundary", () => {
   // web-admin project; it stops admin-api-server, not the public API.
   test.describe.configure({ mode: "serial" });
 
-  // The error screen is client-rendered, and the root layout cannot put the
-  // tenant's stored default in `<html lang>` without awaiting — which would
-  // block the whole tree for an attribute. An operator who has chosen no
-  // language therefore reads it in whatever the browser asks for, so the
-  // browser language is pinned to make the Japanese copy below the expected
-  // copy. Carrying the stored default to the client is #1249.
-  test.use({ locale: "ja-JP" });
+  // The browser asks for English for this whole file, and every screen below is
+  // asserted in Japanese: that is the language this tenant saved
+  // (`db/seeds/dev/001_tenant_users.sql`), and none of them may swap it for the
+  // visitor's. The error screen is the case that needed work — it is
+  // client-rendered, so the outage that brings it up takes the saved default
+  // out of reach — and it reaches that language through the
+  // `publira_resolved_locale` cookie the proxy publishes on every response.
+  test.use({ locale: "en-US" });
 
   test.afterAll(() => {
     runAdminApiServerScript("start-wait");
@@ -63,6 +64,10 @@ test.describe("web-admin console error boundary", () => {
       page.getByRole("heading", { level: 1, name: "ダッシュボード" })
     ).toBeVisible();
 
+    // This operator has chosen no display language, so the document names one
+    // only because the proxy published what the tenant saved.
+    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+
     try {
       runAdminApiServerScript("stop");
 
@@ -70,6 +75,9 @@ test.describe("web-admin console error boundary", () => {
 
       // Not a bare 500: the console answers with its own error screen.
       expect(response?.status(), await page.content()).toBe(200);
+      // The admin API is what holds the saved language, and it is down: the
+      // error screen words itself from the cookie the proxy left behind rather
+      // than from the English this browser asks for.
       await expect(
         page.getByRole("heading", {
           name: "管理コンソールを表示できませんでした",

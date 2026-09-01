@@ -119,7 +119,7 @@ describe("web-platform proxy", () => {
   it("publishes nothing while the platform has saved no language", async () => {
     mockResolveSetupState.mockResolvedValue({
       completed: false,
-      defaultLocale: null,
+      defaultLocale: "none",
     });
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
@@ -129,6 +129,51 @@ describe("web-platform proxy", () => {
     );
 
     expect(response.headers.get("location")).toContain("/setup");
+    expect(resolvedLocaleCookie(response)).toBeUndefined();
+  });
+
+  /**
+   * The platform answered, and what it saved is no longer a language this build
+   * renders. Leaving the previous cookie standing would have the document and
+   * the error boundary keep naming a language nobody has saved.
+   */
+  it("expires a cookie the saved default no longer names", async () => {
+    mockResolveSetupState.mockResolvedValue({
+      completed: true,
+      defaultLocale: "none",
+    });
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://platform.example.com/login", {
+        headers: { cookie: `${RESOLVED_LOCALE_COOKIE}=ja` },
+      })
+    );
+
+    expect(resolvedLocaleCookie(response)).toMatch(/Max-Age=0|Expires=/u);
+  });
+
+  /**
+   * An outage did not change what the platform saved, and a process that has
+   * never had an answer knows nothing about it. Expiring the cookie here would
+   * cost the error screen the language an earlier process published — which is
+   * the one screen this cookie exists for.
+   */
+  it("leaves the cookie alone while the saved language is unknown", async () => {
+    mockResolveSetupState.mockResolvedValue({
+      completed: true,
+      defaultLocale: "unknown",
+    });
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://platform.example.com/login", {
+        headers: { cookie: `${RESOLVED_LOCALE_COOKIE}=ja` },
+      })
+    );
+
     expect(resolvedLocaleCookie(response)).toBeUndefined();
   });
 

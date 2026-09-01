@@ -6,6 +6,7 @@ import {
   negotiateInitialLocale,
   parseLocale,
   parseLocaleCookie,
+  RESOLVED_LOCALE_COOKIE_NAME,
 } from "@publira/i18n";
 import type { Locale, MessageValues } from "@publira/i18n";
 import { use } from "react";
@@ -13,13 +14,13 @@ import { use } from "react";
 import { loadAdminMessages } from "#lib/messages";
 import type { AdminMessageKey, AdminMessages } from "#lib/messages";
 
-const readDocumentLocale = (): string => {
+const readCookie = (name: string): string => {
   if (typeof document === "undefined") {
     return "";
   }
 
   const match = document.cookie.match(
-    new RegExp(`(?:^|; )${LOCALE_COOKIE_NAME}=([^;]*)`, "u")
+    new RegExp(`(?:^|; )${name}=([^;]*)`, "u")
   );
   if (!match?.[1]) {
     return "";
@@ -35,11 +36,16 @@ const readDocumentLocale = (): string => {
 /**
  * The locale this chunk renders in, from the browser alone.
  *
- * The cookie is the operator's own choice, and `<html lang>` is the tenant
- * default the root layout resolved for this document — the script has already
- * narrowed it to the cookie by the time any component runs. Only a tenant whose
- * default could not be read leaves both empty, and then the browser's own
- * `Accept-Language` preference is the last thing still standing.
+ * The order is the one the server resolves in. `publira_locale` is the
+ * operator's own choice; `publira_resolved_locale` is the tenant's saved
+ * default, published by `proxy.ts` on the responses it routes precisely so
+ * this chunk can read it — the admin API is out of reach here, because the
+ * boundary that renders this is the one its failing brought up. `<html lang>`
+ * comes next for a document whose language was decided some other way (the
+ * switcher writes it once its Action resolves).
+ *
+ * Only a browser that has never had a console response — no cookie of either
+ * kind — falls through to what it asked for.
  */
 const readClientLocale = (): Locale => {
   if (typeof document === "undefined") {
@@ -47,7 +53,8 @@ const readClientLocale = (): Locale => {
   }
 
   return (
-    parseLocaleCookie(readDocumentLocale()) ??
+    parseLocaleCookie(readCookie(LOCALE_COOKIE_NAME)) ??
+    parseLocaleCookie(readCookie(RESOLVED_LOCALE_COOKIE_NAME)) ??
     parseLocale(document.documentElement.lang) ??
     negotiateInitialLocale(navigator.languages.join(","))
   );
@@ -83,9 +90,10 @@ const adminCatalog = (locale: Locale): Promise<AdminMessages> => {
  * error boundary has no boundary of its own above it, so a suspend with
  * nothing to fall back to leaves React unable to flush the error screen at all.
  *
- * The admin API is out of reach here — the boundary that renders this is the
- * one its failing brought up — so the locale comes from the browser
- * ({@link readClientLocale}) rather than from a fresh read.
+ * The tenant's saved default is out of reach here — resolving it needs the
+ * admin API, and the boundary that renders this is the one the API failing
+ * brought up. The locale therefore comes from the browser
+ * ({@link readClientLocale}), which is the last thing still standing.
  */
 export const ClientMessage = ({
   message,

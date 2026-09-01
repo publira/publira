@@ -1,4 +1,5 @@
 import { isHealthProbePath } from "@publira/utils/health";
+import { applyResolvedLocaleCookie } from "@publira/utils/resolved-locale";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -10,7 +11,6 @@ import {
   PLATFORM_SESSION_COOKIE_NAME,
   RETURN_TO_HEADER_NAME,
 } from "./lib/auth-shared";
-import { applyResolvedLocaleCookie } from "./lib/resolved-locale";
 import { resolveSetupState } from "./lib/setup";
 
 const PUBLIC_PATHS = new Set([

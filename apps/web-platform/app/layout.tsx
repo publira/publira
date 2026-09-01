@@ -19,12 +19,13 @@ export const metadata: Metadata = {
  * could move into. So the document ships without a `lang`, and the script sets
  * it while the page is still being parsed, from the operator's own choice or,
  * failing that, from the saved platform default `proxy.ts` published on this
- * response (`lib/resolved-locale.ts`); `suppressHydrationWarning` is what lets
- * the DOM the script produced win over what React rendered. A document that
- * reaches the browser with neither keeps naming no language: that is the state
- * before setup, and a wrong `lang` tells a screen reader to pronounce the page
- * in a language it is not written in — worse than saying nothing. The script's
- * source and the reasoning behind it live in `@publira/i18n`.
+ * response (`@publira/utils/resolved-locale`); `suppressHydrationWarning` is
+ * what lets the DOM the script produced win over what React rendered. A
+ * document that reaches the browser with neither keeps naming no language: that
+ * is the state before setup, and a wrong `lang` tells a screen reader to
+ * pronounce the page in a language it is not written in — worse than saying
+ * nothing. The script's source and the reasoning behind it live in
+ * `@publira/i18n`.
  */
 const RootLayout = ({ children }: LayoutProps<"/">) => (
   <html suppressHydrationWarning>

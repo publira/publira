@@ -2,12 +2,12 @@ import { encryptSessionPayload } from "@publira/web-session";
 import type { NextRequest } from "next/server";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockResolveTenantId } = vi.hoisted(() => ({
-  mockResolveTenantId: vi.fn(),
+const { mockResolveTenantRouting } = vi.hoisted(() => ({
+  mockResolveTenantRouting: vi.fn(),
 }));
 
 vi.mock("./lib/tenant", () => ({
-  resolveTenantId: mockResolveTenantId,
+  resolveTenantRouting: mockResolveTenantRouting,
 }));
 
 const PUBLIRA_AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
@@ -62,7 +62,10 @@ describe("web-admin proxy session handling", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveTenantId.mockResolvedValue(TENANT_ID);
+    mockResolveTenantRouting.mockResolvedValue({
+      defaultLocale: "ja",
+      tenantId: TENANT_ID,
+    });
   });
 
   it("deletes a cookie it cannot decrypt instead of letting it into a protected route", async () => {
