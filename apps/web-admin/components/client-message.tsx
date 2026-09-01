@@ -38,11 +38,11 @@ const readCookie = (name: string): string => {
  *
  * The order is the one the server resolves in. `publira_locale` is the
  * operator's own choice; `publira_resolved_locale` is the tenant's saved
- * default, published by `proxy.ts` on every response precisely so this chunk
- * can read it — the admin API is out of reach here, because the boundary that
- * renders this is the one its failing brought up. `<html lang>` comes next for
- * a document whose language was decided some other way (the switcher writes it
- * once its Action resolves).
+ * default, published by `proxy.ts` on the responses it routes precisely so
+ * this chunk can read it — the admin API is out of reach here, because the
+ * boundary that renders this is the one its failing brought up. `<html lang>`
+ * comes next for a document whose language was decided some other way (the
+ * switcher writes it once its Action resolves).
  *
  * Only a browser that has never had a console response — no cookie of either
  * kind — falls through to what it asked for.

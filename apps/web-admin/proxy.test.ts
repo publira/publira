@@ -219,6 +219,47 @@ describe("web-admin proxy", () => {
     expect(resolvedLocaleCookie(response)).toBeUndefined();
   });
 
+  /**
+   * The tenant answered, and what it saved is no longer a language this build
+   * renders. Leaving the previous cookie standing would have the document and
+   * the error boundary keep naming a language nobody has saved.
+   */
+  it("expires a cookie the tenant's saved default no longer names", async () => {
+    mockResolveTenantRouting.mockResolvedValue({
+      defaultLocale: null,
+      tenantId: "tenant_001",
+    });
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://admin.example.com/login", {
+        headers: { cookie: `${RESOLVED_LOCALE_COOKIE}=ja` },
+      })
+    );
+
+    expect(resolvedLocaleCookie(response)).toMatch(/Max-Age=0|Expires=/u);
+  });
+
+  /**
+   * A read that failed says nothing about the saved language, and the console
+   * answers 503 before any response could carry a cookie either way.
+   */
+  it("leaves the cookie alone when the tenant read fails", async () => {
+    mockResolveTenantRouting.mockRejectedValue(new Error("admin API is down"));
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://admin.example.com/login", {
+        headers: { cookie: `${RESOLVED_LOCALE_COOKIE}=ja` },
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(resolvedLocaleCookie(response)).toBeUndefined();
+  });
+
   it("keeps the revalidation path out of the proxy matcher", async () => {
     const { config } = await import("./proxy");
 

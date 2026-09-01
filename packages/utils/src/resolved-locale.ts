@@ -26,6 +26,27 @@ import type { Locale } from "@publira/i18n";
 import type { NextRequest, NextResponse } from "next/server";
 
 /**
+ * What the proxy resolved about the console's stored display language.
+ *
+ * The two non-locale states are not the same thing and must not be collapsed:
+ * an answer that names no supported language replaces what the browser holds,
+ * while a read that failed says nothing about it at all.
+ *
+ * - a {@link Locale} — publish it.
+ * - `"none"` — the console answered, and it has saved no language this build
+ *   can render. Anything the browser still carries is stale and is cleared: a
+ *   console whose saved code has no catalog must not have the previous language
+ *   published on its behalf. It is also the state before a language has been
+ *   saved at all, where nothing is written because there is nothing to clear —
+ *   the setup screen negotiates its own from `Accept-Language`, and a cookie
+ *   invented here would only turn that negotiation into a stored answer.
+ * - `"unknown"` — the read failed. An outage did not change what the console
+ *   saved, so the cookie is left exactly as it is, including the one an earlier
+ *   process published before this one started.
+ */
+export type ResolvedLocaleState = Locale | "none" | "unknown";
+
+/**
  * Options the resolved-locale cookie is written with.
  *
  * `httpOnly` is off for the same reason the chosen locale's is: the inline
@@ -43,34 +64,43 @@ export const resolvedLocaleCookieOptions = {
 };
 
 /**
- * Publish `defaultLocale` on `response`, unless the request already carries it.
+ * Publish `state` on `response`, unless the request already carries the answer.
  *
  * Skipping the write when nothing changed keeps `Set-Cookie` off every console
  * response; a console whose default language is edited publishes the new value
- * on the very next request, because the proxy re-reads it on each one.
+ * on the very next request, because the proxy re-reads it on each one, and one
+ * that stops naming a supported language has the stale cookie expired on that
+ * same request.
  *
- * A `null` locale writes nothing at all. That is the state before a language
- * has been saved, and a console with none has none to name — the screen that
- * runs then negotiates its own from `Accept-Language`, and a cookie invented
- * here would only turn that negotiation into a stored answer.
+ * The cookie is a copy of a server-resolved value and no server path reads it
+ * back, so nothing here touches the request headers the proxy forwards: the app
+ * behind them resolves the setting itself.
  */
 export const applyResolvedLocaleCookie = (
   request: NextRequest,
   response: NextResponse,
-  defaultLocale: Locale | null
+  state: ResolvedLocaleState
 ): NextResponse => {
-  if (!defaultLocale) {
+  if (state === "unknown") {
     return response;
   }
 
   const current = request.cookies.get(RESOLVED_LOCALE_COOKIE_NAME)?.value;
-  if (current === defaultLocale) {
+
+  if (state === "none") {
+    if (current !== undefined) {
+      response.cookies.delete(RESOLVED_LOCALE_COOKIE_NAME);
+    }
+    return response;
+  }
+
+  if (current === state) {
     return response;
   }
 
   response.cookies.set(
     RESOLVED_LOCALE_COOKIE_NAME,
-    defaultLocale,
+    state,
     resolvedLocaleCookieOptions
   );
 

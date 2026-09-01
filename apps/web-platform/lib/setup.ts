@@ -8,6 +8,7 @@ import {
 import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import type { ResolvedLocaleState } from "@publira/utils/resolved-locale";
 
 import { apiClient } from "./api-client";
 import { loadPlatformMessages } from "./locale";
@@ -78,11 +79,24 @@ let lastKnownSetupState: boolean | null | undefined;
 
 /**
  * The last answer the platform API gave about the saved default locale, for
- * this server process. `null` covers both "it answered, and no supported
- * language is saved" and "it has never answered at all", because the proxy does
- * the same thing with either: publish nothing.
+ * this server process. It starts `"unknown"` — a freshly started instance, or
+ * one that has only ever seen the API down, knows nothing about the saved
+ * language and must leave whatever the browser holds alone.
  */
-let lastKnownDefaultLocale: Locale | null = null;
+let lastKnownDefaultLocale: ResolvedLocaleState = "unknown";
+
+/**
+ * What {@link resolveSetupState} answers.
+ *
+ * `defaultLocale` is the browser-facing state rather than the raw setting:
+ * `"none"` and `"unknown"` are different instructions to
+ * `applyResolvedLocaleCookie`, and this module is the only place that knows
+ * which of the two an empty answer was.
+ */
+export interface SetupState {
+  completed: boolean | null;
+  defaultLocale: ResolvedLocaleState;
+}
 
 /**
  * Setup state for `proxy.ts`, which has to keep routing while the platform API
@@ -107,18 +121,20 @@ let lastKnownDefaultLocale: Locale | null = null;
  * error boundary come to name the saved language instead of the visitor's. It
  * follows the same rule as the routing state — an outage keeps the last
  * confirmed language rather than dropping to none, because the outage did not
- * change what the platform saved.
+ * change what the platform saved, and a process that has never had an answer
+ * says `"unknown"` so the browser keeps what an earlier one published.
  *
  * Only an outage. An answer that names no supported language is an answer, and
- * it replaces the remembered one: a platform whose saved code this build has no
- * catalog for must not have the previous language published on its behalf.
+ * it replaces the remembered one with `"none"`: a platform whose saved code this
+ * build has no catalog for must not have the previous language published on its
+ * behalf, and the cookie a previous answer left behind is expired.
  */
-export const resolveSetupState = async (): Promise<SetupStatusResponse> => {
+export const resolveSetupState = async (): Promise<SetupState> => {
   try {
-    const status = await readSetupStatus();
-    lastKnownSetupState = status.completed;
-    lastKnownDefaultLocale = status.defaultLocale;
-    return status;
+    const { completed, defaultLocale } = await readSetupStatus();
+    lastKnownSetupState = completed;
+    lastKnownDefaultLocale = defaultLocale ?? "none";
+    return { completed, defaultLocale: lastKnownDefaultLocale };
   } catch {
     return {
       completed: lastKnownSetupState === undefined ? true : lastKnownSetupState,

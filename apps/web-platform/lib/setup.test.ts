@@ -123,7 +123,7 @@ describe("resolveSetupState", () => {
     });
   });
 
-  it("keeps null when the most recent known value is null and the connection fails", async () => {
+  it("keeps reporting no saved language when the connection then fails", async () => {
     mockCheckSetupStatus
       .mockRejectedValueOnce(
         new ConnectError("setup not initialized", Code.FailedPrecondition)
@@ -133,21 +133,27 @@ describe("resolveSetupState", () => {
 
     await expect(resolveSetupState()).resolves.toEqual({
       completed: null,
-      defaultLocale: null,
+      defaultLocale: "none",
     });
     await expect(resolveSetupState()).resolves.toEqual({
       completed: null,
-      defaultLocale: null,
+      defaultLocale: "none",
     });
   });
 
-  it("treats connection errors before any API response as setup complete", async () => {
+  /**
+   * A process that has never had an answer knows nothing about the saved
+   * language, which is not the same as knowing there is none: the browser keeps
+   * whatever an earlier process published rather than losing it to a restart
+   * that happened during the outage.
+   */
+  it("treats connection errors before any API response as setup complete and the language unknown", async () => {
     mockCheckSetupStatus.mockRejectedValue(unavailable());
     const { resolveSetupState } = await loadSetup();
 
     await expect(resolveSetupState()).resolves.toEqual({
       completed: true,
-      defaultLocale: null,
+      defaultLocale: "unknown",
     });
   });
 
@@ -160,11 +166,11 @@ describe("resolveSetupState", () => {
 
     await expect(resolveSetupState()).resolves.toEqual({
       completed: false,
-      defaultLocale: null,
+      defaultLocale: "none",
     });
     await expect(resolveSetupState()).resolves.toEqual({
       completed: false,
-      defaultLocale: null,
+      defaultLocale: "none",
     });
     await expect(resolveSetupState()).resolves.toEqual({
       completed: true,
@@ -199,7 +205,7 @@ describe("resolveSetupState", () => {
 
     await expect(resolveSetupState()).resolves.toEqual({
       completed: true,
-      defaultLocale: null,
+      defaultLocale: "none",
     });
   });
 
@@ -219,11 +225,11 @@ describe("resolveSetupState", () => {
     });
     await expect(resolveSetupState()).resolves.toEqual({
       completed: true,
-      defaultLocale: null,
+      defaultLocale: "none",
     });
     await expect(resolveSetupState()).resolves.toEqual({
       completed: true,
-      defaultLocale: null,
+      defaultLocale: "none",
     });
   });
 });

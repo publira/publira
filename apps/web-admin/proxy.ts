@@ -74,8 +74,13 @@ export const proxy = async (request: NextRequest) => {
     return new NextResponse("Not Found", { status: 404 });
   }
 
+  // `resolveTenantRouting` throws on a read it could not make, and that answered
+  // 503 above, so reaching here means the API answered: a locale it named, or
+  // `"none"` for a code this build serves no catalog for, which expires the
+  // cookie an earlier answer left behind rather than leaving a stale language
+  // standing.
   const withLocale = (response: NextResponse) =>
-    applyResolvedLocaleCookie(request, response, defaultLocale);
+    applyResolvedLocaleCookie(request, response, defaultLocale ?? "none");
 
   const rewriteUrl = request.nextUrl.clone();
   rewriteUrl.pathname = `/${tenantId}${pathname}`;
