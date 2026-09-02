@@ -48,7 +48,7 @@ Implementation:
 | `Lint / Go` | `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test` after package builds. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
-| `Test / DB Migrations` | Empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
+| `Test / DB Migrations` | Append-only guard on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
 | `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E` | `task e2e:run`: build, readiness, Playwright, teardown. | [`e2e/README.md`](../../e2e/README.md) |
@@ -125,7 +125,7 @@ Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and rout
 
 `Lint / Go` is independent from `Test / Go` so static-analysis results arrive before Testcontainers tests, and front-end-only PRs do not run it. Its rules and version are [`server/.golangci.yml`](../../server/.golangci.yml) and `GOLANGCI_LINT_VERSION` in `ci.yml`; reproduce it with `task server:lint`.
 
-`Test / DB Migrations` runs against its own Postgres service and must succeed through `migrate up`, `migrate down -all`, and another `migrate up`; any failure, including a dirty database, makes `Summary` fail.
+`Test / DB Migrations` first checks that the PR only adds files under `db/migrations/` — an applied migration is immutable, so a modified, renamed, or deleted one fails the job before Postgres is touched. It then runs against its own Postgres service and must succeed through `migrate up`, `migrate down -all`, and another `migrate up`; any failure, including a dirty database, makes `Summary` fail. This is the one job whose checkout uses `fetch-depth: 0`, because the guard diffs against `origin/main`.
 
 `Docker / <target>` executes the matrix from `scripts/ci-plan-jobs.sh` with the same `task docker:build:web|api|batch|node` commands used locally, followed by `task docker:smoke:web` or `task docker:smoke:node` where applicable. See [`infra/docker/README.md`](../../infra/docker/README.md) for role mapping, build conventions, local verification, and Docker triage.
 
@@ -140,7 +140,7 @@ Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and rout
    | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, package build, `pnpm typegen`, and `pnpm typecheck` |
    | `Test / Go` | `task server:test-short` then `task server:test` |
    | `Test / TypeScript` | `pnpm build --filter "./packages/*"` then `pnpm test` |
-   | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only |
+   | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only. An append-only failure is not reproduced locally: restore the migration and add a new one instead |
    | `Test / Mobile` | `task mobile:check` |
    | `Test / Mobile E2E` | `task mobile:e2e` |
    | `Test / E2E` | `task e2e` |

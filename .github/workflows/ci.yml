@@ -506,7 +506,25 @@ jobs:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The append-only guard below diffs against origin/main, so it needs the
+          # remote-tracking branch and a merge base. `persist-credentials: false`
+          # leaves no credentials for a fallback `git fetch`.
+          fetch-depth: 0
           persist-credentials: false
+
+      # An applied migration is immutable: golang-migrate never re-runs a version a
+      # database already recorded, so an edit reaches only databases built later.
+      # On `push` to main, origin/main and HEAD are the same commit and the diff is
+      # empty. See db/AGENTS.md.
+      - name: Validate / Migrations Are Append-Only
+        run: |
+          set -euo pipefail
+          violations="$(git diff --name-status --find-renames origin/main...HEAD -- db/migrations/ | grep -v "^A$(printf '\t')" || true)"
+          if [ -n "$violations" ]; then
+            echo "::error::db/migrations/ is append-only. Stack a new migration instead of editing, renaming, or deleting one."
+            echo "$violations"
+            exit 1
+          fi
 
       - name: Setup / Install migrate
         run: |
