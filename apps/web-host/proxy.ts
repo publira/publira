@@ -1,6 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import { getTenantDomainCandidates } from "@publira/utils";
 import { isHealthProbePath } from "@publira/utils/health";
+import { applyResolvedLocaleCookie } from "@publira/utils/resolved-locale";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -123,10 +124,21 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     return tenant.response;
   }
 
+  /**
+   * Leave the default this request was routed by on the response. The document
+   * the App Router returns names no language of its own — the root layout
+   * reads nothing, so `<html lang>` is written by the inline script — and on
+   * the unprefixed URL that serves this default, the path does not name it
+   * either. `app/[tenant_id]/[locale]/error.tsx` resolves its copy from the
+   * same cookie, for a render that happens because the tenant read failed.
+   */
+  const withResolvedLocale = (response: NextResponse) =>
+    applyResolvedLocaleCookie(request, response, tenant.defaultLocale);
+
   // A prefix is only canonical for a locale other than this tenant's default.
   // Preserve the path and query while removing a redundant default prefix.
   if (requestedLocale === tenant.defaultLocale) {
-    return redirectToCanonicalPath(request, publicPath);
+    return withResolvedLocale(redirectToCanonicalPath(request, publicPath));
   }
 
   // A prefix-less public path is served as the tenant's default locale. Unlike
@@ -146,20 +158,24 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     isGuestOnlyPath && isSessionRevokedRedirect(request.nextUrl);
 
   if (hasSessionCookie && isGuestOnlyPath && !isRejectedSession) {
-    return NextResponse.redirect(
-      new URL(
-        withLocalePrefix(locale, tenant.defaultLocale, "/my"),
-        request.url
+    return withResolvedLocale(
+      NextResponse.redirect(
+        new URL(
+          withLocalePrefix(locale, tenant.defaultLocale, "/my"),
+          request.url
+        )
       )
     );
   }
 
   if (!hasSessionCookie && isMemberPath(publicPath)) {
-    return redirectToLogin(
-      request,
-      locale,
-      tenant.defaultLocale,
-      hasStoredSessionCookie
+    return withResolvedLocale(
+      redirectToLogin(
+        request,
+        locale,
+        tenant.defaultLocale,
+        hasStoredSessionCookie
+      )
     );
   }
 
@@ -171,7 +187,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   if (isRejectedSession && hasStoredSessionCookie) {
     response.cookies.delete(PUBLIC_SESSION_COOKIE_NAME);
   }
-  return response;
+  return withResolvedLocale(response);
 };
 
 export const config = {

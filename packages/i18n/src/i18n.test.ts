@@ -17,6 +17,7 @@ import {
   LOCALE_LANG_SCRIPT,
   parseLocale,
   parseLocaleCookie,
+  PATH_LOCALE_LANG_SCRIPT,
   RESOLVED_LOCALE_COOKIE_NAME,
   toIntlLocale,
 } from "./i18n";
@@ -58,6 +59,23 @@ const applyLangScript = (cookie: string): string => {
     documentElement: { lang: RENDERED_LANG },
   };
   runInNewContext(LOCALE_LANG_SCRIPT, { document: documentStub });
+
+  return documentStub.documentElement.lang;
+};
+
+/**
+ * The same, for the script a URL-locale app runs. It reads the path first, so
+ * the stub carries a `location` as well.
+ */
+const applyPathLangScript = (pathname: string, cookie: string): string => {
+  const documentStub = {
+    cookie,
+    documentElement: { lang: RENDERED_LANG },
+  };
+  runInNewContext(PATH_LOCALE_LANG_SCRIPT, {
+    document: documentStub,
+    location: { pathname },
+  });
 
   return documentStub.documentElement.lang;
 };
@@ -124,6 +142,45 @@ describe("LOCALE_LANG_SCRIPT", () => {
 
   it("survives a cookie value that cannot be decoded", () => {
     expect(applyLangScript("publira_locale=%E0%A4%A")).toBe(RENDERED_LANG);
+  });
+});
+
+describe("PATH_LOCALE_LANG_SCRIPT", () => {
+  it("applies the locale the path names", () => {
+    expect(applyPathLangScript("/en/series/SR01", "")).toBe("en");
+    expect(applyPathLangScript("/ja", "")).toBe("ja");
+    expect(applyPathLangScript("/en", "publira_resolved_locale=ja")).toBe("en");
+  });
+
+  it("falls back to the locale the proxy resolved for an unprefixed path", () => {
+    expect(applyPathLangScript("/", "publira_resolved_locale=ja")).toBe("ja");
+    expect(
+      applyPathLangScript("/series/SR01", "publira_resolved_locale=en")
+    ).toBe("en");
+    expect(
+      applyPathLangScript(
+        "/series",
+        "theme=dark; publira_resolved_locale=%20ja%20"
+      )
+    ).toBe("ja");
+  });
+
+  it("leaves what the server rendered in place for anything else", () => {
+    expect(applyPathLangScript("/series", "")).toBe(RENDERED_LANG);
+    expect(applyPathLangScript("/fr/series", "")).toBe(RENDERED_LANG);
+    expect(applyPathLangScript("/series", "publira_resolved_locale=fr")).toBe(
+      RENDERED_LANG
+    );
+    // A name that merely ends with the cookie name is a different cookie.
+    expect(
+      applyPathLangScript("/series", "not_publira_resolved_locale=en")
+    ).toBe(RENDERED_LANG);
+  });
+
+  it("survives a cookie value that cannot be decoded", () => {
+    expect(
+      applyPathLangScript("/series", "publira_resolved_locale=%E0%A4%A")
+    ).toBe(RENDERED_LANG);
   });
 });
 

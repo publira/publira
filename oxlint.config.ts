@@ -91,56 +91,69 @@ export default defineConfig({
     },
     {
       /**
-       * The client error boundary resolves its locale from `document.cookie` —
-       * the console's API is unreachable by the time it renders, so there is
-       * nothing else left to read. Its test has to put the cookies there the
-       * way a browser would; a cookie library would only be testing itself.
+       * A client error boundary resolves its locale from `document.cookie` —
+       * the API holding the setting is unreachable by the time it renders, so
+       * there is nothing else left to read. `web-host` reads the same cookie
+       * behind the path, through `lib/client-locale.ts`. Each test has to put
+       * the cookies there the way a browser would; a cookie library would only
+       * be testing itself.
        */
-      files: ["apps/*/components/client-message.test.tsx"],
+      files: [
+        "apps/*/components/client-message.test.tsx",
+        "apps/web-host/lib/client-locale.test.ts",
+      ],
       rules: {
         "unicorn/no-document-cookie": "off",
       },
     },
     {
       /**
-       * The locale cookie has to reach `<html lang>` before the browser paints,
-       * and under Cache Components the root layout cannot read it — a
-       * `cookies()` call above every `<Suspense>` boundary leaves the route
-       * with no static shell, and an `<html>` attribute has no child boundary
-       * to move into. So the layout renders no locale at all and an inline
-       * `<head>` script writes one during parsing, which is the pattern
-       * Next.js documents for cookie-driven `<html>` attributes.
+       * The locale has to reach `<html lang>` before the browser paints, and a
+       * root layout cannot read it: an `<html>` attribute has no child
+       * `<Suspense>` boundary a read could move into, so awaiting there
+       * settles the whole tree before anything below it can flush. So every
+       * root layout renders no locale at all and an inline `<head>` script
+       * writes one during parsing, which is the pattern Next.js documents for
+       * cookie-driven `<html>` attributes.
        *
-       * The injected source is `LOCALE_LANG_SCRIPT`, a constant built from
+       * The injected source is `LOCALE_LANG_SCRIPT` in the cookie consoles and
+       * `PATH_LOCALE_LANG_SCRIPT` in `web-host`, constants built from
        * `getLocales` and the locale cookie names in `@publira/i18n`. No
-       * request-derived value reaches it, and the script writes an attribute
-       * rather than markup. See AGENTS.md "UI ロケール" (#867, #868).
+       * request-derived value reaches either, and the script writes an
+       * attribute rather than markup. See AGENTS.md "UI locale".
        *
        * `web-platform` owns `app/layout.tsx`. `web-admin` rewrites onto
        * `/[tenant_id]/...`, so the same document lives at
        * `app/[tenant_id]/layout.tsx` — one directory deep, which `*` matches
-       * without also covering `(protected)/layout.tsx`.
+       * without also covering `(protected)/layout.tsx`. `web-host` adds the
+       * locale segment, which puts its own document one directory deeper
+       * still, above the `(site)` and `(auth)` layouts.
        */
-      files: ["apps/*/app/layout.tsx", "apps/web-admin/app/*/layout.tsx"],
+      files: [
+        "apps/*/app/layout.tsx",
+        "apps/web-admin/app/*/layout.tsx",
+        "apps/web-host/app/*/*/layout.tsx",
+      ],
       rules: {
         "react/no-danger": "off",
       },
     },
     {
       /**
-       * Both consoles ship their document with no `lang`, and scripts write one
-       * once a locale has been read.
+       * All three apps ship their document with no `lang`, and scripts write
+       * one once a locale has been read.
        *
        * Every value the attribute could take needs a read — the operator's
-       * cookie, and the stored default behind it — and a root layout that
-       * awaits blocks the whole tree. An `<html>` attribute is never worth
-       * that, so both layouts stay synchronous and the locale travels as
-       * cookies the script (`LOCALE_LANG_SCRIPT`) applies instead: both
-       * consoles publish the stored default from their proxy, so the script
-       * names it even for an operator who has chosen nothing.
+       * cookie and the stored default behind it in the consoles, the URL's
+       * locale segment in `web-host` — and a root layout that awaits blocks
+       * the whole tree. An `<html>` attribute is never worth that, so every
+       * root layout stays synchronous and the locale reaches the script from
+       * what the browser already has: the two cookies in the consoles
+       * (`LOCALE_LANG_SCRIPT`), the path and the proxy-published default in
+       * `web-host` (`PATH_LOCALE_LANG_SCRIPT`).
        *
        * Until it runs the document names no language, and a document that
-       * carries neither cookie keeps naming none. A `lang` the document is not
+       * carries neither source keeps naming none. A `lang` the document is not
        * written in tells a screen reader to pronounce the page in the wrong
        * language, which is worse for the reader this rule protects than an
        * absent one, and it is what AGENTS.md means by not misreporting an
@@ -149,6 +162,7 @@ export default defineConfig({
       files: [
         "apps/web-platform/app/layout.tsx",
         "apps/web-admin/app/*/layout.tsx",
+        "apps/web-host/app/*/*/layout.tsx",
       ],
       rules: {
         "jsx-a11y/html-has-lang": "off",

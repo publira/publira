@@ -3,19 +3,19 @@
  *
  * A cookie console keeps the operator's own choice in `publira_locale`, and the
  * server resolves everything else from the stored default — the platform's in
- * `web-platform`, the tenant's in `web-admin`. Two places in the browser cannot
- * reach that default: `<html lang>`, which a root layout cannot read without
- * costing every route its static shell, and the client error boundary, which
- * renders exactly when the API holding the value is unreachable. Both would
- * otherwise fall back to `Accept-Language` and answer an outage in the
- * visitor's language rather than the console's.
+ * `web-platform`, the tenant's in `web-admin` and `web-host`. Two places in the
+ * browser cannot reach that default: `<html lang>`, which a root layout cannot
+ * read without settling the whole tree before anything below it can flush, and
+ * the client error boundary, which renders exactly when the API holding the
+ * value is unreachable. Both would otherwise fall back to `Accept-Language` and
+ * answer an outage in the visitor's language rather than the site's.
  *
  * Each proxy already reads that default to route the request — the setup status
- * in `web-platform`, the Host-to-tenant resolution in `web-admin` — so the value
- * is written to a cookie of its own from there. This module is the shared half
- * of that: it takes the locale the caller resolved and never resolves one
- * itself, which is what keeps it out of `next/headers` and reachable from a
- * proxy.
+ * in `web-platform`, the Host-to-tenant resolution in `web-admin` and
+ * `web-host` — so the value is written to a cookie of its own from there. This
+ * module is the shared half of that: it takes the locale the caller resolved
+ * and never resolves one itself, which is what keeps it out of `next/headers`
+ * and reachable from a proxy.
  */
 
 import {
@@ -33,7 +33,7 @@ import type { NextRequest, NextResponse } from "next/server";
  * while a read that failed says nothing about it at all.
  *
  * - a {@link Locale} — publish it.
- * - `"none"` — the console answered, and it has saved no language this build
+ * - `"none"` — the API answered, and it has saved no language this build
  *   can render. Anything the browser still carries is stale and is cleared: a
  *   console whose saved code has no catalog must not have the previous language
  *   published on its behalf. It is also the state before a language has been

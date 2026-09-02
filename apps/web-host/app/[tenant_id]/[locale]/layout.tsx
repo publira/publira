@@ -1,10 +1,8 @@
-import { getLocales } from "@publira/i18n";
+import { getLocales, PATH_LOCALE_LANG_SCRIPT } from "@publira/i18n";
 import { STATIC_PARAM_PLACEHOLDER } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
-import { LocaleProvider } from "#components/locale-provider";
-import { getLocale } from "#lib/locale";
-import { getTenantDefaultLocale, getTenantSiteInfo } from "#lib/tenant";
+import { getTenantSiteInfo } from "#lib/tenant";
 import { resolveTenantIcons } from "#lib/tenant-icon";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -33,7 +31,8 @@ export const generateStaticParams = () =>
 /**
  * Icons live on the root layout rather than on `(site)`, so a reader sees the
  * tenant's own icon on the auth screens too — those are the pages a browser is
- * most likely to bookmark.
+ * most likely to bookmark. Metadata is resolved in a pass of its own and
+ * streamed into the document, so this read stays out of the route's shell.
  */
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -43,31 +42,38 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 /**
- * `lang` comes straight from the URL. The public site keeps its locale in the
- * path rather than in a cookie, so — unlike the two consoles — the attribute
- * is known before the shell is prerendered and needs no inline correction
- * script.
+ * The document shell, and nothing else: this layout reads nothing and awaits
+ * nothing. An `<html>` attribute has no child `<Suspense>` boundary a read
+ * could move into, so a read here settles the whole tree before anything below
+ * it can flush — which is why neither the request's locale nor the tenant's
+ * stored default is resolved at this level.
+ *
+ * `lang` is therefore written rather than rendered, the way both consoles
+ * write theirs. `PATH_LOCALE_LANG_SCRIPT` applies, while the document is still
+ * being parsed, the locale the path names or — on the unprefixed URL that
+ * serves the tenant's default — the default `proxy.ts` published on this
+ * response (`@publira/utils/resolved-locale`); `suppressHydrationWarning` is
+ * what lets the DOM it produces win over what React rendered.
+ *
+ * The React context both locales travel in is seeded one level down, by the
+ * `(site)` and `(auth)` layouts. That is also what puts the tenant read behind
+ * `app/[tenant_id]/[locale]/error.tsx`: a tenant whose stored default cannot be
+ * read now brings up that boundary instead of a bare 500 no boundary catches.
  */
-const TenantRootLayout = async ({
+const TenantRootLayout = ({
   children,
-}: LayoutProps<"/[tenant_id]/[locale]">) => {
-  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
-  const defaultLocale = await getTenantDefaultLocale(tenantId);
-
-  return (
-    <html lang={locale}>
-      <head>
-        {/* Dynamic per-tenant overrides from GET /theme.css (short Cache-Control). */}
-        {/* oxlint-disable-next-line next/no-css-tags, react-doctor/nextjs-no-css-link -- runtime tenant theme route */}
-        <link href="/theme.css" rel="stylesheet" />
-      </head>
-      <body className="min-h-dvh bg-background text-foreground antialiased">
-        <LocaleProvider defaultLocale={defaultLocale} locale={locale}>
-          {children}
-        </LocaleProvider>
-      </body>
-    </html>
-  );
-};
+}: LayoutProps<"/[tenant_id]/[locale]">) => (
+  <html suppressHydrationWarning>
+    <head>
+      <script dangerouslySetInnerHTML={{ __html: PATH_LOCALE_LANG_SCRIPT }} />
+      {/* Dynamic per-tenant overrides from GET /theme.css (short Cache-Control). */}
+      {/* oxlint-disable-next-line next/no-css-tags, react-doctor/nextjs-no-css-link -- runtime tenant theme route */}
+      <link href="/theme.css" rel="stylesheet" />
+    </head>
+    <body className="min-h-dvh bg-background text-foreground antialiased">
+      {children}
+    </body>
+  </html>
+);
 
 export default TenantRootLayout;
