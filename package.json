@@ -27,5 +27,12 @@
     "typescript": "catalog:",
     "ultracite": "7.10.7"
   },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.20.0",
+      "onFail": "download"
+    }
+  },
   "packageManager": "pnpm@11.25.0"
 }
