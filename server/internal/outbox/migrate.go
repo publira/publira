@@ -13,8 +13,8 @@ import (
 const migrateLockName = "publira:river_migrations"
 
 // Migrate applies River's schema (river_job, river_leader, river_migration)
-// to db. It is idempotent. The application baseline does not own these
-// tables: River versions them, and the worker is the process that runs
+// to db. It is idempotent. The application's own migrations do not own
+// these tables: River versions them, and the worker is the process that runs
 // them. An advisory lock keeps concurrent worker boots from migrating at
 // the same time.
 func Migrate(ctx context.Context, db *sql.DB) error {

@@ -74,8 +74,9 @@ reviews:
       instructions: |
         PostgreSQL / sqlc. Rules: db/AGENTS.md.
 
-        - Baseline-only for now: do not add numbered migration files. Fold schema
-          changes into migrations/00000000000000_baseline.{up,down}.sql.
+        - migrations/ is append-only: flag any edit, rename, or deletion of an
+          existing migration file. A schema change is a new timestamped pair,
+          and every up needs a down that undoes it.
         - migration = DDL; seed = idempotent DML. Flag mixed responsibilities.
         - Strongly flag destructive DDL (DROP / TRUNCATE / drop constraints) and RLS disable.
         - sqlc queries must be parameterized; flag string-concatenated dynamic SQL.

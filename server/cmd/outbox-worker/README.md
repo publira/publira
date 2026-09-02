@@ -47,7 +47,7 @@ The connection must use a role **equivalent to BYPASSRLS**. `publira_admin` / `p
 
 The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
-River's schema (`river_job` and the rest) is applied with `rivermigrate` at startup. It is not part of the application's baseline migration.
+River's schema (`river_job` and the rest) is applied with `rivermigrate` at startup. It is not part of the application's own migrations.
 
 ## Logs and metrics
 

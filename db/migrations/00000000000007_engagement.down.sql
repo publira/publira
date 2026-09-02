@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS user_recommend_features CASCADE;
+DROP TABLE IF EXISTS item_recommend_features CASCADE;
+DROP TABLE IF EXISTS content_ranking_snapshots CASCADE;
+DROP TABLE IF EXISTS content_daily_stats CASCADE;
+DROP TABLE IF EXISTS content_events CASCADE;
+DROP TABLE IF EXISTS episode_reads CASCADE;
+DROP TABLE IF EXISTS episode_follows CASCADE;
+DROP TABLE IF EXISTS series_follows CASCADE;
+DROP TABLE IF EXISTS creator_follows CASCADE;
