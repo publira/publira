@@ -88,8 +88,9 @@ func TestStorageDeleteTimesOut(t *testing.T) {
 // a caller that only checked the request error would read as a success.
 func TestStorageDeleteReportsPerKeyFailures(t *testing.T) {
 	store := Storage{
-		client: refusingDeleteClient{key: "tenants/a/icons/denied.webp", message: "AccessDenied"},
-		bucket: "test-bucket",
+		client:         refusingDeleteClient{key: "tenants/a/icons/denied.webp", message: "AccessDenied"},
+		bucket:         "test-bucket",
+		reclaimTimeout: time.Second,
 	}
 
 	err := store.Delete(t.Context(), []string{"tenants/a/icons/denied.webp"})
