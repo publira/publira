@@ -23,3 +23,49 @@
     @apply bg-primary/22;
   }
 }
+
+@layer components {
+  /**
+   * The wash behind a console shell. `ConsoleLayout` and
+   * `ConsoleLayoutSkeleton` paint it on an inert overlay and name the console
+   * with `data-console-theme`, so every console gradient is defined here and
+   * stays reachable from the stylesheet alone.
+   */
+  .publira-console-background[data-console-theme="admin"] {
+    background-image:
+      radial-gradient(
+        circle at top left,
+        rgba(15, 124, 130, 0.12),
+        transparent 28%
+      ),
+      radial-gradient(
+        circle at top right,
+        rgba(217, 111, 74, 0.13),
+        transparent 30%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(255, 253, 248, 0.78),
+        rgba(246, 242, 233, 0.98)
+      );
+  }
+
+  .publira-console-background[data-console-theme="platform"] {
+    background-image:
+      radial-gradient(
+        circle at top left,
+        rgba(21, 121, 194, 0.11),
+        transparent 28%
+      ),
+      radial-gradient(
+        circle at top right,
+        rgba(24, 149, 118, 0.11),
+        transparent 30%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(248, 252, 255, 0.82),
+        rgba(240, 247, 250, 0.96)
+      );
+  }
+}

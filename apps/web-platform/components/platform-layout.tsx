@@ -76,9 +76,6 @@ import {
 import { NotificationBellErrorBoundary } from "./notification-bell-error-boundary";
 import { navigation } from "./platform-navigation";
 
-const platformGradient =
-  "bg-[radial-gradient(circle_at_top_left,rgba(21,121,194,0.11),transparent_28%),radial-gradient(circle_at_top_right,rgba(24,149,118,0.11),transparent_30%),linear-gradient(180deg,rgba(248,252,255,0.82),rgba(240,247,250,0.96))]";
-
 const notificationMenuLimit = 5;
 
 export const PlatformUser = async () => {
@@ -240,7 +237,7 @@ const PlatformMobileNavigation = async () => {
 };
 
 export const PlatformLayout = ({ children }: { children: ReactNode }) => (
-  <ConsoleLayout gradient={platformGradient}>
+  <ConsoleLayout theme="platform">
     <Suspense fallback={null}>
       <PlatformMobileNavigation />
     </Suspense>

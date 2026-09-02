@@ -12,8 +12,6 @@ import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeLogo } from "#lib/theme-settings";
 
-const AdminLayoutSkeleton = () => <ConsoleLayoutSkeleton />;
-
 const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   const tenantId = await getTenantId();
 
@@ -41,7 +39,7 @@ const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
 };
 
 const ProtectedLayout = ({ children }: LayoutProps<"/[tenant_id]">) => (
-  <Suspense fallback={<AdminLayoutSkeleton />}>
+  <Suspense fallback={<ConsoleLayoutSkeleton theme="admin" />}>
     <ProtectedLayoutInner>{children}</ProtectedLayoutInner>
   </Suspense>
 );

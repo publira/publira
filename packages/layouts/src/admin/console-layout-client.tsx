@@ -2,7 +2,6 @@
 
 import { Drawer as BaseDrawer } from "@base-ui/react/drawer";
 import { CloseIcon, MenuIcon } from "@publira/icons";
-import { cn } from "@publira/utils";
 import {
   createContext,
   useCallback,
@@ -12,12 +11,12 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 
-const DEFAULT_GRADIENT =
-  "bg-[radial-gradient(circle_at_top_left,rgba(15,124,130,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(217,111,74,0.13),transparent_30%),linear-gradient(180deg,rgba(255,253,248,0.78),rgba(246,242,233,0.98))]";
+import { consoleBackgroundClassName } from "./console-theme";
+import type { ConsoleTheme } from "./console-theme";
 
 export interface ConsoleLayoutClientProps {
   children: ReactNode;
-  gradient?: string;
+  theme: ConsoleTheme;
 }
 
 interface ConsoleMobileNavigationContextValue {
@@ -91,7 +90,7 @@ export const ConsoleMobileNavigationOpenButton = ({
 
 export const ConsoleLayoutClient = ({
   children,
-  gradient = DEFAULT_GRADIENT,
+  theme,
 }: ConsoleLayoutClientProps) => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -118,7 +117,8 @@ export const ConsoleLayoutClient = ({
         <div className="relative min-h-dvh bg-background text-foreground">
           <div
             aria-hidden="true"
-            className={cn("pointer-events-none absolute inset-0", gradient)}
+            className={consoleBackgroundClassName}
+            data-console-theme={theme}
           />
           <div className="relative flex min-h-dvh">{children}</div>
         </div>

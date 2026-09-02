@@ -30,9 +30,8 @@ export {
   ConsoleSidebarNavigationSection,
   ConsoleSidebarNavigationTitle,
   ConsoleSidebarSkeleton,
-  defaultConsoleGradient,
 } from "./console-layout";
-export type { ConsoleLayoutProps } from "./console-layout";
+export type { ConsoleLayoutProps, ConsoleTheme } from "./console-layout";
 export {
   ConsoleHeaderUser,
   ConsoleUserMenu,
