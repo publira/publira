@@ -71,8 +71,11 @@ class ConnectClient {
         code: 'deadline_exceeded',
         message: 'request timed out',
       );
-    } on SocketException catch (error) {
-      throw ConnectException(code: 'unavailable', message: error.message);
+    } on IOException catch (error) {
+      // Not only a refused socket: `IOClient` re-throws a TLS
+      // `HandshakeException` as it is, and a call that never reached the API
+      // is one the caller has to be able to answer from the device.
+      throw ConnectException(code: 'unavailable', message: '$error');
     } on http.ClientException catch (error) {
       throw ConnectException(code: 'unavailable', message: error.message);
     }

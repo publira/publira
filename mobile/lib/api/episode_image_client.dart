@@ -81,8 +81,12 @@ class EpisodeImageClient {
           .timeout(timeout);
     } on TimeoutException {
       return _saved(url, 'image request timed out');
-    } on SocketException catch (error) {
-      return _saved(url, error.message);
+    } on IOException catch (error) {
+      // Every `dart:io` failure of the request itself lands here, not only a
+      // refused socket: `IOClient` re-throws a TLS `HandshakeException` as it
+      // is, and a page the request never reached is a page to read off the
+      // device.
+      return _saved(url, '$error');
     } on http.ClientException catch (error) {
       return _saved(url, error.message);
     }
@@ -98,9 +102,27 @@ class EpisodeImageClient {
     if (store != null) {
       // Saving is not what the reader is waiting for, and a device that
       // cannot save still has the page in hand.
-      unawaited(store.writePage(episodePageKey(url), bytes));
+      unawaited(_save(store, episodePageKey(url), bytes));
     }
     return bytes;
+  }
+
+  /// Hands [bytes] to [store] without letting a refusal reach the zone.
+  ///
+  /// Nothing awaits this, so an escaping error would surface as a crash for a
+  /// save the reader is not waiting on — and the store is an interface any
+  /// implementation may satisfy, so the guarantee belongs here rather than in
+  /// each of them.
+  Future<void> _save(
+    EpisodePageStore store,
+    String key,
+    Uint8List bytes,
+  ) async {
+    try {
+      await store.writePage(key, bytes);
+    } catch (_) {
+      return;
+    }
   }
 
   /// The saved page for [url], or the network failure [message] describes when

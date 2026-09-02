@@ -87,8 +87,12 @@ class PubliraApp extends StatefulWidget {
   final CatalogRepository catalog;
   final AuthController auth;
 
-  /// What the device holds for reading without a network, `null` on a run that
-  /// keeps nothing.
+  /// What the device holds for reading without a network.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one, and it is that library which
+  /// decides at runtime whether the platform can keep anything. It is nullable
+  /// for the direct constructor, which a widget test uses to build the app
+  /// with no offline behaviour at all.
   final OfflineLibrary? offline;
 
   @override

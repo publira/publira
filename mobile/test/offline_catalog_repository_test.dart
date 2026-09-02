@@ -161,6 +161,16 @@ void main() {
     expect(library.details, isEmpty);
   });
 
+  test('a series the API drops takes its saved episodes with it', () async {
+    await build().getSeries(_seriesId);
+    await build().getEpisode(_seriesId, _episodeId);
+    origin.details = const {};
+
+    expect(await build().getSeries(_seriesId), isNull);
+    expect(library.details, isEmpty);
+    expect(library.episodes, isEmpty);
+  });
+
   test('a free body is kept without an owner', () async {
     await build().getEpisode(_seriesId, _episodeId);
 

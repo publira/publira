@@ -56,6 +56,13 @@ String savedEpisodeKey(String seriesPublicId, String episodePublicId) =>
 /// reaches it. A body that needed an entitlement is closed to anyone but the
 /// reader it was granted to, and closes to them too once
 /// [offlineGracePeriod] has passed since the API last confirmed the grant.
+///
+/// The window is measured against the device's own clock, which the reader
+/// controls. A confirmation dated after [now] is refused rather than trusted,
+/// so a clock pushed forward and back cannot mint one; a clock simply held
+/// back still reads, and closing that needs a time source the device cannot
+/// rewrite. Like the image stream this is a boundary, not DRM: it stops a
+/// grant from outliving itself on a device nobody is tampering with.
 bool isReadableOffline(
   SavedEpisode episode, {
   required String readerId,
@@ -68,7 +75,8 @@ bool isReadableOffline(
   if (episode.ownerId != readerId) {
     return false;
   }
-  return now.difference(episode.checkedAt) <= grace;
+  final since = now.difference(episode.checkedAt);
+  return !since.isNegative && since <= grace;
 }
 
 /// What one device holds for reading without a network.
@@ -87,7 +95,13 @@ abstract class OfflineLibrary implements EpisodePageStore {
 
   Future<void> writeSeriesDetail(SeriesDetail detail);
 
-  Future<void> removeSeriesDetail(String seriesPublicId);
+  /// Drops the series screen and every episode saved under it, pages
+  /// included.
+  ///
+  /// A series the API no longer publishes takes its episodes with it. Leaving
+  /// them would keep an unpublished body opening offline, and hold its pages
+  /// against the byte limit with no screen left to reach them from.
+  Future<void> removeSeries(String seriesPublicId);
 
   Future<SavedEpisode?> readEpisode(
     String seriesPublicId,

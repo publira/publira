@@ -245,7 +245,13 @@ class _EpisodeTrailing extends StatelessWidget {
           const Padding(
             key: ValueKey('episode-saved-offline'),
             padding: EdgeInsets.only(right: 8),
-            child: Icon(Icons.offline_pin_outlined, size: 20),
+            child: Icon(
+              Icons.offline_pin_outlined,
+              size: 20,
+              // The mark is the only thing that says this episode still opens
+              // without a network, so it has to reach a screen reader too.
+              semanticLabel: '保存済み',
+            ),
           ),
         if (price > 0) Text('¥$price'),
       ],

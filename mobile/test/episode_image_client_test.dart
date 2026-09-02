@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -341,4 +342,45 @@ void main() {
       ),
     );
   });
+
+  test('a page is not confused with one that differs in the query', () async {
+    // Only the media token is dropped from the address, so two pages the API
+    // distinguishes by any other field keep their own saved copies.
+    expect(
+      episodePageKey(Uri.parse('$_pageUrl?size=large')),
+      isNot(episodePageKey(Uri.parse('$_pageUrl?size=small'))),
+    );
+    expect(
+      episodePageKey(Uri.parse('$_pageUrl?size=large&t=first-token')),
+      episodePageKey(Uri.parse('$_pageUrl?size=large&t=second-token')),
+    );
+  });
+
+  test('a device that refuses the save still hands over the page', () async {
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        _plaintext,
+        200,
+        headers: const {'content-type': 'image/webp'},
+      ),
+      pages: _RefusingPageStore(),
+    );
+
+    expect(await client.fetch(Uri.parse(_pageUrl)), _plaintext);
+    // Nothing awaits the save, so a refusal that escaped would surface as an
+    // unhandled async error and fail this test rather than the call above.
+    await settle();
+  });
+}
+
+/// [EpisodePageStore] that rejects every call, standing in for a full or
+/// locked device.
+class _RefusingPageStore implements EpisodePageStore {
+  @override
+  Future<Uint8List?> readPage(String key) async =>
+      throw const FileSystemException('unreadable');
+
+  @override
+  Future<void> writePage(String key, Uint8List bytes) async =>
+      throw const FileSystemException('device is full');
 }

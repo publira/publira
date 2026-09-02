@@ -62,7 +62,7 @@ class OfflineCatalogRepository implements CatalogRepository {
     try {
       final detail = await _origin.getSeries(publicId);
       if (detail == null) {
-        await library.removeSeriesDetail(publicId);
+        await library.removeSeries(publicId);
         return null;
       }
       await library.writeSeriesDetail(detail);
@@ -170,7 +170,7 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// The request headers carry the reader's bearer token, and a paid page's
   /// URL carries the media token that reads it. Neither belongs on the device,
   /// and neither is needed: a saved page is read off disk under a name that
-  /// ignores the query.
+  /// leaves the media token out.
   EpisodeDetail _forStorage(EpisodeDetail detail) {
     return EpisodeDetail(
       episode: detail.episode,

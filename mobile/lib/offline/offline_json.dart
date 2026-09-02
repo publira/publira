@@ -4,8 +4,9 @@ import 'package:publira/offline/offline_library.dart';
 
 /// Layout of what the library writes. A file written under another number is
 /// dropped rather than read, so a shape change costs the saved episodes and
-/// never a failed launch.
-const offlineIndexVersion = 1;
+/// never a failed launch. It also covers the shape of the files themselves:
+/// version 2 is where every write started carrying its own nonce.
+const offlineIndexVersion = 2;
 
 /// The whole of one device's saved metadata: the catalog snapshot, the series
 /// screens behind it, and the episodes whose pages are on disk.
@@ -192,15 +193,24 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
   if (seriesId.isEmpty || episode == null || checkedAt == null) {
     return null;
   }
+  final access = _accessFromName(_string(decoded['access']));
+  final ownerId = _string(decoded['ownerId']);
+  // An empty owner is what marks a free body, and a free body opens on a
+  // signed-out device. A record that needed a grant but names nobody is
+  // therefore not a record to read leniently: dropping it costs one refetch,
+  // reading it hands a paid body to whoever is holding the phone.
+  if (access != EpisodeAccess.free && ownerId.isEmpty) {
+    return null;
+  }
   final rawImages = decoded['images'];
   return SavedEpisode(
-    ownerId: _string(decoded['ownerId']),
+    ownerId: ownerId,
     checkedAt: checkedAt.toUtc(),
     detail: EpisodeDetail(
       episode: episode,
       seriesId: seriesId,
       seriesTitle: _string(decoded['seriesTitle']),
-      access: _accessFromName(_string(decoded['access'])),
+      access: access,
       images: [
         for (final item in rawImages is List ? rawImages : const [])
           ?_imageFromJson(item),

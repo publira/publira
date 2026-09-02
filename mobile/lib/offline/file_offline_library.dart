@@ -83,9 +83,21 @@ class FileOfflineLibrary implements OfflineLibrary {
   }
 
   @override
-  Future<void> removeSeriesDetail(String seriesPublicId) {
-    return _write((home, index) {
+  Future<void> removeSeries(String seriesPublicId) {
+    return _write((home, index) async {
       index.details.remove(seriesPublicId);
+      final dropped = index.episodes.values
+          .where((episode) => episode.detail.seriesId == seriesPublicId)
+          .toList(growable: false);
+      for (final episode in dropped) {
+        index.episodes.remove(episode.key);
+        for (final key in episode.pageKeys) {
+          await _deletePage(home, key);
+        }
+      }
+      if (dropped.isNotEmpty) {
+        _pageBytes = null;
+      }
     });
   }
 
@@ -148,28 +160,28 @@ class FileOfflineLibrary implements OfflineLibrary {
       if (!await file.exists()) {
         return null;
       }
-      final bytes = transformOfflineBytes(
-        bytes: await file.readAsBytes(),
+      final bytes = openOfflineBytes(
+        sealed: await file.readAsBytes(),
         deviceKey: home.key,
         label: _pageLabel(key),
       );
-      return bytes.isEmpty ? null : bytes;
+      return bytes == null || bytes.isEmpty ? null : bytes;
     });
   }
 
   @override
   Future<void> writePage(String key, Uint8List bytes) {
     return _write((home, index) async {
-      final encrypted = transformOfflineBytes(
-        bytes: bytes,
+      final sealed = sealOfflineBytes(
+        plaintext: bytes,
         deviceKey: home.key,
         label: _pageLabel(key),
       );
-      await File(_pagePath(home, key)).writeAsBytes(encrypted, flush: true);
+      await _writeFile(File(_pagePath(home, key)), sealed);
       final known = _pageBytes;
       _pageBytes = known == null
           ? await _measurePages(home)
-          : known + encrypted.length;
+          : known + sealed.length;
       if (_pageBytes! > byteLimit) {
         await _evict(home, index);
         await _writeIndex(home, index);
@@ -293,6 +305,12 @@ class FileOfflineLibrary implements OfflineLibrary {
         }
       } catch (_) {
         // Saving is best effort too: a full or unwritable device still reads.
+        // What must not survive is a mutation `action` made to the cached
+        // index whose write never landed, which would leave the screens
+        // offering an episode that is not on the disk. Drop the cache so the
+        // next read comes off the disk again.
+        _index = null;
+        _pageBytes = null;
       }
     });
   }
@@ -347,12 +365,14 @@ class FileOfflineLibrary implements OfflineLibrary {
     OfflineIndex? index;
     if (present) {
       try {
-        final bytes = transformOfflineBytes(
-          bytes: await file.readAsBytes(),
+        final bytes = openOfflineBytes(
+          sealed: await file.readAsBytes(),
           deviceKey: home.key,
           label: 'index',
         );
-        index = OfflineIndex.fromJson(jsonDecode(utf8.decode(bytes)));
+        index = bytes == null
+            ? null
+            : OfflineIndex.fromJson(jsonDecode(utf8.decode(bytes)));
       } catch (_) {
         index = null;
       }
@@ -367,14 +387,23 @@ class FileOfflineLibrary implements OfflineLibrary {
 
   Future<void> _writeIndex(_Home home, OfflineIndex index) async {
     final encoded = Uint8List.fromList(utf8.encode(jsonEncode(index.toJson())));
-    await File('${home.dir.path}/index.json').writeAsBytes(
-      transformOfflineBytes(
-        bytes: encoded,
-        deviceKey: home.key,
-        label: 'index',
-      ),
-      flush: true,
+    await _writeFile(
+      File('${home.dir.path}/index.json'),
+      sealOfflineBytes(plaintext: encoded, deviceKey: home.key, label: 'index'),
     );
+  }
+
+  /// Writes [bytes] to [file] through a temporary neighbour and a rename.
+  ///
+  /// `writeAsBytes` truncates first, so a process that dies mid-write leaves
+  /// the file holding a prefix of the new ciphertext. For the index that is
+  /// fatal: it no longer decodes, and the library answers by wiping itself,
+  /// pages included. A rename on the same filesystem is atomic, so whoever
+  /// reads next sees either the old file whole or the new one whole.
+  Future<void> _writeFile(File file, Uint8List bytes) async {
+    final staged = File('${file.path}.writing');
+    await staged.writeAsBytes(bytes, flush: true);
+    await staged.rename(file.path);
   }
 
   Future<void> _wipe(_Home home) async {

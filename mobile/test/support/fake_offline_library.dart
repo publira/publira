@@ -32,8 +32,17 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
   }
 
   @override
-  Future<void> removeSeriesDetail(String seriesPublicId) async {
+  Future<void> removeSeries(String seriesPublicId) async {
     details.remove(seriesPublicId);
+    for (final episode in episodes.values.toList(growable: false)) {
+      if (episode.detail.seriesId != seriesPublicId) {
+        continue;
+      }
+      episodes.remove(episode.key);
+      for (final key in episode.pageKeys) {
+        pages.remove(key);
+      }
+    }
   }
 
   @override

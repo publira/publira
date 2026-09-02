@@ -7,6 +7,7 @@ import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/device_key.dart';
 import 'package:publira/offline/file_offline_library.dart';
+import 'package:publira/offline/offline_cipher.dart';
 import 'package:publira/offline/offline_library.dart';
 
 final _deviceKey = Uint8List.fromList(
@@ -149,8 +150,10 @@ void main() {
 
     final onDisk = await File('${root.path}/pages/page-key.bin').readAsBytes();
 
-    expect(onDisk, hasLength(page.length));
-    expect(onDisk, isNot(page));
+    // The nonce rides in front of the ciphertext, so the file is longer than
+    // the page by exactly that much.
+    expect(onDisk, hasLength(offlineNonceLength + page.length));
+    expect(onDisk.sublist(offlineNonceLength), isNot(page));
   });
 
   test('a library whose device key is gone starts empty', () async {
@@ -249,6 +252,69 @@ void main() {
           _seriesId,
           readerId: 'READER1',
           now: DateTime.utc(2026, 9).add(offlineGracePeriod * 2),
+        ),
+        isEmpty,
+      );
+    },
+  );
+
+  test('dropping a series takes its episodes and pages with it', () async {
+    final library = open();
+    final pageKey = episodePageKey(_pageUrl('EP1', 1));
+    await library.writeSeriesDetail(
+      const SeriesDetail(
+        series: SeriesItem(
+          id: _seriesId,
+          title: 'Seed Series 001',
+          description: '',
+        ),
+        episodes: [],
+      ),
+    );
+    await library.writeEpisode(_episode('EP1'));
+    await library.writePage(pageKey, _bytes(64, 3));
+
+    await library.removeSeries(_seriesId);
+
+    expect(await library.readSeriesDetail(_seriesId), isNull);
+    expect(await library.readEpisode(_seriesId, 'EP1'), isNull);
+    expect(await library.readPage(pageKey), isNull);
+  });
+
+  test('rewriting a page does not reuse its keystream', () async {
+    final library = open();
+    final pageKey = episodePageKey(_pageUrl('EP1', 1));
+    final file = File('${root.path}/pages/$pageKey.bin');
+
+    await library.writePage(pageKey, _bytes(64, 3));
+    final first = await file.readAsBytes();
+    await library.writePage(pageKey, _bytes(64, 3));
+    final second = await file.readAsBytes();
+
+    expect(first, isNot(second));
+    expect(await library.readPage(pageKey), _bytes(64, 3));
+  });
+
+  test(
+    'readableEpisodeIds refuses a confirmation dated in the future',
+    () async {
+      final library = open();
+      await library.writeEpisode(
+        _episode(
+          'MINE',
+          ownerId: 'READER1',
+          access: EpisodeAccess.entitled,
+          checkedAt: DateTime.utc(2026, 10),
+        ),
+      );
+
+      // A clock pushed forward and back would otherwise leave the body inside a
+      // window that has not started yet.
+      expect(
+        await library.readableEpisodeIds(
+          _seriesId,
+          readerId: 'READER1',
+          now: DateTime.utc(2026, 9),
         ),
         isEmpty,
       );

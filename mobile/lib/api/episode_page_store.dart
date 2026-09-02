@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:publira/api/image_cipher.dart';
 
 /// Body pages kept on the device, addressed by [episodePageKey].
 ///
@@ -22,12 +23,23 @@ abstract class EpisodePageStore {
 /// read, while the page behind it does not change. That token is both the
 /// reason a saved page has to be named without it and a credential that has no
 /// business being written to the device.
-Uri episodePageAddress(Uri url) => Uri(
-  scheme: url.scheme,
-  host: url.host,
-  port: url.hasPort ? url.port : null,
-  path: url.path,
-);
+///
+/// Only that token is dropped. Any other query field the API puts on an image
+/// URL is part of which page is being asked for, so it stays in the address
+/// and two pages that differ only there keep their own saved copies.
+Uri episodePageAddress(Uri url) {
+  final addressed = <String, List<String>>{
+    for (final entry in url.queryParametersAll.entries)
+      if (entry.key != mediaTokenQueryParam) entry.key: entry.value,
+  };
+  return Uri(
+    scheme: url.scheme,
+    host: url.host,
+    port: url.hasPort ? url.port : null,
+    path: url.path,
+    queryParameters: addressed.isEmpty ? null : addressed,
+  );
+}
 
 /// Stable name for the page [url] addresses, over [episodePageAddress] so a
 /// page saved under one media token is found again under the next.
