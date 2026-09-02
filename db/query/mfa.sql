@@ -32,13 +32,22 @@ SET enabled_at = now(),
 WHERE user_id = $1
 RETURNING *;
 
--- name: MarkUserMfaTotpVerified :exec
+-- name: MarkUserMfaTotpVerified :execrows
+-- The step predicate is the replay check, not a repeat of one already made in
+-- Go: two requests carrying the same code can both read the old step before
+-- either writes. Postgres re-evaluates this WHERE against the row the first
+-- one committed, so the second updates nothing and its caller refuses the
+-- code. Affecting no row is therefore a reused code, not a missing account.
 UPDATE user_mfa_totp
 SET last_verified_step = sqlc.arg('last_verified_step'),
     failed_attempts = 0,
     locked_until = NULL,
     updated_at = now()
-WHERE user_id = sqlc.arg('user_id');
+WHERE user_id = sqlc.arg('user_id')
+    AND (
+        last_verified_step IS NULL
+        OR last_verified_step < sqlc.arg('last_verified_step')
+    );
 
 -- name: ResetUserMfaTotpFailures :exec
 UPDATE user_mfa_totp

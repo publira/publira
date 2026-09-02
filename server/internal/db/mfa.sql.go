@@ -176,13 +176,17 @@ func (q *Queries) MarkUserMfaRecoveryCodeUsed(ctx context.Context, id uuid.UUID)
 	return result.RowsAffected()
 }
 
-const markUserMfaTotpVerified = `-- name: MarkUserMfaTotpVerified :exec
+const markUserMfaTotpVerified = `-- name: MarkUserMfaTotpVerified :execrows
 UPDATE user_mfa_totp
 SET last_verified_step = $1,
     failed_attempts = 0,
     locked_until = NULL,
     updated_at = now()
 WHERE user_id = $2
+    AND (
+        last_verified_step IS NULL
+        OR last_verified_step < $1
+    )
 `
 
 type MarkUserMfaTotpVerifiedParams struct {
@@ -190,9 +194,17 @@ type MarkUserMfaTotpVerifiedParams struct {
 	UserID           uuid.UUID     `json:"user_id"`
 }
 
-func (q *Queries) MarkUserMfaTotpVerified(ctx context.Context, arg MarkUserMfaTotpVerifiedParams) error {
-	_, err := q.db.ExecContext(ctx, markUserMfaTotpVerified, arg.LastVerifiedStep, arg.UserID)
-	return err
+// The step predicate is the replay check, not a repeat of one already made in
+// Go: two requests carrying the same code can both read the old step before
+// either writes. Postgres re-evaluates this WHERE against the row the first
+// one committed, so the second updates nothing and its caller refuses the
+// code. Affecting no row is therefore a reused code, not a missing account.
+func (q *Queries) MarkUserMfaTotpVerified(ctx context.Context, arg MarkUserMfaTotpVerifiedParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, markUserMfaTotpVerified, arg.LastVerifiedStep, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const recordUserMfaTotpFailure = `-- name: RecordUserMfaTotpFailure :one

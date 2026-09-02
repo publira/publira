@@ -96,6 +96,16 @@ func HashRecoveryCode(code string) (string, error) {
 }
 
 // VerifyRecoveryCode reports whether code is the one storedHash was taken of.
+//
+// Input that is not the length of a recovery code is refused before the hash
+// is computed. A caller checks one submission against every unspent code the
+// account holds, so a six-digit authenticator code that failed TOTP
+// validation would otherwise cost RecoveryCodeCount bcrypt comparisons on the
+// request thread.
 func VerifyRecoveryCode(code, storedHash string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(NormalizeRecoveryCode(code))) == nil
+	normalized := NormalizeRecoveryCode(code)
+	if len(normalized) != recoveryCodeLength {
+		return false
+	}
+	return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(normalized)) == nil
 }

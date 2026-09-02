@@ -139,7 +139,48 @@ func TestDBRLSHidesMfaEnrollmentsOfAnotherTenant(t *testing.T) {
 		if visible != 0 {
 			t.Fatalf("visible tenant B recovery codes = %d, want none", visible)
 		}
+
+		// Both policies carry a WITH CHECK, so planting an enrollment or a
+		// recovery code on someone else's account is refused outright rather
+		// than merely hidden afterwards.
+		updated, err := conn.ExecContext(ctx, `
+			UPDATE user_mfa_totp SET secret_encrypted = 'planted' WHERE user_id = $1
+		`, second.User.ID)
+		if err != nil {
+			t.Fatalf("update tenant B mfa secret: %v", err)
+		}
+		if affected, _ := updated.RowsAffected(); affected != 0 {
+			t.Fatalf("update of tenant B mfa secret affected %d rows, want 0", affected)
+		}
+
+		_, err = conn.ExecContext(ctx, `
+			INSERT INTO user_mfa_totp (user_id, tenant_id, secret_encrypted, enabled_at)
+			VALUES ($1, $2, $3, now())
+		`, second.User.ID, second.Tenant.ID, "planted")
+		assertInsufficientPrivilege(t, err, "insert user_mfa_totp for another tenant")
+
+		_, err = conn.ExecContext(ctx, `
+			INSERT INTO user_mfa_recovery_codes (id, tenant_id, user_id, code_hash)
+			VALUES ($1, $2, $3, $4)
+		`, uuid.Must(uuid.NewV7()), second.Tenant.ID, second.User.ID, "planted")
+		assertInsufficientPrivilege(t, err, "insert user_mfa_recovery_codes for another tenant")
 	})
+
+	if count := env.countRows(t, "SELECT count(*) FROM user_mfa_totp WHERE secret_encrypted = $1", "planted"); count != 0 {
+		t.Fatalf("planted user_mfa_totp rows = %d, want 0", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE code_hash = $1", "planted"); count != 0 {
+		t.Fatalf("planted user_mfa_recovery_codes rows = %d, want 0", count)
+	}
+}
+
+func assertInsufficientPrivilege(t *testing.T, err error, what string) {
+	t.Helper()
+
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilege {
+		t.Fatalf("%s error = %v, want SQLSTATE %s", what, err, insufficientPrivilege)
+	}
 }
 
 // seedMfaEnrollmentOwnedBy writes an enrolled account straight into the

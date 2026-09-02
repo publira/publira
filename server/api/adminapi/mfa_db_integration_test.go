@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -294,6 +295,49 @@ func TestAdminMfaVerifyRefusesAReplayedCode(t *testing.T) {
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("VerifyMfa replaying a code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
+// Two requests carrying the same code both read the step before either
+// writes, so the claim on it has to be the UPDATE rather than a comparison in
+// Go. Exactly one of them may end up with a session.
+func TestAdminMfaVerifyAcceptsAConcurrentlyPresentedCodeOnce(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	secret, _ := enrollMfa(t, env, tenant)
+	code := mfaNextCode(t, secret)
+
+	challenges := []string{
+		mfaLogin(t, env, tenant).MfaChallenge.Token,
+		mfaLogin(t, env, tenant).MfaChallenge.Token,
+	}
+
+	var start sync.WaitGroup
+	start.Add(1)
+	results := make(chan error, len(challenges))
+	for _, challenge := range challenges {
+		go func() {
+			start.Wait()
+			_, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+				Tenant:         tenant.tenantContext(),
+				ChallengeToken: challenge,
+				Code:           code,
+			}))
+			results <- err
+		}()
+	}
+	start.Done()
+
+	accepted := 0
+	for range challenges {
+		if err := <-results; err == nil {
+			accepted++
+		} else if connect.CodeOf(err) != connect.CodeUnauthenticated {
+			t.Fatalf("VerifyMfa error = %v, want unauthenticated for the losing request (err=%v)", connect.CodeOf(err), err)
+		}
+	}
+	if accepted != 1 {
+		t.Fatalf("accepted requests = %d, want exactly 1", accepted)
 	}
 }
 

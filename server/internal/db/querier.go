@@ -643,7 +643,12 @@ type Querier interface {
 	MarkUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailVerificationTokenUsed(ctx context.Context, id uuid.UUID) error
 	MarkUserMfaRecoveryCodeUsed(ctx context.Context, id uuid.UUID) (int64, error)
-	MarkUserMfaTotpVerified(ctx context.Context, arg MarkUserMfaTotpVerifiedParams) error
+	// The step predicate is the replay check, not a repeat of one already made in
+	// Go: two requests carrying the same code can both read the old step before
+	// either writes. Postgres re-evaluates this WHERE against the row the first
+	// one committed, so the second updates nothing and its caller refuses the
+	// code. Affecting no row is therefore a reused code, not a missing account.
+	MarkUserMfaTotpVerified(ctx context.Context, arg MarkUserMfaTotpVerifiedParams) (int64, error)
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
 	// Projects one member's first completed read as the analytics event for that
 	// read. episode_reads stays the source of truth for the business state: its

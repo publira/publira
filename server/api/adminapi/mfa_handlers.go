@@ -250,14 +250,19 @@ func (s *adminServer) checkMfaCode(
 		// The window spans more than one period, so a code observed over a
 		// shoulder is still current for a while after it was spent. Refusing
 		// a step already accepted is what RFC 6238 section 5.2 asks for.
-		if row.LastVerifiedStep.Valid && step <= row.LastVerifiedStep.Int64 {
-			return s.recordMfaFailure(ctx, row, "code_reused")
-		}
-		if err := s.queriesFor(ctx).MarkUserMfaTotpVerified(ctx, dbmodels.MarkUserMfaTotpVerifiedParams{
+		// The claim on the step is the UPDATE itself rather than a comparison
+		// against the row read above: two requests carrying the same code
+		// both read the old step, and only the one whose write lands first
+		// may have it.
+		claimed, err := s.queriesFor(ctx).MarkUserMfaTotpVerified(ctx, dbmodels.MarkUserMfaTotpVerifiedParams{
 			UserID:           row.UserID,
 			LastVerifiedStep: sql.NullInt64{Int64: step, Valid: true},
-		}); err != nil {
+		})
+		if err != nil {
 			return mfaCodeOutcome{}, s.internalDBError(ctx, "failed to mark mfa totp verified", err, "user_id", row.UserID.String())
+		}
+		if claimed == 0 {
+			return s.recordMfaFailure(ctx, row, "code_reused")
 		}
 		return mfaCodeOutcome{}, nil
 	}
@@ -457,6 +462,14 @@ func (s *adminServer) ConfirmMfaEnrollment(
 		return nil, err
 	}
 
+	// Everything that can fail for a reason of its own is settled before the
+	// enable commits, because the recovery codes exist only in the response
+	// this call is about to build.
+	if actor.FromChallenge && s.tokens == nil {
+		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaEnrolled, auditlog.OutcomeFailure, "token_manager_unavailable")
+		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
+	}
+
 	codes, err := s.enableMfa(ctx, actor)
 	if err != nil {
 		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaEnrolled, auditlog.OutcomeFailure, "enable_failed")
@@ -464,15 +477,21 @@ func (s *adminServer) ConfirmMfaEnrollment(
 	}
 
 	resp := &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentResponse{RecoveryCodes: codes}
+	reason := "totp"
 	if actor.FromChallenge {
-		user, accessToken, err := s.issueAdminSession(ctx, actor)
-		if err != nil {
-			return nil, err
+		user, accessToken, sessionErr := s.issueAdminSession(ctx, actor)
+		if sessionErr == nil {
+			resp.User = user
+			resp.AccessToken = accessToken
+		} else {
+			// The factor is enabled and these codes are the only copy there
+			// will ever be, so answering with them and no session is better
+			// than an error that throws them away. The client sees an empty
+			// access token and sends the account back through login.
+			reason = "session_issue_failed"
 		}
-		resp.User = user
-		resp.AccessToken = accessToken
 	}
-	s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaEnrolled, auditlog.OutcomeSuccess, "totp")
+	s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaEnrolled, auditlog.OutcomeSuccess, reason)
 	return connect.NewResponse(resp), nil
 }
 
