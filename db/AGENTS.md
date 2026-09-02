@@ -8,6 +8,8 @@ Conventions for `db/` (migrations, sqlc queries, seeds). Prefer this file for sc
 
 Rewriting an applied migration changes nothing in a database that already recorded that version in `schema_migrations` — golang-migrate will not run the version a second time. The edit reaches only databases built from scratch afterwards, so environments silently drift apart. Correct a mistake by stacking another migration on top of it.
 
+The `Test / DB Migrations` CI job enforces this: it diffs `migrations/` against `origin/main` and fails when any change there is not a plain addition, so a modified, renamed, or deleted migration cannot merge.
+
 ### Adding a migration
 
 - Create the pair with `task db:create NAME=<name>`. It runs `migrate create -ext sql -dir ./migrations -tz UTC`, which names both files with a 14-digit UTC timestamp.
