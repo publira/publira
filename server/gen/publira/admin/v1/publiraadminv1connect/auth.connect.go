@@ -69,6 +69,24 @@ const (
 	// AdminAuthServiceConfirmEmailChangeProcedure is the fully-qualified name of the AdminAuthService's
 	// ConfirmEmailChange RPC.
 	AdminAuthServiceConfirmEmailChangeProcedure = "/publira.admin.v1.AdminAuthService/ConfirmEmailChange"
+	// AdminAuthServiceVerifyMfaProcedure is the fully-qualified name of the AdminAuthService's
+	// VerifyMfa RPC.
+	AdminAuthServiceVerifyMfaProcedure = "/publira.admin.v1.AdminAuthService/VerifyMfa"
+	// AdminAuthServiceGetMfaStatusProcedure is the fully-qualified name of the AdminAuthService's
+	// GetMfaStatus RPC.
+	AdminAuthServiceGetMfaStatusProcedure = "/publira.admin.v1.AdminAuthService/GetMfaStatus"
+	// AdminAuthServiceStartMfaEnrollmentProcedure is the fully-qualified name of the AdminAuthService's
+	// StartMfaEnrollment RPC.
+	AdminAuthServiceStartMfaEnrollmentProcedure = "/publira.admin.v1.AdminAuthService/StartMfaEnrollment"
+	// AdminAuthServiceConfirmMfaEnrollmentProcedure is the fully-qualified name of the
+	// AdminAuthService's ConfirmMfaEnrollment RPC.
+	AdminAuthServiceConfirmMfaEnrollmentProcedure = "/publira.admin.v1.AdminAuthService/ConfirmMfaEnrollment"
+	// AdminAuthServiceDisableMfaProcedure is the fully-qualified name of the AdminAuthService's
+	// DisableMfa RPC.
+	AdminAuthServiceDisableMfaProcedure = "/publira.admin.v1.AdminAuthService/DisableMfa"
+	// AdminAuthServiceRegenerateMfaRecoveryCodesProcedure is the fully-qualified name of the
+	// AdminAuthService's RegenerateMfaRecoveryCodes RPC.
+	AdminAuthServiceRegenerateMfaRecoveryCodesProcedure = "/publira.admin.v1.AdminAuthService/RegenerateMfaRecoveryCodes"
 )
 
 // AdminAuthServiceClient is a client for the publira.admin.v1.AdminAuthService service.
@@ -86,6 +104,12 @@ type AdminAuthServiceClient interface {
 	UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error)
 	RequestEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error)
 	ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error)
+	VerifyMfa(context.Context, *connect.Request[v1.AdminAuthServiceVerifyMfaRequest]) (*connect.Response[v1.AdminAuthServiceVerifyMfaResponse], error)
+	GetMfaStatus(context.Context, *connect.Request[v1.AdminAuthServiceGetMfaStatusRequest]) (*connect.Response[v1.AdminAuthServiceGetMfaStatusResponse], error)
+	StartMfaEnrollment(context.Context, *connect.Request[v1.AdminAuthServiceStartMfaEnrollmentRequest]) (*connect.Response[v1.AdminAuthServiceStartMfaEnrollmentResponse], error)
+	ConfirmMfaEnrollment(context.Context, *connect.Request[v1.AdminAuthServiceConfirmMfaEnrollmentRequest]) (*connect.Response[v1.AdminAuthServiceConfirmMfaEnrollmentResponse], error)
+	DisableMfa(context.Context, *connect.Request[v1.AdminAuthServiceDisableMfaRequest]) (*connect.Response[v1.AdminAuthServiceDisableMfaResponse], error)
+	RegenerateMfaRecoveryCodes(context.Context, *connect.Request[v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest]) (*connect.Response[v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse], error)
 }
 
 // NewAdminAuthServiceClient constructs a client for the publira.admin.v1.AdminAuthService service.
@@ -177,6 +201,42 @@ func NewAdminAuthServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(adminAuthServiceMethods.ByName("ConfirmEmailChange")),
 			connect.WithClientOptions(opts...),
 		),
+		verifyMfa: connect.NewClient[v1.AdminAuthServiceVerifyMfaRequest, v1.AdminAuthServiceVerifyMfaResponse](
+			httpClient,
+			baseURL+AdminAuthServiceVerifyMfaProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("VerifyMfa")),
+			connect.WithClientOptions(opts...),
+		),
+		getMfaStatus: connect.NewClient[v1.AdminAuthServiceGetMfaStatusRequest, v1.AdminAuthServiceGetMfaStatusResponse](
+			httpClient,
+			baseURL+AdminAuthServiceGetMfaStatusProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("GetMfaStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		startMfaEnrollment: connect.NewClient[v1.AdminAuthServiceStartMfaEnrollmentRequest, v1.AdminAuthServiceStartMfaEnrollmentResponse](
+			httpClient,
+			baseURL+AdminAuthServiceStartMfaEnrollmentProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("StartMfaEnrollment")),
+			connect.WithClientOptions(opts...),
+		),
+		confirmMfaEnrollment: connect.NewClient[v1.AdminAuthServiceConfirmMfaEnrollmentRequest, v1.AdminAuthServiceConfirmMfaEnrollmentResponse](
+			httpClient,
+			baseURL+AdminAuthServiceConfirmMfaEnrollmentProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("ConfirmMfaEnrollment")),
+			connect.WithClientOptions(opts...),
+		),
+		disableMfa: connect.NewClient[v1.AdminAuthServiceDisableMfaRequest, v1.AdminAuthServiceDisableMfaResponse](
+			httpClient,
+			baseURL+AdminAuthServiceDisableMfaProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("DisableMfa")),
+			connect.WithClientOptions(opts...),
+		),
+		regenerateMfaRecoveryCodes: connect.NewClient[v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest, v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse](
+			httpClient,
+			baseURL+AdminAuthServiceRegenerateMfaRecoveryCodesProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("RegenerateMfaRecoveryCodes")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -195,6 +255,12 @@ type adminAuthServiceClient struct {
 	updateTenantConfig            *connect.Client[v1.AdminAuthServiceUpdateTenantConfigRequest, v1.AdminAuthServiceUpdateTenantConfigResponse]
 	requestEmailChange            *connect.Client[v1.AdminAuthServiceRequestEmailChangeRequest, v1.AdminAuthServiceRequestEmailChangeResponse]
 	confirmEmailChange            *connect.Client[v1.AdminAuthServiceConfirmEmailChangeRequest, v1.AdminAuthServiceConfirmEmailChangeResponse]
+	verifyMfa                     *connect.Client[v1.AdminAuthServiceVerifyMfaRequest, v1.AdminAuthServiceVerifyMfaResponse]
+	getMfaStatus                  *connect.Client[v1.AdminAuthServiceGetMfaStatusRequest, v1.AdminAuthServiceGetMfaStatusResponse]
+	startMfaEnrollment            *connect.Client[v1.AdminAuthServiceStartMfaEnrollmentRequest, v1.AdminAuthServiceStartMfaEnrollmentResponse]
+	confirmMfaEnrollment          *connect.Client[v1.AdminAuthServiceConfirmMfaEnrollmentRequest, v1.AdminAuthServiceConfirmMfaEnrollmentResponse]
+	disableMfa                    *connect.Client[v1.AdminAuthServiceDisableMfaRequest, v1.AdminAuthServiceDisableMfaResponse]
+	regenerateMfaRecoveryCodes    *connect.Client[v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest, v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse]
 }
 
 // Login calls publira.admin.v1.AdminAuthService.Login.
@@ -263,6 +329,36 @@ func (c *adminAuthServiceClient) ConfirmEmailChange(ctx context.Context, req *co
 	return c.confirmEmailChange.CallUnary(ctx, req)
 }
 
+// VerifyMfa calls publira.admin.v1.AdminAuthService.VerifyMfa.
+func (c *adminAuthServiceClient) VerifyMfa(ctx context.Context, req *connect.Request[v1.AdminAuthServiceVerifyMfaRequest]) (*connect.Response[v1.AdminAuthServiceVerifyMfaResponse], error) {
+	return c.verifyMfa.CallUnary(ctx, req)
+}
+
+// GetMfaStatus calls publira.admin.v1.AdminAuthService.GetMfaStatus.
+func (c *adminAuthServiceClient) GetMfaStatus(ctx context.Context, req *connect.Request[v1.AdminAuthServiceGetMfaStatusRequest]) (*connect.Response[v1.AdminAuthServiceGetMfaStatusResponse], error) {
+	return c.getMfaStatus.CallUnary(ctx, req)
+}
+
+// StartMfaEnrollment calls publira.admin.v1.AdminAuthService.StartMfaEnrollment.
+func (c *adminAuthServiceClient) StartMfaEnrollment(ctx context.Context, req *connect.Request[v1.AdminAuthServiceStartMfaEnrollmentRequest]) (*connect.Response[v1.AdminAuthServiceStartMfaEnrollmentResponse], error) {
+	return c.startMfaEnrollment.CallUnary(ctx, req)
+}
+
+// ConfirmMfaEnrollment calls publira.admin.v1.AdminAuthService.ConfirmMfaEnrollment.
+func (c *adminAuthServiceClient) ConfirmMfaEnrollment(ctx context.Context, req *connect.Request[v1.AdminAuthServiceConfirmMfaEnrollmentRequest]) (*connect.Response[v1.AdminAuthServiceConfirmMfaEnrollmentResponse], error) {
+	return c.confirmMfaEnrollment.CallUnary(ctx, req)
+}
+
+// DisableMfa calls publira.admin.v1.AdminAuthService.DisableMfa.
+func (c *adminAuthServiceClient) DisableMfa(ctx context.Context, req *connect.Request[v1.AdminAuthServiceDisableMfaRequest]) (*connect.Response[v1.AdminAuthServiceDisableMfaResponse], error) {
+	return c.disableMfa.CallUnary(ctx, req)
+}
+
+// RegenerateMfaRecoveryCodes calls publira.admin.v1.AdminAuthService.RegenerateMfaRecoveryCodes.
+func (c *adminAuthServiceClient) RegenerateMfaRecoveryCodes(ctx context.Context, req *connect.Request[v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest]) (*connect.Response[v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse], error) {
+	return c.regenerateMfaRecoveryCodes.CallUnary(ctx, req)
+}
+
 // AdminAuthServiceHandler is an implementation of the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceHandler interface {
 	Login(context.Context, *connect.Request[v1.AdminAuthServiceLoginRequest]) (*connect.Response[v1.AdminAuthServiceLoginResponse], error)
@@ -278,6 +374,12 @@ type AdminAuthServiceHandler interface {
 	UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error)
 	RequestEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error)
 	ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error)
+	VerifyMfa(context.Context, *connect.Request[v1.AdminAuthServiceVerifyMfaRequest]) (*connect.Response[v1.AdminAuthServiceVerifyMfaResponse], error)
+	GetMfaStatus(context.Context, *connect.Request[v1.AdminAuthServiceGetMfaStatusRequest]) (*connect.Response[v1.AdminAuthServiceGetMfaStatusResponse], error)
+	StartMfaEnrollment(context.Context, *connect.Request[v1.AdminAuthServiceStartMfaEnrollmentRequest]) (*connect.Response[v1.AdminAuthServiceStartMfaEnrollmentResponse], error)
+	ConfirmMfaEnrollment(context.Context, *connect.Request[v1.AdminAuthServiceConfirmMfaEnrollmentRequest]) (*connect.Response[v1.AdminAuthServiceConfirmMfaEnrollmentResponse], error)
+	DisableMfa(context.Context, *connect.Request[v1.AdminAuthServiceDisableMfaRequest]) (*connect.Response[v1.AdminAuthServiceDisableMfaResponse], error)
+	RegenerateMfaRecoveryCodes(context.Context, *connect.Request[v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest]) (*connect.Response[v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse], error)
 }
 
 // NewAdminAuthServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -365,6 +467,42 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 		connect.WithSchema(adminAuthServiceMethods.ByName("ConfirmEmailChange")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminAuthServiceVerifyMfaHandler := connect.NewUnaryHandler(
+		AdminAuthServiceVerifyMfaProcedure,
+		svc.VerifyMfa,
+		connect.WithSchema(adminAuthServiceMethods.ByName("VerifyMfa")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminAuthServiceGetMfaStatusHandler := connect.NewUnaryHandler(
+		AdminAuthServiceGetMfaStatusProcedure,
+		svc.GetMfaStatus,
+		connect.WithSchema(adminAuthServiceMethods.ByName("GetMfaStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminAuthServiceStartMfaEnrollmentHandler := connect.NewUnaryHandler(
+		AdminAuthServiceStartMfaEnrollmentProcedure,
+		svc.StartMfaEnrollment,
+		connect.WithSchema(adminAuthServiceMethods.ByName("StartMfaEnrollment")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminAuthServiceConfirmMfaEnrollmentHandler := connect.NewUnaryHandler(
+		AdminAuthServiceConfirmMfaEnrollmentProcedure,
+		svc.ConfirmMfaEnrollment,
+		connect.WithSchema(adminAuthServiceMethods.ByName("ConfirmMfaEnrollment")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminAuthServiceDisableMfaHandler := connect.NewUnaryHandler(
+		AdminAuthServiceDisableMfaProcedure,
+		svc.DisableMfa,
+		connect.WithSchema(adminAuthServiceMethods.ByName("DisableMfa")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminAuthServiceRegenerateMfaRecoveryCodesHandler := connect.NewUnaryHandler(
+		AdminAuthServiceRegenerateMfaRecoveryCodesProcedure,
+		svc.RegenerateMfaRecoveryCodes,
+		connect.WithSchema(adminAuthServiceMethods.ByName("RegenerateMfaRecoveryCodes")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminAuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminAuthServiceLoginProcedure:
@@ -393,6 +531,18 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 			adminAuthServiceRequestEmailChangeHandler.ServeHTTP(w, r)
 		case AdminAuthServiceConfirmEmailChangeProcedure:
 			adminAuthServiceConfirmEmailChangeHandler.ServeHTTP(w, r)
+		case AdminAuthServiceVerifyMfaProcedure:
+			adminAuthServiceVerifyMfaHandler.ServeHTTP(w, r)
+		case AdminAuthServiceGetMfaStatusProcedure:
+			adminAuthServiceGetMfaStatusHandler.ServeHTTP(w, r)
+		case AdminAuthServiceStartMfaEnrollmentProcedure:
+			adminAuthServiceStartMfaEnrollmentHandler.ServeHTTP(w, r)
+		case AdminAuthServiceConfirmMfaEnrollmentProcedure:
+			adminAuthServiceConfirmMfaEnrollmentHandler.ServeHTTP(w, r)
+		case AdminAuthServiceDisableMfaProcedure:
+			adminAuthServiceDisableMfaHandler.ServeHTTP(w, r)
+		case AdminAuthServiceRegenerateMfaRecoveryCodesProcedure:
+			adminAuthServiceRegenerateMfaRecoveryCodesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -452,4 +602,28 @@ func (UnimplementedAdminAuthServiceHandler) RequestEmailChange(context.Context, 
 
 func (UnimplementedAdminAuthServiceHandler) ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.ConfirmEmailChange is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) VerifyMfa(context.Context, *connect.Request[v1.AdminAuthServiceVerifyMfaRequest]) (*connect.Response[v1.AdminAuthServiceVerifyMfaResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.VerifyMfa is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) GetMfaStatus(context.Context, *connect.Request[v1.AdminAuthServiceGetMfaStatusRequest]) (*connect.Response[v1.AdminAuthServiceGetMfaStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.GetMfaStatus is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) StartMfaEnrollment(context.Context, *connect.Request[v1.AdminAuthServiceStartMfaEnrollmentRequest]) (*connect.Response[v1.AdminAuthServiceStartMfaEnrollmentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.StartMfaEnrollment is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) ConfirmMfaEnrollment(context.Context, *connect.Request[v1.AdminAuthServiceConfirmMfaEnrollmentRequest]) (*connect.Response[v1.AdminAuthServiceConfirmMfaEnrollmentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.ConfirmMfaEnrollment is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) DisableMfa(context.Context, *connect.Request[v1.AdminAuthServiceDisableMfaRequest]) (*connect.Response[v1.AdminAuthServiceDisableMfaResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.DisableMfa is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) RegenerateMfaRecoveryCodes(context.Context, *connect.Request[v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest]) (*connect.Response[v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.RegenerateMfaRecoveryCodes is not implemented"))
 }

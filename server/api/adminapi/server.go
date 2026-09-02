@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -48,6 +49,20 @@ type adminServer struct {
 	logger                *slog.Logger
 	reval                 *revalidate.Client
 	tokens                *auth.TokenManager
+	// mfaRequiredForTenantAdmin turns the second factor from something a
+	// tenant admin may enroll in into something it has to before the login
+	// completes. Read from the environment at startup: it is a deployment
+	// decision, and a tenant cannot lock itself out of its own console.
+	mfaRequiredForTenantAdmin bool
+}
+
+// mfaRequiredForTenantAdminFromEnv reads the deployment's stance on the
+// second factor. Unset, and anything that is not a boolean, means the factor
+// stays optional: a misspelled value must not lock every tenant admin out of
+// the console it is the only way into.
+func mfaRequiredForTenantAdminFromEnv() bool {
+	enabled, err := strconv.ParseBool(strings.TrimSpace(os.Getenv("PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN")))
+	return err == nil && enabled
 }
 
 func invalidSessionError() error {
@@ -239,6 +254,8 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		logger:                logger,
 		reval:                 revalidator,
 		tokens:                tokens,
+
+		mfaRequiredForTenantAdmin: mfaRequiredForTenantAdminFromEnv(),
 	}
 	traced := tracing.ConnectHandlerOption()
 

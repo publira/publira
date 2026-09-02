@@ -204,6 +204,25 @@ func (s *adminServer) Login(
 	if s.tokens == nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
 	}
+
+	// The password is right, but it is only half of what this account owes.
+	// A challenge is handed out instead of a session, so nothing signed by
+	// this request can act on the tenant until the factor is settled.
+	challengeKind, err := s.mfaChallengeKindFor(ctx, user, role)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "mfa_state_lookup_failed")
+		return nil, err
+	}
+	if challengeKind != publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED {
+		challenge, err := s.mfaChallengeFor(tenant, user, challengeKind)
+		if err != nil {
+			auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "mfa_challenge_issue_failed")
+			return nil, err
+		}
+		auth.AuditEvent(req.Header(), "admin_login", "success", tenant.PublicID, user.PublicID, "mfa_challenge_issued")
+		return connect.NewResponse(&publiraadminv1.AdminAuthServiceLoginResponse{MfaChallenge: challenge}), nil
+	}
+
 	token, expiresAt, err := s.tokens.Issue(user.PublicID, auth.AudienceAdmin, tenant.ID.String(), role, user.CredentialsVersion, time.Now())
 	if err != nil {
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
