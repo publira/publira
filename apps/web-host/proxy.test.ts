@@ -280,6 +280,46 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
+  // The language a locale-less URL is served in is the tenant's saved setting,
+  // so a read that cannot produce it has no second choice to fall back on.
+  // Serving the request anyway would put some other language under a URL the
+  // reader will bookmark as this tenant's own.
+  it("Fail a URL without locale when the tenant read is unavailable", async () => {
+    mockResolveTenant.mockRejectedValue(new Error("upstream unavailable"));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/series"));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("retry-after")).toBe("30");
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  // `createTenantResolver` refuses a stored code this build serves no catalog
+  // for, and the proxy has nothing to do with that refusal but report it.
+  it("Fail a URL without locale when the stored default locale has no catalog", async () => {
+    mockResolveTenant.mockRejectedValue(
+      new Error("tenant default locale is not supported: fr")
+    );
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/"));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it("Answer 404 when the host resolves to no tenant", async () => {
+    mockResolveTenant.mockResolvedValue(null);
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://unknown.example.com/series"));
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
   it("theme.css and normal Route Handler do not include locale", async () => {
     const { proxy } = await import("./proxy");
 
