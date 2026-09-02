@@ -7,7 +7,7 @@ task server:build
 ./server/bin/batch aggregate-content-stats
 ```
 
-Without an argument, or with a name that is not one of the seven below, the binary prints its usage to stderr and exits non-zero.
+Without an argument, or with a name that is not one of the eight below, the binary prints its usage to stderr and exits non-zero.
 
 | Subcommand | Lifetime | What it does |
 | --- | --- | --- |
@@ -17,6 +17,7 @@ Without an argument, or with a name that is not one of the seven below, the bina
 | `aggregate-rankings` | One-shot | Rebuilds the daily and weekly `content_ranking_snapshots` |
 | `purge-content-events` | One-shot | Deletes `content_events` rows past their retention window |
 | `purge-ranking-snapshots` | One-shot | Deletes `content_ranking_snapshots` rows past their retention window |
+| `purge-orphan-images` | One-shot | Deletes the image rows and storage objects nothing references |
 | `build-recommend-features` | One-shot | Rebuilds the daily user and item recommend feature snapshots |
 
 Each subcommand reads its own environment variables — the prefixes do not overlap — and owns its own lifecycle, so the ticker and the one-shot jobs stay as different as they were as separate binaries. OpenTelemetry reports `service.name` as `publira-<subcommand>`, still overridable with `OTEL_SERVICE_NAME`.
@@ -265,6 +266,50 @@ The structured log records both cutoffs and retentions, the chunk size, the rows
 Every index on this table leads with `tenant_id`, so nothing indexes a scan for expired periods across every tenant, and each chunk also re-derives the newest period per `(tenant_id, ranking_key, entity_type)` — a grouping the leading columns of `idx_content_ranking_snapshots_tenant_key_computed` can answer. Both are sequential-scan-sized work on a table that retention itself keeps to roughly a thousand rows per tenant, and every write to it goes through the daily `aggregate-rankings` run, so an index for the purge would cost more on that path than it saves here. Judge one run from the elapsed time in its completion log; a purge that stops fitting the cron interval is the trigger to add one.
 
 The first run against a table that has accumulated since before this batch existed deletes a backlog rather than a day, so it takes many chunks. `PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true` reports how large that backlog is before anything is deleted.
+
+## purge-orphan-images
+
+Deletes the image rows nothing points at and the storage objects nothing names, across every tenant.
+
+An image upload writes to two places no single transaction covers: rows in the database, and one object per variant in the S3 compatible bucket. Rolling the transaction back removes the rows and leaves the objects; replacing an image points its entity at the new rows and leaves both the old rows and the old objects. Nothing breaks either way — the bucket simply grows with every upload that was ever undone, in proportion to how often images are replaced.
+
+The database is the authority. An object no `*_image_variants` row names is garbage, and reclamation is a mark-and-sweep against that fact rather than a record of what to delete: it needs no bookkeeping on the upload path, and it collects the objects that were stranded before this batch existed as readily as the ones stranded yesterday.
+
+A run has two halves, in this order:
+
+1. **Rows.** Delete every `creator_images`, `label_images`, `series_images`, and `tenant_images` row that its entity no longer points at. The variants go with it by cascade, which is what turns a superseded image into an orphaned object the same run then collects. `episode_images` has no unreferenced state and is never a candidate: an episode owns every image filed under it, and no column elects one of them.
+2. **Objects.** Walk the bucket under `tenants/` a page at a time, ask the database which of the keys on that page any variant still names, and delete the rest.
+
+**The minimum age is what makes the sweep safe.** An upload writes its object before the row that names it, so an object with no row is either an abandoned upload or one that is still running, and only its age tells the two apart. Nothing younger than `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS` is a candidate, in either half of the run. The same guard covers the ordering inside the sweep — the database is read after the listing, so a row written between the two only ever rescues an object, never loses one.
+
+Reclamation is idempotent: a second run over the same cutoff finds nothing left to remove.
+
+Both a database and a bucket are needed, so this is the one batch that also reads the `PUBLIRA_S3_*` settings. The role needs `BYPASSRLS` (or superuser). For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
+
+```bash
+eval "$(task --silent dev-env:env)"
+PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-orphan-images
+```
+
+Environment variables:
+
+- `PUBLIRA_ORPHAN_IMAGES_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_S3_BUCKET`, `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, `AWS_REGION`: the bucket to sweep, read the same way every uploading process reads them. A missing bucket fails at startup.
+- `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS`: how old an object or image row must be to become a candidate. Defaults to `24`. Anything below `1` fails at startup, because the cutoff would land at or after now and put every upload in flight in range.
+- `PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE`: objects per listing page, and with it the keys per reference lookup and per batch delete. Defaults to `1000`, which is S3's own page ceiling; a smaller value only adds round trips.
+- `PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN`: `true` deletes nothing and reports the objects the sweep would remove. The row deletes are skipped too, so the count covers the objects already unreferenced rather than the ones this run would have stranded first.
+
+The structured log records the cutoff, the minimum age, the page size, the bucket, the image rows deleted, the objects scanned and deleted, the page count, and the elapsed time.
+
+### Query plan
+
+The reference lookup passes one page of keys as an array and probes each of the five variant tables with a semi-join, which `idx_<entity>_image_variants_object_key` answers. Those indexes exist for this batch; every other index on those tables leads with a tenant or parent image ID, which nothing helps a lookup that starts from an object key.
+
+The row deletes are one anti-join per table per run, over tables that hold one row per entity image, so they are left unindexed — `creators.icon_image_id` and its counterparts are read once each and a sequential scan is the cheaper answer.
+
+### Cost of a run
+
+A run's cost is set by the bucket, not by how much of it turns out to be garbage: every object is listed and its key checked, whether or not anything is deleted. That is one `ListObjectsV2` and one reference lookup per thousand objects. The trigger to reconsider the shape — narrowing the sweep per tenant, or scanning on a schedule staggered across prefixes — is a run that stops fitting the cron interval, which the elapsed time in the completion log reports.
 
 ## build-recommend-features
 

@@ -96,6 +96,15 @@ type Querier interface {
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
 	// テナントユーザーのロールをすべて削除する
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
+	// An upload points its creator at the new icon and leaves the previous
+	// creator_images row behind, referenced by nothing. created_at guards the
+	// upload still in flight, whose row exists before the creator names it.
+	DeleteUnreferencedCreatorImages(ctx context.Context, createdBefore time.Time) (int64, error)
+	DeleteUnreferencedLabelImages(ctx context.Context, createdBefore time.Time) (int64, error)
+	DeleteUnreferencedSeriesImages(ctx context.Context, createdBefore time.Time) (int64, error)
+	// A tenant image is reachable from either branding slot, and the theme holds
+	// both, so one row can be the icon of one theme and nothing else anywhere.
+	DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	// ユーザーを物理削除（外部キー制約により関連データも削除）
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error
@@ -503,6 +512,32 @@ type Querier interface {
 	// ListRecommendedSeriesIDs walked the other way. It exists only to build a
 	// previous page; the order it describes is the same one.
 	ListRecommendedSeriesIDsReversed(ctx context.Context, arg ListRecommendedSeriesIDsReversedParams) ([]ListRecommendedSeriesIDsReversedRow, error)
+	// Orphan image reclamation (cmd/batch purge-orphan-images).
+	//
+	// Every image this repository stores lives in two places: an `*_images` row
+	// with its `*_image_variants` children, and one object per variant in the S3
+	// compatible bucket. The database is the authority — an object nothing in
+	// these tables names is garbage — so reclamation runs in that order: drop the
+	// image rows no entity points at any more, then delete the objects no variant
+	// row is left naming.
+	//
+	// episode_images has no unreferenced state and so no delete here: an episode
+	// owns every image filed under it, and there is no column that elects one of
+	// them, so a row that exists is a row in use.
+	//
+	// Expected plans (empty table may still seq-scan; SET enable_seqscan = off
+	// in the integration test to confirm the index is eligible):
+	//   ListReferencedObjectKeys
+	//     -> idx_<entity>_image_variants_object_key, once per variant table
+	//   DeleteUnreferencedCreatorImages / ...LabelImages / ...SeriesImages /
+	//   ...TenantImages
+	//     -> no index; one anti-join per run over a table that holds one row per
+	//        entity image
+	// Returns the subset of object_keys that some image variant still names. The
+	// caller deletes what it listed from storage and did not get back, so a key
+	// this misses is a deleted live object: every table that holds an object_key
+	// has to be listed here.
+	ListReferencedObjectKeys(ctx context.Context, objectKeys []string) ([]string, error)
 	ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error)
 	// Admin ListSeries は (created_at, id) の降順で表示する。
 	// 次ページは降順、前ページは昇順のクエリで idx_series_tenant_created_at を

@@ -58,6 +58,11 @@ var subcommands = []subcommand{
 		run:     runPurgeRankingSnapshots,
 	},
 	{
+		name:    "purge-orphan-images",
+		summary: "Delete the image rows and storage objects nothing references",
+		run:     runPurgeOrphanImages,
+	},
+	{
 		name:    "build-recommend-features",
 		summary: "Rebuild the daily user and item recommend feature snapshots",
 		run:     runBuildRecommendFeatures,
