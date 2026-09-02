@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { getTenantSiteInfo } from "#lib/tenant";
+import {
+  LocaleProvider,
+  TenantDefaultLocaleProvider,
+} from "#components/locale-provider";
+import { getLocale } from "#lib/locale";
+import { getTenantDefaultLocale, getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 const AuthFooter = ({ copyrightText }: { copyrightText?: string }) => {
@@ -49,10 +54,30 @@ export const metadata: Metadata = {
   },
 };
 
-const TenantLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
-  <Suspense fallback={<AuthShellFallback>{children}</AuthShellFallback>}>
-    <AuthShell>{children}</AuthShell>
-  </Suspense>
-);
+/**
+ * Seeds the locale context for everything under `(auth)`, the way `(site)`
+ * does for the rest of the site: the root layout reads nothing, so this is the
+ * first place the request's locale and the tenant's stored default both exist.
+ *
+ * The `<Suspense>` below still stands between the shell and whatever the page
+ * itself waits on; what this layout awaits is the pair of values every link
+ * under it needs before it can name an href.
+ */
+const TenantLayout = async ({
+  children,
+}: LayoutProps<"/[tenant_id]/[locale]">) => {
+  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
+  const defaultLocale = await getTenantDefaultLocale(tenantId);
+
+  return (
+    <LocaleProvider locale={locale}>
+      <TenantDefaultLocaleProvider defaultLocale={defaultLocale}>
+        <Suspense fallback={<AuthShellFallback>{children}</AuthShellFallback>}>
+          <AuthShell>{children}</AuthShell>
+        </Suspense>
+      </TenantDefaultLocaleProvider>
+    </LocaleProvider>
+  );
+};
 
 export default TenantLayout;

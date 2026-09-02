@@ -35,15 +35,15 @@ export const LOCALE_COOKIE_NAME = profileCookieName("publira_locale");
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 /**
- * Cookie that carries the display locale the **server** resolved for a cookie
- * app, so the browser can name it without a read of its own.
+ * Cookie that carries the display locale the **server** resolved, so the
+ * browser can name it without a read of its own.
  *
  * It is not a choice and must never be treated as one: the app's proxy writes
- * the stored console default it just read, and {@link LOCALE_COOKIE_NAME}
- * always wins over it. Two things in the browser have no way to reach that
- * stored value otherwise — `<html lang>`, which the root layout cannot resolve
- * without costing every route its static shell, and the client error boundary,
- * which renders precisely when the API that holds the value is unreachable.
+ * the stored default it just read, and {@link LOCALE_COOKIE_NAME} — where an
+ * app has one — always wins over it. Two things in the browser have no way to
+ * reach that stored value otherwise — `<html lang>`, which a root layout does
+ * not read, and the client error boundary, which renders precisely when the
+ * API that holds the value is unreachable.
  * Without it both fall back to `Accept-Language`, so a console whose saved
  * language is `ja` answers an outage in English.
  *
@@ -89,6 +89,32 @@ export const RESOLVED_LOCALE_COOKIE_NAME = profileCookieName(
  * request-derived value reaches the script source.
  */
 export const LOCALE_LANG_SCRIPT = `(function(){try{var s=${JSON.stringify(getLocales())};var p=function(n){var m=document.cookie.match(new RegExp("(?:^|; )"+n+"=([^;]*)"));if(!m){return""}var l=decodeURIComponent(m[1]).trim();return s.indexOf(l)<0?"":l};var l=p(${JSON.stringify(LOCALE_COOKIE_NAME)})||p(${JSON.stringify(RESOLVED_LOCALE_COOKIE_NAME)});if(l){document.documentElement.lang=l}}catch(e){}})()`;
+
+/**
+ * Source of the inline `<head>` script that applies the locale the **URL**
+ * names to `<html lang>`, for an app that keeps the locale in the path.
+ *
+ * `web-host` serves the tenant's default locale from an unprefixed path and
+ * every other locale from `/{locale}/...`, so the first path segment names the
+ * locale in every case but the default one — and there
+ * {@link RESOLVED_LOCALE_COOKIE_NAME} carries the default the proxy resolved
+ * for this very response. The script reads the two in that order and applies a
+ * value only when it is one of {@link getLocales}; anything else leaves the
+ * attribute exactly as the server rendered it, so nothing here turns "no
+ * locale was resolved" into a language.
+ *
+ * The attribute is written rather than rendered because the element that
+ * carries it belongs to a root layout, and a root layout does not read: an
+ * `<html>` attribute has no child `<Suspense>` boundary a read could move
+ * into, so awaiting there settles the whole tree before anything below it can
+ * flush. The element therefore ships with no `lang` and with
+ * `suppressHydrationWarning`, which is what lets the DOM this script produces
+ * win over what React rendered.
+ *
+ * Everything interpolated below is a constant of this module, so no
+ * request-derived value reaches the script source.
+ */
+export const PATH_LOCALE_LANG_SCRIPT = `(function(){try{var s=${JSON.stringify(getLocales())};var f=function(v){var l=(v||"").trim();return s.indexOf(l)<0?"":l};var l=f(location.pathname.split("/")[1]);if(!l){var m=document.cookie.match(new RegExp("(?:^|; )"+${JSON.stringify(RESOLVED_LOCALE_COOKIE_NAME)}+"=([^;]*)"));l=m?f(decodeURIComponent(m[1])):""}if(l){document.documentElement.lang=l}}catch(e){}})()`;
 
 const LOCALE_SET: ReadonlySet<string> = new Set(getLocales());
 

@@ -46,6 +46,15 @@ const request = (url: string, cookie?: string): NextRequest => {
   } as unknown as NextRequest;
 };
 
+const RESOLVED_LOCALE_COOKIE = "publira_resolved_locale";
+
+const resolvedLocaleCookie = (response: {
+  headers: Headers;
+}): string | undefined =>
+  response.headers
+    .getSetCookie()
+    .find((value) => value.startsWith(`${RESOLVED_LOCALE_COOKIE}=`));
+
 const deletedCookieNames = (response: { headers: Headers }): string[] =>
   response.headers
     .getSetCookie()
@@ -347,5 +356,64 @@ describe("web-host proxy internal revalidation", () => {
     expect(
       unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate/" })
     ).toBe(false);
+  });
+});
+
+describe("web-host proxy resolved locale cookie", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "en",
+      tenantId: TENANT_ID,
+    });
+  });
+
+  it("Publish the tenant default on the rewritten document", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/series"));
+
+    const cookie = resolvedLocaleCookie(response);
+    expect(cookie).toContain(`${RESOLVED_LOCALE_COOKIE}=en`);
+    // The inline `<html lang>` script reads it from `document.cookie`.
+    expect(cookie).not.toContain("HttpOnly");
+    expect(cookie).toContain("Path=/");
+  });
+
+  it("Publish it on the redirects the proxy answers with", async () => {
+    const { proxy } = await import("./proxy");
+
+    const canonical = await proxy(
+      request("https://shop.example.com/en/series")
+    );
+    const login = await proxy(request("https://shop.example.com/settings"));
+
+    expect(resolvedLocaleCookie(canonical)).toContain(
+      `${RESOLVED_LOCALE_COOKIE}=en`
+    );
+    expect(resolvedLocaleCookie(login)).toContain(
+      `${RESOLVED_LOCALE_COOKIE}=en`
+    );
+  });
+
+  it("Leave the response alone when the browser already carries the default", async () => {
+    const { proxy } = await import("./proxy");
+
+    const carrying = request("https://shop.example.com/series");
+    vi.spyOn(carrying.cookies, "get").mockImplementation((name: string) =>
+      name === RESOLVED_LOCALE_COOKIE ? { name, value: "en" } : undefined
+    );
+
+    const response = await proxy(carrying);
+
+    expect(resolvedLocaleCookie(response)).toBeUndefined();
+  });
+
+  it("Say nothing about the default on a path outside the locale tree", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/theme.css"));
+
+    expect(resolvedLocaleCookie(response)).toBeUndefined();
   });
 });

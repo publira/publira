@@ -35,6 +35,10 @@ import {
   CatalogSearchFormSkeleton,
 } from "#components/catalog-search-form";
 import {
+  LocaleProvider,
+  TenantDefaultLocaleProvider,
+} from "#components/locale-provider";
+import {
   LocaleSwitcher,
   LocaleSwitcherSkeleton,
 } from "#components/locale-switcher";
@@ -59,7 +63,7 @@ import {
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
-import { getLocale, loadHostMessages, localePath } from "#lib/locale";
+import { getLocale, loadHostMessages } from "#lib/locale";
 import type { HostMessageKey } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { logoutAction } from "#lib/logout-action";
@@ -372,63 +376,76 @@ const SiteNavSkeleton = () => (
   />
 );
 
+/**
+ * Seeds the locale context for everything under `(site)`. The root layout
+ * reads nothing, so this is the first place both values exist: the request's
+ * locale from the root parameter, and the tenant's stored default from
+ * `GetTenant`. A failed tenant read therefore throws here, where
+ * `app/[tenant_id]/[locale]/error.tsx` catches it.
+ */
 const TenantLayout = async ({
   children,
 }: LayoutProps<"/[tenant_id]/[locale]">) => {
-  const brandHref = await localePath("/");
+  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
+  const defaultLocale = await getTenantDefaultLocale(tenantId);
+  const brandHref = withLocalePrefix(locale, defaultLocale, "/");
 
   return (
-    <SiteLayout>
-      <SiteLayoutHeader>
-        <SiteLayoutBrand href={brandHref}>
-          <Suspense fallback={<SiteLayoutBrandSkeleton />}>
-            <TenantBrand />
-          </Suspense>
-        </SiteLayoutBrand>
-        <Suspense fallback={<SiteNavSkeleton />}>
-          <SiteNav />
-        </Suspense>
-        <div className="flex max-w-40 min-w-0 flex-1 justify-end sm:max-w-64">
-          <Suspense fallback={<CatalogSearchFormSkeleton />}>
-            <CatalogSearchForm id="catalog-search-header" />
-          </Suspense>
-        </div>
-        <Suspense fallback={<LocaleSwitcherSkeleton />}>
-          <LocaleSwitcher />
-        </Suspense>
-        <SiteLayoutHeaderActions>
-          <Suspense fallback={<SiteLayoutHeaderActionsSkeleton />}>
-            <HeaderActions />
-          </Suspense>
-        </SiteLayoutHeaderActions>
-      </SiteLayoutHeader>
-      <SiteLayoutMain>{children}</SiteLayoutMain>
-      <SiteLayoutFooter>
-        <Suspense fallback={null}>
-          <TenantFooterLinks />
-        </Suspense>
-        <SiteLayoutFooterContent>
-          <Suspense
-            fallback={
-              <SiteLayoutFooterNote>
-                <Skeleton className="inline-block h-4 w-56 rounded" />
-              </SiteLayoutFooterNote>
-            }
-          >
-            <TenantFooterNote />
-          </Suspense>
-          <Suspense
-            fallback={
-              <SiteLayoutFooterCopyright>
-                <Skeleton className="inline-block h-4 w-48 rounded" />
-              </SiteLayoutFooterCopyright>
-            }
-          >
-            <TenantFooterCopyright />
-          </Suspense>
-        </SiteLayoutFooterContent>
-      </SiteLayoutFooter>
-    </SiteLayout>
+    <LocaleProvider locale={locale}>
+      <TenantDefaultLocaleProvider defaultLocale={defaultLocale}>
+        <SiteLayout>
+          <SiteLayoutHeader>
+            <SiteLayoutBrand href={brandHref}>
+              <Suspense fallback={<SiteLayoutBrandSkeleton />}>
+                <TenantBrand />
+              </Suspense>
+            </SiteLayoutBrand>
+            <Suspense fallback={<SiteNavSkeleton />}>
+              <SiteNav />
+            </Suspense>
+            <div className="flex max-w-40 min-w-0 flex-1 justify-end sm:max-w-64">
+              <Suspense fallback={<CatalogSearchFormSkeleton />}>
+                <CatalogSearchForm id="catalog-search-header" />
+              </Suspense>
+            </div>
+            <Suspense fallback={<LocaleSwitcherSkeleton />}>
+              <LocaleSwitcher />
+            </Suspense>
+            <SiteLayoutHeaderActions>
+              <Suspense fallback={<SiteLayoutHeaderActionsSkeleton />}>
+                <HeaderActions />
+              </Suspense>
+            </SiteLayoutHeaderActions>
+          </SiteLayoutHeader>
+          <SiteLayoutMain>{children}</SiteLayoutMain>
+          <SiteLayoutFooter>
+            <Suspense fallback={null}>
+              <TenantFooterLinks />
+            </Suspense>
+            <SiteLayoutFooterContent>
+              <Suspense
+                fallback={
+                  <SiteLayoutFooterNote>
+                    <Skeleton className="inline-block h-4 w-56 rounded" />
+                  </SiteLayoutFooterNote>
+                }
+              >
+                <TenantFooterNote />
+              </Suspense>
+              <Suspense
+                fallback={
+                  <SiteLayoutFooterCopyright>
+                    <Skeleton className="inline-block h-4 w-48 rounded" />
+                  </SiteLayoutFooterCopyright>
+                }
+              >
+                <TenantFooterCopyright />
+              </Suspense>
+            </SiteLayoutFooterContent>
+          </SiteLayoutFooter>
+        </SiteLayout>
+      </TenantDefaultLocaleProvider>
+    </LocaleProvider>
   );
 };
 
