@@ -17,12 +17,18 @@ Use GitHub's structured metadata for classification and planning. Keep titles fo
 
 Do not mutate GitHub while still discovering the taxonomy. Establish a mapping first, preserve unrelated metadata, and make changes idempotently.
 
+## Write in English
+
+Write every Issue in English — the title and the body — whatever language the conversation that produced it was held in, and keep it English when you retitle or rewrite it later. An Issue is read outside the session that created it, from a search result or a link, by contributors who were never part of that conversation.
+
+Rewriting a body that was filed in another language is a substantive repair rather than the cosmetic uniformity warned against under **Normalize a backlog**: keep what the prose says, and change only the language it says it in. Identifiers, product names, API names, paths, environment variable names, and quoted output are never translated in either direction, and a quoted log line, error message, or UI string stays exactly as it was emitted.
+
 ## Apply the metadata model
 
 ### [Title](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue)
 
 - State the outcome or work directly.
-- Use the repository's normal language and established technical terms.
+- Write it in English, using the repository's established technical terms.
 - Do not add Priority, Type, area, or conventional-commit prefixes such as `[P1]`, `[Bug]`, `feat:`, or `refactor(web):`.
 - Do not translate identifiers, product names, API names, or conventional technical terms merely to make the title monolingual.
 - Preserve titles managed by automation. Examples include Renovate's `Dependency Dashboard` and configuration-warning Issues. Check the generator's configuration before renaming any bot-authored Issue.
