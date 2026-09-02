@@ -34,6 +34,7 @@ type Querier interface {
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
+	CountUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) (int64, error)
 	CreateAccessTicket(ctx context.Context, arg CreateAccessTicketParams) (AccessTicket, error)
 	// お知らせを作成
 	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
@@ -85,6 +86,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error)
 	CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error)
+	CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserMfaRecoveryCodeParams) error
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
 	DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error)
 	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
@@ -108,7 +110,12 @@ type Querier interface {
 	// ユーザーを物理削除（外部キー制約により関連データも削除）
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error
+	DeleteUserMfaRecoveryCodesByUserID(ctx context.Context, userID uuid.UUID) error
+	DeleteUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserPasswordResetTokensByUserID(ctx context.Context, userID uuid.UUID) error
+	// last_verified_step is left alone: the code that confirmed the enrollment
+	// was accepted through the same path a login code is, which stored it.
+	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
 	GetAccessTicketByPublicIDForTenant(ctx context.Context, arg GetAccessTicketByPublicIDForTenantParams) (GetAccessTicketByPublicIDForTenantRow, error)
 	GetActiveAccessTicketForUserEpisode(ctx context.Context, arg GetActiveAccessTicketForUserEpisodeParams) (AccessTicket, error)
 	// 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
@@ -207,6 +214,10 @@ type Querier interface {
 	GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByPublicIDForTenantParams) (GetUserByPublicIDForTenantRow, error)
 	GetUserEmailChangeTokenByHashForTenant(ctx context.Context, arg GetUserEmailChangeTokenByHashForTenantParams) (GetUserEmailChangeTokenByHashForTenantRow, error)
 	GetUserEmailVerificationTokenByHashForTenant(ctx context.Context, arg GetUserEmailVerificationTokenByHashForTenantParams) (UserEmailVerificationToken, error)
+	// Admin MFA. Every statement is keyed by user_id alone: the row-level
+	// security policies on both tables already confine them to the tenant the
+	// connection is scoped to.
+	GetUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
 	// ユーザーの通知設定を取得
 	GetUserNotificationSettings(ctx context.Context, userID uuid.UUID) (UserNotificationSetting, error)
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
@@ -583,6 +594,7 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
+	ListUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) ([]ListUnusedUserMfaRecoveryCodesRow, error)
 	// The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
 	// the returned rows to preserve the public newest-first display order.
 	ListUserFollowsByCreatedAtAsc(ctx context.Context, arg ListUserFollowsByCreatedAtAscParams) ([]ListUserFollowsByCreatedAtAscRow, error)
@@ -630,6 +642,8 @@ type Querier interface {
 	MarkUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailVerificationTokenUsed(ctx context.Context, id uuid.UUID) error
+	MarkUserMfaRecoveryCodeUsed(ctx context.Context, id uuid.UUID) (int64, error)
+	MarkUserMfaTotpVerified(ctx context.Context, arg MarkUserMfaTotpVerifiedParams) error
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
 	// Projects one member's first completed read as the analytics event for that
 	// read. episode_reads stays the source of truth for the business state: its
@@ -675,9 +689,13 @@ type Querier interface {
 	ProjectPurchaseContentEvent(ctx context.Context, arg ProjectPurchaseContentEventParams) (ContentEvent, error)
 	// ページバージョンを公開状態にする
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
+	// Reaching the threshold starts the lock and puts the counter back to zero,
+	// so the attempt after a lock expires is not immediately the fifth again.
+	RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMfaTotpFailureParams) (UserMfaTotp, error)
 	// Re-queue rows left in processing after a worker crash. updated_at is the
 	// claim time; callers pass now minus the stale-processing grace period.
 	RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error)
+	ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error
 	RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error)
 	// ページの公開バージョンIDを更新する
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
@@ -750,6 +768,9 @@ type Querier interface {
 	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
+	// Starting enrollment replaces whatever unconfirmed secret was there and
+	// clears the lock, so a stalled attempt never blocks the next one.
+	UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfaTotpSecretParams) (UserMfaTotp, error)
 	// ユーザーの通知設定を作成または更新
 	UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error)
 	UpsertUserRecommendFeatures(ctx context.Context, arg UpsertUserRecommendFeaturesParams) (UserRecommendFeature, error)

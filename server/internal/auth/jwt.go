@@ -21,6 +21,11 @@ const (
 	// is not a session.
 	MediaTokenTTL = 15 * time.Minute
 
+	// MFAChallengeTTL bounds the half-finished session a correct password
+	// earns while the second factor is still owed. It has to outlast reaching
+	// for an authenticator and no longer.
+	MFAChallengeTTL = 5 * time.Minute
+
 	JWTIssuer = "publira"
 
 	AudiencePublic   = "public"
@@ -41,6 +46,16 @@ const (
 	// conversion cache key, so two viewers of the same image still share one
 	// cached rendition.
 	MediaTokenQueryParam = "t"
+
+	// AudienceAdminMFAVerify and AudienceAdminMFAEnroll mark the half-finished
+	// admin session a correct password earns while a second factor is still
+	// owed. They are separate audiences rather than a claim on AudienceAdmin
+	// because every verifier already compares the audience exactly: a
+	// challenge cannot be presented as a session, a session cannot be spent as
+	// a challenge, and the token that may only complete an enrollment cannot
+	// answer a verification challenge for an account that already has one.
+	AudienceAdminMFAVerify = "admin-mfa-verify"
+	AudienceAdminMFAEnroll = "admin-mfa-enroll"
 )
 
 // AccessTokenClaims are the claims embedded in API access tokens.
@@ -140,6 +155,38 @@ func (m *TokenManager) IssueAdminMediaToken(
 	now time.Time,
 ) (token string, expiresAt time.Time, err error) {
 	return m.issueScopedMediaToken(subjectPublicID, tenantID, episodeID, credentialsVersion, now, AudienceAdminMedia)
+}
+
+// IssueMFAChallengeToken creates the short-lived token that stands in for the
+// session between a correct password and the second factor. audience picks
+// what the challenge may complete: AudienceAdminMFAVerify for an account that
+// owes a code, AudienceAdminMFAEnroll for one that owes an enrollment. It
+// carries no role, so nothing that authorizes on one can act on it, and it
+// carries the credentials version, so a password change ends it.
+func (m *TokenManager) IssueMFAChallengeToken(
+	subjectPublicID string,
+	audience string,
+	tenantID string,
+	credentialsVersion int32,
+	now time.Time,
+) (token string, expiresAt time.Time, err error) {
+	subjectPublicID = strings.TrimSpace(subjectPublicID)
+	if subjectPublicID == "" {
+		return "", time.Time{}, errors.New("subject is required")
+	}
+	switch strings.TrimSpace(audience) {
+	case AudienceAdminMFAVerify, AudienceAdminMFAEnroll:
+	default:
+		return "", time.Time{}, errors.New("audience is not an mfa challenge audience")
+	}
+	tenantID = strings.TrimSpace(tenantID)
+	if tenantID == "" {
+		return "", time.Time{}, errors.New("tenant is required")
+	}
+	return m.sign(AccessTokenClaims{
+		TenantID:           tenantID,
+		CredentialsVersion: credentialsVersion,
+	}, subjectPublicID, strings.TrimSpace(audience), MFAChallengeTTL, now)
 }
 
 func (m *TokenManager) issueScopedMediaToken(

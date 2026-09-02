@@ -13,8 +13,106 @@ message AdminAuthServiceLoginRequest {
 }
 
 message AdminAuthServiceLoginResponse {
+  // Empty while mfa_challenge is set: the password was right, but the session
+  // is not issued until the second factor is settled.
   publira.types.v1.User user = 1;
   publira.types.v1.AccessToken access_token = 2;
+  AdminAuthServiceMfaChallenge mfa_challenge = 3;
+}
+
+// What the account still owes before the login can finish.
+enum MfaChallengeKind {
+  MFA_CHALLENGE_KIND_UNSPECIFIED = 0;
+  // The account has a confirmed authenticator and owes a code from it.
+  MFA_CHALLENGE_KIND_VERIFY = 1;
+  // The account has no authenticator and the tenant requires one of its role,
+  // so the only thing this challenge can complete is an enrollment.
+  MFA_CHALLENGE_KIND_ENROLL = 2;
+}
+
+// The half-finished session a password alone earns. The token is signed and
+// short-lived, and no RPC other than the MFA ones accepts it.
+message AdminAuthServiceMfaChallenge {
+  string token = 1;
+  string expires_at = 2;
+  MfaChallengeKind kind = 3;
+}
+
+message AdminAuthServiceVerifyMfaRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string challenge_token = 2;
+  // A code from the authenticator, or one of the recovery codes handed out at
+  // enrollment. Which one it was is reported back in the response.
+  string code = 3;
+}
+
+message AdminAuthServiceVerifyMfaResponse {
+  publira.types.v1.User user = 1;
+  publira.types.v1.AccessToken access_token = 2;
+  bool recovery_code_used = 3;
+  int32 remaining_recovery_codes = 4;
+}
+
+message AdminAuthServiceGetMfaStatusRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message AdminAuthServiceGetMfaStatusResponse {
+  bool enabled = 1;
+  string enabled_at = 2;
+  int32 remaining_recovery_codes = 3;
+  // The tenant requires MFA of this account's role. With enabled false, the
+  // console has to send the account to enrollment before anything else.
+  bool required = 4;
+}
+
+message AdminAuthServiceStartMfaEnrollmentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Sent instead of an Authorization header when the login stopped at an
+  // enroll challenge. A signed-in account enrolling voluntarily leaves it
+  // empty and is identified by its session.
+  string challenge_token = 2;
+}
+
+message AdminAuthServiceStartMfaEnrollmentResponse {
+  // Base32 secret, for an authenticator that is typed into rather than
+  // scanned. It is readable only here and only until the next start.
+  string secret = 1;
+  // otpauth:// URI (RFC 6238 parameters) the console renders as a QR code.
+  string otpauth_uri = 2;
+}
+
+message AdminAuthServiceConfirmMfaEnrollmentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string challenge_token = 2;
+  string code = 3;
+}
+
+message AdminAuthServiceConfirmMfaEnrollmentResponse {
+  // Plaintext exactly once; only hashes are kept.
+  repeated string recovery_codes = 1;
+  // Set when a challenge token finished the login rather than a session.
+  publira.types.v1.User user = 2;
+  publira.types.v1.AccessToken access_token = 3;
+}
+
+message AdminAuthServiceDisableMfaRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string code = 2;
+}
+
+message AdminAuthServiceDisableMfaResponse {
+  bool disabled = 1;
+}
+
+message AdminAuthServiceRegenerateMfaRecoveryCodesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string code = 2;
+}
+
+message AdminAuthServiceRegenerateMfaRecoveryCodesResponse {
+  // Replaces every code the account held, used or not.
+  repeated string recovery_codes = 1;
 }
 
 message AdminAuthServiceLogoutRequest {
@@ -162,4 +260,10 @@ service AdminAuthService {
   rpc UpdateTenantConfig(AdminAuthServiceUpdateTenantConfigRequest) returns (AdminAuthServiceUpdateTenantConfigResponse) {}
   rpc RequestEmailChange(AdminAuthServiceRequestEmailChangeRequest) returns (AdminAuthServiceRequestEmailChangeResponse) {}
   rpc ConfirmEmailChange(AdminAuthServiceConfirmEmailChangeRequest) returns (AdminAuthServiceConfirmEmailChangeResponse) {}
+  rpc VerifyMfa(AdminAuthServiceVerifyMfaRequest) returns (AdminAuthServiceVerifyMfaResponse) {}
+  rpc GetMfaStatus(AdminAuthServiceGetMfaStatusRequest) returns (AdminAuthServiceGetMfaStatusResponse) {}
+  rpc StartMfaEnrollment(AdminAuthServiceStartMfaEnrollmentRequest) returns (AdminAuthServiceStartMfaEnrollmentResponse) {}
+  rpc ConfirmMfaEnrollment(AdminAuthServiceConfirmMfaEnrollmentRequest) returns (AdminAuthServiceConfirmMfaEnrollmentResponse) {}
+  rpc DisableMfa(AdminAuthServiceDisableMfaRequest) returns (AdminAuthServiceDisableMfaResponse) {}
+  rpc RegenerateMfaRecoveryCodes(AdminAuthServiceRegenerateMfaRecoveryCodesRequest) returns (AdminAuthServiceRegenerateMfaRecoveryCodesResponse) {}
 }

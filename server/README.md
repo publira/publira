@@ -320,7 +320,7 @@ Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Au
 | --- | --- |
 | Environment variable | `PUBLIRA_AUTH_JWT_SECRET` (**required**, at least 32 bytes. There is no fallback: if it is unset or too short, the API servers and the image servers fail to start) |
 | TTL | 24h |
-| Audience | `public` / `admin` / `platform` / `media` / `admin-media` |
+| Audience | `public` / `admin` / `platform` / `media` / `admin-media` / `admin-mfa-verify` / `admin-mfa-enroll` |
 | Revocation | `users.credentials_version` / `platform_users.credentials_version` (incremented on a password change and the like) |
 | Next cookie | `PUBLIRA_AUTH_SECRET` (**required**, at least 32 bytes. It is for JWE and is separate from the API's JWT secret. There is no fallback: if it is unset or too short, an exception is raised) / cookie names such as `publira_web_host_auth` |
 
@@ -349,6 +349,32 @@ Episode image previews in the admin UI also go through the browser's `<img>` / `
 | Revocation | The same `users.credentials_version` as the access token |
 
 The token only states who the administrator is; `admin-image-server` consults the tenant membership and the admin role (`tenant_admin` / `tenant_editor` / `tenant_auditor`) on every request. It does not look at the publication state or the price.
+
+## Admin MFA (TOTP)
+
+A tenant member signing in to the admin console can hold a second factor: a TOTP authenticator (RFC 6238) plus ten one-time recovery codes. `AdminAuthService` carries the whole flow — `StartMfaEnrollment` / `ConfirmMfaEnrollment` / `VerifyMfa` / `DisableMfa` / `RegenerateMfaRecoveryCodes` / `GetMfaStatus`.
+
+| Item | Value |
+| --- | --- |
+| Algorithm | TOTP, 30-second period, SHA-1, 6 digits, a 160-bit secret — what every mainstream authenticator app assumes when the otpauth URI omits it |
+| Acceptance window | The current step and one on either side |
+| Replay | A step is accepted once. `user_mfa_totp.last_verified_step` is what refuses a code that is still inside the window but was already spent |
+| Secret at rest | Encrypted with `secretcrypto` (`PUBLIRA_SECRET_ENCRYPTION_KEYS`). `StartMfaEnrollment` is the only response the plaintext appears in |
+| Recovery codes | Ten per batch, shown once at enrollment or regeneration, stored as bcrypt hashes. Spending one leaves the row with `used_at` set |
+| Failure limit | Five refused codes lock the account for 15 minutes. The counter is per account and covers login, disabling, and regeneration alike |
+| Audit | `admin_mfa_enrolled`, `admin_mfa_verified` (success and failure), `admin_mfa_recovery_code_used`, `admin_mfa_disabled`, `admin_mfa_recovery_codes_regenerated` in `audit_logs` |
+
+### The challenge that stands in for half a session
+
+`Login` does not issue an access token to an account that still owes a factor. It answers with a short-lived challenge token instead, under an audience of its own — `admin-mfa-verify` when the account has a confirmed authenticator, `admin-mfa-enroll` when it has none and the deployment requires one. Every verifier compares the audience exactly, so a challenge cannot be presented as a session, and the token that may only finish an enrollment cannot answer a verification challenge. The challenge lives five minutes and carries `users.credentials_version`, so a password change ends a pending one.
+
+`VerifyMfa` exchanges a verify challenge and a code for the access token. `ConfirmMfaEnrollment` does the same for an enroll challenge: it returns the recovery codes and the session in one response, which is what finishes a login that was stopped at enrollment.
+
+### Requiring the factor
+
+`PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN` (admin-api-server, `false` when unset) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having. Anything that is not a boolean leaves the factor optional — a misspelled value must not lock every tenant admin out of the console it is the only way into.
+
+Taking the factor off needs the authenticator or a recovery code, so an account whose phone is gone gets itself back without an operator. Minting a new batch of recovery codes needs the authenticator: letting one leaked code mint ten more would make it permanent.
 
 ## View events (soft PV) and anonymous actors
 
