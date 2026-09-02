@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:publira/crypto/xor_key_stream.dart';
 
 /// The single stream image-server speaks, as it names it in
 /// `X-Publira-Image-Encryption`.
@@ -47,31 +48,7 @@ Uint8List decryptImageBytes({
     0,
     ...utf8.encode(keyId),
   ]).bytes;
-  final keyStream = Hmac(sha256, key);
-
-  final plaintext = Uint8List(ciphertext.length);
-  final counter = Uint8List(8);
-  var offset = 0;
-  var block = 0;
-  while (offset < ciphertext.length) {
-    // Big-endian counter, written by hand because `ByteData.setUint64` is
-    // unsupported on the web, which this app also builds for.
-    var remaining = block;
-    for (var i = 7; i >= 0; i--) {
-      counter[i] = remaining & 0xff;
-      remaining >>= 8;
-    }
-    final stream = keyStream.convert(counter).bytes;
-    for (
-      var i = 0;
-      i < stream.length && offset < ciphertext.length;
-      i++, offset++
-    ) {
-      plaintext[offset] = ciphertext[offset] ^ stream[i];
-    }
-    block++;
-  }
-  return plaintext;
+  return applyXorKeyStream(bytes: ciphertext, key: key);
 }
 
 /// Reads the `sub` claim out of [token] without verifying its signature.

@@ -103,10 +103,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   String _errorCopy(Object? error) {
-    if (error is CatalogFailure && error.kind == CatalogFailureKind.network) {
-      return 'カタログを表示できませんでした。通信状況を確認して再試行してください。';
+    if (error is! CatalogFailure) {
+      return 'カタログを表示できませんでした';
     }
-    return 'カタログを表示できませんでした';
+    return switch (error.kind) {
+      CatalogFailureKind.network => 'カタログを表示できませんでした。通信状況を確認して再試行してください。',
+      CatalogFailureKind.notSaved || CatalogFailureKind.saveExpired =>
+        'オフラインのため、カタログを表示できません。端末に保存されたカタログがありません。',
+      CatalogFailureKind.unexpected => 'カタログを表示できませんでした',
+    };
   }
 }
 

@@ -4,6 +4,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/router.dart';
 import 'package:publira/viewer/episode_reader.dart';
 
@@ -118,6 +119,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
     return EpisodeReader(
       images: detail.images,
       imageHeaders: detail.imageRequestHeaders,
+      pageStore: OfflineScope.maybeOf(context),
     );
   }
 
@@ -137,10 +139,17 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
   }
 
   String _errorCopy(Object? error) {
-    if (error is CatalogFailure && error.kind == CatalogFailureKind.network) {
-      return 'エピソードを表示できませんでした。通信状況を確認して再試行してください。';
+    if (error is! CatalogFailure) {
+      return 'エピソードを表示できませんでした';
     }
-    return 'エピソードを表示できませんでした';
+    return switch (error.kind) {
+      CatalogFailureKind.network => 'エピソードを表示できませんでした。通信状況を確認して再試行してください。',
+      CatalogFailureKind.notSaved =>
+        'オフラインのため、このエピソードを表示できません。端末に保存済みのエピソードのみ読めます。',
+      CatalogFailureKind.saveExpired =>
+        '保存したエピソードの閲覧期限が切れました。通信できる状態で開き直してください。',
+      CatalogFailureKind.unexpected => 'エピソードを表示できませんでした',
+    };
   }
 }
 

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/api/image_cipher.dart';
 
 /// Why a body page could not be turned into image bytes.
@@ -39,6 +40,7 @@ class EpisodeImageException implements Exception {
 class EpisodeImageClient {
   EpisodeImageClient({
     http.Client? httpClient,
+    this.pages,
     this.timeout = const Duration(seconds: 20),
   }) : _http = httpClient ?? http.Client();
 
@@ -49,6 +51,11 @@ class EpisodeImageClient {
   /// AVIF out rather than taking whatever a browser would.
   static const imageAccept = 'image/webp,image/*;q=0.8,*/*;q=0.5';
 
+  /// Where a page is kept once it has been turned into displayable bytes, and
+  /// where one is read from when image-server cannot be reached. `null` on a
+  /// run with nowhere to save, which reads online only.
+  final EpisodePageStore? pages;
+
   final Duration timeout;
   final http.Client _http;
 
@@ -58,6 +65,11 @@ class EpisodeImageClient {
 
   /// Loads [url] with [headers], which name the tenant and, for a paid body,
   /// the reader.
+  ///
+  /// A page that cannot be fetched at all is read from [pages] instead, so an
+  /// episode already on the device turns without a network. A page
+  /// image-server did answer for is not: the server has spoken, and a refusal
+  /// is not something the device may talk its way out of.
   Future<Uint8List> fetch(
     Uri url, {
     Map<String, String> headers = const {},
@@ -68,20 +80,15 @@ class EpisodeImageClient {
           .get(url, headers: {...headers, 'accept': imageAccept})
           .timeout(timeout);
     } on TimeoutException {
-      throw const EpisodeImageException(
-        EpisodeImageFailureKind.network,
-        'image request timed out',
-      );
-    } on SocketException catch (error) {
-      throw EpisodeImageException(
-        EpisodeImageFailureKind.network,
-        error.message,
-      );
+      return _saved(url, 'image request timed out');
+    } on IOException catch (error) {
+      // Every `dart:io` failure of the request itself lands here, not only a
+      // refused socket: `IOClient` re-throws a TLS `HandshakeException` as it
+      // is, and a page the request never reached is a page to read off the
+      // device.
+      return _saved(url, '$error');
     } on http.ClientException catch (error) {
-      throw EpisodeImageException(
-        EpisodeImageFailureKind.network,
-        error.message,
-      );
+      return _saved(url, error.message);
     }
 
     if (response.statusCode != HttpStatus.ok) {
@@ -90,7 +97,45 @@ class EpisodeImageClient {
         'image request failed with ${response.statusCode}',
       );
     }
-    return _decrypt(url, headers, response);
+    final bytes = _decrypt(url, headers, response);
+    final store = pages;
+    if (store != null) {
+      // Saving is not what the reader is waiting for, and a device that
+      // cannot save still has the page in hand.
+      unawaited(_save(store, episodePageKey(url), bytes));
+    }
+    return bytes;
+  }
+
+  /// Hands [bytes] to [store] without letting a refusal reach the zone.
+  ///
+  /// Nothing awaits this, so an escaping error would surface as a crash for a
+  /// save the reader is not waiting on — and the store is an interface any
+  /// implementation may satisfy, so the guarantee belongs here rather than in
+  /// each of them.
+  Future<void> _save(
+    EpisodePageStore store,
+    String key,
+    Uint8List bytes,
+  ) async {
+    try {
+      await store.writePage(key, bytes);
+    } catch (_) {
+      return;
+    }
+  }
+
+  /// The saved page for [url], or the network failure [message] describes when
+  /// this device holds none.
+  Future<Uint8List> _saved(Uri url, String message) async {
+    final store = pages;
+    final saved = store == null
+        ? null
+        : await store.readPage(episodePageKey(url));
+    if (saved != null && saved.isNotEmpty) {
+      return saved;
+    }
+    throw EpisodeImageException(EpisodeImageFailureKind.network, message);
   }
 
   Uint8List _decrypt(
