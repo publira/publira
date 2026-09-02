@@ -158,6 +158,7 @@ jobs:
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+              - 'scripts/setup-flutter.sh'
             test_mobile_e2e:
               - *docs_excluded
               - 'mobile/**'
@@ -181,6 +182,7 @@ jobs:
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+              - 'scripts/setup-flutter.sh'
             test_e2e:
               - *docs_excluded
               - 'e2e/**'
@@ -595,18 +597,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Flutter
-        run: |
-          set -euo pipefail
-          flutter_root="${RUNNER_TEMP}/flutter"
-          git clone \
-            --depth 1 \
-            --branch "${FLUTTER_VERSION}" \
-            https://github.com/flutter/flutter.git \
-            "${flutter_root}"
-          echo "${flutter_root}/bin" >> "${GITHUB_PATH}"
-          # Bootstrap Dart SDK / tooling for subsequent steps
-          "${flutter_root}/bin/flutter" --version
-          "${flutter_root}/bin/dart" --version
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/setup-flutter.sh
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
@@ -636,17 +629,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Flutter
-        run: |
-          set -euo pipefail
-          flutter_root="${RUNNER_TEMP}/flutter"
-          git clone \
-            --depth 1 \
-            --branch "${FLUTTER_VERSION}" \
-            https://github.com/flutter/flutter.git \
-            "${flutter_root}"
-          echo "${flutter_root}/bin" >> "${GITHUB_PATH}"
-          "${flutter_root}/bin/flutter" --version
-          "${flutter_root}/bin/dart" --version
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/setup-flutter.sh
 
       - name: Setup / Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0

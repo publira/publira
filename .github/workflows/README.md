@@ -35,6 +35,7 @@ Implementation:
 
 - Workflow: [`ci.yml`](./ci.yml)
 - Job planning—selected jobs and Docker matrix: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
+- Flutter SDK setup for the two mobile jobs: [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
 
 [`infra/docker/README.md`](../../infra/docker/README.md) is authoritative for Docker image placement, build steps, and Docker-specific triage. This document covers only how the `Docker` job is started by CI.
 
@@ -84,8 +85,8 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, and generator config |
 | `Test / TypeScript` | apps, locales, packages, package / lock / turbo config |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
-| `Test / Mobile` | `mobile/**`, `Taskfile.yaml` |
-| `Test / Mobile E2E` | mobile, E2E lifecycle scripts and page fixtures, domain proto, server, migrations/seeds, Taskfile, storage init |
+| `Test / Mobile` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
+| `Test / Mobile E2E` | mobile, E2E lifecycle scripts and page fixtures, domain proto, server, migrations/seeds, Taskfile, storage init, `scripts/setup-flutter.sh` |
 | `Test / E2E` | E2E except routing, web apps, packages, server, db, and build inputs |
 | `Test / Bootstrap` | Dev Container, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init |
 | `Test / Routing` | `.devcontainer/**`, `e2e/routing/**` |
@@ -128,6 +129,12 @@ Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and rout
 `Test / DB Migrations` first checks that the PR only adds files under `db/migrations/` — an applied migration is immutable, so a modified, renamed, or deleted one fails the job before Postgres is touched. It then runs against its own Postgres service and must succeed through `migrate up`, `migrate down -all`, and another `migrate up`; any failure, including a dirty database, makes `Summary` fail. Because the guard diffs against `origin/main`, this job's checkout uses `fetch-depth: 0` on every event, where `Detect changes` fetches full history only on `push`.
 
 `Docker / <target>` executes the matrix from `scripts/ci-plan-jobs.sh` with the same `task docker:build:web|api|batch|node` commands used locally, followed by `task docker:smoke:web` or `task docker:smoke:node` where applicable. See [`infra/docker/README.md`](../../infra/docker/README.md) for role mapping, build conventions, local verification, and Docker triage.
+
+## Flutter SDK setup
+
+`Test / Mobile` and `Test / Mobile E2E` install Flutter through [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh), which clones the tag named by `FLUTTER_VERSION` — the `env` block of [`ci.yml`](./ci.yml) is the single source of truth for the version — and bootstraps the Dart SDK. The script takes its destination, its credentials, and the `PATH` entry from the environment, so it installs the same pinned SDK on a workstation as it does on a runner; the jobs give it `github.token` and let it default to `RUNNER_TEMP` and `GITHUB_PATH`.
+
+In CI the clone is authenticated with `github.token`. github.com answers an unauthenticated clone from a shared runner address with a credential prompt often enough to matter (`fatal: could not read Username for 'https://github.com'`), and the job then fails within seconds; an authenticated request is attributed to this repository instead. The token is passed as an `http.<url>.extraheader` on the `git` invocation and not with `git clone -c`, which would persist the header in the cloned repository's own config. On top of that the script retries the clone three times with a short backoff, deleting the partial destination between attempts.
 
 ## Failure triage
 
