@@ -158,7 +158,7 @@ jobs:
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
-              - 'scripts/ci-setup-flutter.sh'
+              - 'scripts/setup-flutter.sh'
             test_mobile_e2e:
               - *docs_excluded
               - 'mobile/**'
@@ -182,7 +182,7 @@ jobs:
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
-              - 'scripts/ci-setup-flutter.sh'
+              - 'scripts/setup-flutter.sh'
             test_e2e:
               - *docs_excluded
               - 'e2e/**'
@@ -599,7 +599,7 @@ jobs:
       - name: Setup / Flutter
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: bash scripts/ci-setup-flutter.sh
+        run: bash scripts/setup-flutter.sh
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
@@ -631,7 +631,7 @@ jobs:
       - name: Setup / Flutter
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: bash scripts/ci-setup-flutter.sh
+        run: bash scripts/setup-flutter.sh
 
       - name: Setup / Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0

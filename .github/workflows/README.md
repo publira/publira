@@ -35,7 +35,7 @@ Implementation:
 
 - Workflow: [`ci.yml`](./ci.yml)
 - Job planning—selected jobs and Docker matrix: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
-- Flutter SDK setup for the two mobile jobs: [`scripts/ci-setup-flutter.sh`](../../scripts/ci-setup-flutter.sh)
+- Flutter SDK setup for the two mobile jobs: [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
 
 [`infra/docker/README.md`](../../infra/docker/README.md) is authoritative for Docker image placement, build steps, and Docker-specific triage. This document covers only how the `Docker` job is started by CI.
 
@@ -85,8 +85,8 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, and generator config |
 | `Test / TypeScript` | apps, locales, packages, package / lock / turbo config |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
-| `Test / Mobile` | `mobile/**`, `Taskfile.yaml`, `scripts/ci-setup-flutter.sh` |
-| `Test / Mobile E2E` | mobile, E2E lifecycle scripts and page fixtures, domain proto, server, migrations/seeds, Taskfile, storage init, `scripts/ci-setup-flutter.sh` |
+| `Test / Mobile` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
+| `Test / Mobile E2E` | mobile, E2E lifecycle scripts and page fixtures, domain proto, server, migrations/seeds, Taskfile, storage init, `scripts/setup-flutter.sh` |
 | `Test / E2E` | E2E except routing, web apps, packages, server, db, and build inputs |
 | `Test / Bootstrap` | Dev Container, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init |
 | `Test / Routing` | `.devcontainer/**`, `e2e/routing/**` |
@@ -132,9 +132,9 @@ Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and rout
 
 ## Flutter SDK setup
 
-`Test / Mobile` and `Test / Mobile E2E` install Flutter through [`scripts/ci-setup-flutter.sh`](../../scripts/ci-setup-flutter.sh), which clones the tag named by `FLUTTER_VERSION` in the `env` block of [`ci.yml`](./ci.yml) — the single source of truth for the version — into `RUNNER_TEMP` and appends the SDK's `bin` directory to `PATH`.
+`Test / Mobile` and `Test / Mobile E2E` install Flutter through [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh), which clones the tag named by `FLUTTER_VERSION` — the `env` block of [`ci.yml`](./ci.yml) is the single source of truth for the version — and bootstraps the Dart SDK. The script takes its destination, its credentials, and the `PATH` entry from the environment, so it installs the same pinned SDK on a workstation as it does on a runner; the jobs give it `github.token` and let it default to `RUNNER_TEMP` and `GITHUB_PATH`.
 
-The clone is authenticated with `github.token`. github.com answers an unauthenticated clone from a shared runner address with a credential prompt often enough to matter (`fatal: could not read Username for 'https://github.com'`), and the job then fails within seconds; an authenticated request is attributed to this repository instead. The token is passed as an `http.<url>.extraheader` on the `git` invocation and not with `git clone -c`, which would persist the header in the cloned repository's own config. On top of that the script retries the clone three times with a short backoff, deleting the partial destination between attempts.
+In CI the clone is authenticated with `github.token`. github.com answers an unauthenticated clone from a shared runner address with a credential prompt often enough to matter (`fatal: could not read Username for 'https://github.com'`), and the job then fails within seconds; an authenticated request is attributed to this repository instead. The token is passed as an `http.<url>.extraheader` on the `git` invocation and not with `git clone -c`, which would persist the header in the cloned repository's own config. On top of that the script retries the clone three times with a short backoff, deleting the partial destination between attempts.
 
 ## Failure triage
 
