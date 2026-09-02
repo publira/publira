@@ -75,6 +75,25 @@ export const WEB_HOST_OTHER_TENANT_BASE_URL = envUrl(
   withHostname(WEB_HOST_BASE_URL, "other.localhost")
 );
 
+/**
+ * Inbox tenant from the scenario seed
+ * `db/seeds/scenarios/060_notification_inbox.sql`.
+ *
+ * Its accounts exist so the empty-bell specs cannot see a publish notification
+ * another spec delivered — publish fans out to every member and admin of the
+ * published episode's tenant.
+ */
+export const WEB_HOST_NOTIFICATION_INBOX_BASE_URL = envUrl(
+  "E2E_WEB_HOST_NOTIFICATION_INBOX_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "notify.localhost")
+);
+
+/** Admin console of the same inbox tenant. */
+export const WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL = envUrl(
+  "E2E_WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.notify.localhost")
+);
+
 /** Host that maps to no tenant at all. */
 export const WEB_HOST_UNKNOWN_TENANT_BASE_URL = envUrl(
   "E2E_WEB_HOST_UNKNOWN_TENANT_BASE_URL",

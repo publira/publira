@@ -6,19 +6,24 @@ import {
   SEED_CATALOG,
   toTokyoDateTimeLocal,
 } from "./scenarios/admin-publish";
+import { NOTIFICATION_INBOX_ADMIN } from "./scenarios/notification-inbox";
 import { fillLoginForm } from "./session";
-import { WEB_ADMIN_BASE_URL } from "./urls";
+import {
+  WEB_ADMIN_BASE_URL,
+  WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL,
+} from "./urls";
 
-const adminUrl = (pathname: string): string =>
-  `${WEB_ADMIN_BASE_URL}${pathname}`;
+const adminUrl = (pathname: string, baseUrl = WEB_ADMIN_BASE_URL): string =>
+  `${baseUrl}${pathname}`;
 
 export const signInAsAdmin = async (
   page: Page,
   credentials: { email: string; password: string } = SEED_ADMIN,
-  nextPath = "/series"
+  nextPath = "/series",
+  baseUrl = WEB_ADMIN_BASE_URL
 ): Promise<void> => {
   const next = encodeURIComponent(nextPath);
-  await page.goto(adminUrl(`/login?next=${next}`));
+  await page.goto(adminUrl(`/login?next=${next}`, baseUrl));
   await fillLoginForm(page, credentials);
   await page.waitForURL((url) => !url.pathname.endsWith("/login"));
 };
@@ -29,6 +34,19 @@ export const signInAsSeedAdmin = async (
   nextPath = "/series"
 ): Promise<void> => {
   await signInAsAdmin(page, SEED_ADMIN, nextPath);
+};
+
+/** Sign in as the inbox tenant's admin, on that tenant's own console. */
+export const signInAsNotificationInboxAdmin = async (
+  page: Page,
+  nextPath = "/series"
+): Promise<void> => {
+  await signInAsAdmin(
+    page,
+    NOTIFICATION_INBOX_ADMIN,
+    nextPath,
+    WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL
+  );
 };
 
 /** Open the console header's user menu (avatar). */

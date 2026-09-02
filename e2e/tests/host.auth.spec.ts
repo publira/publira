@@ -37,7 +37,8 @@ const currentSession = async (
  * Catalog stays public. `/my`, `/announcements`, `/notifications`, and
  * `/settings` are the member gate. GET /logout is a published-page slug, not a
  * logout, so it must leave the session alone. credentials_version bumps use a
- * dedicated member so they cannot invalidate `host.notifications` mid-run.
+ * dedicated member so they cannot invalidate `announcements.pagination` /
+ * `host.episode-access` mid-run.
  */
 test.describe("web-host auth", () => {
   test("valid credentials return to My Page", async ({ page }) => {
