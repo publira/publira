@@ -39,13 +39,9 @@ func seedEngagementCatalog(t *testing.T, ctx context.Context, db *sql.DB, suffix
 	}
 }
 
-func mustInsertSeriesAndEpisode(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID, seriesPublicID, episodePublicID string) (uuid.UUID, uuid.UUID) {
+func mustInsertSeries(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID, seriesPublicID string) uuid.UUID {
 	t.Helper()
 	seriesID, err := uuid.NewV7()
-	if err != nil {
-		t.Fatalf("uuid: %v", err)
-	}
-	episodeID, err := uuid.NewV7()
 	if err != nil {
 		t.Fatalf("uuid: %v", err)
 	}
@@ -55,6 +51,16 @@ func mustInsertSeriesAndEpisode(t *testing.T, ctx context.Context, db *sql.DB, t
 	`, seriesID, tenantID, seriesPublicID, seriesPublicID+" series")
 	if err != nil {
 		t.Fatalf("insert series %s: %v", seriesPublicID, err)
+	}
+	return seriesID
+}
+
+func mustInsertSeriesAndEpisode(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID, seriesPublicID, episodePublicID string) (uuid.UUID, uuid.UUID) {
+	t.Helper()
+	seriesID := mustInsertSeries(t, ctx, db, tenantID, seriesPublicID)
+	episodeID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("uuid: %v", err)
 	}
 	_, err = db.ExecContext(ctx, `
 		INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
@@ -548,7 +554,16 @@ func TestContentEventsFKDeleteActions(t *testing.T) {
 		t.Fatalf("seed restrict event: %v", err)
 	}
 
-	_, err := pg.DB.ExecContext(ctx, `DELETE FROM series WHERE id = $1`, restrictSeed.seriesID)
+	// The series case uses a series of its own, with no episode: a series that
+	// still has one is blocked by episodes_series_id_fkey as well, and which of
+	// two blocking constraints reports the failure follows the order their
+	// triggers were created in rather than anything about the schema.
+	emptySeriesID := mustInsertSeries(t, ctx, pg.DB, restrictSeed.tenantID, "SERRST2")
+	if _, err := insertSeriesView(ctx, pg.DB, restrictSeed.tenantID, restrictSeed.userID, emptySeriesID, 1); err != nil {
+		t.Fatalf("seed restrict series view: %v", err)
+	}
+
+	_, err := pg.DB.ExecContext(ctx, `DELETE FROM series WHERE id = $1`, emptySeriesID)
 	if !isRestrictViolation(err) {
 		t.Fatalf("delete series error = %v, want restrict_violation (23001)", err)
 	}
@@ -794,6 +809,19 @@ func insertEpisodeView(ctx context.Context, db *sql.DB, seed engagementSeed, use
 			id, tenant_id, event_type, user_id, series_id, episode_id, debounce_bucket, payload
 		) VALUES ($1, $2, 'episode_view', $3, $4, $5, $6, '{}'::jsonb)
 	`, id, seed.tenantID, userID, seriesID, episodeID, bucket)
+	return id, err
+}
+
+func insertSeriesView(ctx context.Context, db *sql.DB, tenantID, userID, seriesID uuid.UUID, bucket int64) (uuid.UUID, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return uuid.Nil, err
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO content_events (
+			id, tenant_id, event_type, user_id, series_id, debounce_bucket, payload
+		) VALUES ($1, $2, 'series_view', $3, $4, $5, '{}'::jsonb)
+	`, id, tenantID, userID, seriesID, bucket)
 	return id, err
 }
 

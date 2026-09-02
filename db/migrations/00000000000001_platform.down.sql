@@ -1,0 +1,17 @@
+DROP TABLE IF EXISTS platform_notification_reads CASCADE;
+DROP TABLE IF EXISTS platform_notifications CASCADE;
+DROP TABLE IF EXISTS platform_audit_logs CASCADE;
+DROP TABLE IF EXISTS platform_user_password_reset_tokens CASCADE;
+DROP TABLE IF EXISTS platform_user_email_change_tokens CASCADE;
+DROP TABLE IF EXISTS platform_user_roles CASCADE;
+DROP TABLE IF EXISTS platform_users CASCADE;
+DROP TABLE IF EXISTS platform_smtp_config CASCADE;
+DROP TABLE IF EXISTS platform_config CASCADE;
+DROP TABLE IF EXISTS tenant_admin_invitations CASCADE;
+DROP TABLE IF EXISTS tenant_image_variants CASCADE;
+DROP TABLE IF EXISTS tenant_images CASCADE;
+DROP TABLE IF EXISTS tenant_payment_config CASCADE;
+DROP TABLE IF EXISTS tenant_smtp_config CASCADE;
+DROP TABLE IF EXISTS tenant_themes CASCADE;
+DROP TABLE IF EXISTS tenant_config CASCADE;
+DROP TABLE IF EXISTS tenants CASCADE;

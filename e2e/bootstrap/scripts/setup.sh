@@ -22,7 +22,7 @@ else
 fi
 
 # golang-migrate stores the numeric filename prefix; compare against the
-# highest migration on disk (db/AGENTS.md keeps this at the single baseline).
+# highest migration on disk.
 expected_version="$(
   find "${REPO_ROOT}/db/migrations" -name '*.up.sql' -exec basename {} \; |
     sed 's/_.*//' | sort -n | tail -n 1

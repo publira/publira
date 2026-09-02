@@ -2,30 +2,35 @@
 
 Conventions for `db/` (migrations, sqlc queries, seeds). Prefer this file for schema work; root [AGENTS.md](../AGENTS.md) remains the top-level source of truth for repo-wide agent policy.
 
-## Early-stage migrations: keep a single baseline
+## Migrations are append-only
 
-This project is still in **early implementation**. Schema changes must be folded into the existing baseline migration instead of adding new versioned migration files.
+`migrations/` is the golang-migrate history. A schema change is always a **new** migration; the files already there are never edited, renamed, or deleted.
 
-### Do
+Rewriting an applied migration changes nothing in a database that already recorded that version in `schema_migrations` — golang-migrate will not run the version a second time. The edit reaches only databases built from scratch afterwards, so environments silently drift apart. Correct a mistake by stacking another migration on top of it.
 
-- Edit `migrations/00000000000000_baseline.up.sql` (and the matching `.down.sql` when needed) so the full desired schema lives in that single baseline.
-- After changing schema SQL used by sqlc, regenerate from the repo root with `task gen`, then confirm `sqlc diff` is clean. See [`server/AGENTS.md`](../server/AGENTS.md) for the full Go verification checklist.
-- Rebuild local DB from scratch when the baseline changes: `task db:reset` (or drop + migrate + seed).
+### Adding a migration
 
-### Do not
+- Create the pair with `task db:create NAME=<name>`. It runs `migrate create -ext sql -dir ./migrations -tz UTC`, which names both files with a 14-digit UTC timestamp.
+- Keep the numbering 14 digits wide and zero-padded. golang-migrate orders versions numerically while sqlc reads the directory in lexicographic order, and equal width is what keeps those two orders the same.
+- Write a `down` that actually undoes the `up`. The `Test / DB Migrations` CI job runs `up` → `down -all` → `up` against an empty database, so a broken `down` fails the build.
+- Give `CREATE INDEX CONCURRENTLY` a migration of its own. The golang-migrate postgres driver runs each file in a transaction, and that statement cannot execute inside one.
+- After changing schema SQL that sqlc reads, regenerate from the repo root with `task gen` and confirm `sqlc diff` is clean. See [`server/AGENTS.md`](../server/AGENTS.md) for the full Go verification checklist.
 
-- Do **not** add new files under `migrations/` such as `00000000000001_*.sql` via `task db:create` / `migrate create` during this phase.
-- Do **not** invent incremental up/down chains for greenfield schema work; keep history flat until production-facing migration history is intentionally introduced.
+### The initial schema
 
-### When this changes
+Versions `00000000000001`–`00000000000008` hold the initial schema, one migration per domain: `platform`, `identity`, `catalog`, `pages`, `notifications`, `commerce`, `engagement`, `outbox`. Each is self-contained — its own tables, constraints, indexes, foreign keys, and RLS policies — with the foreign keys that close a cycle inside the domain applied at the end of the file. Cross-domain foreign keys always point backwards, so the numbering doubles as the dependency order.
 
-Once the schema is treated as production-stable and real rollout history matters, stop rewriting the baseline and start appending numbered migrations. Until that decision is explicit, **baseline-only** remains the rule.
+These sequence numbers never collide with later timestamps: `00000000000008` is far smaller than any 14-digit UTC timestamp, so the history stays monotonic.
+
+### Rebuilding a local database
+
+`migrate up` cannot move a database whose `schema_migrations` records a version that no longer exists in `migrations/`, and it cannot apply a migration whose objects are already there. Recreate the database with `task db:reset` instead of patching it by hand.
 
 ## Layout (quick map)
 
 | Path | Role |
 | --- | --- |
-| `migrations/` | golang-migrate DDL (currently only `00000000000000_baseline`) |
+| `migrations/` | golang-migrate DDL, append-only |
 | `query/` | sqlc query sources |
 | `seeds/` | Seed SQL; `baseline/` is environment-common, `dev/` is local data |
 

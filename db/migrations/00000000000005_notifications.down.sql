@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS announcement_reads CASCADE;
+DROP TABLE IF EXISTS announcements CASCADE;
+DROP TABLE IF EXISTS notification_reads CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
