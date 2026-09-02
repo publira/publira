@@ -15,6 +15,13 @@ set -euo pipefail
 flutter_version="${FLUTTER_VERSION:?FLUTTER_VERSION is required}"
 flutter_root="${FLUTTER_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/flutter}"
 
+# `git clone` refuses a non-empty destination anyway, and stopping here keeps the
+# retry below from deleting a directory this run did not create.
+if [[ -e "${flutter_root}" ]]; then
+  echo "${flutter_root} already exists. Remove it or point FLUTTER_ROOT elsewhere." >&2
+  exit 1
+fi
+
 # github.com answers an unauthenticated clone from a shared address with a
 # credential prompt every so often, which fails a CI job in seconds. A token
 # makes the request attributable, and it is passed with `git -c` rather than
@@ -23,7 +30,8 @@ flutter_root="${FLUTTER_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/flutter}"
 # read it.
 git_options=()
 if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-  credential="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w0)"
+  # `base64 -w0` is GNU-only; macOS wraps unless the output is stripped here.
+  credential="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::add-mask::${credential}"
   fi
@@ -44,7 +52,8 @@ for ((attempt = 1; attempt <= attempts; attempt++)); do
     exit 1
   fi
   # A failed clone can leave a partial working tree behind, which would make the
-  # next attempt fail on a non-empty destination instead of on the network.
+  # next attempt fail on a non-empty destination instead of on the network. The
+  # destination did not exist before this run, so nothing else is under it.
   rm -rf "${flutter_root}"
   sleep $((attempt * 5))
 done
