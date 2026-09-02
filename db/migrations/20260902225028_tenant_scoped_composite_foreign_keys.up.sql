@@ -8,7 +8,8 @@
 -- a UNIQUE (tenant_id, id), so the reference can name both columns and let the
 -- database reject the mismatch.
 --
--- ON DELETE behaviour is carried over from the constraint being replaced.
+-- ON DELETE behaviour is carried over from the constraint being replaced. The
+-- one exception is purchases.user_id, which had no constraint to carry.
 
 -- IDENTITY
 
@@ -154,7 +155,13 @@ ALTER TABLE ONLY purchases
 
 -- FK CONSTRAINT: purchases purchases_tenant_user_id_fkey
 -- purchases.user_id had no foreign key at all, so rows could name a user that
--- never existed. Account deletion relies on cascades, so this one cascades the
--- way access_tickets does rather than blocking the delete.
+-- never existed.
+--
+-- RESTRICT rather than the CASCADE access_tickets uses: a ticket is an
+-- entitlement, a purchase is a commerce record. Daily content stats recompute
+-- purchase_count straight from this table and replace the whole day, so
+-- cascading a buyer's rows away would quietly lower a past day's revenue
+-- figures. Deleting a reader who has bought an episode therefore fails until
+-- the account deletion path stops needing the buyer row: #1420.
 ALTER TABLE ONLY purchases
-    ADD CONSTRAINT purchases_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
+    ADD CONSTRAINT purchases_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE RESTRICT;
