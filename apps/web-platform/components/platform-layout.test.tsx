@@ -12,7 +12,11 @@ import {
   listNotifications,
 } from "../lib/notification";
 import { PlatformLocaleSwitcher } from "./locale-switcher";
-import { PlatformNotificationBell, PlatformUser } from "./platform-layout";
+import {
+  PlatformLayout,
+  PlatformNotificationBell,
+  PlatformUser,
+} from "./platform-layout";
 
 vi.mock("../lib/auth", () => ({
   getPlatformCurrentOperator: vi.fn(),
@@ -51,6 +55,21 @@ vi.mock("next/link", () => ({
 
 afterEach(() => {
   cleanup();
+});
+
+describe("PlatformLayout", () => {
+  it("asks the shared stylesheet for the platform console background", () => {
+    const { container } = render(
+      <PlatformLayout>
+        <p>本文</p>
+      </PlatformLayout>
+    );
+
+    expect(
+      container.querySelector<HTMLElement>(".publira-console-background")
+        ?.dataset.consoleTheme
+    ).toBe("platform");
+  });
 });
 
 describe("PlatformUser", () => {

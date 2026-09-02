@@ -103,6 +103,19 @@ describe("AdminLayout", () => {
     expect(screen.queryByText("Admin Console")).toBeNull();
     expect(screen.getAllByText("青枝出版").length).toBeGreaterThan(0);
   });
+
+  it("asks the shared stylesheet for the admin console background", () => {
+    const { container } = render(
+      <AdminLayout logo={null} tenant={tenant} tenantId="tenant-id">
+        <p>本文</p>
+      </AdminLayout>
+    );
+
+    expect(
+      container.querySelector<HTMLElement>(".publira-console-background")
+        ?.dataset.consoleTheme
+    ).toBe("admin");
+  });
 });
 
 describe("AdminUser", () => {

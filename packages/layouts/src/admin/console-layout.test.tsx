@@ -13,6 +13,7 @@ import {
   ConsoleHeaderLabel,
   ConsoleHeaderText,
   ConsoleLayout,
+  ConsoleLayoutSkeleton,
   ConsoleMobileNavigation,
   ConsoleMobileNavigationCloseButton,
   ConsoleMobileNavigationOpenButton,
@@ -105,7 +106,7 @@ describe("Console layout slots", () => {
 
   it("uses navigation aria labels supplied by the caller", () => {
     render(
-      <ConsoleLayout>
+      <ConsoleLayout theme="admin">
         <ConsoleMobileNavigation>
           <ConsoleMobileNavigationCloseButton ariaLabel="Close navigation" />
         </ConsoleMobileNavigation>
@@ -120,4 +121,42 @@ describe("Console layout slots", () => {
       screen.getByRole("button", { name: "Close navigation" })
     ).toBeTruthy();
   });
+});
+
+const consoleBackground = (container: HTMLElement) =>
+  container.querySelector<HTMLElement>(".publira-console-background");
+
+describe("Console background", () => {
+  it.each(["admin", "platform"] as const)(
+    "names the %s console on the background overlay",
+    (theme) => {
+      const { container } = render(
+        <ConsoleLayout theme={theme}>
+          <div />
+        </ConsoleLayout>
+      );
+
+      expect(consoleBackground(container)?.dataset.consoleTheme).toBe(theme);
+    }
+  );
+
+  it.each(["admin", "platform"] as const)(
+    "gives the %s skeleton the same background overlay as the layout",
+    (theme) => {
+      const layout = render(
+        <ConsoleLayout theme={theme}>
+          <div />
+        </ConsoleLayout>
+      );
+      const skeleton = render(<ConsoleLayoutSkeleton theme={theme} />);
+
+      const layoutBackground = consoleBackground(layout.container);
+      const skeletonBackground = consoleBackground(skeleton.container);
+
+      expect(skeletonBackground?.className).toBe(layoutBackground?.className);
+      expect(skeletonBackground?.dataset.consoleTheme).toBe(
+        layoutBackground?.dataset.consoleTheme
+      );
+    }
+  );
 });

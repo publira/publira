@@ -74,9 +74,6 @@ interface AdminLayoutTenant {
   publicId: string;
 }
 
-const adminGradient =
-  "bg-[radial-gradient(circle_at_top_left,rgba(15,124,130,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(217,111,74,0.13),transparent_30%),linear-gradient(180deg,rgba(255,253,248,0.78),rgba(246,242,233,0.98))]";
-
 export const AdminUser = async ({
   logoutAction: logout,
 }: {
@@ -178,7 +175,7 @@ export const AdminLayout = ({
   );
 
   return (
-    <ConsoleLayout gradient={adminGradient}>
+    <ConsoleLayout theme="admin">
       <Suspense fallback={null}>
         <AdminMobileNavigation tenantId={tenantId} />
       </Suspense>

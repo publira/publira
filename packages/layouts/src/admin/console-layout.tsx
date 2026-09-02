@@ -1,33 +1,30 @@
 import { Skeleton } from "@publira/ui-components/skeleton";
-import { cn } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { ConsoleLayoutClient } from "./console-layout-client";
+import { consoleBackgroundClassName } from "./console-theme";
+import type { ConsoleTheme } from "./console-theme";
 
 export {
   ConsoleMobileNavigation,
   ConsoleMobileNavigationCloseButton,
   ConsoleMobileNavigationOpenButton,
 } from "./console-layout-client";
+export type { ConsoleTheme } from "./console-theme";
 
 export interface ConsoleLayoutProps {
   children: ReactNode;
-  gradient?: string;
+  theme: ConsoleTheme;
 }
 
-export const defaultConsoleGradient =
-  "bg-[radial-gradient(circle_at_top_left,rgba(15,124,130,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(217,111,74,0.13),transparent_30%),linear-gradient(180deg,rgba(255,253,248,0.78),rgba(246,242,233,0.98))]";
-
-export const ConsoleLayoutSkeleton = ({ gradient }: { gradient?: string }) => (
+export const ConsoleLayoutSkeleton = ({ theme }: { theme: ConsoleTheme }) => (
   <div className="relative min-h-dvh bg-background text-foreground">
     <div
       aria-hidden="true"
-      className={cn(
-        "pointer-events-none absolute inset-0",
-        gradient ?? defaultConsoleGradient
-      )}
+      className={consoleBackgroundClassName}
+      data-console-theme={theme}
     />
     <div className="relative flex min-h-dvh">
       <aside
@@ -55,8 +52,8 @@ export const ConsoleLayoutSkeleton = ({ gradient }: { gradient?: string }) => (
   </div>
 );
 
-export const ConsoleLayout = ({ children, gradient }: ConsoleLayoutProps) => (
-  <ConsoleLayoutClient gradient={gradient}>{children}</ConsoleLayoutClient>
+export const ConsoleLayout = ({ children, theme }: ConsoleLayoutProps) => (
+  <ConsoleLayoutClient theme={theme}>{children}</ConsoleLayoutClient>
 );
 
 export const ConsoleLayoutMain = ({ children }: { children: ReactNode }) => (
