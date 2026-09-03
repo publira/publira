@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"net/url"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -312,6 +314,38 @@ func TestDBGetEpisodeDetailServesFreeEpisodeImages(t *testing.T) {
 	}
 	if resp.Msg.Series.PublicId != series.PublicID {
 		t.Fatalf("series public_id = %q, want %q", resp.Msg.Series.PublicId, series.PublicID)
+	}
+
+	// The reader of a free body may hold no credential at all, so the key
+	// material for its pages travels in the URL. Both pages carry the same one:
+	// it is scoped to the episode, not to the reader or the page.
+	tokens := make([]string, 0, len(resp.Msg.Images))
+	for _, image := range resp.Msg.Images {
+		parsed, parseErr := url.Parse(image.ImageUrl)
+		if parseErr != nil {
+			t.Fatalf("image url %q: %v", image.ImageUrl, parseErr)
+		}
+		token := parsed.Query().Get(auth.MediaTokenQueryParam)
+		if token == "" {
+			t.Fatalf("image url %q carries no key material", image.ImageUrl)
+		}
+		claims, verifyErr := testutil.TokenManager().Verify(token, auth.AudienceMedia)
+		if verifyErr != nil {
+			t.Fatalf("Verify free episode media token: %v", verifyErr)
+		}
+		if claims.Subject != auth.FreeEpisodeMediaSubject {
+			t.Errorf("subject = %q, want the synthetic %q", claims.Subject, auth.FreeEpisodeMediaSubject)
+		}
+		if claims.TenantID != tenant.ID.String() {
+			t.Errorf("tenant = %q, want %q", claims.TenantID, tenant.ID)
+		}
+		if claims.EpisodeID != episode.ID.String() {
+			t.Errorf("episode = %q, want %q", claims.EpisodeID, episode.ID)
+		}
+		tokens = append(tokens, token)
+	}
+	if tokens[0] != tokens[1] {
+		t.Errorf("the two pages carry different key material:\n%s\n%s", tokens[0], tokens[1])
 	}
 }
 

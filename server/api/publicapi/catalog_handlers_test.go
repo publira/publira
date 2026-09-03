@@ -949,9 +949,11 @@ func assertEpisodeImageURL(
 	}
 	token := parsed.Query().Get(auth.MediaTokenQueryParam)
 
-	if access != publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
+	// A locked episode returns no images at all, so a token on one would be a
+	// URL nobody should have been handed.
+	if access == publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
 		if token != "" {
-			t.Errorf("image url %q carries a media token, want a plain public url", imageURL)
+			t.Errorf("image url %q carries a media token, want a locked episode to return no images", imageURL)
 		}
 		return
 	}
@@ -963,8 +965,15 @@ func assertEpisodeImageURL(
 	if err != nil {
 		t.Fatalf("Verify media token: %v", err)
 	}
-	if claims.Subject != testPublicUserPublicID {
-		t.Errorf("media token subject = %q, want %q", claims.Subject, testPublicUserPublicID)
+	// A free body's reader may have no session at all, so its token names the
+	// synthetic subject instead of a reader; an entitled one names the reader
+	// whose purchase or ticket image-server re-checks.
+	wantSubject := auth.FreeEpisodeMediaSubject
+	if access == publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
+		wantSubject = testPublicUserPublicID
+	}
+	if claims.Subject != wantSubject {
+		t.Errorf("media token subject = %q, want %q", claims.Subject, wantSubject)
 	}
 	if claims.TenantID != tenantID.String() {
 		t.Errorf("media token tenant = %q, want %q", claims.TenantID, tenantID.String())
