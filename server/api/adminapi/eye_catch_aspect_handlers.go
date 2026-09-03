@@ -114,7 +114,27 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 	defer tx.Rollback() //nolint:errcheck
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
-	imageID := current.EyeCatchImageID.UUID
+	// Two uploads racing on the same ratio would both clear it and then both
+	// insert the same (image, ratio, width), and the loser fails its unique
+	// index after it has already written its objects. The lock serializes
+	// them; the eye-catch is re-read behind it as a separate statement,
+	// because READ COMMITTED froze the read above before the wait and a whole
+	// eye-catch replacement may have repointed it since.
+	if _, err := s.queriesFor(txCtx).LockSeriesByPublicIDForTenant(txCtx, dbmodels.LockSeriesByPublicIDForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: current.PublicID,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to lock series for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+	}
+	locked, err := s.queriesFor(txCtx).GetSeriesByPublicIDForTenant(txCtx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: current.PublicID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to re-read series for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+	}
+	if !locked.EyeCatchImageID.Valid {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("series has no eye catch image yet"))
+	}
+
+	imageID := locked.EyeCatchImageID.UUID
 	if _, err := s.queriesFor(txCtx).DeleteSeriesImageVariantsByType(txCtx, dbmodels.DeleteSeriesImageVariantsByTypeParams{
 		SeriesImageID: imageID,
 		VariantType:   aspect.VariantType,
@@ -245,7 +265,22 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	defer tx.Rollback() //nolint:errcheck
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
-	imageID := current.EyeCatchImageID.UUID
+	// Serialized and re-read behind the lock, like the series upload above.
+	if _, err := s.queriesFor(txCtx).LockLabelByPublicIDForTenant(txCtx, dbmodels.LockLabelByPublicIDForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: current.PublicID,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to lock label for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
+	}
+	locked, err := s.queriesFor(txCtx).GetLabelByPublicIDForTenant(txCtx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: current.PublicID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to re-read label for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
+	}
+	if !locked.EyeCatchImageID.Valid {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("label has no eye catch image yet"))
+	}
+
+	imageID := locked.EyeCatchImageID.UUID
 	if _, err := s.queriesFor(txCtx).DeleteLabelImageVariantsByType(txCtx, dbmodels.DeleteLabelImageVariantsByTypeParams{
 		LabelImageID: imageID,
 		VariantType:  aspect.VariantType,
@@ -294,12 +329,29 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	}
 
 	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "label", current.PublicID, "label_eye_catch_aspect_image_uploaded", aspect.VariantType)
+	if s.reval != nil {
+		if revalErr := s.reval.RevalidateTags(ctx, labelRevalidateTags(tenant.ID.String())); revalErr != nil {
+			s.logger.Warn("failed to request next revalidate after label eye catch aspect upload", "tenant_public_id", tenant.PublicID, "label_public_id", current.PublicID, "error", revalErr)
+		}
+	}
 
 	label, err := s.labelWithEyeCatchVariants(ctx, tenant.ID, req.Msg.PublicId)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&publiraadminv1.UploadLabelEyeCatchAspectImageResponse{Label: label}), nil
+}
+
+// labelRevalidateTags names what web-host caches a published label under.
+// A label is always reachable from the site chrome and from the label list,
+// and its detail page reads the same `:labels` tag, so a ratio replacement
+// would otherwise keep serving the previous image until the entry expires.
+func labelRevalidateTags(tenantID string) []string {
+	normalizedTenantID := strings.TrimSpace(tenantID)
+	return []string{
+		fmt.Sprintf("tenant:%s:site", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:labels", normalizedTenantID),
+	}
 }
 
 func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID uuid.UUID, publicID string) (*publirattypesv1.Label, error) {

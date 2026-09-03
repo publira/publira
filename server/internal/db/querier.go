@@ -608,6 +608,11 @@ type Querier interface {
 	// and future aggregates independent. Public joins make a target that is no
 	// longer visible disappear from this member's list without revealing why.
 	ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error)
+	// Lock the label row so concurrent eye-catch writes serialize, the way
+	// LockSeriesByPublicIDForTenant does for a series. The read of the row's
+	// current eye_catch_image_id has to be a separate statement: READ COMMITTED
+	// freezes this statement's snapshot before it waits for the lock.
+	LockLabelByPublicIDForTenant(ctx context.Context, arg LockLabelByPublicIDForTenantParams) (uuid.UUID, error)
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
 	// calls serialize. The following read of the current order (or
 	// MAX(order_index)) must be a separate statement: READ COMMITTED

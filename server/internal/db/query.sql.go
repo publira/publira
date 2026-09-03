@@ -8580,6 +8580,30 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 	return items, nil
 }
 
+const lockLabelByPublicIDForTenant = `-- name: LockLabelByPublicIDForTenant :one
+SELECT id
+FROM labels
+WHERE tenant_id = $1
+    AND public_id = $2
+FOR UPDATE
+`
+
+type LockLabelByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+// Lock the label row so concurrent eye-catch writes serialize, the way
+// LockSeriesByPublicIDForTenant does for a series. The read of the row's
+// current eye_catch_image_id has to be a separate statement: READ COMMITTED
+// freezes this statement's snapshot before it waits for the lock.
+func (q *Queries) LockLabelByPublicIDForTenant(ctx context.Context, arg LockLabelByPublicIDForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, lockLabelByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const lockSeriesByPublicIDForTenant = `-- name: LockSeriesByPublicIDForTenant :one
 SELECT id
 FROM series

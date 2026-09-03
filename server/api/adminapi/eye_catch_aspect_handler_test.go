@@ -20,6 +20,7 @@ import (
 )
 
 const (
+	lockLabelByPublicIDForTenantQuery      = "-- name: LockLabelByPublicIDForTenant :one\n"
 	createSeriesImageVariantQuery          = "-- name: CreateSeriesImageVariant :one\n"
 	deleteSeriesImageVariantsByTypeQuery   = "-- name: DeleteSeriesImageVariantsByType :execrows\n"
 	touchSeriesImageQuery                  = "-- name: TouchSeriesImage :exec\n"
@@ -92,6 +93,15 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, true, now, imageID, now, int64(0)))
 
 	mock.ExpectBegin()
+	// The row is locked and the eye-catch re-read behind it before anything
+	// is cleared, so two uploads racing on the same ratio serialize.
+	mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "SERIES001").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
+	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "SERIES001").
+		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, true, now, imageID, now, int64(0)))
 	// Only the requested ratio is cleared; the other three keep their rows.
 	mock.ExpectExec(regexp.QuoteMeta(deleteSeriesImageVariantsByTypeQuery)).
 		WithArgs(imageID, "landscape").
@@ -257,6 +267,13 @@ func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
 
 	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(lockLabelByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "LABEL001").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(labelID))
+	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "LABEL001").
+		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
+			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
 	mock.ExpectExec(regexp.QuoteMeta(deleteLabelImageVariantsByTypeQuery)).
 		WithArgs(imageID, "square").
 		WillReturnResult(sqlmock.NewResult(0, 3))
