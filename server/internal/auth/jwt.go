@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 const (
@@ -124,7 +125,7 @@ func (m *TokenManager) Issue(
 		TenantID:           strings.TrimSpace(tenantID),
 		Role:               strings.TrimSpace(role),
 		CredentialsVersion: credentialsVersion,
-	}, subjectPublicID, audience, AccessTokenTTL, now)
+	}, subjectPublicID, audience, "", AccessTokenTTL, now)
 }
 
 // IssueMediaToken creates the short-lived token that travels in an image URL
@@ -163,6 +164,10 @@ func (m *TokenManager) IssueAdminMediaToken(
 // owes a code, AudienceAdminMFAEnroll for one that owes an enrollment. It
 // carries no role, so nothing that authorizes on one can act on it, and it
 // carries the credentials version, so a password change ends it.
+//
+// Every challenge gets a `jti`. Nothing about a signed token changes when it
+// is exchanged, so a single-use challenge needs a name the server can record
+// as spent; that name is this identifier.
 func (m *TokenManager) IssueMFAChallengeToken(
 	subjectPublicID string,
 	audience string,
@@ -183,10 +188,14 @@ func (m *TokenManager) IssueMFAChallengeToken(
 	if tenantID == "" {
 		return "", time.Time{}, errors.New("tenant is required")
 	}
+	tokenID, err := uuid.NewV7()
+	if err != nil {
+		return "", time.Time{}, err
+	}
 	return m.sign(AccessTokenClaims{
 		TenantID:           tenantID,
 		CredentialsVersion: credentialsVersion,
-	}, subjectPublicID, strings.TrimSpace(audience), MFAChallengeTTL, now)
+	}, subjectPublicID, strings.TrimSpace(audience), tokenID.String(), MFAChallengeTTL, now)
 }
 
 func (m *TokenManager) issueScopedMediaToken(
@@ -217,7 +226,7 @@ func (m *TokenManager) issueScopedMediaToken(
 		TenantID:           tenantID,
 		CredentialsVersion: credentialsVersion,
 		EpisodeID:          episodeID,
-	}, subjectPublicID, audience, MediaTokenTTL, now)
+	}, subjectPublicID, audience, "", MediaTokenTTL, now)
 }
 
 // WithMediaTokenQuery hands an image URL the short-lived credential a
@@ -240,10 +249,14 @@ func WithMediaTokenQuery(imageURL string, token string) string {
 	return imageURL + separator + MediaTokenQueryParam + "=" + url.QueryEscape(token) + fragment
 }
 
+// sign builds the registered claims and returns the signed token. tokenID
+// becomes the `jti`; it is empty for every token nothing has to spend, and
+// carries the identifier an MFA challenge is claimed by.
 func (m *TokenManager) sign(
 	claims AccessTokenClaims,
 	subjectPublicID string,
 	audience string,
+	tokenID string,
 	ttl time.Duration,
 	now time.Time,
 ) (string, time.Time, error) {
@@ -252,6 +265,7 @@ func (m *TokenManager) sign(
 	}
 	expiresAt := now.Add(ttl)
 	claims.RegisteredClaims = jwt.RegisteredClaims{
+		ID:        tokenID,
 		Issuer:    JWTIssuer,
 		Subject:   subjectPublicID,
 		Audience:  jwt.ClaimStrings{audience},

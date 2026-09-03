@@ -102,3 +102,12 @@ WHERE id = $1
 -- name: DeleteUserMfaRecoveryCodesByUserID :exec
 DELETE FROM user_mfa_recovery_codes
 WHERE user_id = $1;
+
+-- name: MarkUserMfaChallengeUsed :execrows
+-- The INSERT is the claim on the challenge rather than a lookup followed by
+-- one: two requests presenting the same token both find it unspent, and only
+-- the one whose row lands may exchange it. Affecting no row is therefore a
+-- challenge that has already bought a session.
+INSERT INTO user_mfa_used_challenges (jti, tenant_id, user_id, expires_at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (jti) DO NOTHING;

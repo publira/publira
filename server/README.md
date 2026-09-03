@@ -230,7 +230,7 @@ Persistence retries, final drops, queue overflows, and shutdown drain deadlines 
 
 | Key | Value |
 | --- | --- |
-| `service.name` | A default per process (`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`). `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
+| `service.name` | A default per process (`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`). `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
 | `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 
@@ -358,7 +358,7 @@ A tenant member signing in to the admin console can hold a second factor: a TOTP
 | --- | --- |
 | Algorithm | TOTP, 30-second period, SHA-1, 6 digits, a 160-bit secret — what every mainstream authenticator app assumes when the otpauth URI omits it |
 | Acceptance window | The current step and one on either side |
-| Replay | A step is accepted once. `user_mfa_totp.last_verified_step` is what refuses a code that is still inside the window but was already spent |
+| Replay | A step is accepted once. `user_mfa_totp.last_verified_step` is what refuses a code that is still inside the window but was already spent, and `user_mfa_used_challenges` refuses a verify challenge token that already bought a session |
 | Secret at rest | Encrypted with `secretcrypto` (`PUBLIRA_SECRET_ENCRYPTION_KEYS`). `StartMfaEnrollment` is the only response the plaintext appears in |
 | Recovery codes | Ten per batch, shown once at enrollment or regeneration, stored as bcrypt hashes. Spending one leaves the row with `used_at` set |
 | Failure limit | Five refused codes lock the account for 15 minutes. The counter is per account and covers login, disabling, and regeneration alike |
@@ -369,6 +369,8 @@ A tenant member signing in to the admin console can hold a second factor: a TOTP
 `Login` does not issue an access token to an account that still owes a factor. It answers with a short-lived challenge token instead, under an audience of its own — `admin-mfa-verify` when the account has a confirmed authenticator, `admin-mfa-enroll` when it has none and the deployment requires one. Every verifier compares the audience exactly, so a challenge cannot be presented as a session, and the token that may only finish an enrollment cannot answer a verification challenge. The challenge lives five minutes and carries `users.credentials_version`, so a password change ends a pending one.
 
 `VerifyMfa` exchanges a verify challenge and a code for the access token. `ConfirmMfaEnrollment` does the same for an enroll challenge: it returns the recovery codes and the session in one response, which is what finishes a login that was stopped at enrollment.
+
+A verify challenge buys one session. Every challenge carries a `jti`, and the exchange records it in `user_mfa_used_challenges` — an `INSERT ... ON CONFLICT DO NOTHING` whose row count is the claim, so of two requests presenting the same token only one goes on. The claim is made after the code is accepted: burning the challenge on a mistyped code would send an operator back through the password, and it is the failure limit that bounds guessing. `batch purge-mfa-challenges` deletes the rows whose token has expired. An enroll challenge is presented twice by design and is not recorded; once it enables the factor, the same token is refused with `mfa is already enabled`.
 
 ### Requiring the factor
 
@@ -474,6 +476,7 @@ Each API server connects with its own dedicated PostgreSQL login user, which kee
 | batch aggregate-rankings | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch purge-content-events | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_EVENTS_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch purge-ranking-snapshots | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| batch purge-mfa-challenges | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_MFA_CHALLENGE_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch purge-orphan-images | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_ORPHAN_IMAGES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 

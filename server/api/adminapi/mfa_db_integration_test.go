@@ -328,6 +328,50 @@ func TestAdminMfaVerifyRefusesAReplayedCode(t *testing.T) {
 	}
 }
 
+// A challenge token is a signed claim, so nothing about it changes when it is
+// exchanged. The spent jti recorded in user_mfa_used_challenges is what makes
+// one login one session: the second exchange is refused even though the code
+// it presents is a good one the account has not spent.
+func TestAdminMfaVerifyRefusesAReusedChallenge(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	secret, codes := enrollMfa(t, env, tenant)
+
+	login := mfaLogin(t, env, tenant)
+	// A recovery code for the first exchange, so the TOTP step the second one
+	// presents is still unspent and the challenge is the only thing that can
+	// refuse it.
+	verified, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: login.MfaChallenge.Token,
+		Code:           codes[0],
+	}))
+	if err != nil {
+		t.Fatalf("VerifyMfa: %v", err)
+	}
+
+	_, err = env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: login.MfaChallenge.Token,
+		Code:           mfaNextCode(t, secret),
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("VerifyMfa reusing a challenge = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+
+	// The refusal is about the challenge, not the account: the session the
+	// first exchange handed out keeps working.
+	status, err := env.authClient().GetMfaStatus(context.Background(), withBearer(&publiraadminv1.AdminAuthServiceGetMfaStatusRequest{
+		Tenant: tenant.tenantContext(),
+	}, verified.Msg.AccessToken.Token))
+	if err != nil {
+		t.Fatalf("GetMfaStatus: %v", err)
+	}
+	if status.Msg.RemainingRecoveryCodes != mfa.RecoveryCodeCount-1 {
+		t.Fatalf("remaining recovery codes = %d, want %d", status.Msg.RemainingRecoveryCodes, mfa.RecoveryCodeCount-1)
+	}
+}
+
 // Two requests carrying the same code both read the step before either
 // writes, so the claim on it has to be the UPDATE rather than a comparison in
 // Go. Exactly one of them may end up with a session.

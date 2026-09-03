@@ -249,3 +249,66 @@ func TestWithMediaTokenQuery(t *testing.T) {
 		t.Errorf("query and fragment = %q, want token in the query", got)
 	}
 }
+
+func TestIssueMFAChallengeToken(t *testing.T) {
+	manager := NewTokenManager([]byte(testSecret))
+	// Verify checks exp against the wall clock, so the issue time has to be
+	// anchored to it rather than to a fixed date.
+	now := time.Now()
+
+	// The jti is what a single-use challenge is recorded under, so two
+	// challenges must never share one — including two minted for the same
+	// account in the same instant.
+	t.Run("gives every challenge an identifier of its own", func(t *testing.T) {
+		first, expiresAt, err := manager.IssueMFAChallengeToken("user-public-id", AudienceAdminMFAVerify, "tenant-id", 3, now)
+		if err != nil {
+			t.Fatalf("IssueMFAChallengeToken() error = %v", err)
+		}
+		if want := now.Add(MFAChallengeTTL); !expiresAt.Equal(want) {
+			t.Errorf("expiresAt = %v, want %v", expiresAt, want)
+		}
+		second, _, err := manager.IssueMFAChallengeToken("user-public-id", AudienceAdminMFAVerify, "tenant-id", 3, now)
+		if err != nil {
+			t.Fatalf("IssueMFAChallengeToken() error = %v", err)
+		}
+
+		firstClaims, err := manager.Verify(first, AudienceAdminMFAVerify)
+		if err != nil {
+			t.Fatalf("Verify() error = %v", err)
+		}
+		secondClaims, err := manager.Verify(second, AudienceAdminMFAVerify)
+		if err != nil {
+			t.Fatalf("Verify() error = %v", err)
+		}
+		if firstClaims.ID == "" {
+			t.Error("challenge id is empty, want an identifier")
+		}
+		if firstClaims.ID == secondClaims.ID {
+			t.Errorf("both challenges carry id %q, want two different ones", firstClaims.ID)
+		}
+		if firstClaims.CredentialsVersion != 3 {
+			t.Errorf("credentials version = %d, want 3", firstClaims.CredentialsVersion)
+		}
+	})
+
+	// Nothing spends an access token, so it has no identifier to spend it by.
+	t.Run("an access token carries no identifier", func(t *testing.T) {
+		token, _, err := manager.Issue("user-public-id", AudienceAdmin, "tenant-id", RoleTenantAdmin, 0, now)
+		if err != nil {
+			t.Fatalf("Issue() error = %v", err)
+		}
+		claims, err := manager.Verify(token, AudienceAdmin)
+		if err != nil {
+			t.Fatalf("Verify() error = %v", err)
+		}
+		if claims.ID != "" {
+			t.Errorf("access token id = %q, want empty", claims.ID)
+		}
+	})
+
+	t.Run("refuses an audience that is not a challenge", func(t *testing.T) {
+		if _, _, err := manager.IssueMFAChallengeToken("user-public-id", AudienceAdmin, "tenant-id", 0, now); err == nil {
+			t.Fatal("IssueMFAChallengeToken() error = nil, want an audience error")
+		}
+	})
+}
