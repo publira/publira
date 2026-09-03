@@ -32,20 +32,41 @@ const withHostname = (baseUrl: string, hostname: string): string => {
   return url.toString().replace(/\/$/u, "");
 };
 
-/** Visible name field on the detail page (avoids duplicate name= during RSC churn). */
+/**
+ * Visible detail-page fields. After the create form redirects here it stays
+ * mounted in the router bfcache, so both pages' inputs are in the document at
+ * once; the visibility filter keeps the hidden page out.
+ */
 const tenantNameInput = (page: Page): Locator =>
-  page.getByRole("textbox", { name: /テナント名/u }).first();
+  page
+    .getByRole("textbox", { name: /^テナント名/u })
+    .filter({ visible: true })
+    .first();
+
+const tenantDomainInput = (page: Page): Locator =>
+  page
+    .getByRole("textbox", { name: /^ドメイン/u })
+    .filter({ visible: true })
+    .first();
+
+const tenantAdminDomainInput = (page: Page): Locator =>
+  page
+    .getByRole("textbox", { name: /^管理画面ドメイン/u })
+    .filter({ visible: true })
+    .first();
 
 const tenantNameForm = (page: Page): Locator =>
   page
     .locator("form")
-    .filter({ has: page.getByRole("textbox", { name: /テナント名/u }) })
+    .filter({ has: page.getByRole("textbox", { name: /^テナント名/u }) })
+    .filter({ visible: true })
     .first();
 
 const tenantDomainForm = (page: Page): Locator =>
   page
     .locator("form")
-    .filter({ has: page.locator("#tenant_domain") })
+    .filter({ has: page.getByRole("textbox", { name: /^ドメイン/u }) })
+    .filter({ visible: true })
     .first();
 
 /**
@@ -94,8 +115,8 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
     await expect(page.getByText("稼働中").first()).toBeVisible();
     await expect(tenantNameInput(page)).toHaveValue(name);
-    await expect(page.locator("#tenant_domain")).toHaveValue(domain);
-    await expect(page.locator("#tenant_admin_domain")).toHaveValue(adminDomain);
+    await expect(tenantDomainInput(page)).toHaveValue(domain);
+    await expect(tenantAdminDomainInput(page)).toHaveValue(adminDomain);
 
     await page.goto(platformUrl("/tenants"));
     await expect(page.getByText(name)).toBeVisible();
@@ -132,18 +153,16 @@ test.describe("platform tenant operations", () => {
 
     const newDomain = `e2e-edit2-${suffix}.localhost`;
     const newAdminDomain = `admin-e2e-edit2-${suffix}.localhost`;
-    await page.locator("#tenant_domain").fill(newDomain);
-    await page.locator("#tenant_admin_domain").fill(newAdminDomain);
+    await tenantDomainInput(page).fill(newDomain);
+    await tenantAdminDomainInput(page).fill(newAdminDomain);
     await tenantDomainForm(page).getByRole("button", { name: "保存" }).click();
     await expect(formMessage(page)).toContainText("保存しました。");
 
     // Reload pins the server-side re-fetch, not just client form state.
     await page.goto(platformUrl(`/tenants/${tenantId}`));
     await expect(tenantNameInput(page)).toHaveValue(editedName);
-    await expect(page.locator("#tenant_domain")).toHaveValue(newDomain);
-    await expect(page.locator("#tenant_admin_domain")).toHaveValue(
-      newAdminDomain
-    );
+    await expect(tenantDomainInput(page)).toHaveValue(newDomain);
+    await expect(tenantAdminDomainInput(page)).toHaveValue(newAdminDomain);
   });
 
   test("domain / admin_domain reach tenant resolution in web-host and web-admin", async ({
@@ -188,8 +207,8 @@ test.describe("platform tenant operations", () => {
 
     const movedDomain = `e2e-dom2-${suffix}.localhost`;
     const movedAdminDomain = `admin-e2e-dom2-${suffix}.localhost`;
-    await page.locator("#tenant_domain").fill(movedDomain);
-    await page.locator("#tenant_admin_domain").fill(movedAdminDomain);
+    await tenantDomainInput(page).fill(movedDomain);
+    await tenantAdminDomainInput(page).fill(movedAdminDomain);
     await tenantDomainForm(page).getByRole("button", { name: "保存" }).click();
     await expect(formMessage(page)).toContainText("保存しました。");
 
@@ -325,8 +344,12 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
 
     const suffix = uniqueSuffix();
-    await page.locator("#operator_name").fill(`Denied Operator ${suffix}`);
-    await page.locator("#operator_email").fill(`denied-${suffix}@example.com`);
+    await page
+      .getByRole("textbox", { name: /^名前/u })
+      .fill(`Denied Operator ${suffix}`);
+    await page
+      .getByRole("textbox", { name: /^メールアドレス/u })
+      .fill(`denied-${suffix}@example.com`);
     // Base UI Select trigger is the only combobox on this form.
     await page.getByRole("combobox").click();
     await page.getByRole("option", { name: "オペレーター" }).click();
@@ -364,17 +387,19 @@ test.describe("platform tenant operations", () => {
 
   test("a missing required field shows an error", async ({ page }) => {
     await page.goto(platformUrl("/tenants/new"));
-    await page.locator("#tenant_name").fill(`E2E Invalid ${uniqueSuffix()}`);
+    await page
+      .getByRole("textbox", { name: /^テナント名/u })
+      .fill(`E2E Invalid ${uniqueSuffix()}`);
     // Leave domain empty — HTML required may block submit; clear via fill and
     // also try submit. If native validation blocks, the test still documents
     // the server-side path when domain is whitespace-only after bypass.
-    await page.locator("#tenant_domain").fill("   ");
+    await tenantDomainInput(page).fill("   ");
     await page.getByRole("button", { name: "作成" }).click();
 
     // Either browser constraint validation keeps us on the form, or the server
     // action returns a Japanese error. Never a successful redirect.
     await expect(page).toHaveURL(/\/tenants\/new/u);
-    const domainInput = page.locator("#tenant_domain");
+    const domainInput = tenantDomainInput(page);
     const validationMessage = await domainInput.evaluate(
       (el: HTMLInputElement) => el.validationMessage
     );

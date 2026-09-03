@@ -77,17 +77,21 @@ export const createTenantViaUi = async (
     page.getByRole("heading", { name: /テナント/u }).first()
   ).toBeVisible();
 
-  await page.locator("#tenant_name").fill(input.name);
-  await page.locator("#tenant_domain").fill(input.domain);
-  await page.locator("#tenant_default_locale").click();
+  await page.getByRole("textbox", { name: /^テナント名/u }).fill(input.name);
+  await page.getByRole("textbox", { name: /^ドメイン/u }).fill(input.domain);
+  await page.getByRole("combobox", { name: /^既定言語/u }).click();
   await page
     .getByRole("option", { name: input.defaultLocaleLabel ?? "日本語" })
     .click();
   if (input.adminDomain !== undefined) {
-    await page.locator("#tenant_admin_domain").fill(input.adminDomain);
+    await page
+      .getByRole("textbox", { name: /^管理画面ドメイン/u })
+      .fill(input.adminDomain);
   }
   if (input.initialAdminEmails !== undefined) {
-    await page.locator("#initial_admin_emails").fill(input.initialAdminEmails);
+    await page
+      .getByRole("textbox", { name: /^初期管理者メール/u })
+      .fill(input.initialAdminEmails);
   }
 
   await page.getByRole("button", { name: "作成" }).click();

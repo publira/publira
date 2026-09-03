@@ -75,7 +75,7 @@ export const PlatformTimezoneForm = ({
           <input name="default_timezone" type="hidden" value={timezone} />
 
           <Field>
-            <FieldLabel htmlFor="default_timezone">
+            <FieldLabel>
               <ClientMessage message="platform.settings.default_timezone_label" />
             </FieldLabel>
             <FieldContent>
@@ -85,7 +85,6 @@ export const PlatformTimezoneForm = ({
                   messages,
                   "platform.settings.default_timezone_empty"
                 )}
-                id="default_timezone"
                 items={items}
                 onValueChange={setTimezone}
                 placeholder={getMessage(

@@ -14,7 +14,7 @@ export const ResetPasswordForm = () => (
     <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
       <ActionForm action={requestPasswordResetAction} className="space-y-4">
         <Field>
-          <FieldLabel htmlFor="email" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="platform.auth.fields.email_label" />
             </Suspense>
@@ -22,7 +22,6 @@ export const ResetPasswordForm = () => (
           <FieldContent>
             <Input
               autoComplete="email"
-              id="email"
               name="email"
               placeholder="operator@example.com"
               required

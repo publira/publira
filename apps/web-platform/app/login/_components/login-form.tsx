@@ -22,7 +22,7 @@ export const LoginForm = ({
       {nextField}
 
       <Field>
-        <FieldLabel htmlFor="email" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="platform.auth.fields.email_label" />
           </Suspense>
@@ -30,7 +30,6 @@ export const LoginForm = ({
         <FieldContent>
           <Input
             autoComplete="email"
-            id="email"
             name="email"
             placeholder="operator@example.com"
             required
@@ -40,7 +39,7 @@ export const LoginForm = ({
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="password" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
             <Message message="platform.auth.fields.password_label" />
           </Suspense>
@@ -48,7 +47,6 @@ export const LoginForm = ({
         <FieldContent>
           <Input
             autoComplete="current-password"
-            id="password"
             name="password"
             placeholder="••••••••"
             required

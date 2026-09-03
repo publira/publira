@@ -328,7 +328,6 @@ const TenantDetailContent = async ({
                       <Input
                         key={tenant.domain}
                         defaultValue={tenant.domain}
-                        id="tenant_domain"
                         name="tenant_domain"
                         placeholder="tenant-example.example.com"
                         required
@@ -342,7 +341,6 @@ const TenantDetailContent = async ({
                       <Input
                         key={tenant.adminDomain}
                         defaultValue={tenant.adminDomain}
-                        id="tenant_admin_domain"
                         name="tenant_admin_domain"
                         placeholder={`admin.${tenant.domain}`}
                         type="text"

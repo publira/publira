@@ -20,25 +20,24 @@ import { TenantDefaultLocaleSelect } from "./tenant-default-locale-select";
 export const CreateTenantForm = () => (
   <ActionForm action={createTenantAction} className="grid gap-4 sm:max-w-2xl">
     <Field>
-      <FieldLabel htmlFor="tenant_name" required>
+      <FieldLabel required>
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="platform.tenants.name" />
         </Suspense>
       </FieldLabel>
       <FieldContent>
-        <Input id="tenant_name" name="tenant_name" required type="text" />
+        <Input name="tenant_name" required type="text" />
       </FieldContent>
     </Field>
 
     <Field>
-      <FieldLabel htmlFor="tenant_domain" required>
+      <FieldLabel required>
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
           <Message message="platform.tenants.domain" />
         </Suspense>
       </FieldLabel>
       <FieldContent>
         <Input
-          id="tenant_domain"
           name="tenant_domain"
           placeholder="tenant-example.example.com"
           required
@@ -53,14 +52,13 @@ export const CreateTenantForm = () => (
     </Field>
 
     <Field>
-      <FieldLabel htmlFor="tenant_admin_domain">
+      <FieldLabel>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
           <Message message="platform.tenants.admin_domain" />
         </Suspense>
       </FieldLabel>
       <FieldContent>
         <Input
-          id="tenant_admin_domain"
           name="tenant_admin_domain"
           placeholder="admin.tenant-example.example.com"
           type="text"
@@ -72,7 +70,7 @@ export const CreateTenantForm = () => (
     </Field>
 
     <Field>
-      <FieldLabel htmlFor="tenant_default_locale" required>
+      <FieldLabel required>
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="platform.tenants.default_locale" />
         </Suspense>
@@ -90,14 +88,13 @@ export const CreateTenantForm = () => (
     </Field>
 
     <Field>
-      <FieldLabel htmlFor="initial_admin_emails">
+      <FieldLabel>
         <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
           <Message message="platform.tenants.initial_admin_emails" />
         </Suspense>
       </FieldLabel>
       <FieldContent>
         <Input
-          id="initial_admin_emails"
           name="initial_admin_emails"
           placeholder="owner1@example.com, owner2@example.com"
           type="text"

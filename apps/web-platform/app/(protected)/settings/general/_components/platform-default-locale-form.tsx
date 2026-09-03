@@ -60,7 +60,7 @@ export const PlatformDefaultLocaleForm = async ({
           className="grid gap-4 sm:max-w-lg"
         >
           <Field>
-            <FieldLabel htmlFor="default_locale">
+            <FieldLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="platform.settings.default_locale_label" />
               </Suspense>
@@ -70,7 +70,6 @@ export const PlatformDefaultLocaleForm = async ({
                 <Select
                   defaultValue={initialDefaultLocale}
                   disabled={hasLoadError}
-                  id="default_locale"
                   items={items}
                   name="default_locale"
                   placeholder={getMessage(
