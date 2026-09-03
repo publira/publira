@@ -68,6 +68,58 @@ task setup
 
 The Dev Container bundles the `migrate` CLI (golang-migrate) and `wait4x` (HTTP readiness waits for E2E and bootstrap). Add database changes to `db/migrations/` as `.up.sql` / `.down.sql` files.
 
+## Dependency services
+
+The repository-root `compose.yaml` defines every dependency service — PostgreSQL, Valkey (Redis protocol), RustFS (S3-compatible storage), Mailpit, and Jaeger — and publishes each of them on `127.0.0.1`.
+
+```bash
+docker compose up -d
+```
+
+The Dev Container starts the same file. `dockerComposeFile` in `.devcontainer/devcontainer.json` is `["../compose.yaml", "compose.yaml"]`, and the second file is an overlay that adds the `app` container and Traefik and resets the published ports, because everything inside the container reaches these services by service name.
+
+| Service   | Host port        | Purpose                                |
+| --------- | ---------------- | -------------------------------------- |
+| `db`      | `5432`           | PostgreSQL                             |
+| `redis`   | `6379`           | Valkey (Next.js shared cache)          |
+| `rustfs`  | `9000` / `9001`  | S3 endpoint / console UI               |
+| `mailpit` | `1025` / `8025`  | SMTP intake / web UI                   |
+| `jaeger`  | `4318` / `16686` | OTLP intake (http/protobuf) / query UI |
+
+Loopback only: none of these services authenticates a caller, so they are never published on every interface.
+
+### Running `task setup` / `task dev` on the host
+
+The defaults in `server/config`, `server/cmd/*`, and `db/Taskfile.yaml` name the Compose service (`db:5432`, `redis:6379`, `http://rustfs:9000`), which resolves only inside the Compose network. Outside the Dev Container, point them at loopback instead. `turbo.json` passes `PUBLIRA_*` through, so exported values reach `task dev` as is.
+
+```bash
+export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_REDIS_URL="redis://127.0.0.1:6379"
+export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:9000"
+export PUBLIRA_S3_BUCKET="publira"
+export PUBLIRA_S3_FORCE_PATH_STYLE="true"
+export AWS_REGION="us-east-1"
+export AWS_ACCESS_KEY_ID="publira"
+export AWS_SECRET_ACCESS_KEY="publirapass"
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://127.0.0.1:4318"
+export PUBLIRA_TRACING_ENABLED="true"
+# Required, no fallback. See the two key sections below.
+export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
+export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
+```
+
+The role users and their development passwords come from `db/seeds/baseline`; `PUBLIRA_DB_URL` is the fallback for every server that has no role-specific URL. `e2e/bootstrap/scripts/lib.sh` exports the same set against its own ports and is a working reference.
+
+Two things stay Dev Container only.
+
+- **Traefik.** Its routers are Docker labels on the `app` container, so they cannot reach a process on the host. Open each app on its own port instead (`3000` / `4000` / `4100` for the three Next.js apps, `8000` for the API, `8200` for the image server).
+- **The seeded SMTP host.** `db/seeds/dev` points the platform and tenant SMTP settings at `mailpit`. Change the host to `127.0.0.1` in the console when you want to send mail from a host process.
+
+The `dev-env` profiles below are Dev Container only for the same reason: they address PostgreSQL and Valkey as `db` / `redis`.
+
 ## Per-worktree development environment profile
 
 When you work in several worktrees in parallel, pick a profile per worktree instead of sharing the default development environment. A profile separates the PostgreSQL database, the Valkey logical database, the RustFS bucket, the ports of every service, the cookie names, and the authentication and revalidation secrets. The plain `task setup` / `task dev` keep using the shared environment as before.
@@ -122,10 +174,10 @@ See `db/seeds/README.md` for the details of the seed and the fixed login credent
 
 ## Checking mail in development (Mailpit)
 
-A Mailpit container starts together with the Dev Container.
+A Mailpit container is part of the dependency stack (`compose.yaml`).
 
 - Mailpit UI: `http://localhost:8025`
-- SMTP (from inside a container): `host=mailpit`, `port=1025`
+- SMTP: `host=mailpit`, `port=1025` from inside a container; `host=127.0.0.1`, `port=1025` from the host
 
 In the local seed (`task db:setup`), the initial platform/tenant SMTP settings point at Mailpit.
 
@@ -166,18 +218,18 @@ For self-hosted and multi-instance deployments, the server-side cache of Next.js
 | `cacheHandlers` (plural) | `"use cache"` / `"use cache: remote"` |
 | `cacheHandler` (singular) | ISR, Route Handlers, `fetch`, and the `next/image` optimization results (`images.customCacheHandler: true`) |
 
-- In the Dev Container the `redis` service starts and `PUBLIRA_REDIS_URL=redis://redis:6379` is passed to the app container (it is not exposed to the host because no authentication is configured)
-- To look inside directly: `docker compose -f .devcontainer/compose.yaml exec redis redis-cli`
+- In the Dev Container the `redis` service starts and `PUBLIRA_REDIS_URL=redis://redis:6379` is passed to the app container; on the host it is `redis://127.0.0.1:6379` (loopback only, because no authentication is configured)
+- To look inside directly: `docker compose exec redis redis-cli` from the repository root
 - `redis://localhost:6379` is the library-side default that `@publira/next-cache-handlers` uses when `PUBLIRA_REDIS_URL` is unset
 - The key space is separated per app by `PUBLIRA_CACHE_APP` (for example, `web-host`)
 - Details: [packages/next-cache-handlers/README.md](packages/next-cache-handlers/README.md)
 
 ## Object storage for development (RustFS)
 
-An S3-compatible **RustFS** container also starts with the Dev Container, so the apps take the same path as in production (episode image uploads and delivery by the image-server).
+An S3-compatible **RustFS** container is part of the dependency stack (`compose.yaml`), so the apps take the same path as in production (episode image uploads and delivery by the image-server).
 
 - Console UI: `http://localhost:9001/rustfs/console/`
-- S3 endpoint (from inside a container): `http://rustfs:9000` (path-style; not exposed to the host)
+- S3 endpoint: `http://rustfs:9000` from inside a container, `http://127.0.0.1:9000` from the host (path-style)
 - Bucket: `publira`. `task setup` / `task dev` create it idempotently through `task storage:init`
 - Data is persisted in the `rustfs-data` volume
 
@@ -197,10 +249,10 @@ See [server/README.md](server/README.md) for the list of server-side environment
 
 ## Distributed tracing (Jaeger)
 
-A **Jaeger** container also starts with the Dev Container, and the Go servers (`server/cmd/*`) and the Next.js apps (`apps/web-*`) send spans over OpenTelemetry. A browser request is connected into a single trace from the Next.js root span through the SSR Connect RPC, the Go-side RPC span, and the child spans of the DB queries, so you can follow "which layer spent the time" in the UI.
+A **Jaeger** container is part of the dependency stack (`compose.yaml`), and the Go servers (`server/cmd/*`) and the Next.js apps (`apps/web-*`) send spans over OpenTelemetry. A browser request is connected into a single trace from the Next.js root span through the SSR Connect RPC, the Go-side RPC span, and the child spans of the DB queries, so you can follow "which layer spent the time" in the UI.
 
 - Jaeger UI: `http://localhost:16686`
-- OTLP intake (from inside a container): `http://jaeger:4318` (not exposed to the host)
+- OTLP intake: `http://jaeger:4318` from inside a container, `http://127.0.0.1:4318` from the host
 - Storage is in-memory, so past traces disappear when the container restarts
 
 The defaults passed to the app container live in `.devcontainer/compose.yaml`.

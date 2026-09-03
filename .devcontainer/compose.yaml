@@ -1,3 +1,14 @@
+# Dev Container overlay on the repository-root `compose.yaml`.
+#
+# `dockerComposeFile` in devcontainer.json passes both files, root first, so
+# everything here merges onto the dependency stack defined there. This file
+# owns only what the Dev Container adds: the `app` container the editor
+# attaches to, the Traefik edge in front of it, and the volumes that keep
+# agent logins and the pnpm store across rebuilds.
+#
+# Relative paths resolve against the project directory, which is the directory
+# of the *first* compose file — the repository root, not `.devcontainer/`.
+
 services:
   traefik:
     image: traefik:v3.7.12@sha256:9c2a54d87f76f5c2f5f2682c68394af92fb12c0a2686798d6462a3f84bd78eaf
@@ -33,7 +44,7 @@ services:
       - grok-config:/home/vscode/.grok
       # Reuse downloaded pnpm packages after rebuilding the container.
       - pnpm-store:/home/vscode/.local/share/pnpm/store
-      - ../..:/workspaces:cached
+      - ..:/workspaces:cached
     depends_on:
       - db
       - jaeger
@@ -142,53 +153,25 @@ services:
       - "traefik.http.routers.admin-image-server.service=admin-image-server"
       - "traefik.http.services.admin-image-server.loadbalancer.server.port=8201"
 
+  # The dependency services come from the root compose file, which publishes
+  # each of them on 127.0.0.1 for a host-side `task dev`. Inside the Dev
+  # Container everything reaches them by service name (`db:5432`,
+  # `redis:6379`, `rustfs:9000`), and the UIs a person opens are forwarded by
+  # `forwardPorts` in devcontainer.json, so nothing here needs a host port.
   db:
-    image: postgres:18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: publira
-      POSTGRES_PASSWORD: password
-      POSTGRES_USER: postgres
-    volumes:
-      - postgres-data:/var/lib/postgresql
+    ports: !reset []
 
-  # Trace collector and UI for the Go servers. All-in-one, in memory: the
-  # spans are a debugging aid for the current session, not a record worth
-  # surviving a restart.
   jaeger:
-    image: jaegertracing/jaeger:2.20.0@sha256:46a886260e04002d8f45e213fc39063fa11a50446048fdaa64786fc0840cb9f8
-    restart: unless-stopped
+    ports: !reset []
 
   mailpit:
-    image: axllent/mailpit:v1.31.0@sha256:c96991d9bef73594c246d89ca81411d4e916f03e76a7d2d72fa2ab5dd3c9ce24
-    restart: unless-stopped
+    ports: !reset []
 
-  # Shared backend for Next.js cacheHandler / cacheHandlers (multi-instance).
-  # Valkey is Redis-protocol compatible; keep service name / PUBLIRA_REDIS_URL as redis://...
   redis:
-    image: valkey/valkey:9.1.2-alpine@sha256:a174b894902bd3367e330d47cc2054367dc4917701776aaf336f41d83b65ec7a
-    restart: unless-stopped
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+    ports: !reset []
 
-  # S3-compatible local object storage (RustFS).
   rustfs:
-    image: rustfs/rustfs:1.0.0-rc.2@sha256:7d6d361c49c08d427250fb59aae5d78df83d644c3405d9ccf4b21cda0b0692d0
-    restart: unless-stopped
-    environment:
-      RUSTFS_ACCESS_KEY: publira
-      RUSTFS_SECRET_KEY: publirapass
-    volumes:
-      - rustfs-data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+    ports: !reset []
 
 volumes:
   claude-data:
@@ -197,5 +180,3 @@ volumes:
   gh-config:
   grok-config:
   pnpm-store:
-  postgres-data:
-  rustfs-data:

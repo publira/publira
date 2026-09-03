@@ -69,7 +69,7 @@ The branch ruleset requires only final aggregation job **`Summary`** (shown as `
 | `schedule` (daily at 03:00 UTC) | Only `Test / Bootstrap`. | Every target (nightly full). |
 | `workflow_dispatch` | Every job. | Select `verify` (representatives) or `full` (all targets) through `docker_mode`. |
 
-Nightly full builds find cross-service drift that filters cannot catch. Host CI does not run nightly except **Test / Bootstrap**, which monitors rarely changed paths such as `.devcontainer/**`.
+Nightly full builds find cross-service drift that filters cannot catch. Host CI does not run nightly except **Test / Bootstrap**, which monitors rarely changed paths such as `compose.yaml`.
 
 ## Path filters
 
@@ -88,8 +88,8 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
 | `Test / Mobile E2E` | mobile, E2E lifecycle scripts and page fixtures, domain proto, server, migrations/seeds, Taskfile, storage init, `scripts/setup-flutter.sh` |
 | `Test / E2E` | E2E except routing, web apps, packages, server, db, and build inputs |
-| `Test / Bootstrap` | Dev Container, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init |
-| `Test / Routing` | `.devcontainer/**`, `e2e/routing/**` |
+| `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init |
+| `Test / Routing` | `compose.yaml`, `.devcontainer/**`, `e2e/routing/**` |
 | `Build` | apps, packages, server, and build inputs |
 | `Docker` | The role mapping in [Docker CI execution strategy](../../infra/docker/README.md#docker-ci-execution-strategy) |
 

@@ -68,6 +68,58 @@ task setup
 
 Dev Container では `migrate` CLI (golang-migrate) と `wait4x`（E2E / bootstrap の HTTP readiness 待ち）を同梱しています。DB 変更は `db/migrations/` に `.up.sql` / `.down.sql` で追加してください。
 
+## 依存サービス
+
+リポジトリルートの `compose.yaml` が依存サービス一式（PostgreSQL / Valkey (Redis プロトコル) / RustFS (S3 互換ストレージ) / Mailpit / Jaeger）を定義し、それぞれを `127.0.0.1` に公開します。
+
+```bash
+docker compose up -d
+```
+
+Dev Container も同じファイルを起動します。`.devcontainer/devcontainer.json` の `dockerComposeFile` は `["../compose.yaml", "compose.yaml"]` で、2 つめは `app` コンテナと Traefik を足し、公開ポートを打ち消す overlay です。コンテナ内からはサービス名で届くため、ホストへの公開は不要だからです。
+
+| サービス  | ホストポート     | 用途                                  |
+| --------- | ---------------- | ------------------------------------- |
+| `db`      | `5432`           | PostgreSQL                            |
+| `redis`   | `6379`           | Valkey（Next.js 共有キャッシュ）      |
+| `rustfs`  | `9000` / `9001`  | S3 エンドポイント / コンソール UI     |
+| `mailpit` | `1025` / `8025`  | SMTP 受信 / Web UI                    |
+| `jaeger`  | `4318` / `16686` | OTLP 受信 (http/protobuf) / クエリ UI |
+
+公開はループバック限定です。いずれのサービスも呼び出し元を認証しないため、全インターフェースには公開しません。
+
+### ホストで `task setup` / `task dev` を動かす
+
+`server/config` / `server/cmd/*` / `db/Taskfile.yaml` の既定値は Compose のサービス名（`db:5432`、`redis:6379`、`http://rustfs:9000`）を指しており、これは Compose ネットワークの中でしか解決できません。Dev Container の外ではループバックへ向け直してください。`turbo.json` が `PUBLIRA_*` を通すので、export した値はそのまま `task dev` に届きます。
+
+```bash
+export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_REDIS_URL="redis://127.0.0.1:6379"
+export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:9000"
+export PUBLIRA_S3_BUCKET="publira"
+export PUBLIRA_S3_FORCE_PATH_STYLE="true"
+export AWS_REGION="us-east-1"
+export AWS_ACCESS_KEY_ID="publira"
+export AWS_SECRET_ACCESS_KEY="publirapass"
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://127.0.0.1:4318"
+export PUBLIRA_TRACING_ENABLED="true"
+# 必須・フォールバックなし。詳細は後述の 2 つの鍵の節を参照
+export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
+export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
+```
+
+ロールユーザーと開発用パスワードは `db/seeds/baseline` に由来します。ロール別 URL を持たないサーバーは `PUBLIRA_DB_URL` にフォールバックします。`e2e/bootstrap/scripts/lib.sh` が自前のポート向けに同じ一式を export しており、動く参照実装になっています。
+
+Dev Container 専用のままになるものが 2 つあります。
+
+- **Traefik**。ルーターは `app` コンテナに付いた Docker ラベルなので、ホスト上のプロセスには届きません。各アプリのポート（Next.js 3 つが `3000` / `4000` / `4100`、API が `8000`、image-server が `8200`）へ直接アクセスしてください。
+- **seed の SMTP ホスト**。`db/seeds/dev` は platform / tenant の SMTP 設定を `mailpit` に向けます。ホストのプロセスからメールを送るときは、コンソールでホストを `127.0.0.1` に変えてください。
+
+後述の `dev-env` プロファイルも同じ理由で Dev Container 専用です。PostgreSQL と Valkey を `db` / `redis` として指しています。
+
 ## worktree ごとの開発環境プロファイル
 
 複数の worktree を並行利用するときは、共有の既定開発環境を使わず、worktree ごとにプロファイルを選びます。プロファイルは PostgreSQL database、Valkey logical database、RustFS bucket、全サービスのポート、Cookie 名、認証／再検証 secret をまとめて分離します。既定の `task setup` / `task dev` は従来どおり共有環境を使います。
@@ -122,10 +174,10 @@ seed の詳細と固定ログイン情報は `db/seeds/README.md` を参照し�
 
 ## 開発用メール確認 (Mailpit)
 
-Dev Container 起動時に Mailpit コンテナも起動します。
+Mailpit コンテナは依存サービス（`compose.yaml`）の一員です。
 
 - Mailpit UI: `http://localhost:8025`
-- SMTP (コンテナ内から): `host=mailpit`, `port=1025`
+- SMTP: コンテナ内からは `host=mailpit`, `port=1025`、ホストからは `host=127.0.0.1`, `port=1025`
 
 ローカル seed (`task db:setup`) では platform/tenant SMTP の初期値が Mailpit 向けになります。
 
@@ -166,18 +218,18 @@ self-host / multi-instance 向けに、Next.js のサーバー側キャッシュ
 | `cacheHandlers`（複数形） | `"use cache"` / `"use cache: remote"` |
 | `cacheHandler`（単数） | ISR・Route Handler・`fetch`、および `next/image` 最適化結果（`images.customCacheHandler: true`） |
 
-- Dev Container では `redis` サービスが起動し、app コンテナに `PUBLIRA_REDIS_URL=redis://redis:6379` が渡ります（認証を設定していないため、ホストには公開しません）
-- 中身を直接見たいときは `docker compose -f .devcontainer/compose.yaml exec redis redis-cli`
+- Dev Container では `redis` サービスが起動し、app コンテナに `PUBLIRA_REDIS_URL=redis://redis:6379` が渡ります。ホストからは `redis://127.0.0.1:6379` です（認証を設定していないため、公開はループバック限定です）
+- 中身を直接見たいときはリポジトリルートで `docker compose exec redis redis-cli`
 - `redis://localhost:6379` は `@publira/next-cache-handlers` が `PUBLIRA_REDIS_URL` 未設定時に使うライブラリ側の既定値です
 - キー空間は `PUBLIRA_CACHE_APP`（例: `web-host`）でアプリ別に分離
 - 詳細: [packages/next-cache-handlers/README.md](packages/next-cache-handlers/README.md)
 
 ## 開発用オブジェクトストレージ (RustFS)
 
-Dev Container 起動時に S3 互換の **RustFS** コンテナも起動し、アプリは本番と同じ経路で動きます（エピソード画像のアップロードと image-server の配信）。
+S3 互換の **RustFS** コンテナは依存サービス（`compose.yaml`）の一員で、アプリは本番と同じ経路で動きます（エピソード画像のアップロードと image-server の配信）。
 
 - コンソール UI: `http://localhost:9001/rustfs/console/`
-- S3 エンドポイント（コンテナ内から）: `http://rustfs:9000`（path-style。ホストには公開しません）
+- S3 エンドポイント: コンテナ内からは `http://rustfs:9000`、ホストからは `http://127.0.0.1:9000`（path-style）
 - バケット: `publira`。`task setup` / `task dev` が `task storage:init` で冪等に作成します
 - データは `rustfs-data` volume に永続します
 
@@ -197,10 +249,10 @@ app コンテナに渡す既定値は `.devcontainer/compose.yaml` にありま�
 
 ## 分散トレーシング (Jaeger)
 
-Dev Container 起動時に **Jaeger** コンテナも起動し、Go サーバー群 (`server/cmd/*`) と Next.js アプリ (`apps/web-*`) が OpenTelemetry で span を送ります。ブラウザのリクエストが Next.js の root span から SSR の Connect RPC、Go 側の RPC span、DB クエリの子 span まで 1 本のトレースに繋がるので、「どの層で時間を使ったか」を UI 上で追えます。
+**Jaeger** コンテナは依存サービス（`compose.yaml`）の一員で、Go サーバー群 (`server/cmd/*`) と Next.js アプリ (`apps/web-*`) が OpenTelemetry で span を送ります。ブラウザのリクエストが Next.js の root span から SSR の Connect RPC、Go 側の RPC span、DB クエリの子 span まで 1 本のトレースに繋がるので、「どの層で時間を使ったか」を UI 上で追えます。
 
 - Jaeger UI: `http://localhost:16686`
-- OTLP 受信 (コンテナ内から): `http://jaeger:4318`（ホストには公開しません）
+- OTLP 受信: コンテナ内からは `http://jaeger:4318`、ホストからは `http://127.0.0.1:4318`
 - 保存はインメモリなので、コンテナを再起動すると過去のトレースは消えます
 
 app コンテナに渡す既定値は `.devcontainer/compose.yaml` にあります。

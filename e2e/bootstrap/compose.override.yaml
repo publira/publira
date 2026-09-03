@@ -1,21 +1,23 @@
-# Overlay on ../../.devcontainer/compose.yaml for the bootstrap check (#514).
+# Overlay on the repository-root ../../compose.yaml for the bootstrap check (#514).
 #
-# The check must exercise the *real* Dev Container service definitions (image,
+# The check must exercise the *real* dependency-service definitions (image,
 # volume mount) because that is where the regression it guards against happened
-# (#511). Only the two data stores are started; `app` / `traefik` / `mailpit`
-# stay down and `task dev` runs on the host.
+# (#511). Only the three data stores are started; `mailpit` / `jaeger` stay down
+# and `task dev` runs on the host.
 #
-# This file adds the two things a host-side check needs:
+# This file changes the two things a host-side check needs:
 #   - published ports, offset from e2e/compose.yaml (5433 / 6380 / 9003) so a
-#     bootstrap run never collides with a Playwright E2E stack
+#     bootstrap run never collides with a Playwright E2E stack. `!override`,
+#     because the default merge appends to the base file's ports and would
+#     publish the standard 5432 / 6379 / 9000 alongside them
 #   - a `db` healthcheck, so `compose up --wait` actually waits for Postgres
 #
-# Relative paths in the base file resolve against `.devcontainer/` (the first
+# Relative paths in the base file resolve against the repository root (the first
 # `-f` wins), so keep this file free of relative paths.
 
 services:
   db:
-    ports:
+    ports: !override
       - "127.0.0.1:${BOOTSTRAP_POSTGRES_PORT:-5434}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d publira"]
@@ -25,9 +27,9 @@ services:
       start_period: 5s
 
   redis:
-    ports:
+    ports: !override
       - "127.0.0.1:${BOOTSTRAP_REDIS_PORT:-6381}:6379"
 
   rustfs:
-    ports:
+    ports: !override
       - "127.0.0.1:${BOOTSTRAP_RUSTFS_PORT:-9002}:9000"

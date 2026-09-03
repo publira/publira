@@ -1,6 +1,6 @@
 {
   "name": "Publira Dev",
-  "dockerComposeFile": "compose.yaml",
+  "dockerComposeFile": ["../compose.yaml", "compose.yaml"],
   "service": "app",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {

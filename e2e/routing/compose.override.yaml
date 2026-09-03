@@ -1,13 +1,16 @@
-# Overlay on ../../.devcontainer/compose.yaml for the Traefik routing check (#55).
+# Overlay on ../../compose.yaml + ../../.devcontainer/compose.yaml for the
+# Traefik routing check (#55).
 #
 # The check must exercise the *real* Docker labels on `app` (routers, priorities,
 # strip-prefix, host regexes). Only the process behind those ports is replaced:
 # a small echo server answers on 3000 / 4000 / 4100 / 8000 / 8200 / 8201 so a
 # probe can tell which backend Traefik chose and which path that backend saw.
 #
-# `db` / `redis` / `mailpit` stay down. Relative paths in the base file resolve
-# against `.devcontainer/` (the first `-f` wins), so this file uses the
-# absolute `ROUTING_ECHO_PY` exported by scripts/lib.sh.
+# `db` / `redis` / `mailpit` stay down. The Dev Container file is itself an
+# overlay, so the root compose file has to come first for the project to be
+# valid at all. Relative paths in the base files resolve against the repository
+# root (the first `-f` wins), so this file uses the absolute `ROUTING_ECHO_PY`
+# exported by scripts/lib.sh.
 #
 # Published ports are offset from the Dev Container forwards (`traefik:3080`
 # / `traefik:8080`) so a local run never collides with the live stack.

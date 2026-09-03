@@ -1,0 +1,89 @@
+# Dependency services for local development: PostgreSQL, Valkey (Redis
+# protocol), RustFS (S3), Mailpit, and Jaeger.
+#
+# `docker compose up -d` from the repository root brings the whole stack up and
+# publishes every port on 127.0.0.1, so `task dev` also works for a developer
+# who does not use the Dev Container.
+#
+# The Dev Container layers `.devcontainer/compose.yaml` on top of this file
+# (`dockerComposeFile` in devcontainer.json). That overlay adds `app` and
+# `traefik` and resets the published ports below, because a container reaches
+# these services by service name.
+#
+# Loopback only, like `e2e/compose.yaml`: none of these services authenticates
+# a caller, so a bare `<port>:<port>` would hand the whole dev stack to anyone
+# on the same network.
+#
+# Deliberately no `name:`. A merged `name` outranks every other source, so it
+# would collapse the per-worktree project names (derived from the directory of
+# the first compose file) into a single shared project.
+
+services:
+  db:
+    image: postgres:18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: publira
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+  # Trace collector and UI for the Go servers. All-in-one, in memory: the
+  # spans are a debugging aid for the current session, not a record worth
+  # surviving a restart.
+  jaeger:
+    image: jaegertracing/jaeger:2.20.0@sha256:46a886260e04002d8f45e213fc39063fa11a50446048fdaa64786fc0840cb9f8
+    restart: unless-stopped
+    ports:
+      # OTLP intake (http/protobuf, the protocol the SDKs are configured for)
+      # and the query UI.
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:16686:16686"
+
+  mailpit:
+    image: axllent/mailpit:v1.31.0@sha256:c96991d9bef73594c246d89ca81411d4e916f03e76a7d2d72fa2ab5dd3c9ce24
+    restart: unless-stopped
+    ports:
+      # SMTP intake and the web UI.
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+  # Shared backend for Next.js cacheHandler / cacheHandlers (multi-instance).
+  # Valkey is Redis-protocol compatible; keep service name / PUBLIRA_REDIS_URL as redis://...
+  redis:
+    image: valkey/valkey:9.1.2-alpine@sha256:a174b894902bd3367e330d47cc2054367dc4917701776aaf336f41d83b65ec7a
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # S3-compatible local object storage (RustFS).
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.2@sha256:7d6d361c49c08d427250fb59aae5d78df83d644c3405d9ccf4b21cda0b0692d0
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: publira
+      RUSTFS_SECRET_KEY: publirapass
+    ports:
+      # S3 endpoint and the console UI.
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - rustfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres-data:
+  rustfs-data:

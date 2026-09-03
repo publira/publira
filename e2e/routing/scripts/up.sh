@@ -23,7 +23,7 @@ if [[ ! -f "${ROUTING_ECHO_PY}" ]]; then
   routing_fail "echo server missing: ${ROUTING_ECHO_PY}"
 fi
 
-routing_log "starting traefik + echo app from .devcontainer/compose.yaml"
+routing_log "starting traefik + echo app from .devcontainer/compose.yaml labels"
 # --wait is on `app` (healthcheck). Traefik has no healthcheck; routers are
 # polled separately once Docker has advertised the labels.
 compose up -d --wait --wait-timeout 60 app traefik

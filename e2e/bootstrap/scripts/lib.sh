@@ -14,7 +14,7 @@ REPO_ROOT="$(cd "${BOOTSTRAP_DIR}/../.." && pwd)"
 
 # Dedicated project name: a run never touches the Dev Container stack.
 export COMPOSE_PROJECT_NAME="${BOOTSTRAP_PROJECT_NAME:-publira-bootstrap}"
-DEVCONTAINER_COMPOSE_FILE="${REPO_ROOT}/.devcontainer/compose.yaml"
+ROOT_COMPOSE_FILE="${REPO_ROOT}/compose.yaml"
 BOOTSTRAP_COMPOSE_FILE="${BOOTSTRAP_DIR}/compose.override.yaml"
 
 # What `db` is expected to keep its data on. PostgreSQL 18 moved the data
@@ -81,7 +81,7 @@ bootstrap_fail() {
 
 compose() {
   docker compose \
-    -f "${DEVCONTAINER_COMPOSE_FILE}" \
+    -f "${ROOT_COMPOSE_FILE}" \
     -f "${BOOTSTRAP_COMPOSE_FILE}" \
     -p "${COMPOSE_PROJECT_NAME}" \
     "$@"
