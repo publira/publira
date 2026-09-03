@@ -58,6 +58,11 @@ var subcommands = []subcommand{
 		run:     runPurgeRankingSnapshots,
 	},
 	{
+		name:    "purge-mfa-challenges",
+		summary: "Delete the spent admin MFA challenges whose tokens have expired",
+		run:     runPurgeMfaChallenges,
+	},
+	{
 		name:    "purge-orphan-images",
 		summary: "Delete the image rows and storage objects nothing references",
 		run:     runPurgeOrphanImages,

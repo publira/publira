@@ -7,7 +7,7 @@ task server:build
 ./server/bin/batch aggregate-content-stats
 ```
 
-Without an argument, or with a name that is not one of the eight below, the binary prints its usage to stderr and exits non-zero.
+Without an argument, or with a name that is not one of the nine below, the binary prints its usage to stderr and exits non-zero.
 
 | Subcommand | Lifetime | What it does |
 | --- | --- | --- |
@@ -17,6 +17,7 @@ Without an argument, or with a name that is not one of the eight below, the bina
 | `aggregate-rankings` | One-shot | Rebuilds the daily and weekly `content_ranking_snapshots` |
 | `purge-content-events` | One-shot | Deletes `content_events` rows past their retention window |
 | `purge-ranking-snapshots` | One-shot | Deletes `content_ranking_snapshots` rows past their retention window |
+| `purge-mfa-challenges` | One-shot | Deletes the spent admin MFA challenges whose tokens have expired |
 | `purge-orphan-images` | One-shot | Deletes the image rows and storage objects nothing references |
 | `build-recommend-features` | One-shot | Rebuilds the daily user and item recommend feature snapshots |
 
@@ -266,6 +267,35 @@ The structured log records both cutoffs and retentions, the chunk size, the rows
 Every index on this table leads with `tenant_id`, so nothing indexes a scan for expired periods across every tenant, and each chunk also re-derives the newest period per `(tenant_id, ranking_key, entity_type)` — a grouping the leading columns of `idx_content_ranking_snapshots_tenant_key_computed` can answer. Both are sequential-scan-sized work on a table that retention itself keeps to roughly a thousand rows per tenant, and every write to it goes through the daily `aggregate-rankings` run, so an index for the purge would cost more on that path than it saves here. Judge one run from the elapsed time in its completion log; a purge that stops fitting the cron interval is the trigger to add one.
 
 The first run against a table that has accumulated since before this batch existed deletes a backlog rather than a day, so it takes many chunks. `PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true` reports how large that backlog is before anything is deleted.
+
+## purge-mfa-challenges
+
+Deletes `user_mfa_used_challenges` rows whose challenge token has expired, across every tenant, in chunked `DELETE`s.
+
+`VerifyMfa` exchanges an MFA challenge token for a session and records the token's `jti` in that table, which is what refuses the second exchange of the same token. A row therefore stops meaning anything once the token it names expires — five minutes after login — and this batch is what takes it away. Nothing depends on a row surviving: the account's own MFA state lives in `user_mfa_totp` and `user_mfa_recovery_codes`.
+
+There is no retention setting. The cutoff is the run's UTC timestamp, compared against the row's own `expires_at` exclusively (`expires_at < cutoff`), so a run only ever removes rows that can no longer refuse anything. Deleting is idempotent, and a run that is skipped for a week costs nothing but the rows it leaves lying around.
+
+Expired rows are taken oldest first with a `LIMIT`, one chunk per transaction. Because each chunk commits on its own, an interrupted run keeps the work it finished and the next run picks up where it stopped.
+
+The role needs `BYPASSRLS` (or superuser). For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
+
+```bash
+eval "$(task --silent dev-env:env)"
+PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-mfa-challenges
+```
+
+Environment variables:
+
+- `PUBLIRA_MFA_CHALLENGE_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_MFA_CHALLENGE_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `10000`.
+- `PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
+
+The structured log records the cutoff, the chunk size, the rows deleted, the chunk count, and the elapsed time.
+
+### Query plan
+
+Chunk selection uses `idx_user_mfa_used_challenges_expires_at`, a btree on `expires_at` alone, so a scan that spans every tenant reaches the oldest rows without reading the table. The table itself only ever holds the logins of the last few minutes plus whatever a missed run left behind. On small data sets PostgreSQL may pick a sequential scan anyway, so add `SET enable_seqscan = off` when checking index eligibility with `EXPLAIN`.
 
 ## purge-orphan-images
 

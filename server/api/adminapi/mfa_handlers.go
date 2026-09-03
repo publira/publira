@@ -57,11 +57,15 @@ func mfaNotEnabledError() error {
 // mfaActor is the account an MFA RPC acts for, together with how it proved
 // who it is. FromChallenge marks the token a password alone earned, which is
 // the only case where finishing an enrollment also finishes the login.
+// ChallengeID and ChallengeExpiresAt name that token, so an exchange can
+// record it as spent; both are zero for an actor identified by a session.
 type mfaActor struct {
-	Tenant        dbmodels.Tenant
-	User          dbmodels.User
-	Role          string
-	FromChallenge bool
+	Tenant             dbmodels.Tenant
+	User               dbmodels.User
+	Role               string
+	FromChallenge      bool
+	ChallengeID        uuid.UUID
+	ChallengeExpiresAt time.Time
 }
 
 // mfaRequiredForRole reports whether this deployment makes the second factor
@@ -122,6 +126,10 @@ func (s *adminServer) mfaChallengeFor(
 // every check a session does apart from the audience: the account still has
 // to be active and still hold the credentials version the token was signed
 // with, so a suspension or a password change ends a pending challenge.
+//
+// A challenge without a usable `jti` or expiry is refused outright: those are
+// what a single exchange is recorded under, and a token that cannot be
+// recorded cannot be limited to one.
 func (s *adminServer) actorFromChallenge(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
@@ -140,6 +148,13 @@ func (s *adminServer) actorFromChallenge(
 		return mfaActor{}, invalidSessionError()
 	}
 	if claims.TenantID != tenant.ID.String() {
+		return mfaActor{}, invalidSessionError()
+	}
+	challengeID, err := uuid.Parse(strings.TrimSpace(claims.ID))
+	if err != nil {
+		return mfaActor{}, invalidSessionError()
+	}
+	if claims.ExpiresAt == nil {
 		return mfaActor{}, invalidSessionError()
 	}
 	userRef, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
@@ -166,7 +181,14 @@ func (s *adminServer) actorFromChallenge(
 	if err != nil {
 		return mfaActor{}, err
 	}
-	return mfaActor{Tenant: tenant, User: user, Role: role, FromChallenge: true}, nil
+	return mfaActor{
+		Tenant:             tenant,
+		User:               user,
+		Role:               role,
+		FromChallenge:      true,
+		ChallengeID:        challengeID,
+		ChallengeExpiresAt: claims.ExpiresAt.Time,
+	}, nil
 }
 
 // mfaActorFor identifies the account an enrollment RPC is for. A signed-in
@@ -523,6 +545,32 @@ func (s *adminServer) enableMfa(ctx context.Context, actor mfaActor) ([]string, 
 	return codes, nil
 }
 
+// spendMfaChallenge claims the challenge this exchange is about, so the token
+// buys one session and not one per attempt inside its five minutes. The
+// INSERT is the claim rather than a read followed by one: two requests
+// presenting the same token both find it unspent, and only the one whose row
+// lands may go on.
+//
+// It runs after the code is accepted, not before: burning the challenge on a
+// mistyped code would send an operator back through the password for a typo,
+// and it is the failure counter, not the challenge, that bounds guessing.
+//
+// A false claimed and an error are different answers: the first is a token
+// that already bought a session, the second is a database that could not say.
+// Only the first is a replay, and the audit trail has to tell them apart.
+func (s *adminServer) spendMfaChallenge(ctx context.Context, actor mfaActor) (claimed bool, err error) {
+	rows, err := s.queriesFor(ctx).MarkUserMfaChallengeUsed(ctx, dbmodels.MarkUserMfaChallengeUsedParams{
+		Jti:       actor.ChallengeID,
+		TenantID:  actor.Tenant.ID,
+		UserID:    actor.User.ID,
+		ExpiresAt: actor.ChallengeExpiresAt,
+	})
+	if err != nil {
+		return false, s.internalDBError(ctx, "failed to mark mfa challenge used", err, "user_id", actor.User.ID.String())
+	}
+	return rows == 1, nil
+}
+
 // issueAdminSession finishes a login the second factor has now settled.
 func (s *adminServer) issueAdminSession(ctx context.Context, actor mfaActor) (*publirattypesv1.User, *publirattypesv1.AccessToken, error) {
 	if s.tokens == nil {
@@ -559,6 +607,18 @@ func (s *adminServer) VerifyMfa(
 		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaVerified, auditlog.OutcomeFailure, outcome.Reason)
 		auth.AuditEvent(req.Header(), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, outcome.Reason)
 		return nil, err
+	}
+
+	claimed, err := s.spendMfaChallenge(ctx, actor)
+	if err != nil {
+		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_claim_failed")
+		auth.AuditEvent(req.Header(), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_claim_failed")
+		return nil, err
+	}
+	if !claimed {
+		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_spent")
+		auth.AuditEvent(req.Header(), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_spent")
+		return nil, invalidSessionError()
 	}
 
 	user, accessToken, err := s.issueAdminSession(ctx, actor)

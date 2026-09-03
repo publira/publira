@@ -161,6 +161,36 @@ func (q *Queries) ListUnusedUserMfaRecoveryCodes(ctx context.Context, userID uui
 	return items, nil
 }
 
+const markUserMfaChallengeUsed = `-- name: MarkUserMfaChallengeUsed :execrows
+INSERT INTO user_mfa_used_challenges (jti, tenant_id, user_id, expires_at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (jti) DO NOTHING
+`
+
+type MarkUserMfaChallengeUsedParams struct {
+	Jti       uuid.UUID `json:"jti"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// The INSERT is the claim on the challenge rather than a lookup followed by
+// one: two requests presenting the same token both find it unspent, and only
+// the one whose row lands may exchange it. Affecting no row is therefore a
+// challenge that has already bought a session.
+func (q *Queries) MarkUserMfaChallengeUsed(ctx context.Context, arg MarkUserMfaChallengeUsedParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, markUserMfaChallengeUsed,
+		arg.Jti,
+		arg.TenantID,
+		arg.UserID,
+		arg.ExpiresAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const markUserMfaRecoveryCodeUsed = `-- name: MarkUserMfaRecoveryCodeUsed :execrows
 UPDATE user_mfa_recovery_codes
 SET used_at = now()

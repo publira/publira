@@ -11,6 +11,7 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/mfa"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -325,6 +326,59 @@ func TestAdminMfaVerifyRefusesAReplayedCode(t *testing.T) {
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("VerifyMfa replaying a code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
+// A challenge token is a signed claim, so nothing about it changes when it is
+// exchanged. The spent jti recorded in user_mfa_used_challenges is what makes
+// one login one session: the second exchange is refused even though the code
+// it presents is a good one the account has not spent.
+func TestAdminMfaVerifyRefusesAReusedChallenge(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	secret, codes := enrollMfa(t, env, tenant)
+
+	login := mfaLogin(t, env, tenant)
+	// A recovery code for the first exchange, so the TOTP step the second one
+	// presents is still unspent and the challenge is the only thing that can
+	// refuse it.
+	verified, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: login.MfaChallenge.Token,
+		Code:           codes[0],
+	}))
+	if err != nil {
+		t.Fatalf("VerifyMfa: %v", err)
+	}
+
+	_, err = env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: login.MfaChallenge.Token,
+		Code:           mfaNextCode(t, secret),
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("VerifyMfa reusing a challenge = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+
+	// The audit trail says a spent challenge, not a database that could not
+	// answer — the two reach the client as the same error and are told apart
+	// only here.
+	if got := env.countRows(t,
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND actor_user_id = $2 AND action = $3 AND outcome = $4 AND reason = $5",
+		tenant.Tenant.ID, tenant.User.ID, auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_spent"); got != 1 {
+		t.Fatalf("audit rows for a spent challenge = %d, want 1", got)
+	}
+
+	// The refusal is about the challenge, not the account: the session the
+	// first exchange handed out keeps working.
+	status, err := env.authClient().GetMfaStatus(context.Background(), withBearer(&publiraadminv1.AdminAuthServiceGetMfaStatusRequest{
+		Tenant: tenant.tenantContext(),
+	}, verified.Msg.AccessToken.Token))
+	if err != nil {
+		t.Fatalf("GetMfaStatus: %v", err)
+	}
+	if status.Msg.RemainingRecoveryCodes != mfa.RecoveryCodeCount-1 {
+		t.Fatalf("remaining recovery codes = %d, want %d", status.Msg.RemainingRecoveryCodes, mfa.RecoveryCodeCount-1)
 	}
 }
 

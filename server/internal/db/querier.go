@@ -653,6 +653,11 @@ type Querier interface {
 	MarkUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailVerificationTokenUsed(ctx context.Context, id uuid.UUID) error
+	// The INSERT is the claim on the challenge rather than a lookup followed by
+	// one: two requests presenting the same token both find it unspent, and only
+	// the one whose row lands may exchange it. Affecting no row is therefore a
+	// challenge that has already bought a session.
+	MarkUserMfaChallengeUsed(ctx context.Context, arg MarkUserMfaChallengeUsedParams) (int64, error)
 	MarkUserMfaRecoveryCodeUsed(ctx context.Context, id uuid.UUID) (int64, error)
 	// The step predicate is the replay check, not a repeat of one already made in
 	// Go: two requests carrying the same code can both read the old step before

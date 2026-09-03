@@ -640,6 +640,14 @@ type UserMfaTotp struct {
 	UpdatedAt        time.Time     `json:"updated_at"`
 }
 
+type UserMfaUsedChallenge struct {
+	Jti       uuid.UUID `json:"jti"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+	UsedAt    time.Time `json:"used_at"`
+}
+
 type UserNotificationSetting struct {
 	UserID                    uuid.UUID `json:"user_id"`
 	EmailNotificationsEnabled bool      `json:"email_notifications_enabled"`
