@@ -636,6 +636,20 @@ func (s *adminServer) GetLabel(
 	return connect.NewResponse(&publiraadminv1.GetLabelResponse{Label: protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, variants)}), nil
 }
 
+// creatorRevalidateTags names what web-host caches a creator under. The author
+// list and the author detail page read it under `:authors`, and so do the
+// series lists that print creator names on their cards; the series detail page
+// prints them too and is only reachable under `:series:detail`, so a rename
+// that stopped at `:authors` would leave the previous name on that page until
+// the entry expired on its own.
+func creatorRevalidateTags(tenantID string) []string {
+	normalizedTenantID := strings.TrimSpace(tenantID)
+	return []string{
+		fmt.Sprintf("tenant:%s:authors", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantID),
+	}
+}
+
 func (s *adminServer) CreateCreator(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateCreatorRequest],
@@ -700,6 +714,11 @@ func (s *adminServer) CreateCreator(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
+	}
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, creatorRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after creator create", "tenant_public_id", tenant.PublicID, "creator_public_id", created.PublicID, "error", err)
+		}
 	}
 	return connect.NewResponse(&publiraadminv1.CreateCreatorResponse{Creator: protomapper.CreatorFromRow(
 		created.PublicID,
@@ -775,6 +794,11 @@ func (s *adminServer) UpdateCreator(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
+	}
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, creatorRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after creator update", "tenant_public_id", tenant.PublicID, "creator_public_id", updated.PublicID, "error", err)
+		}
 	}
 	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: protomapper.CreatorFromRow(
 		updated.PublicID,
