@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -52,6 +54,32 @@ describe("theme-css-variables", () => {
     expect(css).toContain("--publira-color-primary:#112233");
     expect(css).toContain(
       `--publira-color-background:${DEFAULT_TENANT_THEME_COLORS.backgroundColor}`
+    );
+  });
+});
+
+describe("the fallbacks in @publira/brand's theme.css", () => {
+  // That package is a stylesheet with no build or test of its own, so the
+  // agreement between its `var()` fallbacks and the defaults declared here is
+  // asserted from this side. The path is relative because nothing in this
+  // package imports that CSS at runtime.
+  const themeCss = readFileSync(
+    new URL("../../brand/theme.css", import.meta.url),
+    "utf-8"
+  );
+
+  it("name the same colors as DEFAULT_TENANT_THEME_COLORS", () => {
+    const pattern =
+      /var\(\s*(?<token>--publira-color-[a-z-]+)\s*,\s*(?<color>#[0-9a-f]{6})\s*\)/gu;
+    const fallbacks = Object.fromEntries(
+      [...themeCss.matchAll(pattern)].map((match) => [
+        match.groups?.token,
+        match.groups?.color,
+      ])
+    );
+
+    expect(fallbacks).toEqual(
+      toPubliraThemeCssVariables(DEFAULT_TENANT_THEME_COLORS)
     );
   });
 });

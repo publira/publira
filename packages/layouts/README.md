@@ -4,7 +4,7 @@ The package that provides the layout components reused across several web apps.
 
 ## What it provides
 
-- `SiteLayout`
+- `SiteLayout` and its parts — `SiteLayoutHeader`, `SiteLayoutBrand`, `SiteLayoutMain`, `SiteLayoutFooter`, `SiteLayoutFooterContent`, `SiteLayoutFooterNote`
 - `styles.css`
 
 ## Usage

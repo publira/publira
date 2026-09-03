@@ -4,7 +4,7 @@ The package that provides the SVG icon components shared across the frontend. It
 
 ## What it provides
 
-`BellIcon` / `CheckIcon` / `ChevronDownIcon` / `ChevronLeftIcon` / `ChevronRightIcon` / `CloseIcon` / `CollectionIcon` / `DashboardIcon` / `ImageIcon` / `LogoutIcon` / `MaximizeIcon` / `MenuIcon` / `MinimizeIcon` / `SettingsIcon` / `UserIcon`, plus the `IconProps` props type.
+One component per `src/*-icon.tsx`, exported both from the barrel and from a subpath of the same name, plus the `IconProps` props type.
 
 `IconProps` is exactly `SVGProps<SVGSVGElement>`, and every component passes the props it receives straight through to the wrapped icon. Size, color, and `aria-*` are the caller's decision.
 
@@ -57,7 +57,7 @@ Wrap an icon that lucide already has. It takes five changes, and copying an exis
    }
    ```
 
-Forgetting either 4 or 5 breaks only the subpath import, which a barrel import will not reveal. Run `pnpm preflight` at the repository root once you are done.
+`src/package-entries.test.ts` fails when the barrel, the build entries, and the `exports` map stop naming the same icons. Run `pnpm preflight` at the repository root once you are done.
 
 ## How hand-written SVG is kept out
 

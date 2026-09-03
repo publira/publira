@@ -25,5 +25,4 @@ The packages shared across the Node.js side of the repository.
 - `layouts/` and `ui-components/` put staying consistent with Base UI and the brand tokens first
 - A change to `tsconfig/` reaches every app, so check the impact across them
 - `ui-components/` favors reusable parts that assume a per-tenant theme
-- Every icon comes from `@publira/icons`: `icons/` is the only package allowed to import `lucide-react` directly, and no app or package hand-writes `<svg>` in JSX
 - `utils/` holds only general-purpose code with no dependency on a specific app

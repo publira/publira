@@ -26,4 +26,3 @@ For a Next.js app:
 ## Notes
 
 - A configuration change reaches every package, so type-check everything it affects.
-- The `lib` in `base.json` includes TypeScript 6.0's `esnext.temporal` (for the `Temporal` types; the runtime polyfill is imported as `temporal-polyfill/global` from each app's `instrumentation` and from the vitest setup).

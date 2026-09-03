@@ -19,8 +19,11 @@ export const Skeleton = ({ className, ...props }: DivProps) => (
 export type SkeletonLineProps = ComponentPropsWithoutRef<"span">;
 
 /**
- * 見出しやボタンなど、行内フローの中に置くためのスケルトン。
- * ブロック要素の `Skeleton` を差し込むと行が崩れる場所で使う。
+ * The skeleton for a placeholder that sits in an inline flow — inside a
+ * heading, or among a row of buttons.
+ *
+ * {@link Skeleton} is a `<div>`, so dropping it into such a place breaks the
+ * line it lands in. This one is a `<span>` and does not.
  */
 export const SkeletonLine = ({ className, ...props }: SkeletonLineProps) => (
   <span

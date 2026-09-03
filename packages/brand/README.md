@@ -16,6 +16,5 @@ The per-tenant dynamic theme comes from a short-TTL `GET /theme.css` (`app/[tena
 
 ## Notes
 
-- A token name affects compatibility with the existing UI, so check `ui-components` and every web app together when you change one.
+- A token name reaches every screen, so check `ui-components` and all three web apps together when you change one.
 - Prefer a token over a hard-coded color.
-- Keep the defaults in `theme.css` in sync with `DEFAULT_TENANT_THEME_COLORS`.
