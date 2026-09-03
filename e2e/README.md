@@ -21,7 +21,7 @@ The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4
 
 PIDs and logs default to `e2e/.run/`. When `E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
-Use distinct compose projects and **all** distinct ports (`E2E_IMAGE_SERVER_PORT` and `E2E_EDGE_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process.
+Use distinct compose projects and **all** distinct ports (`E2E_IMAGE_SERVER_PORT` and `E2E_EDGE_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process, and turns on `PUBLIRA_IMAGE_ENCRYPTION` for image-server (see [Viewer rendering performance](#viewer-rendering-performance)).
 
 ## One-command run
 
@@ -105,6 +105,8 @@ Specs that stop a shared process run in isolated projects after the ordinary `we
 `tests/host.viewer-performance.spec.ts` puts a budget on the canvas reader (`@publira/comic-viewer`, wired up in `apps/web-host/.../_components/episode-comic-viewer.tsx`) so a rendering regression fails a build instead of being noticed by a reader. The four budgets are `BUDGET` at the top of that file, which is also where each one says what it measures and why it sits where it does.
 
 It runs as its own Playwright project, `viewer-performance`, after every other project has finished, so nothing else on the machine is being measured with it.
+
+`lib.sh` runs image-server with `PUBLIRA_IMAGE_ENCRYPTION=enabled`, which is not the servers' own default. `Seed Episode 001-02` is free and the suite reads it signed out, so with the flag off this budget would be measured against plaintext pages the viewer's decryption plugin never touches. On it, every number above includes reversing `xor-hmac-sha256-v1` in the browser for each page drawn.
 
 ### Taking the numbers again
 
