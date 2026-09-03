@@ -1,3 +1,4 @@
+import { MfaChallengeKind } from "@publira/api-client/admin/auth";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +9,7 @@ import {
   getTenantAdminInvitationState,
   isAdminSessionValid,
   isTenantAdminRole,
+  loginAdmin,
   requestAdminPasswordReset,
 } from "./admin-auth";
 
@@ -17,6 +19,7 @@ const {
   mockGetMe,
   mockGetAccessToken,
   mockGetTenantAdminInvitationState,
+  mockLogin,
   mockRequestPasswordReset,
 } = vi.hoisted(() => ({
   mockAcceptTenantAdminInvitation: vi.fn(),
@@ -24,6 +27,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetTenantAdminInvitationState: vi.fn(),
+  mockLogin: vi.fn(),
   mockRequestPasswordReset: vi.fn(),
 }));
 
@@ -40,6 +44,7 @@ vi.mock("@publira/api-client/admin/client", () => ({
       deleteSession: vi.fn(),
       getMe: mockGetMe,
       getTenantAdminInvitationState: mockGetTenantAdminInvitationState,
+      login: mockLogin,
       requestPasswordReset: mockRequestPasswordReset,
     },
   }),
@@ -48,6 +53,80 @@ vi.mock("@publira/api-client/admin/client", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetAccessToken.mockResolvedValue("valid-token");
+});
+
+describe("loginAdmin", () => {
+  const credentials = ["admin@example.com", "hunter2", "tenant_001"] as const;
+
+  it("reports the session a password alone finished the login with", async () => {
+    mockLogin.mockResolvedValueOnce({
+      accessToken: { expiresAt: "2026-09-03T00:00:00Z", token: "session" },
+    });
+
+    const result = await loginAdmin(...credentials, "ja");
+
+    expect(result).toEqual({
+      accessToken: "session",
+      expiresAt: new Date("2026-09-03T00:00:00Z"),
+      kind: "session",
+      ok: true,
+    });
+  });
+
+  it("reports the challenge an account owing a code earned instead", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "2026-09-03T00:05:00Z",
+        kind: MfaChallengeKind.VERIFY,
+        token: "challenge",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "ja");
+
+    expect(result).toEqual({
+      challengeKind: "verify",
+      challengeToken: "challenge",
+      expiresAt: new Date("2026-09-03T00:05:00Z"),
+      kind: "challenge",
+      ok: true,
+    });
+  });
+
+  it("names the enrollment a tenant holds an administrator at", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "2026-09-03T00:05:00Z",
+        kind: MfaChallengeKind.ENROLL,
+        token: "challenge",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "ja");
+
+    expect(result).toMatchObject({
+      challengeKind: "enroll",
+      kind: "challenge",
+    });
+  });
+
+  it("refuses a challenge kind this console has no screen for", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "2026-09-03T00:05:00Z",
+        kind: MfaChallengeKind.UNSPECIFIED,
+        token: "challenge",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "ja");
+
+    // Signing in on the password alone would make the second factor optional.
+    expect(result).toEqual({
+      message: "ログイン処理に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    });
+  });
 });
 
 describe("getAdminCurrentUser", () => {

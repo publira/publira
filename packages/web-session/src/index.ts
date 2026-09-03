@@ -25,8 +25,17 @@ const toAesGcmKeyBytes = (secret: string): Uint8Array => {
   return raw.slice(0, AES_GCM_KEY_BYTES);
 };
 
-export const encryptSessionPayload = (
-  payload: WebSessionPayload,
+/**
+ * Seal an arbitrary JSON payload with the deployment's session key.
+ *
+ * The session cookie is not the only thing a console hands back to itself
+ * through the browser: web-admin also carries the half-finished login an MFA
+ * challenge stands for. Both want the same A256GCM key and the same "the
+ * browser may hold it but neither read nor forge it" property, so the sealing
+ * lives here once and each cookie owns the payload shape it needs.
+ */
+export const encryptPayload = (
+  payload: unknown,
   secret: string
 ): Promise<string> => {
   const key = toAesGcmKeyBytes(secret);
@@ -35,25 +44,45 @@ export const encryptSessionPayload = (
     .encrypt(key);
 };
 
-export const decryptSessionPayload = async (
+/**
+ * Open a payload sealed by {@link encryptPayload}, or `null` when the value is
+ * not one this deployment sealed.
+ *
+ * The result is `unknown` on purpose: a cookie is untrusted input even once it
+ * decrypts, so the caller validates the shape it expects.
+ */
+export const decryptPayload = async (
   token: string,
   secret: string
-): Promise<WebSessionPayload | null> => {
+): Promise<unknown> => {
   // Outside the try: an unusable key is a misconfigured deployment, and
   // reporting it as "no session" would send every visitor to the login screen.
   const key = toAesGcmKeyBytes(secret);
   try {
     const { plaintext } = await compactDecrypt(token, key);
-    const parsed = JSON.parse(
-      textDecoder.decode(plaintext)
-    ) as WebSessionPayload;
-    if (!parsed.accessToken || !parsed.expiresAt) {
-      return null;
-    }
-    return parsed;
+    return JSON.parse(textDecoder.decode(plaintext)) as unknown;
   } catch {
     return null;
   }
+};
+
+export const encryptSessionPayload = (
+  payload: WebSessionPayload,
+  secret: string
+): Promise<string> => encryptPayload(payload, secret);
+
+export const decryptSessionPayload = async (
+  token: string,
+  secret: string
+): Promise<WebSessionPayload | null> => {
+  const parsed = (await decryptPayload(
+    token,
+    secret
+  )) as WebSessionPayload | null;
+  if (!parsed?.accessToken || !parsed.expiresAt) {
+    return null;
+  }
+  return parsed;
 };
 
 export const isSessionExpired = (

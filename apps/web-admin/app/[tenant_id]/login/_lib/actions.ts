@@ -3,17 +3,12 @@
 import { getMessage } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import {
-  encryptSessionPayload,
-  resolveAuthSecret,
-  sessionCookieOptions,
-} from "@publira/web-session";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
-import { ADMIN_SESSION_COOKIE_NAME, loginAdmin } from "#lib/admin-auth";
+import { loginAdmin } from "#lib/admin-auth";
+import { writeAdminSessionCookie } from "#lib/admin-session-cookie";
 import {
   emailFormSchema,
   nextPathFormSchema,
@@ -23,6 +18,7 @@ import {
 import { assertSameOrigin } from "#lib/csrf";
 import { loadAdminMessages } from "#lib/locale";
 import type { AdminMessages } from "#lib/locale";
+import { MFA_PATH, writeMfaChallenge } from "#lib/mfa-challenge";
 
 const loginFormSchema = (messages: AdminMessages) =>
   z.object({
@@ -73,21 +69,32 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     redirect(buildLoginErrorPath(result.message, nextPath));
   }
 
-  try {
-    const sealed = await encryptSessionPayload(
-      {
-        accessToken: result.accessToken,
+  if (result.kind === "challenge") {
+    try {
+      await writeMfaChallenge({
+        challengeToken: result.challengeToken,
         expiresAt: result.expiresAt.toISOString(),
+        kind: result.challengeKind,
+        nextPath,
         tenantId,
-      },
-      resolveAuthSecret()
-    );
-    const cookieStore = await cookies();
-    cookieStore.set({
-      ...sessionCookieOptions(result.expiresAt),
-      name: ADMIN_SESSION_COOKIE_NAME,
-      value: sealed,
-    });
+      });
+    } catch (error) {
+      // Same shape as the session cookie failure below: the password was
+      // right, but the console cannot hold what it earned.
+      console.error("[web-admin] mfa challenge seal failed", error);
+      redirect(
+        buildLoginErrorPath(
+          getMessage(messages, "admin.auth.errors.login_processing_failed"),
+          nextPath
+        )
+      );
+    }
+
+    redirect(MFA_PATH);
+  }
+
+  try {
+    await writeAdminSessionCookie(tenantId, result);
   } catch (error) {
     // Not an RPC failure — sealing or writing the cookie broke, and the reason
     // is only visible in the log. Recorded, then reported as a login failure.

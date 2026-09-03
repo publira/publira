@@ -109,6 +109,16 @@ export const emailFormSchema = (messages: AdminMessages) => {
     .pipe(z.email(getMessage(messages, "admin.auth.fields.email_invalid")));
 };
 
+/**
+ * A code from an authenticator app or one of the account's recovery codes.
+ *
+ * Only the length is checked here. Which of the two shapes is acceptable
+ * depends on the RPC, and only the API can say whether a code is the right
+ * one — a client-side format rule would just turn a refusal into a different
+ * refusal.
+ */
+export const mfaCodeFormSchema = z.string().trim().min(1).max(64);
+
 export const passwordFormSchema = (messages: AdminMessages) => {
   const required = getMessage(messages, "admin.auth.fields.password_required");
 

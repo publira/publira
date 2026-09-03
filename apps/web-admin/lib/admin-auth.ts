@@ -1,3 +1,4 @@
+import { MfaChallengeKind } from "@publira/api-client/admin/auth";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isExpectedNullableRpcError,
@@ -17,6 +18,7 @@ import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { loadAdminMessages } from "./locale";
 import type { AdminMessages } from "./locale";
+import type { MfaChallengeKindName } from "./mfa-challenge";
 import { getAccessToken } from "./session";
 
 export {
@@ -24,10 +26,25 @@ export {
   sanitizeRedirectPath,
 } from "./admin-auth-shared";
 
+/**
+ * What a correct password earned.
+ *
+ * `"session"` is the whole login. `"challenge"` is the half of it a password
+ * can settle on its own: the account owes a second factor, and the console
+ * holds a short-lived challenge token until it is presented (Epic #59).
+ */
 export type AdminLoginResult =
   | {
       ok: true;
+      kind: "session";
       accessToken: string;
+      expiresAt: Date;
+    }
+  | {
+      ok: true;
+      kind: "challenge";
+      challengeKind: MfaChallengeKindName;
+      challengeToken: string;
       expiresAt: Date;
     }
   | {
@@ -136,6 +153,23 @@ const genericEmailChangeRequestErrorMessage = (
   messages: AdminMessages
 ): string => getMessage(messages, "admin.settings.email_change.failed");
 
+/**
+ * The challenge kind as the console names it, or `null` for a kind this build
+ * has no screen for — which is a login it cannot finish, not one to wave
+ * through on the password alone.
+ */
+const toChallengeKindName = (
+  kind: MfaChallengeKind
+): MfaChallengeKindName | null => {
+  if (kind === MfaChallengeKind.VERIFY) {
+    return "verify";
+  }
+  if (kind === MfaChallengeKind.ENROLL) {
+    return "enroll";
+  }
+  return null;
+};
+
 export const loginAdmin = async (
   email: string,
   password: string,
@@ -143,6 +177,11 @@ export const loginAdmin = async (
   locale: Locale
 ): Promise<AdminLoginResult> => {
   const messages = await loadAdminMessages(locale);
+  const processingFailed = {
+    message: getMessage(messages, "admin.auth.errors.login_processing_failed"),
+    ok: false,
+  } as const;
+
   try {
     const response = await apiClient.auth.login({
       email,
@@ -150,23 +189,39 @@ export const loginAdmin = async (
       tenant: { tenantId },
     });
 
+    const challenge = response.mfaChallenge;
+    if (challenge) {
+      const challengeKind = toChallengeKindName(challenge.kind);
+      const challengeToken = challenge.token.trim();
+      const challengeExpiresAt = new Date(challenge.expiresAt);
+      if (
+        !(challengeKind && challengeToken) ||
+        Number.isNaN(challengeExpiresAt.getTime())
+      ) {
+        return processingFailed;
+      }
+
+      return {
+        challengeKind,
+        challengeToken,
+        expiresAt: challengeExpiresAt,
+        kind: "challenge",
+        ok: true,
+      };
+    }
+
     const accessToken = response.accessToken?.token?.trim() ?? "";
     const expiresAtRaw = response.accessToken?.expiresAt ?? "";
     const expiresAt = new Date(expiresAtRaw);
 
     if (!accessToken || Number.isNaN(expiresAt.getTime())) {
-      return {
-        message: getMessage(
-          messages,
-          "admin.auth.errors.login_processing_failed"
-        ),
-        ok: false,
-      };
+      return processingFailed;
     }
 
     return {
       accessToken,
       expiresAt,
+      kind: "session",
       ok: true,
     };
   } catch (error) {

@@ -56,6 +56,12 @@ export default defineConfig({
         "apps/*/lib/auth.ts",
         "apps/*/lib/auth.test.ts",
         "apps/web-admin/lib/admin-auth.ts",
+        // Exercises the login-response boundary above.
+        "apps/web-admin/lib/admin-auth.test.ts",
+        // The session an MFA verification issues becomes the same `expires`.
+        "apps/web-admin/lib/admin-mfa.ts",
+        // Sets the MFA challenge cookie's `expires` from the challenge expiry.
+        "apps/web-admin/lib/mfa-challenge.ts",
       ],
       rules: {
         "no-restricted-globals": "off",
