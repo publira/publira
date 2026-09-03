@@ -31,7 +31,7 @@ task docker:build:api CMD_NAME=outbox-worker PORT=8003
 
 ## Main environment variables
 
-The connection must use `publira_outbox`, the BYPASSRLS login the baseline seed creates for this process. `publira_admin` / `publira_public`, which carry tenant RLS, cannot claim pending rows across tenants.
+In production the connection must use `publira_outbox`, the BYPASSRLS login the baseline seed creates for this process; locally the fallbacks below land on the superuser connection, which bypasses RLS as well. `publira_admin` / `publira_public`, which carry tenant RLS, cannot claim pending rows across tenants either way.
 
 - `PUBLIRA_WORKER_DB_URL` (optional; falls back to `PUBLIRA_DB_URL`, and otherwise to the development default `postgres://postgres:password@db:5432/publira?sslmode=disable`)
 - `PUBLIRA_WORKER_ADDR` (optional, default `:8003`. Serves `/livez` and `/readyz`)
