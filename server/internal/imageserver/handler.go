@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -212,9 +213,51 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 		}
 		objectKey = publicAccess.ObjectKey
 		contentTypeFromDB = publicAccess.ContentType
+		// A free body leaves as ciphertext too, so what a page costs to
+		// extract does not depend on whether its episode is sold. The admin
+		// preview host is left out: it renders bodies with an <img>, which
+		// cannot decrypt.
+		if h.encryptImages && !h.previewForTenantStaff {
+			freeCipher, cipherErr := h.freeEpisodeImageCipher(r, tenant.ID, publicAccess.EpisodeID)
+			if cipherErr != nil {
+				h.logger.ErrorContext(ctx, "failed to derive free episode image cipher", "error", cipherErr, "media_id", mediaID.String())
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+			cipher = freeCipher
+		}
 	}
 
 	h.serveConverted(w, r, objectKey, contentTypeFromDB, cacheControl, cipher)
+}
+
+// freeEpisodeImageCipher picks the key material a free body's response is
+// encrypted under. Its reader may hold no credential at all, so the key comes
+// from the deterministic per-episode, per-window media token the API puts on
+// the image URL: the reader derives it from the `t` they were handed, and
+// image-server recomputes the same token rather than trusting what the URL
+// carried.
+//
+// Only the URL is read here, never the Authorization header, so the response
+// stays a pure function of the request URL — which is what lets an encrypted
+// free body keep one shared cache entry. A presented token is used when it is
+// this tenant's and this episode's and has not expired, so a reader still
+// holding the previous window's URL decodes what they were handed. Anything
+// else — nothing presented, a malformed value, an expired one, another
+// episode's — is encrypted under the current window's token, so dropping `t`
+// yields ciphertext the request cannot read rather than a plaintext page.
+func (h *Handler) freeEpisodeImageCipher(r *http.Request, tenantID uuid.UUID, episodeID uuid.UUID) (*imageCipher, error) {
+	if rawToken := strings.TrimSpace(r.URL.Query().Get(auth.MediaTokenQueryParam)); rawToken != "" && h.tokens != nil {
+		claims, err := h.tokens.Verify(rawToken, auth.AudienceMedia)
+		if err == nil && claims.TenantID == tenantID.String() && claims.EpisodeID == episodeID.String() {
+			return &imageCipher{rawToken: rawToken, subject: claims.Subject}, nil
+		}
+	}
+	token, _, err := h.tokens.IssueFreeEpisodeMediaToken(tenantID.String(), episodeID.String(), time.Now())
+	if err != nil {
+		return nil, err
+	}
+	return &imageCipher{rawToken: token, subject: auth.FreeEpisodeMediaSubject}, nil
 }
 
 // episodeImageCredential resolves whatever credential the request carries into

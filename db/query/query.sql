@@ -2265,6 +2265,7 @@ LIMIT 1;
 
 -- name: GetEpisodeImagePublicAccessByIDForTenant :one
 SELECT ei.id,
+    ei.episode_id,
     eiv.object_key,
     eiv.content_type,
     (
