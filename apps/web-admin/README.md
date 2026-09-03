@@ -44,6 +44,14 @@ Required environment variables:
 
 - `PUBLIRA_AUTH_SECRET` (32 bytes or more) — the key that seals the console's session cookie. There is no fallback: an unset or too short value raises. For the details and how to issue one, see the [repository README](../../README.md#session-cookie-encryption-key-publira_auth_secret)
 
+### Second factor (MFA)
+
+- A password that is accepted but still owes a second factor earns no session. `Login` answers with a short-lived challenge token instead, and the console holds it in the `publira_web_admin_mfa` cookie — sealed with the same `PUBLIRA_AUTH_SECRET`, `httpOnly`, and expiring with the challenge itself. It deliberately never travels in the URL, where a token would survive in history and in `Referer`
+- `/mfa` is the screen that spends it, and it is a public path in `proxy.ts` because it is reached without a session. The challenge's `kind` decides what it shows: `verify` asks for a code from the authenticator app — or one of the recovery codes — and `enroll` runs the registration a tenant requires of an administrator before it will finish the login. Both end by writing the ordinary session cookie and clearing the challenge
+- An administrator manages their own factor from the two-step verification card on `/settings/account`: registering an authenticator, replacing the recovery codes, and turning the factor off. Recovery codes exist in plaintext only in the response that issues them, so that card keeps a batch on screen after the status around it has changed
+- A refused code and a rejected session both come back `unauthenticated`. The console separates them by the `MFA_INVALID_CODE` / `MFA_LOCKED` reason the API attaches as `google.rpc.ErrorInfo`; without it a mistyped digit would sign the operator out
+- The enrollment QR code is turned into SVG path geometry on the server (`lib/qr-code.ts`, `uqr`), so what reaches the browser is one path string rather than a matrix or injected markup. Its colours are fixed black on white: a camera cannot read an inverted code, so it does not follow the tenant theme
+
 ### Distributed tracing
 
 `instrumentation.ts` calls `registerTracing("publira-web-admin")` from `@publira/tracing`, which emits Next.js inbound spans and client spans for the Connect RPCs made during SSR. It is off by default and only registers when `PUBLIRA_TRACING_ENABLED` is set. In the Dev Container, look for the `publira-web-admin` service in the Jaeger UI (`http://localhost:16686`).

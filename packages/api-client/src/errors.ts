@@ -12,6 +12,8 @@ export const RPC_ERROR_REASON = {
   archiveInvalidEPUBSpine: "ARCHIVE_INVALID_EPUB_SPINE",
   archiveInvalidPath: "ARCHIVE_INVALID_PATH",
   invitationCanceled: "INVITATION_CANCELED",
+  mfaInvalidCode: "MFA_INVALID_CODE",
+  mfaLocked: "MFA_LOCKED",
 } as const;
 
 export type RpcErrorReason =

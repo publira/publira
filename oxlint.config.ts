@@ -55,7 +55,10 @@ export default defineConfig({
         // Login responses become the session cookie's `expires`.
         "apps/*/lib/auth.ts",
         "apps/*/lib/auth.test.ts",
-        "apps/web-admin/lib/admin-auth.ts",
+        // web-admin converts an instant to the cookie API's `Date` here and
+        // nowhere else: its API timestamps are parsed with `parseInstant`, and
+        // both cookie writers reach the boundary through this one function.
+        "apps/web-admin/lib/cookie-expiry.ts",
       ],
       rules: {
         "no-restricted-globals": "off",

@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/mfa"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 // The actions the second factor writes to the tenant audit trail. A wrong
@@ -38,12 +39,15 @@ func mfaCodeRequiredError() error {
 	return connect.NewError(connect.CodeInvalidArgument, errors.New("code is required"))
 }
 
+// A refused code and a rejected session both answer `unauthenticated`, and a
+// console that cannot tell them apart would sign an operator out over a typo.
+// The reason is what separates the two.
 func mfaInvalidCodeError() error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid code"))
+	return rpcerrors.NewErrorInfoError(connect.CodeUnauthenticated, errors.New("invalid code"), rpcerrors.ReasonMfaInvalidCode)
 }
 
 func mfaLockedError() error {
-	return connect.NewError(connect.CodeResourceExhausted, errors.New("too many failed attempts"))
+	return rpcerrors.NewErrorInfoError(connect.CodeResourceExhausted, errors.New("too many failed attempts"), rpcerrors.ReasonMfaLocked)
 }
 
 func mfaNotEnabledError() error {

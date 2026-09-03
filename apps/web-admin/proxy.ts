@@ -22,6 +22,10 @@ const PUBLIC_PATHS = new Set([
   "/forgot-password",
   "/livez",
   "/login",
+  // The second half of a login: a password has been accepted, but the session
+  // it earns is not issued until the factor is settled, so this screen is
+  // reached without a session cookie.
+  "/mfa",
   "/readyz",
   "/theme.css",
 ]);

@@ -15,6 +15,8 @@ const (
 	ReasonArchiveInvalidEPUBSpine = "ARCHIVE_INVALID_EPUB_SPINE"
 	ReasonArchiveInvalidPath      = "ARCHIVE_INVALID_PATH"
 	ReasonInvitationCanceled      = "INVITATION_CANCELED"
+	ReasonMfaInvalidCode          = "MFA_INVALID_CODE"
+	ReasonMfaLocked               = "MFA_LOCKED"
 )
 
 // NewFieldViolationError reports that one request field caused a rejected RPC.

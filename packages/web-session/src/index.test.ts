@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  decryptPayload,
   decryptSessionPayload,
+  encryptPayload,
   encryptSessionPayload,
   isSessionExpired,
   resolveAuthSecret,
@@ -39,6 +41,32 @@ describe("web-session", () => {
     const opened = await decryptSessionPayload(sealed, SECRET);
 
     expect(opened).toEqual(payload);
+  });
+
+  it("seals a payload of any shape, and hands it back unvalidated", async () => {
+    // What web-admin's MFA challenge cookie carries: not a session, and the
+    // caller is the one that decides whether the shape is acceptable.
+    const payload = {
+      challengeToken: "challenge-abc",
+      expiresAt: FUTURE,
+      kind: "verify",
+    };
+
+    const sealed = await encryptPayload(payload, SECRET);
+
+    expect(sealed).not.toContain("challenge-abc");
+    await expect(decryptPayload(sealed, SECRET)).resolves.toEqual(payload);
+    // The same bytes are not a session, and reading them as one reports so.
+    await expect(decryptSessionPayload(sealed, SECRET)).resolves.toBeNull();
+  });
+
+  it("reports a payload sealed with another key as no payload", async () => {
+    const sealed = await encryptPayload(
+      { kind: "verify" },
+      "another-secret-long-enough-to-key-a256gcm-0"
+    );
+
+    await expect(decryptPayload(sealed, SECRET)).resolves.toBeNull();
   });
 
   it("rejects a secret too short to key A256GCM", async () => {

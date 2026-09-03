@@ -2,15 +2,18 @@ package adminapi
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/mfa"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -18,6 +21,33 @@ import (
 // The MFA RPCs are exercised against a real PostgreSQL rather than sqlmock:
 // the flow spans an encrypted secret, a lock counter, and ten hashed recovery
 // codes, and what matters about it is the state each step leaves behind.
+
+// mfaErrorReason reads the ErrorInfo reason an MFA failure carries. A refused
+// code and a rejected session share the unauthenticated code, so the console
+// tells them apart by this reason alone.
+func mfaErrorReason(t *testing.T, err error) string {
+	t.Helper()
+
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("error is not a connect error: %v", err)
+	}
+	for _, detail := range connectErr.Details() {
+		value, valueErr := detail.Value()
+		if valueErr != nil {
+			continue
+		}
+		info, ok := value.(*errdetails.ErrorInfo)
+		if !ok {
+			continue
+		}
+		if info.GetDomain() != rpcerrors.ErrorInfoDomain {
+			continue
+		}
+		return info.GetReason()
+	}
+	return ""
+}
 
 func seedMfaTenant(t *testing.T, env *adminDBEnv) adminDBTenant {
 	t.Helper()
@@ -354,11 +384,16 @@ func TestAdminMfaVerifyLocksTheAccountAfterRepeatedFailures(t *testing.T) {
 			Code:           "000000",
 		}))
 		want := connect.CodeUnauthenticated
+		wantReason := rpcerrors.ReasonMfaInvalidCode
 		if attempt == mfa.MaxFailedAttempts {
 			want = connect.CodeResourceExhausted
+			wantReason = rpcerrors.ReasonMfaLocked
 		}
 		if connect.CodeOf(err) != want {
 			t.Fatalf("VerifyMfa attempt %d = %v, want %v (err=%v)", attempt, connect.CodeOf(err), want, err)
+		}
+		if reason := mfaErrorReason(t, err); reason != wantReason {
+			t.Fatalf("VerifyMfa attempt %d reason = %q, want %q", attempt, reason, wantReason)
 		}
 	}
 
