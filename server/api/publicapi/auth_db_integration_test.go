@@ -211,6 +211,57 @@ func TestDBDeleteMeRejectsWrongPasswordAsInvalidArgument(t *testing.T) {
 	}
 }
 
+// A purchase is a commerce record rather than an entitlement: a past day's
+// revenue figures are recomputed from the purchases table long after the buyer
+// closes their account. Closing it therefore takes the buyer off the row and
+// leaves the row where it is.
+func TestDBDeleteMeKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	buyer := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "buyer@tenant-a.example.com", "Buyer")
+	staying := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0002", "reader@tenant-a.example.com", "Reader")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPUB001", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODE00001",
+		Price:    300,
+		Status:   testutil.EpisodeStatusPublished,
+	})
+	env.PG.SeedPurchase(t, tenant.ID, buyer.ID, episode.ID, 300)
+
+	if _, err := env.authClient().DeleteMe(context.Background(), newBearerRequest(
+		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword},
+		tokenFor(t, tenant, buyer),
+	)); err != nil {
+		t.Fatalf("DeleteMe for a reader who bought an episode: %v", err)
+	}
+
+	if count := env.countRows(t,
+		"SELECT count(*) FROM purchases WHERE tenant_id = $1 AND episode_id = $2",
+		tenant.ID, episode.ID,
+	); count != 1 {
+		t.Fatalf("purchases of the episode after the delete = %d, want 1", count)
+	}
+	if count := env.countRows(t,
+		"SELECT count(*) FROM purchases WHERE tenant_id = $1 AND user_id IS NOT NULL",
+		tenant.ID,
+	); count != 0 {
+		t.Fatalf("purchases still naming their buyer = %d, want 0", count)
+	}
+
+	// The row is in no library now, so the tenant's remaining reader must not
+	// find it in theirs.
+	library, err := env.purchaseClient().ListMyPurchases(context.Background(), newBearerRequest(
+		&publirav1.ListMyPurchasesRequest{Tenant: tenantContext(tenant)},
+		tokenFor(t, tenant, staying),
+	))
+	if err != nil {
+		t.Fatalf("ListMyPurchases: %v", err)
+	}
+	if len(library.Msg.Purchases) != 0 {
+		t.Fatalf("purchases in another reader's library = %d, want 0", len(library.Msg.Purchases))
+	}
+}
+
 func assertPublicBadRequestField(t *testing.T, err error, wantField string) {
 	t.Helper()
 	rpcError, ok := err.(*connect.Error)

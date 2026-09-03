@@ -241,6 +241,40 @@ func TestDBDeleteEndUserCascadesRelatedRows(t *testing.T) {
 	}
 }
 
+// Purchases are the exception to that cascade. They are commerce records the
+// day's revenue figures are recomputed from, so the delete takes the buyer off
+// them and leaves them where they are.
+func TestDBDeleteEndUserKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
+	reader := seedEndUser(t, pg, tenantID, "ENDUSER00001", "reader@example.com", "Reader One")
+	series := pg.SeedSeries(t, tenantID, testutil.SeriesSeed{PublicID: "SERIESPUB001", Published: true})
+	episode := pg.SeedEpisode(t, tenantID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODE00001",
+		Price:    500,
+		Status:   testutil.EpisodeStatusPublished,
+	})
+	pg.SeedPurchase(t, tenantID, reader.ID, episode.ID, 500)
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	if _, err := client.DeleteEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.DeleteEndUserRequest{
+		PublicId: reader.PublicID,
+	})); err != nil {
+		t.Fatalf("DeleteEndUser for a reader who bought an episode: %v", err)
+	}
+
+	if _, ok := userByPublicID(t, pg, reader.PublicID); ok {
+		t.Fatal("deleted user is still readable, want the row gone")
+	}
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM purchases WHERE tenant_id = $1 AND episode_id = $2", tenantID, episode.ID); got != 1 {
+		t.Fatalf("purchases of the episode after the delete = %d, want 1", got)
+	}
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM purchases WHERE user_id IS NOT NULL"); got != 0 {
+		t.Fatalf("purchases still naming their buyer = %d, want 0", got)
+	}
+}
+
 func TestDBEndUserRPCsRequirePlatformSession(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
