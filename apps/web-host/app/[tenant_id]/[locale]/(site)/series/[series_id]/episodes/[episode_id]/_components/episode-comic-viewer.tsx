@@ -73,6 +73,11 @@ const useCopy = (): EpisodeComicViewerCopy => {
  * The cover stands alone and pairing starts from the page after it, the way a
  * printed volume opens. Without this the cover would be paired with page 2 and
  * every spread after it would face the wrong way.
+ *
+ * Which way those spreads face is not set here at all: right to left is the
+ * library's own default, and it is the binding this catalog is drawn for, so
+ * `readingDirection` is left alone rather than restated as the value it
+ * already has.
  */
 const SPREAD_START_INDEX = 1;
 
