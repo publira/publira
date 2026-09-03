@@ -26,7 +26,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 /**
  * Cache Components streams the static shell first. An operable fallback form
- * would submit `returnTo="/"` before `searchParams` resolve (#994).
+ * would submit `returnTo="/"` before `searchParams` resolve.
  */
 const LoginFormSkeleton = () => (
   <>

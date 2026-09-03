@@ -185,7 +185,7 @@ func TestDBAccessTokenStopsWorkingWhenAccountIsSuspended(t *testing.T) {
 // The confirmation password on account deletion is form input, not credentials.
 // Getting it wrong must not read as "your session ended" — clients turn
 // Unauthenticated into a forced re-login, which would log a reader out over a
-// typo (#679).
+// typo.
 func TestDBDeleteMeRejectsWrongPasswordAsInvalidArgument(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")

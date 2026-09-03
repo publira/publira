@@ -14,7 +14,7 @@ import { ClientMessage } from "#components/client-message";
  * A section that is one part of a larger page renders `SectionError` instead,
  * so the rest of the page stays; this is for the case where the section *is*
  * the page. Both come from the same `ok: false` value, because a cached read
- * reports failure as a value rather than throwing (#672).
+ * reports failure as a value rather than throwing.
  *
  * The title matches `(site)/error.tsx` on purpose — a reader who loses a whole
  * page should see the same thing whichever renderer produced it.

@@ -29,7 +29,7 @@ export type SectionErrorProps = DivProps & {
  * The failure state of one section of a page: the section is gone, the rest of
  * the page is not.
  *
- * It is the shared body of both halves of that story (#647). The `catchError`
+ * It is the shared body of both halves of that story. The `catchError`
  * boundary each app wires up renders it with a `retry()` button when a Server
  * Component throws, and a screen that already holds a classified `ok: false`
  * result renders it directly with that result's message. Before this existed,

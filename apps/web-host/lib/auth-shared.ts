@@ -63,7 +63,7 @@ export const sanitizeRedirectPath = (
  * back to `/my`, which redirects to `/login` again. The marker breaks that
  * loop: the proxy drops the cookie and lets the login page render.
  *
- * It doubles as the flash key the re-authentication flow displays (Epic #65).
+ * It doubles as the flash key the re-authentication flow displays.
  */
 export const SESSION_REVOKED_PARAM_NAME = "reason";
 export const SESSION_REVOKED_REASON = "session_revoked";

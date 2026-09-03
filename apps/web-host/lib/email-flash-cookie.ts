@@ -7,7 +7,8 @@ import { z } from "zod";
  * cookie so the address never appears in the URL (logs, history, Referer).
  *
  * The destination page can only read the cookie: Server Components cannot
- * delete it. `maxAge` is the consume window. Attributes follow #600.
+ * delete it. `maxAge` is the consume window. Attributes follow this app's
+ * cookie policy.
  */
 export const RESET_PASSWORD_REQUESTED_EMAIL_COOKIE = profileCookieName(
   "publira_web_host_reset_password_email"

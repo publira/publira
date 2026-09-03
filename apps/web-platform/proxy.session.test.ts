@@ -128,7 +128,7 @@ describe("web-platform proxy session handling", () => {
    * Without the marker the console keeps handing the same dead cookie back to
    * the API: it still decrypts and has not reached its local expiry, so the
    * proxy waves every protected route through to a page that redirects here
-   * again (#607 acceptance criteria). The proxy is the only place that can drop
+   * again, forever. The proxy is the only place that can drop
    * it, because a page cannot write cookies while it renders.
    */
   it("clears the cookie for expiry-related /login routes", async () => {

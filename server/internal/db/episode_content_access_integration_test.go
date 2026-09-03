@@ -12,7 +12,7 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// TestUserHasEpisodeContentAccess verifies purchase/ticket grant predicates against real PostgreSQL (#614).
+// TestUserHasEpisodeContentAccess verifies purchase/ticket grant predicates against real PostgreSQL.
 func TestUserHasEpisodeContentAccess(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

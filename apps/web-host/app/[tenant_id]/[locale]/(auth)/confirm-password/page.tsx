@@ -28,7 +28,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 /**
  * Cache Components streams the static shell first. An operable fallback
  * with `token=""` would submit an empty token, or flash the invalid-link
- * copy, before `searchParams` resolve (#994).
+ * copy, before `searchParams` resolve.
  */
 const ConfirmPasswordFormSkeleton = () => (
   <>

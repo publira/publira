@@ -12,7 +12,7 @@ import { FollowButton, FollowLoginLink } from "./follow-button";
 /**
  * Member-specific follow island. The surrounding series/author body stays on
  * the public cache; this component must sit inside its own `<Suspense>` so
- * the session cookie does not personalize the static shell (#1130).
+ * the session cookie does not personalize the static shell.
  */
 export const FollowControl = async ({
   publicId,

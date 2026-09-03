@@ -362,8 +362,8 @@ func TestContentEventsExplainUsesExpectedIndexes(t *testing.T) {
 	}
 
 	// Empty-or-tiny tables prefer seq scans. disable seqscan so the planner
-	// has to pick the index the query was written against. That is the memo
-	// for #589: these shapes stay index-eligible.
+	// has to pick the index the query was written against. That is what these
+	// cases record: the engagement query shapes stay index-eligible.
 	cases := []struct {
 		name  string
 		query string

@@ -95,7 +95,7 @@ describe("listPublishedAuthors", () => {
   });
 
   // A `"use cache"` function must not throw: the fill would fail the whole
-  // request instead of reaching the awaiting page (#672).
+  // request instead of reaching the awaiting page.
   it("If acquisition fails, return the failure value without throwing", async () => {
     mockListPublishedAuthors.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)

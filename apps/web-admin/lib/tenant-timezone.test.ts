@@ -172,7 +172,7 @@ describe("tenant-timezone", () => {
 
   it("still renders in the default time zone when the tenant cannot be fetched", async () => {
     // Degrading to the host's zone would make the rendered wall clock depend on
-    // where the container runs, which is the thing #564 removed.
+    // where the container runs, which is exactly what the tenant zone removes.
     mockGetTenantTimezoneApi.mockRejectedValueOnce(
       new ConnectError("tenant unavailable", Code.Unavailable)
     );

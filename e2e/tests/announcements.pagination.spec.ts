@@ -47,7 +47,7 @@ const movePage = async (page: Page, label: string): Promise<void> => {
 };
 
 /**
- * The signed-in member's announcement list under cursor pagination (#717). The
+ * The signed-in member's announcement list under cursor pagination. The
  * list streams in behind Suspense, so every assertion targets resolved content
  * rather than the skeleton, and page moves go through `movePage` so the rows
  * are known to have caught up with the URL.

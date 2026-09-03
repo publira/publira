@@ -49,12 +49,13 @@ const tenantDomainForm = (page: Page): Locator =>
     .first();
 
 /**
- * Platform Console → platform API → public/admin tenant resolution (#517).
+ * Platform Console → platform API → public/admin tenant resolution.
  *
- * Login is a prerequisite helper (full auth coverage is #67). Each test uses a
- * unique name/domain so runs do not depend on leftover rows. Tenants created
- * during the suite are deleted in `afterEach` so `task e2e:test` against a
- * long-lived stack does not accumulate rows.
+ * Login is a prerequisite helper (full auth coverage is
+ * `platform.auth.spec.ts`). Each test uses a unique name/domain so runs do not
+ * depend on leftover rows. Tenants created during the suite are deleted in
+ * `afterEach` so `task e2e:test` against a long-lived stack does not
+ * accumulate rows.
  */
 test.describe("platform tenant operations", () => {
   /** Tenant public_ids created in the current test; drained by afterEach. */

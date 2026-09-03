@@ -37,7 +37,7 @@ const currentSession = async (
   );
 
 /**
- * Login / logout / session rejection for web-platform (#67).
+ * Login / logout / session rejection for web-platform.
  *
  * GET /logout CSRF is `platform.logout.spec.ts`. Role denial (operator vs
  * super admin) is `platform.tenant-ops.spec.ts`. credentials_version bumps use

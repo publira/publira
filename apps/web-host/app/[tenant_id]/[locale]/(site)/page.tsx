@@ -140,7 +140,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * The one suspended piece on this page with no `SectionErrorBoundary` around
  * it, on purpose: `getTenantSiteLabel` degrades to the catalog's stand-in
  * rather than failing, the same way the header brand and the `<title>` do,
- * because it is resolved before any shell exists (#672). There is nothing here
+ * because it is resolved before any shell exists. There is nothing here
  * for a boundary to catch.
  */
 const CatalogTopSiteLabel = async () => {

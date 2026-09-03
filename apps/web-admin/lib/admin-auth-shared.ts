@@ -63,7 +63,7 @@ export const sanitizeRedirectPath = (
  * the proxy keeps waving the operator through to a console that redirects them
  * straight back here.
  *
- * It doubles as the flash key the re-authentication flow displays (Epic #65).
+ * It doubles as the flash key the re-authentication flow displays.
  */
 export const SESSION_REVOKED_PARAM_NAME = "reason";
 export const SESSION_REVOKED_REASON = "session_revoked";
@@ -99,7 +99,7 @@ export const isUnauthenticatedError = (error: unknown): boolean =>
  * dead end, because the operator has no way to act on it from there. The Server
  * Action's `withAdminSessionReauth()` turns the throw into the login redirect
  * instead. Every other code stays a message — a wrong password or a rejected
- * field must never log the operator out (Epic #65 / #679).
+ * field must never log the operator out.
  */
 export const rethrowUnauthenticatedRpcError = (error: unknown): void => {
   if (isUnauthenticatedRpcError(error)) {

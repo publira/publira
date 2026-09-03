@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dev Container Traefik routing check (#55).
+# Dev Container Traefik routing check.
 #
 #   up → wait for labeled routers → probe hosts / /api / /images → down
 #

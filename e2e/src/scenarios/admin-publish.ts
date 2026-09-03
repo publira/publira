@@ -1,7 +1,7 @@
 import "temporal-polyfill/global";
 
 /**
- * Constants for the admin publish-flow E2E (#516).
+ * Constants for the admin publish-flow E2E.
  *
  * Credentials match `db/seeds/README.md` / `db/seeds/dev/001_tenant_users.sql`.
  * Label / creator public_ids match `db/seeds/dev/010_catalog.sql`.

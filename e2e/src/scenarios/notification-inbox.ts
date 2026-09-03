@@ -1,5 +1,5 @@
 /**
- * Records created by `db/seeds/scenarios/060_notification_inbox.sql` (#1380).
+ * Records created by `db/seeds/scenarios/060_notification_inbox.sql`.
  *
  * The bell's accessible name carries the unread count, and publishing an
  * episode notifies every member and every admin of that episode's tenant. The

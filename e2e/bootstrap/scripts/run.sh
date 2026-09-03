@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dev-environment bootstrap check (#514).
+# Dev-environment bootstrap check.
 #
 #   phase 1  fresh Compose project + empty Postgres volume
 #   phase 2  task setup → migrations clean, dev seed applied and re-runnable

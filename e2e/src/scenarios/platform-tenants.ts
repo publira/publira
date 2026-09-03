@@ -1,5 +1,5 @@
 /**
- * Constants for the platform tenant-ops E2E (#517).
+ * Constants for the platform tenant-ops E2E.
  *
  * Super-admin credentials match `db/seeds/README.md` /
  * `db/seeds/dev/001_tenant_users.sql`. The limited operator comes from

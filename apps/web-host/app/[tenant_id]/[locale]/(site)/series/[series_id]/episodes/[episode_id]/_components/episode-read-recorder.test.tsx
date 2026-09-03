@@ -17,7 +17,7 @@ import { EpisodeReadRecorder } from "./episode-read-recorder";
 
 const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>();
 
-/** The reader's own pairing rule: the cover stands alone (#356). */
+/** The reader's own pairing rule: the cover stands alone. */
 const SPREAD_START_INDEX = 1;
 
 const episode: EpisodeDetail = {

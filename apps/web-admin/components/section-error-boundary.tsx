@@ -13,7 +13,7 @@ interface SectionErrorBoundaryProps {
 }
 
 /**
- * Section-level error boundary for the admin console (#647). Wrap a section's
+ * Section-level error boundary for the admin console. Wrap a section's
  * `<Suspense>` with it, so `retry()` puts that section's own skeleton back
  * while the re-run is in flight.
  *

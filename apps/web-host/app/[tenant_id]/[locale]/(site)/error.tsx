@@ -14,7 +14,7 @@ import { LocaleLink } from "#components/locale-link";
  * `app/[tenant_id]/[locale]/error.tsx`.
  *
  * Per-section degradation is a separate concern and belongs to the
- * `SectionErrorBoundary` each section is wrapped in (#647). A failure that
+ * `SectionErrorBoundary` each section is wrapped in. A failure that
  * takes the whole route down is what reaches here.
  *
  * No `<main>` here: `SiteLayoutMain` already provides one.
@@ -27,7 +27,7 @@ import { LocaleLink } from "#components/locale-link";
  * `<Suspense>` also keeps the sizing of each fallback visible next to the
  * string it stands in for.
  *
- * Reach, as measured against the production build (#683): what decides whether
+ * Reach, as measured against the production build: what decides whether
  * this renders is **when** the failure happens, not how the request arrived. A
  * throw raised after the static shell has been flushed — which every failed
  * read is, because they all cross the network — streams into the committed

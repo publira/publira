@@ -151,14 +151,14 @@ export const getTenantTimezone = async (
 };
 
 /**
- * Display / conversion zone for every date the admin console shows or accepts
- * (#566). One entry point, so a screen never falls back to the fixed
+ * Display / conversion zone for every date the admin console shows or accepts.
+ * One entry point, so a screen never falls back to the fixed
  * `DEFAULT_TIME_ZONE` by omission and the console agrees with the public site
  * about what the tenant's wall clock is.
  *
  * An unavailable tenant read degrades to {@link DEFAULT_TIME_ZONE} rather than
  * to the host's zone, so the rendered wall clock never depends on where the
- * container runs (#564). The read is tagged `tenant:<id>:timezone`, which
+ * container runs. The read is tagged `tenant:<id>:timezone`, which
  * `updateTag` invalidates when the zone is saved, so a change reaches every
  * screen in the same session.
  */

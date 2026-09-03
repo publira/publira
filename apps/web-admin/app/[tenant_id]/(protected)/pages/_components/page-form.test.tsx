@@ -35,7 +35,7 @@ const page: PageListItem = {
 /**
  * Next.js keeps recently visited pages mounted inside a hidden `<Activity>`
  * for its router bfcache, so the create form and the edit form are in the
- * document at the same time (#1011).
+ * document at the same time.
  */
 const renderBothForms = () =>
   render(

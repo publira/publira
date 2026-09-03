@@ -135,7 +135,7 @@ describe("web-admin auth-session", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
     const { withAdminSessionReauth } = await importAuthSession();
 
-    // A wrong current password reaches the client as invalid_argument (#679);
+    // A wrong current password reaches the client as invalid_argument;
     // turning it into a re-login would log the operator out over a typo.
     await expect(
       withAdminSessionReauth(() =>

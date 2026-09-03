@@ -44,7 +44,7 @@ type Querier interface {
 	CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error)
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
-	// Durable member follows (#1128). Episode, series, and creator follows have
+	// Durable member follows. Episode, series, and creator follows have
 	// distinct source tables; content_events must not be used to model any of them.
 	CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
@@ -230,7 +230,7 @@ type Querier interface {
 	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	// テナント操作監査ログを記録する
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
-	// Engagement / recommend query skeleton (#589).
+	// Engagement / recommend query skeleton.
 	// Later issues fill handlers and batches; these queries pin the index-backed
 	// shapes so sqlc generates now and EXPLAIN stays checkable.
 	//
@@ -262,7 +262,7 @@ type Querier interface {
 	// :one returns no rows on conflict (same as CreateNotification).
 	InsertDebouncedEpisodeViewEvent(ctx context.Context, arg InsertDebouncedEpisodeViewEventParams) (ContentEvent, error)
 	InsertDebouncedSeriesViewEvent(ctx context.Context, arg InsertDebouncedSeriesViewEventParams) (ContentEvent, error)
-	// Outbox queries (#610 / #611). Producers insert a pending row in the
+	// Outbox queries. Producers insert a pending row in the
 	// same transaction as the domain write. The worker claims due rows,
 	// runs the handler, and records done / retry / dead.
 	//
@@ -403,7 +403,7 @@ type Querier interface {
 	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
 	// The latest rating each actor currently stands by for one entity: the stock
 	// view of an append-only log. `content_daily_stats.rating_count` /
-	// `rating_sum` (#593) are the *flow* of a single day and cannot answer this,
+	// `rating_sum` are the *flow* of a single day and cannot answer this,
 	// because a member who rated 1 on Monday and 5 on Tuesday contributes to both
 	// days. A stock average has to come from this DISTINCT ON, over the full
 	// retained history, until a materialised current-rating table exists.
@@ -772,7 +772,7 @@ type Querier interface {
 	UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error)
 	// ユーザーのステータスをID指定で更新
 	UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error)
-	// Daily stats are full-day replacements (#593). Upsert keeps a single row per
+	// Daily stats are full-day replacements. Upsert keeps a single row per
 	// (tenant, date, entity). rating_count / rating_sum are that day's flow — the
 	// rating events that occurred on stat_date — and not a stock average: a member
 	// who re-rates is counted on both days, and a member who never re-rates is

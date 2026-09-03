@@ -15,7 +15,7 @@ import (
 )
 
 // TestAccessTicketsRejectCrossTenantReferences verifies composite FKs on
-// access_tickets prevent user/episode rows from another tenant (issue #569).
+// access_tickets prevent user/episode rows from another tenant.
 func TestAccessTicketsRejectCrossTenantReferences(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

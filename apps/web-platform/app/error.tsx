@@ -21,8 +21,8 @@ import { ErrorScreen } from "#components/error-screen";
  * screen renders bare inside `app/layout.tsx`, and the pre-login routes have no
  * chrome to keep in the first place.
  *
- * A failure in `app/layout.tsx` itself is above this boundary and still needs
- * `global-error.tsx` — tracked in #642.
+ * A failure in `app/layout.tsx` itself is above this boundary; catching it
+ * would need a `global-error.tsx`, which this app does not have.
  *
  * Sitting directly under the root layout is also why every string below has its
  * own `<Suspense>`: nothing above this boundary can absorb a suspend, and

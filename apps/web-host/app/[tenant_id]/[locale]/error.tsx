@@ -20,7 +20,8 @@ import { readClientLocale } from "#lib/client-locale";
  * back to the brand defaults in `globals.css`.
  *
  * A failure in `app/[tenant_id]/[locale]/layout.tsx` (the root layout) is above
- * this boundary and still needs `global-error.tsx` — tracked in #642.
+ * this boundary; catching it would need a `global-error.tsx`, which this app
+ * does not have.
  *
  * That position is also why every string below sits behind its own
  * `<Suspense>`: nothing above this boundary can absorb a suspend, and
@@ -34,7 +35,7 @@ import { readClientLocale } from "#lib/client-locale";
  * answering 200 with its chrome degraded to the defaults. What reaches here is
  * a throw, which in practice means a bug rather than an unavailable backend.
  *
- * Same reach rule as `(site)/error.tsx` (#683): a failure raised once the
+ * Same reach rule as `(site)/error.tsx`: a failure raised once the
  * static shell has been flushed reaches this boundary on a direct hit too,
  * while one raised in the first synchronous pass aborts the response as a bare
  * `500 Internal Server Error` that no boundary — and no `global-error.tsx` —

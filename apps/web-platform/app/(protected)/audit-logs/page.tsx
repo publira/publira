@@ -426,7 +426,7 @@ const AuditLogsContent = async ({
   const hasFilter = Boolean(actorFilter || actionFilter);
 
   // Timestamps follow the platform default time zone, not the host's or the
-  // browser's, so every operator reads the same wall clock (#850).
+  // browser's, so every operator reads the same wall clock.
   const [result, timeZone] = await Promise.all([
     listPlatformAuditLogs({
       action: actionFilter || undefined,

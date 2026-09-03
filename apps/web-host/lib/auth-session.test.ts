@@ -120,7 +120,7 @@ describe("web-host auth-session", () => {
   it("withPublicSessionReauth does not treat business errors as re-authentication", async () => {
     const { withPublicSessionReauth } = await importAuthSession();
 
-    // A wrong password reaches the client as invalid_argument (#679); turning it
+    // A wrong password reaches the client as invalid_argument; turning it
     // into a re-login would log a reader out over a typo.
     await expect(
       withPublicSessionReauth(

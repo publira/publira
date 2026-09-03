@@ -99,10 +99,9 @@ const UsersTableSkeleton = () => (
 /**
  * The created_from / created_to filters are date-only (`YYYY-MM-DD`), so the
  * calendar day has to be pinned to a zone before it can become an RFC3339
- * instant. The zone is the platform default (#850), the same one the console
+ * instant. The zone is the platform default, the same one the console
  * formats its timestamps with, so a filtered day matches what the screens show
- * regardless of the browser's zone. Tenant zones are a separate concern
- * (#566 / #567).
+ * regardless of the browser's zone. Tenant zones are a separate concern.
  */
 const createdRangeStart = (
   date: string,

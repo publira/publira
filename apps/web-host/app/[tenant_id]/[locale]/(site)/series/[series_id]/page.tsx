@@ -67,7 +67,7 @@ const SeriesDetailContent = async (
   // Missing / unpublished / other-tenant series all resolve to `null`, and the
   // public site must not tell those apart. A failed read is a value as well:
   // a `"use cache"` fill that throws fails the whole request, so neither this
-  // page nor any boundary would get to render anything (#672).
+  // page nor any boundary would get to render anything.
   const [result, messages] = await Promise.all([
     getSeriesDetail(tenantId, series_id, locale),
     loadHostMessages(locale),

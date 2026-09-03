@@ -117,7 +117,7 @@ export const listPublishedAuthors = async (
  * must not tell them apart.
  *
  * `ok: false` when the fetch itself failed. Neither case throws: a `"use cache"`
- * fill that throws fails the whole request (#672).
+ * fill that throws fails the whole request.
  *
  * Related series are one cursor page. Pass the previous response's token to
  * move; the first call (empty token) is enough to render the author.

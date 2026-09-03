@@ -40,8 +40,8 @@ const (
 
 var tracer = otel.Tracer("github.com/publira/publira/server/internal/outbox")
 
-// Config tunes the resident worker. Zero values become the defaults from
-// Epic #287 (2s drain, 10 attempts, 15m stale reclaim).
+// Config tunes the resident worker. Zero values become the defaults of
+// 2s drain, 10 attempts, and 15m stale reclaim.
 type Config struct {
 	Logger *slog.Logger
 	// Handlers maps event_type to work. Nil becomes [DefaultRegistry].

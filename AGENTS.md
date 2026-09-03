@@ -22,13 +22,15 @@ No lint covers this. A Japanese README or test label that predates the rule is a
 
 GitHub Issues are written in English too, title and body alike, whether you are filing a new one or rewriting an existing one while triaging. An Issue outlives the session that produced it and is read from a search result or a link by contributors who never saw that conversation, so a Japanese body closes the backlog to exactly the readers this documentation is written for. The user's language governs the replies inside a session and nothing else: what is filed on GitHub — Issue, pull request, commit message — is English.
 
-## Issue references in documentation
+## Issue references in documentation and code comments
 
 Long-lived documentation — every `AGENTS.md` and `README.md`, and the skills under `skills/` — states its rules and the reasons behind them, and does not cite the Issue it came out of. Such a citation is added every time an Issue is handled, so it accumulates into noise, and it goes stale the moment the work behind it lands. Provenance belongs in the pull request body and the commit message (`Fixes #NNN`), which are a correct snapshot of their moment and are never rewritten afterwards.
 
+A code comment is held to the same rule, for the same reason: what a comment explains is the decision, and the decision does not need a citation. Reword the surrounding sentence so it still reads as an explanation once the number is gone.
+
 A reference to an **open** Issue naming something still to be done — a defect not fixed yet, a lint rule that does not exist yet — stays, because "this is not solved" is information the reader needs; it is the same allowance a TODO comment gets in code. The test is therefore the Issue's state, not the shape of the number, and closing such an Issue includes deleting the reference and whatever sentence was written around it. An issue in another repository (`vercel/next.js#62046`), a non-Issue `#` such as `UTS #35`, and a number shown as an example of a format are not references of this kind.
 
-No lint covers this: `git grep` cannot tell an open Issue from a closed one, and a scheduled job asking the GitHub API about every number in every document would cost more upkeep than the rule is worth.
+No lint covers this: `git grep` cannot tell an open Issue from a closed one, and a scheduled job asking the GitHub API about every number in every file would cost more upkeep than the rule is worth.
 
 ## Git commits
 

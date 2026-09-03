@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for the Dev Container Traefik routing check (#55).
+# Shared helpers for the Dev Container Traefik routing check.
 #
 # The check overlays compose.yaml + .devcontainer/compose.yaml, keeps the real
 # Traefik labels on `app`, and replaces the process behind those ports with

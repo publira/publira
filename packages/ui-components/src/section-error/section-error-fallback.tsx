@@ -42,7 +42,7 @@ const errorDigest = (error: unknown): string | undefined => {
 };
 
 /**
- * Shared body of every app's section-level error boundary (#647): a section
+ * Shared body of every app's section-level error boundary: a section
  * that throws is replaced by a `SectionError` naming it, every sibling section
  * keeps whatever it already rendered, and 再試行 re-runs only that subtree.
  *

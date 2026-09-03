@@ -9,11 +9,12 @@ const inboxUrl = (pathname: string): string =>
   `${WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL}${pathname}`;
 
 /**
- * The admin inbox (#881) is a different screen from announcement delivery.
- * There are no inbox rows to assert against yet, so the empty bell menu and
- * empty list are the path this suite can take without waiting on #862.
+ * The admin inbox is a different screen from announcement delivery. There are
+ * no inbox rows to assert against yet, so the empty bell menu and empty list
+ * are the path this suite can take without waiting on a delivery path that
+ * fills the inbox.
  *
- * The admin is the inbox tenant's own (#1380): publishing an episode notifies
+ * The admin is the inbox tenant's own: publishing an episode notifies
  * every admin of that episode's tenant, so the dev seed admin's bell stops
  * being empty the moment `admin.publish-flow` runs beside this file.
  */

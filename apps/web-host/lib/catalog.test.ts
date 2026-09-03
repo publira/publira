@@ -213,7 +213,7 @@ describe("catalog.getEpisodeDetail", () => {
   });
 
   // A `"use cache"` function must not throw: the fill would fail the whole
-  // request instead of reaching the awaiting page (#672).
+  // request instead of reaching the awaiting page.
   it("Errors other than not_found are not thrown and return a failure value.", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)

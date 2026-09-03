@@ -1,8 +1,8 @@
 /**
  * Tenant-timezone-aware date/time helpers.
  *
- * Requires `Temporal` at runtime (`temporal-polyfill/global` installed by apps
- * and by this package's vitest setup; see https://github.com/publira/publira/issues/573).
+ * Requires `Temporal` at runtime (`temporal-polyfill/global`, installed by apps
+ * and by this package's vitest setup).
  *
  * Absolute timestamps are RFC3339 / ISO-8601 instants with an explicit offset or
  * `Z` (parsed only via `Temporal.Instant.from` — no host-local `Date` parsing).

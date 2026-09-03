@@ -1,5 +1,5 @@
 # Overlay on ../../compose.yaml + ../../.devcontainer/compose.yaml for the
-# Traefik routing check (#55).
+# Traefik routing check.
 #
 # The check must exercise the *real* Docker labels on `app` (routers, priorities,
 # strip-prefix, host regexes). Only the process behind those ports is replaced:

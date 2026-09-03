@@ -128,7 +128,7 @@ describe("web-host proxy session handling", () => {
    * The loop this guards against: a session revoked elsewhere still decrypts and
    * has not reached its local expiry, so without the marker the proxy would read
    * it as active, bounce `/login` back to `/my`, and `/my` would redirect to
-   * `/login` again — forever (#603 acceptance criteria).
+   * `/login` again — forever.
    */
   it("Do not bounce /login caused by revocation, delete cookies and display", async () => {
     const cookie = await sealedCookie(

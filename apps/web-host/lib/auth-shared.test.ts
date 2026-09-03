@@ -90,7 +90,7 @@ describe("web-host auth-shared", () => {
     expect(
       isUnauthenticatedError(new ConnectError("nope", Code.Unauthenticated))
     ).toBe(true);
-    // A wrong password is invalid_argument, so it stays a form error (#679).
+    // A wrong password is invalid_argument, so it stays a form error.
     expect(
       isUnauthenticatedError(new ConnectError("bad", Code.InvalidArgument))
     ).toBe(false);

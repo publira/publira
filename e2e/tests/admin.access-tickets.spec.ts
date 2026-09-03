@@ -12,9 +12,9 @@ const SEED_TICKET = {
 } as const;
 
 /**
- * Admin access-ticket issue / list / revoke (#615).
+ * Admin access-ticket issue / list / revoke.
  *
- * Server APIs already exist (#614). This covers the console: pick a series
+ * The server APIs already exist. This covers the console: pick a series
  * and episode, issue a grant, see status on the list, and revoke it.
  */
 test.describe("web-admin access tickets", () => {

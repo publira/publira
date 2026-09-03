@@ -305,7 +305,7 @@ type InsertContentEventParams struct {
 	OccurredAt     time.Time       `json:"occurred_at"`
 }
 
-// Engagement / recommend query skeleton (#589).
+// Engagement / recommend query skeleton.
 // Later issues fill handlers and batches; these queries pin the index-backed
 // shapes so sqlc generates now and EXPLAIN stays checkable.
 //
@@ -1076,7 +1076,7 @@ type ListLatestContentRatingsByEntityRow struct {
 
 // The latest rating each actor currently stands by for one entity: the stock
 // view of an append-only log. `content_daily_stats.rating_count` /
-// `rating_sum` (#593) are the *flow* of a single day and cannot answer this,
+// `rating_sum` are the *flow* of a single day and cannot answer this,
 // because a member who rated 1 on Monday and 5 on Tuesday contributes to both
 // days. A stock average has to come from this DISTINCT ON, over the full
 // retained history, until a materialised current-rating table exists.
@@ -1619,7 +1619,7 @@ type UpsertContentDailyStatsParams struct {
 	FavoriteCount     int64     `json:"favorite_count"`
 }
 
-// Daily stats are full-day replacements (#593). Upsert keeps a single row per
+// Daily stats are full-day replacements. Upsert keeps a single row per
 // (tenant, date, entity). rating_count / rating_sum are that day's flow — the
 // rating events that occurred on stat_date — and not a stock average: a member
 // who re-rates is counted on both days, and a member who never re-rates is

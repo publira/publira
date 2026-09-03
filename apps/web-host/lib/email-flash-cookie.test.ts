@@ -41,7 +41,7 @@ describe("parseEmailFlashValue", () => {
 });
 
 describe("emailFlashCookieOptions", () => {
-  it("matches the #600 cookie policy and stays short-lived", async () => {
+  it("matches the cookie policy and stays short-lived", async () => {
     const { EMAIL_FLASH_COOKIE_MAX_AGE_SECONDS, emailFlashCookieOptions } =
       await importEmailFlashCookie();
     expect(emailFlashCookieOptions).toEqual({

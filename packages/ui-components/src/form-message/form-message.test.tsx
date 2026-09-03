@@ -40,8 +40,7 @@ describe("FormMessage", () => {
 
   it("the body updates across consecutive Action submissions", async () => {
     // React は Action の完了後にフォームを reset する。resettable element の
-    // <output> だとその reset で本文が畳まれ、2 回目以降の更新が DOM に届かない
-    // (#1070)。
+    // <output> だとその reset で本文が畳まれ、2 回目以降の更新が DOM に届かない。
     render(<ActionForm />);
 
     const submit = screen.getByRole("button", { name: "送信" });

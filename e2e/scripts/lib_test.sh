@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fast checks for E2E_RUN_DIR isolation and the compose-project lock.
 # No Docker, no compiled binaries. Invoked from run.sh so a regression cannot
-# ship as "two stacks share api-server.pid" again (#685).
+# ship as "two stacks share api-server.pid" again.
 set -euo pipefail
 
 E2E_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -302,7 +302,7 @@ else
 fi
 
 # Teardown deletes the lease file, so a holder that outlives it can no longer be
-# named and every later run is refused with nothing to act on (#982).
+# named and every later run is refused with nothing to act on.
 lock_file="${E2E_DIR}/.run/locks/${lock_project}.lock"
 lease_file="${E2E_DIR}/.run/locks/${lock_project}.lease"
 

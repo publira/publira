@@ -29,7 +29,7 @@ const noContent = () => new NextResponse(null, { status: 204 });
  * from the beacon body: the sender must not get to choose whose catalog its
  * view is filed under.
  *
- * #600's Origin check applies here. The beacon carries the reader's cookies,
+ * The same-origin check applies here. The beacon carries the reader's cookies,
  * so without it any page on the web could file views against this tenant.
  */
 export const POST = async (

@@ -1,11 +1,11 @@
 /**
- * The console's side of the administrator second factor (Epic #59).
+ * The console's side of the administrator second factor.
  *
  * Every call here presents a code, and the API answers a refused code with
  * `unauthenticated` — the same code a rejected session gets. The two are told
  * apart by the `MFA_INVALID_CODE` / `MFA_LOCKED` reason the server attaches:
  * without it a mistyped digit would sign the operator out, which is exactly
- * what the re-authentication flow exists to avoid (#679).
+ * what the re-authentication flow exists to avoid.
  */
 
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
