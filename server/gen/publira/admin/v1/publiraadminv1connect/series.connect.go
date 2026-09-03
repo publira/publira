@@ -69,6 +69,9 @@ const (
 	// AdminSeriesServiceUpdateEpisodePublishScheduleProcedure is the fully-qualified name of the
 	// AdminSeriesService's UpdateEpisodePublishSchedule RPC.
 	AdminSeriesServiceUpdateEpisodePublishScheduleProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodePublishSchedule"
+	// AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure is the fully-qualified name of the
+	// AdminSeriesService's UploadSeriesEyeCatchAspectImage RPC.
+	AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminSeriesService/UploadSeriesEyeCatchAspectImage"
 )
 
 // AdminSeriesServiceClient is a client for the publira.admin.v1.AdminSeriesService service.
@@ -85,6 +88,7 @@ type AdminSeriesServiceClient interface {
 	ListEpisodeImages(context.Context, *connect.Request[v1.ListEpisodeImagesRequest]) (*connect.Response[v1.ListEpisodeImagesResponse], error)
 	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
+	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
 }
 
 // NewAdminSeriesServiceClient constructs a client for the publira.admin.v1.AdminSeriesService
@@ -170,23 +174,30 @@ func NewAdminSeriesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodePublishSchedule")),
 			connect.WithClientOptions(opts...),
 		),
+		uploadSeriesEyeCatchAspectImage: connect.NewClient[v1.UploadSeriesEyeCatchAspectImageRequest, v1.UploadSeriesEyeCatchAspectImageResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("UploadSeriesEyeCatchAspectImage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // adminSeriesServiceClient implements AdminSeriesServiceClient.
 type adminSeriesServiceClient struct {
-	createSeries                 *connect.Client[v1.CreateSeriesRequest, v1.CreateSeriesResponse]
-	updateSeries                 *connect.Client[v1.UpdateSeriesRequest, v1.UpdateSeriesResponse]
-	listSeries                   *connect.Client[v1.ListSeriesRequest, v1.ListSeriesResponse]
-	getSeries                    *connect.Client[v1.GetSeriesRequest, v1.GetSeriesResponse]
-	listEpisodes                 *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
-	getEpisode                   *connect.Client[v1.GetEpisodeRequest, v1.GetEpisodeResponse]
-	reorderEpisodes              *connect.Client[v1.ReorderEpisodesRequest, v1.ReorderEpisodesResponse]
-	createEpisode                *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
-	uploadEpisodeImages          *connect.Client[v1.UploadEpisodeImagesRequest, v1.UploadEpisodeImagesResponse]
-	listEpisodeImages            *connect.Client[v1.ListEpisodeImagesRequest, v1.ListEpisodeImagesResponse]
-	reorderEpisodeImages         *connect.Client[v1.ReorderEpisodeImagesRequest, v1.ReorderEpisodeImagesResponse]
-	updateEpisodePublishSchedule *connect.Client[v1.UpdateEpisodePublishScheduleRequest, v1.UpdateEpisodePublishScheduleResponse]
+	createSeries                    *connect.Client[v1.CreateSeriesRequest, v1.CreateSeriesResponse]
+	updateSeries                    *connect.Client[v1.UpdateSeriesRequest, v1.UpdateSeriesResponse]
+	listSeries                      *connect.Client[v1.ListSeriesRequest, v1.ListSeriesResponse]
+	getSeries                       *connect.Client[v1.GetSeriesRequest, v1.GetSeriesResponse]
+	listEpisodes                    *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
+	getEpisode                      *connect.Client[v1.GetEpisodeRequest, v1.GetEpisodeResponse]
+	reorderEpisodes                 *connect.Client[v1.ReorderEpisodesRequest, v1.ReorderEpisodesResponse]
+	createEpisode                   *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
+	uploadEpisodeImages             *connect.Client[v1.UploadEpisodeImagesRequest, v1.UploadEpisodeImagesResponse]
+	listEpisodeImages               *connect.Client[v1.ListEpisodeImagesRequest, v1.ListEpisodeImagesResponse]
+	reorderEpisodeImages            *connect.Client[v1.ReorderEpisodeImagesRequest, v1.ReorderEpisodeImagesResponse]
+	updateEpisodePublishSchedule    *connect.Client[v1.UpdateEpisodePublishScheduleRequest, v1.UpdateEpisodePublishScheduleResponse]
+	uploadSeriesEyeCatchAspectImage *connect.Client[v1.UploadSeriesEyeCatchAspectImageRequest, v1.UploadSeriesEyeCatchAspectImageResponse]
 }
 
 // CreateSeries calls publira.admin.v1.AdminSeriesService.CreateSeries.
@@ -250,6 +261,12 @@ func (c *adminSeriesServiceClient) UpdateEpisodePublishSchedule(ctx context.Cont
 	return c.updateEpisodePublishSchedule.CallUnary(ctx, req)
 }
 
+// UploadSeriesEyeCatchAspectImage calls
+// publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage.
+func (c *adminSeriesServiceClient) UploadSeriesEyeCatchAspectImage(ctx context.Context, req *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error) {
+	return c.uploadSeriesEyeCatchAspectImage.CallUnary(ctx, req)
+}
+
 // AdminSeriesServiceHandler is an implementation of the publira.admin.v1.AdminSeriesService
 // service.
 type AdminSeriesServiceHandler interface {
@@ -265,6 +282,7 @@ type AdminSeriesServiceHandler interface {
 	ListEpisodeImages(context.Context, *connect.Request[v1.ListEpisodeImagesRequest]) (*connect.Response[v1.ListEpisodeImagesResponse], error)
 	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
+	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
 }
 
 // NewAdminSeriesServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -346,6 +364,12 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodePublishSchedule")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminSeriesServiceUploadSeriesEyeCatchAspectImageHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure,
+		svc.UploadSeriesEyeCatchAspectImage,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("UploadSeriesEyeCatchAspectImage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminSeriesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminSeriesServiceCreateSeriesProcedure:
@@ -372,6 +396,8 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 			adminSeriesServiceReorderEpisodeImagesHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceUpdateEpisodePublishScheduleProcedure:
 			adminSeriesServiceUpdateEpisodePublishScheduleHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure:
+			adminSeriesServiceUploadSeriesEyeCatchAspectImageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -427,4 +453,8 @@ func (UnimplementedAdminSeriesServiceHandler) ReorderEpisodeImages(context.Conte
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage is not implemented"))
 }

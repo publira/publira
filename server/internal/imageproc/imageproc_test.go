@@ -8,6 +8,7 @@ import (
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"math"
 	"testing"
 
 	"github.com/publira/publira/server/internal/imageproc"
@@ -216,6 +217,117 @@ func TestBuildEyeCatchVariants_RejectsTooSmallImage(t *testing.T) {
 	_, err := imageproc.BuildEyeCatchVariants(raw, "image/jpeg")
 	if err == nil {
 		t.Fatal("want error for too small image, got nil")
+	}
+}
+
+// --- TestBuildEyeCatchAspectVariants ---
+
+func TestBuildEyeCatchAspectVariants_GeneratesOneRatioOnly(t *testing.T) {
+	raw := makeJPEG(t, 3200, 1800)
+	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "landscape")
+	if err != nil {
+		t.Fatalf("BuildEyeCatchAspectVariants: %v", err)
+	}
+	if len(variants) != 3 {
+		t.Fatalf("got %d variants, want 3", len(variants))
+	}
+	want := map[string][2]int{
+		"landscape_800w":  {800, 450},
+		"landscape_1200w": {1200, 675},
+		"landscape_1600w": {1600, 900},
+	}
+	for _, variant := range variants {
+		if variant.VariantType != "landscape" {
+			t.Fatalf("variant %q has variant_type %q, want landscape", variant.Label, variant.VariantType)
+		}
+		size, ok := want[variant.Label]
+		if !ok {
+			t.Fatalf("unexpected variant %q", variant.Label)
+		}
+		if variant.Width != size[0] || variant.Height != size[1] {
+			t.Fatalf("variant %q is %dx%d, want %dx%d", variant.Label, variant.Width, variant.Height, size[0], size[1])
+		}
+		delete(want, variant.Label)
+	}
+	if len(want) != 0 {
+		t.Fatalf("missing variants: %v", want)
+	}
+}
+
+func TestBuildEyeCatchAspectVariants_CropsSourceToTheRequestedRatio(t *testing.T) {
+	// A 1:1 source asked for as og (1200:630) has to come back at that ratio,
+	// or delivery would hand the OG slot a square image.
+	raw := makeJPEG(t, 2000, 2000)
+	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "og")
+	if err != nil {
+		t.Fatalf("BuildEyeCatchAspectVariants: %v", err)
+	}
+	for _, variant := range variants {
+		wantHeight := int(math.Round(float64(variant.Width) * 630 / 1200))
+		if variant.Height != wantHeight {
+			t.Fatalf("variant %q is %dx%d, want %dx%d", variant.Label, variant.Width, variant.Height, variant.Width, wantHeight)
+		}
+	}
+}
+
+func TestBuildEyeCatchAspectVariants_RejectsSourceBelowTheRatioMinimum(t *testing.T) {
+	// Tall enough for portrait, one pixel short of the width its largest
+	// delivered size needs.
+	raw := makeJPEG(t, 1199, 3200)
+	_, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "portrait")
+	if err == nil {
+		t.Fatal("want error for a source below the portrait minimum, got nil")
+	}
+}
+
+func TestBuildEyeCatchAspectVariants_AcceptsSourceBelowTheWholeEyeCatchMinimum(t *testing.T) {
+	// Filling a whole eye-catch needs 2400x3200 because all four ratios come
+	// out of that one image. A portrait upload only has to cover the portrait
+	// sizes.
+	raw := makeJPEG(t, 1200, 1600)
+	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "portrait")
+	if err != nil {
+		t.Fatalf("BuildEyeCatchAspectVariants: %v", err)
+	}
+	if len(variants) != 3 {
+		t.Fatalf("got %d variants, want 3", len(variants))
+	}
+}
+
+func TestBuildEyeCatchAspectVariants_RejectsUnknownRatio(t *testing.T) {
+	raw := makeJPEG(t, 2400, 3200)
+	_, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "banner")
+	if err == nil {
+		t.Fatal("want error for an unknown ratio, got nil")
+	}
+}
+
+func TestEyeCatchAspects_CoverEveryDeliveredRatio(t *testing.T) {
+	aspects := imageproc.EyeCatchAspects()
+	byType := make(map[string]imageproc.EyeCatchAspect, len(aspects))
+	for _, aspect := range aspects {
+		byType[aspect.VariantType] = aspect
+	}
+	want := map[string][2]int{
+		"portrait":  {1200, 1600},
+		"square":    {1200, 1200},
+		"landscape": {1600, 900},
+		"og":        {1200, 630},
+	}
+	if len(byType) != len(want) {
+		t.Fatalf("got %d aspects, want %d", len(byType), len(want))
+	}
+	for variantType, minimum := range want {
+		aspect, ok := byType[variantType]
+		if !ok {
+			t.Fatalf("aspect %q is missing", variantType)
+		}
+		if aspect.MinWidth != minimum[0] || aspect.MinHeight != minimum[1] {
+			t.Fatalf("aspect %q minimum is %dx%d, want %dx%d", variantType, aspect.MinWidth, aspect.MinHeight, minimum[0], minimum[1])
+		}
+	}
+	if _, ok := imageproc.LookupEyeCatchAspect("banner"); ok {
+		t.Fatal("LookupEyeCatchAspect resolved an unknown ratio")
 	}
 }
 

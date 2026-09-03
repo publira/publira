@@ -483,6 +483,129 @@ func (x *UpdateLabelResponse) GetLabel() *v1.Label {
 	return nil
 }
 
+// Replaces the image of one aspect ratio of a label eye-catch. The other
+// ratios keep the images they already hold.
+type UploadLabelEyeCatchAspectImageRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// portrait / square / landscape / og
+	VariantType      string `protobuf:"bytes,3,opt,name=variant_type,json=variantType,proto3" json:"variant_type,omitempty"`
+	ImageData        []byte `protobuf:"bytes,4,opt,name=image_data,json=imageData,proto3" json:"image_data,omitempty"`
+	ImageContentType string `protobuf:"bytes,5,opt,name=image_content_type,json=imageContentType,proto3" json:"image_content_type,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *UploadLabelEyeCatchAspectImageRequest) Reset() {
+	*x = UploadLabelEyeCatchAspectImageRequest{}
+	mi := &file_publira_admin_v1_label_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadLabelEyeCatchAspectImageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadLabelEyeCatchAspectImageRequest) ProtoMessage() {}
+
+func (x *UploadLabelEyeCatchAspectImageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_label_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadLabelEyeCatchAspectImageRequest.ProtoReflect.Descriptor instead.
+func (*UploadLabelEyeCatchAspectImageRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UploadLabelEyeCatchAspectImageRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UploadLabelEyeCatchAspectImageRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *UploadLabelEyeCatchAspectImageRequest) GetVariantType() string {
+	if x != nil {
+		return x.VariantType
+	}
+	return ""
+}
+
+func (x *UploadLabelEyeCatchAspectImageRequest) GetImageData() []byte {
+	if x != nil {
+		return x.ImageData
+	}
+	return nil
+}
+
+func (x *UploadLabelEyeCatchAspectImageRequest) GetImageContentType() string {
+	if x != nil {
+		return x.ImageContentType
+	}
+	return ""
+}
+
+type UploadLabelEyeCatchAspectImageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Label         *v1.Label              `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadLabelEyeCatchAspectImageResponse) Reset() {
+	*x = UploadLabelEyeCatchAspectImageResponse{}
+	mi := &file_publira_admin_v1_label_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadLabelEyeCatchAspectImageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadLabelEyeCatchAspectImageResponse) ProtoMessage() {}
+
+func (x *UploadLabelEyeCatchAspectImageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_label_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadLabelEyeCatchAspectImageResponse.ProtoReflect.Descriptor instead.
+func (*UploadLabelEyeCatchAspectImageResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UploadLabelEyeCatchAspectImageResponse) GetLabel() *v1.Label {
+	if x != nil {
+		return x.Label
+	}
+	return nil
+}
+
 var File_publira_admin_v1_label_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_label_proto_rawDesc = "" +
@@ -517,13 +640,23 @@ const file_publira_admin_v1_label_proto_rawDesc = "" +
 	"\x1ceye_catch_image_content_type\x18\x05 \x01(\tR\x18eyeCatchImageContentType\x121\n" +
 	"\x15clear_eye_catch_image\x18\x06 \x01(\bR\x12clearEyeCatchImage\"D\n" +
 	"\x13UpdateLabelResponse\x12-\n" +
-	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label2\xff\x02\n" +
+	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label\"\xed\x01\n" +
+	"%UploadLabelEyeCatchAspectImageRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12!\n" +
+	"\fvariant_type\x18\x03 \x01(\tR\vvariantType\x12\x1d\n" +
+	"\n" +
+	"image_data\x18\x04 \x01(\fR\timageData\x12,\n" +
+	"\x12image_content_type\x18\x05 \x01(\tR\x10imageContentType\"W\n" +
+	"&UploadLabelEyeCatchAspectImageResponse\x12-\n" +
+	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label2\x97\x04\n" +
 	"\x11AdminLabelService\x12Y\n" +
 	"\n" +
 	"ListLabels\x12#.publira.admin.v1.ListLabelsRequest\x1a$.publira.admin.v1.ListLabelsResponse\"\x00\x12S\n" +
 	"\bGetLabel\x12!.publira.admin.v1.GetLabelRequest\x1a\".publira.admin.v1.GetLabelResponse\"\x00\x12\\\n" +
 	"\vCreateLabel\x12$.publira.admin.v1.CreateLabelRequest\x1a%.publira.admin.v1.CreateLabelResponse\"\x00\x12\\\n" +
-	"\vUpdateLabel\x12$.publira.admin.v1.UpdateLabelRequest\x1a%.publira.admin.v1.UpdateLabelResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\vUpdateLabel\x12$.publira.admin.v1.UpdateLabelRequest\x1a%.publira.admin.v1.UpdateLabelResponse\"\x00\x12\x95\x01\n" +
+	"\x1eUploadLabelEyeCatchAspectImage\x127.publira.admin.v1.UploadLabelEyeCatchAspectImageRequest\x1a8.publira.admin.v1.UploadLabelEyeCatchAspectImageResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_label_proto_rawDescOnce sync.Once
@@ -537,41 +670,47 @@ func file_publira_admin_v1_label_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_label_proto_rawDescData
 }
 
-var file_publira_admin_v1_label_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_publira_admin_v1_label_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_publira_admin_v1_label_proto_goTypes = []any{
-	(*ListLabelsRequest)(nil),   // 0: publira.admin.v1.ListLabelsRequest
-	(*ListLabelsResponse)(nil),  // 1: publira.admin.v1.ListLabelsResponse
-	(*GetLabelRequest)(nil),     // 2: publira.admin.v1.GetLabelRequest
-	(*GetLabelResponse)(nil),    // 3: publira.admin.v1.GetLabelResponse
-	(*CreateLabelRequest)(nil),  // 4: publira.admin.v1.CreateLabelRequest
-	(*CreateLabelResponse)(nil), // 5: publira.admin.v1.CreateLabelResponse
-	(*UpdateLabelRequest)(nil),  // 6: publira.admin.v1.UpdateLabelRequest
-	(*UpdateLabelResponse)(nil), // 7: publira.admin.v1.UpdateLabelResponse
-	(*v1.TenantContext)(nil),    // 8: publira.types.v1.TenantContext
-	(*v1.Label)(nil),            // 9: publira.types.v1.Label
+	(*ListLabelsRequest)(nil),                      // 0: publira.admin.v1.ListLabelsRequest
+	(*ListLabelsResponse)(nil),                     // 1: publira.admin.v1.ListLabelsResponse
+	(*GetLabelRequest)(nil),                        // 2: publira.admin.v1.GetLabelRequest
+	(*GetLabelResponse)(nil),                       // 3: publira.admin.v1.GetLabelResponse
+	(*CreateLabelRequest)(nil),                     // 4: publira.admin.v1.CreateLabelRequest
+	(*CreateLabelResponse)(nil),                    // 5: publira.admin.v1.CreateLabelResponse
+	(*UpdateLabelRequest)(nil),                     // 6: publira.admin.v1.UpdateLabelRequest
+	(*UpdateLabelResponse)(nil),                    // 7: publira.admin.v1.UpdateLabelResponse
+	(*UploadLabelEyeCatchAspectImageRequest)(nil),  // 8: publira.admin.v1.UploadLabelEyeCatchAspectImageRequest
+	(*UploadLabelEyeCatchAspectImageResponse)(nil), // 9: publira.admin.v1.UploadLabelEyeCatchAspectImageResponse
+	(*v1.TenantContext)(nil),                       // 10: publira.types.v1.TenantContext
+	(*v1.Label)(nil),                               // 11: publira.types.v1.Label
 }
 var file_publira_admin_v1_label_proto_depIdxs = []int32{
-	8,  // 0: publira.admin.v1.ListLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 1: publira.admin.v1.ListLabelsResponse.labels:type_name -> publira.types.v1.Label
-	8,  // 2: publira.admin.v1.GetLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 3: publira.admin.v1.GetLabelResponse.label:type_name -> publira.types.v1.Label
-	8,  // 4: publira.admin.v1.CreateLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 5: publira.admin.v1.CreateLabelResponse.label:type_name -> publira.types.v1.Label
-	8,  // 6: publira.admin.v1.UpdateLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 7: publira.admin.v1.UpdateLabelResponse.label:type_name -> publira.types.v1.Label
-	0,  // 8: publira.admin.v1.AdminLabelService.ListLabels:input_type -> publira.admin.v1.ListLabelsRequest
-	2,  // 9: publira.admin.v1.AdminLabelService.GetLabel:input_type -> publira.admin.v1.GetLabelRequest
-	4,  // 10: publira.admin.v1.AdminLabelService.CreateLabel:input_type -> publira.admin.v1.CreateLabelRequest
-	6,  // 11: publira.admin.v1.AdminLabelService.UpdateLabel:input_type -> publira.admin.v1.UpdateLabelRequest
-	1,  // 12: publira.admin.v1.AdminLabelService.ListLabels:output_type -> publira.admin.v1.ListLabelsResponse
-	3,  // 13: publira.admin.v1.AdminLabelService.GetLabel:output_type -> publira.admin.v1.GetLabelResponse
-	5,  // 14: publira.admin.v1.AdminLabelService.CreateLabel:output_type -> publira.admin.v1.CreateLabelResponse
-	7,  // 15: publira.admin.v1.AdminLabelService.UpdateLabel:output_type -> publira.admin.v1.UpdateLabelResponse
-	12, // [12:16] is the sub-list for method output_type
-	8,  // [8:12] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	10, // 0: publira.admin.v1.ListLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 1: publira.admin.v1.ListLabelsResponse.labels:type_name -> publira.types.v1.Label
+	10, // 2: publira.admin.v1.GetLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 3: publira.admin.v1.GetLabelResponse.label:type_name -> publira.types.v1.Label
+	10, // 4: publira.admin.v1.CreateLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 5: publira.admin.v1.CreateLabelResponse.label:type_name -> publira.types.v1.Label
+	10, // 6: publira.admin.v1.UpdateLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 7: publira.admin.v1.UpdateLabelResponse.label:type_name -> publira.types.v1.Label
+	10, // 8: publira.admin.v1.UploadLabelEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 9: publira.admin.v1.UploadLabelEyeCatchAspectImageResponse.label:type_name -> publira.types.v1.Label
+	0,  // 10: publira.admin.v1.AdminLabelService.ListLabels:input_type -> publira.admin.v1.ListLabelsRequest
+	2,  // 11: publira.admin.v1.AdminLabelService.GetLabel:input_type -> publira.admin.v1.GetLabelRequest
+	4,  // 12: publira.admin.v1.AdminLabelService.CreateLabel:input_type -> publira.admin.v1.CreateLabelRequest
+	6,  // 13: publira.admin.v1.AdminLabelService.UpdateLabel:input_type -> publira.admin.v1.UpdateLabelRequest
+	8,  // 14: publira.admin.v1.AdminLabelService.UploadLabelEyeCatchAspectImage:input_type -> publira.admin.v1.UploadLabelEyeCatchAspectImageRequest
+	1,  // 15: publira.admin.v1.AdminLabelService.ListLabels:output_type -> publira.admin.v1.ListLabelsResponse
+	3,  // 16: publira.admin.v1.AdminLabelService.GetLabel:output_type -> publira.admin.v1.GetLabelResponse
+	5,  // 17: publira.admin.v1.AdminLabelService.CreateLabel:output_type -> publira.admin.v1.CreateLabelResponse
+	7,  // 18: publira.admin.v1.AdminLabelService.UpdateLabel:output_type -> publira.admin.v1.UpdateLabelResponse
+	9,  // 19: publira.admin.v1.AdminLabelService.UploadLabelEyeCatchAspectImage:output_type -> publira.admin.v1.UploadLabelEyeCatchAspectImageResponse
+	15, // [15:20] is the sub-list for method output_type
+	10, // [10:15] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_label_proto_init() }
@@ -585,7 +724,7 @@ func file_publira_admin_v1_label_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_label_proto_rawDesc), len(file_publira_admin_v1_label_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

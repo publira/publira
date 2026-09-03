@@ -1541,6 +1541,26 @@ func (q *Queries) CreateUserPasswordResetToken(ctx context.Context, arg CreateUs
 	return i, err
 }
 
+const deleteLabelImageVariantsByType = `-- name: DeleteLabelImageVariantsByType :execrows
+DELETE FROM label_image_variants
+WHERE label_image_id = $1
+    AND variant_type = $2
+`
+
+type DeleteLabelImageVariantsByTypeParams struct {
+	LabelImageID uuid.UUID `json:"label_image_id"`
+	VariantType  string    `json:"variant_type"`
+}
+
+// Clears one aspect ratio of an eye-catch, like the series query above.
+func (q *Queries) DeleteLabelImageVariantsByType(ctx context.Context, arg DeleteLabelImageVariantsByTypeParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteLabelImageVariantsByType, arg.LabelImageID, arg.VariantType)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deletePlatformUserEmailChangeTokensByUserID = `-- name: DeletePlatformUserEmailChangeTokensByUserID :exec
 DELETE FROM platform_user_email_change_tokens
 WHERE platform_user_id = $1
@@ -1581,6 +1601,28 @@ WHERE series_id = $1
 func (q *Queries) DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteSeriesCreatorsBySeriesID, seriesID)
 	return err
+}
+
+const deleteSeriesImageVariantsByType = `-- name: DeleteSeriesImageVariantsByType :execrows
+DELETE FROM series_image_variants
+WHERE series_image_id = $1
+    AND variant_type = $2
+`
+
+type DeleteSeriesImageVariantsByTypeParams struct {
+	SeriesImageID uuid.UUID `json:"series_image_id"`
+	VariantType   string    `json:"variant_type"`
+}
+
+// Clears one aspect ratio of an eye-catch so a newly uploaded image for that
+// ratio can take its place. The objects the deleted rows named are left to
+// `batch purge-orphan-images`.
+func (q *Queries) DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteSeriesImageVariantsByType, arg.SeriesImageID, arg.VariantType)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const deleteTenantImage = `-- name: DeleteTenantImage :exec
@@ -9000,6 +9042,31 @@ func (q *Queries) SetTenantThemeLogoImage(ctx context.Context, arg SetTenantThem
 		&i.LogoImageID,
 	)
 	return i, err
+}
+
+const touchLabelImage = `-- name: TouchLabelImage :exec
+UPDATE label_images
+SET updated_at = NOW()
+WHERE id = $1
+`
+
+// Records that the eye-catch changed after one of its ratios was replaced.
+func (q *Queries) TouchLabelImage(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, touchLabelImage, id)
+	return err
+}
+
+const touchSeriesImage = `-- name: TouchSeriesImage :exec
+UPDATE series_images
+SET updated_at = NOW()
+WHERE id = $1
+`
+
+// Records that the eye-catch changed after one of its ratios was replaced.
+// `updated_at` is what the console reads back and what busts the cached URL.
+func (q *Queries) TouchSeriesImage(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, touchSeriesImage, id)
+	return err
 }
 
 const updateCreator = `-- name: UpdateCreator :exec

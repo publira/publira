@@ -1961,6 +1961,21 @@ ORDER BY series_image_id,
     variant_type,
     width;
 
+-- name: TouchSeriesImage :exec
+-- Records that the eye-catch changed after one of its ratios was replaced.
+-- `updated_at` is what the console reads back and what busts the cached URL.
+UPDATE series_images
+SET updated_at = NOW()
+WHERE id = $1;
+
+-- name: DeleteSeriesImageVariantsByType :execrows
+-- Clears one aspect ratio of an eye-catch so a newly uploaded image for that
+-- ratio can take its place. The objects the deleted rows named are left to
+-- `batch purge-orphan-images`.
+DELETE FROM series_image_variants
+WHERE series_image_id = $1
+    AND variant_type = $2;
+
 -- name: UpdateSeriesEyeCatchImageID :exec
 UPDATE series
 SET eye_catch_image_id = $2,
@@ -2801,6 +2816,18 @@ WHERE label_image_id = ANY(@image_ids::uuid[])
 ORDER BY label_image_id,
     variant_type,
     width;
+
+-- name: TouchLabelImage :exec
+-- Records that the eye-catch changed after one of its ratios was replaced.
+UPDATE label_images
+SET updated_at = NOW()
+WHERE id = $1;
+
+-- name: DeleteLabelImageVariantsByType :execrows
+-- Clears one aspect ratio of an eye-catch, like the series query above.
+DELETE FROM label_image_variants
+WHERE label_image_id = $1
+    AND variant_type = $2;
 
 -- Admin ListLabels と公開側 ListPublishedLabels は (created_at, id) の降順で
 -- 表示する。並びも列も同じなので 1 組のクエリを両方から使う。

@@ -90,11 +90,17 @@ type Querier interface {
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
 	DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error)
 	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
+	// Clears one aspect ratio of an eye-catch, like the series query above.
+	DeleteLabelImageVariantsByType(ctx context.Context, arg DeleteLabelImageVariantsByTypeParams) (int64, error)
 	DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	DeleteSeriesFollow(ctx context.Context, arg DeleteSeriesFollowParams) (int64, error)
+	// Clears one aspect ratio of an eye-catch so a newly uploaded image for that
+	// ratio can take its place. The objects the deleted rows named are left to
+	// `batch purge-orphan-images`.
+	DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error)
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
 	// テナントユーザーのロールをすべて削除する
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
@@ -711,6 +717,11 @@ type Querier interface {
 	// tenant can upload a logo before it has ever saved a color, and the colors
 	// then keep their column defaults.
 	SetTenantThemeLogoImage(ctx context.Context, arg SetTenantThemeLogoImageParams) (TenantTheme, error)
+	// Records that the eye-catch changed after one of its ratios was replaced.
+	TouchLabelImage(ctx context.Context, id uuid.UUID) error
+	// Records that the eye-catch changed after one of its ratios was replaced.
+	// `updated_at` is what the console reads back and what busts the cached URL.
+	TouchSeriesImage(ctx context.Context, id uuid.UUID) error
 	// Release a claim when River already has an in-flight process job for
 	// this event (unique skip). attempts and available_at stay as they were.
 	UnclaimOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)

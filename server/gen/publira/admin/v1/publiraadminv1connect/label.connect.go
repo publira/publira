@@ -45,6 +45,9 @@ const (
 	// AdminLabelServiceUpdateLabelProcedure is the fully-qualified name of the AdminLabelService's
 	// UpdateLabel RPC.
 	AdminLabelServiceUpdateLabelProcedure = "/publira.admin.v1.AdminLabelService/UpdateLabel"
+	// AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure is the fully-qualified name of the
+	// AdminLabelService's UploadLabelEyeCatchAspectImage RPC.
+	AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminLabelService/UploadLabelEyeCatchAspectImage"
 )
 
 // AdminLabelServiceClient is a client for the publira.admin.v1.AdminLabelService service.
@@ -53,6 +56,7 @@ type AdminLabelServiceClient interface {
 	GetLabel(context.Context, *connect.Request[v1.GetLabelRequest]) (*connect.Response[v1.GetLabelResponse], error)
 	CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error)
 	UpdateLabel(context.Context, *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error)
+	UploadLabelEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadLabelEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadLabelEyeCatchAspectImageResponse], error)
 }
 
 // NewAdminLabelServiceClient constructs a client for the publira.admin.v1.AdminLabelService
@@ -90,15 +94,22 @@ func NewAdminLabelServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(adminLabelServiceMethods.ByName("UpdateLabel")),
 			connect.WithClientOptions(opts...),
 		),
+		uploadLabelEyeCatchAspectImage: connect.NewClient[v1.UploadLabelEyeCatchAspectImageRequest, v1.UploadLabelEyeCatchAspectImageResponse](
+			httpClient,
+			baseURL+AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure,
+			connect.WithSchema(adminLabelServiceMethods.ByName("UploadLabelEyeCatchAspectImage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // adminLabelServiceClient implements AdminLabelServiceClient.
 type adminLabelServiceClient struct {
-	listLabels  *connect.Client[v1.ListLabelsRequest, v1.ListLabelsResponse]
-	getLabel    *connect.Client[v1.GetLabelRequest, v1.GetLabelResponse]
-	createLabel *connect.Client[v1.CreateLabelRequest, v1.CreateLabelResponse]
-	updateLabel *connect.Client[v1.UpdateLabelRequest, v1.UpdateLabelResponse]
+	listLabels                     *connect.Client[v1.ListLabelsRequest, v1.ListLabelsResponse]
+	getLabel                       *connect.Client[v1.GetLabelRequest, v1.GetLabelResponse]
+	createLabel                    *connect.Client[v1.CreateLabelRequest, v1.CreateLabelResponse]
+	updateLabel                    *connect.Client[v1.UpdateLabelRequest, v1.UpdateLabelResponse]
+	uploadLabelEyeCatchAspectImage *connect.Client[v1.UploadLabelEyeCatchAspectImageRequest, v1.UploadLabelEyeCatchAspectImageResponse]
 }
 
 // ListLabels calls publira.admin.v1.AdminLabelService.ListLabels.
@@ -121,12 +132,19 @@ func (c *adminLabelServiceClient) UpdateLabel(ctx context.Context, req *connect.
 	return c.updateLabel.CallUnary(ctx, req)
 }
 
+// UploadLabelEyeCatchAspectImage calls
+// publira.admin.v1.AdminLabelService.UploadLabelEyeCatchAspectImage.
+func (c *adminLabelServiceClient) UploadLabelEyeCatchAspectImage(ctx context.Context, req *connect.Request[v1.UploadLabelEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadLabelEyeCatchAspectImageResponse], error) {
+	return c.uploadLabelEyeCatchAspectImage.CallUnary(ctx, req)
+}
+
 // AdminLabelServiceHandler is an implementation of the publira.admin.v1.AdminLabelService service.
 type AdminLabelServiceHandler interface {
 	ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error)
 	GetLabel(context.Context, *connect.Request[v1.GetLabelRequest]) (*connect.Response[v1.GetLabelResponse], error)
 	CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error)
 	UpdateLabel(context.Context, *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error)
+	UploadLabelEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadLabelEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadLabelEyeCatchAspectImageResponse], error)
 }
 
 // NewAdminLabelServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -160,6 +178,12 @@ func NewAdminLabelServiceHandler(svc AdminLabelServiceHandler, opts ...connect.H
 		connect.WithSchema(adminLabelServiceMethods.ByName("UpdateLabel")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminLabelServiceUploadLabelEyeCatchAspectImageHandler := connect.NewUnaryHandler(
+		AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure,
+		svc.UploadLabelEyeCatchAspectImage,
+		connect.WithSchema(adminLabelServiceMethods.ByName("UploadLabelEyeCatchAspectImage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminLabelService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminLabelServiceListLabelsProcedure:
@@ -170,6 +194,8 @@ func NewAdminLabelServiceHandler(svc AdminLabelServiceHandler, opts ...connect.H
 			adminLabelServiceCreateLabelHandler.ServeHTTP(w, r)
 		case AdminLabelServiceUpdateLabelProcedure:
 			adminLabelServiceUpdateLabelHandler.ServeHTTP(w, r)
+		case AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure:
+			adminLabelServiceUploadLabelEyeCatchAspectImageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -193,4 +219,8 @@ func (UnimplementedAdminLabelServiceHandler) CreateLabel(context.Context, *conne
 
 func (UnimplementedAdminLabelServiceHandler) UpdateLabel(context.Context, *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminLabelService.UpdateLabel is not implemented"))
+}
+
+func (UnimplementedAdminLabelServiceHandler) UploadLabelEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadLabelEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadLabelEyeCatchAspectImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminLabelService.UploadLabelEyeCatchAspectImage is not implemented"))
 }
