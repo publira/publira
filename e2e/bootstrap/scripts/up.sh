@@ -26,7 +26,7 @@ for port in "${BOOTSTRAP_POSTGRES_PORT}" "${BOOTSTRAP_REDIS_PORT}" "${BOOTSTRAP_
   fi
 done
 
-bootstrap_log "starting db + redis + rustfs from .devcontainer/compose.yaml"
+bootstrap_log "starting db + redis + rustfs from compose.yaml"
 compose up -d --wait db redis rustfs
 
 container_id="$(db_container_id)"

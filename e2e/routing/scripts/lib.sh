@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Shared helpers for the Dev Container Traefik routing check (#55).
 #
-# The check overlays .devcontainer/compose.yaml, keeps the real Traefik labels
-# on `app`, and replaces the process behind those ports with echo.py so each
-# probe can assert the backend and the path Traefik forwarded.
+# The check overlays compose.yaml + .devcontainer/compose.yaml, keeps the real
+# Traefik labels on `app`, and replaces the process behind those ports with
+# echo.py so each probe can assert the backend and the path Traefik forwarded.
 # shellcheck shell=bash
 
 set -euo pipefail
@@ -17,11 +17,14 @@ _ROUTING_RUN_DIR_FROM_ENV="${ROUTING_RUN_DIR-}"
 
 # Dedicated project name: a run never touches the Dev Container stack.
 export COMPOSE_PROJECT_NAME="${ROUTING_PROJECT_NAME:-publira-routing}"
+# The Dev Container file is an overlay: on its own it leaves the dependency
+# services with nothing but `ports: !reset []`, which is not a valid project.
+ROOT_COMPOSE_FILE="${REPO_ROOT}/compose.yaml"
 DEVCONTAINER_COMPOSE_FILE="${REPO_ROOT}/.devcontainer/compose.yaml"
 ROUTING_COMPOSE_FILE="${ROUTING_DIR}/compose.override.yaml"
 
-# Absolute: the overlay's first `-f` is .devcontainer/compose.yaml, so a
-# relative volume would resolve against that directory, not this one.
+# Absolute: the overlay's first `-f` is the root compose.yaml, so a relative
+# volume would resolve against the repository root, not this directory.
 export ROUTING_ECHO_PY="${ROUTING_DIR}/echo.py"
 
 # Host ports published by compose.override.yaml. Offset from the Dev Container
@@ -102,6 +105,7 @@ routing_fail() {
 
 compose() {
   docker compose \
+    -f "${ROOT_COMPOSE_FILE}" \
     -f "${DEVCONTAINER_COMPOSE_FILE}" \
     -f "${ROUTING_COMPOSE_FILE}" \
     -p "${COMPOSE_PROJECT_NAME}" \

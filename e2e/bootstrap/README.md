@@ -4,9 +4,9 @@ This check verifies the full path from setup in a clean environment through star
 
 ## Why it is needed
 
-A PostgreSQL 18 data-directory change once disagreed with the Compose volume mount and prevented the database container from starting, causing `task setup` to fail. `pnpm preflight` cannot see this configuration issue, and Playwright E2E ([`../README.md`](../README.md)) uses its own `e2e/compose.yaml` stack rather than the Dev Container definition.
+A PostgreSQL 18 data-directory change once disagreed with the Compose volume mount and prevented the database container from starting, causing `task setup` to fail. `pnpm preflight` cannot see this configuration issue, and Playwright E2E ([`../README.md`](../README.md)) uses its own `e2e/compose.yaml` stack rather than the development definition.
 
-This check therefore starts **`.devcontainer/compose.yaml` itself** under a dedicated project name and reproduces the experience of beginning development with empty volumes.
+This check therefore starts the repository-root **`compose.yaml` itself** — the same file the Dev Container builds on — under a dedicated project name, and reproduces the experience of beginning development with empty volumes.
 
 ## Prerequisites
 
@@ -64,7 +64,7 @@ The phase-4 Redis `connected_clients` assertion rules out apps that return 200 w
 
 ```text
 e2e/bootstrap/
-├── compose.override.yaml   # Overlay for .devcontainer/compose.yaml (published ports + DB healthcheck)
+├── compose.override.yaml   # Overlay for the root compose.yaml (published ports + DB healthcheck)
 ├── Taskfile.yaml
 └── scripts/
     ├── lib.sh              # Paths, URLs, probes, and assertion helpers
@@ -74,7 +74,7 @@ e2e/bootstrap/
     └── down.sh
 ```
 
-Dev Container `rustfs` does not publish its S3 endpoint because app containers reach `http://rustfs:9000`. Bootstrap runs `task dev` on the host, so `compose.override.yaml` publishes `127.0.0.1:9002`.
+The root `compose.yaml` already publishes each data store on its standard port, and the Dev Container overlay resets those because app containers reach `db:5432` / `redis:6379` / `http://rustfs:9000` by service name. Bootstrap runs `task dev` on the host but must not collide with either, so `compose.override.yaml` replaces the published ports (`!override`) with `127.0.0.1:5434` / `6381` / `9002`.
 
 `task db:setup` uses the bootstrap DB because `db/Taskfile.yaml` gives `PUBLIRA_DB_URL` precedence over its default. When unset, it keeps targeting the Dev Container `db` service.
 
@@ -82,7 +82,7 @@ Dev Container `rustfs` does not publish its S3 endpoint because app containers r
 
 The failing `[bootstrap] ERROR: …` message identifies the phase.
 
-1. **phase 1** — inspect the `db` image and volume in `.devcontainer/compose.yaml` for the same class of regression as the data-directory change above.
+1. **phase 1** — inspect the `db` image and volume in the root `compose.yaml` for the same class of regression as the data-directory change above.
 2. **phase 2** — investigate migrations or seeds in `db/migrations/` and `db/seeds/` ([`../../db/AGENTS.md`](../../db/AGENTS.md)).
 3. **phase 3** — data did not persist to the volume. Check the DB mount / `data_directory` relationship, or the `rustfs-data` volume and sentinel object.
 4. **phase 4** — inspect the named service in `readiness failed: <name>` and `.run/logs/task-dev.log`.
@@ -93,8 +93,8 @@ Teardown leaves `.run/logs/task-dev.log` whenever phase 4 ran, and writes `compo
 
 Job: **Test / Bootstrap** (`.github/workflows/ci.yml`)
 
-- Path filter: `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, lockfiles, and related paths. Because `task dev` starts every application and server, any of these sources can break it.
-- It also runs nightly (`schedule`) because `.devcontainer/**` changes are rare in ordinary PRs.
+- Path filter: `compose.yaml`, `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, lockfiles, and related paths. Because `task dev` starts every application and server, any of these sources can break it.
+- It also runs nightly (`schedule`) because `compose.yaml` / `.devcontainer/**` changes are rare in ordinary PRs.
 - Failure artifact: `bootstrap-artifacts` (`.run/logs/`).
 
 See [the workflow overview](../../.github/workflows/README.md) for all CI jobs.

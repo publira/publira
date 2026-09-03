@@ -205,6 +205,7 @@ jobs:
               - 'scripts/ci-plan-jobs.sh'
             test_bootstrap:
               - *docs_excluded
+              - 'compose.yaml'
               - '.devcontainer/**'
               - 'db/**'
               - 'e2e/bootstrap/**'
@@ -224,6 +225,7 @@ jobs:
               - 'scripts/ci-plan-jobs.sh'
             test_routing:
               - *docs_excluded
+              - 'compose.yaml'
               - '.devcontainer/**'
               - 'e2e/routing/**'
               - '.github/workflows/ci.yml'
@@ -897,7 +899,7 @@ jobs:
         with:
           version: ${{ env.TASK_VERSION }}
 
-      # Overlay on .devcontainer/compose.yaml; echo backends, no apps.
+      # Overlay on compose.yaml + .devcontainer/compose.yaml; echo backends, no apps.
       # Always tears the compose project down (trap).
       - name: Routing check
         run: task e2e:routing
