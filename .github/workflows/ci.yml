@@ -416,10 +416,14 @@ jobs:
       - name: Build / Typegen
         run: pnpm typegen
 
-      # packages/icons is the one place a raw <svg> could legitimately live.
+      # packages/icons is where a raw <svg> normally lives. `qr-code.tsx` is the
+      # documented exception: it draws a generated image rather than an icon —
+      # the geometry is computed per enrollment URI, and the fixed
+      # black-on-white palette is what makes the code scannable — so nothing in
+      # @publira/icons could stand in for it. See apps/AGENTS.md "Icons".
       - name: Validate / No hand-written SVG in JSX
         run: |
-          if git grep -n '<svg' -- '*.tsx' '*.jsx' ':!packages/icons/src/**'; then
+          if git grep -n '<svg' -- '*.tsx' '*.jsx' ':!packages/icons/src/**' ':!apps/web-admin/components/qr-code.tsx'; then
             echo "::error::Use an icon from @publira/icons instead of writing <svg> in JSX. See apps/AGENTS.md."
             exit 1
           fi
