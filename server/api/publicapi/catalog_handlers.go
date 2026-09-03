@@ -695,6 +695,25 @@ func (s *apiServer) GetEpisodeDetail(
 	if row.Price == 0 {
 		access = publirav1.EpisodeAccess_EPISODE_ACCESS_FREE
 		includeImages = true
+		// The row exists only for an episode that is published and whose series
+		// is, which is the same rule image-server applies to a free body, so
+		// reaching here is what makes attaching this safe. The token names no
+		// reader: it is what a reader with no credential derives the image key
+		// from, and image-server still decides access from the public rule.
+		token, _, tokenErr := s.tokens.IssueFreeEpisodeMediaToken(
+			tenant.ID.String(),
+			row.ID.String(),
+			time.Now(),
+		)
+		if tokenErr != nil {
+			s.logger.ErrorContext(ctx, "failed to issue free episode media token",
+				"tenant_id", tenant.ID.String(),
+				"episode_public_id", req.Msg.PublicId,
+				"error", tokenErr,
+			)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+		}
+		mediaToken = token
 	}
 	if _, hasBearer := auth.BearerTokenFromHeader(req.Header()); hasBearer {
 		// Optional auth: invalid session stays locked. Only a paid episode

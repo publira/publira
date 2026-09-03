@@ -335,7 +335,18 @@ A browser cannot attach an `Authorization` header to an `<img>` request. So for 
 | Scope | Only the single episode it was issued for (claim `eid`) |
 | Revocation | The same `users.credentials_version` as the access token |
 
-The token only states who the reader is; whether the image may be viewed is decided by `image-server`, which consults purchases and access_tickets on every request (the same rules as the API). URLs for free episodes (`price = 0`) carry no token.
+The token only states who the reader is; whether the image may be viewed is decided by `image-server`, which consults purchases and access_tickets on every request (the same rules as the API).
+
+Free episodes (`price = 0`) get a token of the same audience with a different shape, because their reader may hold no credential at all and still needs key material for the encrypted body:
+
+| Item | Value |
+| --- | --- |
+| Subject | The synthetic `anonymous-free-episode`. A `users.public_id` is exactly 12 Base58 characters, so it resolves to no user and the token names no grant |
+| TTL | Two 24-hour rotation windows. `iat` is the start of the current window, so a token in hand always has at least one full window left |
+| Scope | Only the single episode it was issued for (claim `eid`) |
+| Revocation | None to revoke: it carries no reader, and rotation is what ends a copied URL |
+
+Because it is derived from the window rather than the moment it was asked for, every reader who opens one free episode within one window is handed the identical URL. That is what keeps a free page shareable: `image-server` answers it with `public, max-age=3600`, a CDN keeps one copy, and the public site's shared `GetEpisodeDetail` cache can hand the same response to every reader. Access is still decided entirely by the public rule — published, and `price = 0` — so an unpublished episode and a paid episode without a purchase or a ticket are `403` whether the token is present or not.
 
 ### Admin media tokens (audience `admin-media`)
 

@@ -22,6 +22,30 @@ const (
 	// is not a session.
 	MediaTokenTTL = 15 * time.Minute
 
+	// FreeEpisodeMediaTokenWindow is how often the media token on a free body's
+	// image URL rotates. The token is derived from the window rather than from
+	// the moment it was asked for, so every reader who opens one episode inside
+	// one window is handed the identical URL — which is what keeps a free page
+	// shareable by a CDN and by the cached episode read the public site serves
+	// every reader from. image-server derives the image cipher's key from those
+	// same bytes, so the window is also how often a copied URL, and ciphertext
+	// saved from it, stops decoding.
+	FreeEpisodeMediaTokenWindow = 24 * time.Hour
+
+	// FreeEpisodeMediaTokenTTL is how long one of those tokens stays valid: two
+	// windows, so a reader handed one at the very end of a window still has a
+	// full window left. That floor is what a cache holding the token has to
+	// stay under.
+	FreeEpisodeMediaTokenTTL = 2 * FreeEpisodeMediaTokenWindow
+
+	// FreeEpisodeMediaSubject stands in for the reader a free body's token does
+	// not have. A user's public_id is exactly publicid.Length Base58
+	// characters, so this value can never resolve to one: image-server finds
+	// nobody, the token therefore names no grant, and the public rule —
+	// published, and price = 0 — is left to decide exactly as it does for a
+	// request that carries no token at all.
+	FreeEpisodeMediaSubject = "anonymous-free-episode"
+
 	// MFAChallengeTTL bounds the half-finished session a correct password
 	// earns while the second factor is still owed. It has to outlast reaching
 	// for an authenticator and no longer.
@@ -156,6 +180,38 @@ func (m *TokenManager) IssueAdminMediaToken(
 	now time.Time,
 ) (token string, expiresAt time.Time, err error) {
 	return m.issueScopedMediaToken(subjectPublicID, tenantID, episodeID, credentialsVersion, now, AudienceAdminMedia)
+}
+
+// IssueFreeEpisodeMediaToken creates the media token a free episode's body
+// image URLs carry. A reader of a free body has no credential to derive an
+// image key from, and IssueMediaToken cannot stand in for one: it names a
+// reader, and a per-reader token would make every free page URL distinct and
+// expire long before the shared, cached episode read that carries it.
+//
+// So this token names nobody and is a pure function of the tenant, the episode
+// and the current rotation window. Two calls inside one window produce the same
+// bytes, whichever server made them.
+func (m *TokenManager) IssueFreeEpisodeMediaToken(
+	tenantID string,
+	episodeID string,
+	now time.Time,
+) (token string, expiresAt time.Time, err error) {
+	tenantID = strings.TrimSpace(tenantID)
+	if tenantID == "" {
+		return "", time.Time{}, errors.New("tenant is required")
+	}
+	episodeID = strings.TrimSpace(episodeID)
+	if episodeID == "" {
+		return "", time.Time{}, errors.New("episode is required")
+	}
+	// Truncate measures from the zero time, which is UTC midnight, so a
+	// whole-hour window lands on the same boundary for every process without
+	// them agreeing on one.
+	windowStart := now.UTC().Truncate(FreeEpisodeMediaTokenWindow)
+	return m.sign(AccessTokenClaims{
+		TenantID:  tenantID,
+		EpisodeID: episodeID,
+	}, FreeEpisodeMediaSubject, AudienceMedia, "", FreeEpisodeMediaTokenTTL, windowStart)
 }
 
 // IssueMFAChallengeToken creates the short-lived token that stands in for the

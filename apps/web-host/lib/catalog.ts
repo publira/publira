@@ -551,6 +551,17 @@ export const getEpisodeDetail = async (
   } | null>
 > => {
   "use cache";
+  try {
+    // A free episode's image URLs carry the key material its pages are
+    // encrypted under, which rotates daily and is guaranteed to be good for at
+    // least a day. This entry is shared by every reader, and the default
+    // profile would let it be served indefinitely once nothing revalidates it,
+    // so it is bounded well under that floor: no reader is handed material
+    // that has already rotated away.
+    cacheLife({ expire: 3600, revalidate: 900 });
+  } catch {
+    // Unit tests run without the Next.js cache runtime, same as applyCacheTag.
+  }
 
   const normalizedTenantId = tenantId.trim();
   const normalizedSeriesPublicId = seriesPublicId.trim();

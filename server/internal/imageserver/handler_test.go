@@ -484,6 +484,101 @@ func TestEpisodeImageMediaToken(t *testing.T) {
 	})
 }
 
+// A free episode's image URLs carry a media token that names no reader, so it
+// reaches image-server on the same code path an entitled reader's does. It must
+// leave the decision exactly where a request with no token at all leaves it:
+// with the public rule.
+func TestEpisodeImageFreeEpisodeMediaTokenGrantsNothing(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
+	episodeID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
+	tokens := auth.NewTokenManager([]byte(testMediaJWTSecret))
+
+	freeToken, _, err := tokens.IssueFreeEpisodeMediaToken(tenantID.String(), episodeID.String(), time.Now())
+	if err != nil {
+		t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", err)
+	}
+
+	// The synthetic subject is not a public_id any row can hold, which is what
+	// the real query answers with here.
+	queriesFor := func(isPublished, hasPublicAccess bool) stubTenantQueries {
+		return stubTenantQueries{
+			public: dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow{
+				ID:              mediaID,
+				ObjectKey:       "episodes/page.jpg",
+				ContentType:     "image/jpeg",
+				IsPublished:     sql.NullBool{Bool: isPublished, Valid: true},
+				HasPublicAccess: hasPublicAccess,
+			},
+			userRefErr: sql.ErrNoRows,
+		}
+	}
+
+	serve := func(t *testing.T, queries stubTenantQueries, token string) *httptest.ResponseRecorder {
+		t.Helper()
+		srv := newTestServerWithTokens(t,
+			stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+			stubFactory{q: queries},
+			&countingStore{objects: map[string]storedObject{
+				"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+			}},
+			tokens,
+		)
+		target := "/images/episodes/" + mediaID.String()
+		if token != "" {
+			target += "?" + auth.MediaTokenQueryParam + "=" + url.QueryEscape(token)
+		}
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		req.Host = "example.test"
+		req.Header.Set("Accept", "image/webp")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		return rec
+	}
+
+	t.Run("a paid body is forbidden, with the free token exactly as without it", func(t *testing.T) {
+		for name, token := range map[string]string{"with the token": freeToken, "without it": ""} {
+			rec := serve(t, queriesFor(true, false), token)
+			if rec.Code != http.StatusForbidden {
+				t.Errorf("%s: status = %d, want %d", name, rec.Code, http.StatusForbidden)
+			}
+		}
+	})
+
+	t.Run("an unpublished body is forbidden", func(t *testing.T) {
+		rec := serve(t, queriesFor(false, true), freeToken)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+		}
+	})
+
+	// A token issued for one episode is presented against another episode's
+	// free page. It changes nothing, because the public rule is what answered.
+	t.Run("a token issued for another episode changes nothing", func(t *testing.T) {
+		other := uuid.MustParse("99999999-9999-9999-9999-999999999999")
+		otherToken, _, issueErr := tokens.IssueFreeEpisodeMediaToken(tenantID.String(), other.String(), time.Now())
+		if issueErr != nil {
+			t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", issueErr)
+		}
+		if rec := serve(t, queriesFor(true, false), otherToken); rec.Code != http.StatusForbidden {
+			t.Errorf("paid body: status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+		if rec := serve(t, queriesFor(true, true), otherToken); rec.Code != http.StatusOK {
+			t.Errorf("free body: status = %d, want %d", rec.Code, http.StatusOK)
+		}
+	})
+
+	t.Run("a published free body is served, and stays shared-cacheable", func(t *testing.T) {
+		rec := serve(t, queriesFor(true, true), freeToken)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+		}
+		if got := rec.Header().Get("Cache-Control"); got != "public, max-age=3600" {
+			t.Errorf("Cache-Control = %q, want %q", got, "public, max-age=3600")
+		}
+	})
+}
+
 func TestEpisodeImageMediaTokenEncryptsAfterSharedConversionCache(t *testing.T) {
 	t.Setenv("PUBLIRA_IMAGE_ENCRYPTION", "enabled")
 

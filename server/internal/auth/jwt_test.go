@@ -234,6 +234,158 @@ func TestIssueAdminMediaToken(t *testing.T) {
 	})
 }
 
+func TestIssueFreeEpisodeMediaToken(t *testing.T) {
+	manager := NewTokenManager([]byte(testSecret))
+	now := time.Now()
+
+	t.Run("carries the tenant and the one episode, and names no reader", func(t *testing.T) {
+		token, expiresAt, err := manager.IssueFreeEpisodeMediaToken("tenant-id", "episode-id", now)
+		if err != nil {
+			t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", err)
+		}
+		windowStart := now.UTC().Truncate(FreeEpisodeMediaTokenWindow)
+		if want := windowStart.Add(FreeEpisodeMediaTokenTTL); !expiresAt.Equal(want) {
+			t.Errorf("expiresAt = %v, want %v", expiresAt, want)
+		}
+
+		claims, err := manager.Verify(token, AudienceMedia)
+		if err != nil {
+			t.Fatalf("Verify() error = %v", err)
+		}
+		if claims.Subject != FreeEpisodeMediaSubject {
+			t.Errorf("subject = %q, want %q", claims.Subject, FreeEpisodeMediaSubject)
+		}
+		if claims.TenantID != "tenant-id" {
+			t.Errorf("tenant = %q, want %q", claims.TenantID, "tenant-id")
+		}
+		if claims.EpisodeID != "episode-id" {
+			t.Errorf("episode = %q, want %q", claims.EpisodeID, "episode-id")
+		}
+		if claims.Role != "" {
+			t.Errorf("role = %q, want no role", claims.Role)
+		}
+	})
+
+	// A public_id is exactly publicid.Length characters of the Base58 alphabet,
+	// which has neither punctuation nor that many of them to spare. Both halves
+	// are asserted here because either one alone would let a future subject
+	// drift into the space a real reader is looked up by.
+	t.Run("the subject cannot be a user public_id", func(t *testing.T) {
+		const publicIDLength = 12
+		const base58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+		if len(FreeEpisodeMediaSubject) <= publicIDLength {
+			t.Errorf("subject %q is %d characters, want more than %d", FreeEpisodeMediaSubject, len(FreeEpisodeMediaSubject), publicIDLength)
+		}
+		if !strings.ContainsFunc(FreeEpisodeMediaSubject, func(r rune) bool {
+			return !strings.ContainsRune(base58, r)
+		}) {
+			t.Errorf("subject %q is entirely Base58, want a character no public_id can hold", FreeEpisodeMediaSubject)
+		}
+	})
+
+	// Every reader of one free episode has to be handed the identical URL, or
+	// the shared caches in front of a free page stop being able to serve one
+	// copy of it.
+	t.Run("is identical for every reader within a rotation window", func(t *testing.T) {
+		windowStart := now.UTC().Truncate(FreeEpisodeMediaTokenWindow)
+		first, _, err := manager.IssueFreeEpisodeMediaToken("tenant-id", "episode-id", windowStart)
+		if err != nil {
+			t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", err)
+		}
+		later, _, err := manager.IssueFreeEpisodeMediaToken(
+			"tenant-id",
+			"episode-id",
+			windowStart.Add(FreeEpisodeMediaTokenWindow-time.Second),
+		)
+		if err != nil {
+			t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", err)
+		}
+		if first != later {
+			t.Errorf("two issuances in one window differ:\n%s\n%s", first, later)
+		}
+	})
+
+	t.Run("rotates with the window, and is scoped to one episode of one tenant", func(t *testing.T) {
+		base, _, err := manager.IssueFreeEpisodeMediaToken("tenant-id", "episode-id", now)
+		if err != nil {
+			t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", err)
+		}
+		for _, tc := range []struct {
+			name      string
+			tenantID  string
+			episodeID string
+			at        time.Time
+		}{
+			{name: "the next window", tenantID: "tenant-id", episodeID: "episode-id", at: now.Add(FreeEpisodeMediaTokenWindow)},
+			{name: "another episode", tenantID: "tenant-id", episodeID: "other-episode-id", at: now},
+			{name: "another tenant", tenantID: "other-tenant-id", episodeID: "episode-id", at: now},
+		} {
+			other, _, err := manager.IssueFreeEpisodeMediaToken(tc.tenantID, tc.episodeID, tc.at)
+			if err != nil {
+				t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", err)
+			}
+			if other == base {
+				t.Errorf("%s produced the same token", tc.name)
+			}
+		}
+	})
+
+	// The token a reader holds has to outlive the cached episode read that
+	// handed it over, so what matters is the floor: even one issued at the very
+	// end of a window still verifies a whole window later.
+	t.Run("keeps a full window of life at the end of its own window", func(t *testing.T) {
+		windowStart := now.UTC().Truncate(FreeEpisodeMediaTokenWindow)
+		token, _, err := manager.IssueFreeEpisodeMediaToken("tenant-id", "episode-id", windowStart)
+		if err != nil {
+			t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", err)
+		}
+		claims, err := manager.Verify(token, AudienceMedia)
+		if err != nil {
+			t.Fatalf("Verify() error = %v", err)
+		}
+		endOfWindow := windowStart.Add(FreeEpisodeMediaTokenWindow)
+		if remaining := claims.ExpiresAt.Sub(endOfWindow); remaining < FreeEpisodeMediaTokenWindow {
+			t.Errorf("remaining life at the end of the window = %v, want at least %v", remaining, FreeEpisodeMediaTokenWindow)
+		}
+	})
+
+	t.Run("expires after FreeEpisodeMediaTokenTTL", func(t *testing.T) {
+		token, _, err := manager.IssueFreeEpisodeMediaToken(
+			"tenant-id",
+			"episode-id",
+			now.Add(-FreeEpisodeMediaTokenTTL-FreeEpisodeMediaTokenWindow),
+		)
+		if err != nil {
+			t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", err)
+		}
+		if _, err := manager.Verify(token, AudienceMedia); err == nil {
+			t.Fatal("Verify() error = nil, want an expiry error")
+		}
+	})
+
+	t.Run("does not verify as an API access token", func(t *testing.T) {
+		token, _, err := manager.IssueFreeEpisodeMediaToken("tenant-id", "episode-id", now)
+		if err != nil {
+			t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", err)
+		}
+		if _, err := manager.Verify(token, AudiencePublic); err == nil {
+			t.Fatal("Verify() error = nil, want an audience error")
+		}
+	})
+
+	t.Run("refuses to issue a token that is not scoped to an episode", func(t *testing.T) {
+		if _, _, err := manager.IssueFreeEpisodeMediaToken("tenant-id", "  ", now); err == nil {
+			t.Fatal("IssueFreeEpisodeMediaToken() error = nil, want an error")
+		}
+	})
+
+	t.Run("refuses to issue a token that is not scoped to a tenant", func(t *testing.T) {
+		if _, _, err := manager.IssueFreeEpisodeMediaToken("  ", "episode-id", now); err == nil {
+			t.Fatal("IssueFreeEpisodeMediaToken() error = nil, want an error")
+		}
+	})
+}
+
 func TestWithMediaTokenQuery(t *testing.T) {
 	if got := WithMediaTokenQuery("/images/episodes/x", ""); got != "/images/episodes/x" {
 		t.Errorf("empty token = %q, want the original URL", got)
