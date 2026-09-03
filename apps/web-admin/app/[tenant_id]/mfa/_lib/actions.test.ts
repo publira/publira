@@ -76,13 +76,10 @@ const formData = (values: Record<string, string>): FormData => {
   return data;
 };
 
-/**
- * What `lib/admin-mfa.ts` hands back on success. The Actions only forward it to
- * the cookie writer, so the expiry is opaque to everything under test here.
- */
+/** What `lib/admin-mfa.ts` hands back on success. */
 const session = {
   accessToken: "session-token",
-  expiresAt: "2026-09-03T00:00:00.000Z",
+  expiresAt: Temporal.Instant.from("2026-09-03T00:00:00Z"),
 };
 
 describe("verifyMfaAction", () => {
@@ -108,6 +105,7 @@ describe("verifyMfaAction", () => {
       verifyMfaAction(null, formData({ code: "123456", tenant_id: TENANT_ID }))
     ).rejects.toThrow(redirectsTo("/series"));
 
+    expect(mockAssertSameOrigin).toHaveBeenCalledOnce();
     expect(mockVerifyAdminMfa).toHaveBeenCalledWith(
       TENANT_ID,
       "challenge-token",
@@ -270,6 +268,7 @@ describe("enrollment actions", () => {
       formData({ tenant_id: TENANT_ID })
     );
 
+    expect(mockAssertSameOrigin).toHaveBeenCalledOnce();
     expect(mockToQrCodePath).toHaveBeenCalledWith(
       "otpauth://totp/Publira:admin@example.com?secret=ABC"
     );
@@ -306,6 +305,7 @@ describe("enrollment actions", () => {
       formData({ code: "123456", tenant_id: TENANT_ID })
     );
 
+    expect(mockAssertSameOrigin).toHaveBeenCalledOnce();
     expect(result).toEqual({
       ok: true,
       recoveryCodes: ["ABCDE-FGHJK"],

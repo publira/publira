@@ -6,10 +6,11 @@ import {
 import { cookies } from "next/headers";
 
 import { ADMIN_SESSION_COOKIE_NAME } from "./admin-auth-shared";
+import { toCookieExpires } from "./cookie-expiry";
 
 export interface AdminSession {
   accessToken: string;
-  expiresAt: Date;
+  expiresAt: Temporal.Instant;
 }
 
 /**
@@ -26,14 +27,14 @@ export const writeAdminSessionCookie = async (
   const sealed = await encryptSessionPayload(
     {
       accessToken: session.accessToken,
-      expiresAt: session.expiresAt.toISOString(),
+      expiresAt: session.expiresAt.toString(),
       tenantId,
     },
     resolveAuthSecret()
   );
   const cookieStore = await cookies();
   cookieStore.set({
-    ...sessionCookieOptions(session.expiresAt),
+    ...sessionCookieOptions(toCookieExpires(session.expiresAt)),
     name: ADMIN_SESSION_COOKIE_NAME,
     value: sealed,
   });

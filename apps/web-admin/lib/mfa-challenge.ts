@@ -11,6 +11,7 @@
  * `Referer`, and in whatever the operator pastes into a chat window.
  */
 
+import { parseInstant } from "@publira/utils";
 import {
   decryptPayload,
   encryptPayload,
@@ -23,6 +24,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 
 import { sanitizeRedirectPath } from "./admin-auth-shared";
+import { toCookieExpires } from "./cookie-expiry";
 import { isTenantIdFormat } from "./tenant-id-format";
 
 export const MFA_CHALLENGE_COOKIE_NAME = profileCookieName(
@@ -42,7 +44,12 @@ export type MfaChallengeKindName = (typeof MFA_CHALLENGE_KINDS)[number];
 
 const mfaChallengeSchema = z.object({
   challengeToken: z.string().trim().min(1),
-  expiresAt: z.string().trim().min(1),
+  // An expiry that is not an instant is no expiry: a stored challenge whose
+  // deadline cannot be read is refused rather than treated as still valid.
+  expiresAt: z
+    .string()
+    .trim()
+    .refine((value) => parseInstant(value) !== null),
   kind: z.enum(MFA_CHALLENGE_KINDS),
   nextPath: z.string().transform(sanitizeRedirectPath),
   tenantId: z.string().trim().refine(isTenantIdFormat),
@@ -85,11 +92,20 @@ export const readMfaChallenge = async (): Promise<MfaChallenge | null> => {
 export const writeMfaChallenge = async (
   challenge: MfaChallenge
 ): Promise<void> => {
+  const expiresAt = parseInstant(challenge.expiresAt);
+  if (!expiresAt) {
+    // The caller built this from a timestamp the API just answered, so a value
+    // that is not an instant is a bug here rather than a challenge to store
+    // without knowing when it stops being one.
+    throw new Error("mfa challenge expiry is not an instant");
+  }
+
+  const sealed = await encryptPayload(challenge, resolveAuthSecret());
   const cookieStore = await cookies();
   cookieStore.set({
-    ...sessionCookieOptions(new Date(challenge.expiresAt)),
+    ...sessionCookieOptions(toCookieExpires(expiresAt)),
     name: MFA_CHALLENGE_COOKIE_NAME,
-    value: await encryptPayload(challenge, resolveAuthSecret()),
+    value: sealed,
   });
 };
 

@@ -67,7 +67,7 @@ describe("loginAdmin", () => {
 
     expect(result).toEqual({
       accessToken: "session",
-      expiresAt: new Date("2026-09-03T00:00:00Z"),
+      expiresAt: Temporal.Instant.from("2026-09-03T00:00:00Z"),
       kind: "session",
       ok: true,
     });
@@ -87,7 +87,7 @@ describe("loginAdmin", () => {
     expect(result).toEqual({
       challengeKind: "verify",
       challengeToken: "challenge",
-      expiresAt: new Date("2026-09-03T00:05:00Z"),
+      expiresAt: Temporal.Instant.from("2026-09-03T00:05:00Z"),
       kind: "challenge",
       ok: true,
     });
@@ -108,6 +108,44 @@ describe("loginAdmin", () => {
       challengeKind: "enroll",
       kind: "challenge",
     });
+  });
+
+  it("refuses a challenge with no token to spend", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "2026-09-03T00:05:00Z",
+        kind: MfaChallengeKind.VERIFY,
+        token: "   ",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "ja");
+
+    expect(result).toMatchObject({ ok: false });
+  });
+
+  it("refuses a challenge whose expiry cannot be read", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "not-a-date",
+        kind: MfaChallengeKind.VERIFY,
+        token: "challenge",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "ja");
+
+    expect(result).toMatchObject({ ok: false });
+  });
+
+  it("refuses a session whose expiry cannot be read", async () => {
+    mockLogin.mockResolvedValueOnce({
+      accessToken: { expiresAt: "not-a-date", token: "session" },
+    });
+
+    const result = await loginAdmin(...credentials, "ja");
+
+    expect(result).toMatchObject({ ok: false });
   });
 
   it("refuses a challenge kind this console has no screen for", async () => {

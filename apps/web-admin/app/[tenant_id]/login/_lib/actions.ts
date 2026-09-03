@@ -73,7 +73,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     try {
       await writeMfaChallenge({
         challengeToken: result.challengeToken,
-        expiresAt: result.expiresAt.toISOString(),
+        expiresAt: result.expiresAt.toString(),
         kind: result.challengeKind,
         nextPath,
         tenantId,

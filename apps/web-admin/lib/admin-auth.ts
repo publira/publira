@@ -13,6 +13,7 @@ import {
 } from "@publira/api-client/errors";
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { parseInstant } from "@publira/utils";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
@@ -38,14 +39,14 @@ export type AdminLoginResult =
       ok: true;
       kind: "session";
       accessToken: string;
-      expiresAt: Date;
+      expiresAt: Temporal.Instant;
     }
   | {
       ok: true;
       kind: "challenge";
       challengeKind: MfaChallengeKindName;
       challengeToken: string;
-      expiresAt: Date;
+      expiresAt: Temporal.Instant;
     }
   | {
       ok: false;
@@ -193,11 +194,8 @@ export const loginAdmin = async (
     if (challenge) {
       const challengeKind = toChallengeKindName(challenge.kind);
       const challengeToken = challenge.token.trim();
-      const challengeExpiresAt = new Date(challenge.expiresAt);
-      if (
-        !(challengeKind && challengeToken) ||
-        Number.isNaN(challengeExpiresAt.getTime())
-      ) {
+      const challengeExpiresAt = parseInstant(challenge.expiresAt);
+      if (!(challengeKind && challengeToken && challengeExpiresAt)) {
         return processingFailed;
       }
 
@@ -211,10 +209,9 @@ export const loginAdmin = async (
     }
 
     const accessToken = response.accessToken?.token?.trim() ?? "";
-    const expiresAtRaw = response.accessToken?.expiresAt ?? "";
-    const expiresAt = new Date(expiresAtRaw);
+    const expiresAt = parseInstant(response.accessToken?.expiresAt ?? "");
 
-    if (!accessToken || Number.isNaN(expiresAt.getTime())) {
+    if (!(accessToken && expiresAt)) {
       return processingFailed;
     }
 

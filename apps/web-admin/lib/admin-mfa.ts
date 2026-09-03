@@ -17,6 +17,7 @@ import {
 } from "@publira/api-client/errors";
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { parseInstant } from "@publira/utils";
 import { cacheTag } from "next/cache";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
@@ -27,7 +28,7 @@ import { getAccessToken } from "./session";
 
 export interface AdminMfaSession {
   accessToken: string;
-  expiresAt: Date;
+  expiresAt: Temporal.Instant;
 }
 
 export interface AdminMfaStatus {
@@ -76,8 +77,8 @@ const toMfaSession = (
   expiresAtRaw: string | undefined
 ): AdminMfaSession | null => {
   const accessToken = token?.trim() ?? "";
-  const expiresAt = new Date(expiresAtRaw ?? "");
-  if (!accessToken || Number.isNaN(expiresAt.getTime())) {
+  const expiresAt = parseInstant(expiresAtRaw ?? "");
+  if (!(accessToken && expiresAt)) {
     return null;
   }
   return { accessToken, expiresAt };
