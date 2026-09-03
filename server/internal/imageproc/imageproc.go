@@ -12,6 +12,7 @@ import (
 	_ "image/png"
 	"math"
 	"net/http"
+	"slices"
 	"strings"
 
 	xdraw "golang.org/x/image/draw"
@@ -236,6 +237,151 @@ var eyeCatchAspectSpecs = []eyeCatchAspectSpec{
 	{"square", 1, 1, []int{600, 900, 1200}},
 	{"landscape", 16, 9, []int{800, 1200, 1600}},
 	{"og", 1200, 630, []int{600, 900, 1200}},
+}
+
+// EyeCatchAspect is one aspect ratio an eye-catch is delivered in, together
+// with the smallest image that can be uploaded for it. Callers outside this
+// package use it to enumerate the ratios and to tell an editor what a given
+// slot expects.
+type EyeCatchAspect struct {
+	// VariantType names the ratio: portrait / square / landscape / og.
+	VariantType string
+	// AspectWidth / AspectHeight are the ratio itself, not pixel sizes.
+	AspectWidth  int
+	AspectHeight int
+	// MinWidth / MinHeight are the smallest source accepted for this ratio.
+	// They equal the largest size generated for it, so every delivered width
+	// comes from downscaling rather than from enlarging.
+	MinWidth  int
+	MinHeight int
+}
+
+func (s eyeCatchAspectSpec) aspect() EyeCatchAspect {
+	minWidth := slices.Max(s.widthSteps)
+	return EyeCatchAspect{
+		VariantType:  s.ratio,
+		AspectWidth:  s.aspectW,
+		AspectHeight: s.aspectH,
+		MinWidth:     minWidth,
+		MinHeight:    scaledHeight(s.aspectW, s.aspectH, minWidth),
+	}
+}
+
+// EyeCatchAspects returns every aspect ratio an eye-catch is delivered in, in
+// the order the console shows them.
+func EyeCatchAspects() []EyeCatchAspect {
+	aspects := make([]EyeCatchAspect, 0, len(eyeCatchAspectSpecs))
+	for _, spec := range eyeCatchAspectSpecs {
+		aspects = append(aspects, spec.aspect())
+	}
+	return aspects
+}
+
+// LookupEyeCatchAspect returns the aspect ratio named by variantType.
+func LookupEyeCatchAspect(variantType string) (EyeCatchAspect, bool) {
+	for _, spec := range eyeCatchAspectSpecs {
+		if spec.ratio == variantType {
+			return spec.aspect(), true
+		}
+	}
+	return EyeCatchAspect{}, false
+}
+
+// BuildEyeCatchAspectVariants builds the delivery sizes of a single aspect
+// ratio from an image uploaded for that ratio alone.
+//
+// Unlike BuildEyeCatchVariants, which fills a whole eye-catch by cropping all
+// four ratios out of one image, this validates and crops against the named
+// ratio only. The source is still centre-cropped: an upload that is a few
+// pixels off the ratio must not change the shape delivery relies on.
+//
+// Input validation:
+//   - within EyeCatchMaxBytes, image/* content_type
+//   - variantType names one of the delivered ratios
+//   - at least the ratio's MinWidth x MinHeight after cropping
+func BuildEyeCatchAspectVariants(raw []byte, contentType string, variantType string) ([]Variant, error) {
+	spec, ok := lookupEyeCatchAspectSpec(variantType)
+	if !ok {
+		return nil, fmt.Errorf("unknown eye_catch aspect ratio %q", variantType)
+	}
+	if len(raw) == 0 {
+		return nil, errors.New("image data is required")
+	}
+	if len(raw) > EyeCatchMaxBytes {
+		return nil, fmt.Errorf("image size exceeds %d bytes", EyeCatchMaxBytes)
+	}
+
+	ct := strings.TrimSpace(contentType)
+	if ct == "" {
+		ct = http.DetectContentType(raw)
+	}
+	if !strings.HasPrefix(ct, "image/") {
+		return nil, errors.New("content_type must be image/*")
+	}
+
+	// The declared dimensions are checked before decoding: the byte cap alone
+	// leaves a small PNG or WebP free to claim a huge canvas and exhaust
+	// memory while it is being decoded.
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return nil, errors.New("image is not decodable")
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 {
+		return nil, errors.New("image has invalid dimensions")
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
+		return nil, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
+	}
+
+	src, srcFormat, err := image.Decode(bytes.NewReader(raw))
+	if err != nil {
+		return nil, errors.New("image is not decodable")
+	}
+
+	aspect := spec.aspect()
+	cropped := centerCropToAspect(src, spec.aspectW, spec.aspectH)
+	cropBounds := cropped.Bounds()
+	cropW := cropBounds.Dx()
+	cropH := cropBounds.Dy()
+	if cropW < aspect.MinWidth || cropH < aspect.MinHeight {
+		return nil, fmt.Errorf("%s image must be at least %dx%d after cropping to %d:%d", spec.ratio, aspect.MinWidth, aspect.MinHeight, spec.aspectW, spec.aspectH)
+	}
+
+	outContentType, outExt := outputFormat(srcFormat)
+
+	variants := make([]Variant, 0, len(spec.widthSteps))
+	for _, targetW := range spec.widthSteps {
+		w := targetW
+		if w > cropW {
+			w = cropW
+		}
+		h := scaledHeight(cropW, cropH, w)
+		label := fmt.Sprintf("%s_%dw", spec.ratio, w)
+
+		encoded, encErr := encode(cropped, w, h, outContentType)
+		if encErr != nil {
+			return nil, fmt.Errorf("encode %s: %w", label, encErr)
+		}
+		variants = append(variants, Variant{
+			VariantType: spec.ratio,
+			Label:       label,
+			ContentType: outContentType,
+			Extension:   outExt,
+			Width:       w,
+			Height:      h,
+			Data:        encoded,
+		})
+	}
+	return variants, nil
+}
+
+func lookupEyeCatchAspectSpec(variantType string) (eyeCatchAspectSpec, bool) {
+	for _, spec := range eyeCatchAspectSpecs {
+		if spec.ratio == variantType {
+			return spec, true
+		}
+	}
+	return eyeCatchAspectSpec{}, false
 }
 
 // centerCropToAspect は src を指定アスペクト比にセンタークロップして返します。

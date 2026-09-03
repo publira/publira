@@ -8,6 +8,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import type { EyeCatchAspectActionState } from "#components/eye-catch/types";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
@@ -21,7 +22,11 @@ import {
   trimmedStringListFormSchema,
 } from "#lib/form-schemas";
 import type { AdminMessages } from "#lib/locale";
-import { createSeries, updateSeries } from "#lib/series";
+import {
+  createSeries,
+  updateSeries,
+  uploadSeriesEyeCatchAspectImage,
+} from "#lib/series";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type { SeriesActionState, SeriesMutationMode } from "../series-types";
@@ -335,5 +340,85 @@ export const updateSeriesEyeCatchAction = async (
     mode: "update",
     ok: true,
     series: result.series,
+  };
+};
+
+const eyeCatchAspectSchema = (messages: AdminMessages) =>
+  z.object({
+    publicId: requiredTrimmedString(
+      getMessage(messages, "admin.series.validation.id_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.series.validation.tenant_missing")
+    ),
+    variantType: requiredTrimmedString(
+      getMessage(messages, "admin.eye_catch.aspect.variant_type_missing")
+    ),
+  });
+
+const eyeCatchAspectFormFields = {
+  publicId: { kind: "value", name: "public_id" },
+  tenantId: { kind: "value", name: "tenant_id" },
+  variantType: { kind: "value", name: "variant_type" },
+} as const;
+
+/**
+ * The ratio is echoed back in every result so the slot that submitted is the
+ * only one that shows the message — four slots share this Action.
+ */
+const toAspectFailure = (
+  message: string,
+  variantType: string
+): EyeCatchAspectActionState => ({ message, ok: false, variantType });
+
+export const uploadSeriesEyeCatchAspectImageAction = async (
+  _prevState: EyeCatchAspectActionState,
+  formData: FormData
+): Promise<EyeCatchAspectActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
+  const parsed = eyeCatchAspectSchema(messages)
+    .extend({ aspectImage: optionalFileFormSchema })
+    .safeParse(
+      toFormDataInput(formData, {
+        ...eyeCatchAspectFormFields,
+        aspectImage: { kind: "file", name: "aspect_image" },
+      })
+    );
+  if (!parsed.success) {
+    return toAspectFailure(toFormErrorMessage(parsed.error, { locale }), "");
+  }
+
+  const { aspectImage, publicId, tenantId, variantType } = parsed.data;
+  if (!aspectImage) {
+    return toAspectFailure(
+      getMessage(messages, "admin.eye_catch.aspect.image_required"),
+      variantType
+    );
+  }
+
+  const imageData = new Uint8Array(await aspectImage.arrayBuffer());
+  const result = await withAdminSessionReauth(() =>
+    uploadSeriesEyeCatchAspectImage(
+      {
+        imageContentType: aspectImage.type || undefined,
+        imageData,
+        publicId,
+        tenantId,
+        variantType,
+      },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return toAspectFailure(result.message, variantType);
+  }
+
+  return {
+    message: getMessage(messages, "admin.eye_catch.aspect.uploaded"),
+    ok: true,
+    variantType,
   };
 };

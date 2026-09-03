@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCacheTag, mockGetAccessToken, mockGetLabel, mockListLabels } =
-  vi.hoisted(() => ({
-    mockCacheTag: vi.fn(),
-    mockGetAccessToken: vi.fn(),
-    mockGetLabel: vi.fn(),
-    mockListLabels: vi.fn(),
-  }));
+const {
+  mockCacheTag,
+  mockGetAccessToken,
+  mockGetLabel,
+  mockListLabels,
+  mockUploadAspectImage,
+} = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockGetLabel: vi.fn(),
+  mockListLabels: vi.fn(),
+  mockUploadAspectImage: vi.fn(),
+}));
 
 vi.mock("next/cache", () => ({
   cacheTag: mockCacheTag,
@@ -21,6 +27,7 @@ vi.mock("./api", () => ({
     label: {
       getLabel: mockGetLabel,
       listLabels: mockListLabels,
+      uploadLabelEyeCatchAspectImage: mockUploadAspectImage,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -383,5 +390,82 @@ describe("listAllLabels", () => {
       previousToken: "",
       requiresSignIn: false,
     });
+  });
+});
+
+describe("label eye-catch aspect images", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("sends the ratio and the image bytes to UploadLabelEyeCatchAspectImage", async () => {
+    mockUploadAspectImage.mockResolvedValue({
+      label: {
+        eyeCatchImageUpdatedAt: "2026-01-02T03:04:05Z",
+        eyeCatchImageVariants: [
+          {
+            contentType: "image/jpeg",
+            fileSizeBytes: 4096,
+            height: 900,
+            label: "landscape_1600w",
+            url: "/images/labels/img/landscape/1600",
+            variantType: "landscape",
+            width: 1600,
+          },
+        ],
+        name: "Weekly",
+        publicId: "LABEL101",
+      },
+    });
+
+    const imageData = new Uint8Array([1, 2, 3]);
+    const { uploadLabelEyeCatchAspectImage } = await import("./label");
+    const result = await uploadLabelEyeCatchAspectImage(
+      {
+        imageContentType: "image/jpeg",
+        imageData,
+        publicId: "LABEL101",
+        tenantId: "TENANT001",
+        variantType: "landscape",
+      },
+      "ja"
+    );
+
+    expect(mockUploadAspectImage).toHaveBeenCalledExactlyOnceWith(
+      {
+        imageContentType: "image/jpeg",
+        imageData,
+        publicId: "LABEL101",
+        tenant: { tenantId: "TENANT001" },
+        variantType: "landscape",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toMatchObject({ ok: true });
+    if (result.ok) {
+      expect(result.label.eyeCatchImageVariants[0].variantType).toBe(
+        "landscape"
+      );
+    }
+  });
+
+  it("reports a failure when the session is gone", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { uploadLabelEyeCatchAspectImage } = await import("./label");
+    const result = await uploadLabelEyeCatchAspectImage(
+      {
+        imageData: new Uint8Array([1]),
+        publicId: "LABEL101",
+        tenantId: "TENANT001",
+        variantType: "landscape",
+      },
+      "ja"
+    );
+
+    expect(mockUploadAspectImage).not.toHaveBeenCalled();
+    expect(result.ok).toBe(false);
   });
 });

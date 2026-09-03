@@ -23,6 +23,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -41,6 +42,7 @@ import { SeriesTabNav } from "../_components/series-tab-nav";
 import {
   updateSeriesAction,
   updateSeriesEyeCatchAction,
+  uploadSeriesEyeCatchAspectImageAction,
 } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -161,10 +163,18 @@ const EditSeriesFormData = async ({
       return <SeriesLoadError message={result.message} />;
     }
     return (
-      <SeriesEyeCatchForm
-        action={updateSeriesEyeCatchAction}
-        initialSeries={result.series}
-      />
+      <div className="grid gap-6">
+        <SeriesEyeCatchForm
+          action={updateSeriesEyeCatchAction}
+          initialSeries={result.series}
+        />
+        <EyeCatchAspectImages
+          key={result.series.publicId}
+          publicId={result.series.publicId}
+          uploadAction={uploadSeriesEyeCatchAspectImageAction}
+          variants={result.series.eyeCatchImageVariants}
+        />
+      </div>
     );
   }
 

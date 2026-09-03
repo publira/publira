@@ -7,3 +7,10 @@ export interface EyeCatchVariantItem {
   height: number;
   fileSizeBytes: number;
 }
+
+export type EyeCatchAspectActionState = {
+  ok: boolean;
+  message: string;
+  /** Which ratio the result belongs to, so one slot's message stays in it. */
+  variantType: string;
+} | null;

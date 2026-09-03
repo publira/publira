@@ -60,9 +60,25 @@ message UpdateLabelResponse {
   publira.types.v1.Label label = 1;
 }
 
+// Replaces the image of one aspect ratio of a label eye-catch. The other
+// ratios keep the images they already hold.
+message UploadLabelEyeCatchAspectImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // portrait / square / landscape / og
+  string variant_type = 3;
+  bytes image_data = 4;
+  string image_content_type = 5;
+}
+
+message UploadLabelEyeCatchAspectImageResponse {
+  publira.types.v1.Label label = 1;
+}
+
 service AdminLabelService {
   rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse) {}
   rpc GetLabel(GetLabelRequest) returns (GetLabelResponse) {}
   rpc CreateLabel(CreateLabelRequest) returns (CreateLabelResponse) {}
   rpc UpdateLabel(UpdateLabelRequest) returns (UpdateLabelResponse) {}
+  rpc UploadLabelEyeCatchAspectImage(UploadLabelEyeCatchAspectImageRequest) returns (UploadLabelEyeCatchAspectImageResponse) {}
 }

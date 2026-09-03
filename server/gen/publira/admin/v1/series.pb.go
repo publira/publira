@@ -1587,6 +1587,129 @@ func (x *UpdateEpisodePublishScheduleResponse) GetEpisode() *v1.Episode {
 	return nil
 }
 
+// Replaces the image of one aspect ratio of a series eye-catch. The other
+// ratios keep the images they already hold.
+type UploadSeriesEyeCatchAspectImageRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// portrait / square / landscape / og
+	VariantType      string `protobuf:"bytes,3,opt,name=variant_type,json=variantType,proto3" json:"variant_type,omitempty"`
+	ImageData        []byte `protobuf:"bytes,4,opt,name=image_data,json=imageData,proto3" json:"image_data,omitempty"`
+	ImageContentType string `protobuf:"bytes,5,opt,name=image_content_type,json=imageContentType,proto3" json:"image_content_type,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *UploadSeriesEyeCatchAspectImageRequest) Reset() {
+	*x = UploadSeriesEyeCatchAspectImageRequest{}
+	mi := &file_publira_admin_v1_series_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadSeriesEyeCatchAspectImageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadSeriesEyeCatchAspectImageRequest) ProtoMessage() {}
+
+func (x *UploadSeriesEyeCatchAspectImageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_series_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadSeriesEyeCatchAspectImageRequest.ProtoReflect.Descriptor instead.
+func (*UploadSeriesEyeCatchAspectImageRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *UploadSeriesEyeCatchAspectImageRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UploadSeriesEyeCatchAspectImageRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *UploadSeriesEyeCatchAspectImageRequest) GetVariantType() string {
+	if x != nil {
+		return x.VariantType
+	}
+	return ""
+}
+
+func (x *UploadSeriesEyeCatchAspectImageRequest) GetImageData() []byte {
+	if x != nil {
+		return x.ImageData
+	}
+	return nil
+}
+
+func (x *UploadSeriesEyeCatchAspectImageRequest) GetImageContentType() string {
+	if x != nil {
+		return x.ImageContentType
+	}
+	return ""
+}
+
+type UploadSeriesEyeCatchAspectImageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadSeriesEyeCatchAspectImageResponse) Reset() {
+	*x = UploadSeriesEyeCatchAspectImageResponse{}
+	mi := &file_publira_admin_v1_series_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadSeriesEyeCatchAspectImageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadSeriesEyeCatchAspectImageResponse) ProtoMessage() {}
+
+func (x *UploadSeriesEyeCatchAspectImageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_series_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadSeriesEyeCatchAspectImageResponse.ProtoReflect.Descriptor instead.
+func (*UploadSeriesEyeCatchAspectImageResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *UploadSeriesEyeCatchAspectImageResponse) GetSeries() *v1.Series {
+	if x != nil {
+		return x.Series
+	}
+	return nil
+}
+
 var File_publira_admin_v1_series_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_series_proto_rawDesc = "" +
@@ -1701,8 +1824,16 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12!\n" +
 	"\fscheduled_at\x18\x03 \x01(\tR\vscheduledAt\"[\n" +
 	"$UpdateEpisodePublishScheduleResponse\x123\n" +
-	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode2\x84\n" +
+	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xee\x01\n" +
+	"&UploadSeriesEyeCatchAspectImageRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12!\n" +
+	"\fvariant_type\x18\x03 \x01(\tR\vvariantType\x12\x1d\n" +
 	"\n" +
+	"image_data\x18\x04 \x01(\fR\timageData\x12,\n" +
+	"\x12image_content_type\x18\x05 \x01(\tR\x10imageContentType\"[\n" +
+	"'UploadSeriesEyeCatchAspectImageResponse\x120\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series2\x9f\v\n" +
 	"\x12AdminSeriesService\x12_\n" +
 	"\fCreateSeries\x12%.publira.admin.v1.CreateSeriesRequest\x1a&.publira.admin.v1.CreateSeriesResponse\"\x00\x12_\n" +
 	"\fUpdateSeries\x12%.publira.admin.v1.UpdateSeriesRequest\x1a&.publira.admin.v1.UpdateSeriesResponse\"\x00\x12Y\n" +
@@ -1717,7 +1848,8 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x13UploadEpisodeImages\x12,.publira.admin.v1.UploadEpisodeImagesRequest\x1a-.publira.admin.v1.UploadEpisodeImagesResponse\"\x00\x12n\n" +
 	"\x11ListEpisodeImages\x12*.publira.admin.v1.ListEpisodeImagesRequest\x1a+.publira.admin.v1.ListEpisodeImagesResponse\"\x00\x12w\n" +
 	"\x14ReorderEpisodeImages\x12-.publira.admin.v1.ReorderEpisodeImagesRequest\x1a..publira.admin.v1.ReorderEpisodeImagesResponse\"\x00\x12\x8f\x01\n" +
-	"\x1cUpdateEpisodePublishSchedule\x125.publira.admin.v1.UpdateEpisodePublishScheduleRequest\x1a6.publira.admin.v1.UpdateEpisodePublishScheduleResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x1cUpdateEpisodePublishSchedule\x125.publira.admin.v1.UpdateEpisodePublishScheduleRequest\x1a6.publira.admin.v1.UpdateEpisodePublishScheduleResponse\"\x00\x12\x98\x01\n" +
+	"\x1fUploadSeriesEyeCatchAspectImage\x128.publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest\x1a9.publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_series_proto_rawDescOnce sync.Once
@@ -1731,93 +1863,99 @@ func file_publira_admin_v1_series_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_series_proto_rawDescData
 }
 
-var file_publira_admin_v1_series_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_publira_admin_v1_series_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_publira_admin_v1_series_proto_goTypes = []any{
-	(*CreateSeriesRequest)(nil),                  // 0: publira.admin.v1.CreateSeriesRequest
-	(*CreateSeriesResponse)(nil),                 // 1: publira.admin.v1.CreateSeriesResponse
-	(*UpdateSeriesRequest)(nil),                  // 2: publira.admin.v1.UpdateSeriesRequest
-	(*UpdateSeriesResponse)(nil),                 // 3: publira.admin.v1.UpdateSeriesResponse
-	(*ListSeriesRequest)(nil),                    // 4: publira.admin.v1.ListSeriesRequest
-	(*ListSeriesResponse)(nil),                   // 5: publira.admin.v1.ListSeriesResponse
-	(*GetSeriesRequest)(nil),                     // 6: publira.admin.v1.GetSeriesRequest
-	(*GetSeriesResponse)(nil),                    // 7: publira.admin.v1.GetSeriesResponse
-	(*ListEpisodesRequest)(nil),                  // 8: publira.admin.v1.ListEpisodesRequest
-	(*ListEpisodesResponse)(nil),                 // 9: publira.admin.v1.ListEpisodesResponse
-	(*GetEpisodeRequest)(nil),                    // 10: publira.admin.v1.GetEpisodeRequest
-	(*GetEpisodeResponse)(nil),                   // 11: publira.admin.v1.GetEpisodeResponse
-	(*ReorderEpisodesRequest)(nil),               // 12: publira.admin.v1.ReorderEpisodesRequest
-	(*ReorderEpisodesResponse)(nil),              // 13: publira.admin.v1.ReorderEpisodesResponse
-	(*CreateEpisodeRequest)(nil),                 // 14: publira.admin.v1.CreateEpisodeRequest
-	(*CreateEpisodeResponse)(nil),                // 15: publira.admin.v1.CreateEpisodeResponse
-	(*EpisodeImageUpload)(nil),                   // 16: publira.admin.v1.EpisodeImageUpload
-	(*UploadEpisodeImagesRequest)(nil),           // 17: publira.admin.v1.UploadEpisodeImagesRequest
-	(*UploadEpisodeImagesResponse)(nil),          // 18: publira.admin.v1.UploadEpisodeImagesResponse
-	(*ListEpisodeImagesRequest)(nil),             // 19: publira.admin.v1.ListEpisodeImagesRequest
-	(*ListEpisodeImagesResponse)(nil),            // 20: publira.admin.v1.ListEpisodeImagesResponse
-	(*ReorderEpisodeImagesRequest)(nil),          // 21: publira.admin.v1.ReorderEpisodeImagesRequest
-	(*ReorderEpisodeImagesResponse)(nil),         // 22: publira.admin.v1.ReorderEpisodeImagesResponse
-	(*UpdateEpisodePublishScheduleRequest)(nil),  // 23: publira.admin.v1.UpdateEpisodePublishScheduleRequest
-	(*UpdateEpisodePublishScheduleResponse)(nil), // 24: publira.admin.v1.UpdateEpisodePublishScheduleResponse
-	(*v1.TenantContext)(nil),                     // 25: publira.types.v1.TenantContext
-	(*v1.Series)(nil),                            // 26: publira.types.v1.Series
-	(*v1.Episode)(nil),                           // 27: publira.types.v1.Episode
-	(*v1.EpisodeImage)(nil),                      // 28: publira.types.v1.EpisodeImage
+	(*CreateSeriesRequest)(nil),                     // 0: publira.admin.v1.CreateSeriesRequest
+	(*CreateSeriesResponse)(nil),                    // 1: publira.admin.v1.CreateSeriesResponse
+	(*UpdateSeriesRequest)(nil),                     // 2: publira.admin.v1.UpdateSeriesRequest
+	(*UpdateSeriesResponse)(nil),                    // 3: publira.admin.v1.UpdateSeriesResponse
+	(*ListSeriesRequest)(nil),                       // 4: publira.admin.v1.ListSeriesRequest
+	(*ListSeriesResponse)(nil),                      // 5: publira.admin.v1.ListSeriesResponse
+	(*GetSeriesRequest)(nil),                        // 6: publira.admin.v1.GetSeriesRequest
+	(*GetSeriesResponse)(nil),                       // 7: publira.admin.v1.GetSeriesResponse
+	(*ListEpisodesRequest)(nil),                     // 8: publira.admin.v1.ListEpisodesRequest
+	(*ListEpisodesResponse)(nil),                    // 9: publira.admin.v1.ListEpisodesResponse
+	(*GetEpisodeRequest)(nil),                       // 10: publira.admin.v1.GetEpisodeRequest
+	(*GetEpisodeResponse)(nil),                      // 11: publira.admin.v1.GetEpisodeResponse
+	(*ReorderEpisodesRequest)(nil),                  // 12: publira.admin.v1.ReorderEpisodesRequest
+	(*ReorderEpisodesResponse)(nil),                 // 13: publira.admin.v1.ReorderEpisodesResponse
+	(*CreateEpisodeRequest)(nil),                    // 14: publira.admin.v1.CreateEpisodeRequest
+	(*CreateEpisodeResponse)(nil),                   // 15: publira.admin.v1.CreateEpisodeResponse
+	(*EpisodeImageUpload)(nil),                      // 16: publira.admin.v1.EpisodeImageUpload
+	(*UploadEpisodeImagesRequest)(nil),              // 17: publira.admin.v1.UploadEpisodeImagesRequest
+	(*UploadEpisodeImagesResponse)(nil),             // 18: publira.admin.v1.UploadEpisodeImagesResponse
+	(*ListEpisodeImagesRequest)(nil),                // 19: publira.admin.v1.ListEpisodeImagesRequest
+	(*ListEpisodeImagesResponse)(nil),               // 20: publira.admin.v1.ListEpisodeImagesResponse
+	(*ReorderEpisodeImagesRequest)(nil),             // 21: publira.admin.v1.ReorderEpisodeImagesRequest
+	(*ReorderEpisodeImagesResponse)(nil),            // 22: publira.admin.v1.ReorderEpisodeImagesResponse
+	(*UpdateEpisodePublishScheduleRequest)(nil),     // 23: publira.admin.v1.UpdateEpisodePublishScheduleRequest
+	(*UpdateEpisodePublishScheduleResponse)(nil),    // 24: publira.admin.v1.UpdateEpisodePublishScheduleResponse
+	(*UploadSeriesEyeCatchAspectImageRequest)(nil),  // 25: publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest
+	(*UploadSeriesEyeCatchAspectImageResponse)(nil), // 26: publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse
+	(*v1.TenantContext)(nil),                        // 27: publira.types.v1.TenantContext
+	(*v1.Series)(nil),                               // 28: publira.types.v1.Series
+	(*v1.Episode)(nil),                              // 29: publira.types.v1.Episode
+	(*v1.EpisodeImage)(nil),                         // 30: publira.types.v1.EpisodeImage
 }
 var file_publira_admin_v1_series_proto_depIdxs = []int32{
-	25, // 0: publira.admin.v1.CreateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	26, // 1: publira.admin.v1.CreateSeriesResponse.series:type_name -> publira.types.v1.Series
-	25, // 2: publira.admin.v1.UpdateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	26, // 3: publira.admin.v1.UpdateSeriesResponse.series:type_name -> publira.types.v1.Series
-	25, // 4: publira.admin.v1.ListSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	26, // 5: publira.admin.v1.ListSeriesResponse.series:type_name -> publira.types.v1.Series
-	25, // 6: publira.admin.v1.GetSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	26, // 7: publira.admin.v1.GetSeriesResponse.series:type_name -> publira.types.v1.Series
-	25, // 8: publira.admin.v1.ListEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	27, // 9: publira.admin.v1.ListEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
-	25, // 10: publira.admin.v1.GetEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	27, // 11: publira.admin.v1.GetEpisodeResponse.episode:type_name -> publira.types.v1.Episode
-	25, // 12: publira.admin.v1.ReorderEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	27, // 13: publira.admin.v1.ReorderEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
-	25, // 14: publira.admin.v1.CreateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	27, // 15: publira.admin.v1.CreateEpisodeResponse.episode:type_name -> publira.types.v1.Episode
-	25, // 16: publira.admin.v1.UploadEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 0: publira.admin.v1.CreateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	28, // 1: publira.admin.v1.CreateSeriesResponse.series:type_name -> publira.types.v1.Series
+	27, // 2: publira.admin.v1.UpdateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	28, // 3: publira.admin.v1.UpdateSeriesResponse.series:type_name -> publira.types.v1.Series
+	27, // 4: publira.admin.v1.ListSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	28, // 5: publira.admin.v1.ListSeriesResponse.series:type_name -> publira.types.v1.Series
+	27, // 6: publira.admin.v1.GetSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	28, // 7: publira.admin.v1.GetSeriesResponse.series:type_name -> publira.types.v1.Series
+	27, // 8: publira.admin.v1.ListEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	29, // 9: publira.admin.v1.ListEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
+	27, // 10: publira.admin.v1.GetEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	29, // 11: publira.admin.v1.GetEpisodeResponse.episode:type_name -> publira.types.v1.Episode
+	27, // 12: publira.admin.v1.ReorderEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	29, // 13: publira.admin.v1.ReorderEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
+	27, // 14: publira.admin.v1.CreateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	29, // 15: publira.admin.v1.CreateEpisodeResponse.episode:type_name -> publira.types.v1.Episode
+	27, // 16: publira.admin.v1.UploadEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	16, // 17: publira.admin.v1.UploadEpisodeImagesRequest.images:type_name -> publira.admin.v1.EpisodeImageUpload
-	28, // 18: publira.admin.v1.UploadEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
-	25, // 19: publira.admin.v1.ListEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	28, // 20: publira.admin.v1.ListEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
-	25, // 21: publira.admin.v1.ReorderEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	28, // 22: publira.admin.v1.ReorderEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
-	25, // 23: publira.admin.v1.UpdateEpisodePublishScheduleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	27, // 24: publira.admin.v1.UpdateEpisodePublishScheduleResponse.episode:type_name -> publira.types.v1.Episode
-	0,  // 25: publira.admin.v1.AdminSeriesService.CreateSeries:input_type -> publira.admin.v1.CreateSeriesRequest
-	2,  // 26: publira.admin.v1.AdminSeriesService.UpdateSeries:input_type -> publira.admin.v1.UpdateSeriesRequest
-	4,  // 27: publira.admin.v1.AdminSeriesService.ListSeries:input_type -> publira.admin.v1.ListSeriesRequest
-	6,  // 28: publira.admin.v1.AdminSeriesService.GetSeries:input_type -> publira.admin.v1.GetSeriesRequest
-	8,  // 29: publira.admin.v1.AdminSeriesService.ListEpisodes:input_type -> publira.admin.v1.ListEpisodesRequest
-	10, // 30: publira.admin.v1.AdminSeriesService.GetEpisode:input_type -> publira.admin.v1.GetEpisodeRequest
-	12, // 31: publira.admin.v1.AdminSeriesService.ReorderEpisodes:input_type -> publira.admin.v1.ReorderEpisodesRequest
-	14, // 32: publira.admin.v1.AdminSeriesService.CreateEpisode:input_type -> publira.admin.v1.CreateEpisodeRequest
-	17, // 33: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:input_type -> publira.admin.v1.UploadEpisodeImagesRequest
-	19, // 34: publira.admin.v1.AdminSeriesService.ListEpisodeImages:input_type -> publira.admin.v1.ListEpisodeImagesRequest
-	21, // 35: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:input_type -> publira.admin.v1.ReorderEpisodeImagesRequest
-	23, // 36: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:input_type -> publira.admin.v1.UpdateEpisodePublishScheduleRequest
-	1,  // 37: publira.admin.v1.AdminSeriesService.CreateSeries:output_type -> publira.admin.v1.CreateSeriesResponse
-	3,  // 38: publira.admin.v1.AdminSeriesService.UpdateSeries:output_type -> publira.admin.v1.UpdateSeriesResponse
-	5,  // 39: publira.admin.v1.AdminSeriesService.ListSeries:output_type -> publira.admin.v1.ListSeriesResponse
-	7,  // 40: publira.admin.v1.AdminSeriesService.GetSeries:output_type -> publira.admin.v1.GetSeriesResponse
-	9,  // 41: publira.admin.v1.AdminSeriesService.ListEpisodes:output_type -> publira.admin.v1.ListEpisodesResponse
-	11, // 42: publira.admin.v1.AdminSeriesService.GetEpisode:output_type -> publira.admin.v1.GetEpisodeResponse
-	13, // 43: publira.admin.v1.AdminSeriesService.ReorderEpisodes:output_type -> publira.admin.v1.ReorderEpisodesResponse
-	15, // 44: publira.admin.v1.AdminSeriesService.CreateEpisode:output_type -> publira.admin.v1.CreateEpisodeResponse
-	18, // 45: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:output_type -> publira.admin.v1.UploadEpisodeImagesResponse
-	20, // 46: publira.admin.v1.AdminSeriesService.ListEpisodeImages:output_type -> publira.admin.v1.ListEpisodeImagesResponse
-	22, // 47: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:output_type -> publira.admin.v1.ReorderEpisodeImagesResponse
-	24, // 48: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:output_type -> publira.admin.v1.UpdateEpisodePublishScheduleResponse
-	37, // [37:49] is the sub-list for method output_type
-	25, // [25:37] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	30, // 18: publira.admin.v1.UploadEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
+	27, // 19: publira.admin.v1.ListEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	30, // 20: publira.admin.v1.ListEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
+	27, // 21: publira.admin.v1.ReorderEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	30, // 22: publira.admin.v1.ReorderEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
+	27, // 23: publira.admin.v1.UpdateEpisodePublishScheduleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	29, // 24: publira.admin.v1.UpdateEpisodePublishScheduleResponse.episode:type_name -> publira.types.v1.Episode
+	27, // 25: publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	28, // 26: publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse.series:type_name -> publira.types.v1.Series
+	0,  // 27: publira.admin.v1.AdminSeriesService.CreateSeries:input_type -> publira.admin.v1.CreateSeriesRequest
+	2,  // 28: publira.admin.v1.AdminSeriesService.UpdateSeries:input_type -> publira.admin.v1.UpdateSeriesRequest
+	4,  // 29: publira.admin.v1.AdminSeriesService.ListSeries:input_type -> publira.admin.v1.ListSeriesRequest
+	6,  // 30: publira.admin.v1.AdminSeriesService.GetSeries:input_type -> publira.admin.v1.GetSeriesRequest
+	8,  // 31: publira.admin.v1.AdminSeriesService.ListEpisodes:input_type -> publira.admin.v1.ListEpisodesRequest
+	10, // 32: publira.admin.v1.AdminSeriesService.GetEpisode:input_type -> publira.admin.v1.GetEpisodeRequest
+	12, // 33: publira.admin.v1.AdminSeriesService.ReorderEpisodes:input_type -> publira.admin.v1.ReorderEpisodesRequest
+	14, // 34: publira.admin.v1.AdminSeriesService.CreateEpisode:input_type -> publira.admin.v1.CreateEpisodeRequest
+	17, // 35: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:input_type -> publira.admin.v1.UploadEpisodeImagesRequest
+	19, // 36: publira.admin.v1.AdminSeriesService.ListEpisodeImages:input_type -> publira.admin.v1.ListEpisodeImagesRequest
+	21, // 37: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:input_type -> publira.admin.v1.ReorderEpisodeImagesRequest
+	23, // 38: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:input_type -> publira.admin.v1.UpdateEpisodePublishScheduleRequest
+	25, // 39: publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage:input_type -> publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest
+	1,  // 40: publira.admin.v1.AdminSeriesService.CreateSeries:output_type -> publira.admin.v1.CreateSeriesResponse
+	3,  // 41: publira.admin.v1.AdminSeriesService.UpdateSeries:output_type -> publira.admin.v1.UpdateSeriesResponse
+	5,  // 42: publira.admin.v1.AdminSeriesService.ListSeries:output_type -> publira.admin.v1.ListSeriesResponse
+	7,  // 43: publira.admin.v1.AdminSeriesService.GetSeries:output_type -> publira.admin.v1.GetSeriesResponse
+	9,  // 44: publira.admin.v1.AdminSeriesService.ListEpisodes:output_type -> publira.admin.v1.ListEpisodesResponse
+	11, // 45: publira.admin.v1.AdminSeriesService.GetEpisode:output_type -> publira.admin.v1.GetEpisodeResponse
+	13, // 46: publira.admin.v1.AdminSeriesService.ReorderEpisodes:output_type -> publira.admin.v1.ReorderEpisodesResponse
+	15, // 47: publira.admin.v1.AdminSeriesService.CreateEpisode:output_type -> publira.admin.v1.CreateEpisodeResponse
+	18, // 48: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:output_type -> publira.admin.v1.UploadEpisodeImagesResponse
+	20, // 49: publira.admin.v1.AdminSeriesService.ListEpisodeImages:output_type -> publira.admin.v1.ListEpisodeImagesResponse
+	22, // 50: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:output_type -> publira.admin.v1.ReorderEpisodeImagesResponse
+	24, // 51: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:output_type -> publira.admin.v1.UpdateEpisodePublishScheduleResponse
+	26, // 52: publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage:output_type -> publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse
+	40, // [40:53] is the sub-list for method output_type
+	27, // [27:40] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_series_proto_init() }
@@ -1831,7 +1969,7 @@ func file_publira_admin_v1_series_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_series_proto_rawDesc), len(file_publira_admin_v1_series_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   25,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

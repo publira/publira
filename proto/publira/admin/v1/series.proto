@@ -183,6 +183,21 @@ message UpdateEpisodePublishScheduleResponse {
   publira.types.v1.Episode episode = 1;
 }
 
+// Replaces the image of one aspect ratio of a series eye-catch. The other
+// ratios keep the images they already hold.
+message UploadSeriesEyeCatchAspectImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // portrait / square / landscape / og
+  string variant_type = 3;
+  bytes image_data = 4;
+  string image_content_type = 5;
+}
+
+message UploadSeriesEyeCatchAspectImageResponse {
+  publira.types.v1.Series series = 1;
+}
+
 service AdminSeriesService {
   rpc CreateSeries(CreateSeriesRequest) returns (CreateSeriesResponse) {}
   rpc UpdateSeries(UpdateSeriesRequest) returns (UpdateSeriesResponse) {}
@@ -196,4 +211,5 @@ service AdminSeriesService {
   rpc ListEpisodeImages(ListEpisodeImagesRequest) returns (ListEpisodeImagesResponse) {}
   rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
+  rpc UploadSeriesEyeCatchAspectImage(UploadSeriesEyeCatchAspectImageRequest) returns (UploadSeriesEyeCatchAspectImageResponse) {}
 }

@@ -43,12 +43,16 @@ type normalizedEyeCatchImage struct {
 	Data        []byte
 }
 
-func normalizeSeriesEyeCatchImage(data []byte, contentType string) (*normalizedEyeCatchImage, error) {
+// normalizeEyeCatchImage accepts an eye-catch upload and reports the content
+// type to store it under, or nil when the request carried no image. The field
+// names are arguments because the same checks guard both the whole-eye-catch
+// image on the create/update requests and the per-ratio image on its own RPC.
+func normalizeEyeCatchImage(data []byte, contentType, dataField, contentTypeField string) (*normalizedEyeCatchImage, error) {
 	if len(data) == 0 {
 		return nil, nil
 	}
 	if len(data) > imageproc.EyeCatchMaxBytes {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("eye_catch_image_data exceeds 10MB"), "eye_catch_image_data")
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("%s exceeds 10MB", dataField), dataField)
 	}
 
 	normalizedContentType := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
@@ -56,13 +60,17 @@ func normalizeSeriesEyeCatchImage(data []byte, contentType string) (*normalizedE
 		normalizedContentType = strings.ToLower(strings.TrimSpace(http.DetectContentType(data)))
 	}
 	if normalizedContentType != "image/jpeg" && normalizedContentType != "image/png" && normalizedContentType != "image/webp" {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("eye_catch_image_content_type must be image/jpeg, image/png, or image/webp"), "eye_catch_image_content_type")
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("%s must be image/jpeg, image/png, or image/webp", contentTypeField), contentTypeField)
 	}
 
 	return &normalizedEyeCatchImage{
 		ContentType: normalizedContentType,
 		Data:        data,
 	}, nil
+}
+
+func normalizeSeriesEyeCatchImage(data []byte, contentType string) (*normalizedEyeCatchImage, error) {
+	return normalizeEyeCatchImage(data, contentType, "eye_catch_image_data", "eye_catch_image_content_type")
 }
 
 func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, seriesID uuid.UUID, seriesPublicID string, img *normalizedEyeCatchImage) (uuid.NullUUID, error) {
