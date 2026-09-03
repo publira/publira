@@ -93,8 +93,8 @@ Teardown leaves `.run/logs/task-dev.log` whenever phase 4 ran, and writes `compo
 
 Job: **Test / Bootstrap** (`.github/workflows/ci.yml`)
 
-- Path filter: `compose.yaml`, `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, lockfiles, and related paths. Because `task dev` starts every application and server, any of these sources can break it.
-- It also runs nightly (`schedule`) because `compose.yaml` / `.devcontainer/**` changes are rare in ordinary PRs.
+- Path filter: `compose.yaml`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, lockfiles, and related paths. Because `task dev` starts every application and server, any of these sources can break it. `.devcontainer/**` is not among them: the check reads the root `compose.yaml`, and CI runs `task setup` / `task dev` on the runner rather than inside the Dev Container.
+- It also runs nightly (`schedule`) because `compose.yaml` changes are rare in ordinary PRs.
 - Failure artifact: `bootstrap-artifacts` (`.run/logs/`).
 
 See [the workflow overview](../../.github/workflows/README.md) for all CI jobs.

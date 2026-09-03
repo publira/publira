@@ -206,7 +206,6 @@ jobs:
             test_bootstrap:
               - *docs_excluded
               - 'compose.yaml'
-              - '.devcontainer/**'
               - 'db/**'
               - 'e2e/bootstrap/**'
               # task dev starts every app and server, so any of their sources
