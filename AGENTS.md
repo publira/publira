@@ -32,6 +32,18 @@ A reference to an **open** Issue naming something still to be done — a defect 
 
 No lint covers this: `git grep` cannot tell an open Issue from a closed one, and a scheduled job asking the GitHub API about every number in every file would cost more upkeep than the rule is worth.
 
+## What a README holds
+
+A `README.md` is reference: what the thing is, what it exports or serves, the environment variables it reads, how to run it, and how its parts fit together. Anything else a README says about the implementation is a second copy of something that has a home closer to the code, and the copy a reader reaches first is the one furthest from what it describes.
+
+Reasoning about one identified code site — why a value is what it is, what a naive alternative would break, what was measured — belongs in a doc comment at that site, where whoever changes the value next reads it.
+
+A behaviour a reader is expected to be able to rely on belongs in a test: a unit test, or an E2E test when the behaviour spans processes. A manual verification procedure written into a README is a test that has not been written yet; write the test and delete the procedure.
+
+A passage that a doc comment or a test already carries is deleted outright rather than moved.
+
+No lint covers this — no tool can tell reference from reasoning. A README section that predates the rule is a leftover, not a precedent: move it to the code or the test rather than writing a neighbour for it.
+
 ## Git commits
 
 Commit subjects and PR titles use Conventional Commits (see `.github/pull_request_template.md`).
