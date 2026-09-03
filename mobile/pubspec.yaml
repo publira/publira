@@ -60,6 +60,11 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  # Every command without an explicit --flavor builds the development app
+  # (`com.publira.publira.dev`), which is what `flutter run`, the integration
+  # tests, and CI want. A store build asks for `--flavor production`.
+  default-flavor: dev
+
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
