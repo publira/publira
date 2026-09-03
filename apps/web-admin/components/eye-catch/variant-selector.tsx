@@ -8,6 +8,7 @@ import { useCallback, useContext } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
 
+import { eyeCatchAspectClassName, eyeCatchAspectOrder } from "./aspects";
 import type { EyeCatchVariantItem } from "./types";
 
 interface EyeCatchVariantSelectorProps {
@@ -54,10 +55,9 @@ export const EyeCatchVariantSelector = ({
     variantList.sort((a, b) => b.width - a.width);
   }
 
-  const displayGroups = [...variantsByType.entries()].toSorted((a, b) => {
-    const order = ["portrait", "square", "landscape", "og"];
-    return order.indexOf(a[0]) - order.indexOf(b[0]);
-  });
+  const displayGroups = [...variantsByType.entries()].toSorted(
+    (a, b) => eyeCatchAspectOrder(a[0]) - eyeCatchAspectOrder(b[0])
+  );
 
   if (variants.length === 0) {
     return (
@@ -98,12 +98,7 @@ export const EyeCatchVariantSelector = ({
             <div
               className={cn(
                 "relative overflow-hidden rounded-md border bg-muted/40",
-                typeKey === "landscape" && "aspect-video",
-                typeKey === "og" && "aspect-1200/630",
-                typeKey === "portrait" && "aspect-3/4",
-                typeKey === "square" && "aspect-square",
-                !["landscape", "og", "portrait", "square"].includes(typeKey) &&
-                  "aspect-4/3",
+                eyeCatchAspectClassName(typeKey),
                 isSelected ? "border-blue-500" : "border-border/50"
               )}
             >

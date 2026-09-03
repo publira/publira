@@ -512,3 +512,61 @@ export const updateSeries = async (
     };
   }
 };
+
+export type SeriesEyeCatchAspectResult =
+  | { ok: true; series: SeriesItem }
+  | { ok: false; message: string };
+
+/**
+ * Replaces the image of one aspect ratio of the series eye-catch. The other
+ * ratios keep the images they already hold, so the eye-catch has to exist
+ * before one ratio can be swapped on its own.
+ */
+export const uploadSeriesEyeCatchAspectImage = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+    variantType: string;
+    imageContentType?: string;
+    imageData: Uint8Array;
+  },
+  locale: Locale
+): Promise<SeriesEyeCatchAspectResult> => {
+  const messages = sharedCatalog(locale);
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return {
+      message: sessionErrorMessage(messages),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.uploadSeriesEyeCatchAspectImage(
+      {
+        imageContentType: input.imageContentType,
+        imageData: input.imageData,
+        publicId: input.publicId,
+        tenant: { tenantId: input.tenantId },
+        variantType: input.variantType,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.series?.publicId?.trim()) {
+      return {
+        message: mutationErrorMessage(messages),
+        ok: false,
+      };
+    }
+
+    return { ok: true, series: mapSeries(response.series) };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      ok: false,
+    };
+  }
+};

@@ -23,6 +23,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -35,7 +36,10 @@ import { getTenantId } from "#lib/tenant-id";
 import { LabelEyeCatchForm } from "../_components/label-eye-catch-form";
 import { LabelForm } from "../_components/label-form";
 import { LabelTabNav } from "../_components/label-tab-nav";
-import { updateLabelAction } from "../_lib/actions";
+import {
+  updateLabelAction,
+  uploadLabelEyeCatchAspectImageAction,
+} from "../_lib/actions";
 
 interface EditLabelPageProps {
   params: Promise<{
@@ -162,10 +166,17 @@ const EditLabelFormData = async ({
 
   if (activeTab === "eye-catch") {
     return (
-      <LabelEyeCatchForm
-        action={updateLabelAction}
-        initialLabel={result.label}
-      />
+      <div className="grid gap-6">
+        <LabelEyeCatchForm
+          action={updateLabelAction}
+          initialLabel={result.label}
+        />
+        <EyeCatchAspectImages
+          publicId={result.label.publicId}
+          uploadAction={uploadLabelEyeCatchAspectImageAction}
+          variants={result.label.eyeCatchImageVariants}
+        />
+      </div>
     );
   }
 

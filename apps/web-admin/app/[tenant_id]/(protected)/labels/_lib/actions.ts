@@ -8,6 +8,7 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import type { EyeCatchAspectActionState } from "#components/eye-catch/types";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
@@ -17,7 +18,11 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
-import { createLabel, updateLabel } from "#lib/label";
+import {
+  createLabel,
+  updateLabel,
+  uploadLabelEyeCatchAspectImage,
+} from "#lib/label";
 import type { AdminMessages } from "#lib/locale";
 
 import type { LabelActionState, LabelMutationMode } from "../label-types";
@@ -192,5 +197,88 @@ export const updateLabelAction = async (
     message: getMessage(messages, "admin.labels.updated"),
     mode: "update",
     ok: true,
+  };
+};
+
+const eyeCatchAspectSchema = (messages: AdminMessages) =>
+  z.object({
+    publicId: requiredTrimmedString(
+      getMessage(messages, "admin.labels.validation.id_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.labels.validation.tenant_missing")
+    ),
+    variantType: requiredTrimmedString(
+      getMessage(messages, "admin.eye_catch.aspect.variant_type_missing")
+    ),
+  });
+
+const eyeCatchAspectFormFields = {
+  publicId: { kind: "value", name: "public_id" },
+  tenantId: { kind: "value", name: "tenant_id" },
+  variantType: { kind: "value", name: "variant_type" },
+} as const;
+
+/**
+ * The ratio is echoed back in every result so the slot that submitted is the
+ * only one that shows the message — four slots share this Action.
+ */
+const toAspectFailure = (
+  message: string,
+  variantType: string
+): EyeCatchAspectActionState => ({ message, ok: false, variantType });
+
+export const uploadLabelEyeCatchAspectImageAction = async (
+  _prevState: EyeCatchAspectActionState,
+  formData: FormData
+): Promise<EyeCatchAspectActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
+  const parsed = eyeCatchAspectSchema(messages)
+    .extend({ aspectImage: optionalFileFormSchema })
+    .safeParse(
+      toFormDataInput(formData, {
+        ...eyeCatchAspectFormFields,
+        aspectImage: { kind: "file", name: "aspect_image" },
+      })
+    );
+  if (!parsed.success) {
+    return toAspectFailure(toFormErrorMessage(parsed.error, { locale }), "");
+  }
+
+  const { aspectImage, publicId, tenantId, variantType } = parsed.data;
+  if (!aspectImage) {
+    return toAspectFailure(
+      getMessage(messages, "admin.eye_catch.aspect.image_required"),
+      variantType
+    );
+  }
+
+  const imageData = new Uint8Array(await aspectImage.arrayBuffer());
+  const result = await withAdminSessionReauth(() =>
+    uploadLabelEyeCatchAspectImage(
+      {
+        imageContentType: aspectImage.type || undefined,
+        imageData,
+        publicId,
+        tenantId,
+        variantType,
+      },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return toAspectFailure(result.message, variantType);
+  }
+
+  updateTag(`labels-${tenantId}`);
+  updateTag(`label-${tenantId}-${publicId}`);
+
+  return {
+    message: getMessage(messages, "admin.eye_catch.aspect.uploaded"),
+    ok: true,
+    variantType,
   };
 };

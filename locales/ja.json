@@ -337,7 +337,20 @@
       "undo_delete": "削除を取り消す",
       "description": "バリアント画像をクリックして差し替えできます。削除を選ぶと画像は未設定になります。 JPEG/PNG/WebP、10MB以下、2400x3200px以上の画像を選択してください。",
       "variants_empty": "まだ画像が登録されていません。",
-      "variant_alt": "生成画像 {$variant_type}"
+      "variant_alt": "生成画像 {$variant_type}",
+      "aspect": {
+        "title": "比率別画像",
+        "description": "比率ごとに画像を持ちます。上のアイキャッチ画像を入稿すると4比率がまとめて入れ替わり、ここで1つを差し替えても他の3つはそのまま残ります。",
+        "eye_catch_required": "先にアイキャッチ画像を登録してください。比率ごとの差し替えは登録後に行えます。",
+        "select_aria": "{$variant_type} の画像を選択",
+        "empty": "画像がありません",
+        "minimum": "{$width}x{$height}px 以上",
+        "upload": "差し替える",
+        "uploading": "入稿中...",
+        "uploaded": "この比率の画像を差し替えました。",
+        "image_required": "入稿する画像を選択してください。",
+        "variant_type_missing": "対象の比率が指定されていません。"
+      }
     },
     "labels": {
       "detail_error": "レーベルを表示できませんでした",

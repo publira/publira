@@ -337,7 +337,20 @@
       "undo_delete": "Undo the deletion",
       "description": "Click a variant image to replace it. Choosing delete leaves the image unset. Select a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px.",
       "variants_empty": "No image has been registered yet.",
-      "variant_alt": "Generated image {$variant_type}"
+      "variant_alt": "Generated image {$variant_type}",
+      "aspect": {
+        "title": "Aspect ratio images",
+        "description": "Each ratio holds its own image. Uploading a cover image above fills all four at once; replacing one here leaves the other three as they are.",
+        "eye_catch_required": "Register a cover image first. Individual ratios can be replaced once the cover image exists.",
+        "select_aria": "Select an image for {$variant_type}",
+        "empty": "No image yet",
+        "minimum": "At least {$width}x{$height}px",
+        "upload": "Replace",
+        "uploading": "Uploading...",
+        "uploaded": "The image for this ratio was replaced.",
+        "image_required": "Select an image to upload.",
+        "variant_type_missing": "The aspect ratio is missing."
+      }
     },
     "labels": {
       "detail_error": "Could not display the label",
