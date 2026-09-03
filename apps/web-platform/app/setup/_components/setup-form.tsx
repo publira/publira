@@ -31,7 +31,7 @@ export const SetupForm = async () => {
   return (
     <ActionForm action={setupAction} className="space-y-4">
       <Field>
-        <FieldLabel htmlFor="name" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <SetupMessage message="platform.auth.setup.name_label" />
           </Suspense>
@@ -39,7 +39,6 @@ export const SetupForm = async () => {
         <FieldContent>
           <Input
             autoComplete="name"
-            id="name"
             name="name"
             placeholder={getMessage(
               messages,
@@ -52,7 +51,7 @@ export const SetupForm = async () => {
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="email" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <SetupMessage message="platform.auth.fields.email_label" />
           </Suspense>
@@ -60,7 +59,6 @@ export const SetupForm = async () => {
         <FieldContent>
           <Input
             autoComplete="email"
-            id="email"
             name="email"
             placeholder="admin@example.com"
             required
@@ -70,7 +68,7 @@ export const SetupForm = async () => {
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="password" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
             <SetupMessage message="platform.auth.fields.password_label" />
           </Suspense>
@@ -78,7 +76,6 @@ export const SetupForm = async () => {
         <FieldContent>
           <Input
             autoComplete="new-password"
-            id="password"
             name="password"
             placeholder="••••••••"
             required
@@ -88,7 +85,7 @@ export const SetupForm = async () => {
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="confirmPassword" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
             <SetupMessage message="platform.auth.setup.confirm_password_label" />
           </Suspense>
@@ -96,7 +93,6 @@ export const SetupForm = async () => {
         <FieldContent>
           <Input
             autoComplete="new-password"
-            id="confirmPassword"
             name="confirmPassword"
             placeholder="••••••••"
             required
@@ -106,7 +102,7 @@ export const SetupForm = async () => {
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="default_locale" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <SetupMessage message="platform.auth.setup.default_locale_label" />
           </Suspense>
@@ -114,7 +110,6 @@ export const SetupForm = async () => {
         <FieldContent>
           <Select
             defaultValue={initialDefaultLocale}
-            id="default_locale"
             items={localeItems}
             name="default_locale"
             placeholder={getMessage(

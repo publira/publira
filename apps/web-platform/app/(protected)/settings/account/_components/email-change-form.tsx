@@ -40,7 +40,7 @@ export const EmailChangeForm = () => (
         className="grid gap-4"
       >
         <Field>
-          <FieldLabel htmlFor="current_email" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="platform.settings.email_change_current" />
             </Suspense>
@@ -48,7 +48,6 @@ export const EmailChangeForm = () => (
           <FieldContent>
             <Input
               autoComplete="email"
-              id="current_email"
               name="current_email"
               placeholder="current@example.com"
               required
@@ -58,7 +57,7 @@ export const EmailChangeForm = () => (
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="new_email" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="platform.settings.email_change_new" />
             </Suspense>
@@ -66,7 +65,6 @@ export const EmailChangeForm = () => (
           <FieldContent>
             <Input
               autoComplete="email"
-              id="new_email"
               name="new_email"
               placeholder="new@example.com"
               required
@@ -76,7 +74,7 @@ export const EmailChangeForm = () => (
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="current_password" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.settings.email_change_password" />
             </Suspense>
@@ -84,7 +82,6 @@ export const EmailChangeForm = () => (
           <FieldContent>
             <Input
               autoComplete="current-password"
-              id="current_password"
               name="current_password"
               placeholder="••••••••"
               required

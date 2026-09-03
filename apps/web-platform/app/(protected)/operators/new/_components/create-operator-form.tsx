@@ -24,25 +24,24 @@ export const CreateOperatorForm = async () => {
       className="grid gap-4 sm:max-w-2xl"
     >
       <Field>
-        <FieldLabel htmlFor="operator_name" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="platform.common.name" />
           </Suspense>
         </FieldLabel>
         <FieldContent>
-          <Input id="operator_name" name="operator_name" required type="text" />
+          <Input name="operator_name" required type="text" />
         </FieldContent>
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="operator_email" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="platform.common.email" />
           </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input
-            id="operator_email"
             name="operator_email"
             placeholder="operator@example.com"
             required
@@ -52,7 +51,7 @@ export const CreateOperatorForm = async () => {
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="operator_role" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="platform.common.role" />
           </Suspense>
@@ -60,7 +59,6 @@ export const CreateOperatorForm = async () => {
         <FieldContent>
           <Suspense fallback={<Skeleton className="h-10 w-full" />}>
             <Select
-              id="operator_role"
               items={getOperatorRoleSelectItems(messages)}
               name="operator_role"
               placeholder={getMessage(

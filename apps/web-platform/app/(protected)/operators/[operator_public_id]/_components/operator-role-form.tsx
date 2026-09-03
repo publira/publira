@@ -28,7 +28,7 @@ export const OperatorRoleForm = async ({
       <input name="operator_public_id" type="hidden" value={operatorPublicId} />
       <div className="grid gap-4">
         <Field>
-          <FieldLabel htmlFor="operator_role" required={!disabled}>
+          <FieldLabel required={!disabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="platform.common.role" />
             </Suspense>
@@ -38,7 +38,6 @@ export const OperatorRoleForm = async ({
               <Select
                 defaultValue={currentRole}
                 disabled={disabled}
-                id="operator_role"
                 items={getOperatorRoleSelectItems(messages)}
                 key={currentRole}
                 name="operator_role"

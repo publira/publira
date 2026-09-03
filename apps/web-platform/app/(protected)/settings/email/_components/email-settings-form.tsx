@@ -134,13 +134,12 @@ export const EmailSettingsForm = ({
           id={formId}
         >
           <Field>
-            <FieldLabel htmlFor="host" required>
+            <FieldLabel required>
               <ClientMessage message="platform.settings.host" />
             </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.host}
-                id="host"
                 name="host"
                 placeholder="smtp.example.com"
                 required
@@ -150,13 +149,12 @@ export const EmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="port" required>
+            <FieldLabel required>
               <ClientMessage message="platform.settings.port" />
             </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={String(initialSettings.port || 587)}
-                id="port"
                 min={1}
                 max={65_535}
                 name="port"
@@ -167,13 +165,12 @@ export const EmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="username" required>
+            <FieldLabel required>
               <ClientMessage message="platform.settings.username" />
             </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.username}
-                id="username"
                 name="username"
                 required
                 type="text"
@@ -182,7 +179,7 @@ export const EmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="password" required={isPasswordEditing}>
+            <FieldLabel required={isPasswordEditing}>
               <ClientMessage message="platform.settings.password" />
             </FieldLabel>
             <FieldContent>
@@ -207,7 +204,6 @@ export const EmailSettingsForm = ({
                 <div className="flex flex-wrap items-center gap-3">
                   <Input
                     autoComplete="new-password"
-                    id="password"
                     key="password-editable"
                     name="password"
                     required={isPasswordEditing}
@@ -238,13 +234,12 @@ export const EmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="encryption" required>
+            <FieldLabel required>
               <ClientMessage message="platform.settings.smtp_encryption" />
             </FieldLabel>
             <FieldContent>
               <Select
                 defaultValue={initialSettings.encryption || "starttls"}
-                id="encryption"
                 items={encryptionOptions}
                 name="encryption"
                 required
@@ -253,13 +248,12 @@ export const EmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="from_address" required>
+            <FieldLabel required>
               <ClientMessage message="platform.settings.from_address" />
             </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.fromAddress}
-                id="from_address"
                 name="from_address"
                 placeholder="noreply@example.com"
                 required
@@ -269,13 +263,12 @@ export const EmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="reply_to">
+            <FieldLabel>
               <ClientMessage message="platform.settings.reply_to" />
             </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.replyTo}
-                id="reply_to"
                 name="reply_to"
                 placeholder="support@example.com"
                 type="email"
@@ -337,13 +330,12 @@ export const EmailSettingsForm = ({
 
                       {sendToSelf ? null : (
                         <Field>
-                          <FieldLabel htmlFor="recipient_email" required>
+                          <FieldLabel required>
                             <ClientMessage message="platform.settings.smtp_test_custom" />
                           </FieldLabel>
                           <FieldContent>
                             <Input
                               form={formId}
-                              id="recipient_email"
                               name="recipient_email"
                               placeholder="recipient@example.com"
                               required={!sendToSelf}

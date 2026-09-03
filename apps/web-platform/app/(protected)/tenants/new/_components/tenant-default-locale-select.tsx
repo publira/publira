@@ -22,7 +22,6 @@ export const TenantDefaultLocaleSelect = async () => {
   return (
     <Select
       defaultValue={initialDefaultLocale}
-      id="tenant_default_locale"
       items={getLocales().map((value) => ({
         label: getLocaleLabel(value),
         value,

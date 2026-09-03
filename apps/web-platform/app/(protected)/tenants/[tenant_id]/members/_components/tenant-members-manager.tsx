@@ -848,12 +848,9 @@ export const TenantMembersManager = ({
             <form action={createInviteAction} className="grid gap-4">
               <input name="tenant_id" type="hidden" value={tenantId} />
               <Field>
-                <FieldLabel htmlFor="invite_email" required>
-                  {copy.inviteAdminEmail}
-                </FieldLabel>
+                <FieldLabel required>{copy.inviteAdminEmail}</FieldLabel>
                 <FieldContent>
                   <Input
-                    id="invite_email"
                     name="invite_email"
                     placeholder="admin@example.com"
                     required
@@ -960,12 +957,9 @@ export const TenantMembersManager = ({
             <form action={addFormAction} className="grid gap-4">
               <input name="tenant_id" type="hidden" value={tenantId} />
               <Field>
-                <FieldLabel htmlFor="member_email" required>
-                  {copy.addEmailLabel}
-                </FieldLabel>
+                <FieldLabel required>{copy.addEmailLabel}</FieldLabel>
                 <FieldContent>
                   <Input
-                    id="member_email"
                     name="member_email"
                     placeholder="member@example.com"
                     required
@@ -974,13 +968,10 @@ export const TenantMembersManager = ({
                 </FieldContent>
               </Field>
               <Field>
-                <FieldLabel htmlFor="member_role" required>
-                  {copy.role}
-                </FieldLabel>
+                <FieldLabel required>{copy.role}</FieldLabel>
                 <FieldContent>
                   <Select
                     defaultValue="tenant_admin"
-                    id="member_role"
                     items={copy.roleOptions}
                     name="member_role"
                     required
