@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher label of the production flavor. The dev flavor overrides it
+         from src/dev/res so both builds can sit on one device. -->
+    <string name="app_name">Publira</string>
+</resources>

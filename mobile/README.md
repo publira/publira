@@ -56,6 +56,28 @@ flutter run -d android
 flutter run -d chrome
 ```
 
+## Build flavors
+
+The app builds in two flavors, so a development build and a production build can sit on one device at the same time.
+
+| Flavor | Application ID / bundle identifier | Launcher name | Icon set |
+| --- | --- | --- | --- |
+| `dev` | `com.publira.publira.dev` | Publira Dev | `AppIcon-dev` / `android/app/src/dev/res` |
+| `production` | `com.publira.publira` | Publira | `AppIcon` / `android/app/src/main/res` |
+
+Both icon sets still hold the same placeholder art, so today the two builds are told apart by their launcher name. Give the development build its own icon by replacing the images in `ios/Runner/Assets.xcassets/AppIcon-dev.appiconset/` and adding `android/app/src/dev/res/mipmap-*/ic_launcher.png`; nothing else has to change, because both platforms already read the flavor's own icon.
+
+`default-flavor: dev` in `pubspec.yaml` makes every command without a `--flavor` build the development app, so `flutter run` and `flutter test integration_test` both target `com.publira.publira.dev`, and so does CI's `Test / Mobile E2E` through `task mobile:test-integration`. `Test / Mobile` builds no app at all — `dart format`, `flutter analyze`, and `flutter test` run on the host — so no flavor reaches it. A store build asks for the other one:
+
+```bash
+flutter build appbundle --flavor production
+flutter build ipa --flavor production
+```
+
+A flavor decides identity only — application ID, launcher name, and icon. Where the app connects stays with `--dart-define` (see [Connecting to the public API](#connecting-to-the-public-api)), because the same development build points at a local `task dev` stack, an emulator loopback to the host, or an E2E stack depending on who runs it.
+
+Android takes the flavor from `productFlavors` in `android/app/build.gradle.kts`, and `dev` overrides from `android/app/src/dev/res/` whatever it wants to differ; what `android/app/src/main/res/` holds is the production identity. iOS takes it from the `dev` and `production` Xcode schemes, whose `Debug-`, `Release-`, and `Profile-` configurations carry `PRODUCT_BUNDLE_IDENTIFIER`, `APP_DISPLAY_NAME` (which `Info.plist` reads as `CFBundleDisplayName`), and `ASSETCATALOG_COMPILER_APPICON_NAME`. A new flavor has to appear on both platforms under one name, because `default-flavor` and `--flavor` name a single flavor for whichever platform is being built.
+
 ## Quality gates (format / analyze / test)
 
 Run these commands from the repository root to reproduce the same checks as CI.
