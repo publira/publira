@@ -2,6 +2,9 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
     "esModuleInterop": true,
+    // `esnext.temporal` is what types `Temporal`, which this repository uses in
+    // place of `Date`. It is types only: every runtime that executes this code
+    // imports `temporal-polyfill/global` for the implementation.
     "lib": ["dom", "es2022", "esnext.temporal"],
     "module": "esnext",
     "moduleResolution": "bundler",

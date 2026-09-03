@@ -20,7 +20,7 @@ export default function Example() {
 
 ### Use `SkeletonLine` inline
 
-`Skeleton` is a `<div>`, so dropping it into a heading or a row of buttons breaks the inline flow. Use the `<span>`-based `SkeletonLine` when the `<Suspense>` fallback sits where a heading or an action goes.
+`SkeletonLine` is the `<span>` to use where the `<Suspense>` fallback sits inside a heading or a row of buttons.
 
 ```tsx
 import { SkeletonLine } from "@publira/ui-components/skeleton";

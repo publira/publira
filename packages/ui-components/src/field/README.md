@@ -2,7 +2,7 @@
 
 The components that make up a form field: a label, a description, an error message, and the content.
 
-`FieldLabel` is associated with the control in the same `Field` through `for` / `id`, so clicking the label focuses that control. `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`, `RadioGroup`, `Combobox`, and `MultiCombobox` generate a unique id even when none is given. When the caller passes an `id` to the control, that id is used instead.
+`FieldLabel` is associated with the control in the same `Field` through `for` / `id`, so clicking the label focuses that control. `field-control-association.test.tsx` asserts it for every control this package ships.
 
 ## Usage
 

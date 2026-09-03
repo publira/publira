@@ -2,8 +2,6 @@
 
 A searchable single-select and multi-select component, implemented on top of [Base UI Combobox](https://base-ui.com/r/components/combobox).
 
-Inside a `Field`, the input gets a unique id even when none is passed, and the `for` of the `FieldLabel` in the same `Field` points at it. When the caller passes an `id`, that id is used instead.
-
 ## Usage
 
 ```tsx

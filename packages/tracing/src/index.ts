@@ -57,6 +57,11 @@ const defaultSampler = (env: TracingEnv): Sampler | undefined => {
  * `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` override it. The exporter
  * is configured through the `OTEL_EXPORTER_OTLP_*` variables the SDK reads
  * itself.
+ *
+ * `@vercel/otel` also stamps `cloud.provider=vercel` and `vercel.runtime` on
+ * every span, off Vercel as much as on it. Both are meaningless in a
+ * self-hosted deploy and neither is worth stripping: doing so would mean
+ * wrapping the exporter for two attributes nothing reads.
  */
 export const registerTracing = (serviceName: string): void => {
   const { env } = process;

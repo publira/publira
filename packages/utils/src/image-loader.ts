@@ -43,8 +43,12 @@ export const imageServerLoader = ({
 
   params.set("w", String(width));
   params.set("fit", RESIZE_FIT);
-  // Manael tunes quality per format (WebP 90, AVIF 60). Only override it when a
-  // call site asked for a specific quality.
+  // Manael tunes quality per format (WebP 90, AVIF 60), and `next/image` hands
+  // the loader `undefined` when there is no `quality` prop, so leaving `q` out
+  // is what lets those defaults apply. A call site that does ask for a quality
+  // has to list that value in the app's `images.qualities` as well: the default
+  // is `[75]`, and a value outside it warns in development (the value still
+  // reaches the loader, this being a custom one).
   if (quality !== undefined) {
     params.set("q", String(quality));
   }

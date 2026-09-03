@@ -18,23 +18,27 @@ Nothing here reads request state. `cookies()`, `headers()`, and `next/root-param
 
 ### Locales
 
-- `Locale`: the union of the codes in `locales/index.json` (`"ja" | "en"`)
-- `getLocales()`: those codes, in the order the file lists them
-- `isLocale` / `parseLocale`: narrow an unknown value to a `Locale`, or `undefined`. Neither invents a locale for a value that names none — what a missing choice falls back to (a stored tenant default, `Accept-Language`, or a failure the reader has to be told about) differs per call site, so the caller decides it
-- `parseLocaleCookie`: the same for a cookie **value** (trimmed). It does not call `cookies()`
-- `negotiateInitialLocale`: the locale to open on for an `Accept-Language` header, for a screen with no identified reader and therefore no stored preference — platform and tenant setup, and the login form that has yet to issue a session. Ranges are tried by descending qvalue as RFC 9110 §12.5.4 orders them, `q=0` rejects, `*` is ignored, and `en` is the answer when nothing matches
-- `getLocaleLabel`: the display name for the locale switcher (`日本語` / `English`)
-- `toIntlLocale`: the BCP 47 tag for `Intl` (`ja-JP` / `en-US`). `<html lang>` keeps the short code
+| Export | What it is |
+| --- | --- |
+| `Locale` | The union of the codes in `locales/index.json` (`"ja" \| "en"`) |
+| `getLocales()` | Those codes, in the order the file lists them |
+| `isLocale` / `parseLocale` | Narrow an unknown value to a `Locale`, or `undefined` |
+| `parseLocaleCookie` | The same for a cookie **value** (trimmed). It does not call `cookies()` |
+| `negotiateInitialLocale` | The locale to open on for an `Accept-Language` header, for a screen with no identified reader and therefore no stored preference |
+| `getLocaleLabel` | The display name for the locale switcher (`日本語` / `English`) |
+| `toIntlLocale` | The BCP 47 tag for `Intl` (`ja-JP` / `en-US`). `<html lang>` keeps the short code |
+
+`src/accept-language.test.ts` is the specification of what `negotiateInitialLocale` does with a header, and `src/i18n.test.ts` of the rest.
 
 ### Messages
 
-- `getMessage(catalog, key, values?)`: the string at a dotted key, with `{$name}` substituted from `values`. A same-named top-level string key wins over the nested path
-- `formatMessage(template, values?)`: the same substitution against a template the caller already holds — a Client Component handed one resolved string whose numbers are only known in the browser
-- `MessageKey<T>`: the dotted key of every string leaf of a catalog, for autocomplete and typed wrappers
-- `MessageTree` / `MessageValues` / `CatalogModule` / `ExactCatalog` / `LocaleCatalogImporters`: the catalog shapes. `ExactCatalog` is what rejects a locale file with a missing or extra key
-- `loadMessages(locale, importers)`: loads one locale through a static `import()` map, so a bundler keeps the other locales out of the chunk
-
-An unknown key throws outside production, so a typo fails the request in development; in production the key itself is returned, so a stale client does not take the page down. A message that is not well-formed MF2 behaves the same way.
+| Export | What it is |
+| --- | --- |
+| `getMessage(catalog, key, values?)` | The string at a dotted key, with `{$name}` substituted from `values` |
+| `formatMessage(template, values?)` | The same substitution against a template the caller already holds |
+| `MessageKey<T>` | The dotted key of every string leaf of a catalog, for autocomplete and typed wrappers |
+| `MessageTree` / `MessageValues` / `CatalogModule` / `ExactCatalog` / `LocaleCatalogImporters` | The catalog shapes. `ExactCatalog` is what rejects a locale file with a missing or extra key |
+| `loadMessages(locale, importers)` | Loads one locale through a static `import()` map, so a bundler keeps the other locales out of the chunk |
 
 ### Cookies and `<html lang>`
 
@@ -43,13 +47,12 @@ For the apps that keep the UI locale in a cookie rather than in the URL:
 | Export | What it is |
 | --- | --- |
 | `LOCALE_COOKIE_NAME` | The reader's own choice |
-| `LOCALE_COOKIE_MAX_AGE` | A year, in seconds — a preference is meant to outlive the sign-in that set it |
-| `RESOLVED_LOCALE_COOKIE_NAME` | The stored console default the server resolved, written by the app's `proxy.ts` so the browser can name it without a read of its own. It is never a choice, and `LOCALE_COOKIE_NAME` always wins over it |
+| `LOCALE_COOKIE_MAX_AGE` | The `Max-Age` that cookie is written with, in seconds |
+| `RESOLVED_LOCALE_COOKIE_NAME` | The stored console default the server resolved, written by the app's `proxy.ts` so the browser can name it without a read of its own |
 | `LOCALE_LANG_SCRIPT` | The inline `<head>` script that applies those cookies to `<html lang>` before the browser paints |
+| `PATH_LOCALE_LANG_SCRIPT` | The same for an app that keeps the locale in the path, such as `web-host` |
 
 Both cookie names go through `profileCookieName` from [`@publira/web-session`](../web-session), so a local development profile gets its own.
-
-`LOCALE_LANG_SCRIPT` exists because a `cookies()` read above every `<Suspense>` boundary would cost every route its static shell, and `<html>` has no child boundary the read could move into. The layout that renders it needs `suppressHydrationWarning` on the element, and the UI that changes the cookie has to set `document.documentElement.lang` itself once its Server Action resolved — the script runs on a full page load only.
 
 ## Usage
 
@@ -75,11 +78,11 @@ const messages = await loadHostMessages(locale);
 <p>{getMessage(messages, "host.series.list_description", { site })}</p>;
 ```
 
-`{$site}` is substituted as a string. Dates and numbers are formatted first by `@publira/utils` against the tenant's time zone, then passed in — MF2 gets no locale here, so a locale-sensitive function would fall back to the host's.
+A `{$name}` placeholder is substituted as a string. Format a date or a number with `@publira/utils` first, against the tenant's time zone and the UI locale, and pass the result in.
 
 ### The shared catalog (`./catalog`)
 
-`sharedCatalog` and `sharedMessage` reach the catalog through a static import, so they can run inside a `catch` or a zod `safeParse` where nothing can be awaited. Both locales end up in the chunk, which is why per-screen copy still goes through `./messages`.
+`sharedCatalog` and `sharedMessage` read the catalog through a static import, so they can run where nothing can be awaited — inside a `catch` or a zod `safeParse`. Both locales end up in the chunk, which is why per-screen copy still goes through `./messages`.
 
 ```ts
 import { sharedRpcErrorMessage } from "@publira/i18n/catalog";
@@ -109,8 +112,6 @@ const requestHeaders = await headers();
 
 return negotiateInitialLocale(requestHeaders.get("accept-language"));
 ```
-
-Reach for `negotiateInitialLocale` only where there is no stored preference to read. A path that has one and could not read it has to fail loudly instead: renegotiating would replace the operator's saved language with their browser's.
 
 ## Generated files
 

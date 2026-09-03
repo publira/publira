@@ -31,7 +31,8 @@ Add it as a workspace dependency and load the styles from the global CSS.
 - [Switch](./src/switch) - a toggle switch
 - [FormMessage](./src/form-message) - a form message
 - [FormActions](./src/form-actions) - the form action area
-- [Skeleton / SkeletonText / SkeletonCard](./src/skeleton) - loading placeholders
+- [ActionForm](./src/action-form) - a `<form>` around `useActionState`, for a Server Action
+- [Skeleton / SkeletonText / SkeletonLine / SkeletonCard](./src/skeleton) - loading placeholders
 
 ### Everything else
 
@@ -39,7 +40,9 @@ Add it as a workspace dependency and load the styles from the global CSS.
 - [Dialog / ConfirmDialog](./src/dialog) - the dialogs used to confirm an action
 - [Table / TableHeader / TableBody / TableRow / TableHead / TableCell / TableEmptyRow / TableLoadingRow](./src/table) - the table primitives
 - [Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter](./src/card) - cards
+- [Popover](./src/popover) - the floating surfaces placed in a header and similar places
 - [EmptyState](./src/empty-state) - the empty state
+- [SectionError / sectionErrorFallback](./src/section-error) - one section of a page that failed to load
 
 ## Usage
 

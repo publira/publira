@@ -20,7 +20,9 @@ The session itself is issued by the Go API. Nothing here signs a token or decide
 | Export | What it does |
 | --- | --- |
 | `WebSessionPayload` | What the cookie carries: `accessToken` and `expiresAt`, plus the optional `name` / `publicId` / `role` / `tenantId` |
-| `encryptSessionPayload(payload, secret)` | Seals the payload into a compact JWE (`alg: "dir"`, `enc: "A256GCM"`) |
+| `encryptPayload(payload, secret)` | Seals any JSON payload into a compact JWE (`alg: "dir"`, `enc: "A256GCM"`) |
+| `decryptPayload(token, secret)` | Opens one, as `unknown` for the caller to validate, or `null` when the value is not one this deployment sealed |
+| `encryptSessionPayload(payload, secret)` | `encryptPayload` for a `WebSessionPayload` |
 | `decryptSessionPayload(token, secret)` | Opens it, or `null` when the cookie is unreadable, is not JSON, or lacks `accessToken` / `expiresAt` |
 | `isSessionExpired(expiresAt, now?)` | Whether the stored expiry has passed. An unparseable value counts as expired |
 | `resolveAuthSecret()` | Reads `PUBLIRA_AUTH_SECRET` and rejects a value too short to key A256GCM |
@@ -32,12 +34,8 @@ The session itself is issued by the Go API. Nothing here signs a token or decide
 
 | Variable | What it does |
 | --- | --- |
-| `PUBLIRA_AUTH_SECRET` | **Required.** The key the session cookie is sealed with. At least 32 bytes — A256GCM takes exactly that many |
-| `PUBLIRA_COOKIE_SUFFIX` | Optional, development only. Appended to every name that goes through `profileCookieName`. Must match `-[a-z][a-z0-9-]{0,31}` |
-
-There is deliberately no fallback secret. A built-in value would be published in this repository, and it keys a JWE whose payload carries the API access token — anyone holding it could forge a session cookie or read one. A secret shorter than 32 bytes is rejected rather than quietly padded, because a secret that was set but does not take effect is the failure mode that is hardest to notice.
-
-`PUBLIRA_COOKIE_SUFFIX` exists because cookies are scoped by host and not by port. Two local development profiles serving the same app on two ports of `localhost` would otherwise overwrite each other's session. Deployments leave it unset and keep their established cookie names.
+| `PUBLIRA_AUTH_SECRET` | **Required**, with no fallback. The key the session cookie is sealed with. At least 32 bytes — A256GCM takes exactly that many, and a shorter value is rejected rather than padded |
+| `PUBLIRA_COOKIE_SUFFIX` | Optional, development only. Appended to every name that goes through `profileCookieName`, so two local profiles on two ports of `localhost` do not overwrite each other's cookies. Must match `-[a-z][a-z0-9-]{0,31}`. Deployments leave it unset |
 
 ## Usage
 
@@ -90,9 +88,7 @@ if (!payload || isSessionExpired(payload.expiresAt)) {
 return payload.accessToken.trim();
 ```
 
-The two failures are told apart on purpose. A cookie that cannot be opened is "no session", and the visitor goes to the login screen. An unusable **key** is a misconfigured deployment, so `resolveAuthSecret` and the key derivation throw instead — sending every visitor to the login screen would hide the outage behind what looks like ordinary sign-out.
-
-Each app wraps this read in its own `"use cache: private"` function tagged with its session cache tag, so the Server Action that changes the cookie can invalidate it with `updateTag`.
+An unreadable cookie is "no session" and answers `null`; an unusable key throws. Each app wraps this read in its own `"use cache: private"` function tagged with its session cache tag, so the Server Action that changes the cookie can invalidate it with `updateTag`.
 
 ### Calling the API with the token
 

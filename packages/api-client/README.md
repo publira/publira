@@ -55,11 +55,7 @@ import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/aut
 
 ## Walking a cursor list
 
-Use the shared helpers to walk a cursor list RPC page by page from an app. Pages are fetched one after another because each token depends on the previous response, and a repeated token plus the page and row limits keep a malformed response from looping forever.
-
-The defaults are `pageSize = 100`, `maxPages = 100`, and `maxRows = 10_000`. Hitting a limit or a repeated token stops the walk quietly rather than throwing. `findByPublicIdWithToken` returns `null` in that case too, so it cannot be told apart from "no such record". The proper way to fetch one record is the server's `Get*` RPC.
-
-`forEachPageWithToken` returns why it stopped: `completed` / `stopped-by-callback` / `max-pages` / `max-rows` / `repeated-token`.
+`@publira/api-client/pagination` walks a cursor list RPC page by page from an app. The defaults are `pageSize = 100`, `maxPages = 100`, and `maxRows = 10_000`, and `forEachPageWithToken` resolves to why it stopped: `completed` / `stopped-by-callback` / `max-pages` / `max-rows` / `repeated-token`.
 
 ### Looking one record up
 
@@ -105,13 +101,7 @@ With `tenantPublicId` set, every API request automatically carries the `X-Publir
 
 ## Distributed tracing
 
-`createPublicApiClient`, `createAdminApiClient`, and `createPlatformApiClient` always install an interceptor that opens a client span per RPC and sends W3C Trace Context (`traceparent`). There is nothing to configure.
-
-- The span name drops the proto package: `AdminSeriesService/ListSeries`. It matches how the Go server names its server spans
-- The attributes are `rpc.system` / `rpc.service` / `rpc.method` and `server.address` / `server.port`. A failure sets the span status to error, and the gRPC transport adds `rpc.grpc.status_code`
-- With no TracerProvider registered it becomes a no-op and adds no header either, so browser usage emits no stray headers
-
-The Go Connect handlers trust an inbound `traceparent` as the parent, so SSR → API → the DB query lands in a single trace. For registering the SDK on the Next.js side, see [`@publira/tracing`](../tracing).
+`createPublicApiClient`, `createAdminApiClient`, and `createPlatformApiClient` always install `createTracingInterceptor` from `src/tracing.ts`, which opens a client span per RPC (named `AdminSeriesService/ListSeries`, with the `rpc.*` and `server.*` attributes) and sends W3C Trace Context. There is nothing to configure. For registering the SDK on the Next.js side, see [`@publira/tracing`](../tracing).
 
 ## Error classification
 
@@ -141,13 +131,6 @@ import {
 | `rpcErrorHasReason(error, reason)` | Type-safe check for a Publira `google.rpc.ErrorInfo` reason |
 | `RPC_ERROR_REASON` | The constants for the `ErrorInfo` reasons Publira sends |
 
-The rules:
-
-- Do not distinguish `not_found` from `permission_denied`. Distinguishing them leaks whether a record exists. The server returns `permission_denied` for another tenant's rows and for unpublished content as well
-- `unauthenticated` is a session problem, so route it to the re-login path
-- Anything unclassifiable (`internal`, `unimplemented`, an exception that did not come from an RPC) propagates to the error boundary **rather than being swallowed**
-- When the wording has to differ within a single `Code`, use the `BadRequest` field violation or the `ErrorInfo` reason the server attached. Do not read the server's body
-
 ```ts
 try {
   return { ok: true, series: await fetchSeries() };
@@ -157,7 +140,7 @@ try {
 }
 ```
 
-The copy is collected in `rpcErrorMessage(error, fallback, options?)` from `@publira/api-client/error-messages`. So that the same RPC error reads the same across all three apps, the shared table lives in the repo-root `locales/*.json` (`errors.rpc.*`). Omitting `locale` keeps the previous behavior of Japanese.
+The copy is collected in `rpcErrorMessage(error, fallback, options?)` from `@publira/api-client/error-messages`. So that the same RPC error reads the same across all three apps, the shared table lives in the repo-root `locales/*.json` (`errors.rpc.*`).
 
 ```ts
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
@@ -177,13 +160,9 @@ return {
 };
 ```
 
-### The one place the message body is used to classify
-
-`rpcErrorCode()` reads the `[not_found]` prefix Connect itself attaches, and only when the `ConnectError`'s `code` has been lost. Next.js rebuilds an error thrown inside a `"use cache"` scope from its `name` and `message` alone, so neither `instanceof` nor `code` survives.
-
-`rpcErrorHasFieldViolation()` and `rpcErrorHasReason()` read the details off the original `ConnectError`, so they return `false` for an error rebuilt across a cache boundary. Any classification that needs the details must finish inside the `"use cache"` boundary. An `Error` that did not come from an RPC matches none of these helpers, so a value such as `new Error("[not_found] …")` cannot slip past `rethrowUnclassifiedRpcError()`.
+`rpcErrorCode()` in `src/errors.ts` is the one place in the repository that reads a message body, and `src/errors.test.ts` is the specification of what each helper answers.
 
 ## Working rules
 
 - Everything under `src/gen/` is generated; never edit it by hand
-- An API change starts in `proto/`, then `make gen` regenerates the client
+- An API change starts in `proto/`, then `task gen` regenerates the client
