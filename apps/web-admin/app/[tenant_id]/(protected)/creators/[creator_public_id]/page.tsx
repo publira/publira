@@ -111,6 +111,7 @@ const EditCreatorFormData = async ({
     <CreatorForm
       action={updateCreatorAction}
       initialCreator={result.creator}
+      key={result.creator.publicId}
       mode="update"
     />
   );

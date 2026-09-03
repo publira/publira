@@ -149,7 +149,8 @@ it("stops showing the picked file once the form is submitted", () => {
   fireEvent.submit(form);
 
   // The stored crop is the truth once the upload is on its way; a preview left
-  // set would keep the uncropped file on screen after router.refresh().
+  // set would keep the uncropped file on screen, because the Action re-renders
+  // the screen without remounting this slot.
   expect(image()?.getAttribute("src")).toBe(stored);
 
   vi.unstubAllGlobals();

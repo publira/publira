@@ -47,29 +47,27 @@ export const TenantLogoForm = ({
   }
   const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
   const formRef = useRef<HTMLFormElement>(null);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
 
-  // What the card shows is the last logo the server confirmed — not the last
-  // Action state. Deriving it from `state` alone would put the pre-upload image
-  // back the moment a later attempt is rejected, because a failure carries no
-  // logo of its own.
+  // What the card shows is the last logo the server confirmed, so uploading is
+  // what replaces it. Deriving it from `state` instead would put the pre-upload
+  // image back the moment a later attempt is rejected, because a failure
+  // carries no logo of its own.
   const [logo, setLogo] = useState(initialLogo);
-  const [prevInitialLogo, setPrevInitialLogo] = useState(initialLogo);
-  const [prevState, setPrevState] = useState(state);
-
-  if (initialLogo !== prevInitialLogo) {
-    setPrevInitialLogo(initialLogo);
-    setLogo(initialLogo);
-  }
-
-  if (state !== prevState) {
-    setPrevState(state);
-    if (state?.ok) {
-      setLogo(state.logo);
-    }
-  }
+  const [state, formAction, isPending] = useActionState(
+    async (
+      previousState: TenantLogoActionState,
+      formData: FormData
+    ): Promise<TenantLogoActionState> => {
+      const nextState = await action(previousState, formData);
+      if (nextState?.ok) {
+        setLogo(nextState.logo);
+      }
+      return nextState;
+    },
+    null
+  );
 
   // The stored master carries its own width and height, so the preview is laid
   // out at the logo's real aspect ratio instead of a guessed one.

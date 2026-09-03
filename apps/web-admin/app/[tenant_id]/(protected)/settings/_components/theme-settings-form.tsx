@@ -336,22 +336,23 @@ export const ThemeSettingsForm = ({
   const messages = sharedCatalog(locale);
   const pickerLabel = getMessage(messages, "admin.settings.theme.color_picker");
   const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
+  // Seeded once per mount; submitting is what replaces it, with the palette the
+  // server stored — normalization included, so the pickers show what a reload
+  // would show.
   const [colors, setColors] = useState<TenantThemeColors>(initialTheme);
-  const [prevInitialTheme, setPrevInitialTheme] = useState(initialTheme);
-  const [prevState, setPrevState] = useState(state);
-
-  if (initialTheme !== prevInitialTheme) {
-    setPrevInitialTheme(initialTheme);
-    setColors(initialTheme);
-  }
-
-  if (state !== prevState) {
-    setPrevState(state);
-    if (state?.ok) {
-      setColors(state.theme);
-    }
-  }
+  const [state, formAction, isPending] = useActionState(
+    async (
+      previousState: ThemeSettingsActionState,
+      formData: FormData
+    ): Promise<ThemeSettingsActionState> => {
+      const nextState = await action(previousState, formData);
+      if (nextState?.ok) {
+        setColors(nextState.theme);
+      }
+      return nextState;
+    },
+    null
+  );
 
   const createHandler = useCallback(
     (key: ColorKey) => (event: React.ChangeEvent<HTMLInputElement>) => {

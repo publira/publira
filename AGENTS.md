@@ -97,7 +97,7 @@ Nothing fails on a violation at author time — type stripping and `node --watch
 
 User actions belong in event handlers, values derivable from props and state are computed during render, edit state is dropped by remounting with a changed `key`, and `useEffect` is reserved for syncing with an external system — with `useEffectEvent` called only from inside an Effect. Never leave a props→state Effect behind an `oxlint-disable`.
 
-oxlint (ultracite preset) covers part of this through `react/react-compiler` and `react-hooks/rules-of-hooks`, but no rule detects a props→state Effect; that gap is [#456](https://github.com/publira/publira/issues/456). Read the `coding-standards` skill before writing or reviewing an Effect.
+oxlint (ultracite preset) covers part of this through `react/react-compiler` and `react-hooks/rules-of-hooks`, but no rule detects a props→state Effect, and none detects the render-time `prev*` + `setState` that stands in for one. Read the `coding-standards` skill before writing or reviewing an Effect.
 
 ## Date and time: `Temporal`, not `Date`
 

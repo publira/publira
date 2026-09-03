@@ -9,6 +9,7 @@ import { getMessage, toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
+import { cacheTag } from "next/cache";
 
 import {
   isUnauthenticatedError,
@@ -23,6 +24,14 @@ import {
 } from "./cursor-page";
 import { mentionsImageRejection } from "./image-rejection";
 import { getAccessToken } from "./session";
+
+/**
+ * The tag `getSeries()` caches one series under. Every Action that changes a
+ * stored series clears it, which is what carries the change back to the screen
+ * that submitted — the forms do not refresh the router themselves.
+ */
+export const seriesCacheTag = (tenantId: string, publicId: string): string =>
+  `series-${tenantId}-${publicId}`;
 
 export interface SeriesItem {
   publicId: string;
@@ -335,6 +344,7 @@ export const getSeries = async (
   locale: Locale
 ): Promise<GetSeriesResult> => {
   "use cache: private";
+  cacheTag(seriesCacheTag(input.tenantId, input.publicId));
 
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();

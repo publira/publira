@@ -47,29 +47,27 @@ export const TenantIconForm = ({
   }
   const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
   const formRef = useRef<HTMLFormElement>(null);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
 
-  // What the card shows is the last icon the server confirmed — not the last
-  // Action state. Deriving it from `state` alone would put the pre-upload icon
-  // back the moment a later attempt is rejected, because a failure carries no
-  // icon of its own.
+  // What the card shows is the last icon the server confirmed, so uploading is
+  // what replaces it. Deriving it from `state` instead would put the pre-upload
+  // image back the moment a later attempt is rejected, because a failure
+  // carries no icon of its own.
   const [icon, setIcon] = useState(initialIcon);
-  const [prevInitialIcon, setPrevInitialIcon] = useState(initialIcon);
-  const [prevState, setPrevState] = useState(state);
-
-  if (initialIcon !== prevInitialIcon) {
-    setPrevInitialIcon(initialIcon);
-    setIcon(initialIcon);
-  }
-
-  if (state !== prevState) {
-    setPrevState(state);
-    if (state?.ok) {
-      setIcon(state.icon);
-    }
-  }
+  const [state, formAction, isPending] = useActionState(
+    async (
+      previousState: TenantIconActionState,
+      formData: FormData
+    ): Promise<TenantIconActionState> => {
+      const nextState = await action(previousState, formData);
+      if (nextState?.ok) {
+        setIcon(nextState.icon);
+      }
+      return nextState;
+    },
+    null
+  );
 
   const preview = tenantBrandingVariant(icon);
 

@@ -53,28 +53,6 @@ export const SiteSettingsForm = ({
     initialSettings.siteDescription
   );
   const [siteTagline, setSiteTagline] = useState(initialSettings.siteTagline);
-  const [prevCopyrightText, setPrevCopyrightText] = useState(
-    initialSettings.copyrightText
-  );
-  const [prevSiteDescription, setPrevSiteDescription] = useState(
-    initialSettings.siteDescription
-  );
-  const [prevSiteTagline, setPrevSiteTagline] = useState(
-    initialSettings.siteTagline
-  );
-
-  if (
-    initialSettings.copyrightText !== prevCopyrightText ||
-    initialSettings.siteDescription !== prevSiteDescription ||
-    initialSettings.siteTagline !== prevSiteTagline
-  ) {
-    setPrevCopyrightText(initialSettings.copyrightText);
-    setPrevSiteDescription(initialSettings.siteDescription);
-    setPrevSiteTagline(initialSettings.siteTagline);
-    setCopyrightText(initialSettings.copyrightText);
-    setSiteDescription(initialSettings.siteDescription);
-    setSiteTagline(initialSettings.siteTagline);
-  }
 
   const handleCopyrightTextChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
