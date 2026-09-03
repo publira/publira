@@ -314,15 +314,9 @@ export const TenantEmailSettingsForm = ({
   const tenantId = useTenantId();
   const formId = useId();
   const smtpOverrideId = useId();
-  const [saveState, saveFormAction, isSaving] = useActionState(
-    saveAction,
-    null
-  );
-  const [testState, testFormAction, isTesting] = useActionState(
-    testAction,
-    null
-  );
-
+  // Seeded once per mount; saving is what replaces it, with the settings the
+  // server confirmed. A stored password is shown masked until the operator asks
+  // to change it, and saving puts it back behind that mask.
   const [smtpOverrideEnabled, setSmtpOverrideEnabled] = useState(
     initialSettings.smtpOverrideEnabled
   );
@@ -334,33 +328,26 @@ export const TenantEmailSettingsForm = ({
   );
   const [sendToSelf, setSendToSelf] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [prevHasPassword, setPrevHasPassword] = useState(
-    initialSettings.hasPassword
-  );
-  const [prevSmtpOverrideEnabled, setPrevSmtpOverrideEnabled] = useState(
-    initialSettings.smtpOverrideEnabled
-  );
-  const [prevSaveState, setPrevSaveState] = useState(saveState);
 
-  if (
-    initialSettings.hasPassword !== prevHasPassword ||
-    initialSettings.smtpOverrideEnabled !== prevSmtpOverrideEnabled
-  ) {
-    setPrevHasPassword(initialSettings.hasPassword);
-    setPrevSmtpOverrideEnabled(initialSettings.smtpOverrideEnabled);
-    setSmtpOverrideEnabled(initialSettings.smtpOverrideEnabled);
-    setHasStoredPassword(initialSettings.hasPassword);
-    setIsPasswordEditing(!initialSettings.hasPassword);
-  }
-
-  if (saveState !== prevSaveState) {
-    setPrevSaveState(saveState);
-    if (saveState?.ok) {
-      setSmtpOverrideEnabled(saveState.settings.smtpOverrideEnabled);
-      setHasStoredPassword(saveState.settings.hasPassword);
-      setIsPasswordEditing(!saveState.settings.hasPassword);
-    }
-  }
+  const [saveState, saveFormAction, isSaving] = useActionState(
+    async (
+      previousState: TenantEmailSettingsFormState,
+      formData: FormData
+    ): Promise<TenantEmailSettingsFormState> => {
+      const nextState = await saveAction(previousState, formData);
+      if (nextState?.ok) {
+        setSmtpOverrideEnabled(nextState.settings.smtpOverrideEnabled);
+        setHasStoredPassword(nextState.settings.hasPassword);
+        setIsPasswordEditing(!nextState.settings.hasPassword);
+      }
+      return nextState;
+    },
+    null
+  );
+  const [testState, testFormAction, isTesting] = useActionState(
+    testAction,
+    null
+  );
 
   const fieldsInteractive = canEdit && smtpOverrideEnabled;
 

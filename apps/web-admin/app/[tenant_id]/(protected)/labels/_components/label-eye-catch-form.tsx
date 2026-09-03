@@ -5,7 +5,6 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { Card, CardContent } from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { useRouter } from "next/navigation";
 import {
   useActionState,
   useCallback,
@@ -40,31 +39,17 @@ export const LabelEyeCatchForm = ({
   }
   const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
-  const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);
   const [clearEyeCatchImage, setClearEyeCatchImage] = useState(false);
   const [localPreviewUrl, setLocalPreviewUrl] = useState("");
   const [selectedVariantType, setSelectedVariantType] = useState<string | null>(
     null
   );
-  const [prevLabelPublicId, setPrevLabelPublicId] = useState(
-    initialLabel.publicId
-  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const effectiveLabel = state?.ok ? state.label : initialLabel;
   const variants = effectiveLabel.eyeCatchImageVariants ?? [];
   const hasVariants = variants.length > 0;
-
-  if (initialLabel.publicId !== prevLabelPublicId) {
-    setPrevLabelPublicId(initialLabel.publicId);
-    setClearEyeCatchImage(false);
-    if (localPreviewUrl) {
-      URL.revokeObjectURL(localPreviewUrl);
-    }
-    setLocalPreviewUrl("");
-    setSelectedVariantType(null);
-  }
 
   useEffect(
     () => () => {
@@ -74,13 +59,6 @@ export const LabelEyeCatchForm = ({
     },
     [localPreviewUrl]
   );
-
-  useEffect(() => {
-    if (!state?.ok) {
-      return;
-    }
-    router.refresh();
-  }, [router, state]);
 
   const handleVariantImageClick = useCallback(() => {
     fileInputRef.current?.click();

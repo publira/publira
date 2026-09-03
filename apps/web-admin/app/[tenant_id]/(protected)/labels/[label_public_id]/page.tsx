@@ -166,13 +166,15 @@ const EditLabelFormData = async ({
 
   if (activeTab === "eye-catch") {
     return (
-      <div className="grid gap-6">
+      // Both cards hold the picked file and the chosen ratio in local state,
+      // so the tab is keyed by the label it belongs to: moving to another
+      // label remounts it rather than leaving that state behind.
+      <div className="grid gap-6" key={result.label.publicId}>
         <LabelEyeCatchForm
           action={updateLabelAction}
           initialLabel={result.label}
         />
         <EyeCatchAspectImages
-          key={result.label.publicId}
           publicId={result.label.publicId}
           uploadAction={uploadLabelEyeCatchAspectImageAction}
           variants={result.label.eyeCatchImageVariants}
@@ -185,6 +187,7 @@ const EditLabelFormData = async ({
     <LabelForm
       action={updateLabelAction}
       initialLabel={result.label}
+      key={result.label.publicId}
       mode="update"
     />
   );

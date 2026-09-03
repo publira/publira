@@ -72,16 +72,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
   const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
-  const initialName = initialLabel?.name ?? "";
-  const [name, setName] = useState(initialName);
-  const [prevInitialName, setPrevInitialName] = useState(initialName);
-  const [prevMode, setPrevMode] = useState(mode);
-
-  if (initialName !== prevInitialName || mode !== prevMode) {
-    setPrevInitialName(initialName);
-    setPrevMode(mode);
-    setName(initialName);
-  }
+  // Seeded once per mount: the edit route keys this form by the label's public
+  // id, so switching to another label remounts it with that label's name.
+  const [name, setName] = useState(initialLabel?.name ?? "");
 
   // Successful create redirects from the server action (see createLabelAction).
   const handleNameChange = useCallback(

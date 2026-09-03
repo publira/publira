@@ -5,6 +5,7 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import { toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -24,6 +25,7 @@ import {
 import type { AdminMessages } from "#lib/locale";
 import {
   createSeries,
+  seriesCacheTag,
   updateSeries,
   uploadSeriesEyeCatchAspectImage,
 } from "#lib/series";
@@ -241,6 +243,8 @@ export const updateSeriesAction = async (
     return toFailure(result.message, "update");
   }
 
+  updateTag(seriesCacheTag(parsed.data.tenantId, parsed.data.publicId));
+
   redirect(`/series/${parsed.data.publicId}?updated=1`);
 };
 
@@ -335,6 +339,8 @@ export const updateSeriesEyeCatchAction = async (
     );
   }
 
+  updateTag(seriesCacheTag(parsed.data.tenantId, parsed.data.publicId));
+
   return {
     message: getMessage(messages, "admin.series.eye_catch_updated"),
     mode: "update",
@@ -415,6 +421,8 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
   if (!result.ok) {
     return toAspectFailure(result.message, variantType);
   }
+
+  updateTag(seriesCacheTag(tenantId, publicId));
 
   return {
     message: getMessage(messages, "admin.eye_catch.aspect.uploaded"),

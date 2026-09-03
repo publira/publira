@@ -148,8 +148,11 @@ describe("TenantLogoForm", () => {
           .src.includes("logo-2")
       ).toBe(true);
     });
-
-    fireEvent.click(screen.getByRole("button", { name: "ロゴを保存" }));
+    // The preview adopts the saved image as soon as the Action resolves, which
+    // is before the submission itself settles. Retry for the submit button
+    // instead of reading it synchronously, or the second click races the
+    // pending render that still labels it 保存中....
+    fireEvent.click(await screen.findByRole("button", { name: "ロゴを保存" }));
 
     await waitFor(() => {
       expect(screen.getByText("ロゴの保存に失敗しました。")).toBeDefined();
@@ -162,15 +165,18 @@ describe("TenantLogoForm", () => {
     ).toBe(true);
   });
 
-  it("follows the new preview when initialLogo is replaced", () => {
+  it("follows the new preview when it is remounted by key", () => {
+    // The card holds the last confirmed logo for the life of the mount, so a
+    // caller that has to seed it again remounts the form with a changed `key`.
     const { rerender } = render(
-      <TenantLogoForm action={noopAction} initialLogo={null} />
+      <TenantLogoForm action={noopAction} initialLogo={null} key="unset" />
     );
 
     rerender(
       <TenantLogoForm
         action={noopAction}
         initialLogo={brandingImage("/images/tenants/logo-2")}
+        key="logo-2"
       />
     );
 

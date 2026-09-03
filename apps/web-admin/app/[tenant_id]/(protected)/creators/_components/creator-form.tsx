@@ -112,28 +112,14 @@ export const CreatorForm = ({
   const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
-  const initialName = initialCreator?.name ?? "";
-  const initialProfileText = initialCreator?.profileText ?? "";
-  const [name, setName] = useState(initialName);
-  const [profileText, setProfileText] = useState(initialProfileText);
+  // Seeded once per mount: the edit route keys this form by the creator's
+  // public id, so switching to another creator remounts it with that creator's
+  // values.
+  const [name, setName] = useState(initialCreator?.name ?? "");
+  const [profileText, setProfileText] = useState(
+    initialCreator?.profileText ?? ""
+  );
   const [clearIconImage, setClearIconImage] = useState(false);
-  const [prevInitialName, setPrevInitialName] = useState(initialName);
-  const [prevInitialProfileText, setPrevInitialProfileText] =
-    useState(initialProfileText);
-  const [prevMode, setPrevMode] = useState(mode);
-
-  if (
-    initialName !== prevInitialName ||
-    initialProfileText !== prevInitialProfileText ||
-    mode !== prevMode
-  ) {
-    setPrevInitialName(initialName);
-    setPrevInitialProfileText(initialProfileText);
-    setPrevMode(mode);
-    setName(initialName);
-    setProfileText(initialProfileText);
-    setClearIconImage(false);
-  }
 
   const handleNameChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {

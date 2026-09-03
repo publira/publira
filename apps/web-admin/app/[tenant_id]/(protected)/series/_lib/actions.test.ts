@@ -7,6 +7,7 @@ const {
   mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockUpdateSeries,
+  mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreateSeries: vi.fn(),
@@ -14,6 +15,7 @@ const {
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockUpdateSeries: vi.fn(),
+  mockUpdateTag: vi.fn(),
 }));
 
 vi.mock("#lib/action-messages", async () => {
@@ -23,6 +25,10 @@ vi.mock("#lib/action-messages", async () => {
     getActionMessages: () => Promise.resolve(sharedCatalog("ja")),
   };
 });
+
+vi.mock("next/cache", () => ({
+  updateTag: mockUpdateTag,
+}));
 
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
@@ -36,6 +42,8 @@ vi.mock("#lib/session", () => ({
 
 vi.mock("#lib/series", () => ({
   createSeries: mockCreateSeries,
+  seriesCacheTag: (tenantId: string, publicId: string) =>
+    `series-${tenantId}-${publicId}`,
   updateSeries: mockUpdateSeries,
 }));
 
@@ -178,6 +186,9 @@ describe("series actions", () => {
       "ja"
     );
     expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
+    // The screen has no client-side refresh of its own, so clearing this tag is
+    // what puts the saved series back on the page.
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-TENANT001-SERIES001");
   });
 
   it("updating the basics rejects a published_at that cannot be read as a date and time", async () => {

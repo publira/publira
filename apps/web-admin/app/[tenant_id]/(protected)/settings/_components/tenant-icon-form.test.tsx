@@ -150,8 +150,13 @@ describe("TenantIconForm", () => {
           .src.includes("icon-2")
       ).toBe(true);
     });
-
-    fireEvent.click(screen.getByRole("button", { name: "アイコンを保存" }));
+    // The preview adopts the saved image as soon as the Action resolves, which
+    // is before the submission itself settles. Retry for the submit button
+    // instead of reading it synchronously, or the second click races the
+    // pending render that still labels it 保存中....
+    fireEvent.click(
+      await screen.findByRole("button", { name: "アイコンを保存" })
+    );
 
     await waitFor(() => {
       expect(screen.getByText("アイコンの保存に失敗しました。")).toBeDefined();
@@ -166,15 +171,18 @@ describe("TenantIconForm", () => {
     ).toBe(true);
   });
 
-  it("follows the new preview when initialIcon is replaced", () => {
+  it("follows the new preview when it is remounted by key", () => {
+    // The card holds the last confirmed icon for the life of the mount, so a
+    // caller that has to seed it again remounts the form with a changed `key`.
     const { rerender } = render(
-      <TenantIconForm action={noopAction} initialIcon={null} />
+      <TenantIconForm action={noopAction} initialIcon={null} key="unset" />
     );
 
     rerender(
       <TenantIconForm
         action={noopAction}
         initialIcon={brandingImage("/images/tenants/icon-2")}
+        key="icon-2"
       />
     );
 

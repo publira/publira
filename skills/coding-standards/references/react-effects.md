@@ -17,7 +17,10 @@ oxlint (ultracite preset) enforces this via `react/react-compiler` and `react-ho
    → **Remount with a changed `key` on the parent** (child uses `useState(initial)` only).  
    → **Do not `setState` in `useEffect`.**  
    → Also avoid bare `if (prop !== prev) setXxx(...)` during render in general (full reset → `key`; partial → own an ID or express as derived state first).
-4. **Do you need to sync with an external system?** (DOM / subscriptions / timers / URL ↔ UI, etc.)  
+4. **Does a successful Server Action have to reset local state?** (close the dialog, put a saved password back behind its mask, adopt the palette the server normalized)  
+   → Submitting is the user action, so **write the reset into the Action itself** — wrap the Server Action in the client function `useActionState` calls, and `setXxx` there after it resolves.  
+   → **Do not** compare the Action state against a `prev*` copy during render, and do not watch it from an Effect.
+5. **Do you need to sync with an external system?** (DOM / subscriptions / timers / URL ↔ UI, etc.)  
    → **Legitimate `useEffect`**. Keep the dependency array accurate.  
    → Use **`useEffectEvent` only** for the parts that must read latest props/state without re-subscribing.
 
@@ -42,6 +45,22 @@ useEffect(() => {
     save();
   }
 }, [submitted]);
+
+// NG: watch the Action state to run what the submission should have run
+useEffect(() => {
+  if (state?.ok) {
+    router.refresh();
+  }
+}, [router, state]);
+
+// NG: same via a render-time prev* copy of the Action state
+const [prevState, setPrevState] = useState(state);
+if (state !== prevState) {
+  setPrevState(state);
+  if (state?.ok) {
+    setOpen(false);
+  }
+}
 
 // NG: pass useEffectEvent to onClick / onDrop / render props
 const onClose = useEffectEvent(() => setOpen(false));
@@ -74,6 +93,18 @@ function EditForm({ initialName }: { initialName: string }) {
   return <input value={name} onChange={(e) => setName(e.target.value)} />;
 }
 
+// OK: a successful Action resets local state from inside the Action
+const [state, formAction, isPending] = useActionState(
+  async (previousState: State, formData: FormData): Promise<State> => {
+    const nextState = await saveAction(previousState, formData);
+    if (nextState?.ok) {
+      setOpen(false);
+    }
+    return nextState;
+  },
+  null
+);
+
 // OK: legitimate Effect + Effect Event (read latest values without re-subscribing)
 const onFlash = useEffectEvent(() => {
   add({ title, type: "success" });
@@ -91,4 +122,5 @@ Good in-repo example: `apps/web-admin/components/flash-toast.tsx` (`useEffectEve
 ## Forbidden
 
 - Do not leave props→state Effects with `oxlint-disable` just to silence lint.
-- Render-time `prev*` + bare `setXxx` is an **intermediate form**, not the end state. The end state is a `key` remount or an Action-side `redirect`.
+- Render-time `prev*` + bare `setXxx` is an **intermediate form**, not the end state. The end state is a `key` remount, an Action-side `redirect`, or the reset written into the Action the submit runs.
+- Do not call `router.refresh()` because an Action succeeded. Revalidate on the server instead — `updateTag` in the Action, against a `cacheTag` the screen's reads declare (`refresh()` from `next/cache` when there is no cached read to clear). Either one makes Next.js re-render the route and return it in the Action's own response, so no client-side Effect is left watching for the result.

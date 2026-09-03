@@ -163,13 +163,15 @@ const EditSeriesFormData = async ({
       return <SeriesLoadError message={result.message} />;
     }
     return (
-      <div className="grid gap-6">
+      // Both cards hold the picked file and the chosen ratio in local state,
+      // so the tab is keyed by the series it belongs to: moving to another
+      // series remounts it rather than leaving that state behind.
+      <div className="grid gap-6" key={result.series.publicId}>
         <SeriesEyeCatchForm
           action={updateSeriesEyeCatchAction}
           initialSeries={result.series}
         />
         <EyeCatchAspectImages
-          key={result.series.publicId}
           publicId={result.series.publicId}
           uploadAction={uploadSeriesEyeCatchAspectImageAction}
           variants={result.series.eyeCatchImageVariants}
@@ -205,6 +207,7 @@ const EditSeriesFormData = async ({
       }
       defaultReadingPeriodHours={result.series.readingPeriodHours}
       initialSeries={result.series}
+      key={result.series.publicId}
       labels={labelsResult.labels}
       labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
       mode="update"

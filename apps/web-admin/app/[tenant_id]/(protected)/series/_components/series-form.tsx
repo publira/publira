@@ -312,30 +312,17 @@ const EyeCatchImageField = ({
 const useSeriesFormState = ({
   initialSeries,
 }: Pick<SeriesFormProps, "initialSeries">) => {
-  const initialCreatorPublicIds = initialSeries?.creatorPublicIds ?? [];
-  const initialLabelPublicId = initialSeries?.labelPublicId ?? "";
-  const initialCreatorIdsKey = initialCreatorPublicIds.join("\0");
+  // Seeded once per mount: the edit route keys this form by the series' public
+  // id, so switching to another series remounts it with that series' creators
+  // and label.
   const [selectedCreatorPublicIds, setSelectedCreatorPublicIds] = useState(
-    () => initialCreatorPublicIds
+    () => initialSeries?.creatorPublicIds ?? []
   );
-  const [selectedLabelPublicId, setSelectedLabelPublicId] =
-    useState(initialLabelPublicId);
-  const [prevCreatorIdsKey, setPrevCreatorIdsKey] =
-    useState(initialCreatorIdsKey);
-  const [prevLabelPublicId, setPrevLabelPublicId] =
-    useState(initialLabelPublicId);
+  const [selectedLabelPublicId, setSelectedLabelPublicId] = useState(
+    initialSeries?.labelPublicId ?? ""
+  );
   const [uploadedEyeCatchPreviewUrl, setUploadedEyeCatchPreviewUrl] =
     useState("");
-
-  if (initialCreatorIdsKey !== prevCreatorIdsKey) {
-    setPrevCreatorIdsKey(initialCreatorIdsKey);
-    setSelectedCreatorPublicIds(initialCreatorPublicIds);
-  }
-
-  if (initialLabelPublicId !== prevLabelPublicId) {
-    setPrevLabelPublicId(initialLabelPublicId);
-    setSelectedLabelPublicId(initialLabelPublicId);
-  }
 
   useEffect(
     () => () => {

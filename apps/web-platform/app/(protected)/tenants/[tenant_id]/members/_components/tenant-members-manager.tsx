@@ -453,18 +453,21 @@ const TenantMemberRoleDialog = ({
 }: TenantMemberRoleDialogProps) => {
   const copy = useTenantMembersLabels();
   const [open, setOpen] = useState(false);
+  // Submitting is what closes the dialog: the role is saved, so the form the
+  // operator was filling in has nothing left to show.
   const [updateState, roleFormAction, isRolePending] = useActionState(
-    updateRoleAction,
+    async (
+      previousState: FormActionState,
+      formData: FormData
+    ): Promise<FormActionState> => {
+      const nextState = await updateRoleAction(previousState, formData);
+      if (nextState?.ok) {
+        setOpen(false);
+      }
+      return nextState;
+    },
     null
   );
-  const [prevUpdateState, setPrevUpdateState] = useState(updateState);
-
-  if (updateState !== prevUpdateState) {
-    setPrevUpdateState(updateState);
-    if (updateState?.ok) {
-      setOpen(false);
-    }
-  }
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>

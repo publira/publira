@@ -7,7 +7,6 @@ import { Card, CardContent } from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { cn } from "@publira/utils";
-import { useRouter } from "next/navigation";
 import type { ChangeEventHandler } from "react";
 import {
   useActionState,
@@ -66,7 +65,6 @@ const EyeCatchAspectSlot = ({
   }
   const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
-  const router = useRouter();
 
   const [state, formAction, isUploading] = useActionState(uploadAction, null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState("");
@@ -81,21 +79,15 @@ const EyeCatchAspectSlot = ({
     [localPreviewUrl]
   );
 
-  useEffect(() => {
-    if (!state?.ok) {
-      return;
-    }
-    router.refresh();
-  }, [router, state]);
-
   const handlePickImage = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
 
   // The preview stands in for the file only while it is being chosen. Once the
   // form is submitted the stored crop is the truth, and a preview left set
-  // would outrank it below — `router.refresh()` keeps client state, so the
-  // slot would go on showing the uncropped file the editor picked.
+  // would outrank it below — the Action re-renders this screen without
+  // remounting the slot, so it would go on showing the uncropped file the
+  // editor picked.
   const handleSubmit = useCallback(() => {
     setLocalPreviewUrl("");
   }, []);

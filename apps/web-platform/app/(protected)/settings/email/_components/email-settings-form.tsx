@@ -71,14 +71,9 @@ export const EmailSettingsForm = ({
   testAction,
 }: EmailSettingsFormProps) => {
   const formId = useId();
-  const [saveState, saveFormAction, isSaving] = useActionState(
-    saveAction,
-    null
-  );
-  const [testState, testFormAction, isTesting] = useActionState(
-    testAction,
-    null
-  );
+  // Seeded once per mount; saving is what replaces it, with the settings the
+  // server confirmed. A stored password is shown masked until the operator asks
+  // to change it, and saving puts it back behind that mask.
   const [hasStoredPassword, setHasStoredPassword] = useState(
     initialSettings.hasPassword
   );
@@ -87,15 +82,25 @@ export const EmailSettingsForm = ({
   );
   const [sendToSelf, setSendToSelf] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [prevSaveState, setPrevSaveState] = useState(saveState);
 
-  if (saveState !== prevSaveState) {
-    setPrevSaveState(saveState);
-    if (saveState?.ok) {
-      setHasStoredPassword(saveState.settings.hasPassword);
-      setIsPasswordEditing(!saveState.settings.hasPassword);
-    }
-  }
+  const [saveState, saveFormAction, isSaving] = useActionState(
+    async (
+      previousState: PlatformEmailSettingsFormState,
+      formData: FormData
+    ): Promise<PlatformEmailSettingsFormState> => {
+      const nextState = await saveAction(previousState, formData);
+      if (nextState?.ok) {
+        setHasStoredPassword(nextState.settings.hasPassword);
+        setIsPasswordEditing(!nextState.settings.hasPassword);
+      }
+      return nextState;
+    },
+    null
+  );
+  const [testState, testFormAction, isTesting] = useActionState(
+    testAction,
+    null
+  );
 
   const handleStartPasswordEdit = useCallback(() => {
     setIsPasswordEditing(true);
