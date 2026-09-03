@@ -786,6 +786,20 @@ func (s *adminServer) UpdateCreator(
 	)}), nil
 }
 
+// labelRevalidateTags names what web-host caches a label under. The label list
+// and the label detail page read it under `:labels`, and every series card and
+// series detail page renders the name of the series' label, so a rename that
+// stopped at `:labels` would leave the previous name on the storefront until
+// those entries expired on their own.
+func labelRevalidateTags(tenantID string) []string {
+	normalizedTenantID := strings.TrimSpace(tenantID)
+	return []string{
+		fmt.Sprintf("tenant:%s:labels", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:series:list", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantID),
+	}
+}
+
 func (s *adminServer) CreateLabel(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateLabelRequest],
@@ -853,6 +867,11 @@ func (s *adminServer) CreateLabel(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
+	}
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, labelRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after label create", "tenant_public_id", tenant.PublicID, "label_public_id", created.PublicID, "error", err)
+		}
 	}
 	return connect.NewResponse(&publiraadminv1.CreateLabelResponse{Label: protomapper.LabelWithImage(created.PublicID, created.Name, created.EyeCatchImageUpdatedAt, variants)}), nil
 }
@@ -922,6 +941,11 @@ func (s *adminServer) UpdateLabel(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
+	}
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, labelRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after label update", "tenant_public_id", tenant.PublicID, "label_public_id", updated.PublicID, "error", err)
+		}
 	}
 	return connect.NewResponse(&publiraadminv1.UpdateLabelResponse{Label: protomapper.LabelWithImage(updated.PublicID, updated.Name, updated.EyeCatchImageUpdatedAt, variants)}), nil
 }

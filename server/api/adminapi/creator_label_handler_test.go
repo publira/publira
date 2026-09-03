@@ -1214,3 +1214,102 @@ func TestUpdateLabelRejectsClearAndImageTogether(t *testing.T) {
 	}
 	assertExpectations(t, mock)
 }
+
+func TestLabelRevalidateTags(t *testing.T) {
+	tags := labelRevalidateTags(" tenant-id ")
+	want := []string{
+		"tenant:tenant-id:labels",
+		"tenant:tenant-id:series:list",
+		"tenant:tenant-id:series:detail",
+	}
+	if !slices.Equal(tags, want) {
+		t.Fatalf("labelRevalidateTags() = %v, want %v", tags, want)
+	}
+}
+
+func wantLabelRevalidateTags(tenantID uuid.UUID) []string {
+	return []string{
+		"tenant:" + tenantID.String() + ":labels",
+		"tenant:" + tenantID.String() + ":series:detail",
+		"tenant:" + tenantID.String() + ":series:list",
+	}
+}
+
+func TestCreateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery("INSERT INTO labels").
+		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Weekly", uuid.NullUUID{}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil))
+	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "LABEL001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateLabelRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Name:   "Weekly",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.CreateLabel(context.Background(), req); err != nil {
+		t.Fatalf("CreateLabel: %v", err)
+	}
+	if tags := revalidations.requestedTags(); !slices.Equal(tags, wantLabelRevalidateTags(tenantID)) {
+		t.Fatalf("revalidated tags = %v, want %v", tags, wantLabelRevalidateTags(tenantID))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "LABEL001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+			AddRow(labelID, tenantID, "LABEL001", "Before", now, nil, nil))
+	mock.ExpectExec("UPDATE labels").
+		WithArgs(labelID, "After", uuid.NullUUID{}).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "LABEL001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+			AddRow(labelID, tenantID, "LABEL001", "After", now, nil, nil))
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "LABEL001",
+		Name:     "After",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.UpdateLabel(context.Background(), req); err != nil {
+		t.Fatalf("UpdateLabel: %v", err)
+	}
+	if tags := revalidations.requestedTags(); !slices.Equal(tags, wantLabelRevalidateTags(tenantID)) {
+		t.Fatalf("revalidated tags = %v, want %v", tags, wantLabelRevalidateTags(tenantID))
+	}
+	assertExpectations(t, mock)
+}
