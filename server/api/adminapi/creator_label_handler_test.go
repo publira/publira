@@ -1313,3 +1313,101 @@ func TestUpdateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 	}
 	assertExpectations(t, mock)
 }
+
+func TestCreatorRevalidateTags(t *testing.T) {
+	tags := creatorRevalidateTags(" tenant-id ")
+	want := []string{
+		"tenant:tenant-id:authors",
+		"tenant:tenant-id:series:detail",
+	}
+	if !slices.Equal(tags, want) {
+		t.Fatalf("creatorRevalidateTags() = %v, want %v", tags, want)
+	}
+}
+
+func wantCreatorRevalidateTags(tenantID uuid.UUID) []string {
+	return []string{
+		"tenant:" + tenantID.String() + ":authors",
+		"tenant:" + tenantID.String() + ":series:detail",
+	}
+}
+
+func TestCreateCreatorRevalidatesTheAuthorAndSeriesCaches(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery("INSERT INTO creators").
+		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Creator One", sql.NullString{}, uuid.NullUUID{}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", nil, now, nil))
+	mock.ExpectQuery("FROM creators").
+		WithArgs(tenantID, "CREATOR001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", nil, now, nil, nil, int64(0), int32(0), int32(0)))
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateCreatorRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Name:   "Creator One",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.CreateCreator(context.Background(), req); err != nil {
+		t.Fatalf("CreateCreator: %v", err)
+	}
+	if tags := revalidations.requestedTags(); !slices.Equal(tags, wantCreatorRevalidateTags(tenantID)) {
+		t.Fatalf("revalidated tags = %v, want %v", tags, wantCreatorRevalidateTags(tenantID))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdateCreatorRevalidatesTheAuthorAndSeriesCaches(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	creatorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery("FROM creators").
+		WithArgs(tenantID, "CREATOR001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
+			AddRow(creatorID, tenantID, "CREATOR001", "Before", "old", now, nil, nil, int64(0), int32(0), int32(0)))
+	mock.ExpectExec("UPDATE creators").
+		WithArgs(creatorID, "After", sql.NullString{String: "new", Valid: true}, uuid.NullUUID{}).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("FROM creators").
+		WithArgs(tenantID, "CREATOR001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
+			AddRow(creatorID, tenantID, "CREATOR001", "After", "new", now, nil, nil, int64(0), int32(0), int32(0)))
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateCreatorRequest{
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId:    "CREATOR001",
+		Name:        "After",
+		ProfileText: "new",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.UpdateCreator(context.Background(), req); err != nil {
+		t.Fatalf("UpdateCreator: %v", err)
+	}
+	if tags := revalidations.requestedTags(); !slices.Equal(tags, wantCreatorRevalidateTags(tenantID)) {
+		t.Fatalf("revalidated tags = %v, want %v", tags, wantCreatorRevalidateTags(tenantID))
+	}
+	assertExpectations(t, mock)
+}
