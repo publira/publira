@@ -149,13 +149,10 @@ describe("TenantLogoForm", () => {
       ).toBe(true);
     });
     // The preview adopts the saved image as soon as the Action resolves, which
-    // is before the submission itself settles — wait for the button to come
-    // back rather than clicking into the pending state.
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: "保存中..." })).toBeNull();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "ロゴを保存" }));
+    // is before the submission itself settles. Retry for the submit button
+    // instead of reading it synchronously, or the second click races the
+    // pending render that still labels it 保存中....
+    fireEvent.click(await screen.findByRole("button", { name: "ロゴを保存" }));
 
     await waitFor(() => {
       expect(screen.getByText("ロゴの保存に失敗しました。")).toBeDefined();
