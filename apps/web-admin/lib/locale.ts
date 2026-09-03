@@ -38,6 +38,11 @@ export {
  * Options the locale cookie is written with, from the Server Action in
  * `lib/locale-action.ts`.
  *
+ * `Path=/` and no tenant in the name, so a host that serves several tenants
+ * carries one cookie for all of them. That is the useful scope: the value is
+ * the operator's own reading preference, not something a tenant owns, and the
+ * tenant's saved default is what the console falls through to when it is unset.
+ *
  * `httpOnly` is deliberately off: the inline `<head>` script reads this cookie
  * to set `<html lang>` before the first paint, which it can only do from
  * `document.cookie`. The value is a two-letter UI preference chosen from a

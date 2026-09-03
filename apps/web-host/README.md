@@ -13,25 +13,25 @@ The default port is `3000`.
 
 ### URLs and locales
 
-A public URL carries no locale prefix in the tenant's default locale (`/series/SR01`) and a `/{locale}/...` prefix in any other locale (`/en/series/SR01`). `proxy.ts` resolves the tenant from the Host and internally rewrites an unprefixed URL to `/{tenantId}/{locale}{path}` using that tenant's default locale. A URL that spells the default locale out is redirected with a 307 to the canonical unprefixed URL, keeping the path and the query. `GetTenantByDomain` returns the default locale in the same response as the tenant id, so the decision costs no extra round trip.
+A public URL carries no locale prefix in the tenant's default locale (`/series/SR01`) and a `/{locale}/...` prefix in any other locale (`/en/series/SR01`). `proxy.ts` resolves the tenant from the Host and rewrites the request onto the `app/[tenant_id]/[locale]/...` route tree; `proxy.test.ts` is the specification of what it rewrites, redirects, and refuses.
 
-- `/theme.css` and the Route Handlers (`/api/*`) live outside the locale. A Route Handler cannot read `next/root-params`
-- The slug of a published page is matched against the path with the locale stripped off, so a slug such as `/{locale}/ja` still resolves as a public page
-- A Server Component takes the locale from `getLocale()` in `lib/locale.ts`, a Client Component from `useLocale()` in `components/locale-provider.tsx`, and a Server Action from an argument or from the hidden field of `<LocaleField />`. The tenant id travels the same way, and a form that stays in the static shell carries `<TenantIdField />` from `components/tenant-id-field.tsx`
-- The context behind `useLocale()` and `useTenantDefaultLocale()` is seeded by the `(site)` and `(auth)` layouts, not by the root layout: `app/[tenant_id]/[locale]/layout.tsx` is the document shell and reads nothing, so `<html lang>` is written by `PATH_LOCALE_LANG_SCRIPT` and a failed tenant read lands on `app/[tenant_id]/[locale]/error.tsx` instead of on no boundary at all. That boundary stands in for those layouts, so it resolves its own locale from the browser with `readClientLocale()` in `lib/client-locale.ts` — the URL's prefix, then the `publira_resolved_locale` cookie `proxy.ts` publishes, and finally `Accept-Language`. That last step is the one the script does not take: the script leaves `lang` unset rather than name a language nothing resolved, while the boundary has copy to render and no stored answer left within reach
-- The language switcher in the header is a link that replaces only the locale in the path. It does not carry the query string over
-- When the server side needs the tenant's default locale, use `getTenantDefaultLocale()` from `lib/tenant.ts`. It is a thin entry point that returns `defaultLocale` from `getTenantSiteInfo()`, and throws when the tenant cannot be read — the caller is choosing what language a reader sees, and no stand-in for a saved setting is better than the outage it would hide. `proxy.ts` does not go through it (it runs before rendering, where `"use cache"` is unavailable, so it takes the value straight from the `GetTenantByDomain` response) and answers a failed resolution with a 503 rather than a page in a language the tenant never chose
-- `app/global-not-found.tsx` is the one page with no locale to read. It answers a URL that matched no route, so it never went through the rewrite and has no tenant behind it; it states its language as the `NOT_FOUND_LOCALE` constant that `lang` and its catalog lookups share
+| Where the locale is read | How |
+| --- | --- |
+| Server Component | `getLocale()` in `lib/locale.ts` |
+| Client Component | `useLocale()` in `components/locale-provider.tsx`, with the tenant's stored default beside it as `useTenantDefaultLocale()` |
+| Server Action | An argument bound by the Server Component, or the `<LocaleField />` hidden field in `components/locale-field.tsx` |
+| Server-side, the tenant's stored default | `getTenantDefaultLocale()` in `lib/tenant.ts` |
+| The browser, where no provider is above the render | `readClientLocale()` in `lib/client-locale.ts` |
+
+The tenant id travels the same way: `getTenantId()` in `lib/tenant-id.ts`, `useTenantId()` in `lib/use-tenant-id.ts`, and `<TenantIdField />` in `components/tenant-id-field.tsx`.
+
+In-app links carry the prefix through `<LocaleLink>` in `components/locale-link.tsx`, or through `withLocalePrefix()` in `lib/locale-path.ts` where a bare href is handed to a shared component. The header's language switcher is `components/locale-switcher.tsx`.
 
 ### Screen copy
 
-Reader-facing copy comes from `host.*` in the repo-root `locales/{locale}.json`. `loadHostMessages(locale)` in `lib/messages.ts` loads the catalog, and a Server Component resolves one string at a time with `<Message message="host.…" />` wrapped in a `<Suspense>` with a `Skeleton`. `getMessage()` is called directly only where the value has to be a string — `aria-label`, `placeholder`, and `generateMetadata`'s `title`.
+Reader-facing copy comes from `host.*` in the repo-root [`locales/{locale}.json`](../../locales/README.md). `loadHostMessages(locale)` in `lib/messages.ts` loads the catalog, `<Message>` in `components/message.tsx` renders one string on the server, and `<ClientMessage>` in `components/client-message.tsx` renders one in the browser. `getMessage()` is called directly where the value has to be a string — `aria-label`, `placeholder`, and `generateMetadata`'s `title`.
 
-- Never read the locale inside `"use cache"`. A read such as `lib/catalog.ts` takes `locale` as an argument and includes the failure copy in the cache key
-- A section that already blocks — a form reading `searchParams`, a list that branches on an RPC result — calls `getMessage()` inside that section instead of placing a `<Suspense>` per string. A boundary around copy that never reaches the static shell does not shorten the wait
-- Pass a Client Component the resolved string (a `copy` prop) or a node, never the catalog. `error.tsx` is the exception: `<ClientMessage>` from `components/client-message.tsx` looks the copy up from the browser
-- Series titles, synopses, episode bodies, and the contents of a published page are written by the tenant and are not translated. They stay as written whatever the locale
-- The stand-in label for a tenant with no name set comes from `getTenantSiteLabel(tenantId, locale)` in `lib/tenant.ts`
+Series titles, synopses, episode bodies, and the contents of a published page are written by the tenant and are not translated. They stay as written whatever the locale. The stand-in label for a tenant with no name set comes from `getTenantSiteLabel(tenantId, locale)` in `lib/tenant.ts`.
 
 ### Session cookie (JWE)
 
@@ -51,7 +51,9 @@ Environment variables:
 - `PUBLIRA_REDIS_URL` (`redis://redis:6379` in the Dev Container)
 - `PUBLIRA_CACHE_APP=web-host` (recommended; it separates the key space)
 
-The `revalidateTag` performed on publication (the internal-only `POST /api/v1/revalidate`) is consistent with the tag timestamps in Redis. `PUBLIRA_REVALIDATE_TOKEN` authenticates the shared token, and this path does not go through the Host-based tenant resolution in `proxy.ts`. Tags are revalidated as given, without restricting them by tenant ID, and the Go server reaches this app directly over `PUBLIRA_WEB_HOST_INTERNAL_URL`.
+### Internal cache revalidation
+
+`POST /api/v1/revalidate` is the revalidation entry point reserved for the Go server. It checks `PUBLIRA_REVALIDATE_TOKEN` against the `X-Revalidate-Token` header and revalidates the tags it receives (`@publira/next-cache-handlers/revalidate`), without restricting them by tenant ID. This path bypasses the Host-based tenant resolution in `proxy.ts`. The destination is `PUBLIRA_WEB_HOST_INTERNAL_URL` on the private network, and the tags themselves are built by `lib/cache-tags.ts`.
 
 ### Distributed tracing
 
@@ -59,37 +61,34 @@ The `revalidateTag` performed on publication (the internal-only `POST /api/v1/re
 
 For the environment variables and how `NEXT_OTEL_VERBOSE` is handled, see [`packages/tracing/README.md`](../../packages/tracing/README.md).
 
-### Checking a theme CSS update
+### `/theme.css`
 
-`/theme.css` is a dedicated `"use cache"` read tagged `tenant:{id}:theme`. The admin API revalidates that tag when a theme is saved, so a theme update on the public site does not depend on the cache tag of the site chrome. When an icon or a logo is updated, revalidate both the theme tag and `tenant:{id}:site`.
+The per-tenant stylesheet, served by `app/[tenant_id]/theme.css/route.ts` over the `getTenantTheme()` read in `lib/tenant.ts` and its own cache tag from `lib/cache-tags.ts`. The document shell links it, so every page picks up the tenant's colors.
 
-To check it by hand, save a theme color and then request `GET /theme.css` on the public domain. An existing browser or shared cache may keep serving the old response for the short TTL in `Cache-Control` (`max-age=30`, `s-maxage=30`, `stale-while-revalidate=60`), so disable the cache in DevTools or reload after the TTL has passed. Confirm that `--publira-color-primary` and the other values in the response changed to the color you saved. A failed revalidation is recorded in the admin API's `failed to request next revalidate after theme upsert` log, together with the tenant ID, the domain, and the tag.
+No test yet asserts that a theme saved in the console reaches this stylesheet and the public site end to end; [#1452](https://github.com/publira/publira/issues/1452) covers that.
 
 ### Image delivery (`next/image`)
 
-`images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` let `next/image` use the Manael conversion of image-server directly. The requested width is passed as `w` only when reading `/images/...`, and WebP / AVIF is decided by the browser's `Accept`. Leave an `<Image>` that does not go through image-server — a temporary `blob:` preview, for instance — `unoptimized`. The loader's implementation and specification are in [`packages/utils/README.md`](../../packages/utils/README.md).
+`images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` point `next/image` at the Manael conversion of image-server. `lib/image-loader.ts` re-exports the shared loader; its specification is in [`packages/utils/README.md`](../../packages/utils/README.md). An `<Image>` whose source does not go through image-server — a temporary `blob:` preview, for instance — is `unoptimized`.
 
 ### Episode viewer (Canvas)
 
-`@publira/comic-viewer` draws the episode body on a Canvas. It emits no `<img>`, so a body image can be saved by neither dragging nor a right click. Fetching, decoding, and prefetching pages are all owned by that library's pipeline.
+`@publira/comic-viewer` draws the episode body on a Canvas and owns fetching, decoding, and prefetching the pages. It emits no `<img>`. What this app supplies sits under `app/[tenant_id]/[locale]/(site)/series/[series_id]/episodes/[episode_id]/`:
 
-- Body images do not go through `next/image`. The delivery URL of image-server (with its media token) is passed straight to the page's `src`
-- Pages are fetched by a viewer plugin (`_lib/viewer-fetch.ts`), which adds `Accept`. The viewer fetches pages with `fetch()`, where `Accept` is not applied by default, and Manael neither converts nor resizes without it — so without the plugin the original full-size image comes down every time
-- A response carrying `X-Publira-Image-Encryption: xor-hmac-sha256-v1` is decrypted in the browser by rebuilding the same stream from the short-lived media JWT in the URL (`t`), its `sub`, and `X-Publira-Image-Key-Id`. The MIME type after decryption comes from `X-Publira-Image-Content-Type`, and the result is handed only to the Canvas pipeline of `@publira/comic-viewer`. An unencrypted public image is still drawn as it is
-- The only on-screen controls are paging and full screen. Both live on the viewer's own toolbar and hide themselves once the reader stops interacting. Zooming is a pinch and resetting is a one-finger double tap; both are gestures of the library
-- The binding direction is the library's default, right to left. Spreads set `spreadStartIndex` to `1`, so the cover is shown on its own and pages 2 and 3 onward are paired
-- A page that fails to load shows a reload control inside the viewer and retries that page alone. The episode as a whole is not dropped
-- The viewer's height is owned by `VIEWER_HEIGHT_CLASS` in `_lib/viewer-layout.ts`, and the body skeleton reserves the same box. The episode information below it does not move after the first paint
+| File | What it holds |
+| --- | --- |
+| `_lib/viewer-pages.ts` | The episode's body images as the viewer's page list |
+| `_lib/viewer-fetch.ts` | The fetch plugin: the `Accept` the pages are requested with, and decrypting an `X-Publira-Image-Encryption` response in the browser |
+| `_lib/viewer-layout.ts` | `VIEWER_HEIGHT_CLASS`, the height the reader and the body skeleton share |
+| `_components/episode-comic-viewer.tsx` | The toolbar, the paging and full-screen controls, and the per-page reload |
 
-How fast it has to draw is a budget rather than a matter of taste: time to the first page, the response and the drawn page of a page turn, and a cumulative layout shift of zero, all asserted by `e2e/tests/host.viewer-performance.spec.ts` against a seeded episode served through image-server. The numbers, what each one covers, and how to measure them again are in [`e2e/README.md`](../../e2e/README.md).
+Paging and full screen are the only on-screen controls; zooming and resetting are the library's own gestures.
 
-### Site icon (`rel="icon"` / apple-touch-icon)
+`e2e/tests/host.viewer-performance.spec.ts` holds the drawing budget — time to the first page, the response and the drawn page of a page turn, and a cumulative layout shift of zero — against a seeded episode served through image-server. The numbers, what each one covers, and how to measure them again are in [`e2e/README.md`](../../e2e/README.md).
 
-`link rel="icon"` and `link rel="apple-touch-icon"` point at the delivery URL of the tenant icon (`/images/tenants/{media_id}/icon`) when one is set. image-server delivers the image, and shaping it into a square PNG is already done on the server at upload time, so web-host performs no conversion. A tenant with no icon set declares none and leaves it to the browser's default.
+### Brand images
 
-### Site logo (header)
-
-When a tenant logo is set, the brand area of the public site header shows its delivery URL (`/images/tenants/{media_id}/logo`). An unset logo, an empty URL, and a failed load all fall back to the existing site name text.
+`link rel="icon"` and `link rel="apple-touch-icon"` are resolved by `lib/tenant-icon.ts`, and the header's brand mark by `lib/tenant-logo.ts`. Both read the tenant's branding variants from `getTenantSiteInfo()`, and image-server delivers them (`/images/tenants/{media_id}/icon`, `/images/tenants/{media_id}/logo`).
 
 ### Episode purchase
 

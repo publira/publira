@@ -12,20 +12,20 @@ The console where publishers and editors enter and operate their content.
 
 ## UI locale
 
-- The UI locale is stored in the `publira_locale` cookie (`Path=/`, `SameSite=Lax`, `Max-Age` of one year, not `httpOnly`). It never appears in the URL. The same host shares one cookie across tenants
-- The resolution order is cookie → the tenant's saved default locale, and there is no third step. An unsupported cookie value is treated as unset and falls through to the tenant default. An unauthenticated screen (login and friends) resolves the same value: it comes from the public `GetTenant`, which answers without a session
-- Read it with `getLocale(tenantId)` from `lib/locale.ts`. It uses `cookies()`, so call it **only from inside a `<Suspense>` boundary**. Never call it inside `"use cache"`; pass the locale in as an argument instead. A tenant whose saved default cannot be read at all throws rather than naming a language: `lib/public-api.ts` answers from the last locale the API confirmed for that tenant, and only a process that has never had one gives up
-- A Server Component reads the tenant id from `next/root-params`. A Server Action cannot, so it takes the tenant id from its own input (a form value)
-- The tenant default locale is the default language card on `/settings`. `lib/tenant-default-locale.ts` reads it with `"use cache: private"` and calls `updateTag` on save
-- `loadAdminMessages(locale)` dynamically `import()`s the repo-root [`locales/*.json`](../../locales/README.md)
-- Copy reaches the screen through `<Message>` in `components/message.tsx`. The caller wraps each string in its own `<Suspense>` with a `Skeleton` fallback, so the wait on the locale and the catalog stays inside that component and the navigation and page frame remain in the static shell. The tenant id comes from the route segment, so an operator with no cookie still sees the tenant default locale
-- Copy that goes into an attribute such as `aria-label` or `alt` cannot be streamed as a node. The place that assembles the value resolves the catalog itself — as `components/admin-brand-logo.tsx` and `components/notification-bell.tsx` do — and waits behind a `<Suspense>` of its own that covers only that one control
-- `error.tsx` is a Client Component, so it cannot use `<Message>`. `<ClientMessage>` in `components/client-message.tsx` reads the cookies from `document.cookie` instead — `publira_locale`, then `publira_resolved_locale`, then `<html lang>`, and only a browser carrying none of them falls back to what it asked for. That boundary cannot reach the admin API, which is the point: it renders when the API holding the setting is down. Wrap it in a `<Suspense>` at the call site, just like `<Message>`: there is no boundary above an error boundary, so suspending without a fallback cuts the response off mid-body and the error screen itself never streams
-- A prop that receives copy takes a `ReactNode`, not a catalog key. Which string waits behind which `<Suspense>` then shows up in the calling code. Do not add a helper that only assembles a `<Suspense>` and a `<Message>`; write it at the call site. `ErrorScreen` takes all four strings (its single caller is `(protected)/error.tsx`)
-- A prop is for copy that names the caller. `SectionErrorBoundary` takes one `title` holding the section name; the recovery guidance, the retry button, and the error ID label read the same at every boundary, so they belong to the frame rather than the section and `components/section-error-boundary.tsx` resolves them from the catalog itself (the defaults of `@publira/ui-components` are Japanese, so leaving them unresolved puts Japanese on an English screen). Since `<Message>` is an async Server Component that component has to be a Server Component, so only the `catchError` call is split out into `components/section-error-catch.tsx` (`"use client"`)
-- An individual operator switches locale from the display language card on `/settings`. The `setAdminLocaleAction` Server Action writes the cookie and the screen re-renders in the same round trip
-- `proxy.ts` publishes the tenant's saved default as `publira_resolved_locale` on every response it resolves a tenant for, from the Host-to-tenant resolution it makes to route the request anyway (`@publira/utils/resolved-locale`). The paths that answer before that read — the health probes, `/logout`, and `/favicon.ico` — carry no cookie, and an unresolvable saved code expires the one an earlier answer left instead of leaving a stale language standing. It is the only way the browser learns that value, and both the `<head>` script and the client error boundary read it
-- `<html lang>` is not rendered by `[tenant_id]/layout.tsx` at all: the layout stays synchronous and an inline `<head>` script applies the operator's cookie, then the published tenant default. For the reasoning and the constraints, see `LOCALE_LANG_SCRIPT` in `@publira/i18n`. `global-not-found.tsx` never passes through a layout and its body cannot follow the locale either, so it stays on `lang="ja"`
+The locale is never in the URL. It lives in the `publira_locale` cookie, and resolves cookie → the tenant's stored default locale.
+
+| Part | Where it lives |
+| --- | --- |
+| The resolved locale | `getLocale(tenantId)` in `lib/locale.ts`, and the cookie options the switcher writes with |
+| The tenant's stored default, without a session | `getTenantDisplayLocale()` in `lib/public-api.ts`, over the public `GetTenant` |
+| The tenant's stored default, as a setting to read and save | `lib/tenant-default-locale.ts`, behind the Default language card on `/settings` |
+| The catalog | `loadAdminMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md) |
+| One string on the server | `<Message>` in `components/message.tsx` |
+| One string in the browser | `<ClientMessage>` in `components/client-message.tsx`, for `error.tsx` |
+| `<html lang>` | The inline `<head>` script in `app/[tenant_id]/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`) |
+| The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
+
+An individual operator switches locale from the Display language card on `/settings`, through the `setAdminLocaleAction` Server Action in `lib/locale-action.ts`.
 
 ## Development
 
@@ -46,11 +46,15 @@ Required environment variables:
 
 ### Second factor (MFA)
 
-- A password that is accepted but still owes a second factor earns no session. `Login` answers with a short-lived challenge token instead, and the console holds it in the `publira_web_admin_mfa` cookie — sealed with the same `PUBLIRA_AUTH_SECRET`, `httpOnly`, and expiring with the challenge itself. It deliberately never travels in the URL, where a token would survive in history and in `Referer`
-- `/mfa` is the screen that spends it, and it is a public path in `proxy.ts` because it is reached without a session. The challenge's `kind` decides what it shows: `verify` asks for a code from the authenticator app — or one of the recovery codes — and `enroll` runs the registration a tenant requires of an administrator before it will finish the login. Both end by writing the ordinary session cookie and clearing the challenge
-- An administrator manages their own factor from the two-step verification card on `/settings/account`: registering an authenticator, replacing the recovery codes, and turning the factor off. Recovery codes exist in plaintext only in the response that issues them, so that card keeps a batch on screen after the status around it has changed
-- A refused code and a rejected session both come back `unauthenticated`. The console separates them by the `MFA_INVALID_CODE` / `MFA_LOCKED` reason the API attaches as `google.rpc.ErrorInfo`; without it a mistyped digit would sign the operator out
-- The enrollment QR code is turned into SVG path geometry on the server (`lib/qr-code.ts`, `uqr`), so what reaches the browser is one path string rather than a matrix or injected markup. Its colours are fixed black on white: a camera cannot read an inverted code, so it does not follow the tenant theme
+A password that is accepted but still owes a second factor earns a short-lived challenge instead of a session. `/mfa` is the screen that spends it — a public path in `proxy.ts`, because it is reached without a session — and an administrator manages their own factor from the Two-step verification card on `/settings/account`.
+
+| Part | Where it lives |
+| --- | --- |
+| The challenge and its `publira_web_admin_mfa` cookie | `lib/mfa-challenge.ts` |
+| The console's MFA RPCs | `lib/admin-mfa.ts` |
+| The `verify` and `enroll` screens | `app/[tenant_id]/mfa/` |
+| The operator's own factor | `app/[tenant_id]/(protected)/settings/_components/mfa-settings-card.tsx` |
+| The enrollment QR code | `lib/qr-code.ts` (`uqr`) and `components/qr-code.tsx` |
 
 ### Distributed tracing
 
@@ -60,4 +64,4 @@ For the environment variables and how `NEXT_OTEL_VERBOSE` is handled, see [`pack
 
 ### Image delivery (`next/image`)
 
-`images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` let `next/image` use the Manael conversion of admin-image-server directly. The requested width is passed as `w` only when reading `/images/...`, and WebP / AVIF is decided by the browser's `Accept`. Leave an `<Image>` that does not go through admin-image-server — a temporary `blob:` preview, for instance — `unoptimized`. The loader's implementation and specification are in [`packages/utils/README.md`](../../packages/utils/README.md).
+`images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` point `next/image` at the Manael conversion of admin-image-server. `lib/image-loader.ts` re-exports the shared loader; its specification is in [`packages/utils/README.md`](../../packages/utils/README.md). An `<Image>` whose source does not go through admin-image-server — a temporary `blob:` preview, for instance — is `unoptimized`.

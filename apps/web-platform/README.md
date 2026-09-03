@@ -19,7 +19,7 @@ The cross-tenant operations console for platform operators. Its responsibilities
 ### Authentication and authorization
 
 - `proxy.ts` protects every path that is not in `PUBLIC_PATHS` (`/login`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`)
-- `/logout` has been removed. Both GET and POST return 404 and leave the session cookie untouched. Signing out goes through the header's Server Action only
+- There is no `/logout` route. Signing out goes through the header's Server Action only
 - Session cookie: `publira_web_platform_auth`
 - Initial role definitions: `platform_owner`, `platform_operator`, `platform_auditor`
 - Screens are guarded in `(protected)/layout.tsx`
@@ -33,24 +33,22 @@ The cross-tenant operations console for platform operators. Its responsibilities
 
 ### UI locale
 
-- The UI locale is stored in the `publira_locale` cookie (`Path=/`, `SameSite=Lax`, `Max-Age` of one year, not `httpOnly`). It never appears in the URL
-- The resolution order is cookie → the saved platform default locale. A supported cookie value always wins; only an unset or unknown value falls through to the default. That default needs no session — `CheckSetupStatus` reports it beside the setup state — so the login screen renders in the same language the signed-in console does. When the API cannot answer at all, the last language it confirmed for this server process stands, and only a platform that has saved none negotiates from `Accept-Language`; nothing substitutes a fixed language for an unresolved one
-- `/setup` is the exception: it runs before the first operator exists, so there is no cookie and no settings row to read. It negotiates the request's `Accept-Language` against the supported locales with `getInitialLocaleCandidate()` from `lib/initial-locale.ts`, falling back to `en` when the header names none of them, and renders its copy through `SetupMessage` rather than `<Message>`
-- Read it with `getPlatformLocale()` from `lib/locale.ts`. It uses `cookies()`, so call it **only from inside a `<Suspense>` boundary**. Never call it inside `"use cache"`; pass the locale in as an argument instead
-- `loadPlatformMessages(locale)` dynamically `import()`s the repo-root [`locales/*.json`](../../locales/README.md). This app's copy lives in the `platform.*` namespace
-- Copy is rendered one string at a time with `<Message message="platform.auth.login.submit" />` from `components/message.tsx`, wrapped in a `<Suspense>` whose fallback is a `SkeletonLine` sized to that string. The card and the inputs around it stay in the static shell
-- A section that branches on an RPC result or on `searchParams` — the `/setup` gate, the `/confirm-email` outcome, and so on — decides only which `PlatformMessageKey` to use and still renders it through `<Message>`. Never pass the catalog (`messages`) down to a child as a prop
-- Pass rendered nodes to a Client Component through a `copy` prop (`LoginFormCopy` and friends), never the catalog. An `import()` of a catalog from the client ships both locales to the browser
-- An attribute such as `placeholder` cannot be a node, so the control that carries one waits for the catalog itself. Wrap that single control in a `<Suspense>` whose fallback is a `Skeleton` of its height (`NameInput` on `/setup`)
-- `getMessage` is used directly only for values that cannot be nodes: `generateMetadata`'s `title`, and anything on the Server Action side
-- A zod schema carrying user-facing messages is a function of the catalog, not a module constant (`emailFormSchema(messages)` in `lib/auth-input.ts`). The copy depends on the request's locale, so it can only be resolved in a Server Action or inside a `<Suspense>`
-- A `Suspense` fallback is part of the static shell and cannot follow the locale. Never write a sentence into one; render a `Skeleton` sized to the string it stands in for
-- A prop is for copy that names the caller. `SectionErrorBoundary` takes one `title` holding the section name; the recovery guidance, the retry button, and the error ID label read the same at every boundary, so they belong to the frame rather than the section and `components/section-error-boundary.tsx` resolves them from the catalog itself (the defaults of `@publira/ui-components` are Japanese, so leaving them unresolved puts Japanese on an English screen). Since `<Message>` is an async Server Component that component has to be a Server Component, so only the `catchError` call is split out into `components/section-error-catch.tsx` (`"use client"`). `ErrorScreen` takes all four strings (its callers are `app/error.tsx` and `(protected)/error.tsx`, and neither duplicates the other)
-- Switching happens on the display language card on `/settings/general`. The `setPlatformLocaleAction` Server Action writes the cookie and the screen re-renders in the same round trip
-- The platform default locale is the default language card on the same screen (`getPlatformSettings` / `updatePlatformDefaultLocale` in `lib/platform-settings.ts`). Setup saves the first one from the language selector on `/setup`. On save the Server Action calls `updateTag` on `platform:settings`, so even a cookie-less view in the same session picks it up immediately
-- A new tenant's default language is not taken from that setting: `/tenants/new` carries its own selector, seeded from `Accept-Language` the same way `/setup` is, and the Server Action sends the submitted locale to `CreateTenant`
-- `<html lang>` is written by the inline `<head>` script rather than rendered: the root layout stays synchronous and names no language, and the script applies the first supported locale it finds — the operator's `publira_locale`, then the `publira_resolved_locale` the proxy published. For the reasoning and the constraints, see `LOCALE_LANG_SCRIPT` in `@publira/i18n`. `global-not-found.tsx` never passes through a layout and its body cannot follow the locale either, so it stays on `lang="ja"`
-- `proxy.ts` publishes the saved platform default as `publira_resolved_locale` on every response it resolves the setup state for, from the `CheckSetupStatus` read it makes to route the request anyway (`@publira/utils/resolved-locale`). The paths that answer before that read — the health probes, `/logout`, and `/setup` — carry no cookie, and neither does a response whose read failed. It is the only way the browser learns that value: the client error boundary in `app/error.tsx` renders when the platform API is unreachable, and `components/client-message.tsx` resolves its copy from the cookies before falling back to what the browser asked for
+The locale is never in the URL. It lives in the `publira_locale` cookie, and resolves cookie → the saved platform default locale.
+
+| Part | Where it lives |
+| --- | --- |
+| The resolved locale | `getPlatformLocale()` in `lib/locale.ts`, and the cookie options the switcher writes with |
+| The saved platform default | `lib/platform-settings.ts`, behind the Default language card on `/settings/general` |
+| The locale a screen with nothing saved yet opens on | `getInitialLocaleCandidate()` in `lib/initial-locale.ts`, over the request's `Accept-Language` |
+| The catalog | `loadPlatformMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md); this app's copy is the `platform.*` namespace |
+| One string on the server | `<Message>` in `components/message.tsx`, and `SetupMessage` in `app/setup/_components/` for `/setup` |
+| One string in the browser | `<ClientMessage>` in `components/client-message.tsx`, for `app/error.tsx` |
+| `<html lang>` | The inline `<head>` script in `app/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`) |
+| The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
+
+An operator switches locale from the Display language card on `/settings/general`, through the `setPlatformLocaleAction` Server Action in `lib/locale-action.ts`.
+
+A new tenant's default language is not taken from the platform default: `/tenants/new` carries its own selector (`_components/tenant-default-locale-select.tsx`), and `/setup` saves the platform's first one from the selector on that screen.
 
 ### Split of responsibilities with web-admin
 
