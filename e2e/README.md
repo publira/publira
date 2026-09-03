@@ -150,7 +150,7 @@ Each measurement is attached to the test result as a `viewer-performance:<metric
 5. Run `task e2e`, or keep the stack running and use `task e2e:test`.
 6. Changes to relevant paths run **Test / E2E**. Changes only in `e2e/routing/**` run **Test / Routing** (`task e2e:routing`) without Playwright.
 
-Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, web-host and web-admin authentication and publishing, platform authentication and tenant operations, and the canvas viewer's rendering budget. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`; the viewer's pages come from `050_viewer_pages.sql`, which `task e2e:db` applies for every run rather than a suite applying it for itself.
+Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, the member area's My Page and `/settings` tabs, web-host and web-admin authentication and publishing, platform authentication and tenant operations, and the canvas viewer's rendering budget. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`; the member area uses `070_member_settings.sql`; the viewer's pages come from `050_viewer_pages.sql`, which `task e2e:db` applies for every run rather than a suite applying it for itself.
 
 Outage specs must run through `task e2e:test`, which sources `lib.sh`. Filtering by file name can leave only isolated projects, so pass `--no-deps` when selecting an isolated project directly (for example, `--project=catalog-outage`).
 
