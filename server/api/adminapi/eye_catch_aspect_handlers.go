@@ -342,18 +342,6 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	return connect.NewResponse(&publiraadminv1.UploadLabelEyeCatchAspectImageResponse{Label: label}), nil
 }
 
-// labelRevalidateTags names what web-host caches a published label under.
-// A label is always reachable from the site chrome and from the label list,
-// and its detail page reads the same `:labels` tag, so a ratio replacement
-// would otherwise keep serving the previous image until the entry expires.
-func labelRevalidateTags(tenantID string) []string {
-	normalizedTenantID := strings.TrimSpace(tenantID)
-	return []string{
-		fmt.Sprintf("tenant:%s:site", normalizedTenantID),
-		fmt.Sprintf("tenant:%s:labels", normalizedTenantID),
-	}
-}
-
 func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID uuid.UUID, publicID string) (*publirattypesv1.Label, error) {
 	row, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenantID, PublicID: publicID})
 	if err != nil {

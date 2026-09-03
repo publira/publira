@@ -2,10 +2,14 @@ package adminapi
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -77,6 +81,50 @@ func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return server, mock
+}
+
+// revalidateRecorder stands in for the Next.js apps and collects the tags the
+// handlers ask them to drop.
+type revalidateRecorder struct {
+	mu   sync.Mutex
+	tags []string
+}
+
+// requestedTags returns every tag seen, deduplicated and sorted. The three
+// targets are the same server here, so one call arrives three times.
+func (r *revalidateRecorder) requestedTags() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	unique := slices.Clone(r.tags)
+	slices.Sort(unique)
+	return slices.Compact(unique)
+}
+
+// newRevalidateRecorder points all three revalidate targets at one recording
+// server and configures the token that turns the client on. The handler reads
+// this environment when it is built, so call this before newTestAdminServer.
+func newRevalidateRecorder(t *testing.T) *revalidateRecorder {
+	t.Helper()
+	recorder := &revalidateRecorder{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload struct {
+			Tags []string `json:"tags"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Errorf("decode revalidate payload: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		recorder.mu.Lock()
+		recorder.tags = append(recorder.tags, payload.Tags...)
+		recorder.mu.Unlock()
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("PUBLIRA_REVALIDATE_TOKEN", "test-revalidate-token")
+	t.Setenv("PUBLIRA_WEB_HOST_INTERNAL_URL", server.URL)
+	t.Setenv("PUBLIRA_WEB_ADMIN_INTERNAL_URL", server.URL)
+	t.Setenv("PUBLIRA_WEB_PLATFORM_INTERNAL_URL", server.URL)
+	return recorder
 }
 
 type testStorageProvider struct{}
