@@ -2,13 +2,18 @@
 -- This is intentionally seed (not migration) because role/user management is environment responsibility.
 -- For production: run this seed as a superuser, then ALTER ROLE to set secure passwords.
 
+-- Every DO block below states the whole attribute set on both branches. ALTER ROLE
+-- changes only the attributes it names, so an ELSE branch listing just LOGIN and
+-- BYPASSRLS would let a pre-existing role keep SUPERUSER, CREATEDB, CREATEROLE, or
+-- REPLICATION.
+
 -- Non-login bypass role for explicit grants in production environments.
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_rls_bypass') THEN
-        CREATE ROLE publira_rls_bypass NOLOGIN BYPASSRLS;
+        CREATE ROLE publira_rls_bypass NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
     ELSE
-        ALTER ROLE publira_rls_bypass NOLOGIN BYPASSRLS;
+        ALTER ROLE publira_rls_bypass NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
     END IF;
 END
 $$;
@@ -17,9 +22,9 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_platform') THEN
-        CREATE ROLE publira_platform LOGIN PASSWORD 'platformpass' BYPASSRLS;
+        CREATE ROLE publira_platform LOGIN PASSWORD 'platformpass' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
     ELSE
-        ALTER ROLE publira_platform LOGIN BYPASSRLS;
+        ALTER ROLE publira_platform LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
     END IF;
 END
 $$;
@@ -29,9 +34,9 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_content_stats') THEN
-        CREATE ROLE publira_content_stats LOGIN PASSWORD 'contentstatspass' BYPASSRLS;
+        CREATE ROLE publira_content_stats LOGIN PASSWORD 'contentstatspass' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
     ELSE
-        ALTER ROLE publira_content_stats LOGIN BYPASSRLS;
+        ALTER ROLE publira_content_stats LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
     END IF;
 END
 $$;
@@ -42,9 +47,9 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_outbox') THEN
-        CREATE ROLE publira_outbox LOGIN PASSWORD 'outboxpass' BYPASSRLS;
+        CREATE ROLE publira_outbox LOGIN PASSWORD 'outboxpass' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
     ELSE
-        ALTER ROLE publira_outbox LOGIN BYPASSRLS;
+        ALTER ROLE publira_outbox LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
     END IF;
 END
 $$;
@@ -53,9 +58,9 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_admin') THEN
-        CREATE ROLE publira_admin LOGIN PASSWORD 'adminpass';
+        CREATE ROLE publira_admin LOGIN PASSWORD 'adminpass' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
     ELSE
-        ALTER ROLE publira_admin LOGIN;
+        ALTER ROLE publira_admin LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
     END IF;
 END
 $$;
@@ -64,9 +69,9 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_public') THEN
-        CREATE ROLE publira_public LOGIN PASSWORD 'publicpass';
+        CREATE ROLE publira_public LOGIN PASSWORD 'publicpass' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
     ELSE
-        ALTER ROLE publira_public LOGIN;
+        ALTER ROLE publira_public LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
     END IF;
 END
 $$;
