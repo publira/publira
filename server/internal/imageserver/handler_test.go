@@ -579,6 +579,222 @@ func TestEpisodeImageFreeEpisodeMediaTokenGrantsNothing(t *testing.T) {
 	})
 }
 
+// What a page costs to extract must not depend on whether its episode is sold,
+// so a free body is delivered as ciphertext on both paths that serve one: the
+// public branch a reader with no credential takes, and the entitled branch a
+// signed-in reader's bearer takes.
+func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
+	t.Setenv("PUBLIRA_IMAGE_ENCRYPTION", "enabled")
+
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
+	episodeID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
+	userID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	tokens := auth.NewTokenManager([]byte(testMediaJWTSecret))
+
+	// The free path's synthetic subject is a public_id no row can hold, so a
+	// request carrying it resolves no reader and lands on the public branch.
+	anonymousQueries := stubTenantQueries{
+		public: dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow{
+			ID:              mediaID,
+			EpisodeID:       episodeID,
+			ObjectKey:       "episodes/page.jpg",
+			ContentType:     "image/jpeg",
+			IsPublished:     sql.NullBool{Bool: true, Valid: true},
+			HasPublicAccess: true,
+		},
+		userRefErr: sql.ErrNoRows,
+	}
+
+	serve := func(t *testing.T, queries stubTenantQueries, token, bearer string) *httptest.ResponseRecorder {
+		t.Helper()
+		srv := newTestServerWithTokens(t,
+			stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+			stubFactory{q: queries},
+			&countingStore{objects: map[string]storedObject{
+				"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+			}},
+			tokens,
+		)
+		target := "/images/episodes/" + mediaID.String()
+		if token != "" {
+			target += "?" + auth.MediaTokenQueryParam + "=" + url.QueryEscape(token)
+		}
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		req.Host = "example.test"
+		req.Header.Set("Accept", "image/webp")
+		if bearer != "" {
+			req.Header.Set("Authorization", "Bearer "+bearer)
+		}
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		return rec
+	}
+
+	issueFree := func(t *testing.T, at time.Time) string {
+		t.Helper()
+		token, _, err := tokens.IssueFreeEpisodeMediaToken(tenantID.String(), episodeID.String(), at)
+		if err != nil {
+			t.Fatalf("IssueFreeEpisodeMediaToken() error = %v", err)
+		}
+		return token
+	}
+
+	// The rendition behind the ciphertext is a WebP, so its container is what
+	// says a decryption produced the page rather than more noise.
+	isWebP := func(data []byte) bool {
+		return len(data) >= 12 && string(data[0:4]) == "RIFF" && string(data[8:12]) == "WEBP"
+	}
+
+	assertEncrypted := func(t *testing.T, rec *httptest.ResponseRecorder, cacheControl string) {
+		t.Helper()
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+		}
+		if got := rec.Header().Get("Content-Type"); got != "application/octet-stream" {
+			t.Errorf("Content-Type = %q, want application/octet-stream", got)
+		}
+		if got := rec.Header().Get(imageEncryptionHeader); got != imageEncryptionAlgorithm {
+			t.Errorf("%s = %q, want %q", imageEncryptionHeader, got, imageEncryptionAlgorithm)
+		}
+		if got := rec.Header().Get(imageContentTypeHeader); got != "image/webp" {
+			t.Errorf("%s = %q, want image/webp", imageContentTypeHeader, got)
+		}
+		if rec.Header().Get(imageKeyIDHeader) == "" {
+			t.Errorf("%s is empty", imageKeyIDHeader)
+		}
+		if got := rec.Header().Get("Cache-Control"); got != cacheControl {
+			t.Errorf("Cache-Control = %q, want %q", got, cacheControl)
+		}
+		if isWebP(rec.Body.Bytes()) {
+			t.Error("the response body is the rendition itself, not ciphertext")
+		}
+	}
+
+	decrypt := func(t *testing.T, rec *httptest.ResponseRecorder, rawToken, subject string) []byte {
+		t.Helper()
+		plain, err := (imageCipher{rawToken: rawToken, subject: subject}).xor(rec.Body.Bytes(), rec.Header().Get(imageKeyIDHeader))
+		if err != nil {
+			t.Fatalf("xor: %v", err)
+		}
+		return plain
+	}
+
+	t.Run("the material on the URL decrypts the response", func(t *testing.T) {
+		token := issueFree(t, time.Now())
+		rec := serve(t, anonymousQueries, token, "")
+		assertEncrypted(t, rec, "public, max-age=3600")
+		if !isWebP(decrypt(t, rec, token, auth.FreeEpisodeMediaSubject)) {
+			t.Error("the response did not decrypt to the rendition")
+		}
+	})
+
+	// The material rotates daily and stays valid for two windows, so a reader
+	// holding yesterday's URL decodes what that URL was handed.
+	t.Run("the previous window's material still decrypts the response", func(t *testing.T) {
+		token := issueFree(t, time.Now().Add(-auth.FreeEpisodeMediaTokenWindow))
+		rec := serve(t, anonymousQueries, token, "")
+		assertEncrypted(t, rec, "public, max-age=3600")
+		if !isWebP(decrypt(t, rec, token, auth.FreeEpisodeMediaSubject)) {
+			t.Error("the response did not decrypt to the rendition")
+		}
+	})
+
+	// Dropping or corrupting the material is not a way to ask for the page in
+	// the clear: the response is encrypted under the current window's token,
+	// which image-server derives for itself.
+	for name, token := range map[string]string{
+		"nothing is presented":     "",
+		"the material is mangled":  "not-a-jwt",
+		"the material has expired": issueFree(t, time.Now().Add(-3*auth.FreeEpisodeMediaTokenWindow)),
+	} {
+		t.Run("the response is still ciphertext when "+name, func(t *testing.T) {
+			rec := serve(t, anonymousQueries, token, "")
+			assertEncrypted(t, rec, "public, max-age=3600")
+			if !isWebP(decrypt(t, rec, issueFree(t, time.Now()), auth.FreeEpisodeMediaSubject)) {
+				t.Error("the response was not encrypted under the current window's material")
+			}
+		})
+	}
+
+	t.Run("a signed-in reader's bearer decrypts the same body", func(t *testing.T) {
+		queries := paidEpisodeQueries(mediaID, episodeID, userID, 4)
+		queries.public.EpisodeID = episodeID
+		queries.public.HasPublicAccess = true
+		bearer, _, err := tokens.Issue("reader-public-id", auth.AudiencePublic, tenantID.String(), "", 4, time.Now())
+		if err != nil {
+			t.Fatalf("Issue() error = %v", err)
+		}
+		rec := serve(t, queries, "", bearer)
+		assertEncrypted(t, rec, "private, max-age=60")
+		if !isWebP(decrypt(t, rec, bearer, "reader-public-id")) {
+			t.Error("the response did not decrypt to the rendition")
+		}
+	})
+
+	t.Run("the flag off leaves an ordinary image response", func(t *testing.T) {
+		t.Setenv("PUBLIRA_IMAGE_ENCRYPTION", "disabled")
+		rec := serve(t, anonymousQueries, issueFree(t, time.Now()), "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+		}
+		if got := rec.Header().Get("Content-Type"); got != "image/webp" {
+			t.Errorf("Content-Type = %q, want image/webp", got)
+		}
+		if got := rec.Header().Get(imageEncryptionHeader); got != "" {
+			t.Errorf("%s = %q, want no header", imageEncryptionHeader, got)
+		}
+		if !isWebP(rec.Body.Bytes()) {
+			t.Error("the response body is not the rendition")
+		}
+	})
+
+	// admin-image-server renders bodies with an <img>, which cannot decrypt,
+	// so the flag leaves its responses alone.
+	t.Run("admin-image-server serves the same body unencrypted", func(t *testing.T) {
+		srv := newTestServerWithConstructor(t,
+			stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "admin.example.test"}},
+			stubFactory{q: anonymousQueries},
+			&countingStore{objects: map[string]storedObject{
+				"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+			}},
+			tokens,
+			NewAdminHandler,
+		)
+		req := httptest.NewRequest(http.MethodGet, "/images/episodes/"+mediaID.String(), nil)
+		req.Host = "admin.example.test"
+		req.Header.Set("Accept", "image/webp")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+		}
+		if got := rec.Header().Get(imageEncryptionHeader); got != "" {
+			t.Errorf("%s = %q, want no header", imageEncryptionHeader, got)
+		}
+		if !isWebP(rec.Body.Bytes()) {
+			t.Error("the response body is not the rendition")
+		}
+	})
+
+	// The material names no reader, so it cannot be spent as one: the public
+	// rule still answers, encrypted or not.
+	t.Run("the material unlocks nothing while the flag is on", func(t *testing.T) {
+		paid := anonymousQueries
+		paid.public.HasPublicAccess = false
+		unpublished := anonymousQueries
+		unpublished.public.IsPublished = sql.NullBool{Bool: false, Valid: true}
+
+		for name, queries := range map[string]stubTenantQueries{"a paid body": paid, "an unpublished body": unpublished} {
+			for material, token := range map[string]string{"with the material": issueFree(t, time.Now()), "without it": ""} {
+				if rec := serve(t, queries, token, ""); rec.Code != http.StatusForbidden {
+					t.Errorf("%s %s: status = %d, want %d", name, material, rec.Code, http.StatusForbidden)
+				}
+			}
+		}
+	})
+}
+
 func TestEpisodeImageMediaTokenEncryptsAfterSharedConversionCache(t *testing.T) {
 	t.Setenv("PUBLIRA_IMAGE_ENCRYPTION", "enabled")
 

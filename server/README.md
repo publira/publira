@@ -132,7 +132,7 @@ The Go integration tests against RustFS use the Testcontainers helper `StartRust
 
 After checking permissions, `image-server` / `admin-image-server` convert JPEG/PNG/GIF to WebP or AVIF with [Manael](https://github.com/manaelproxy/manael) and resize them with `w` / `h` / `fit` / `q`. The converted result is kept in an intermediate cache, so the same `Accept` and query does not hit S3 or run the conversion again.
 
-For episode body images unlocked by a purchase or a ticket, when `PUBLIRA_IMAGE_ENCRYPTION=enabled`, the cached converted plaintext is not returned as-is: it is encrypted just before the response, bound to a short-lived JWT and its `sub`. The default is disabled, so that enabling it explicitly after the client-side decryption is deployed keeps an early deploy from breaking existing viewers. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Public images, and the admin previews that use `<img>`, remain ordinary image responses.
+For episode body images, when `PUBLIRA_IMAGE_ENCRYPTION=enabled`, the cached converted plaintext is not returned as-is: it is encrypted just before the response, bound to a JWT and its `sub`. The default is disabled, so that enabling it explicitly after the client-side decryption is deployed keeps an early deploy from breaking existing viewers. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response from `admin-image-server`, whose previews are rendered by an `<img>` that cannot decrypt, remain ordinary image responses.
 
 | Header | Value / meaning |
 | --- | --- |
@@ -142,9 +142,20 @@ For episode body images unlocked by a purchase or a ticket, when `PUBLIRA_IMAGE_
 
 `xor-hmac-sha256-v1` takes the JWT string as the HMAC key, computes HMAC-SHA-256 over `"publira:image:xor-hmac-sha256:v1\\0" + sub + "\\0" + key-id`, and uses that output as the HMAC key. It then XORs the body with a 32-byte stream produced by HMAC-SHA-256 over the 8-byte big-endian block number. This is a delivery layer that raises the cost of extraction, not DRM. The client performs the same steps with the `t` in the URL (or the Bearer JWT it sent), the JWT's `sub`, and the headers above.
 
+Which JWT a body is bound to depends on which rule let the request through:
+
+| Body | Bound to | `Cache-Control` |
+| --- | --- | --- |
+| Unlocked by a purchase or a ticket | The credential the request carried — the `Authorization` bearer, or the reader's media token on the URL — and its `sub` | `private, max-age=60` |
+| Free (`price = 0`) | The episode's rotating media token (see [Media tokens](#media-tokens-audience-media)) and its synthetic `sub` | `public, max-age=3600` |
+
+A free body is encrypted from key material its reader may hold no credential for, so `image-server` recomputes the current window's token itself instead of trusting what the URL carried. It encrypts under the presented `t` when that token is this tenant's and this episode's and has not expired — which is how a reader still holding the previous window's URL decodes it — and under the current window's token in every other case. Presenting nothing, a mangled value, or an expired one therefore yields ciphertext that request cannot read, rather than the page in the clear.
+
+Only the URL decides the key of a free body; the `Authorization` header is not read on that path. The response is therefore a pure function of the URL, and stays shareable: a CDN keeps one entry per rendition for the whole tenant, exactly as an unencrypted free body does. What encryption costs there is that the entry is only usable for as long as the material on the URL is: one hour of freshness against a token that rotates daily and stays valid for two windows, so a cached response can never outlive the key that decodes it. Anything holding the URL longer — the public site's shared `GetEpisodeDetail` cache, most of all — has to stay under the same floor.
+
 - `PUBLIRA_REDIS_URL`: Redis for the conversion cache. Unset / `disabled` / `off` / `false` means in-process memory only
 - `PUBLIRA_IMAGE_CACHE_TTL`: TTL of the conversion cache (a Go duration or a number of seconds; default `1h`)
-- `PUBLIRA_IMAGE_ENCRYPTION`: with `enabled` / `true` / `on` / `1`, encrypts authorized episode bodies with `xor-hmac-sha256-v1` (disabled by default)
+- `PUBLIRA_IMAGE_ENCRYPTION`: with `enabled` / `true` / `on` / `1`, encrypts episode bodies with `xor-hmac-sha256-v1` (disabled by default). Read by `image-server` only, so it takes both a paid and a free body at once and leaves `admin-image-server` alone
 
 ### Checking load and caching
 
