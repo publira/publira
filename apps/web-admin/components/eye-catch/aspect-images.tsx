@@ -92,6 +92,14 @@ const EyeCatchAspectSlot = ({
     fileInputRef.current?.click();
   }, []);
 
+  // The preview stands in for the file only while it is being chosen. Once the
+  // form is submitted the stored crop is the truth, and a preview left set
+  // would outrank it below — `router.refresh()` keeps client state, so the
+  // slot would go on showing the uncropped file the editor picked.
+  const handleSubmit = useCallback(() => {
+    setLocalPreviewUrl("");
+  }, []);
+
   const handleImageFileChange = useCallback<
     ChangeEventHandler<HTMLInputElement>
   >((event) => {
@@ -156,7 +164,7 @@ const EyeCatchAspectSlot = ({
         })}
       </p>
 
-      <form action={formAction} className="grid gap-2">
+      <form action={formAction} className="grid gap-2" onSubmit={handleSubmit}>
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="public_id" type="hidden" value={publicId} />
         <input name="variant_type" type="hidden" value={variantType} />
