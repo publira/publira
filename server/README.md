@@ -468,7 +468,7 @@ Each API server connects with its own dedicated PostgreSQL login user, which kee
 | platform-api | `publira_platform` | `PUBLIRA_PLATFORM_DB_URL` | `postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable` |
 | admin-api | `publira_admin` | `PUBLIRA_ADMIN_DB_URL` | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable` |
 | api (public) | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
-| outbox-worker | Equivalent to BYPASSRLS (superuser locally) | `PUBLIRA_WORKER_DB_URL` (falling back to `PUBLIRA_DB_URL`) | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
+| outbox-worker | `publira_outbox` (BYPASSRLS) | `PUBLIRA_WORKER_DB_URL` (falling back to `PUBLIRA_DB_URL`) | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
 | batch project-episode-reads | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`, falling back to `PUBLIRA_CONTENT_EVENTS_DB_URL` → `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch aggregate-content-stats | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch aggregate-rankings | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
@@ -477,11 +477,15 @@ Each API server connects with its own dedicated PostgreSQL login user, which kee
 | batch purge-orphan-images | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_ORPHAN_IMAGES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 
-`publira_platform` and `publira_content_stats` carry the BYPASSRLS attribute and access data across every tenant. `publira_admin` / `publira_public` have RLS enabled and are scoped by tenant ID.
+`publira_platform`, `publira_content_stats`, and `publira_outbox` carry the BYPASSRLS attribute and access data across every tenant. `publira_admin` / `publira_public` have RLS enabled and are scoped by tenant ID, so neither can serve a cross-tenant process such as outbox-worker, which claims pending rows for every tenant at once.
+
+outbox-worker gets its own login rather than sharing `publira_content_stats` because it also owns River's schema: it applies `river_job` and the rest with `rivermigrate` at startup, so `publira_outbox` is the only app role that holds `CREATE` on the `public` schema. The daily batches have no reason to be able to change that schema.
+
+Locally, `PUBLIRA_WORKER_DB_URL` is either unset — outbox-worker then falls back to `PUBLIRA_DB_URL` — or pointed by a `dev-env` profile at the same superuser connection every local tool uses, which is what the **Local default** column above records. Production sets it to `publira_outbox` and never reaches that fallback.
 
 ### Local development
 
-`task db:setup` applies `db/seeds/baseline/000_rls_bypass_role.sql`, which creates the four users.
+`task db:setup` applies `db/seeds/baseline/000_rls_bypass_role.sql`, which creates the five login users in the table above.
 
 ### Production
 
@@ -490,11 +494,12 @@ After running the seed, change each user's password to a secure value:
 ```sql
 ALTER ROLE publira_platform PASSWORD '<secure_password>';
 ALTER ROLE publira_content_stats PASSWORD '<secure_password>';
+ALTER ROLE publira_outbox PASSWORD '<secure_password>';
 ALTER ROLE publira_admin    PASSWORD '<secure_password>';
 ALTER ROLE publira_public   PASSWORD '<secure_password>';
 ```
 
-Then set each server's environment variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password.
+Then set each process's environment variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. `PUBLIRA_WORKER_DB_URL` is required in production: leaving it unset falls back to `PUBLIRA_DB_URL`, which is the connection the migration tooling uses.
 
 ## Notes on initial data
 

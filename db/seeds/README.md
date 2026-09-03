@@ -57,10 +57,14 @@ task db:seed ENV=prod    # Production seeds (database users and roles only)
 | --- | --- | --- |
 | `publira_rls_bypass` | NOLOGIN, BYPASSRLS | Named privilege used to grant a dedicated role in production |
 | `publira_platform` | LOGIN, BYPASSRLS | Login user for the platform API; bypasses RLS to access every tenant |
+| `publira_content_stats` | LOGIN, BYPASSRLS | Login user for the daily stats batches; bypasses RLS to aggregate across every tenant |
+| `publira_outbox` | LOGIN, BYPASSRLS | Login user for outbox-worker; bypasses RLS to claim pending rows across every tenant, and owns River's schema |
 | `publira_admin` | LOGIN | Login user for the admin API; RLS enabled (tenant-scoped) |
 | `publira_public` | LOGIN | Login user for the public API; RLS enabled (tenant-scoped) |
 
-The development passwords are `platformpass`, `adminpass`, and `publicpass`. After seeding a production environment, change them to secure values with `ALTER ROLE ... PASSWORD`.
+`publira_outbox` is the only one of them with `CREATE` on the `public` schema: outbox-worker applies River's own schema (`river_job` and the rest) with `rivermigrate` at startup.
+
+The development passwords are `platformpass`, `contentstatspass`, `outboxpass`, `adminpass`, and `publicpass`. After seeding a production environment, change them to secure values with `ALTER ROLE ... PASSWORD`.
 
 ## Development data counts
 

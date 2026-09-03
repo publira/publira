@@ -31,7 +31,7 @@ task docker:build:api CMD_NAME=outbox-worker PORT=8003
 
 ## Main environment variables
 
-The connection must use a role **equivalent to BYPASSRLS**. `publira_admin` / `publira_public`, which carry tenant RLS, cannot claim pending rows across tenants.
+In production the connection must use `publira_outbox`, the BYPASSRLS login the baseline seed creates for this process; locally the fallbacks below land on the superuser connection, which bypasses RLS as well. `publira_admin` / `publira_public`, which carry tenant RLS, cannot claim pending rows across tenants either way.
 
 - `PUBLIRA_WORKER_DB_URL` (optional; falls back to `PUBLIRA_DB_URL`, and otherwise to the development default `postgres://postgres:password@db:5432/publira?sslmode=disable`)
 - `PUBLIRA_WORKER_ADDR` (optional, default `:8003`. Serves `/livez` and `/readyz`)
@@ -47,7 +47,7 @@ The connection must use a role **equivalent to BYPASSRLS**. `publira_admin` / `p
 
 The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
-River's schema (`river_job` and the rest) is applied with `rivermigrate` at startup. It is not part of the application's own migrations.
+River's schema (`river_job` and the rest) is applied with `rivermigrate` at startup. It is not part of the application's own migrations, and `publira_outbox` holds `CREATE` on the `public` schema so that it can create and own those tables.
 
 ## Logs and metrics
 

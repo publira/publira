@@ -36,6 +36,19 @@ BEGIN
 END
 $$;
 
+-- Outbox worker: a BYPASSRLS login that claims pending outbox rows across
+-- every tenant. It is separate from publira_content_stats because the worker
+-- also owns River's schema, which the daily batches must not be able to alter.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_outbox') THEN
+        CREATE ROLE publira_outbox LOGIN PASSWORD 'outboxpass' BYPASSRLS;
+    ELSE
+        ALTER ROLE publira_outbox LOGIN BYPASSRLS;
+    END IF;
+END
+$$;
+
 -- Admin API user: subject to RLS (tenant-scoped).
 DO $$
 BEGIN
@@ -63,17 +76,22 @@ $$;
 DO $$
 BEGIN
     EXECUTE format(
-        'GRANT CONNECT ON DATABASE %I TO publira_platform, publira_content_stats, publira_admin, publira_public',
+        'GRANT CONNECT ON DATABASE %I TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public',
         current_database()
     );
 END
 $$;
-GRANT USAGE ON SCHEMA public TO publira_platform, publira_content_stats, publira_admin, publira_public;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO publira_platform, publira_content_stats, publira_admin, publira_public;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO publira_platform, publira_content_stats, publira_admin, publira_public;
+GRANT USAGE ON SCHEMA public TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
 
 -- Ensure tables/sequences created by subsequent migrations automatically inherit app grants.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO publira_platform, publira_content_stats, publira_admin, publira_public;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT USAGE, SELECT ON SEQUENCES TO publira_platform, publira_content_stats, publira_admin, publira_public;
+GRANT USAGE, SELECT ON SEQUENCES TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
+
+-- River versions its own schema (river_job and the rest) and outbox-worker
+-- applies it with rivermigrate at startup, so that role needs to create tables,
+-- types, indexes, and functions in the schema. No other app role does.
+GRANT CREATE ON SCHEMA public TO publira_outbox;
