@@ -22,7 +22,7 @@ import { ErrorScreen } from "#components/error-screen";
  * input, conflicts — stay inline as `FormMessage`, and a resource the caller
  * cannot see is `notFound()` (see `not-found.tsx`).
  *
- * Reach narrowed in #647: a section wrapped in `SectionErrorBoundary` takes its
+ * `SectionErrorBoundary` narrows the reach: a section wrapped in one takes its
  * own throws, so only a failure outside every such boundary — or one in a page
  * that has no suspended section to degrade — replaces the whole console page.
  *
@@ -31,8 +31,8 @@ import { ErrorScreen } from "#components/error-screen";
  * Reach, as measured against `next dev` by throwing from a page body: a direct
  * hit renders this screen with the sidebar and header intact, after hydration,
  * with the response status left at 200 (see `not-found.tsx` for why the status
- * is already committed). The production build follows the same rule, measured
- * for #683: a failure raised after the static shell has been flushed — every
+ * is already committed). The production build follows the same rule: a failure
+ * raised after the static shell has been flushed — every
  * failed read, since they all cross the network — reaches a boundary on a
  * direct hit, while one raised in the first synchronous pass aborts the
  * response as a bare `500 Internal Server Error` that no boundary can catch.

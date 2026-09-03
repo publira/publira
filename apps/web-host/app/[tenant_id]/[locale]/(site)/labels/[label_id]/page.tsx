@@ -239,7 +239,7 @@ const LabelDetailContent = async ({
 
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
-  // to render anything (#672).
+  // to render anything.
   const [siteLabel, result, messages] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
     loadPublishedLabelDetail(tenantId, labelId, locale, token),

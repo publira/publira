@@ -20,7 +20,7 @@ const currentSession = async (
 
 /**
  * GET /logout must not be a logout (forced-logout CSRF). The route is gone;
- * proxy answers 404 and leaves the session cookie alone (#655).
+ * proxy answers 404 and leaves the session cookie alone.
  */
 test.describe("platform GET /logout", () => {
   test("an authenticated GET is a 404 and keeps the session", async ({

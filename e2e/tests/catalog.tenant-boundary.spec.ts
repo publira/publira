@@ -22,7 +22,7 @@ const otherTenantUrl = (pathname: string): string =>
  *
  * A record another tenant owns renders the not-found UI with HTTP 200, not 404:
  * the detail routes read inside `<Suspense>`, so the shell is already committed
- * when `notFound()` runs (#672). What matters for isolation is unchanged and
+ * when `notFound()` runs. What matters for isolation is unchanged and
  * still asserted below — the other tenant's title, episode title and author
  * name never appear in the response.
  */

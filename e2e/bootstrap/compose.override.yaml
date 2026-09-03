@@ -1,8 +1,8 @@
-# Overlay on the repository-root ../../compose.yaml for the bootstrap check (#514).
+# Overlay on the repository-root ../../compose.yaml for the bootstrap check.
 #
 # The check must exercise the *real* dependency-service definitions (image,
-# volume mount) because that is where the regression it guards against happened
-# (#511). Only the three data stores are started; `mailpit` / `jaeger` stay down
+# volume mount) because that is where the regression it guards against happened.
+# Only the three data stores are started; `mailpit` / `jaeger` stay down
 # and `task dev` runs on the host.
 #
 # This file changes the two things a host-side check needs:

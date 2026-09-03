@@ -98,8 +98,7 @@ export const requireAdminSession = async (): Promise<string> => {
  *
  * Of the API's own rejections only `Code.Unauthenticated` qualifies. Everything
  * else — a wrong password, a validation failure, an outage — propagates
- * unchanged, so a business error is never mistaken for a lost session
- * (Epic #65 / #679).
+ * unchanged, so a business error is never mistaken for a lost session.
  */
 export const withAdminSessionReauth = async <T>(
   run: () => Promise<T>

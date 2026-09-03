@@ -29,8 +29,7 @@ export interface RpcErrorMessageOptions {
  * Localized copy for a caught RPC error.
  *
  * Shared rather than per-app on purpose: the same RPC error has to read the
- * same way in `web-host`, `web-admin`, and `web-platform` (#645), in each
- * locale (#870).
+ * same way in `web-host`, `web-admin`, and `web-platform`, in each locale.
  *
  * `fallback` is the operation-specific message ("著者の保存に失敗しました。…")
  * used when the category has no shared wording. Pass `overrides` to replace

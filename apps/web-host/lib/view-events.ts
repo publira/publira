@@ -36,7 +36,7 @@ const API_ANONYMOUS_ID_COOKIE_NAME = "publira_aid";
 
 /**
  * The signed-out reader's view actor, kept the same way as every other cookie
- * this app owns (#600): host-only, `HttpOnly`, `SameSite=Lax`, and `Secure`
+ * this app owns: host-only, `HttpOnly`, `SameSite=Lax`, and `Secure`
  * outside development. The value is a UUID this app mints and nothing else —
  * no address, no user agent, no account — so it is stored as-is rather than
  * sealed like the session cookie.

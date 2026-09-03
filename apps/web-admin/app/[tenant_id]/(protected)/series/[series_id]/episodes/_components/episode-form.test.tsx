@@ -24,7 +24,7 @@ const render = (ui: React.ReactNode) =>
 /**
  * Next.js keeps recently visited pages mounted inside a hidden `<Activity>`
  * for its router bfcache, so two episode create forms can sit in the document
- * at the same time (#1011).
+ * at the same time.
  */
 const renderBothForms = () =>
   render(

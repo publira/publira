@@ -20,7 +20,7 @@ export const POST = async (
   request: Request,
   { params }: RouteContext<"/[tenant_id]/api/v1/webhook/stripe">
 ) => {
-  // #600's Origin check protects cookie-authenticated mutations. Stripe does
+  // The same-origin check protects cookie-authenticated mutations. Stripe does
   // not send a browser session cookie; the API server verifies its signature.
   const { tenant_id } = await params;
   const path = webhookPathSchema.safeParse({ tenantId: tenant_id });

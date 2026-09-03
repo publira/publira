@@ -32,7 +32,7 @@ const currentSession = async (
   sessionCookieValue(await page.context().cookies(), HOST_SESSION_COOKIE_NAME);
 
 /**
- * Login / logout / member-guard / session rejection for web-host (#67).
+ * Login / logout / member-guard / session rejection for web-host.
  *
  * Catalog stays public. `/my`, `/announcements`, `/notifications`, and
  * `/settings` are the member gate. GET /logout is a published-page slug, not a

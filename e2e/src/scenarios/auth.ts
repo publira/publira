@@ -1,5 +1,5 @@
 /**
- * Constants for the auth / session-expiry E2E (#67).
+ * Constants for the auth / session-expiry E2E.
  *
  * Seed accounts match `db/seeds/README.md`. Dedicated scenario accounts
  * (`040_auth_e2e.sql`) exist so a credentials_version bump cannot invalidate

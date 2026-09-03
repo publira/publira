@@ -276,7 +276,7 @@ func TestDBViewEventIsNotRecordedForAnUnpublishedTarget(t *testing.T) {
 // The detail RPCs are behind a `"use cache"` boundary in web-host, and a fill
 // of that cache reaches the API carrying neither the reader's cookie nor a
 // bearer. When they instrumented views themselves, every fill minted a fresh
-// actor and left a row nothing could deduplicate (#1276).
+// actor and left a row nothing could deduplicate.
 func TestDBRepeatedDetailReadsRecordNoViewEvents(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")

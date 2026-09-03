@@ -51,7 +51,7 @@ test.describe("web-host public API outage", () => {
    * whole request — the awaiting `try` / `catch` never ran, and the route
    * answered a bare `500 Internal Server Error` body instead of any fallback.
    *
-   * As of #672 no cached read throws: each one reports failure as a value and
+   * No cached read throws any more: each one reports failure as a value and
    * drops its own cache entry, so the page renders `SectionError` (a section
    * inside `<Suspense>`) or `PageLoadError` (a detail route, where that read is
    * the whole page). A missing record answers HTTP 200 with the not-found UI,

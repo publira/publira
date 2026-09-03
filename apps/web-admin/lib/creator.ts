@@ -60,7 +60,7 @@ export type UpdateCreatorResult =
  * another tenant's creator would leak whether it exists.
  *
  * The flag exists because `getCreator()` runs inside a `"use cache: private"`
- * scope, where a thrown `notFound()` is not observable by the caller (#672).
+ * scope, where a thrown `notFound()` is not observable by the caller.
  * The interrupt has to be raised by the caller, outside the cache scope.
  */
 export type GetCreatorResult =

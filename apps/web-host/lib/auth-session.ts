@@ -73,7 +73,7 @@ export const requirePublicSession = async (
  *
  * Only `Code.Unauthenticated` qualifies. Everything else — a wrong password, a
  * validation failure, an outage — propagates unchanged, so a business error is
- * never mistaken for a lost session (Epic #65 / #679).
+ * never mistaken for a lost session.
  */
 export const withPublicSessionReauth = async <T>(
   locale: Locale,

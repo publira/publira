@@ -33,12 +33,13 @@ const currentSession = async (
   sessionCookieValue(await page.context().cookies(), ADMIN_SESSION_COOKIE_NAME);
 
 /**
- * Login / logout / session rejection for web-admin (#67).
+ * Login / logout / session rejection for web-admin.
  *
- * GET /logout must stay a 404 (forced-logout CSRF, #655). Role denial uses the
- * seed member, who can sign in to the console but cannot edit tenant settings.
- * credentials_version bumps use a dedicated scenario admin so they cannot
- * invalidate `admin.publish-flow` / `admin.access-tickets` mid-run.
+ * GET /logout must stay a 404, so a forced-logout link cannot end a session.
+ * Role denial uses the seed member, who can sign in to the console but cannot
+ * edit tenant settings. credentials_version bumps use a dedicated scenario
+ * admin so they cannot invalidate `admin.publish-flow` /
+ * `admin.access-tickets` mid-run.
  */
 test.describe("web-admin auth", () => {
   test("valid credentials return to the series list", async ({ page }) => {

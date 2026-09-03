@@ -180,7 +180,8 @@ export const listEpisodeOptionsAction = async (
   seriesPublicId: string,
   locale: Locale
 ): Promise<ListTicketEpisodeOptionsResult> => {
-  // This Server Action only reads episode options; #600 applies to mutations.
+  // This Server Action only reads episode options; the same-origin check
+  // applies to mutations.
   const parsed = listEpisodeOptionsSchema(sharedCatalog(locale)).safeParse({
     seriesPublicId,
     tenantId,

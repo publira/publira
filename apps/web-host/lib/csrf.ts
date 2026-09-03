@@ -32,10 +32,10 @@ const isMatchingReferer = (value: string, host: string): boolean => {
 /**
  * Whether the browser sent this request from this tenant's host.
  *
- * #600 deliberately uses Origin/Referer validation instead of a double-submit
- * token. Tenant hosts are dynamic, so this compares the request's advertised
- * origin with Host (or the trusted proxy's X-Forwarded-Host) rather than a
- * fixed deployment allowlist.
+ * This app deliberately uses Origin/Referer validation instead of a
+ * double-submit token. Tenant hosts are dynamic, so this compares the
+ * request's advertised origin with Host (or the trusted proxy's
+ * X-Forwarded-Host) rather than a fixed deployment allowlist.
  *
  * The headers are a parameter rather than read here, because a Route Handler
  * already holds the request and answers a rejection with a status code, while

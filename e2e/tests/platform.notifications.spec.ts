@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
 
 /**
- * The platform inbox (#882) is header chrome plus `/notifications`. Seed data
- * has no inbox rows, so the empty notification menu is the path this suite
- * can assert without waiting on #861.
+ * The platform inbox is header chrome plus `/notifications`. Seed data has no
+ * inbox rows, so the empty notification menu is the path this suite can assert
+ * without waiting on a delivery path that fills the inbox.
  */
 test.describe("web-platform notification bell", () => {
   test("opens the empty notification menu and moves to the notification list", async ({

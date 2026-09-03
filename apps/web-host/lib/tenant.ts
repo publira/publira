@@ -48,11 +48,11 @@ export interface TenantSiteInfo {
   /** UI locale a reader gets when the URL does not name one. */
   defaultLocale: Locale;
   domain: string;
-  /** The public site's `rel="icon"` (#549); no icon is declared without it. */
+  /** The public site's `rel="icon"`; no icon is declared without it. */
   iconImageUpdatedAt?: string;
   iconImageVariants?: TenantImageVariant[];
   /**
-   * The public header brand mark (#542). Absent while the tenant has not
+   * The public header brand mark. Absent while the tenant has not
    * uploaded a logo.
    */
   logoImageUpdatedAt?: string;
@@ -118,7 +118,7 @@ const toTenantImageVariants = (
  * Site chrome is the only thing this feeds — the header brand, the footer, the
  * `<title>` template — and every one of those is resolved before a static shell
  * exists, in a layout or in `generateMetadata`. A throw there takes the whole
- * route down with a bare 500 that no boundary can reach (#672), so an
+ * route down with a bare 500 that no boundary can reach, so an
  * unavailable API degrades the chrome to its defaults instead. The failed entry
  * is dropped, so the header stops standing in for the tenant's name as soon as
  * the API answers again.
@@ -247,14 +247,14 @@ export const getTenantSiteLabel = async (
 };
 
 /**
- * Display zone for every date the public site shows a reader (#567). One entry
+ * Display zone for every date the public site shows a reader. One entry
  * point, so a page never falls back to the fixed `DEFAULT_TIME_ZONE` by
  * omission and the site agrees with the admin console about what the tenant's
  * wall clock is.
  *
  * An unavailable tenant read degrades to {@link DEFAULT_TIME_ZONE} rather than
  * to the host's zone, so the rendered wall clock never depends on where the
- * container runs (#564). The read carries `tenant:<id>:site`, which the admin
+ * container runs. The read carries `tenant:<id>:site`, which the admin
  * API revalidates when the zone is saved (`tenantTimezoneRevalidateTags`), so a
  * change reaches the site without waiting for the cache to age out.
  */

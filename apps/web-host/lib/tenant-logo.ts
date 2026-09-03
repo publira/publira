@@ -1,7 +1,7 @@
 import type { TenantImageVariant, TenantSiteInfo } from "./tenant";
 
 /**
- * The variant the public header should render as the brand mark (#542).
+ * The variant the public header should render as the brand mark.
  * `variantType` names what the image is for, not a size — the image server
  * resizes the stored master on request — so a branding image has one variant.
  *

@@ -32,9 +32,10 @@ const isMatchingReferer = (value: string, host: string): boolean => {
 /**
  * Reject a mutation unless the browser sent it from this Platform host.
  *
- * #600 deliberately uses Origin/Referer validation instead of a double-submit
- * token. This compares the request's advertised origin with Host (or the
- * trusted proxy's X-Forwarded-Host) rather than a fixed deployment allowlist.
+ * This app deliberately uses Origin/Referer validation instead of a
+ * double-submit token. This compares the request's advertised origin with
+ * Host (or the trusted proxy's X-Forwarded-Host) rather than a fixed
+ * deployment allowlist.
  * Route Handlers are outside this guard because web-platform only exposes
  * GET-only health checks.
  */

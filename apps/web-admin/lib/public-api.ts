@@ -60,7 +60,7 @@ const getTenantPublicInfo = async (
       // Console chrome only — the tenant name in `<title>` and the theme
       // colours. Both are resolved before a static shell exists, where a throw
       // from a `"use cache"` fill answers a bare 500 for the whole route
-      // instead of reaching any boundary (#672). The entry is dropped, so the
+      // instead of reaching any boundary. The entry is dropped, so the
       // real name and theme come back as soon as the public API does.
       console.warn("[web-admin] getTenantPublicInfo failed", error);
       dropFailedCacheEntry();
@@ -123,7 +123,7 @@ const lastConfirmedTenantLocale = new LRUCache<string, Locale>({ max: 500 });
  * language the console renders in — and it must not stop the console rendering
  * at all. This read is the one the shell resolves before any `<Suspense>`
  * boundary exists, where a throw answers a bare 500 instead of reaching the
- * error screen (#672), so a failed read reports the last locale the API did
+ * error screen, so a failed read reports the last locale the API did
  * confirm rather than giving up.
  *
  * Only a process that has never had an answer for this tenant throws: there is

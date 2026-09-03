@@ -15,7 +15,7 @@ interface TenantIcons {
 }
 
 /**
- * Icons for the public site (#549). The uploaded tenant icon is already a
+ * Icons for the public site. The uploaded tenant icon is already a
  * square PNG by the time the image server hands it out
  * (`imageproc.BuildIcon`), so it is linked as it is served; a tenant without
  * one has no icon variant, declares no icon, and keeps the browser's

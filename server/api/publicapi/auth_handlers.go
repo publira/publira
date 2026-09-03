@@ -1001,7 +1001,7 @@ func (s *apiServer) DeleteMe(
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 		// Not Unauthenticated: the session is fine, the confirmation field is
 		// wrong. Clients treat Unauthenticated as "re-authenticate", which would
-		// log the reader out for a typo (#679).
+		// log the reader out for a typo.
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid password"), "password")
 	}
 	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for the dev-environment bootstrap check (#514).
+# Shared helpers for the dev-environment bootstrap check.
 #
 # The check runs the documented developer workflow end to end against a fresh
 # Compose project and an empty Postgres volume:
@@ -19,7 +19,7 @@ BOOTSTRAP_COMPOSE_FILE="${BOOTSTRAP_DIR}/compose.override.yaml"
 
 # What `db` is expected to keep its data on. PostgreSQL 18 moved the data
 # directory under a major-version subdirectory, so the volume must be mounted
-# at the parent (#511); the check asserts both the mount and that PGDATA
+# at the parent; the check asserts both the mount and that PGDATA
 # actually lives inside it.
 EXPECTED_PGDATA_MOUNT="/var/lib/postgresql"
 EXPECTED_POSTGRES_VOLUME="${COMPOSE_PROJECT_NAME}_postgres-data"

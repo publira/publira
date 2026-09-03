@@ -17,7 +17,7 @@ import {
 import { applyCacheTag, tenantFollowsTag } from "./cache-tags";
 import { loadHostMessages } from "./messages";
 
-/** Public catalog follow targets this app exposes on detail pages (#1130). */
+/** Public catalog follow targets this app exposes on detail pages. */
 export const followTargetKinds = ["author", "series"] as const;
 export type FollowTargetKind = (typeof followTargetKinds)[number];
 

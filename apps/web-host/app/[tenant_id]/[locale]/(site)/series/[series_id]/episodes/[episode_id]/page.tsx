@@ -73,7 +73,7 @@ const EpisodeContent = async (
   // Missing / unpublished / other-series / other-tenant episodes resolve to
   // `null`, and the public site must not tell those apart. A failed read is a
   // value as well: a `"use cache"` fill that throws fails the whole request,
-  // so nothing downstream would get to render (#672).
+  // so nothing downstream would get to render.
   const [result, tenant, messages] = await Promise.all([
     getEpisodeDetail(tenantId, series_id, episode_id, locale),
     getTenantSiteInfo(tenantId),

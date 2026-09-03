@@ -87,7 +87,7 @@ const PublishedPageBody = async (
 
   // Missing / unpublished / other-tenant pages all resolve to `null`. A genuine
   // fetch failure is a value as well: a `"use cache"` fill that throws fails
-  // the whole request, so nothing downstream would get to render (#672).
+  // the whole request, so nothing downstream would get to render.
   const result = await getPublishedPage(tenantId, slug, locale);
 
   if (!result.ok) {

@@ -8,7 +8,7 @@ import { hostPath } from "../src/urls";
 const paidEpisodePath = `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_TENANT.series.paidEpisodeId}`;
 
 /**
- * Public episode access gate (#616). Paid Seed Episode 001-10 is locked
+ * Public episode access gate. Paid Seed Episode 001-10 is locked
  * without a session; `member@example.com` holds seed ticket SeedTCKTAAA1.
  *
  * Seed catalog has no body images, so entitled is "images not published"

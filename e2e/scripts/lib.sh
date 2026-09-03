@@ -249,7 +249,7 @@ e2e_terminate_pid() {
 }
 
 # Teardown removes the lease file, so a holder that outlives it can never be
-# named again and every later acquire fails with no way back (#982). Find it
+# named again and every later acquire fails with no way back. Find it
 # through /proc and take the lock back.
 e2e_reclaim_orphan_lock() {
   local pid pids _
@@ -312,7 +312,7 @@ e2e_spawn_lease_holder() {
     printf '%s\n' "${BASHPID}" >"${ready}"
     # exec so the recorded pid *is* the process holding fd 9. A `sleep` child
     # would inherit the descriptor and keep the flock alive after the holder is
-    # killed, stranding the project with no lease file to recover from (#982).
+    # killed, stranding the project with no lease file to recover from.
     # The delay is ~68 years; `sleep infinity` is GNU-only.
     exec sleep 2147483647
   ) </dev/null >/dev/null 2>&1 &

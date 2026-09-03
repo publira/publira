@@ -74,7 +74,7 @@ const waitUntilEpisodePublishedInDb = async (
 };
 
 /**
- * Admin → admin API → public API → web-host publish flow (#516).
+ * Admin → admin API → public API → web-host publish flow.
  *
  * Login is a prerequisite helper (auth coverage is `admin.auth.spec.ts`). Each test uses a
  * unique title so runs do not depend on leftover rows from a previous suite.

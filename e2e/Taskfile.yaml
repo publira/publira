@@ -4,11 +4,11 @@ version: "3"
 # Include is declared in the root Taskfile (cwd stays at repo root).
 
 includes:
-  # Dev-environment bootstrap check (#514). Separate lifecycle: own compose
+  # Dev-environment bootstrap check. Separate lifecycle: own compose
   # project, no Playwright.
   bootstrap:
     taskfile: ./bootstrap/Taskfile.yaml
-  # Dev Container Traefik routing check (#55). Same compose labels, echo
+  # Dev Container Traefik routing check. Same compose labels, echo
   # backends, no Playwright.
   routing:
     taskfile: ./routing/Taskfile.yaml

@@ -1,4 +1,4 @@
--- Durable member follows (#1128). Episode, series, and creator follows have
+-- Durable member follows. Episode, series, and creator follows have
 -- distinct source tables; content_events must not be used to model any of them.
 
 -- name: CreateEpisodeFollow :one

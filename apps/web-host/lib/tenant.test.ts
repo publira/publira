@@ -165,7 +165,7 @@ describe("tenant", () => {
 
   it("Display in default time zone even when tenant cannot be obtained", async () => {
     // Degrading to the host's zone would make the rendered wall clock depend on
-    // where the container runs, which is the thing #564 removed.
+    // where the container runs, which is exactly what the tenant zone removes.
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("upstream is down", Code.Unavailable)
     );

@@ -4,7 +4,7 @@
  * The console rewrites onto `/[tenant_id]/...` and never puts the locale in
  * the URL: it lives in the `publira_locale` cookie, the same name and parser
  * as web-platform. When that cookie is missing, the request falls through to
- * the tenant's stored default locale (#1046) — read from the public
+ * the tenant's stored default locale — read from the public
  * `GetTenant`, so the login screen and every other unauthenticated screen
  * resolve the same value the signed-in console does. Nothing here names a
  * language of its own: a tenant whose default cannot be read is an outage the

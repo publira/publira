@@ -89,7 +89,7 @@ export const publishedPageHrefFromSlug = (slug: string): string => {
  *
  * A failure resolves to `[]` — the footer is non-critical chrome and is
  * resolved in the site layout, where a throw would take every route down with
- * a bare 500 (#672) — and drops the entry, so the links come back as soon as
+ * a bare 500 — and drops the entry, so the links come back as soon as
  * the API does instead of a soft-empty result sticking until revalidation.
  */
 const listPublishedPageLinksCached = async (
@@ -153,7 +153,7 @@ export const listPublishedPageLinks = async (
  * `ok: false` when the fetch itself failed. It is a value rather than a throw
  * because this runs inside a `"use cache"` scope, and a cache fill that throws
  * fails the whole request — the caller's `try` / `catch` never gets the chance
- * to render anything (#672). The failed entry is dropped, so a recovered API
+ * to render anything. The failed entry is dropped, so a recovered API
  * serves the page again on the next request.
  */
 export const getPublishedPage = async (
@@ -161,7 +161,7 @@ export const getPublishedPage = async (
   slug: string | readonly string[],
   locale: Locale
 ): Promise<CachedReadResult<PublishedPage | null>> => {
-  // Shared public content: remote so multi-instance hosts share entries (#532).
+  // Shared public content: remote so multi-instance hosts share entries.
   "use cache: remote";
 
   const normalizedTenantId = tenantId.trim();

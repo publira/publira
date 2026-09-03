@@ -34,7 +34,7 @@ const noContent = () => new NextResponse(null, { status: 204 });
  * episode by its public id alone, and the API re-checks publication and
  * paid-body access on the write itself.
  *
- * #600's Origin check applies here for that reason: without it any page on the
+ * The same-origin check applies here for that reason: without it any page on the
  * web could file reads against this reader's account.
  */
 export const POST = async (

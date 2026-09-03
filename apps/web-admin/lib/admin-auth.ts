@@ -32,7 +32,7 @@ export {
  *
  * `"session"` is the whole login. `"challenge"` is the half of it a password
  * can settle on its own: the account owes a second factor, and the console
- * holds a short-lived challenge token until it is presented (Epic #59).
+ * holds a short-lived challenge token until it is presented.
  */
 export type AdminLoginResult =
   | {

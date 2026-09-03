@@ -209,7 +209,7 @@ const ViewerPageNavigation = () => {
  * The episode reader. Pages are fetched, decoded, and drawn by
  * `@publira/comic-viewer`, so the body images never become an `<img>` a reader
  * can drag out of the page, and a later encrypted delivery can be dropped in as
- * a plugin hook without changing this layout (#356 / #357).
+ * a plugin hook without changing this layout.
  *
  * `children` are mounted inside the viewer root, for the components that read
  * the reader's progress but draw nothing — the read recorder today. They sit

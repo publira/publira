@@ -6,8 +6,8 @@ import { startApiServer, stopApiServer } from "../src/api-server";
 import { hostPath } from "../src/urls";
 
 /**
- * Route-level error boundary (#643), acceptance criterion "サーバー側の例外で
- * サイトの UI を保ったエラー画面が表示され、リトライできる".
+ * Route-level error boundary: a server-side exception has to show an error
+ * screen that keeps the site UI and offers a retry.
  *
  * What decides whether a reader sees that screen or a bare
  * `500 Internal Server Error` is **when** the failure happens, not which
@@ -18,13 +18,13 @@ import { hostPath } from "../src/urls";
  * | --- | --- | --- |
  * | thrown before the first `await` in a page or a suspended section | HTML | bare `500` (21-byte body), no boundary runs |
  * | thrown after any `await` — a failed RPC, a timer, `connection()` | HTML | `200`, static shell, error streamed into it, boundary renders |
- * | reported as a value (`ok: false`, the rule since #672) | HTML | `200`, `SectionError` / `PageLoadError` rendered server-side |
+ * | reported as a value (`ok: false`, the cached-read rule) | HTML | `200`, `SectionError` / `PageLoadError` rendered server-side |
  *
  * The static shell is flushed only once the render has yielded, so a throw in
  * the first synchronous pass aborts the response before anything is committed
  * and Next.js answers with the plain-text 500 — its own `__next_error__`
  * recovery document is not reached either, which is why adding
- * `app/global-error.tsx` changed nothing when #683 measured it. Once the shell
+ * `app/global-error.tsx` changed nothing when this was measured. Once the shell
  * is out, the same throw is just an error chunk and `(site)/error.tsx` /
  * `SectionErrorBoundary` take over.
  *

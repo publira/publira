@@ -42,7 +42,7 @@ const renderForm = () =>
 /**
  * Next.js keeps recently visited pages mounted inside a hidden `<Activity>`
  * for its router bfcache, so two episode edit pages can sit in the document
- * at the same time (#1011).
+ * at the same time.
  */
 const renderBothForms = () =>
   render(

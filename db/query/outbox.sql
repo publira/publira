@@ -1,4 +1,4 @@
--- Outbox queries (#610 / #611). Producers insert a pending row in the
+-- Outbox queries. Producers insert a pending row in the
 -- same transaction as the domain write. The worker claims due rows,
 -- runs the handler, and records done / retry / dead.
 --

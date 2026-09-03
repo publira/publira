@@ -402,7 +402,7 @@ func forbidSeriesViewEventInsert(mock sqlmock.Sqlmock) *capturedArg {
 
 // The detail reads are cached by their callers, so a fill of that cache carries
 // no reader at all. Instrumenting them would mint a fresh actor per fill and
-// leave a row behind for a page nobody opened (#1276). The unmet-expectation
+// leave a row behind for a page nobody opened. The unmet-expectation
 // check is what proves no insert ran.
 func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)

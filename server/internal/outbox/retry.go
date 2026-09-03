@@ -3,7 +3,7 @@ package outbox
 import "time"
 
 const (
-	// DefaultMaxAttempts is the Epic #287 retry budget. The next failure
+	// DefaultMaxAttempts is the outbox retry budget. The next failure
 	// after this many attempts marks the row dead.
 	DefaultMaxAttempts = 10
 

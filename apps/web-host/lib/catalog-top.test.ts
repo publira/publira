@@ -280,7 +280,7 @@ describe("catalog-top section loaders", () => {
   });
 
   /**
-   * The reads below never throw (#672), so a failure has to travel as a value —
+   * The reads below never throw, so a failure has to travel as a value —
    * a section that could not be built must not look like an empty one.
    */
   it("If retrieving the series list fails, the section also returns failure.", async () => {

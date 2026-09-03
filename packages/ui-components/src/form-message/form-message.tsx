@@ -45,7 +45,7 @@ export const FormMessage = ({
     // form once its Action settles, and resetting an <output> replaces its
     // children with a single text node holding the default value. React's fiber
     // keeps pointing at the detached nodes, so every later message is written
-    // to a <span> the document no longer contains (#1070).
+    // to a <span> the document no longer contains.
     <p
       {...props}
       className={cn(formMessageVariants({ variant: tone }), className)}

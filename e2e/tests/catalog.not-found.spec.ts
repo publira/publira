@@ -7,11 +7,11 @@ import { hostPath } from "../src/urls";
  * Missing content inside a resolved tenant. Every route renders
  * `app/[tenant_id]/(site)/not-found.tsx`, so the tenant header and footer stay
  * usable and the copy never says which of "absent", "unpublished" or "another
- * tenant's" applies (#643).
+ * tenant's" applies.
  *
  * The response carries HTTP 200, not 404: these routes read their record inside
  * `<Suspense>` so the route keeps a static shell, and by the time `notFound()`
- * runs the shell has been committed with a 200 (#672). What the reader sees is
+ * runs the shell has been committed with a 200. What the reader sees is
  * unchanged; what a crawler sees is not, and restoring the status needs a
  * mechanism that decides it before the first byte.
  */
@@ -62,7 +62,7 @@ test.describe("web-host catalog not found", () => {
 
   test("public_id is case-sensitive", async ({ page }) => {
     // Base58 uses both cases, so a case-folded lookup would resolve two
-    // different IDs to the same record (#673).
+    // different IDs to the same record.
     const response = await page.goto(
       hostPath(`/series/${SEED_TENANT.series.publicId.toUpperCase()}`)
     );

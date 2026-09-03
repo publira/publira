@@ -25,7 +25,7 @@ const (
 	anonymousIDCookieName = "publira_aid"
 
 	// anonymousIDCookieMaxAge outlives every window that reads the raw events
-	// (content_events is purged at ~90 days, #594), so a returning reader is
+	// (content_events is purged at ~90 days), so a returning reader is
 	// still recognised as the same actor, and then expires rather than leaving
 	// an abandoned identifier alive indefinitely.
 	anonymousIDCookieMaxAge = 180 * 24 * time.Hour

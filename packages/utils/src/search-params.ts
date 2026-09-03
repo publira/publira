@@ -14,8 +14,7 @@
  * - `fallback` omitted → the same input produces a zod issue, so the page can
  *   decide to `notFound()` instead of quietly showing different content.
  *
- * `searchParamDate` needs `Temporal` at runtime, like the rest of this package
- * (see https://github.com/publira/publira/issues/573).
+ * `searchParamDate` needs `Temporal` at runtime, like the rest of this package.
  */
 
 import type { Locale } from "@publira/i18n";

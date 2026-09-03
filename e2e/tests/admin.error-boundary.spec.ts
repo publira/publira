@@ -20,7 +20,7 @@ const runAdminApiServerScript = (action: "start-wait" | "stop"): void => {
 };
 
 /**
- * Route-level error boundary for the console, the `web-admin` half of #683.
+ * Route-level error boundary for the console.
  *
  * The reach rule the web-host spec measures is a framework one, so this app
  * gets the same coverage rather than an assumption that it inherits it: a

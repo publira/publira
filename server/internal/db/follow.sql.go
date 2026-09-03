@@ -61,7 +61,7 @@ type CreateEpisodeFollowParams struct {
 	EpisodeID uuid.UUID `json:"episode_id"`
 }
 
-// Durable member follows (#1128). Episode, series, and creator follows have
+// Durable member follows. Episode, series, and creator follows have
 // distinct source tables; content_events must not be used to model any of them.
 func (q *Queries) CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error) {
 	row := q.db.QueryRowContext(ctx, createEpisodeFollow, arg.TenantID, arg.UserID, arg.EpisodeID)

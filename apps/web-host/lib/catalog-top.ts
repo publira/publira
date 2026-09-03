@@ -90,7 +90,7 @@ interface SeriesDetailRow {
 }
 
 /**
- * The reads this builds on answer with results instead of throwing (#672), so
+ * The reads this builds on answer with results instead of throwing, so
  * a failure is carried through here as a result too — a section that could not
  * be built must say so, not quietly render the rows that happened to load.
  */

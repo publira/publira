@@ -263,7 +263,7 @@ describe("getPublishedPage", () => {
   /**
    * `internal` and friends are not "missing": the page must render a failure,
    * not a 404. It comes back as a value because a `"use cache"` fill that
-   * throws fails the whole request before the page can render either (#672).
+   * throws fails the whole request before the page can render either.
    */
   it("Unclassified RPC errors are not thrown but return a failure value.", async () => {
     mockGetPublishedPage.mockRejectedValue(

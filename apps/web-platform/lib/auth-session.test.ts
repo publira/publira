@@ -137,7 +137,7 @@ describe("web-platform auth-session", () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
     const { withPlatformSessionReauth } = await importAuthSession();
 
-    // A wrong current password reaches the client as invalid_argument (#679);
+    // A wrong current password reaches the client as invalid_argument;
     // turning it into a re-login would log the operator out over a typo.
     await expect(
       withPlatformSessionReauth(() =>

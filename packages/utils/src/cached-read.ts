@@ -26,7 +26,7 @@ export type CachedReadResult<TValue> =
  * `cacheLife` docs constrain **named profiles** declared in `next.config.ts`.
  * An inline call is not validated — `next/dist/server/use-cache/cache-life.js`
  * only records the explicit values — and this combination was measured against
- * the production build in #672: no error, and the entry is not stored.
+ * the production build: no error, and the entry is not stored.
  */
 export const dropFailedCacheEntry = (): void => {
   try {
@@ -55,7 +55,7 @@ export const dropFailedCacheEntry = (): void => {
  * ```
  *
  * **A `"use cache"` function must not throw.** Measured against the production
- * build under Cache Components (#672): when a cache fill throws, Next.js fails
+ * build under Cache Components: when a cache fill throws, Next.js fails
  * the request that triggered it — an awaiting `try` / `catch` around the call
  * does not save it, and neither does an outer cached function catching an inner
  * one. The response is a bare `500 Internal Server Error` document unless a

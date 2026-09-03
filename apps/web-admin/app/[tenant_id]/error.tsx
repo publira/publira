@@ -20,11 +20,12 @@ import { ErrorScreen } from "#components/error-screen";
  * brand defaults in `globals.css`.
  *
  * A failure in `app/[tenant_id]/layout.tsx` (the root layout) is above this
- * boundary and still needs `global-error.tsx` — tracked in #642.
+ * boundary; catching it would need a `global-error.tsx`, which this app does
+ * not have.
  *
  * Measured against `next dev` by throwing from `(protected)/layout.tsx`: a
  * direct hit renders this screen, with no console chrome, as intended. The
- * production build was measured for #683 the same way an admin API outage
+ * production build was measured the same way an admin API outage
  * exercises it — `(protected)/layout.tsx` reads session and tenant, so the
  * outage fails that layout and this screen answers a direct hit with HTTP 200,
  * and 再試行 recovers once the API is back

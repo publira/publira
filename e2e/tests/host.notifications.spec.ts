@@ -9,12 +9,12 @@ const inboxUrl = (pathname: string): string =>
   `${WEB_HOST_NOTIFICATION_INBOX_BASE_URL}${hostPath(pathname)}`;
 
 /**
- * The host inbox (#883) is header chrome plus `/notifications`. There are no
- * inbox rows to assert against yet, so the empty bell and empty list are the
- * path this suite can take without waiting on #863. `/announcements` stays the
- * delivery list.
+ * The host inbox is header chrome plus `/notifications`. There are no inbox
+ * rows to assert against yet, so the empty bell and empty list are the path
+ * this suite can take without waiting on a delivery path that fills the inbox.
+ * `/announcements` stays the delivery list.
  *
- * The member is the inbox tenant's own (#1380): publishing an episode notifies
+ * The member is the inbox tenant's own: publishing an episode notifies
  * every member and admin of that episode's tenant, so the dev seed member's
  * bell stops being empty the moment `admin.publish-flow` runs beside this file.
  */

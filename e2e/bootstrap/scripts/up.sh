@@ -34,7 +34,7 @@ if [[ -z "${container_id}" ]]; then
   bootstrap_fail "db container not found after compose up"
 fi
 
-# The volume must be mounted where PostgreSQL expects it (#511).
+# The volume must be mounted where PostgreSQL expects it.
 mounts="$(docker inspect -f '{{range .Mounts}}{{.Type}} {{.Name}} {{.Destination}}{{"\n"}}{{end}}' "${container_id}")"
 expected_mount="volume ${EXPECTED_POSTGRES_VOLUME} ${EXPECTED_PGDATA_MOUNT}"
 if ! grep -qxF "${expected_mount}" <<<"${mounts}"; then

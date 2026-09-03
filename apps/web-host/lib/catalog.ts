@@ -458,7 +458,7 @@ export const listPublishedLabels = async (
  *
  * `ok: false` when the fetch itself failed. Neither case throws: a `"use cache"`
  * fill that throws fails the whole request, so the awaiting page never gets to
- * render either a 404 or a fallback (#672).
+ * render either a 404 or a fallback.
  */
 export const getSeriesDetail = async (
   tenantId: string,

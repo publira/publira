@@ -207,8 +207,7 @@ const readPlatformSettings = async (): Promise<{
 /**
  * Display zone for the platform console itself (dashboard, audit log, user
  * filters). A failed read degrades to {@link DEFAULT_TIME_ZONE} rather than to
- * the host's zone, so the wall clock never depends on where the container runs
- * (#564).
+ * the host's zone, so the wall clock never depends on where the container runs.
  */
 export const getPlatformDisplayTimeZone = async (): Promise<string> => {
   const settings = await readPlatformSettings();
@@ -217,7 +216,7 @@ export const getPlatformDisplayTimeZone = async (): Promise<string> => {
 
 /**
  * Display locale for the platform console itself when the operator has not
- * chosen one in the `publira_locale` cookie (#1047).
+ * chosen one in the `publira_locale` cookie.
  *
  * The saved setting is the answer, and it stays the answer without a session:
  * `GetPlatformSettings` needs one, but `CheckSetupStatus` does not and reports

@@ -21,7 +21,7 @@ export const CatalogSearchFormSkeleton = () => (
  * own action needs the locale prefix. The caller wraps this in the
  * `<Suspense>` whose fallback is {@link CatalogSearchFormSkeleton}.
  * Its string `action` is a search GET navigation, not a state-changing Server
- * Action, so #600's Origin policy does not apply.
+ * Action, so the same-origin policy does not apply.
  */
 export const CatalogSearchForm = async ({
   defaultQuery = "",

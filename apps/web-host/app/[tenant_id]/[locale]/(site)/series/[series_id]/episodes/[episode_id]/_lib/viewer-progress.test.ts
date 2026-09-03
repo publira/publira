@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { isLastPageVisible } from "./viewer-progress";
 
-/** The reader's own pairing rule: the cover stands alone (#356). */
+/** The reader's own pairing rule: the cover stands alone. */
 const SPREAD_START_INDEX = 1;
 
 const visible = (

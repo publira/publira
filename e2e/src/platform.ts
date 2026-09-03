@@ -55,7 +55,7 @@ export interface CreateTenantInput {
   /**
    * Label of the option to pick in the default-language selector.
    *
-   * The form opens on whatever `Accept-Language` asks for (#1246), which is
+   * The form opens on whatever `Accept-Language` asks for, which is
    * `English` under Playwright's Chromium. Every assertion this suite makes on
    * a tenant-owned screen — the web-host catalog, the tenant's web-admin login
    * — is written against the Japanese copy, so the helper picks `日本語`
