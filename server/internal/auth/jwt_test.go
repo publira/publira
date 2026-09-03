@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const testSecret = "publira-unit-test-auth-jwt-secret-32b!"
@@ -280,8 +282,12 @@ func TestIssueMFAChallengeToken(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Verify() error = %v", err)
 		}
-		if firstClaims.ID == "" {
-			t.Error("challenge id is empty, want an identifier")
+		// Both halves matter: an empty id would pass a bare inequality check
+		// while leaving the challenge with nothing to be recorded under.
+		for name, id := range map[string]string{"first": firstClaims.ID, "second": secondClaims.ID} {
+			if _, err := uuid.Parse(id); err != nil {
+				t.Errorf("%s challenge id = %q, want a uuid (%v)", name, id, err)
+			}
 		}
 		if firstClaims.ID == secondClaims.ID {
 			t.Errorf("both challenges carry id %q, want two different ones", firstClaims.ID)

@@ -11,6 +11,7 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/mfa"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -357,6 +358,15 @@ func TestAdminMfaVerifyRefusesAReusedChallenge(t *testing.T) {
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("VerifyMfa reusing a challenge = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+
+	// The audit trail says a spent challenge, not a database that could not
+	// answer — the two reach the client as the same error and are told apart
+	// only here.
+	if got := env.countRows(t,
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND actor_user_id = $2 AND action = $3 AND outcome = $4 AND reason = $5",
+		tenant.Tenant.ID, tenant.User.ID, auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_spent"); got != 1 {
+		t.Fatalf("audit rows for a spent challenge = %d, want 1", got)
 	}
 
 	// The refusal is about the challenge, not the account: the session the

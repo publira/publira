@@ -554,20 +554,21 @@ func (s *adminServer) enableMfa(ctx context.Context, actor mfaActor) ([]string, 
 // It runs after the code is accepted, not before: burning the challenge on a
 // mistyped code would send an operator back through the password for a typo,
 // and it is the failure counter, not the challenge, that bounds guessing.
-func (s *adminServer) spendMfaChallenge(ctx context.Context, actor mfaActor) error {
-	claimed, err := s.queriesFor(ctx).MarkUserMfaChallengeUsed(ctx, dbmodels.MarkUserMfaChallengeUsedParams{
+//
+// A false claimed and an error are different answers: the first is a token
+// that already bought a session, the second is a database that could not say.
+// Only the first is a replay, and the audit trail has to tell them apart.
+func (s *adminServer) spendMfaChallenge(ctx context.Context, actor mfaActor) (claimed bool, err error) {
+	rows, err := s.queriesFor(ctx).MarkUserMfaChallengeUsed(ctx, dbmodels.MarkUserMfaChallengeUsedParams{
 		Jti:       actor.ChallengeID,
 		TenantID:  actor.Tenant.ID,
 		UserID:    actor.User.ID,
 		ExpiresAt: actor.ChallengeExpiresAt,
 	})
 	if err != nil {
-		return s.internalDBError(ctx, "failed to mark mfa challenge used", err, "user_id", actor.User.ID.String())
+		return false, s.internalDBError(ctx, "failed to mark mfa challenge used", err, "user_id", actor.User.ID.String())
 	}
-	if claimed == 0 {
-		return invalidSessionError()
-	}
-	return nil
+	return rows == 1, nil
 }
 
 // issueAdminSession finishes a login the second factor has now settled.
@@ -608,10 +609,16 @@ func (s *adminServer) VerifyMfa(
 		return nil, err
 	}
 
-	if err := s.spendMfaChallenge(ctx, actor); err != nil {
+	claimed, err := s.spendMfaChallenge(ctx, actor)
+	if err != nil {
+		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_claim_failed")
+		auth.AuditEvent(req.Header(), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_claim_failed")
+		return nil, err
+	}
+	if !claimed {
 		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_spent")
 		auth.AuditEvent(req.Header(), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_spent")
-		return nil, err
+		return nil, invalidSessionError()
 	}
 
 	user, accessToken, err := s.issueAdminSession(ctx, actor)
