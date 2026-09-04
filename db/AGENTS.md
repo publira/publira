@@ -28,12 +28,24 @@ These sequence numbers never collide with later timestamps: `00000000000008` is 
 
 `migrate up` cannot move a database whose `schema_migrations` records a version that no longer exists in `migrations/`, and it cannot apply a migration whose objects are already there. Recreate the database with `task db:reset` instead of patching it by hand.
 
+## Query files
+
+`query/` holds one file per domain or aggregate, named after it: `series.sql`, `episode_image.sql`, `access_ticket.sql`. There is no catch-all file, and no file may become one — a query that fits none of the existing files gets a new file named after its own aggregate rather than a general one.
+
+A query goes in the file of the aggregate it reads or writes. When it spans several, it goes with the aggregate the caller is acting on rather than the table it happens to select from: `UserHasEpisodeContentAccess` answers whether a grant exists, so it lives in `access_ticket.sql`, and `GetPurchasableEpisodeByPublicIDForTenant` reads an episode only to price a checkout, so it lives in `payment.sql`.
+
+Split a file by sub-aggregate before it outgrows its siblings — images and join tables apart from the entity they decorate, as `series_image.sql` and `series_creator.sql` are apart from `series.sql`. Roughly 800 lines is the ceiling: past that the file no longer reads as a unit, and finding the right neighbour for a new query costs more context than the query itself.
+
+sqlc emits one `<file>.sql.go` per source and one shared `Querier` interface for the package, so moving a query between files changes only which generated file its method lands in. It also does not delete the output of a source that went away: when a query file is removed or renamed, delete its stale `server/internal/db/gen/<file>.sql.go` by hand, or the package will not compile.
+
+No lint can tell a domain name from a generic one, so this rule is enforced by review.
+
 ## Layout (quick map)
 
 | Path | Role |
 | --- | --- |
 | `migrations/` | golang-migrate DDL, append-only |
-| `query/` | sqlc query sources |
+| `query/` | sqlc query sources, one file per domain or aggregate |
 | `seeds/` | Seed SQL; `baseline/` is environment-common, `dev/` is local data |
 
 Migration vs seed responsibilities: see `seeds/README.md` and the root `README.md` database section.

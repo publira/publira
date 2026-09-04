@@ -8,9 +8,89 @@ package dbmodels
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+const createPurchaseFromStripeCheckout = `-- name: CreatePurchaseFromStripeCheckout :one
+WITH locked AS (
+    SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            $2::uuid::text || ':' ||
+                $3::uuid::text || ':' ||
+                $4::uuid::text,
+            0
+        )
+    )
+)
+INSERT INTO purchases (
+    id,
+    tenant_id,
+    user_id,
+    episode_id,
+    price_at_purchase,
+    expires_at,
+    stripe_checkout_session_id
+)
+SELECT
+    $1::uuid,
+    $2::uuid,
+    $3::uuid,
+    $4::uuid,
+    $5::integer,
+    $6::timestamptz,
+    $7::text
+FROM locked
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM purchases
+    WHERE tenant_id = $2::uuid
+        AND user_id = $3::uuid
+        AND episode_id = $4::uuid
+        AND (expires_at IS NULL OR expires_at > NOW())
+)
+ON CONFLICT (stripe_checkout_session_id) DO NOTHING
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id
+`
+
+type CreatePurchaseFromStripeCheckoutParams struct {
+	ID                      uuid.UUID      `json:"id"`
+	TenantID                uuid.UUID      `json:"tenant_id"`
+	UserID                  uuid.UUID      `json:"user_id"`
+	EpisodeID               uuid.UUID      `json:"episode_id"`
+	PriceAtPurchase         int32          `json:"price_at_purchase"`
+	ExpiresAt               sql.NullTime   `json:"expires_at"`
+	StripeCheckoutSessionID sql.NullString `json:"stripe_checkout_session_id"`
+}
+
+// The advisory lock serializes different Stripe Checkout sessions for the same
+// buyer and episode. Stripe's request idempotency prevents duplicate sessions
+// in the ordinary case; this also keeps an exceptional concurrent pair from
+// producing two entitlements.
+func (q *Queries) CreatePurchaseFromStripeCheckout(ctx context.Context, arg CreatePurchaseFromStripeCheckoutParams) (Purchase, error) {
+	row := q.db.QueryRowContext(ctx, createPurchaseFromStripeCheckout,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.EpisodeID,
+		arg.PriceAtPurchase,
+		arg.ExpiresAt,
+		arg.StripeCheckoutSessionID,
+	)
+	var i Purchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.PriceAtPurchase,
+		&i.ExpiresAt,
+		&i.PurchasedAt,
+		&i.TenantID,
+		&i.StripeCheckoutSessionID,
+	)
+	return i, err
+}
 
 const getEnabledTenantPaymentConfigByTenantID = `-- name: GetEnabledTenantPaymentConfigByTenantID :one
 SELECT tenant_id, provider, enabled, secret_key_encrypted, webhook_secret_encrypted, secret_key_hint, webhook_secret_hint, created_at, updated_at
@@ -37,6 +117,56 @@ func (q *Queries) GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, t
 	return i, err
 }
 
+const getPurchasableEpisodeByPublicIDForTenant = `-- name: GetPurchasableEpisodeByPublicIDForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    s.public_id AS series_public_id,
+    el.price,
+    el.reading_period_hours
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE e.public_id = $1
+    AND e.tenant_id = $2
+    AND s.tenant_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+LIMIT 1
+`
+
+type GetPurchasableEpisodeByPublicIDForTenantParams struct {
+	PublicID string    `json:"public_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetPurchasableEpisodeByPublicIDForTenantRow struct {
+	ID                 uuid.UUID     `json:"id"`
+	PublicID           string        `json:"public_id"`
+	Title              string        `json:"title"`
+	SeriesPublicID     string        `json:"series_public_id"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+}
+
+func (q *Queries) GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, arg GetPurchasableEpisodeByPublicIDForTenantParams) (GetPurchasableEpisodeByPublicIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getPurchasableEpisodeByPublicIDForTenant, arg.PublicID, arg.TenantID)
+	var i GetPurchasableEpisodeByPublicIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Title,
+		&i.SeriesPublicID,
+		&i.Price,
+		&i.ReadingPeriodHours,
+	)
+	return i, err
+}
+
 const getTenantPaymentConfigByTenantID = `-- name: GetTenantPaymentConfigByTenantID :one
 SELECT tenant_id, provider, enabled, secret_key_encrypted, webhook_secret_encrypted, secret_key_hint, webhook_secret_hint, created_at, updated_at
 FROM tenant_payment_config
@@ -59,6 +189,208 @@ func (q *Queries) GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listMyPurchasesAsc = `-- name: ListMyPurchasesAsc :many
+SELECT p.id,
+    p.price_at_purchase,
+    p.expires_at,
+    p.purchased_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM purchases p
+    JOIN episodes e ON e.id = p.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE p.tenant_id = $1
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
+    AND p.user_id = $2::uuid
+    AND e.tenant_id = $1
+    AND s.tenant_id = $1
+    AND (
+        $3::timestamptz IS NULL
+        OR (
+            $4::boolean
+            AND (p.purchased_at, p.id) >= (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (p.purchased_at, p.id) > (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+    )
+ORDER BY p.purchased_at ASC,
+    p.id ASC
+LIMIT $6
+`
+
+type ListMyPurchasesAscParams struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	UserID            uuid.UUID     `json:"user_id"`
+	CursorPurchasedAt sql.NullTime  `json:"cursor_purchased_at"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	Limit             int32         `json:"limit"`
+}
+
+type ListMyPurchasesAscRow struct {
+	ID                uuid.UUID    `json:"id"`
+	PriceAtPurchase   int32        `json:"price_at_purchase"`
+	ExpiresAt         sql.NullTime `json:"expires_at"`
+	PurchasedAt       time.Time    `json:"purchased_at"`
+	EpisodePublicID   string       `json:"episode_public_id"`
+	EpisodeTitle      string       `json:"episode_title"`
+	EpisodeOrderIndex int32        `json:"episode_order_index"`
+	SeriesPublicID    string       `json:"series_public_id"`
+	SeriesTitle       string       `json:"series_title"`
+}
+
+func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMyPurchasesAsc,
+		arg.TenantID,
+		arg.UserID,
+		arg.CursorPurchasedAt,
+		arg.CursorInclusive,
+		arg.CursorID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyPurchasesAscRow
+	for rows.Next() {
+		var i ListMyPurchasesAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PriceAtPurchase,
+			&i.ExpiresAt,
+			&i.PurchasedAt,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.EpisodeOrderIndex,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMyPurchasesDesc = `-- name: ListMyPurchasesDesc :many
+SELECT p.id,
+    p.price_at_purchase,
+    p.expires_at,
+    p.purchased_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM purchases p
+    JOIN episodes e ON e.id = p.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE p.tenant_id = $1
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
+    AND p.user_id = $2::uuid
+    AND e.tenant_id = $1
+    AND s.tenant_id = $1
+    AND (
+        $3::timestamptz IS NULL
+        OR (
+            $4::boolean
+            AND (p.purchased_at, p.id) <= (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (p.purchased_at, p.id) < (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+    )
+ORDER BY p.purchased_at DESC,
+    p.id DESC
+LIMIT $6
+`
+
+type ListMyPurchasesDescParams struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	UserID            uuid.UUID     `json:"user_id"`
+	CursorPurchasedAt sql.NullTime  `json:"cursor_purchased_at"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	Limit             int32         `json:"limit"`
+}
+
+type ListMyPurchasesDescRow struct {
+	ID                uuid.UUID    `json:"id"`
+	PriceAtPurchase   int32        `json:"price_at_purchase"`
+	ExpiresAt         sql.NullTime `json:"expires_at"`
+	PurchasedAt       time.Time    `json:"purchased_at"`
+	EpisodePublicID   string       `json:"episode_public_id"`
+	EpisodeTitle      string       `json:"episode_title"`
+	EpisodeOrderIndex int32        `json:"episode_order_index"`
+	SeriesPublicID    string       `json:"series_public_id"`
+	SeriesTitle       string       `json:"series_title"`
+}
+
+func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMyPurchasesDesc,
+		arg.TenantID,
+		arg.UserID,
+		arg.CursorPurchasedAt,
+		arg.CursorInclusive,
+		arg.CursorID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyPurchasesDescRow
+	for rows.Next() {
+		var i ListMyPurchasesDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PriceAtPurchase,
+			&i.ExpiresAt,
+			&i.PurchasedAt,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.EpisodeOrderIndex,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const upsertTenantPaymentConfig = `-- name: UpsertTenantPaymentConfig :one
@@ -117,4 +449,29 @@ func (q *Queries) UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenan
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const userHasValidPurchaseForEpisode = `-- name: UserHasValidPurchaseForEpisode :one
+SELECT EXISTS (
+    SELECT 1
+    FROM purchases
+    WHERE tenant_id = $1
+        -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+        AND user_id = $2::uuid
+        AND episode_id = $3
+        AND (expires_at IS NULL OR expires_at > NOW())
+) AS has_purchase
+`
+
+type UserHasValidPurchaseForEpisodeParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+func (q *Queries) UserHasValidPurchaseForEpisode(ctx context.Context, arg UserHasValidPurchaseForEpisodeParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, userHasValidPurchaseForEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var has_purchase bool
+	err := row.Scan(&has_purchase)
+	return has_purchase, err
 }
