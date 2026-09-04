@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { RedisIncrementalCacheHandler } from "./incremental-cache-handler";
 import { getRedisClient, resetRedisClientsForTests } from "./redis-client";
@@ -152,6 +152,56 @@ describe("Redis handlers integration", () => {
     expect(new TextDecoder().decode(await streamToBuffer(fresh.value))).toBe(
       "after"
     );
+  });
+
+  it("use-cache handler keeps a value written while the stale-serving window was open", async ({
+    skip,
+  }) => {
+    if (!available) {
+      skip();
+    }
+
+    const handler = createUseCacheHandler({ keyPrefix, redisUrl });
+    const tag = "tenant:t1:closed-window";
+    const windowSeconds = 60;
+    const revalidatedAt = Date.now();
+
+    await handler.updateTags([tag], { expire: windowSeconds });
+
+    // Written after the revalidation, while its window was still open.
+    await handler.set(
+      "uc-closed-window",
+      Promise.resolve({
+        expire: 7200,
+        revalidate: 3600,
+        stale: 30,
+        tags: [tag],
+        timestamp: revalidatedAt + 1000,
+        value: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode("during"));
+            controller.close();
+          },
+        }),
+      })
+    );
+
+    // Only the clock moves; the Redis client keeps its real timers.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(revalidatedAt + (windowSeconds + 10) * 1000);
+      const hit = await handler.get("uc-closed-window", []);
+      expect(hit).toBeDefined();
+      if (!hit) {
+        throw new Error("expected the value to outlive the closed window");
+      }
+      expect(hit.revalidate).toBe(3600);
+      expect(new TextDecoder().decode(await streamToBuffer(hit.value))).toBe(
+        "during"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("incremental handler keeps caching a tag after it is revalidated", async ({

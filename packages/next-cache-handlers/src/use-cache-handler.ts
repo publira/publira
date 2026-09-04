@@ -144,6 +144,11 @@ export const createUseCacheHandler = (
    * A window still open leaves the entry servable, which is the whole point of
    * `revalidateTag(tag, "max")`: readers keep seeing the previous value while
    * the next request produces the new one.
+   *
+   * Staleness is what selects the entries, not the end of the window: a value
+   * written while the window was open already reflects the revalidation, and
+   * matching it on `expiredAt > entryTimestamp` alone would throw it away the
+   * moment the window closed.
    */
   const isExpiredByTags = (
     tags: string[],
@@ -154,8 +159,8 @@ export const createUseCacheHandler = (
       const revalidation = localTagRevalidations.get(tag);
       return (
         revalidation !== undefined &&
-        revalidation.expiredAt <= now &&
-        revalidation.expiredAt > entryTimestamp
+        revalidation.staleAt > entryTimestamp &&
+        revalidation.expiredAt <= now
       );
     });
 
