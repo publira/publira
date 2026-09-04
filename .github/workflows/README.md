@@ -5,6 +5,7 @@
 | `CI` | [`ci.yml`](./ci.yml) | Validation jobs described below. |
 | `Skills Update` | [`skills-update.yml`](./skills-update.yml) | Weekly pull requests that update agent skills. |
 | `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue-maintenance automation. |
+| `Review` | [`review.yml`](./review.yml) | Review-support automation. |
 | `Regenerate` | [`regenerate.yml`](./regenerate.yml) | Stacked pull requests that regenerate output for a generator version bump. |
 
 ## Organize issues
@@ -16,6 +17,63 @@
 | `Close completed epics` | Close an `epic` Issue as `completed` when all native sub-issues are closed. |
 
 `Close completed epics` is triggered by a closed Issue and manual `workflow_dispatch` (which scans open `epic` Issues if no number is supplied). It considers only `epic` parents with at least one sub-issue, walks nested Epic ancestors in one run, and is serialized to avoid missed simultaneous closures. A `GITHUB_TOKEN` close does not trigger another run.
+
+## Review
+
+[`review.yml`](./review.yml), named `Review`, is the home for review-support jobs. Add work by job.
+
+| Displayed job | Purpose |
+| --- | --- |
+| `Label review size` | Give a pull request one `size/*` label computed from its diff. |
+
+A diff's line count says little about how much review a pull request needs: a lock-file refresh and a rewrite of the session cookie handling can both read as `+400 −120`. The label states the expected review load, so the queue can be sorted by cost and an outlier is visible as a candidate to split. It describes a pull request; it does not gate anything, and it is not recomputed on `synchronize` — the label is a snapshot from the moment review was requested.
+
+### The score
+
+[`scripts/pr-size.ts`](../../scripts/pr-size.ts) reads a unified diff on standard input and prints the score and the bucket, so a local run and the workflow agree on the number by construction:
+
+```bash
+git diff origin/main...HEAD | node scripts/pr-size.ts
+```
+
+```
+score = Σ over changed files ( coefficient(path) × significant_lines(file) )
+```
+
+`significant_lines` counts added and removed lines together, skipping the lines that carry no information: blank lines, lines whose trimmed content is only delimiters (`{`, `}`, `(`, `)`, `[`, `]`, `,`, `;`, and combinations such as `});`), and lines that hold only a JSX tag (`</Card>`, `<Separator />`, `<CardHeader>`, `<>`, `</>`, and the `>` / `/>` that closes a tag the formatter broke across lines). A closing tag is the JSX brace, and dropping it here is truer than discounting a whole language for it.
+
+`coefficient(path)` weights a line by what it costs to read. Generated and vendored output is already excluded from review by `.gitattributes` and `.coderabbit.yaml`, so it weighs nothing; the scorer reads those paths from `.gitattributes` rather than listing them a second time. The first matching row wins, so a more specific kind sits above the kind that would otherwise swallow it.
+
+| Path or kind | Coefficient |
+| --- | --- |
+| Generated and vendored (`linguist-generated` / `linguist-vendored` in `.gitattributes`), `pnpm-lock.yaml`, `mobile/pubspec.lock`, `skills-lock.json`, `.devcontainer/devcontainer-lock.json` | 0 |
+| Fixtures, test data, snapshots, `locales/*.json` | 0.2 |
+| Markdown and other documentation | 0.3 |
+| Tests (`*_test.go`, `*.test.ts`, `*.test.tsx`, `*.spec.ts`, `*.spec.tsx`, `*_test.dart`, `e2e/**`, `mobile/test/**`, `mobile/integration_test/**`) | 0.5 |
+| Workflows and configuration (YAML, JSON, TOML, XML, and the mobile platform property files) | 0.7 |
+| React components (`*.tsx`) | 0.9 |
+| Application and package source (Go, TypeScript, Dart), and every path the table does not name | 1.0 |
+| Contracts (`proto/**`, `db/migrations/**`, `db/query/**`) | 1.5 |
+
+`*.tsx` is discounted for what the tag filter cannot reach: the formatter puts one attribute per line, so a component's props arrive as attribute-only and opening-tag lines, each cheaper to read than a line of logic. It is not discounted for being React — the hazards that make a component hard to review (a props-to-state Effect, the Server/Client boundary, `use cache` placement) sit in a handful of lines and do not grow with the size of the tree, which is what the one-bucket raise in `skills/create-pr` is for.
+
+| Bucket    | Score      |
+| --------- | ---------- |
+| `size/xs` | ≤ 60       |
+| `size/s`  | ≤ 200      |
+| `size/m`  | ≤ 600      |
+| `size/l`  | ≤ 1600     |
+| `size/xl` | above 1600 |
+
+Coefficients and thresholds live in `scripts/pr-size.ts`; its classification and bucket assignment are covered by `scripts/pr-size.test.ts`. `scripts/` sits outside the pnpm workspace, so Vitest does not reach it: the tests run under `node --test` through `pnpm test:scripts`, which `pnpm preflight` and the `Test / TypeScript` job both call.
+
+### The job
+
+`Label review size` is triggered by `pull_request_target` with types `opened` and `ready_for_review`. An `opened` event for a draft is skipped, so a pull request opened as a draft is labelled when it is marked ready and one opened ready is labelled immediately. `pull_request` cannot be used: a fork's `GITHUB_TOKEN` is read-only and could not add the label.
+
+The job holds `pull-requests: write` and nothing else, and it never checks out the head branch — `pull_request_target` resolves to the base commit, so the scorer that runs is the one that was reviewed and merged. It reads per-file patches from `GET /repos/{owner}/{repo}/pulls/{number}/files` and pipes them to that scorer; where the API omits a patch (a binary or oversized file), it stands in one significant line for each addition and deletion the API counted.
+
+A pull request that already carries a `size/*` label is left alone and the run log says so. A label the author set — an agent following `skills/create-pr`, or a human who has judged the review load — wins over the mechanical score.
 
 ## Regenerate
 
@@ -48,7 +106,7 @@ Implementation:
 | `Check` | Locale-catalog, `sqlc`, and buf-generated drift; package builds; `pnpm typegen`, literal-`<svg>` grep, and `pnpm typecheck`. | [`AGENTS.md`](../../AGENTS.md) |
 | `Lint / Go` | `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
-| `Test / TypeScript` | `pnpm test` after package builds. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
+| `Test / TypeScript` | `pnpm test` after package builds, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / DB Migrations` | Append-only guard on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
 | `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed. | [`mobile/README.md`](../../mobile/README.md) |
@@ -83,7 +141,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config |
 | `Lint / Go` | `server/**` |
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, and generator config |
-| `Test / TypeScript` | apps, locales, packages, package / lock / turbo config |
+| `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
 | `Test / Mobile E2E` | mobile, E2E lifecycle scripts and page fixtures, domain proto, server, migrations/seeds, Taskfile, storage init, `scripts/setup-flutter.sh` |
@@ -146,7 +204,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | `Lint and Format` | `pnpm check` |
    | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, package build, `pnpm typegen`, and `pnpm typecheck` |
    | `Test / Go` | `task server:test-short` then `task server:test` |
-   | `Test / TypeScript` | `pnpm build --filter "./packages/*"` then `pnpm test` |
+   | `Test / TypeScript` | `pnpm build --filter "./packages/*"`, then `pnpm test` and `pnpm test:scripts` |
    | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only. An append-only failure is not reproduced locally: restore the migration and add a new one instead |
    | `Test / Mobile` | `task mobile:check` |
    | `Test / Mobile E2E` | `task mobile:e2e` |

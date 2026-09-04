@@ -154,15 +154,29 @@ Link issues by their real relationship:
 - `Fixes #123` only when merging this PR genuinely resolves that issue and it should close.
 - `Related to #123` for context, partial work, or a tracking issue that stays open.
 
+## Score the review size
+
+Every pull request carries one `size/*` label saying how much review it is expected to take. Compute it from the diff you are about to open:
+
+```bash
+git diff origin/main...HEAD | node scripts/pr-size.ts
+```
+
+It prints a weighted score and the bucket it falls into — `size/xs`, `size/s`, `size/m`, `size/l`, or `size/xl`. The formula and the coefficient table are documented in [`.github/workflows/README.md`](../../.github/workflows/README.md).
+
+Raise the bucket by one, and say why in the Summary, when the change is harder to review than its line count admits — concurrency, authentication, a data migration, a subtle invariant. Never lower it: an agent does not get to talk down the review its own work needs.
+
+If the pull request arrives without a `size/*` label, the `Review` workflow computes the same score and adds the label itself, so the bucket you pass is the one that stands.
+
 ## Create the PR
 
 Write the body to a file first so multi-line Markdown survives shell quoting:
 
 ```bash
-gh pr create --title "type(scope): succinct description" --body-file <path>
+gh pr create --title "type(scope): succinct description" --body-file <path> --label size/m
 ```
 
-Use the session scratchpad for that file and delete it afterwards. Add `--draft` when the work is not ready for review, and set labels or a milestone only when the user asked for them.
+Use the session scratchpad for that file and delete it afterwards. Add `--draft` when the work is not ready for review. `--label` carries the review-size bucket; set any other label, or a milestone, only when the user asked for them.
 
 ## Add commits to an open PR
 
@@ -187,7 +201,7 @@ Confirm all of the following, and report anything you could not satisfy:
 - the verification commands for the changed area ran and passed
 - the pushed branch is rebased on the current `origin/main` — and if you took the throwaway-checkout route, report that as the remote branch carrying the rebased commits with the local branch ref still awaiting reconciliation, never as a rebased local branch
 - no throwaway worktree is left behind (`git worktree list`)
-- `gh pr view` shows the template's headings intact, an English Conventional Commits title, issue links that match the real relationship, and the `Assisted-by:` trailer as the last line of the body
+- `gh pr view` shows the template's headings intact, an English Conventional Commits title, issue links that match the real relationship, exactly one `size/*` label, and the `Assisted-by:` trailer as the last line of the body
 - no temporary body file is left behind
 
 Report the PR URL, the commands you ran, the checklist items you left unchecked, and any file you deliberately left out of the commit.
