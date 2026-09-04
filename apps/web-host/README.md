@@ -84,6 +84,17 @@ No test yet asserts that a theme saved in the console reaches this stylesheet an
 
 Paging and full screen are the only on-screen controls; zooming and resetting are the library's own gestures.
 
+Which read supplies the pages depends on the episode's access, and so does the token their URLs carry:
+
+| Body | Read | `t` on its image URLs |
+| --- | --- | --- |
+| Free | `getEpisodeDetail()` in `lib/catalog.ts` — `"use cache"`, one entry shared by every reader, revalidated after 15 minutes and expiring after an hour | A media token naming no reader: the same bytes for every reader of that episode until it rotates the next day |
+| Entitled | `getEpisodeViewer()` in `lib/catalog.ts` — `"use cache: private"`, one entry per reader | A media token naming that reader |
+
+`_lib/viewer-fetch.ts` derives the decryption key from that token and its subject, the same way for both, and decrypting a free body therefore needs no session. A page whose stream cannot be reversed fails on its own and keeps the reader's reload control; the rest of the body still draws.
+
+Whether a response is encrypted at all is image-server's `PUBLIRA_IMAGE_ENCRYPTION`, not this app's: with it off the pages arrive as ordinary images and the plugin passes them through. What each body is bound to on the server side, and the `Cache-Control` it keeps, is in the [server README](../../server/README.md#image-delivery-manael).
+
 `e2e/tests/host.viewer-performance.spec.ts` holds the drawing budget — time to the first page, the response and the drawn page of a page turn, and a cumulative layout shift of zero — against a seeded episode served through image-server. The numbers, what each one covers, and how to measure them again are in [`e2e/README.md`](../../e2e/README.md).
 
 ### Brand images

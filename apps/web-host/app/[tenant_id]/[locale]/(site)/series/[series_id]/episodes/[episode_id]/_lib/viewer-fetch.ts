@@ -156,8 +156,16 @@ const decryptStreamBlocks = async (
 
 /**
  * Reverses image-server's `xor-hmac-sha256-v1` stream. This is delivery-layer
- * obfuscation, not DRM: the entitled reader necessarily has the media token
- * and can reproduce the pixels this function hands to the canvas viewer.
+ * obfuscation, not DRM: the reader necessarily has the media token and can
+ * reproduce the pixels this function hands to the canvas viewer.
+ *
+ * `token` and `subject` are whatever the page's own URL carried, and nothing
+ * here tells the two kinds apart. An entitled body's token names the reader it
+ * was issued to; a free body's names nobody — it is a deterministic function
+ * of the episode and the current rotation window, so every reader of that
+ * episode is handed the same one and derives the same key. Both arrive in `t`
+ * and are keyed identically, which is why a reader with no session at all is
+ * served by the code an entitled reader already uses.
  */
 export const decryptImageBuffer = async (
   ciphertext: ArrayBuffer,
@@ -199,6 +207,10 @@ const decryptImageResponse = async (
   const token = mediaTokenFromUrl(url);
   const subject = token ? subjectFromMediaToken(token) : null;
   if (!contentType?.startsWith("image/") || !keyID || !token || !subject) {
+    // Throwing here reaches the viewer as this page's own load failure, which
+    // draws the reload control over it and leaves the rest of the body alone.
+    // Drawing the ciphertext instead would put a broken page on the canvas
+    // with nothing to retry from.
     throw new Error("encrypted image response is missing decryption metadata");
   }
 
