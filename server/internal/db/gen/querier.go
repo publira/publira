@@ -25,15 +25,15 @@ type Querier interface {
 	ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
-	// テナントの下書きエピソード数を取得する（ダッシュボード用）
+	// For the tenant dashboard.
 	CountDraftEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountPendingEndUsers(ctx context.Context) (int32, error)
 	// Count the platform administrators. Zero means the platform has not been
 	// set up yet.
 	CountPlatformUsers(ctx context.Context) (int32, error)
-	// テナントの公開中シリーズ数を取得する（ダッシュボード用）
+	// For the tenant dashboard.
 	CountPublishedSeriesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
-	// テナントの予約済みエピソード数を取得する（ダッシュボード用）
+	// For the tenant dashboard.
 	CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
@@ -46,7 +46,6 @@ type Querier interface {
 	CreateCreatorFollow(ctx context.Context, arg CreateCreatorFollowParams) (CreatorFollow, error)
 	CreateCreatorImage(ctx context.Context, arg CreateCreatorImageParams) (CreatorImage, error)
 	CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error)
-	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
 	// Reader comments on published episodes.
 	//
@@ -206,12 +205,14 @@ type Querier interface {
 	GetPlatformUserEmailChangeTokenByHash(ctx context.Context, currentEmailTokenHash string) (GetPlatformUserEmailChangeTokenByHashRow, error)
 	GetPlatformUserEmailChangeTokenByID(ctx context.Context, id uuid.UUID) (PlatformUserEmailChangeToken, error)
 	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
-	// 公開中シリーズを 1 本以上持つ creator だけを返す。不在と同じく呼び出し側
-	// で not_found にするので、非公開の著者の存在は漏れない。
+	// Returns only the creators that hold at least one published series. The
+	// caller turns an empty result into not_found exactly as it does a missing
+	// row, so the existence of an unpublished author does not leak.
 	GetPublishedAuthorByPublicID(ctx context.Context, arg GetPublishedAuthorByPublicIDParams) (GetPublishedAuthorByPublicIDRow, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
-	// テナントに属するレーベルを返す。公開中シリーズが 0 件でも行は返す
-	// （レーベル自体に非公開状態は無い）。不在・他テナントは 0 行。
+	// Returns a label of the tenant. The row comes back even when the label has
+	// no published series, because a label has no unpublished state of its own. A
+	// label that does not exist, or one of another tenant, returns no row.
 	GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error)
 	// テナントの公開中ページをslugで取得する
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
@@ -322,23 +323,27 @@ type Querier interface {
 	// を走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
 	// が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
 	ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAccessTicketsForTenantDescParams) ([]ListAccessTicketsForTenantDescRow, error)
-	// 公開中のシリーズの表示内容を取得する (テナントIDで絞り込み)
-	// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
+	// Display data for the published series, narrowed by tenant id.
+	// No ORDER BY: the caller sorts the rows into the id order stage one settled
+	// on.
 	ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error)
 	ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]uuid.UUID, error)
-	// 公開シリーズ一覧の cursor ページネーションは 2 段構えになっている。
+	// The cursor pagination of the published series list runs in two stages.
 	//
-	// 1 段目がここに並ぶ 4 本のキーセット走査で、1 ページぶんの id だけを決める。
-	// 並び替えキーは (published_at, id) か (title, id)。id は UUIDv7 なので、
-	// published_at や title が同着でも一意に決まる。ORDER BY を並び順ごとに
-	// 固定した別のクエリに分けてあるのは、CASE で分岐させると索引順に読めなく
-	// なり、LIMIT の手前で全件ソートが入るため。それぞれ
-	// idx_series_tenant_published_at / idx_series_tenant_title をそのまま辿る。
-	// 前ページ方向は、並び順を反転した側のクエリを呼んで呼び出し側で並べ直す。
+	// Stage one is the four keyset scans below, which settle nothing but the ids
+	// of one page. The sort key is (published_at, id) or (title, id); id is a
+	// UUIDv7, so the order stays unique even when published_at or title ties.
+	// Every sort order gets its own query with a fixed ORDER BY, because
+	// branching with CASE stops the rows from being read in index order and puts
+	// a full sort ahead of the LIMIT. As written, each query walks
+	// idx_series_tenant_published_at or idx_series_tenant_title directly.
+	// Backward calls the query of the reversed order, and the caller sorts the
+	// rows back.
 	//
-	// 2 段目が ListActiveSeriesByIDs で、決まった id の表示内容だけを組み立てる。
+	// Stage two is ListActiveSeriesByIDs, which builds the display data for the
+	// ids stage one settled on.
 	//
-	// cursor の共通仕様は proto/README.md を参照。
+	// cursor rules: proto/README.md.
 	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error)
@@ -374,9 +379,10 @@ type Querier interface {
 	ListContentEventsByTenantTypeOccurredAt(ctx context.Context, arg ListContentEventsByTenantTypeOccurredAtParams) ([]ContentEvent, error)
 	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error)
 	ListCreatorsByTenantAsc(ctx context.Context, arg ListCreatorsByTenantAscParams) ([]ListCreatorsByTenantAscRow, error)
-	// Admin ListCreators は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	// Admin ListCreators is (created_at, id) DESC. Forward uses the DESC query;
+	// backward uses ASC so the index can be scanned in reverse. The handler
+	// flips ASC rows back into display order.
+	// cursor rules: proto/README.md.
 	ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error)
 	ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams) ([]ListEndUsersAscRow, error)
 	// ListEndUsers lists the end users (the ones that hold no tenant_user_roles
@@ -413,26 +419,29 @@ type Querier interface {
 	// (complete_count, entity_id) is unique because entity_id alone is, so the
 	// keyset scan can neither skip nor repeat episodes that tie on completions.
 	ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisodeReadThroughDescParams) ([]ListEpisodeReadThroughDescRow, error)
-	// 並び替えを伴う操作はシリーズ配下のエピソードを全件見る必要があるため、
-	// ページングしない一覧として残す。画面の一覧は下のキーセット走査を使う。
-	// 並びは ListEpisodes と同じ (order_index, id)。ReorderEpisodes がクライアントの
-	// 読み戻しと比較するので、タイブレーカーが違うと競合していないのに拒否する。
+	// Reordering has to see every episode under the series, so this stays a list
+	// without pagination. The list on screen uses the keyset scan below.
+	// The order is (order_index, id), the same as ListEpisodes: ReorderEpisodes
+	// compares it against what the client read back, and a different tiebreaker
+	// would reject a request that never conflicted.
 	ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpisodesBySeriesForTenantParams) ([]ListEpisodesBySeriesForTenantRow, error)
-	// Admin ListEpisodes は (order_index, id) の昇順で表示する。次ページは昇順、
-	// 前ページは降順のクエリで idx_episodes_series_order_index を走査し、前ページ
-	// だけ handler で表示順へ戻す。order_index は同着があり得るので、UUIDv7 の id
-	// をタイブレーカーにして並びを一意に決める。cursor の共通仕様は
-	// proto/README.md を参照。
+	// Admin ListEpisodes is (order_index, id) ASC. Forward uses the ASC query;
+	// backward uses DESC so idx_episodes_series_order_index can be scanned in
+	// reverse. The handler flips DESC rows back into display order. order_index
+	// can tie, so the UUIDv7 id is the tiebreaker that keeps the order unique.
+	// cursor rules: proto/README.md.
 	ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg ListEpisodesBySeriesForTenantAscParams) ([]ListEpisodesBySeriesForTenantAscRow, error)
 	ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodesBySeriesForTenantDescParams) ([]ListEpisodesBySeriesForTenantDescRow, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
 	ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error)
 	ListLabelsByTenantAsc(ctx context.Context, arg ListLabelsByTenantAscParams) ([]ListLabelsByTenantAscRow, error)
-	// Admin ListLabels と公開側 ListPublishedLabels は (created_at, id) の降順で
-	// 表示する。並びも列も同じなので 1 組のクエリを両方から使う。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	// Admin ListLabels and the public ListPublishedLabels are both
+	// (created_at, id) DESC. The order and the columns are the same, so one pair
+	// of queries serves both. Forward uses the DESC query; backward uses ASC so
+	// the index can be scanned in reverse. The handler flips ASC rows back into
+	// display order.
+	// cursor rules: proto/README.md.
 	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
 	// The latest rating each actor currently stands by for one entity: the stock
 	// view of an append-only log. `content_daily_stats.rating_count` /
@@ -477,29 +486,33 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatformOperatorsDescParams) ([]ListPlatformOperatorsDescRow, error)
 	ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error)
-	// 公開著者一覧の cursor ページネーションは 2 段構え。
+	// The cursor pagination of the published author list runs in two stages.
 	//
-	// 1 段目が ListPublishedAuthorIDsByName* で、公開中シリーズを 1 本以上持つ
-	// creator の id だけを決める。並び替えキーは (name, id)。id は UUIDv7 なので
-	// 同名でも一意に決まる。
+	// Stage one is ListPublishedAuthorIDsByName*, which settles nothing but the
+	// ids of the creators that hold at least one published series. The sort key
+	// is (name, id); id is a UUIDv7, so the order stays unique even when two
+	// creators share a name.
 	//
-	// 名前順は web-host が localeCompare(..., "ja") で並べていたが、ICU の ja
-	// collation は環境ごとにロケールが揃っていないと cursor の比較結果が変わり、
-	// btree のキーセット走査が破綻する。そのため DB の既定 collation で name を
-	// 比較する。ja-x-icu を後から足すなら、その collation でインデックスを張り
-	// 直し、cursor の比較も同じ collation に揃える。
+	// web-host used to order the names with localeCompare(..., "ja"), but the ICU
+	// ja collation compares differently unless every environment carries the same
+	// locale data, which changes the cursor comparison and breaks the btree
+	// keyset scan. name is therefore compared in the database's default
+	// collation. Adding ja-x-icu later means rebuilding the index in that
+	// collation and moving the cursor comparison to it as well.
 	//
-	// EXISTS の公開判定は ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
-	// ここがずれるとシリーズ一覧と著者ページで見える作品が食い違う。
-	// ORDER BY を向きごとに固定した別クエリに分けてあるのは、CASE で分岐させる
-	// と idx_creators_tenant_name を索引順に読めなくなるため。前ページ方向は
-	// 降順のクエリを呼んで呼び出し側で並べ直す。
+	// The EXISTS published predicate is the one
+	// ListActiveSeriesIDsByPublishedAtDesc uses. Once the two drift apart, the
+	// series list and the author page disagree about which works are visible.
+	// Every direction gets its own query with a fixed ORDER BY, because branching
+	// with CASE stops idx_creators_tenant_name from being read in index order.
+	// Backward calls the DESC query, and the caller sorts the rows back.
 	//
-	// 2 段目が ListPublishedAuthorsByIDs で、決まった id の表示内容と公開
-	// シリーズ数だけを組み立てる。
+	// Stage two is ListPublishedAuthorsByIDs, which builds the display data and
+	// the published series count for the ids stage one settled on.
 	ListPublishedAuthorIDsByNameAsc(ctx context.Context, arg ListPublishedAuthorIDsByNameAscParams) ([]uuid.UUID, error)
 	ListPublishedAuthorIDsByNameDesc(ctx context.Context, arg ListPublishedAuthorIDsByNameDescParams) ([]uuid.UUID, error)
-	// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
+	// No ORDER BY: the caller sorts the rows into the id order stage one settled
+	// on.
 	ListPublishedAuthorsByIDs(ctx context.Context, arg ListPublishedAuthorsByIDsParams) ([]ListPublishedAuthorsByIDsRow, error)
 	ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedCreatorFollowTargetPublicIDsByIDsParams) ([]ListPublishedCreatorFollowTargetPublicIDsByIDsRow, error)
 	// The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
@@ -516,35 +529,37 @@ type Querier interface {
 	// テナントの公開中かつフッター表示対象のページ一覧を取得する
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
 	ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedSeriesFollowTargetPublicIDsByIDsParams) ([]ListPublishedSeriesFollowTargetPublicIDsByIDsRow, error)
-	// 著者詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
-	// ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
-	// ListActiveSeriesIDsByTitleAsc と同じ形で、creator で絞る。
-	// 前ページ方向は ListPublishedSeriesIDsByCreatorTitleDesc を呼んで
-	// 呼び出し側で並べ直す。
+	// The related series of a creator detail page. A keyset scan on title + id.
+	// The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc
+	// uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by creator.
+	// Backward calls ListPublishedSeriesIDsByCreatorTitleDesc, and the caller
+	// sorts the rows back.
 	ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleAscParams) ([]uuid.UUID, error)
-	// ListPublishedSeriesIDsByCreatorTitleAsc の前ページ方向。
+	// The backward direction of ListPublishedSeriesIDsByCreatorTitleAsc.
 	ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleDescParams) ([]uuid.UUID, error)
-	// レーベル詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
-	// ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
-	// ListActiveSeriesIDsByTitleAsc と同じ形で、label_id で絞る。
-	// 前ページ方向は ListPublishedSeriesIDsByLabelTitleDesc を呼んで
-	// 呼び出し側で並べ直す。
-	// 索引: idx_series_tenant_label_title
+	// The related series of a label detail page. A keyset scan on title + id.
+	// The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc
+	// uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by label_id.
+	// Backward calls ListPublishedSeriesIDsByLabelTitleDesc, and the caller
+	// sorts the rows back.
+	// Index: idx_series_tenant_label_title
 	ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleAscParams) ([]uuid.UUID, error)
-	// ListPublishedSeriesIDsByLabelTitleAsc の前ページ方向。
+	// The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
 	ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleDescParams) ([]uuid.UUID, error)
-	// SearchPublishedSeries。タイトルまたはあらすじが query_pattern に
-	// ILIKE マッチする公開シリーズをタイトル + id のキーセットで取る。
-	// query_pattern は呼び出し側が '%q%' に組み立て、ILIKE の %/_ は
-	// ESCAPE '!' でリテラルにする。
-	// 索引方針: idx_series_tenant_title がキーセット半を担う。ILIKE '%q%' は
-	// btree に乗らないので、テナント + is_published で絞ったうえで LIMIT が
-	// 効くうちはシーケンシャルで足りる。件数が増えて遅延が見えたら title と
-	// series_listings.synopsis に pg_trgm GIN を足す。
+	// SearchPublishedSeries. Takes the published series whose title or synopsis
+	// ILIKE-matches query_pattern, by a keyset on title + id.
+	// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+	// with ESCAPE '!'.
+	// Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
+	// cannot ride a btree, so a sequential scan is enough while the LIMIT still
+	// bites after narrowing by tenant and is_published. Once the row count makes
+	// the latency visible, add a pg_trgm GIN index on title and
+	// series_listings.synopsis.
 	ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleAscParams) ([]uuid.UUID, error)
-	// ListPublishedSeriesIDsBySearchTitleAsc の前ページ方向。
+	// The backward direction of ListPublishedSeriesIDsBySearchTitleAsc.
 	ListPublishedSeriesIDsBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleDescParams) ([]uuid.UUID, error)
-	// ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
+	// The most recent draft and scheduled episodes, for the publish queue on the
+	// dashboard.
 	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
 	ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error)
 	// The keyset scan behind the storefront recommendation list. It takes one
@@ -597,10 +612,11 @@ type Querier interface {
 	// has to be listed here.
 	ListReferencedObjectKeys(ctx context.Context, objectKeys []string) ([]string, error)
 	ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error)
-	// Admin ListSeries は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで idx_series_tenant_created_at を
-	// 走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
-	// が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
+	// Admin ListSeries is (created_at, id) DESC. Forward uses the DESC query;
+	// backward uses ASC so idx_series_tenant_created_at can be scanned in
+	// reverse. The handler flips ASC rows back into display order. id is a
+	// UUIDv7, so the order stays unique even when created_at ties.
+	// cursor rules: proto/README.md.
 	ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error)
 	ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error)
 	ListSeriesImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListSeriesImageVariantsByImageIDsRow, error)

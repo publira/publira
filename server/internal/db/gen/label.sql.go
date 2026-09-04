@@ -285,8 +285,9 @@ type GetPublishedLabelByPublicIDRow struct {
 	PublishedSeriesCount   int32         `json:"published_series_count"`
 }
 
-// テナントに属するレーベルを返す。公開中シリーズが 0 件でも行は返す
-// （レーベル自体に非公開状態は無い）。不在・他テナントは 0 行。
+// Returns a label of the tenant. The row comes back even when the label has
+// no published series, because a label has no unpublished state of its own. A
+// label that does not exist, or one of another tenant, returns no row.
 func (q *Queries) GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getPublishedLabelByPublicID, arg.TenantID, arg.PublicID)
 	var i GetPublishedLabelByPublicIDRow
@@ -482,10 +483,12 @@ type ListLabelsByTenantDescRow struct {
 	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
 }
 
-// Admin ListLabels と公開側 ListPublishedLabels は (created_at, id) の降順で
-// 表示する。並びも列も同じなので 1 組のクエリを両方から使う。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+// Admin ListLabels and the public ListPublishedLabels are both
+// (created_at, id) DESC. The order and the columns are the same, so one pair
+// of queries serves both. Forward uses the DESC query; backward uses ASC so
+// the index can be scanned in reverse. The handler flips ASC rows back into
+// display order.
+// cursor rules: proto/README.md.
 func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listLabelsByTenantDesc,
 		arg.TenantID,

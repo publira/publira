@@ -303,8 +303,9 @@ type GetPublishedAuthorByPublicIDRow struct {
 	PublishedSeriesCount   int32          `json:"published_series_count"`
 }
 
-// 公開中シリーズを 1 本以上持つ creator だけを返す。不在と同じく呼び出し側
-// で not_found にするので、非公開の著者の存在は漏れない。
+// Returns only the creators that hold at least one published series. The
+// caller turns an empty result into not_found exactly as it does a missing
+// row, so the existence of an unpublished author does not leak.
 func (q *Queries) GetPublishedAuthorByPublicID(ctx context.Context, arg GetPublishedAuthorByPublicIDParams) (GetPublishedAuthorByPublicIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getPublishedAuthorByPublicID, arg.TenantID, arg.PublicID)
 	var i GetPublishedAuthorByPublicIDRow
@@ -536,9 +537,10 @@ type ListCreatorsByTenantDescRow struct {
 	IconImageHeight        int32          `json:"icon_image_height"`
 }
 
-// Admin ListCreators は (created_at, id) の降順で表示する。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+// Admin ListCreators is (created_at, id) DESC. Forward uses the DESC query;
+// backward uses ASC so the index can be scanned in reverse. The handler
+// flips ASC rows back into display order.
+// cursor rules: proto/README.md.
 func (q *Queries) ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listCreatorsByTenantDesc,
 		arg.TenantID,
@@ -624,26 +626,29 @@ type ListPublishedAuthorIDsByNameAscParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// 公開著者一覧の cursor ページネーションは 2 段構え。
+// The cursor pagination of the published author list runs in two stages.
 //
-// 1 段目が ListPublishedAuthorIDsByName* で、公開中シリーズを 1 本以上持つ
-// creator の id だけを決める。並び替えキーは (name, id)。id は UUIDv7 なので
-// 同名でも一意に決まる。
+// Stage one is ListPublishedAuthorIDsByName*, which settles nothing but the
+// ids of the creators that hold at least one published series. The sort key
+// is (name, id); id is a UUIDv7, so the order stays unique even when two
+// creators share a name.
 //
-// 名前順は web-host が localeCompare(..., "ja") で並べていたが、ICU の ja
-// collation は環境ごとにロケールが揃っていないと cursor の比較結果が変わり、
-// btree のキーセット走査が破綻する。そのため DB の既定 collation で name を
-// 比較する。ja-x-icu を後から足すなら、その collation でインデックスを張り
-// 直し、cursor の比較も同じ collation に揃える。
+// web-host used to order the names with localeCompare(..., "ja"), but the ICU
+// ja collation compares differently unless every environment carries the same
+// locale data, which changes the cursor comparison and breaks the btree
+// keyset scan. name is therefore compared in the database's default
+// collation. Adding ja-x-icu later means rebuilding the index in that
+// collation and moving the cursor comparison to it as well.
 //
-// EXISTS の公開判定は ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
-// ここがずれるとシリーズ一覧と著者ページで見える作品が食い違う。
-// ORDER BY を向きごとに固定した別クエリに分けてあるのは、CASE で分岐させる
-// と idx_creators_tenant_name を索引順に読めなくなるため。前ページ方向は
-// 降順のクエリを呼んで呼び出し側で並べ直す。
+// The EXISTS published predicate is the one
+// ListActiveSeriesIDsByPublishedAtDesc uses. Once the two drift apart, the
+// series list and the author page disagree about which works are visible.
+// Every direction gets its own query with a fixed ORDER BY, because branching
+// with CASE stops idx_creators_tenant_name from being read in index order.
+// Backward calls the DESC query, and the caller sorts the rows back.
 //
-// 2 段目が ListPublishedAuthorsByIDs で、決まった id の表示内容と公開
-// シリーズ数だけを組み立てる。
+// Stage two is ListPublishedAuthorsByIDs, which builds the display data and
+// the published series count for the ids stage one settled on.
 func (q *Queries) ListPublishedAuthorIDsByNameAsc(ctx context.Context, arg ListPublishedAuthorIDsByNameAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedAuthorIDsByNameAsc,
 		arg.TenantID,
@@ -793,7 +798,8 @@ type ListPublishedAuthorsByIDsRow struct {
 	PublishedSeriesCount   int32          `json:"published_series_count"`
 }
 
-// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
+// No ORDER BY: the caller sorts the rows into the id order stage one settled
+// on.
 func (q *Queries) ListPublishedAuthorsByIDs(ctx context.Context, arg ListPublishedAuthorsByIDsParams) ([]ListPublishedAuthorsByIDsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedAuthorsByIDs, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {

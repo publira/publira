@@ -1,16 +1,19 @@
--- 公開シリーズ一覧の cursor ページネーションは 2 段構えになっている。
+-- The cursor pagination of the published series list runs in two stages.
 --
--- 1 段目がここに並ぶ 4 本のキーセット走査で、1 ページぶんの id だけを決める。
--- 並び替えキーは (published_at, id) か (title, id)。id は UUIDv7 なので、
--- published_at や title が同着でも一意に決まる。ORDER BY を並び順ごとに
--- 固定した別のクエリに分けてあるのは、CASE で分岐させると索引順に読めなく
--- なり、LIMIT の手前で全件ソートが入るため。それぞれ
--- idx_series_tenant_published_at / idx_series_tenant_title をそのまま辿る。
--- 前ページ方向は、並び順を反転した側のクエリを呼んで呼び出し側で並べ直す。
+-- Stage one is the four keyset scans below, which settle nothing but the ids
+-- of one page. The sort key is (published_at, id) or (title, id); id is a
+-- UUIDv7, so the order stays unique even when published_at or title ties.
+-- Every sort order gets its own query with a fixed ORDER BY, because
+-- branching with CASE stops the rows from being read in index order and puts
+-- a full sort ahead of the LIMIT. As written, each query walks
+-- idx_series_tenant_published_at or idx_series_tenant_title directly.
+-- Backward calls the query of the reversed order, and the caller sorts the
+-- rows back.
 --
--- 2 段目が ListActiveSeriesByIDs で、決まった id の表示内容だけを組み立てる。
+-- Stage two is ListActiveSeriesByIDs, which builds the display data for the
+-- ids stage one settled on.
 --
--- cursor の共通仕様は proto/README.md を参照。
+-- cursor rules: proto/README.md.
 -- name: ListActiveSeriesIDsByPublishedAtDesc :many
 SELECT s.id
 FROM series s
@@ -124,8 +127,9 @@ ORDER BY s.title DESC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListActiveSeriesByIDs :many
--- 公開中のシリーズの表示内容を取得する (テナントIDで絞り込み)
--- 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
+-- Display data for the published series, narrowed by tenant id.
+-- No ORDER BY: the caller sorts the rows into the id order stage one settled
+-- on.
 SELECT s.id,
     s.public_id,
     s.title,
@@ -187,11 +191,11 @@ GROUP BY s.id,
     l.name;
 
 -- name: ListPublishedSeriesIDsByCreatorTitleAsc :many
--- 著者詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
--- ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
--- ListActiveSeriesIDsByTitleAsc と同じ形で、creator で絞る。
--- 前ページ方向は ListPublishedSeriesIDsByCreatorTitleDesc を呼んで
--- 呼び出し側で並べ直す。
+-- The related series of a creator detail page. A keyset scan on title + id.
+-- The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc
+-- uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by creator.
+-- Backward calls ListPublishedSeriesIDsByCreatorTitleDesc, and the caller
+-- sorts the rows back.
 SELECT s.id
 FROM series s
     JOIN series_creators sc ON sc.series_id = s.id
@@ -222,7 +226,7 @@ ORDER BY s.title ASC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListPublishedSeriesIDsByCreatorTitleDesc :many
--- ListPublishedSeriesIDsByCreatorTitleAsc の前ページ方向。
+-- The backward direction of ListPublishedSeriesIDsByCreatorTitleAsc.
 SELECT s.id
 FROM series s
     JOIN series_creators sc ON sc.series_id = s.id
@@ -253,12 +257,12 @@ ORDER BY s.title DESC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListPublishedSeriesIDsByLabelTitleAsc :many
--- レーベル詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
--- ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
--- ListActiveSeriesIDsByTitleAsc と同じ形で、label_id で絞る。
--- 前ページ方向は ListPublishedSeriesIDsByLabelTitleDesc を呼んで
--- 呼び出し側で並べ直す。
--- 索引: idx_series_tenant_label_title
+-- The related series of a label detail page. A keyset scan on title + id.
+-- The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc
+-- uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by label_id.
+-- Backward calls ListPublishedSeriesIDsByLabelTitleDesc, and the caller
+-- sorts the rows back.
+-- Index: idx_series_tenant_label_title
 SELECT s.id
 FROM series s
 WHERE s.label_id = sqlc.arg('label_id')::uuid
@@ -288,7 +292,7 @@ ORDER BY s.title ASC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListPublishedSeriesIDsByLabelTitleDesc :many
--- ListPublishedSeriesIDsByLabelTitleAsc の前ページ方向。
+-- The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
 SELECT s.id
 FROM series s
 WHERE s.label_id = sqlc.arg('label_id')::uuid
@@ -318,14 +322,15 @@ ORDER BY s.title DESC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListPublishedSeriesIDsBySearchTitleAsc :many
--- SearchPublishedSeries。タイトルまたはあらすじが query_pattern に
--- ILIKE マッチする公開シリーズをタイトル + id のキーセットで取る。
--- query_pattern は呼び出し側が '%q%' に組み立て、ILIKE の %/_ は
--- ESCAPE '!' でリテラルにする。
--- 索引方針: idx_series_tenant_title がキーセット半を担う。ILIKE '%q%' は
--- btree に乗らないので、テナント + is_published で絞ったうえで LIMIT が
--- 効くうちはシーケンシャルで足りる。件数が増えて遅延が見えたら title と
--- series_listings.synopsis に pg_trgm GIN を足す。
+-- SearchPublishedSeries. Takes the published series whose title or synopsis
+-- ILIKE-matches query_pattern, by a keyset on title + id.
+-- The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+-- with ESCAPE '!'.
+-- Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
+-- cannot ride a btree, so a sequential scan is enough while the LIMIT still
+-- bites after narrowing by tenant and is_published. Once the row count makes
+-- the latency visible, add a pg_trgm GIN index on title and
+-- series_listings.synopsis.
 SELECT s.id
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -359,7 +364,7 @@ ORDER BY s.title ASC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListPublishedSeriesIDsBySearchTitleDesc :many
--- ListPublishedSeriesIDsBySearchTitleAsc の前ページ方向。
+-- The backward direction of ListPublishedSeriesIDsBySearchTitleAsc.
 SELECT s.id
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -415,7 +420,7 @@ SELECT s.id,
     sl.synopsis,
     s.is_published,
     s.published_at,
-    -- 複数の著者情報をJSON配列として1カラムにまとめる
+    -- Collect the several creators into one column as a JSON array
     COALESCE(
         json_agg(
             json_build_object(
@@ -534,10 +539,11 @@ SET published_at = sqlc.narg(published_at)::timestamptz,
     updated_at = NOW()
 WHERE id = $1;
 
--- Admin ListSeries は (created_at, id) の降順で表示する。
--- 次ページは降順、前ページは昇順のクエリで idx_series_tenant_created_at を
--- 走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
--- が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
+-- Admin ListSeries is (created_at, id) DESC. Forward uses the DESC query;
+-- backward uses ASC so idx_series_tenant_created_at can be scanned in
+-- reverse. The handler flips ASC rows back into display order. id is a
+-- UUIDv7, so the order stays unique even when created_at ties.
+-- cursor rules: proto/README.md.
 -- name: ListSeriesByTenantDesc :many
 SELECT s.id,
     s.public_id,
@@ -660,7 +666,7 @@ WHERE s.tenant_id = $1
 LIMIT 1;
 
 -- name: CountPublishedSeriesForTenant :one
--- テナントの公開中シリーズ数を取得する（ダッシュボード用）
+-- For the tenant dashboard.
 SELECT COUNT(*)::int AS published_series_count
 FROM series
 WHERE tenant_id = $1

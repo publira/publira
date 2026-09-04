@@ -22,7 +22,7 @@ WHERE s.tenant_id = $1
     AND el.status = 'draft'
 `
 
-// テナントの下書きエピソード数を取得する（ダッシュボード用）
+// For the tenant dashboard.
 func (q *Queries) CountDraftEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
 	row := q.db.QueryRowContext(ctx, countDraftEpisodesForTenant, tenantID)
 	var draft_episode_count int32
@@ -39,7 +39,7 @@ WHERE s.tenant_id = $1
     AND el.status = 'scheduled'
 `
 
-// テナントの予約済みエピソード数を取得する（ダッシュボード用）
+// For the tenant dashboard.
 func (q *Queries) CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
 	row := q.db.QueryRowContext(ctx, countScheduledEpisodesForTenant, tenantID)
 	var scheduled_episode_count int32
@@ -69,7 +69,6 @@ type CreateEpisodeBaseParams struct {
 	TenantID   uuid.UUID `json:"tenant_id"`
 }
 
-// エピソードのBaseレコードを作成する
 func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error) {
 	row := q.db.QueryRowContext(ctx, createEpisodeBase,
 		arg.ID,
@@ -321,10 +320,11 @@ type ListEpisodesBySeriesForTenantRow struct {
 	PublishedAt        sql.NullTime  `json:"published_at"`
 }
 
-// 並び替えを伴う操作はシリーズ配下のエピソードを全件見る必要があるため、
-// ページングしない一覧として残す。画面の一覧は下のキーセット走査を使う。
-// 並びは ListEpisodes と同じ (order_index, id)。ReorderEpisodes がクライアントの
-// 読み戻しと比較するので、タイブレーカーが違うと競合していないのに拒否する。
+// Reordering has to see every episode under the series, so this stays a list
+// without pagination. The list on screen uses the keyset scan below.
+// The order is (order_index, id), the same as ListEpisodes: ReorderEpisodes
+// compares it against what the client read back, and a different tiebreaker
+// would reject a request that never conflicted.
 func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpisodesBySeriesForTenantParams) ([]ListEpisodesBySeriesForTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEpisodesBySeriesForTenant, arg.TenantID, arg.PublicID)
 	if err != nil {
@@ -410,11 +410,11 @@ type ListEpisodesBySeriesForTenantAscRow struct {
 	PublishedAt        sql.NullTime  `json:"published_at"`
 }
 
-// Admin ListEpisodes は (order_index, id) の昇順で表示する。次ページは昇順、
-// 前ページは降順のクエリで idx_episodes_series_order_index を走査し、前ページ
-// だけ handler で表示順へ戻す。order_index は同着があり得るので、UUIDv7 の id
-// をタイブレーカーにして並びを一意に決める。cursor の共通仕様は
-// proto/README.md を参照。
+// Admin ListEpisodes is (order_index, id) ASC. Forward uses the ASC query;
+// backward uses DESC so idx_episodes_series_order_index can be scanned in
+// reverse. The handler flips DESC rows back into display order. order_index
+// can tie, so the UUIDv7 id is the tiebreaker that keeps the order unique.
+// cursor rules: proto/README.md.
 func (q *Queries) ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg ListEpisodesBySeriesForTenantAscParams) ([]ListEpisodesBySeriesForTenantAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEpisodesBySeriesForTenantAsc,
 		arg.TenantID,
@@ -751,7 +751,8 @@ type ListRecentEpisodesForDashboardRow struct {
 	ScheduledAt     sql.NullTime `json:"scheduled_at"`
 }
 
-// ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
+// The most recent draft and scheduled episodes, for the publish queue on the
+// dashboard.
 func (q *Queries) ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRecentEpisodesForDashboard, arg.TenantID, arg.Limit)
 	if err != nil {
