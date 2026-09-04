@@ -112,8 +112,8 @@ void main() {
   });
 
   testWidgets('a plaintext page is drawn the same way', (tester) async {
-    // The reader has to keep working while image-server runs with
-    // `PUBLIRA_IMAGE_ENCRYPTION` off and answers with the image itself.
+    // The reader has to keep working when an image-server instance a rolling
+    // deploy has not replaced yet answers with the image itself.
     final client = EpisodeImageClient(
       httpClient: MockClient(
         (_) async => http.Response.bytes(

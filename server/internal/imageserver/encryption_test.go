@@ -59,20 +59,3 @@ func TestImageCipherRejectsMissingMaterial(t *testing.T) {
 		t.Fatalf("missing subject error = %v, want %v", err, errInvalidImageCipherMaterial)
 	}
 }
-
-func TestImageEncryptionEnabled(t *testing.T) {
-	for raw, want := range map[string]bool{
-		"":         false,
-		"disabled": false,
-		"false":    false,
-		"enabled":  true,
-		"ON":       true,
-	} {
-		t.Run(raw, func(t *testing.T) {
-			t.Setenv("PUBLIRA_IMAGE_ENCRYPTION", raw)
-			if got := imageEncryptionEnabled(); got != want {
-				t.Fatalf("imageEncryptionEnabled() = %v, want %v", got, want)
-			}
-		})
-	}
-}

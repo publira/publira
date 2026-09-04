@@ -21,7 +21,7 @@ The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4
 
 PIDs and logs default to `e2e/.run/`. When `E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
-Use distinct compose projects and **all** distinct ports (`E2E_IMAGE_SERVER_PORT` and `E2E_EDGE_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process. `PUBLIRA_IMAGE_ENCRYPTION` is defaulted to `enabled` for image-server the same way, so a supplied value still wins (see [Viewer rendering performance](#viewer-rendering-performance)).
+Use distinct compose projects and **all** distinct ports (`E2E_IMAGE_SERVER_PORT` and `E2E_EDGE_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process.
 
 ## One-command run
 
@@ -106,7 +106,7 @@ Specs that stop a shared process run in isolated projects after the ordinary `we
 
 It runs as its own Playwright project, `viewer-performance`, after every other project has finished, so nothing else on the machine is being measured with it.
 
-`lib.sh` defaults `PUBLIRA_IMAGE_ENCRYPTION` to `enabled`, which is not the servers' own default. `Seed Episode 001-02` is free and the suite reads it signed out, so with the flag off this budget would be measured against plaintext pages the viewer's decryption plugin never touches. Left at that default, every number above includes reversing `xor-hmac-sha256-v1` in the browser for each page drawn; export the variable as something else and the same numbers stop covering it, which is what makes a comparison across runs need the value stated alongside it.
+`Seed Episode 001-02` is free and the suite reads it signed out, and image-server encrypts a free body as readily as a paid one, so every number above includes reversing `xor-hmac-sha256-v1` in the browser for each page drawn.
 
 ### Taking the numbers again
 

@@ -93,7 +93,7 @@ Which read supplies the pages depends on the episode's access, and so does the t
 
 `_lib/viewer-fetch.ts` derives the decryption key from that token and its subject, the same way for both, and decrypting a free body therefore needs no session. A page whose stream cannot be reversed fails on its own and keeps the reader's reload control; the rest of the body still draws.
 
-Whether a response is encrypted at all is image-server's `PUBLIRA_IMAGE_ENCRYPTION`, not this app's: with it off the pages arrive as ordinary images and the plugin passes them through. What each body is bound to on the server side, and the `Cache-Control` it keeps, is in the [server README](../../server/README.md#image-delivery-manael).
+image-server encrypts every body it serves, free and entitled alike. A page that still arrives as an ordinary image is passed through untouched, which is what answers a reader a rolling deploy is still routing to an instance it has not replaced yet. What each body is bound to on the server side, and the `Cache-Control` it keeps, is in the [server README](../../server/README.md#image-delivery-manael).
 
 `e2e/tests/host.viewer-performance.spec.ts` holds the drawing budget — time to the first page, the response and the drawn page of a page turn, and a cumulative layout shift of zero — against a seeded episode served through image-server. The numbers, what each one covers, and how to measure them again are in [`e2e/README.md`](../../e2e/README.md).
 
