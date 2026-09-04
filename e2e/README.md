@@ -102,33 +102,9 @@ Specs that stop a shared process run in isolated projects after the ordinary `we
 
 ## Viewer rendering performance
 
-`tests/host.viewer-performance.spec.ts` puts a budget on the canvas reader (`@publira/comic-viewer`, wired up in `apps/web-host/.../_components/episode-comic-viewer.tsx`) so a rendering regression fails a build instead of being noticed by a reader.
+`tests/host.viewer-performance.spec.ts` puts a budget on the canvas reader (`@publira/comic-viewer`, wired up in `apps/web-host/.../_components/episode-comic-viewer.tsx`) so a rendering regression fails a build instead of being noticed by a reader. The four budgets are `BUDGET` at the top of that file, which is also where each one says what it measures and why it sits where it does.
 
-### What is measured
-
-Every number is taken in the browser from `performance.now()`, inside `requestAnimationFrame`, because the viewer draws its bitmap in a layout effect and the frame after that is the frame a reader sees. The signals are the reader's own accessible output — `data-page-status` and `aria-busy` on the page canvas, and the `value` of the `<progress>` that reports reading position — so the suite does not reach into the viewer's internals.
-
-| Metric | From | To | Budget |
-| --- | --- | --- | --- |
-| First page drawn | Navigation start | The first page canvas is loaded and no longer busy | 2000 ms |
-| Page turn response | The `ArrowLeft` keydown | The reader reports the new spread | 200 ms |
-| Page turn drawn | The `ArrowLeft` keydown | The first page of the new spread is on the canvas | 600 ms |
-| Cumulative layout shift | Navigation start | After the turn has settled | 0.01 |
-
-The budgets are ceilings several times above what the reader costs on a warm dev-container stack (about 210 ms to the first page, and a single frame for both turn numbers), so a slower shared CI runner passes while a real regression does not. Change one only after measuring, and say in the pull request what got slower and why that is acceptable.
-
-Two of the metrics deserve their reasoning spelled out:
-
-- **Page turn drawn** normally lands on the same frame as the response, because the viewer has already fetched and decoded the next spread. That is the point: the assertion is that a turn never waits on the network, and the two numbers separate exactly when the prefetch pipeline stops working.
-- **Cumulative layout shift** must be zero. The body skeleton reserves the same box as the loaded reader (`_lib/viewer-layout.ts`), so nothing under the viewer may move as pages arrive. The suite also checks that the browser reports `layout-shift` at all, because an unsupported entry type would otherwise pass as a convincing `0` forever.
-
-The reader draws no low-resolution stand-in before the full page — `_lib/viewer-pages.ts` explains why the placeholder was dropped — so there is no placeholder-to-body swap to time. "First page drawn" covers the same ground.
-
-### How it runs
-
-The suite is its own Playwright project, `viewer-performance`. It depends on the tail of every other project chain, so it starts only once the rest of the suite has finished and has the machine to itself; a timing suite sharing three workers with the others would measure the others. Its `baseURL` is the Traefik edge, the one origin where `/images/episodes/{id}` resolves.
-
-image-server converts a page with Manael on the first request for a given size and format and serves the cached rendition afterwards, so `beforeAll` makes one discarded pass through the reader. Without it the numbers would report libvips throughput on a cold cache rather than the viewer, and delivery performance is not what this budget is about.
+It runs as its own Playwright project, `viewer-performance`, after every other project has finished, so nothing else on the machine is being measured with it.
 
 ### Taking the numbers again
 

@@ -32,6 +32,12 @@ type PurgeOptions struct {
 	// comparison is exclusive: a snapshot has expired when its period_end is
 	// before the cutoff of its ranking_key.
 	//
+	// period_end rather than computed_at, because re-running an old period is
+	// a repair and must not buy that period another full window of life. For
+	// the same reason an AlgorithmVersion bump needs nothing special here: the
+	// new version starts writing the periods the old one no longer does, so
+	// the old rows stop being anyone's newest period and age out normally.
+	//
 	// A ranking_key that has no entry here is never deleted. Retention is a
 	// decision about a particular kind of leaderboard, so a key this build
 	// does not know about is left for the build that does.
@@ -170,6 +176,15 @@ WITH retention AS (
 // expiredSnapshots selects the rows past their retention window that are not
 // the newest period their group has. Both the dry-run count and the chunked
 // delete read through it, so the two can never disagree about what expired.
+//
+// Nothing here is indexed for the purge, and deliberately so: every index on
+// the table leads with tenant_id, which cannot narrow a scan that spans every
+// tenant. Both this scan and the latest grouping are sequential-scan-sized
+// work on a table retention itself keeps to roughly a thousand rows per
+// tenant, while every write to it goes through the daily aggregate-rankings
+// run — so an index would cost more on that path than it saves here. A purge
+// that stops fitting the cron interval, judged from the elapsed time in its
+// completion log, is the trigger to add one.
 const expiredSnapshots = `
 FROM content_ranking_snapshots s
 JOIN retention r ON r.ranking_key = s.ranking_key

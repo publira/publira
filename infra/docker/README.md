@@ -150,9 +150,7 @@ docker build -f infra/docker/node/Dockerfile \
 | Base image | Pin the digest as `tag@sha256:…` (tracked by Renovate). |
 | Tool versions (`turbo`, `pnpm`, and more) | `ARG *_VERSION` plus `# renovate: datasource=…`, in the same form as [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) |
 
-Web and Node use `turbo prune --docker` according to the [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) to reduce dependencies. Runtime images have no shell or `wget`, so **do not add a Docker `HEALTHCHECK`**. Have the orchestrator probe `/livez` (liveness) and `/readyz` (readiness).
-
-The Node role has no equivalent of a Next.js standalone output, so the runner receives only the runtime dependency tree made by `pnpm install --prod` and each workspace package's `dist/`. Sources and development dependencies do not enter the runner. Anything imported at runtime must be in `dependencies`; entries only in `devDependencies` or unmet `peerDependencies` vanish from the `--prod` tree and cause startup failure.
+Web and Node use `turbo prune --docker` according to the [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) to reduce dependencies.
 
 ### Main runtime environment variables (reference)
 

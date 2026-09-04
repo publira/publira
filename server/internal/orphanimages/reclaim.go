@@ -102,6 +102,13 @@ func New(db *sql.DB, store storage.Reclaimer) *Reclaimer {
 // The two halves are separately durable. Each row delete is its own statement
 // and each page's delete its own request, so an interrupted run keeps what it
 // finished and the next one resumes from a fresh listing.
+//
+// A run costs what the bucket holds, not what turns out to be garbage: every
+// object is listed and every key checked whether or not anything is deleted,
+// which is one ListObjectsV2 and one reference lookup per PageSize objects.
+// The trigger to reconsider that shape — sweeping one tenant at a time, or
+// staggering prefixes across days — is a run that stops fitting the cron
+// interval, which the elapsed time in its completion log reports.
 func (r *Reclaimer) Run(ctx context.Context, opts Options) (Result, error) {
 	if r == nil || r.db == nil {
 		return Result{}, errors.New("orphan image reclamation requires a database")

@@ -21,7 +21,7 @@ Without an argument, or with a name that is not one of the nine below, the binar
 | `purge-orphan-images` | One-shot | Deletes the image rows and storage objects nothing references |
 | `build-recommend-features` | One-shot | Rebuilds the daily user and item recommend feature snapshots |
 
-Each subcommand reads its own environment variables — the prefixes do not overlap — and owns its own lifecycle, so the ticker and the one-shot jobs stay as different as they were as separate binaries. OpenTelemetry reports `service.name` as `publira-<subcommand>`, still overridable with `OTEL_SERVICE_NAME`.
+Each subcommand reads its own environment variables — the prefixes do not overlap — and owns its own lifecycle. OpenTelemetry reports `service.name` as `publira-<subcommand>`, still overridable with `OTEL_SERVICE_NAME`.
 
 The container image carries the same binary, with the subcommand passed as a container argument:
 
@@ -46,17 +46,11 @@ Environment variables:
 
 ### Next.js revalidation
 
-With `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` all set, the cache tags of every episode that reaches its publication time are sent to `POST /api/v1/revalidate` on all `web-*` apps. Tags are sent as they are, without a tenant ID restriction. The destinations are private network URLs; neither the public domain nor Traefik is involved. If any URL is unset or malformed, revalidation is disabled and the worker starts after logging the reason.
+With `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` all set, the cache tags of every episode that reaches its publication time are sent to `POST /api/v1/revalidate` on all `web-*` apps.
 
 ## project-episode-reads
 
-Files the analytics counterpart of every stored episode read that does not have one yet, across every tenant.
-
-The API writes that event itself when a member finishes an episode, beside the `episode_reads` row it came from, and swallows the failure if the write does not land — the member's read is already stored, and failing their request over an engagement number would be the worse trade. This job is what closes the gap that leaves, so `content_daily_stats` counts a completion that lost its event.
-
-It is safe to run at any cadence, including alongside the API. The projection is keyed by `(source_table, source_id)` on the read it came from, so a read that already has its event is neither selected nor accepted a second time; running the job again after it has caught up writes nothing.
-
-The role needs `BYPASSRLS` (or superuser), the same one the aggregate uses.
+Files the analytics counterpart of every stored episode read that does not have one yet, across every tenant. It is safe to run at any cadence, including alongside the API, and running it again after it has caught up writes nothing.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -68,19 +62,13 @@ Environment variables:
 - `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_EVENTS_DB_URL`, then `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_EPISODE_READ_PROJECTION_BATCH_SIZE`: rows per statement. Defaults to `1000`; anything that is not a positive 32-bit integer is rejected, because the value becomes a PostgreSQL `LIMIT`.
 
-Run it before `aggregate-content-stats` for the same day, so a completion whose event was lost is counted on the day it happened rather than never: the projection copies `episode_reads.read_at` into `occurred_at`, so a late run still files the event on the correct day, but only a rebuild of that day picks it up.
-
-### Query plan
-
-The anti-join reads `episode_reads` oldest-first and probes `idx_content_events_source_unique` per row. A backlog is bounded by the batch size, so a first run over a large table is many short statements rather than one long one. A run continues while a statement claimed a full batch of reads, not while it wrote a full batch of events: the two differ when the API projected one of the claimed reads first, and stopping on the smaller number would end the run with reads still pending.
+Run it before `aggregate-content-stats` for the same day. A late projection still files the event on the day the member finished, but only a rebuild of that day picks it up.
 
 ## aggregate-content-stats
 
 Fully rebuilds `content_daily_stats` for one UTC day across every tenant, from `content_events` and the Phase 0 `purchases` table.
 
-Purchases are counted from `purchases` only. The `content_events` projection of a purchase is not added on top, so nothing is double counted. Each `(tenant_id, stat_date)` is guarded by an advisory lock inside one transaction, which deletes the existing rows before recreating them.
-
-The role needs `BYPASSRLS` (or superuser). For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
+For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -92,21 +80,13 @@ Environment variables:
 - `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_CONTENT_STATS_DATE`: UTC date as `YYYY-MM-DD`. Defaults to yesterday (UTC).
 
-The structured log records the target date, how many tenants the run finished, the rows created, and the elapsed time — on failure too, since each tenant commits on its own. If the input holds events or purchases but the aggregation comes out empty, the run deletes nothing, leaves the transaction uncommitted, and exits with an error.
-
-Two runs cannot rebuild the same tenant and day at once. The second waits up to 30 seconds for the first and then fails, rather than blocking for the rest of the day with a transaction open.
-
-A tenant that fails does not stop the others. The cron rebuilds yesterday and never returns for a day it missed, so one tenant's lock timeout must not cost every tenant after it their stats. The run finishes the tenants it can, reports every failure together, and still exits non-zero.
-
-### Query plan
-
-The event range for a day can use `idx_content_events_tenant_type_occurred_at`, and the purchase range `idx_purchases_tenant_purchased_at_episode`. On small data sets PostgreSQL may pick a sequential scan anyway, so add `SET enable_seqscan = off` when checking index eligibility with `EXPLAIN`.
+The structured log records the target date, how many tenants the run finished, the rows created, and the elapsed time — on failure too, since each tenant commits on its own.
 
 ## aggregate-rankings
 
 Rebuilds every tenant's ranking snapshots from the `content_daily_stats` rows `aggregate-content-stats` produces. One run writes four snapshots per tenant — a daily and a weekly leaderboard, each for series and for episodes — so run it after `aggregate-content-stats` for the same day.
 
-The role needs `BYPASSRLS` (or superuser), because one run spans every tenant. For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
+For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -121,10 +101,6 @@ Environment variables:
 
 The structured log records the reference date, item limit, algorithm version, and how many tenants, snapshots, and items the run finished — on failure too, since each tenant commits on its own.
 
-One tenant's four snapshots are written in a single transaction, so a reader never sees this run's daily ranking beside the last run's weekly one. Two runs cannot rank the same tenant at once: the second waits up to 30 seconds for the first and then fails, rather than blocking for the rest of the day with a transaction open.
-
-A tenant that fails does not stop the others. The cron ranks yesterday and never returns for a day it missed, so one tenant's lock timeout must not cost every tenant after it their snapshot. The run finishes the tenants it can, reports every failure together, and still exits non-zero.
-
 ### Score formula
 
 A snapshot ranks whatever `content_daily_stats` recorded over its window. Each daily row contributes
@@ -137,13 +113,7 @@ A snapshot ranks whatever `content_daily_stats` recorded over its window. Each d
 + 3 × max(rating_sum − 3 × rating_count, 0)
 ```
 
-faded by `0.5 ^ (days before the last day of the window / 3)`, and an entity's score is the sum over its rows.
-
-The weights order the signals by how much a reader committed: paying for an episode says the most, following a series next, and a view least. A distinct viewer counts double a repeat view, so a title read once by many outranks one refreshed by a few. Ratings only ever add — above neutral is a bonus, below it contributes nothing rather than pushing a title down a popularity chart — because a low rating is a quality signal, not an unpopularity one.
-
-Views are whatever `content_daily_stats` holds, which today is soft PV (a reader opening an episode or series detail page, reported through `RecordContentView`). Separating hard PV out is a later change, and it is one that would change the meaning of `view_count`: bump `algorithm_version` with it.
-
-The fade is measured against the end of the window, never against now, so re-running a past day reproduces that day's snapshot exactly. The order is fully determined — score, then purchases, then viewers, then entity id — so two runs over unchanged stats agree on every position, not just on the set of entities.
+faded by `0.5 ^ (days before the last day of the window / 3)`, and an entity's score is the sum over its rows. Views are whatever `content_daily_stats` holds, which today is soft PV — a reader opening an episode or series detail page, reported through `RecordContentView`.
 
 ### Snapshot contract
 
@@ -179,23 +149,13 @@ Each entry of `items`:
 - **The snapshot is up to a day stale**, and only as good as its input: a period whose `aggregate-content-stats` run never happened ranks the days that did run.
 - **`algorithm_version` may not be the one you compiled against.** Scores are only comparable inside one row, so never compare a score across two snapshots or two versions.
 
-### Query plan and runtime
-
-Each snapshot scans one tenant's `content_daily_stats` for its window and groups by entity. Every index on that table leads with `tenant_id`, so `idx_content_daily_stats_tenant_date`, `idx_content_daily_stats_tenant_entity`, and `idx_content_daily_stats_unique` are all eligible; which one the planner picks depends on how much data the table holds. On small data sets PostgreSQL may pick a sequential scan anyway, so add `SET enable_seqscan = off` when checking index eligibility with `EXPLAIN`.
-
-Every run keeps its four snapshots per tenant, including the empty ones a silent tenant produces: an empty leaderboard is the answer that a run happened and found nothing, which a missing row cannot say. Each new period adds four rows per tenant — as does each new `algorithm_version`, which writes alongside the rows the previous one left. Re-running a period already covered replaces its rows instead of adding to them, and [`purge-ranking-snapshots`](#purge-ranking-snapshots) drops the periods that have outlived their retention window.
-
-The work is bounded by the daily rows a tenant produced over the window — at most one row per entity per day, capped by the size of the catalogue — not by raw event volume, so the eight window scans behind one tenant's four snapshots stay small next to the `aggregate-content-stats` run that feeds them. The budget is the daily cron interval, shared with the batches that must run before and after it; judge one run from the elapsed time in its completion log. If a run stops fitting, the fix is upstream of the scan — fewer tenants per invocation, or a materialised per-entity window rollup — because the item limit bounds only what is written, not what is read.
-
 ## purge-content-events
 
 Deletes `content_events` rows past their retention window across every tenant, in chunked `DELETE`s.
 
-View events pile up quickly, so raw events are dropped on a deadline (90 days by default) while the durable numbers live on in the `content_daily_stats` rows `aggregate-content-stats` builds. Minimising personal data is part of what this retention window is for.
+Raw events are dropped on a deadline (90 days by default) while the durable numbers live on in the `content_daily_stats` rows `aggregate-content-stats` builds.
 
-Rows with `occurred_at < cutoff` are taken oldest first with a `LIMIT`, one chunk per transaction. Because each chunk commits on its own, an interrupted run keeps the work it finished and the next run picks up where it stopped.
-
-The role needs `BYPASSRLS` (or superuser). For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
+For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -211,22 +171,11 @@ Environment variables:
 
 The cutoff is the run's UTC timestamp minus `PUBLIRA_CONTENT_EVENTS_RETENTION_DAYS`, compared exclusively (`occurred_at < cutoff`). The structured log records the cutoff, retention, chunk size, rows deleted, chunk count, and elapsed time.
 
-### Query plan
-
-Chunk selection can use `idx_content_events_occurred_at`, a btree on `occurred_at` alone. A tenant-first index does not help a scan that spans every tenant, which is why this one exists for this batch. On small data sets PostgreSQL may pick a sequential scan anyway, so add `SET enable_seqscan = off` when checking index eligibility with `EXPLAIN`.
-
-### When to consider partitioning
-
-The initial scope is a single table plus chunked `DELETE`s. Observing either of the following is the trigger to consider declarative partitioning of `content_events` by `occurred_at`, truncating with `DROP PARTITION` instead:
-
-- One purge no longer fits in the cron interval (judge from the elapsed-time log)
-- Table and index size clearly outgrows what `VACUUM` / autovacuum keeps up with (bloat does not come back down after a delete)
-
 ## purge-ranking-snapshots
 
 Deletes `content_ranking_snapshots` rows whose period fell out of its retention window, across every tenant, in chunked `DELETE`s.
 
-`aggregate-rankings` writes four snapshots per tenant per run — daily and weekly, each for series and for episodes — and a new day is a new period rather than a replacement, so the table grows by four rows per tenant per day forever. A tenant with no traffic grows at the same rate, because an empty leaderboard is still the answer that a run happened. Only the newest period is ever rendered; the rest exist for trend analysis, which is what the retention windows are sized for.
+`aggregate-rankings` files a new period rather than replacing the last one, so the table grows by four rows per tenant per day. Only the newest period is ever rendered; the rest exist for trend analysis, which is what the retention windows are sized for.
 
 Retention is per `ranking_key`. A weekly snapshot compresses seven days into one row, so it earns a much longer window than a daily one:
 
@@ -235,17 +184,9 @@ Retention is per `ranking_key`. A weekly snapshot compresses seven days into one
 | `daily` | 90 days | A quarter of day-over-day movement |
 | `weekly` | 400 days | A year, plus the margin to compare a week against the same week a year earlier |
 
-A snapshot expires when its `period_end` is before the cutoff for its `ranking_key` — the run's UTC date minus that key's retention, compared exclusively. `period_end` rather than `computed_at`: re-running an old period is a repair, and it must not buy that period another full window of life.
+A snapshot expires when its `period_end` is before the cutoff for its `ranking_key` — the run's UTC date minus that key's retention, compared exclusively. **The newest period a tenant holds always survives, whatever the retention says**, and a `ranking_key` this build does not configure is never deleted at all.
 
-**The newest period always survives, whatever the retention says.** Per `(tenant_id, ranking_key, entity_type)`, the row with the greatest `period_end` is never a candidate. That row is the one the public site reads, so a tenant whose cron has been stopped for longer than its retention window keeps serving a stale ranking instead of losing it entirely.
-
-A `ranking_key` this build does not configure — anything but `daily` and `weekly` — is never deleted. Retention is a decision about a particular kind of leaderboard, so an unrecognised one is left to the build that knows what it is.
-
-An `algorithm_version` bump needs nothing special. The new version starts writing the periods the old one no longer does, so the old rows stop being anyone's newest period and age out on the ordinary schedule.
-
-Expired rows are taken oldest period first with a `LIMIT`, one chunk per transaction. Because each chunk commits on its own, an interrupted run keeps the work it finished and the next run picks up where it stopped. Deleting is idempotent: a second run over the same cutoffs finds nothing left.
-
-The role needs `BYPASSRLS` (or superuser). For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
+For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -262,23 +203,15 @@ Environment variables:
 
 The structured log records both cutoffs and retentions, the chunk size, the rows deleted, the chunk count, and the elapsed time.
 
-### Query plan
-
-Every index on this table leads with `tenant_id`, so nothing indexes a scan for expired periods across every tenant, and each chunk also re-derives the newest period per `(tenant_id, ranking_key, entity_type)` — a grouping the leading columns of `idx_content_ranking_snapshots_tenant_key_computed` can answer. Both are sequential-scan-sized work on a table that retention itself keeps to roughly a thousand rows per tenant, and every write to it goes through the daily `aggregate-rankings` run, so an index for the purge would cost more on that path than it saves here. Judge one run from the elapsed time in its completion log; a purge that stops fitting the cron interval is the trigger to add one.
-
 The first run against a table that has accumulated since before this batch existed deletes a backlog rather than a day, so it takes many chunks. `PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true` reports how large that backlog is before anything is deleted.
 
 ## purge-mfa-challenges
 
 Deletes `user_mfa_used_challenges` rows whose challenge token has expired, across every tenant, in chunked `DELETE`s.
 
-`VerifyMfa` exchanges an MFA challenge token for a session and records the token's `jti` in that table, which is what refuses the second exchange of the same token. A row therefore stops meaning anything once the token it names expires — five minutes after login — and this batch is what takes it away. Nothing depends on a row surviving: the account's own MFA state lives in `user_mfa_totp` and `user_mfa_recovery_codes`.
+A row there refuses the second exchange of an MFA challenge token, so it stops meaning anything once that token expires — five minutes after login. There is no retention setting: the cutoff is the run's UTC timestamp, compared against the row's own `expires_at` exclusively (`expires_at < cutoff`).
 
-There is no retention setting. The cutoff is the run's UTC timestamp, compared against the row's own `expires_at` exclusively (`expires_at < cutoff`), so a run only ever removes rows that can no longer refuse anything. Deleting is idempotent, and a run that is skipped for a week costs nothing but the rows it leaves lying around.
-
-Expired rows are taken oldest first with a `LIMIT`, one chunk per transaction. Because each chunk commits on its own, an interrupted run keeps the work it finished and the next run picks up where it stopped.
-
-The role needs `BYPASSRLS` (or superuser). For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
+For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -293,28 +226,13 @@ Environment variables:
 
 The structured log records the cutoff, the chunk size, the rows deleted, the chunk count, and the elapsed time.
 
-### Query plan
-
-Chunk selection uses `idx_user_mfa_used_challenges_expires_at`, a btree on `expires_at` alone, so a scan that spans every tenant reaches the oldest rows without reading the table. The table itself only ever holds the logins of the last few minutes plus whatever a missed run left behind. On small data sets PostgreSQL may pick a sequential scan anyway, so add `SET enable_seqscan = off` when checking index eligibility with `EXPLAIN`.
-
 ## purge-orphan-images
 
 Deletes the image rows nothing points at and the storage objects nothing names, across every tenant.
 
-An image upload writes to two places no single transaction covers: rows in the database, and one object per variant in the S3 compatible bucket. Rolling the transaction back removes the rows and leaves the objects; replacing an image points its entity at the new rows and leaves both the old rows and the old objects. Nothing breaks either way — the bucket simply grows with every upload that was ever undone, in proportion to how often images are replaced.
+The database is the authority over the bucket: an object no `*_image_variants` row names is garbage. A run has two halves, in this order. It deletes every `creator_images`, `label_images`, `series_images`, and `tenant_images` row that its entity no longer points at, and then walks the bucket under `tenants/` a page at a time, asking the database which of the keys on that page any variant still names and deleting the rest. Nothing younger than `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS` is a candidate in either half, which is what keeps an upload still in flight out of range.
 
-The database is the authority. An object no `*_image_variants` row names is garbage, and reclamation is a mark-and-sweep against that fact rather than a record of what to delete: it needs no bookkeeping on the upload path, and it collects the objects that were stranded before this batch existed as readily as the ones stranded yesterday.
-
-A run has two halves, in this order:
-
-1. **Rows.** Delete every `creator_images`, `label_images`, `series_images`, and `tenant_images` row that its entity no longer points at. The variants go with it by cascade, which is what turns a superseded image into an orphaned object the same run then collects. `episode_images` has no unreferenced state and is never a candidate: an episode owns every image filed under it, and no column elects one of them.
-2. **Objects.** Walk the bucket under `tenants/` a page at a time, ask the database which of the keys on that page any variant still names, and delete the rest.
-
-**The minimum age is what makes the sweep safe.** An upload writes its object before the row that names it, so an object with no row is either an abandoned upload or one that is still running, and only its age tells the two apart. Nothing younger than `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS` is a candidate, in either half of the run. The same guard covers the ordering inside the sweep — the database is read after the listing, so a row written between the two only ever rescues an object, never loses one.
-
-Reclamation is idempotent: a second run over the same cutoff finds nothing left to remove.
-
-Both a database and a bucket are needed, so this is the one batch that also reads the `PUBLIRA_S3_*` settings. The role needs `BYPASSRLS` (or superuser). For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
+Both a database and a bucket are needed, so this is the one batch that also reads the `PUBLIRA_S3_*` settings. For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -331,23 +249,13 @@ Environment variables:
 
 The structured log records the cutoff, the minimum age, the page size, the bucket, the image rows deleted, the objects scanned and deleted, the page count, and the elapsed time.
 
-### Query plan
-
-The reference lookup passes one page of keys as an array and probes each of the five variant tables with a semi-join, which `idx_<entity>_image_variants_object_key` answers. Those indexes exist for this batch; every other index on those tables leads with a tenant or parent image ID, which nothing helps a lookup that starts from an object key.
-
-The row deletes are one anti-join per table per run, over tables that hold one row per entity image, so they are left unindexed — `creators.icon_image_id` and its counterparts are read once each and a sequential scan is the cheaper answer.
-
-### Cost of a run
-
-A run's cost is set by the bucket, not by how much of it turns out to be garbage: every object is listed and its key checked, whether or not anything is deleted. That is one `ListObjectsV2` and one reference lookup per thousand objects. The trigger to reconsider the shape — narrowing the sweep per tenant, or scanning on a schedule staggered across prefixes — is a run that stops fitting the cron interval, which the elapsed time in the completion log reports.
-
 ## build-recommend-features
 
 Rebuilds `user_recommend_features` and `item_recommend_features` for every tenant from a trailing window of daily engagement data. Online inference v1 reads these snapshots and falls back to rankings or new releases when a subject has no row.
 
-Item features roll up `content_daily_stats`; user features summarise `content_events` for signed-in readers. Both tables are snapshots rather than ledgers: each run replaces one tenant's rows inside a single transaction guarded by an advisory lock, so a subject whose signal aged out of the window loses its row instead of keeping a stale one.
+Item features roll up `content_daily_stats`; user features summarise `content_events` for signed-in readers. Both tables are snapshots rather than ledgers: each run replaces one tenant's rows.
 
-The role needs `BYPASSRLS` (or superuser), because one run spans every tenant. For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
+For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -362,15 +270,11 @@ Environment variables:
 
 Run it after `aggregate-content-stats` for the same day: the item snapshot reads the daily stats that batch produces.
 
-The structured log records the reference date, window, feature version, and how many tenants and user and item rows the run finished — on failure too, since each tenant commits on its own. A tenant whose window holds source rows but produces no feature rows fails the run before the transaction commits, so a bad read cannot silently empty a good snapshot.
-
-Two runs cannot rebuild the same tenant at once. The second waits up to 30 seconds for the first to finish that tenant and then fails, rather than blocking for the rest of the day with a transaction open.
-
-A tenant that fails does not stop the others. The cron builds yesterday's window and never returns for a day it missed, so one tenant's lock timeout must not leave every tenant after it on a snapshot a day older. The run finishes the tenants it can, reports every failure together, and still exits non-zero.
+The structured log records the reference date, window, feature version, and how many tenants and user and item rows the run finished — on failure too, since each tenant commits on its own.
 
 ### Feature contract
 
-Both tables carry `feature_version`, which this batch stamps with the version the code was built from. Bump it whenever a field's shape or meaning changes, so a reader can tell a freshly built row from one an older build left behind.
+Both tables carry `feature_version`, the version of the code that wrote the row.
 
 `window_start` and `window_end` are inclusive UTC calendar dates; `last_event_at` is an ISO 8601 UTC timestamp.
 
@@ -403,7 +307,7 @@ Both tables carry `feature_version`, which this batch stamps with the version th
 Neither table is complete, and an inference path that assumes otherwise breaks on ordinary traffic:
 
 - **A missing row is the normal case, not an error.** A tenant that has never run the batch, a reader in their first session, and a series published after the window closed all have no row. Treat absence as "no signal" and fall back to the ranking snapshot or new releases.
-- **Anonymous readers never have a row.** `user_recommend_features` is keyed by `users(tenant_id, id)`, so a `publira_aid` actor has nowhere to be stored. Signed-out traffic is always a fallback case.
+- **Anonymous readers never have a row.** Signed-out traffic is always a fallback case.
 - **Rows can disappear between runs.** A reader whose activity aged out of the window loses their row on the next build. Nothing about a previously present row is durable.
 - **The snapshot is up to a day stale.** Same-day behaviour is out of scope for v1; a reader's very first sessions are invisible to it.
 - **`feature_version` may not be the one you compiled against.** Read the value rather than assuming it, and treat an unexpected version as no signal.

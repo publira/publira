@@ -81,7 +81,7 @@ task server:test
 
 ## Graceful shutdown
 
-The long-lived processes (`api-server` / `admin-api-server` / `platform-api-server` / `image-server` / `admin-image-server` / `outbox-worker`) call `http.Server.Shutdown` on SIGINT / SIGTERM. `outbox-worker` also stops the River client on the same deadline. Draining in-flight requests and the registered shutdown hooks share the same 30-second deadline. Connections that outlast the grace period are cut with `Close`. `admin-api-server` and `platform-api-server` flush the remaining asynchronous audit log entries within that same remaining time, after the HTTP drain and before closing the DB pool. Past the deadline, in-progress writes are cancelled and unsaved events are dropped, with the count and the cause recorded in metrics and structured logs. Each `main` passes closing the DB pool as its last hook, and also keeps a `defer db.Close()` as a safety net for the startup failure paths. Flushing OpenTelemetry spans is registered as a hook on the same path.
+On SIGINT / SIGTERM the long-lived processes (`api-server` / `admin-api-server` / `platform-api-server` / `image-server` / `admin-image-server` / `outbox-worker`) drain in-flight requests and then run their shutdown hooks — stopping the River client, flushing the asynchronous audit log and the pending OpenTelemetry spans, and closing the DB pool — on one shared 30-second deadline. Whatever has not finished by then is cut off; a dropped audit log entry is counted in the metrics and named in the structured log.
 
 Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernetes, a `terminationGracePeriodSeconds` of 45 or more). Draining readiness at the load balancer is configured separately.
 
@@ -89,9 +89,9 @@ Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernet
 
 Paid episodes are sold as a one-time payment through Stripe Checkout. The URL the browser returns to does not confirm the purchase. `POST /api/v1/webhook/stripe` on `web-host` receives the request on the tenant's public domain and does nothing but forward Stripe's raw body and signature to PurchaseService. The API server verifies the signature with the target tenant's enabled payment configuration and creates a row in `purchases` only when it receives `checkout.session.completed` (or `checkout.session.async_payment_succeeded` for asynchronous payments).
 
-Starting Checkout and verifying the webhook both use the enabled configuration in `tenant_payment_config`. When the configuration is missing, disabled, or cannot be decrypted, no payment is started and the webhook records no purchase (web-host turns `FailedPrecondition` into a 503). After a completed or cancelled purchase the reader returns to the episode URL on the tenant's `domain`.
+Starting Checkout and verifying the webhook both use the enabled configuration in `tenant_payment_config`; without a usable one neither runs, and web-host turns the resulting `FailedPrecondition` into a 503. After a completed or cancelled purchase the reader returns to the episode URL on the tenant's `domain`.
 
-Tenant administrators register the Stripe secret key and the webhook signing secret through `AdminPaymentSettingsService`. Public reads return only the enabled state and a masked hint; the plaintext is limited to server-internal use through `paymentsettings.Store.LoadEnabledSecrets`. Verifying signatures, currencies, amounts, and purchase permissions stays in the API server.
+Tenant administrators register the Stripe secret key and the webhook signing secret through `AdminPaymentSettingsService`. Verifying signatures, currencies, amounts, and purchase permissions stays in the API server.
 
 In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/stripe` as the webhook endpoint and enable the two events above. For local development, forward with the Stripe CLI:
 
@@ -132,7 +132,7 @@ The Go integration tests against RustFS use the Testcontainers helper `StartRust
 
 After checking permissions, `image-server` / `admin-image-server` convert JPEG/PNG/GIF to WebP or AVIF with [Manael](https://github.com/manaelproxy/manael) and resize them with `w` / `h` / `fit` / `q`. The converted result is kept in an intermediate cache, so the same `Accept` and query does not hit S3 or run the conversion again.
 
-For episode body images, when `PUBLIRA_IMAGE_ENCRYPTION=enabled`, the cached converted plaintext is not returned as-is: it is encrypted just before the response, bound to a JWT and its `sub`. The default is disabled, so that enabling it explicitly after the client-side decryption is deployed keeps an early deploy from breaking existing viewers. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response from `admin-image-server`, whose previews are rendered by an `<img>` that cannot decrypt, remain ordinary image responses.
+For episode body images, when `PUBLIRA_IMAGE_ENCRYPTION=enabled`, the cached converted plaintext is not returned as-is: it is encrypted just before the response, bound to a JWT and its `sub`. The default is disabled, so that enabling it explicitly after the client-side decryption is deployed keeps an early deploy from breaking existing viewers. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response from `admin-image-server` remain ordinary image responses.
 
 | Header | Value / meaning |
 | --- | --- |
@@ -140,7 +140,7 @@ For episode body images, when `PUBLIRA_IMAGE_ENCRYPTION=enabled`, the cached con
 | `X-Publira-Image-Content-Type` | The MIME type after decryption (`image/webp` / `image/avif`, and so on) |
 | `X-Publira-Image-Key-Id` | An opaque identifier for the converted rendition |
 
-`xor-hmac-sha256-v1` takes the JWT string as the HMAC key, computes HMAC-SHA-256 over `"publira:image:xor-hmac-sha256:v1\\0" + sub + "\\0" + key-id`, and uses that output as the HMAC key. It then XORs the body with a 32-byte stream produced by HMAC-SHA-256 over the 8-byte big-endian block number. This is a delivery layer that raises the cost of extraction, not DRM. The client performs the same steps with the `t` in the URL (or the Bearer JWT it sent), the JWT's `sub`, and the headers above.
+`xor-hmac-sha256-v1` takes the JWT string as the HMAC key, computes HMAC-SHA-256 over `"publira:image:xor-hmac-sha256:v1\\0" + sub + "\\0" + key-id`, and uses that output as the HMAC key. It then XORs the body with a 32-byte stream produced by HMAC-SHA-256 over the 8-byte big-endian block number. The client performs the same steps with the `t` in the URL (or the Bearer JWT it sent), the JWT's `sub`, and the headers above.
 
 Which JWT a body is bound to depends on which rule let the request through:
 
@@ -149,17 +149,9 @@ Which JWT a body is bound to depends on which rule let the request through:
 | Unlocked by a purchase or a ticket | The credential the request carried — the `Authorization` bearer, or the reader's media token on the URL — and its `sub` | `private, max-age=60` |
 | Free (`price = 0`) | The episode's rotating media token (see [Media tokens](#media-tokens-audience-media)) and its synthetic `sub` | `public, max-age=3600` |
 
-A free body is encrypted from key material its reader may hold no credential for, so `image-server` recomputes the current window's token itself instead of trusting what the URL carried. It encrypts under the presented `t` when that token is this tenant's and this episode's and has not expired — which is how a reader still holding the previous window's URL decodes it — and under the current window's token in every other case. Presenting nothing, a mangled value, or an expired one therefore yields ciphertext that request cannot read, rather than the page in the clear.
-
-Only the URL decides the key of a free body; the `Authorization` header is not read on that path. The response is therefore a pure function of the URL, and stays shareable: a CDN keeps one entry per rendition for the whole tenant, exactly as an unencrypted free body does. What encryption costs there is that the entry is only usable for as long as the material on the URL is: one hour of freshness against a token that rotates daily and stays valid for two windows, so a cached response can never outlive the key that decodes it. Anything holding the URL longer — the public site's shared `GetEpisodeDetail` cache, most of all — has to stay under the same floor.
-
 - `PUBLIRA_REDIS_URL`: Redis for the conversion cache. Unset / `disabled` / `off` / `false` means in-process memory only
 - `PUBLIRA_IMAGE_CACHE_TTL`: TTL of the conversion cache (a Go duration or a number of seconds; default `1h`)
 - `PUBLIRA_IMAGE_ENCRYPTION`: with `enabled` / `true` / `on` / `1`, encrypts episode bodies with `xor-hmac-sha256-v1` (disabled by default). Read by `image-server` only, so it takes both a paid and a free body at once and leaves `admin-image-server` alone
-
-### Checking load and caching
-
-Check `X-Publira-Image-Cache: miss|hit` in the response for the same image, the same `Accept`, and the same conversion parameters. Only the first `miss` reads from S3 and runs the Manael conversion; every later `hit` only encrypts the plaintext rendition from Redis (when configured) or the in-process cache. When verifying with encryption enabled, also measure that a different JWT produces different bytes for the body, that decrypting each response yields the same rendition, and that origin reads do not increase during the `hit`s.
 
 Building requires libvips. For the details, see [cmd/image-server/README.md](cmd/image-server/README.md).
 
@@ -172,13 +164,13 @@ Building requires libvips. For the details, see [cmd/image-server/README.md](cmd
 
 ## Internal URLs for Next.js revalidation
 
-With `PUBLIRA_REVALIDATE_TOKEN` set, admin-api and `batch publish-episodes` send cache tags to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app. The tenant ID is part of neither the URL, the request body, nor the decision to send, and tags are revalidated as they are across tenants. All three URLs are required. If any of them is unset or malformed, revalidation is disabled and the process logs the reason and starts normally.
+With `PUBLIRA_REVALIDATE_TOKEN` set, admin-api and `batch publish-episodes` send cache tags to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app. All three URLs are required together.
 
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` (for example `http://web-host:3000`)
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)
 - `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (for example `http://web-platform:4100`)
 
-These are URLs reachable inside the private network. They do not go through the public URLs meant for browsers, `PUBLIRA_WEB_HOST_URL`, or Traefik. Each app keeps a separate Redis key space per `PUBLIRA_CACHE_APP`, so the same tag has to be sent to all three apps.
+These are URLs reachable inside the private network, not the public ones meant for browsers (`PUBLIRA_WEB_HOST_URL`).
 
 ## Email renderer
 
@@ -190,8 +182,6 @@ These are URLs reachable inside the private network. They do not go through the 
 ## Distributed tracing (OpenTelemetry)
 
 Every process under `cmd/*` emits OpenTelemetry traces. **It is disabled by default**: unless `PUBLIRA_TRACING_ENABLED` is set, neither the TracerProvider nor the propagator is replaced, and the behavior is exactly what it was before the instrumentation was introduced (the processes start without any collection backend).
-
-Attribute names, span naming, and the sampling policy follow the design agreed in [#502](https://github.com/publira/publira/issues/502).
 
 ### What gets a span
 
@@ -208,7 +198,7 @@ Propagation uses W3C Trace Context (`traceparent`) and Baggage. An inbound `trac
 
 ### Trace context arriving from outside
 
-A server that trusts `traceparent` as its parent hands the trace ID and the `sampled` flag to whoever can set that header. So **the trust boundary lives at the gateway**, and `traceparent` / `tracestate` / `baggage` are removed from requests that came through a public entrypoint. The removal is applied as default middleware on the entrypoint, so adding another router cannot leave it out by accident.
+**The trust boundary lives at the gateway**: `traceparent` / `tracestate` / `baggage` are removed from every request that came through a public entrypoint, as default middleware on that entrypoint.
 
 | Environment | Where it is stripped |
 | --- | --- |
@@ -245,7 +235,7 @@ Persistence retries, final drops, queue overflows, and shutdown drain deadlines 
 | `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 
-Container images are built from a context that does not include `.git`, so Go cannot embed the VCS information. Passing `VERSION`, as in `task docker:build:api VERSION=v1.2.3`, embeds it into `internal/buildinfo` through ldflags. Without it the value is `dev`.
+A container build carries no `.git`, so pass `VERSION` (`task docker:build:api VERSION=v1.2.3`) to stamp the version into the binary. Without it the value is `dev`.
 
 ### Span attributes
 
@@ -346,7 +336,7 @@ A browser cannot attach an `Authorization` header to an `<img>` request. So for 
 | Scope | Only the single episode it was issued for (claim `eid`) |
 | Revocation | The same `users.credentials_version` as the access token |
 
-The token only states who the reader is; whether the image may be viewed is decided by `image-server`, which consults purchases and access_tickets on every request (the same rules as the API).
+The token only states who the reader is; whether the image may be viewed is decided by `image-server`, which consults purchases and access_tickets on every request, under the same rules as the API.
 
 Free episodes (`price = 0`) get a token of the same audience with a different shape, because their reader may hold no credential at all and still needs key material for the encrypted body:
 
@@ -357,7 +347,7 @@ Free episodes (`price = 0`) get a token of the same audience with a different sh
 | Scope | Only the single episode it was issued for (claim `eid`) |
 | Revocation | None to revoke: it carries no reader, and rotation is what ends a copied URL |
 
-Because it is derived from the window rather than the moment it was asked for, every reader who opens one free episode within one window is handed the identical URL. That is what keeps a free page shareable: `image-server` answers it with `public, max-age=3600`, a CDN keeps one copy, and the public site's shared `GetEpisodeDetail` cache can hand the same response to every reader. Access is still decided entirely by the public rule — published, and `price = 0` — so an unpublished episode and a paid episode without a purchase or a ticket are `403` whether the token is present or not.
+Every reader who opens one free episode within one window is handed the identical URL, which is what keeps a free page shareable. Access is still decided entirely by the public rule — published, and `price = 0` — so an unpublished episode and a paid episode without a purchase or a ticket are `403` whether the token is present or not.
 
 ### Admin media tokens (audience `admin-media`)
 
@@ -388,23 +378,23 @@ A tenant member signing in to the admin console can hold a second factor: a TOTP
 
 ### The challenge that stands in for half a session
 
-`Login` does not issue an access token to an account that still owes a factor. It answers with a short-lived challenge token instead, under an audience of its own — `admin-mfa-verify` when the account has a confirmed authenticator, `admin-mfa-enroll` when it has none and the deployment requires one. Every verifier compares the audience exactly, so a challenge cannot be presented as a session, and the token that may only finish an enrollment cannot answer a verification challenge. The challenge lives five minutes and carries `users.credentials_version`, so a password change ends a pending one.
+`Login` does not issue an access token to an account that still owes a factor. It answers with a short-lived challenge token instead, under an audience of its own — `admin-mfa-verify` when the account has a confirmed authenticator, `admin-mfa-enroll` when it has none and the deployment requires one. The challenge lives five minutes and carries `users.credentials_version`, so a password change ends a pending one.
 
 `VerifyMfa` exchanges a verify challenge and a code for the access token. `ConfirmMfaEnrollment` does the same for an enroll challenge: it returns the recovery codes and the session in one response, which is what finishes a login that was stopped at enrollment.
 
-A verify challenge buys one session. Every challenge carries a `jti`, and the exchange records it in `user_mfa_used_challenges` — an `INSERT ... ON CONFLICT DO NOTHING` whose row count is the claim, so of two requests presenting the same token only one goes on. The claim is made after the code is accepted: burning the challenge on a mistyped code would send an operator back through the password, and it is the failure limit that bounds guessing. `batch purge-mfa-challenges` deletes the rows whose token has expired. An enroll challenge is presented twice by design and is not recorded; once it enables the factor, the same token is refused with `mfa is already enabled`.
+A verify challenge buys one session, claimed by its `jti` in `user_mfa_used_challenges`; `batch purge-mfa-challenges` deletes those rows once their token has expired. An enroll challenge is presented twice by design and is not recorded — once it enables the factor, the same token is refused with `mfa is already enabled`.
 
 ### Requiring the factor
 
-`PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN` (admin-api-server, `false` when unset) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having. Anything that is not a boolean leaves the factor optional — a misspelled value must not lock every tenant admin out of the console it is the only way into.
+`PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN` (admin-api-server, `false` when unset, and optional for any other value that is not a boolean) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
 
-Taking the factor off needs the authenticator or a recovery code, so an account whose phone is gone gets itself back without an operator. Minting a new batch of recovery codes needs the authenticator: letting one leaked code mint ten more would make it permanent.
+Taking the factor off needs the authenticator or a recovery code. Minting a new batch of recovery codes needs the authenticator.
 
 ## View events (soft PV) and anonymous actors
 
 `ContentViewService.RecordContentView` records a view event in `content_events` for the series or episode detail page a reader opened. This is the Phase 1 soft PV, and it means nothing more than "the reader opened the page" (hard PV, which observes whether the body was actually read, comes later). The target is resolved before anything is written, so an unpublished, cross-tenant, or missing public ID is `not_found`; once it resolves, the recording is decoupled from the main processing and the RPC succeeds even when the write fails.
 
-The detail RPCs deliberately record nothing. Their callers cache them (`"use cache"` in web-host), and a cache fill reaches the API without the reader's cookie or bearer: instrumenting them would mint a fresh anonymous actor per fill and add a row for a page nobody opened, while a cache hit would record no reader at all. Recording lives in its own RPC so the reader's request is the only thing that files a view.
+The detail RPCs deliberately record nothing: their callers cache them, so recording lives in its own RPC and the reader's request is the only thing that files a view.
 
 | Item | Value |
 | --- | --- |
@@ -420,12 +410,12 @@ The detail RPCs deliberately record nothing. Their callers cache them (`"use cac
 
 A cookie whose only purpose is counting signed-out readers. Its value is a UUIDv7 assigned by the server and contains nothing else. When the cookie is absent, or its value does not parse as a UUID, a new one is assigned and returned in the response's `Set-Cookie`.
 
-| Attribute | Value |
-| --- | --- |
-| Name | `publira_aid` |
-| Path | `/` |
-| Max-Age | 180 days (longer than the retention period for raw events, and short enough that an abandoned identifier does not live on forever) |
-| Others | `HttpOnly` / `Secure` / `SameSite=Lax` |
+| Attribute | Value                                  |
+| --------- | -------------------------------------- |
+| Name      | `publira_aid`                          |
+| Path      | `/`                                    |
+| Max-Age   | 180 days                               |
+| Others    | `HttpOnly` / `Secure` / `SameSite=Lax` |
 
 ## Rating events
 
@@ -440,9 +430,7 @@ A cookie whose only purpose is counting signed-out readers. Its value is a UUIDv
 | Score | `rating_score` 1–5. Out-of-range values and an unset 0 are `invalid_argument` (there is a CHECK constraint on the DB side too) |
 | Append-only | Rating again neither updates nor deletes the existing row; it appends a new one |
 
-There is no RPC for withdrawing a rating. Which rating counts is decided on read rather than on write: `ListLatestContentRatingsByEntity` (`DISTINCT ON (actor_key)`) returns the latest single row per actor.
-
-The daily aggregation (`rating_count` / `rating_sum` in `content_daily_stats`) is a **flow metric** that counts only the ratings that occurred on that day, not the average rating (a stock) the item holds at that point. A reader who rates again is counted on both days, and a reader who does not change their rating is counted on no day after the first. Use the `DISTINCT ON` above when you need the stock average.
+There is no RPC for withdrawing a rating. Which rating counts is decided on read: `ListLatestContentRatingsByEntity` returns the latest single row per actor.
 
 ## Completion events and read-through
 
@@ -466,9 +454,7 @@ The daily aggregation (`rating_count` / `rating_sum` in `content_daily_stats`) i
 | `complete_count` | `episode_complete` events on that day |
 | `member_view_count` | `episode_view` events on that day whose `user_id` is set |
 
-The rate is `complete_count / member_view_count` over a range of days, and the cohort is what makes the division meaningful: only a signed-in member can be recorded as finishing an episode, so `view_count` and `unique_viewer_count` — which include anonymous readers — cannot be the denominator. A period with no member views has no rate at all rather than a rate of zero; the console shows an em dash there. `AdminEngagementService.ListEpisodeReadThrough` reports the last 28 complete UTC days.
-
-Both columns are a **flow** of the day, like `rating_count`, so they sum across a date range. What does not sum is a count of distinct people: a member who opened an episode on two days is two member views, and the completion they may have contributed is filed on one day only.
+The rate is `complete_count / member_view_count` over a range of days. A period with no member views has no rate at all rather than a rate of zero; the console shows an em dash there. `AdminEngagementService.ListEpisodeReadThrough` reports the last 28 complete UTC days.
 
 ## API server separation
 
@@ -502,9 +488,7 @@ Each API server connects with its own dedicated PostgreSQL login user, which kee
 | batch purge-orphan-images | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_ORPHAN_IMAGES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_WORKER_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 
-`publira_platform`, `publira_content_stats`, and `publira_outbox` carry the BYPASSRLS attribute and access data across every tenant. `publira_admin` / `publira_public` have RLS enabled and are scoped by tenant ID, so neither can serve a cross-tenant process such as outbox-worker, which claims pending rows for every tenant at once.
-
-outbox-worker gets its own login rather than sharing `publira_content_stats` because it also owns River's schema: it applies `river_job` and the rest with `rivermigrate` at startup, so `publira_outbox` is the only app role that holds `CREATE` on the `public` schema. The daily batches have no reason to be able to change that schema.
+`publira_platform`, `publira_content_stats`, and `publira_outbox` carry the BYPASSRLS attribute and access data across every tenant; `publira_admin` and `publira_public` have RLS enabled and are scoped by tenant ID.
 
 Locally, `PUBLIRA_WORKER_DB_URL` is either unset — outbox-worker then falls back to `PUBLIRA_DB_URL` — or pointed by a `dev-env` profile at the same superuser connection every local tool uses, which is what the **Local default** column above records. Production sets it to `publira_outbox` and never reaches that fallback.
 

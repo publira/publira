@@ -15,8 +15,8 @@ import { hostPath } from "../src/urls";
  * page in a little over 200ms and turns within a single frame, so every budget
  * sits several times above what the reader costs today: a slower shared CI
  * runner still passes, while anything that starts waiting on the network or
- * blocking the main thread crosses them. `e2e/README.md` records what each one
- * measures and how to take the numbers again.
+ * blocking the main thread crosses them. `e2e/README.md` records how to take the
+ * numbers again.
  *
  * Raising one is a decision about the product, not a way to quiet a red build:
  * measure first, then say in the pull request what got slower and why that is
