@@ -40,51 +40,56 @@ test.describe("web-admin access tickets", () => {
     await signInAsSeedAdmin(page, "/access-tickets");
 
     await expect(
-      page.getByRole("heading", { name: "アクセスチケット" })
+      page.getByRole("heading", { name: "Access tickets" })
     ).toBeVisible();
     await expect(page.getByText("SeedTCKTAAA1")).toBeVisible();
     await expect(
       page
         .getByRole("row")
         .filter({ hasText: "SeedTCKTAAA1" })
-        .getByText("有効")
+        .getByText("Active")
     ).toBeVisible();
 
     const note = `e2e access ticket ${uniqueSuffix()}`;
     notes.push(note);
 
-    await page.getByRole("link", { name: "チケットを発行" }).click();
+    await page.getByRole("link", { name: "Issue a ticket" }).click();
     await expect(
-      page.getByRole("heading", { name: "チケットを発行" })
+      page.getByRole("heading", { name: "Issue a ticket" })
     ).toBeVisible();
 
     await page
-      .getByRole("textbox", { name: /ユーザー public_id/u })
+      .getByRole("textbox", { name: /User public_id/u })
       .fill(SEED_TICKET.memberPublicId);
     await selectComboboxOption(
       page,
-      page.getByRole("combobox", { name: /シリーズ/u }),
+      page.getByRole("combobox", { name: /Series/u }),
       SEED_TICKET.seriesLabel
     );
     await selectComboboxOption(
       page,
-      page.getByRole("combobox", { name: /エピソード/u }),
+      page.getByRole("combobox", { name: /Episode/u }),
       `${SEED_TICKET.episodeTitle} (${SEED_TICKET.episodePublicId})`
     );
-    await page.getByRole("textbox", { name: /メモ/u }).fill(note);
-    await page.getByRole("button", { name: "チケットを発行" }).click();
+    await page.getByRole("textbox", { name: /Note/u }).fill(note);
+    await page.getByRole("button", { name: "Issue the ticket" }).click();
 
     await expect(page).toHaveURL(/\/access-tickets(?:\?[^/]*)?$/u);
-    await expect(page.getByText("チケットを発行しました。")).toBeVisible();
+    await expect(page.getByText("The ticket was issued.")).toBeVisible();
     await expect(page.getByText(note)).toBeVisible();
 
     const issuedRow = page.getByRole("row").filter({ hasText: note });
-    await expect(issuedRow.getByText("有効")).toBeVisible();
-    await issuedRow.getByRole("button", { name: "失効" }).click();
-    await page.getByRole("button", { name: "失効する" }).click();
+    await expect(issuedRow.getByText("Active")).toBeVisible();
+    await issuedRow.getByRole("button", { name: "Revoke" }).click();
+    // The confirmation carries the same label as the trigger that opened it,
+    // so the dialog is what tells the two apart.
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { exact: true, name: "Revoke" })
+      .click();
 
-    await expect(issuedRow.getByText("失効")).toBeVisible();
-    await expect(issuedRow.getByRole("button", { name: "失効" })).toHaveCount(
+    await expect(issuedRow.getByText("Revoked", { exact: true })).toBeVisible();
+    await expect(issuedRow.getByRole("button", { name: "Revoke" })).toHaveCount(
       0
     );
   });

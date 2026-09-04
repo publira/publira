@@ -43,7 +43,7 @@ const platformUrl = (pathname: string): string =>
 const roleForm = (page: Page): Locator =>
   page
     .locator("form")
-    .filter({ has: page.getByRole("button", { name: "保存" }) });
+    .filter({ has: page.getByRole("button", { name: "Save" }) });
 
 const listRow = (page: Page, text: string): Locator =>
   page.locator("tr", { hasText: text });
@@ -58,11 +58,11 @@ const listRow = (page: Page, text: string): Locator =>
 const onlyVisible = (locator: Locator): Locator =>
   locator.filter({ visible: true });
 
-/** The three role labels, which are the only values `現在のロール` can hold. */
-const ROLE_LABELS = /^(?:オペレーター|スーパー管理者|監査担当)$/u;
+/** The three role labels, which are the only values `Current role` can hold. */
+const ROLE_LABELS = /^(?:Auditor|Operator|Super admin)$/u;
 
 /**
- * The `現在のロール` value on an operator detail screen.
+ * The `Current role` value on an operator detail screen.
  *
  * Saving a role shows no confirmation, because `ActionForm` renders the message
  * the Action returns only for a caller that passes `showSuccess` and the role
@@ -102,7 +102,7 @@ const changeRoleTo = async (page: Page, roleLabel: string): Promise<void> => {
   const form = roleForm(page);
   await form.getByRole("combobox").click();
   await page.getByRole("option", { exact: true, name: roleLabel }).click();
-  await form.getByRole("button", { name: "保存" }).click();
+  await form.getByRole("button", { name: "Save" }).click();
   await expect(currentRoleValue(page)).toHaveText(roleLabel);
 };
 
@@ -150,23 +150,23 @@ test.describe("platform operator management", () => {
     const name = `E2E Invited Operator ${suffix}`;
     const email = trackOperator(`invited-${suffix}@example.com`);
 
-    await createOperatorViaUi(page, { email, name, roleLabel: "オペレーター" });
+    await createOperatorViaUi(page, { email, name, roleLabel: "Operator" });
 
     const row = listRow(page, email);
     await expect(row.getByText(name)).toBeVisible();
-    await expect(row.getByText("オペレーター", { exact: true })).toBeVisible();
-    await expect(row.getByText("有効", { exact: true })).toBeVisible();
+    await expect(row.getByText("Operator", { exact: true })).toBeVisible();
+    await expect(row.getByText("Active", { exact: true })).toBeVisible();
 
     // The row's own detail link, so the list is what carries the public_id.
-    await row.getByRole("link", { name: "詳細" }).click();
+    await row.getByRole("link", { name: "Details" }).click();
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: `オペレーター詳細: ${name}`,
+        name: `Operator: ${name}`,
       })
     ).toBeVisible();
     await expect(onlyVisible(page.getByText(email))).toBeVisible();
-    await expect(currentRoleValue(page)).toHaveText("オペレーター");
+    await expect(currentRoleValue(page)).toHaveText("Operator");
   });
 
   test("changes a role, and the new permissions take effect on the next sign-in", async ({
@@ -178,27 +178,27 @@ test.describe("platform operator management", () => {
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: `オペレーター詳細: ${SCENARIO_ROLE_CHANGE_OPERATOR.name}`,
+        name: `Operator: ${SCENARIO_ROLE_CHANGE_OPERATOR.name}`,
       })
     ).toBeVisible();
-    await expect(roleForm(page).getByRole("combobox")).toHaveText(
-      "オペレーター"
-    );
+    await expect(roleForm(page).getByRole("combobox")).toHaveText("Operator");
 
-    await changeRoleTo(page, "スーパー管理者");
+    await changeRoleTo(page, "Super admin");
 
     // Re-fetch so the saved role is what the screen reads, not the Action's
     // answer to the form that submitted it.
     await page.goto(platformUrl(detailPath));
     await expect(roleForm(page).getByRole("combobox")).toHaveText(
-      "スーパー管理者"
+      "Super admin"
     );
 
     await page.goto(platformUrl("/operators"));
     await expect(
       listRow(page, SCENARIO_ROLE_CHANGE_OPERATOR.email).getByText(
-        "スーパー管理者",
-        { exact: true }
+        "Super admin",
+        {
+          exact: true,
+        }
       )
     ).toBeVisible();
 
@@ -212,10 +212,10 @@ test.describe("platform operator management", () => {
     await createOperatorViaUi(page, {
       email,
       name: `E2E Promoted Invite ${suffix}`,
-      roleLabel: "監査担当",
+      roleLabel: "Auditor",
     });
 
-    await expect(listRow(page, email).getByText("監査担当")).toBeVisible();
+    await expect(listRow(page, email).getByText("Auditor")).toBeVisible();
   });
 
   test("deactivating an operator keeps them out of the console", async ({
@@ -224,11 +224,11 @@ test.describe("platform operator management", () => {
     const detailPath = `/operators/${SCENARIO_DEACTIVATED_OPERATOR.publicId}`;
 
     await page.goto(platformUrl(detailPath));
-    await confirmDangerAction(page, "無効化", "無効化する");
+    await confirmDangerAction(page, "Deactivate", "Deactivate");
     await page.waitForURL((url) => url.pathname === "/operators");
 
     await expect(
-      listRow(page, SCENARIO_DEACTIVATED_OPERATOR.email).getByText("無効", {
+      listRow(page, SCENARIO_DEACTIVATED_OPERATOR.email).getByText("Inactive", {
         exact: true,
       })
     ).toBeVisible();
@@ -237,10 +237,10 @@ test.describe("platform operator management", () => {
     // to keep naming an account — so the row stays and the detail screen is what
     // reports that there is nothing left to do with it.
     await page.goto(platformUrl(detailPath));
-    await expect(page.getByText("無効", { exact: true })).toBeVisible();
-    await expect(page.getByText("ロール変更", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Inactive", { exact: true })).toBeVisible();
+    await expect(page.getByText("Change role", { exact: true })).toHaveCount(0);
     await expect(
-      page.getByRole("button", { exact: true, name: "無効化" })
+      page.getByRole("button", { exact: true, name: "Deactivate" })
     ).toHaveCount(0);
 
     await signOutPlatform(page);
@@ -255,14 +255,14 @@ test.describe("platform operator management", () => {
     const name = `E2E Audited Operator ${suffix}`;
     const email = trackOperator(`audited-${suffix}@example.com`);
 
-    await createOperatorViaUi(page, { email, name, roleLabel: "オペレーター" });
+    await createOperatorViaUi(page, { email, name, roleLabel: "Operator" });
     const operatorId = operatorRowId(email);
     expect(operatorId, `no platform_users row for ${email}`).not.toBe("");
 
-    await listRow(page, email).getByRole("link", { name: "詳細" }).click();
-    await changeRoleTo(page, "監査担当");
+    await listRow(page, email).getByRole("link", { name: "Details" }).click();
+    await changeRoleTo(page, "Auditor");
 
-    await confirmDangerAction(page, "無効化", "無効化する");
+    await confirmDangerAction(page, "Deactivate", "Deactivate");
     await page.waitForURL((url) => url.pathname === "/operators");
 
     expect(
@@ -280,8 +280,10 @@ test.describe("platform operator management", () => {
 
     // The log screen still surfaces the same event types under its own labels.
     await page.goto(platformUrl("/audit-logs?action=operator_created"));
-    await expect(page.getByRole("heading", { name: "監査ログ" })).toBeVisible();
-    await expect(page.getByText("オペレーターを作成").first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Audit logs" })
+    ).toBeVisible();
+    await expect(page.getByText("Created an operator").first()).toBeVisible();
     await expect(page.locator("table tbody tr").first()).toBeVisible();
   });
 
@@ -294,7 +296,7 @@ test.describe("platform operator management", () => {
     const listPath = "/users?limit=50";
     await page.goto(platformUrl(listPath));
     await expect(
-      page.getByRole("heading", { level: 1, name: "ユーザー管理" })
+      page.getByRole("heading", { level: 1, name: "Users" })
     ).toBeVisible();
 
     await expect(
@@ -311,9 +313,9 @@ test.describe("platform operator management", () => {
     // Narrowing to one tenant is what proves the two rows above came from
     // different ones, rather than from a list whose tenant column is decoration.
     await page
-      .getByRole("searchbox", { name: "テナント検索" })
+      .getByRole("searchbox", { name: "Search tenants" })
       .fill(NOTIFICATION_INBOX_TENANT.name);
-    await page.getByRole("button", { name: "絞り込む" }).click();
+    await page.getByRole("button", { name: "Filter" }).click();
     await expect(
       listRow(page, NOTIFICATION_INBOX_MEMBER.publicId)
     ).toBeVisible();
@@ -321,13 +323,13 @@ test.describe("platform operator management", () => {
 
     await page.goto(platformUrl(listPath));
     await listRow(page, SEED_MEMBER_PUBLIC_ID)
-      .getByRole("link", { name: "詳細" })
+      .getByRole("link", { name: "Details" })
       .click();
 
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: `ユーザー詳細: ${SEED_MEMBER.name}`,
+        name: `User: ${SEED_MEMBER.name}`,
       })
     ).toBeVisible();
     await expect(onlyVisible(page.getByText(SEED_MEMBER.email))).toBeVisible();
@@ -343,25 +345,35 @@ test.describe("platform operator management", () => {
 
   test("lists a tenant's members from the tenant detail", async ({ page }) => {
     await page.goto(platformUrl(`/tenants/${SEED_TENANT.publicId}`));
-    await page.getByRole("link", { name: "メンバー管理" }).click();
+    await page.getByRole("link", { name: "Members" }).click();
 
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: `メンバー管理: ${SEED_TENANT.name}`,
+        name: `Members: ${SEED_TENANT.name}`,
       })
     ).toBeVisible();
 
-    // Rows are matched on the display name, not the address: `hasText` is a
-    // substring match, and the scenario admin `auth-admin@example.com` ends in
-    // the seeded admin's whole address.
+    // Rows are matched on the name cell rather than on the row's whole text:
+    // the address would also select the scenario admin `auth-admin@example.com`,
+    // which ends in the seeded admin's whole address, and `hasText` is a
+    // case-insensitive substring match that the role cell `Tenant admin`
+    // satisfies as readily as the display name `Tenant Admin` does. `exact`
+    // matching on the cell is case-sensitive, so it tells those two apart.
     //
     // A tenant's members are its staff — the accounts `/users` leaves out,
     // because that screen lists exactly the users with no tenant role.
-    const adminRow = listRow(page, SEED_ADMIN.name);
+    const memberRow = (name: string): Locator =>
+      page
+        .getByRole("row")
+        .filter({ has: page.getByRole("cell", { exact: true, name }) });
+
+    const adminRow = memberRow(SEED_ADMIN.name);
     await expect(adminRow.getByText(SEED_ADMIN.email)).toBeVisible();
-    await expect(adminRow.getByText("テナント管理者")).toBeVisible();
-    await expect(listRow(page, SEED_MEMBER.name)).toHaveCount(0);
+    await expect(
+      adminRow.getByRole("cell", { exact: true, name: "Tenant admin" })
+    ).toBeVisible();
+    await expect(memberRow(SEED_MEMBER.name)).toHaveCount(0);
     // The status column is not asserted: it words a person's account status with
     // the catalog written for a tenant
     // ([#1565](https://github.com/publira/publira/issues/1565)).

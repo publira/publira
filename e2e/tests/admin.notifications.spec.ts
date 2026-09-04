@@ -29,39 +29,49 @@ test.describe("web-admin notification bell", () => {
     await signInAsNotificationInboxAdmin(page, "/");
 
     const bell = page.getByRole("button", {
-      name: "通知、未読はありません",
+      name: "Notifications, none unread",
     });
     await expect(bell).toBeVisible();
     await expect(bell).toHaveAttribute("aria-expanded", "false");
 
     await bell.click();
-    const menu = page.getByRole("dialog", { name: "通知" });
+    const menu = page.getByRole("dialog", { name: "Notifications" });
     await expect(menu).toBeVisible();
     await expect(bell).toHaveAttribute("aria-expanded", "true");
     await expect(page).toHaveURL(/\/$/u);
-    await expect(menu.getByText("通知はまだありません。")).toBeVisible();
+    await expect(
+      menu.getByText("You have no notifications yet.")
+    ).toBeVisible();
 
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
     await expect(bell).toBeFocused();
 
     await bell.click();
-    const more = menu.getByRole("link", { name: "もっと見る" });
+    const more = menu.getByRole("link", { name: "View all" });
     await expect(more).toHaveAttribute("href", "/notifications");
     await Promise.all([page.waitForURL(/\/notifications\/?$/u), more.click()]);
     await expect(page).toHaveURL(/\/notifications\/?$/u);
-    await expect(page.getByRole("heading", { name: "通知" })).toBeVisible();
-    await expect(page.getByText("通知はまだありません。")).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "お知らせを作成" })
+      page.getByRole("heading", { name: "Notifications" })
+    ).toBeVisible();
+    await expect(
+      page.getByText("You have no notifications yet.")
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Create an announcement" })
     ).toHaveCount(0);
 
     await page.goto(inboxUrl("/announcements"));
     await expect(page).toHaveURL(/\/announcements\/?$/u);
-    await expect(page.getByRole("heading", { name: "お知らせ" })).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "お知らせを作成" })
+      page.getByRole("heading", { name: "Announcements" })
     ).toBeVisible();
-    await expect(page.getByText("通知はまだありません。")).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Create an announcement" })
+    ).toBeVisible();
+    await expect(page.getByText("You have no notifications yet.")).toHaveCount(
+      0
+    );
   });
 });

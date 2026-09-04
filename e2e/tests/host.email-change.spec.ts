@@ -13,7 +13,7 @@ import {
 import {
   expectLoginPage,
   fillLoginForm,
-  LOGIN_FAILED_MESSAGE,
+  HOST_LOGIN_FAILED_MESSAGE,
 } from "../src/session";
 import { hostPath, WEB_HOST_BASE_URL } from "../src/urls";
 
@@ -23,11 +23,11 @@ const hostUrl = (pathname: string): string =>
 /** The path the mailed link points at, on the tenant's own domain. */
 const CONFIRM_EMAIL_PATH = "/confirm-email";
 
-const CHANGED_MESSAGE = "メールアドレスの変更が完了しました。";
+const CHANGED_MESSAGE = "Your email address has been changed.";
 const PENDING_NEW_EMAIL_MESSAGE =
-  "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。";
+  "This confirmation is complete. The change takes effect once the new address is confirmed as well.";
 const FAILED_MESSAGE =
-  "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。";
+  "Could not change your email address. The link may have expired or be invalid.";
 
 const memberEmail = (): string =>
   querySql(`
@@ -55,10 +55,10 @@ const requestEmailChange = async (
     "/settings/security"
   );
 
-  await page.getByLabel("現在のメールアドレス").fill(currentEmail);
-  await page.getByLabel("新しいメールアドレス").fill(newEmail);
-  await page.getByLabel("現在のパスワード").fill(EMAIL_CHANGE_MEMBER.password);
-  await page.getByRole("button", { name: "確認メールを送信" }).click();
+  await page.getByLabel("Current email address").fill(currentEmail);
+  await page.getByLabel("New email address").fill(newEmail);
+  await page.getByLabel("Current password").fill(EMAIL_CHANGE_MEMBER.password);
+  await page.getByRole("button", { name: "Send confirmation emails" }).click();
 
   await page.waitForURL(/[?&]status=success(?:&|$)/u);
 };
@@ -178,7 +178,9 @@ test.describe("web-host email address change", () => {
     });
 
     await expectLoginPage(page);
-    await expect(page.getByRole("status")).toContainText(LOGIN_FAILED_MESSAGE);
+    await expect(page.getByRole("status")).toContainText(
+      HOST_LOGIN_FAILED_MESSAGE
+    );
 
     await signInAsMember(
       page,

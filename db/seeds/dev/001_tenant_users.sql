@@ -14,7 +14,7 @@ SELECT
     'admin.localhost',
     'Seed Tenant',
     'active',
-    'ja'
+    'en'
 FROM tenant_seed ts
 ON CONFLICT (public_id) DO UPDATE
 SET domain = EXCLUDED.domain,
@@ -32,8 +32,8 @@ INSERT INTO tenant_config (
 SELECT
     t.id,
     '© Publira Seed Tenant',
-    'Seed Tenant の公開向け説明テキストです。',
-    '読むたび、世界がひらく。'
+    'Public description text for Seed Tenant.',
+    'Every read opens a world.'
 FROM tenants t
 WHERE t.domain = 'localhost'
 ON CONFLICT (tenant_id) DO UPDATE
@@ -48,7 +48,7 @@ SET copyright_text = EXCLUDED.copyright_text,
 -- would be in a state real bootstrap cannot produce — set up, yet with no saved
 -- display language for the console to open in.
 INSERT INTO platform_config (singleton, default_timezone, default_locale)
-VALUES (TRUE, 'Asia/Tokyo', 'ja')
+VALUES (TRUE, 'Asia/Tokyo', 'en')
 ON CONFLICT (singleton) DO UPDATE
 SET default_timezone = EXCLUDED.default_timezone,
     default_locale = EXCLUDED.default_locale,

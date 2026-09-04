@@ -36,7 +36,7 @@ export const OTHER_TENANT = {
     synopsis: "Boundary series synopsis for Boundary Series 001",
     title: "Boundary Series 001",
   },
-  siteDescription: "Boundary Tenant の公開向け説明テキストです。",
+  siteDescription: "Public description text for Boundary Tenant.",
   /** Never published: must not be listed and must not have a detail page. */
   unpublishedSeries: {
     publicId: "BndrSERSAAA2",

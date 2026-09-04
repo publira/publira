@@ -10,7 +10,7 @@ import {
 import { LOCALE_SWITCHING_SCENARIO } from "../src/scenarios/locale-switching";
 import {
   WEB_ADMIN_BASE_URL,
-  WEB_ADMIN_ENGLISH_DEFAULT_BASE_URL,
+  WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL,
 } from "../src/urls";
 
 const adminUrl = (pathname: string, baseUrl = WEB_ADMIN_BASE_URL): string =>
@@ -30,35 +30,35 @@ test.describe("web-admin display language", () => {
   }) => {
     await signInAsSeedAdmin(page, "/settings");
     await expect(
-      page.getByRole("heading", { level: 1, name: "設定" })
+      page.getByRole("heading", { level: 1, name: "Settings" })
     ).toBeVisible();
-    await expectDocumentLocale(page, "日本語");
+    await expectDocumentLocale(page, "English");
     expect(await storedLocaleCookie(page)).toBeUndefined();
-
-    await switchConsoleLocale(page, "日本語", "English");
-
-    // Same round trip: the Server Action answers with the re-rendered screen,
-    // and the control sets `<html lang>` itself because the shell is static.
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Settings" })
-    ).toBeVisible();
-    await expectDocumentLocale(page, "English");
-    expect(await storedLocaleCookie(page)).toBe("en");
-
-    // A reload proves the cookie is what carries it, not the action's answer.
-    await page.reload();
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Settings" })
-    ).toBeVisible();
-    await expectDocumentLocale(page, "English");
 
     await switchConsoleLocale(page, "English", "日本語");
 
+    // Same round trip: the Server Action answers with the re-rendered screen,
+    // and the control sets `<html lang>` itself because the shell is static.
     await expect(
       page.getByRole("heading", { level: 1, name: "設定" })
     ).toBeVisible();
     await expectDocumentLocale(page, "日本語");
     expect(await storedLocaleCookie(page)).toBe("ja");
+
+    // A reload proves the cookie is what carries it, not the action's answer.
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "設定" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "日本語");
+
+    await switchConsoleLocale(page, "日本語", "English");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "English");
+    expect(await storedLocaleCookie(page)).toBe("en");
   });
 });
 
@@ -81,18 +81,7 @@ test.describe("web-admin default language", () => {
   test("a console with no stored choice opens in the tenant's saved default", async ({
     page,
   }) => {
-    const japanese = await page.goto(adminUrl("/login"));
-
-    expect(japanese?.status(), await page.content()).toBe(200);
-    await expect(page.getByText("管理画面ログイン")).toBeVisible();
-    await expect(
-      page.getByRole("button", { exact: true, name: "ログイン" })
-    ).toBeVisible();
-    await expectDocumentLocale(page, "日本語");
-
-    const english = await page.goto(
-      adminUrl("/login", WEB_ADMIN_ENGLISH_DEFAULT_BASE_URL)
-    );
+    const english = await page.goto(adminUrl("/login"));
 
     expect(english?.status(), await page.content()).toBe(200);
     await expect(page.getByText("Admin console sign-in")).toBeVisible();
@@ -100,6 +89,17 @@ test.describe("web-admin default language", () => {
       page.getByRole("button", { exact: true, name: "Sign in" })
     ).toBeVisible();
     await expectDocumentLocale(page, "English");
+
+    const japanese = await page.goto(
+      adminUrl("/login", WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL)
+    );
+
+    expect(japanese?.status(), await page.content()).toBe(200);
+    await expect(page.getByText("管理画面ログイン")).toBeVisible();
+    await expect(
+      page.getByRole("button", { exact: true, name: "ログイン" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "日本語");
   });
 
   test("a stored choice wins over the tenant default on a screen with no session", async ({
@@ -108,14 +108,14 @@ test.describe("web-admin default language", () => {
     await page.context().addCookies([
       {
         name: "publira_locale",
-        url: WEB_ADMIN_ENGLISH_DEFAULT_BASE_URL,
-        value: "ja",
+        url: WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL,
+        value: "en",
       },
     ]);
 
-    await page.goto(adminUrl("/login", WEB_ADMIN_ENGLISH_DEFAULT_BASE_URL));
+    await page.goto(adminUrl("/login", WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL));
 
-    await expect(page.getByText("管理画面ログイン")).toBeVisible();
-    await expectDocumentLocale(page, "日本語");
+    await expect(page.getByText("Admin console sign-in")).toBeVisible();
+    await expectDocumentLocale(page, "English");
   });
 });

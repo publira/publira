@@ -87,14 +87,12 @@ test.describe("web-host member settings", () => {
     await signIn(page, "/my");
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "マイページ" })
+      page.getByRole("heading", { level: 1, name: "My Page" })
     ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "プロフィール" })
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Profile" })).toBeVisible();
     await expect(page.getByText(MEMBER_SETTINGS_MEMBER.name)).toBeVisible();
     await expect(page.getByText(MEMBER_SETTINGS_MEMBER.publicId)).toBeVisible();
-    await expect(page.getByText("購読中", { exact: true })).toBeVisible();
+    await expect(page.getByText("Subscribed", { exact: true })).toBeVisible();
   });
 
   test("the basic settings screen saves a display name that survives a reload", async ({
@@ -102,15 +100,17 @@ test.describe("web-host member settings", () => {
   }) => {
     await signIn(page, "/settings");
 
-    const nameField = page.getByLabel("表示名");
+    const nameField = page.getByLabel("Display name");
     await expect(nameField).toHaveValue(MEMBER_SETTINGS_MEMBER.name);
     await nameField.fill(RENAMED_DISPLAY_NAME);
-    await page.getByRole("button", { name: "保存" }).click();
+    await page.getByRole("button", { name: "Save" }).click();
 
     await expectFlashRedirect(page, "success");
 
     await page.goto(hostUrl("/settings"));
-    await expect(page.getByLabel("表示名")).toHaveValue(RENAMED_DISPLAY_NAME);
+    await expect(page.getByLabel("Display name")).toHaveValue(
+      RENAMED_DISPLAY_NAME
+    );
     expect(memberField("name")).toBe(RENAMED_DISPLAY_NAME);
 
     await page.goto(hostUrl("/my"));
@@ -125,7 +125,7 @@ test.describe("web-host member settings", () => {
     const emailNotifications = page.getByRole("checkbox");
     await expect(emailNotifications).toBeChecked();
     await emailNotifications.uncheck();
-    await page.getByRole("button", { name: "保存" }).click();
+    await page.getByRole("button", { name: "Save" }).click();
 
     await expectFlashRedirect(page, "success");
 
@@ -133,7 +133,7 @@ test.describe("web-host member settings", () => {
     await expect(page.getByRole("checkbox")).not.toBeChecked();
 
     await page.goto(hostUrl("/my"));
-    await expect(page.getByText("停止中", { exact: true })).toBeVisible();
+    await expect(page.getByText("Paused", { exact: true })).toBeVisible();
   });
 
   test("the security screen refuses an email change whose current password is wrong", async ({
@@ -142,16 +142,16 @@ test.describe("web-host member settings", () => {
     await signIn(page, "/settings/security");
 
     await expect(
-      page.getByRole("heading", { name: "メールアドレス変更" })
+      page.getByRole("heading", { name: "Change email address" })
     ).toBeVisible();
     await page
-      .getByLabel("現在のメールアドレス")
+      .getByLabel("Current email address")
       .fill(MEMBER_SETTINGS_MEMBER.email);
+    await page.getByLabel("New email address").fill(MEMBER_SETTINGS_NEW_EMAIL);
+    await page.getByLabel("Current password").fill("wrong-password");
     await page
-      .getByLabel("新しいメールアドレス")
-      .fill(MEMBER_SETTINGS_NEW_EMAIL);
-    await page.getByLabel("現在のパスワード").fill("wrong-password");
-    await page.getByRole("button", { name: "確認メールを送信" }).click();
+      .getByRole("button", { name: "Send confirmation emails" })
+      .click();
 
     await expectFlashRedirect(page, "error");
     await expect(page).toHaveURL(/\/settings\/security/u);
@@ -163,26 +163,29 @@ test.describe("web-host member settings", () => {
     page,
   }) => {
     const seriesPath = `/series/${MEMBER_SETTINGS_SERIES.publicId}`;
-    const followLabel = `「${MEMBER_SETTINGS_SERIES.title}」をフォローする`;
-    const unfollowLabel = `「${MEMBER_SETTINGS_SERIES.title}」のフォローを解除する`;
+    // `exact`: the unfollow label ends in the follow label, and a role name
+    // given as a string is otherwise a case-insensitive substring match.
+    const followLabel = `Follow ${MEMBER_SETTINGS_SERIES.title}`;
+    const unfollowLabel = `Unfollow ${MEMBER_SETTINGS_SERIES.title}`;
     await signIn(page, seriesPath);
 
-    await page.getByRole("button", { name: followLabel }).click();
-    await expect(page.getByText("フォローしました。")).toBeVisible();
+    await page.getByRole("button", { exact: true, name: followLabel }).click();
+    await expect(page.getByText("You are now following this.")).toBeVisible();
 
     await page.goto(hostUrl("/settings/follows"));
     const entry = page.getByRole("article").filter({
       has: page.getByRole("link", { name: MEMBER_SETTINGS_SERIES.title }),
     });
     await expect(entry).toBeVisible();
-    await expect(entry.getByText("作品")).toBeVisible();
+    // `exact`: the entry's own link is `Seed Series 042`, which contains it.
+    await expect(entry.getByText("Series", { exact: true })).toBeVisible();
 
     // The Action refreshes the follow island, so the entry — and the button's
     // own success message with it — is gone by the time the list re-renders.
     await entry.getByRole("button", { name: unfollowLabel }).click();
     await expect(entry).toHaveCount(0);
     await expect(
-      page.getByText("フォロー中の作品・著者はありません。")
+      page.getByText("You are not following any series or authors.")
     ).toBeVisible();
 
     await page.goto(hostUrl("/settings/follows"));
@@ -191,7 +194,9 @@ test.describe("web-host member settings", () => {
     ).toHaveCount(0);
 
     await page.goto(hostUrl(seriesPath));
-    await expect(page.getByRole("button", { name: followLabel })).toBeVisible();
+    await expect(
+      page.getByRole("button", { exact: true, name: followLabel })
+    ).toBeVisible();
   });
 
   for (const memberPath of MEMBER_PATHS) {

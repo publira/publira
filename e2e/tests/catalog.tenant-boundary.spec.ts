@@ -38,7 +38,7 @@ test.describe("web-host tenant boundary", () => {
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "カタログトップ" })
+      page.getByRole("heading", { level: 1, name: "Catalog" })
     ).toBeVisible();
     await expect(
       page.getByRole("paragraph").filter({
@@ -49,12 +49,12 @@ test.describe("web-host tenant boundary", () => {
 
     await expect(
       page
-        .getByRole("region", { name: "注目のレーベル" })
+        .getByRole("region", { name: "Featured labels" })
         .getByText(OTHER_TENANT.labelName)
     ).toBeVisible();
     await expect(
       page
-        .getByRole("region", { name: "注目の著者" })
+        .getByRole("region", { name: "Featured authors" })
         .getByText(OTHER_TENANT.authorName)
     ).toBeVisible();
 
@@ -193,7 +193,7 @@ test.describe("web-host tenant boundary", () => {
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
     await expect(page.getByText(SEED_TENANT.labelName)).toHaveCount(0);
   });
@@ -204,7 +204,7 @@ test.describe("web-host tenant boundary", () => {
     const foreign = await page.goto(otherTenantUrl("/search?q=Seed"));
     expect(foreign?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "検索" })
+      page.getByRole("heading", { level: 1, name: "Search" })
     ).toBeVisible();
 
     await expect(page.getByText(SEED_TENANT.series.title)).toHaveCount(0);
@@ -216,7 +216,7 @@ test.describe("web-host tenant boundary", () => {
     );
     expect(own?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "検索" })
+      page.getByRole("heading", { level: 1, name: "Search" })
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
@@ -234,8 +234,6 @@ test.describe("web-host tenant boundary", () => {
     // Still a real 404: `proxy.ts` answers an unmapped Host before any route
     // renders, so nothing has been committed yet.
     expect(response?.status(), await page.content()).toBe(404);
-    await expect(
-      page.getByRole("heading", { name: "カタログトップ" })
-    ).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Catalog" })).toHaveCount(0);
   });
 });

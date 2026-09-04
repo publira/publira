@@ -33,7 +33,7 @@ SELECT
     'admin.other.localhost',
     'Boundary Tenant',
     'active',
-    'ja'
+    'en'
 FROM tenant_seed ts
 ON CONFLICT (public_id) DO UPDATE
 SET domain = EXCLUDED.domain,
@@ -51,8 +51,8 @@ INSERT INTO tenant_config (
 SELECT
     t.id,
     '© Publira Boundary Tenant',
-    'Boundary Tenant の公開向け説明テキストです。',
-    '境界を越えない。'
+    'Public description text for Boundary Tenant.',
+    'Nothing crosses the boundary.'
 FROM tenants t
 WHERE t.domain = 'other.localhost'
 ON CONFLICT (tenant_id) DO UPDATE

@@ -23,47 +23,53 @@ test.describe("web-host catalog browsing", () => {
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "カタログトップ" })
+      page.getByRole("heading", { level: 1, name: "Catalog" })
     ).toBeVisible();
 
-    const recommended = page.getByRole("region", { name: "おすすめ作品" });
+    const recommended = page.getByRole("region", { name: "Recommended" });
     await expect(
       recommended.locator(`a[href^="${hostPath("/series/")}"]`).first()
     ).toBeVisible();
 
-    const newEpisodes = page.getByRole("region", { name: "新着エピソード" });
+    const newEpisodes = page.getByRole("region", { name: "New episodes" });
     await expect(
       newEpisodes.locator('a[href*="/episodes/"]').first()
     ).toBeVisible();
 
-    const updatedSeries = page.getByRole("region", { name: "更新作品" });
+    const updatedSeries = page.getByRole("region", {
+      name: "Recently updated",
+    });
     await expect(
       updatedSeries.locator(`a[href^="${hostPath("/series/")}"]`).first()
     ).toBeVisible();
 
-    const featuredLabels = page.getByRole("region", { name: "注目のレーベル" });
+    const featuredLabels = page.getByRole("region", {
+      name: "Featured labels",
+    });
     await expect(
       featuredLabels.getByText(/^Seed Label \d{2}$/u).first()
     ).toBeVisible();
 
-    const featuredAuthors = page.getByRole("region", { name: "注目の著者" });
+    const featuredAuthors = page.getByRole("region", {
+      name: "Featured authors",
+    });
     await expect(
       featuredAuthors.locator(`a[href^="${hostPath("/authors/")}"]`).first()
     ).toBeVisible();
 
     // The per-section fallback must not have kicked in. Every section's
-    // `SectionErrorBoundary` titles its fallback 「…を表示できませんでした」.
-    await expect(page.getByText(/を表示できませんでした/u)).toHaveCount(0);
+    // `SectionErrorBoundary` titles its fallback "Could not show the …".
+    await expect(page.getByText(/Could not show the/u)).toHaveCount(0);
   });
 
   test("the series list leads through series detail to an episode", async ({
     page,
   }) => {
     await page.goto(hostPath("/"));
-    await page.getByRole("link", { name: "シリーズ一覧へ" }).click();
+    await page.getByRole("link", { name: "Browse series" }).click();
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+      page.getByRole("heading", { level: 1, name: "Series" })
     ).toBeVisible();
     // Seed published_at is a hash-based offset around "today", so a fixed
     // series is not guaranteed to sit on page 1 of published_at-desc order.
@@ -81,7 +87,7 @@ test.describe("web-host catalog browsing", () => {
     // navigation streams in, so the name may match more than one node.
     await expect(page.getByText(SEED_TENANT.authorName).first()).toBeVisible();
     await expect(
-      page.getByRole("heading", { level: 2, name: "エピソード一覧" })
+      page.getByRole("heading", { level: 2, name: "Episodes" })
     ).toBeVisible();
 
     // Seed episodes are free except `Seed Episode 001-10` (¥500).
@@ -103,10 +109,10 @@ test.describe("web-host catalog browsing", () => {
       })
     ).toBeVisible();
     await expect(
-      page.getByText(`シリーズ「${SEED_TENANT.series.title}」`).first()
+      page.getByText(`An episode of “${SEED_TENANT.series.title}”`).first()
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "シリーズ詳細へ" })
+      page.getByRole("link", { name: "Go to the series" })
     ).toBeVisible();
   });
 
@@ -126,13 +132,13 @@ test.describe("web-host catalog browsing", () => {
     );
 
     const pagination = page.getByRole("navigation", {
-      name: "シリーズ一覧ページング",
+      name: "Series list pagination",
     });
-    // The first page has nothing before it, so only "次のページ" is a link.
+    // The first page has nothing before it, so only "Next page" is a link.
     await expect(
-      pagination.getByRole("link", { name: "前のページ" })
+      pagination.getByRole("link", { name: "Previous page" })
     ).toHaveCount(0);
-    await pagination.getByRole("link", { name: "次のページ" }).click();
+    await pagination.getByRole("link", { name: "Next page" }).click();
 
     await expect(page).toHaveURL(/\/series\?token=/u);
     await expect(seriesCards).toHaveCount(SERIES_PAGE_SIZE);
@@ -151,11 +157,11 @@ test.describe("web-host catalog browsing", () => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
     await page.goBack();
-    await pagination.getByRole("link", { name: "前のページ" }).click();
+    await pagination.getByRole("link", { name: "Previous page" }).click();
 
     // Back on the first page: nothing before it, and the same rows as before.
     await expect(
-      pagination.getByRole("link", { name: "前のページ" })
+      pagination.getByRole("link", { name: "Previous page" })
     ).toHaveCount(0);
     await expect(seriesCards).toHaveCount(SERIES_PAGE_SIZE);
     await expect(
@@ -170,7 +176,7 @@ test.describe("web-host catalog browsing", () => {
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "レーベル一覧" })
+      page.getByRole("heading", { level: 1, name: "Labels" })
     ).toBeVisible();
     // One `<h2>` per card. Counting the seeded names rather than every card:
     // the admin suites run beside this one and register labels of their own
@@ -196,7 +202,7 @@ test.describe("web-host catalog browsing", () => {
       page.getByRole("heading", { level: 1, name: SEED_TENANT.labelName })
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { level: 2, name: "所属シリーズ" })
+      page.getByRole("heading", { level: 2, name: "Series in this label" })
     ).toBeVisible();
     await expect(
       page
@@ -212,12 +218,12 @@ test.describe("web-host catalog browsing", () => {
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "検索" })
+      page.getByRole("heading", { level: 1, name: "Search" })
     ).toBeVisible();
 
     const search = page.getByRole("main").getByRole("search");
-    await search.getByLabel("作品を検索").fill(SEED_TENANT.series.title);
-    await search.getByRole("button", { name: "検索" }).click();
+    await search.getByLabel("Search works").fill(SEED_TENANT.series.title);
+    await search.getByRole("button", { name: "Search" }).click();
 
     await expect(page).toHaveURL(/\/search\?q=/u);
     expect(new URL(page.url()).searchParams.get("q")).toBe(
@@ -236,7 +242,7 @@ test.describe("web-host catalog browsing", () => {
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "著者一覧" })
+      page.getByRole("heading", { level: 1, name: "Authors" })
     ).toBeVisible();
 
     const authorCard = page.getByRole("link").filter({
@@ -255,7 +261,7 @@ test.describe("web-host catalog browsing", () => {
       page.getByRole("heading", { level: 1, name: SEED_TENANT.authorName })
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { level: 2, name: "関連シリーズ" })
+      page.getByRole("heading", { level: 2, name: "Related series" })
     ).toBeVisible();
     await expect(
       page

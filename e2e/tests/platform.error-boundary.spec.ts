@@ -21,8 +21,8 @@ const runPlatformApiServerScript = (action: "start-wait" | "stop"): void => {
   });
 };
 
-const dashboardHeading = "横断オペレーションの基準点";
-const rootErrorHeading = "Platform Console を表示できませんでした";
+const dashboardHeading = "Cross-tenant operations hub";
+const rootErrorHeading = "Could not display Platform Console";
 // `/setup` runs before a language has been saved, so it is the one screen here
 // that follows the browser rather than the platform.
 const setupApiUnavailableMessage =
@@ -76,7 +76,7 @@ test.describe("web-platform console error boundary", () => {
 
     // This operator has chosen no display language, so the document names one
     // only because the proxy published what the platform saved.
-    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
     try {
       runPlatformApiServerScript("stop");
@@ -98,8 +98,8 @@ test.describe("web-platform console error boundary", () => {
       runPlatformApiServerScript("start-wait");
     }
 
-    // "リトライできる" means the retry recovers, not that a button exists.
-    await page.getByRole("button", { name: "再試行" }).click();
+    // "can retry" means the retry recovers, not that a button exists.
+    await page.getByRole("button", { name: "Retry" }).click();
 
     await expect(
       page.getByRole("heading", { level: 1, name: dashboardHeading })
@@ -120,7 +120,7 @@ test.describe("web-platform console error boundary", () => {
       // The proxy decides between /login and /setup on the setup state, so an
       // outage used to answer 500 here as well.
       expect(response?.status(), await page.content()).toBe(200);
-      await expect(page.getByLabel(/メールアドレス/u)).toBeVisible();
+      await expect(page.getByLabel(/Email address/u)).toBeVisible();
     } finally {
       runPlatformApiServerScript("start-wait");
     }

@@ -39,33 +39,33 @@ const withHostname = (baseUrl: string, hostname: string): string => {
  */
 const tenantNameInput = (page: Page): Locator =>
   page
-    .getByRole("textbox", { name: /^テナント名/u })
+    .getByRole("textbox", { name: /^Tenant name/u })
     .filter({ visible: true })
     .first();
 
 const tenantDomainInput = (page: Page): Locator =>
   page
-    .getByRole("textbox", { name: /^ドメイン/u })
+    .getByRole("textbox", { name: /^Domain/u })
     .filter({ visible: true })
     .first();
 
 const tenantAdminDomainInput = (page: Page): Locator =>
   page
-    .getByRole("textbox", { name: /^管理画面ドメイン/u })
+    .getByRole("textbox", { name: /^Admin domain/u })
     .filter({ visible: true })
     .first();
 
 const tenantNameForm = (page: Page): Locator =>
   page
     .locator("form")
-    .filter({ has: page.getByRole("textbox", { name: /^テナント名/u }) })
+    .filter({ has: page.getByRole("textbox", { name: /^Tenant name/u }) })
     .filter({ visible: true })
     .first();
 
 const tenantDomainForm = (page: Page): Locator =>
   page
     .locator("form")
-    .filter({ has: page.getByRole("textbox", { name: /^ドメイン/u }) })
+    .filter({ has: page.getByRole("textbox", { name: /^Domain/u }) })
     .filter({ visible: true })
     .first();
 
@@ -111,9 +111,9 @@ test.describe("platform tenant operations", () => {
 
     await expect(page).toHaveURL(new RegExp(`/tenants/${tenantId}`, "u"));
     await expect(
-      page.getByRole("heading", { name: `テナント詳細: ${name}` })
+      page.getByRole("heading", { name: `Tenant: ${name}` })
     ).toBeVisible();
-    await expect(page.getByText("稼働中").first()).toBeVisible();
+    await expect(page.getByText("Active").first()).toBeVisible();
     await expect(tenantNameInput(page)).toHaveValue(name);
     await expect(tenantDomainInput(page)).toHaveValue(domain);
     await expect(tenantAdminDomainInput(page)).toHaveValue(adminDomain);
@@ -124,7 +124,7 @@ test.describe("platform tenant operations", () => {
       page.locator("tr", { hasText: name }).getByText(tenantId)
     ).toBeVisible();
     await expect(
-      page.locator("tr", { hasText: name }).getByText("稼働中")
+      page.locator("tr", { hasText: name }).getByText("Active")
     ).toBeVisible();
   });
 
@@ -142,21 +142,21 @@ test.describe("platform tenant operations", () => {
 
     const editedName = `${name} (edited)`;
     await tenantNameInput(page).fill(editedName);
-    await tenantNameForm(page).getByRole("button", { name: "保存" }).click();
-    await expect(formMessage(page)).toContainText("保存しました。");
+    await tenantNameForm(page).getByRole("button", { name: "Save" }).click();
+    await expect(formMessage(page)).toContainText("Saved.");
     // Re-fetch so the server-rendered heading and input defaults match the save.
     await page.goto(platformUrl(`/tenants/${tenantId}`));
     await expect(tenantNameInput(page)).toHaveValue(editedName);
     await expect(
-      page.getByRole("heading", { name: `テナント詳細: ${editedName}` })
+      page.getByRole("heading", { name: `Tenant: ${editedName}` })
     ).toBeVisible();
 
     const newDomain = `e2e-edit2-${suffix}.localhost`;
     const newAdminDomain = `admin-e2e-edit2-${suffix}.localhost`;
     await tenantDomainInput(page).fill(newDomain);
     await tenantAdminDomainInput(page).fill(newAdminDomain);
-    await tenantDomainForm(page).getByRole("button", { name: "保存" }).click();
-    await expect(formMessage(page)).toContainText("保存しました。");
+    await tenantDomainForm(page).getByRole("button", { name: "Save" }).click();
+    await expect(formMessage(page)).toContainText("Saved.");
 
     // Reload pins the server-side re-fetch, not just client form state.
     await page.goto(platformUrl(`/tenants/${tenantId}`));
@@ -181,7 +181,7 @@ test.describe("platform tenant operations", () => {
     const hostResponse = await page.goto(`${hostBase}/`);
     expect(hostResponse?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "カタログトップ" })
+      page.getByRole("heading", { level: 1, name: "Catalog" })
     ).toBeVisible();
     // New tenants have no site description; the tenant name is the site label.
     await expect(
@@ -193,7 +193,7 @@ test.describe("platform tenant operations", () => {
     const adminBase = withHostname(WEB_ADMIN_BASE_URL, adminDomain);
     const adminResponse = await page.goto(`${adminBase}/login`);
     expect(adminResponse?.status(), await page.content()).toBe(200);
-    await expect(page.getByLabel(/メールアドレス/u)).toBeVisible();
+    await expect(page.getByLabel(/Email address/u)).toBeVisible();
     // Must not be the unknown-host 404 from proxy.ts.
     await expect(page.getByText("Not Found")).toHaveCount(0);
 
@@ -209,8 +209,8 @@ test.describe("platform tenant operations", () => {
     const movedAdminDomain = `admin-e2e-dom2-${suffix}.localhost`;
     await tenantDomainInput(page).fill(movedDomain);
     await tenantAdminDomainInput(page).fill(movedAdminDomain);
-    await tenantDomainForm(page).getByRole("button", { name: "保存" }).click();
-    await expect(formMessage(page)).toContainText("保存しました。");
+    await tenantDomainForm(page).getByRole("button", { name: "Save" }).click();
+    await expect(formMessage(page)).toContainText("Saved.");
 
     // DB is the source of truth; web-host keeps a positive-hit LRU for ~5 min so
     // the old Host can still answer until the cache entry expires.
@@ -235,7 +235,7 @@ test.describe("platform tenant operations", () => {
     const movedAdmin = withHostname(WEB_ADMIN_BASE_URL, movedAdminDomain);
     const movedAdminResponse = await page.goto(`${movedAdmin}/login`);
     expect(movedAdminResponse?.status(), await page.content()).toBe(200);
-    await expect(page.getByLabel(/メールアドレス/u)).toBeVisible();
+    await expect(page.getByLabel(/Email address/u)).toBeVisible();
   });
 
   test("suspends and resumes a tenant, and the list reflects the new state", async ({
@@ -249,27 +249,27 @@ test.describe("platform tenant operations", () => {
       await createTenantViaUi(page, { domain, name })
     );
 
-    await page.getByRole("button", { name: "停止する" }).click();
-    await expect(page.getByRole("button", { name: "再開する" })).toBeVisible({
+    await page.getByRole("button", { name: "Suspend" }).click();
+    await expect(page.getByRole("button", { name: "Resume" })).toBeVisible({
       timeout: 30_000,
     });
-    await expect(page.getByText("停止中").first()).toBeVisible();
+    await expect(page.getByText("Suspended").first()).toBeVisible();
 
     await page.goto(platformUrl("/tenants"));
     await expect(
-      page.locator("tr", { hasText: name }).getByText("停止中")
+      page.locator("tr", { hasText: name }).getByText("Suspended")
     ).toBeVisible();
 
     await page.goto(platformUrl(`/tenants/${tenantId}`));
-    await page.getByRole("button", { name: "再開する" }).click();
-    await expect(page.getByRole("button", { name: "停止する" })).toBeVisible({
+    await page.getByRole("button", { name: "Resume" }).click();
+    await expect(page.getByRole("button", { name: "Suspend" })).toBeVisible({
       timeout: 30_000,
     });
-    await expect(page.getByText("稼働中").first()).toBeVisible();
+    await expect(page.getByText("Active").first()).toBeVisible();
 
     await page.goto(platformUrl("/tenants"));
     await expect(
-      page.locator("tr", { hasText: name }).getByText("稼働中")
+      page.locator("tr", { hasText: name }).getByText("Active")
     ).toBeVisible();
   });
 
@@ -283,15 +283,15 @@ test.describe("platform tenant operations", () => {
     );
 
     await tenantNameInput(page).fill(`${name} (audited)`);
-    await tenantNameForm(page).getByRole("button", { name: "保存" }).click();
-    await expect(formMessage(page)).toContainText("保存しました。");
+    await tenantNameForm(page).getByRole("button", { name: "Save" }).click();
+    await expect(formMessage(page)).toContainText("Saved.");
 
-    await page.getByRole("button", { name: "停止する" }).click();
-    await expect(page.getByRole("button", { name: "再開する" })).toBeVisible({
+    await page.getByRole("button", { name: "Suspend" }).click();
+    await expect(page.getByRole("button", { name: "Resume" })).toBeVisible({
       timeout: 30_000,
     });
-    await page.getByRole("button", { name: "再開する" }).click();
-    await expect(page.getByRole("button", { name: "停止する" })).toBeVisible({
+    await page.getByRole("button", { name: "Resume" }).click();
+    await expect(page.getByRole("button", { name: "Suspend" })).toBeVisible({
       timeout: 30_000,
     });
 
@@ -317,16 +317,18 @@ test.describe("platform tenant operations", () => {
     expect(auditActionCount("tenant_suspended"), "tenant_suspended").toBe("1");
     expect(auditActionCount("tenant_resumed"), "tenant_resumed").toBe("1");
 
-    // UI still surfaces the Japanese labels for the same event types.
+    // The audit list surfaces the same event types under their own labels.
     await page.goto(platformUrl("/audit-logs?action=tenant_created"));
-    await expect(page.getByRole("heading", { name: "監査ログ" })).toBeVisible();
-    await expect(page.getByText("テナントを作成").first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Audit logs" })
+    ).toBeVisible();
+    await expect(page.getByText("Created a tenant").first()).toBeVisible();
     await expect(page.locator("table tbody tr").first()).toBeVisible();
 
     // Detail deep-link still reaches the tenant we just mutated.
     await page.goto(platformUrl(`/tenants/${tenantId}`));
     await expect(
-      page.getByRole("heading", { name: `テナント詳細: ${name} (audited)` })
+      page.getByRole("heading", { name: `Tenant: ${name} (audited)` })
     ).toBeVisible();
   });
 
@@ -340,23 +342,23 @@ test.describe("platform tenant operations", () => {
     await signInAsScenarioPlatformOperator(page, "/operators/new");
 
     await expect(
-      page.getByRole("heading", { name: /オペレーター/u }).first()
+      page.getByRole("heading", { name: /Add operator/u }).first()
     ).toBeVisible();
 
     const suffix = uniqueSuffix();
     await page
-      .getByRole("textbox", { name: /^名前/u })
+      .getByRole("textbox", { name: /^Name/u })
       .fill(`Denied Operator ${suffix}`);
     await page
-      .getByRole("textbox", { name: /^メールアドレス/u })
+      .getByRole("textbox", { name: /^Email address/u })
       .fill(`denied-${suffix}@example.com`);
     // Base UI Select trigger is the only combobox on this form.
     await page.getByRole("combobox").click();
-    await page.getByRole("option", { name: "オペレーター" }).click();
-    await page.getByRole("button", { name: "追加" }).click();
+    await page.getByRole("option", { name: "Operator" }).click();
+    await page.getByRole("button", { name: "Add" }).click();
 
     await expect(formMessage(page)).toContainText(
-      "この操作を行う権限がありません。"
+      "You do not have permission to perform this action."
     );
     // Still on the create form — no redirect to the list.
     await expect(page).toHaveURL(/\/operators\/new/u);
@@ -378,26 +380,26 @@ test.describe("platform tenant operations", () => {
     await expect(page.getByText(name)).toBeVisible();
     await page
       .locator("tr", { hasText: name })
-      .getByRole("link", { name: "詳細" })
+      .getByRole("link", { name: "Details" })
       .click();
     await expect(
-      page.getByRole("heading", { name: `テナント詳細: ${name}` })
+      page.getByRole("heading", { name: `Tenant: ${name}` })
     ).toBeVisible();
   });
 
   test("a missing required field shows an error", async ({ page }) => {
     await page.goto(platformUrl("/tenants/new"));
     await page
-      .getByRole("textbox", { name: /^テナント名/u })
+      .getByRole("textbox", { name: /^Tenant name/u })
       .fill(`E2E Invalid ${uniqueSuffix()}`);
     // Leave domain empty — HTML required may block submit; clear via fill and
     // also try submit. If native validation blocks, the test still documents
     // the server-side path when domain is whitespace-only after bypass.
     await tenantDomainInput(page).fill("   ");
-    await page.getByRole("button", { name: "作成" }).click();
+    await page.getByRole("button", { name: "Create" }).click();
 
     // Either browser constraint validation keeps us on the form, or the server
-    // action returns a Japanese error. Never a successful redirect.
+    // action answers with an error. Never a successful redirect.
     await expect(page).toHaveURL(/\/tenants\/new/u);
     const domainInput = tenantDomainInput(page);
     const validationMessage = await domainInput.evaluate(
@@ -407,7 +409,7 @@ test.describe("platform tenant operations", () => {
       expect(validationMessage.length).toBeGreaterThan(0);
     } else {
       await expect(formMessage(page)).toContainText(
-        /テナント名とドメインは必須|必須/u
+        /Tenant name and domain are required|required/u
       );
     }
   });

@@ -56,7 +56,7 @@ test.describe.configure({ mode: "serial" });
 test.describe("web-platform display language", () => {
   test.afterAll(() => {
     runSql(
-      "UPDATE platform_config SET default_locale = 'ja', updated_at = NOW() WHERE singleton;"
+      "UPDATE platform_config SET default_locale = 'en', updated_at = NOW() WHERE singleton;"
     );
   });
 
@@ -65,25 +65,25 @@ test.describe("web-platform display language", () => {
   }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/settings/general");
     await expect(
-      page.getByRole("heading", { level: 1, name: "設定" })
-    ).toBeVisible();
-    await expectDocumentLocale(page, "日本語");
-    expect(await storedLocaleCookie(page)).toBeUndefined();
-
-    await switchConsoleLocale(page, "日本語", "English");
-
-    await expect(
       page.getByRole("heading", { level: 1, name: "Settings" })
     ).toBeVisible();
     await expectDocumentLocale(page, "English");
-    expect(await storedLocaleCookie(page)).toBe("en");
+    expect(await storedLocaleCookie(page)).toBeUndefined();
+
+    await switchConsoleLocale(page, "English", "日本語");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "設定" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "日本語");
+    expect(await storedLocaleCookie(page)).toBe("ja");
 
     // A reload proves the cookie is what carries it, not the action's answer.
     await page.reload();
     await expect(
-      page.getByRole("heading", { level: 1, name: "Settings" })
+      page.getByRole("heading", { level: 1, name: "設定" })
     ).toBeVisible();
-    await expectDocumentLocale(page, "English");
+    await expectDocumentLocale(page, "日本語");
   });
 
   test("a login screen with no session renders in the saved platform default", async ({
@@ -92,11 +92,11 @@ test.describe("web-platform display language", () => {
     const response = await page.goto(platformUrl("/login"));
 
     expect(response?.status(), await page.content()).toBe(200);
-    await expect(page.getByText("Platform Console ログイン")).toBeVisible();
+    await expect(page.getByText("Platform Console sign-in")).toBeVisible();
     await expect(
-      page.getByRole("button", { exact: true, name: "ログイン" })
+      page.getByRole("button", { exact: true, name: "Sign in" })
     ).toBeVisible();
-    await expectDocumentLocale(page, "日本語");
+    await expectDocumentLocale(page, "English");
   });
 
   test("changing the platform default changes what a visitor with no cookie sees", async ({
@@ -105,15 +105,15 @@ test.describe("web-platform display language", () => {
   }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/settings/general");
     await expect(
-      page.getByRole("heading", { level: 1, name: "設定" })
+      page.getByRole("heading", { level: 1, name: "Settings" })
     ).toBeVisible();
 
-    await saveDefaultLocale(page, "日本語", "English");
+    await saveDefaultLocale(page, "English", "日本語");
 
     // The operator chose no display language of their own, so the screen that
     // saved the setting is the first one it applies to.
     await expect(
-      page.getByRole("heading", { level: 1, name: "Settings" })
+      page.getByRole("heading", { level: 1, name: "設定" })
     ).toBeVisible();
     expect(await storedLocaleCookie(page)).toBeUndefined();
 
@@ -122,18 +122,20 @@ test.describe("web-platform display language", () => {
       const visitor = await visitorContext.newPage();
       await visitor.goto(platformUrl("/login"));
 
-      await expect(visitor.getByText("Platform Console sign-in")).toBeVisible();
       await expect(
-        visitor.getByRole("button", { exact: true, name: "Sign in" })
+        visitor.getByText("Platform Console ログイン")
       ).toBeVisible();
-      await expectDocumentLocale(visitor, "English");
+      await expect(
+        visitor.getByRole("button", { exact: true, name: "ログイン" })
+      ).toBeVisible();
+      await expectDocumentLocale(visitor, "日本語");
     } finally {
       await visitorContext.close();
     }
 
-    await saveDefaultLocale(page, "English", "日本語");
+    await saveDefaultLocale(page, "日本語", "English");
     await expect(
-      page.getByRole("heading", { level: 1, name: "設定" })
+      page.getByRole("heading", { level: 1, name: "Settings" })
     ).toBeVisible();
   });
 });

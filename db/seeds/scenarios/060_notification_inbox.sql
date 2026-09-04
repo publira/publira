@@ -26,7 +26,7 @@ SELECT
     'admin.notify.localhost',
     'Notify Tenant',
     'active',
-    'ja'
+    'en'
 FROM tenant_seed ts
 ON CONFLICT (public_id) DO UPDATE
 SET domain = EXCLUDED.domain,

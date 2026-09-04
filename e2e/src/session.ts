@@ -10,11 +10,18 @@ export const HOST_SESSION_COOKIE_NAME = "publira_web_host_auth";
 export const ADMIN_SESSION_COOKIE_NAME = "publira_web_admin_auth";
 export const PLATFORM_SESSION_COOKIE_NAME = "publira_web_platform_auth";
 
+/**
+ * Sign-in failure copy of the admin and platform consoles. The Host site words
+ * the same failure differently, so it has its own constant.
+ */
 export const LOGIN_FAILED_MESSAGE =
-  "メールアドレスまたはパスワードが正しくありません。";
+  "The email address or password is incorrect.";
+
+export const HOST_LOGIN_FAILED_MESSAGE =
+  "That email address or password is incorrect.";
 
 export const SESSION_REVOKED_MESSAGE =
-  "セッションの有効期限が切れました。もう一度ログインしてください。";
+  "Your session has expired. Please sign in again.";
 
 const JWT_ISSUER = "publira";
 
@@ -40,14 +47,14 @@ export const fillLoginForm = async (
   page: Page,
   credentials: { email: string; password: string }
 ): Promise<void> => {
-  await page.getByLabel(/メールアドレス/u).fill(credentials.email);
-  await page.getByLabel(/パスワード/u).fill(credentials.password);
-  await page.getByRole("button", { name: "ログイン" }).click();
+  await page.getByLabel(/Email address/u).fill(credentials.email);
+  await page.getByLabel(/Password/u).fill(credentials.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
 };
 
 export const expectLoginPage = async (page: Page): Promise<void> => {
   await expect(page).toHaveURL(/\/login/u);
-  await expect(page.getByRole("button", { name: "ログイン" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 };
 
 /**

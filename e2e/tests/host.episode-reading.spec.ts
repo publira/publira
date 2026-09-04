@@ -227,15 +227,15 @@ test.describe("web-host episode reading", () => {
     const firstPage = pageCanvas(page, 1);
     await expect(firstPage).toHaveAttribute("data-page-status", "error");
     await expect(
-      page.getByText("このページを読み込めませんでした。")
+      page.getByText("This page could not be loaded.")
     ).toBeVisible();
 
-    await page.getByRole("button", { name: "再読み込み" }).click();
+    await page.getByRole("button", { name: "Reload" }).click();
 
     await expect(firstPage).toHaveAttribute("data-page-status", "loaded");
-    await expect(
-      page.getByText("このページを読み込めませんでした。")
-    ).toHaveCount(0);
+    await expect(page.getByText("This page could not be loaded.")).toHaveCount(
+      0
+    );
     // The control is drawn over the page, where a click near the edge of the
     // viewport would otherwise turn it: asking for the page again must not
     // carry the reader past it.
@@ -255,16 +255,14 @@ test.describe("web-host episode reading", () => {
       page.getByRole("heading", { level: 1, name: VIEWER_EPISODE_TITLE })
     ).toBeVisible();
     await expect(
-      page.getByText(
-        `シリーズ「${SEED_TENANT.series.title}」のエピソードです。`
-      )
+      page.getByText(`An episode of “${SEED_TENANT.series.title}”.`)
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "シリーズ詳細へ" })
+      page.getByRole("link", { name: "Go to the series" })
     ).toHaveAttribute("href", hostPath(seriesPath));
     await expect(
-      page.getByRole("link", { exact: true, name: "シリーズ詳細" })
+      page.getByRole("link", { exact: true, name: "Series detail" })
     ).toHaveAttribute("href", hostPath(seriesPath));
-    await expect(page.getByText(`${VIEWER_PAGE_COUNT}枚`)).toBeVisible();
+    await expect(page.getByText(`${VIEWER_PAGE_COUNT} pages`)).toBeVisible();
   });
 });

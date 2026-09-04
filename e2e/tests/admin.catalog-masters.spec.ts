@@ -184,8 +184,8 @@ test.describe("admin catalog masters", () => {
     await expect(fields.name).toHaveValue(name);
     await fillField(fields.name, renamed);
     await fillField(fields.profileText, editedProfileText);
-    await page.getByRole("button", { name: "著者を更新" }).click();
-    await expect(formMessage(page)).toContainText("著者を更新しました。");
+    await page.getByRole("button", { name: "Update author" }).click();
+    await expect(formMessage(page)).toContainText("Author updated.");
 
     // The saved edit reaches the public page without waiting for an expiry.
     await pollHostPage(page, hostUrl(`/authors/${creatorId}`), () =>
@@ -239,8 +239,8 @@ test.describe("admin catalog masters", () => {
     const fields = labelFormFields(page);
     await expect(fields.name).toHaveValue(name);
     await fillField(fields.name, renamed);
-    await page.getByRole("button", { name: "レーベルを更新" }).click();
-    await expect(formMessage(page)).toContainText("レーベルを更新しました。");
+    await page.getByRole("button", { name: "Update label" }).click();
+    await expect(formMessage(page)).toContainText("Label updated.");
 
     // As with a creator, the saved edit reaches the storefront rather than
     // leaving the previous name on it.
@@ -257,15 +257,15 @@ test.describe("admin catalog masters", () => {
 
     // The control is `required`, so the browser refuses to submit: the Action
     // never runs, nothing comes back to report, and the form stays put.
-    await page.getByRole("button", { name: "著者を作成" }).click();
+    await page.getByRole("button", { name: "Create author" }).click();
     await expect(formMessage(page)).toHaveCount(0);
     await expect(page).toHaveURL(/\/creators\/new/u);
 
     // Blanks satisfy the browser; the Action trims before it validates, so
     // this is the path that shows the console's own message.
     await fillField(fields.name, "   ");
-    await page.getByRole("button", { name: "著者を作成" }).click();
-    await expect(formMessage(page)).toContainText(/名前は必須/u);
+    await page.getByRole("button", { name: "Create author" }).click();
+    await expect(formMessage(page)).toContainText(/Name is required/u);
     await expect(page).toHaveURL(/\/creators\/new/u);
   });
 
@@ -275,13 +275,13 @@ test.describe("admin catalog masters", () => {
     await page.goto(adminUrl("/labels/new"));
     const fields = labelFormFields(page);
 
-    await page.getByRole("button", { name: "レーベルを作成" }).click();
+    await page.getByRole("button", { name: "Create label" }).click();
     await expect(formMessage(page)).toHaveCount(0);
     await expect(page).toHaveURL(/\/labels\/new/u);
 
     await fillField(fields.name, "   ");
-    await page.getByRole("button", { name: "レーベルを作成" }).click();
-    await expect(formMessage(page)).toContainText(/レーベル名は必須/u);
+    await page.getByRole("button", { name: "Create label" }).click();
+    await expect(formMessage(page)).toContainText(/Label name is required/u);
     await expect(page).toHaveURL(/\/labels\/new/u);
   });
 
@@ -298,7 +298,7 @@ test.describe("admin catalog masters", () => {
     // foreign creator's form (see (protected)/not-found.tsx and getCreator).
     expect(creatorResponse?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByText(/ページが見つかりません|著者を表示できませんでした/u)
+      page.getByText(/Page not found|Could not display the author/u)
     ).toBeVisible();
     await expect(page.getByText(OTHER_TENANT.authorName)).toHaveCount(0);
     await expect(creatorFormFields(page).name).toHaveCount(0);
@@ -308,7 +308,7 @@ test.describe("admin catalog masters", () => {
     );
     expect(labelResponse?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByText(/ページが見つかりません|レーベルを表示できませんでした/u)
+      page.getByText(/Page not found|Could not display the label/u)
     ).toBeVisible();
     await expect(page.getByText(OTHER_TENANT.labelName)).toHaveCount(0);
     await expect(labelFormFields(page).name).toHaveCount(0);

@@ -23,14 +23,14 @@ test.describe("web-host catalog not found", () => {
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
     // Site chrome survives the 404: the header nav is still there.
     await expect(
-      page.getByRole("link", { exact: true, name: "シリーズ" })
+      page.getByRole("link", { exact: true, name: "Series" })
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { exact: true, name: "シリーズ一覧へ" })
+      page.getByRole("link", { exact: true, name: "Browse series" })
     ).toBeVisible();
   });
 
@@ -43,7 +43,7 @@ test.describe("web-host catalog not found", () => {
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
   });
 
@@ -76,7 +76,7 @@ test.describe("web-host catalog not found", () => {
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
   });
 
@@ -85,7 +85,7 @@ test.describe("web-host catalog not found", () => {
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
   });
 
@@ -96,7 +96,7 @@ test.describe("web-host catalog not found", () => {
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
   });
 });

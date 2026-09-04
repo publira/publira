@@ -36,11 +36,12 @@ const savedDefaultLocale = (): string =>
  * in as. `afterAll` re-applies the development seed's platform rows whether the
  * suite passed or failed.
  *
- * The browser asks for English throughout. The setup screen answers in it,
- * because a platform that has saved nothing has only `Accept-Language` to go on;
- * every screen after the form answers in Japanese, because that is the language
- * the form chose and saved. Those two together are what separate the stored
- * platform default from the visitor's own preference.
+ * The browser asks for English throughout, and the setup screen answers in it
+ * because a platform that has saved nothing has only `Accept-Language` to go on.
+ * What the form saved is then read back from `platform_config` rather than
+ * inferred from a screen; that the saved default outranks the visitor's own
+ * preference is `platform.locale-switching.spec.ts`, which saves a language and
+ * opens the login screen in a context with no cookie at all.
  *
  * Serial: the second test asserts what `/setup` does once the first has given
  * the platform an operator, so it has nothing to say if the first one failed.
@@ -104,14 +105,14 @@ test.describe("web-platform initial setup", () => {
     // lang>` is written by the inline script in the root layout, which only runs
     // on a real navigation.
     await page.goto(platformUrl("/login"));
-    await expect(page.getByText("Platform Console ログイン")).toBeVisible();
+    await expect(page.getByText("Platform Console sign-in")).toBeVisible();
     await expectDocumentLocale(page, SETUP_DEFAULT_LOCALE_LABEL);
 
     await fillLoginForm(page, SETUP_OPERATOR);
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: "横断オペレーションの基準点",
+        name: "Cross-tenant operations hub",
       })
     ).toBeVisible();
 
@@ -120,10 +121,8 @@ test.describe("web-platform initial setup", () => {
     await page.goto(platformUrl("/operators"));
     const row = page.locator("tr", { hasText: SETUP_OPERATOR.email });
     await expect(row.getByText(SETUP_OPERATOR.name)).toBeVisible();
-    await expect(
-      row.getByText("スーパー管理者", { exact: true })
-    ).toBeVisible();
-    await expect(row.getByText("有効", { exact: true })).toBeVisible();
+    await expect(row.getByText("Super admin", { exact: true })).toBeVisible();
+    await expect(row.getByText("Active", { exact: true })).toBeVisible();
   });
 
   test("/setup sends the operator to the login screen once one exists", async ({
@@ -134,10 +133,10 @@ test.describe("web-platform initial setup", () => {
     expect(response?.status(), await page.content()).toBe(200);
     await page.waitForURL((url) => url.pathname === "/login");
     await expect(
-      page.getByRole("button", { exact: true, name: "ログイン" })
+      page.getByRole("button", { exact: true, name: "Sign in" })
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "管理ユーザーを作成する" })
+      page.getByRole("button", { name: "Create administrator" })
     ).toHaveCount(0);
   });
 });

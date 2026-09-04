@@ -18,7 +18,7 @@ const signIn = async (page: Page): Promise<void> => {
 };
 
 const pagination = (page: Page) =>
-  page.getByRole("navigation", { name: "お知らせ一覧ページング" });
+  page.getByRole("navigation", { name: "Announcements pagination" });
 
 const noticeTitles = (page: Page) =>
   page.locator("article h3").allTextContents();
@@ -73,11 +73,11 @@ test.describe("web-host member announcements", () => {
     // Newest first, and nothing before the first page.
     await expect(notices.first()).toHaveText(MEMBER_ANNOUNCEMENTS.newestTitle);
     await expect(
-      pagination(page).getByRole("link", { name: "前のページ" })
+      pagination(page).getByRole("link", { name: "Previous page" })
     ).toHaveCount(0);
     const firstPage = await noticeTitles(page);
 
-    await movePage(page, "次のページ");
+    await movePage(page, "Next page");
     await expect(page).toHaveURL(/\?token=/u);
     await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
     const secondPage = await noticeTitles(page);
@@ -85,7 +85,7 @@ test.describe("web-host member announcements", () => {
     // No row is repeated across the page boundary.
     expect(secondPage.filter((title) => firstPage.includes(title))).toEqual([]);
 
-    await movePage(page, "次のページ");
+    await movePage(page, "Next page");
     await expect(notices).toHaveCount(
       MEMBER_ANNOUNCEMENTS.count - 2 * ANNOUNCEMENTS_PAGE_SIZE
     );
@@ -95,7 +95,7 @@ test.describe("web-host member announcements", () => {
     await expect(notices.last()).toHaveText(MEMBER_ANNOUNCEMENTS.oldestTitle);
     // Nothing after the last page.
     await expect(
-      pagination(page).getByRole("link", { name: "次のページ" })
+      pagination(page).getByRole("link", { name: "Next page" })
     ).toHaveCount(0);
 
     // Every seeded row was reachable across the three pages.
@@ -103,12 +103,12 @@ test.describe("web-host member announcements", () => {
       MEMBER_ANNOUNCEMENTS.count
     );
 
-    // `前のページ` walks back to the same rows, not to a shifted window.
-    await movePage(page, "前のページ");
+    // `Previous page` walks back to the same rows, not to a shifted window.
+    await movePage(page, "Previous page");
     await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
     await expect(noticeTitles(page)).resolves.toEqual(secondPage);
 
-    await movePage(page, "前のページ");
+    await movePage(page, "Previous page");
     await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
     await expect(noticeTitles(page)).resolves.toEqual(firstPage);
   });
@@ -117,7 +117,7 @@ test.describe("web-host member announcements", () => {
     await signIn(page);
     await expect(page).toHaveURL(/\/announcements/u);
 
-    await movePage(page, "次のページ");
+    await movePage(page, "Next page");
     await expect(page).toHaveURL(/\?token=/u);
     const secondPageUrl = page.url();
 
@@ -127,16 +127,16 @@ test.describe("web-host member announcements", () => {
     await page
       .locator("article")
       .first()
-      .getByRole("button", { name: "開いて既読にする" })
+      .getByRole("button", { name: "Open and mark as read" })
       .click();
     await expect(page).toHaveURL(/\/series$/u);
 
-    // Back on the same page of the list, that row is now 既読.
+    // Back on the same page of the list, that row is now read.
     await page.goto(secondPageUrl);
     const readNotice = page
       .locator("article")
       .filter({ has: page.getByRole("heading", { level: 3, name: opened }) });
-    await expect(readNotice.getByText("既読")).toBeVisible();
+    await expect(readNotice.getByText("Read", { exact: true })).toBeVisible();
   });
 
   test("a broken token falls back to the first page", async ({ page }) => {
@@ -155,7 +155,7 @@ test.describe("web-host member announcements", () => {
       MEMBER_ANNOUNCEMENTS.newestTitle
     );
     await expect(
-      pagination(page).getByRole("link", { name: "前のページ" })
+      pagination(page).getByRole("link", { name: "Previous page" })
     ).toHaveCount(0);
   });
 });

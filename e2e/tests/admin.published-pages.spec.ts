@@ -42,9 +42,9 @@ const publishVersion = async (
   versionNumber: number
 ): Promise<void> => {
   await versionRow(page, versionNumber)
-    .getByRole("button", { name: "公開する" })
+    .getByRole("button", { name: "Publish" })
     .click();
-  await expect(versionStatus(page, versionNumber, "公開中")).toBeVisible({
+  await expect(versionStatus(page, versionNumber, "Published")).toBeVisible({
     timeout: 30_000,
   });
 };
@@ -71,7 +71,7 @@ const expectPublicPageHeading = async (
 };
 
 /**
- * `/en` is the one slug in this suite that cannot carry a unique suffix: the
+ * `/ja` is the one slug in this suite that cannot carry a unique suffix: the
  * proxy only splits off a segment that is literally a locale code. A run killed
  * before its cleanup would leave the row behind and every later run would fail
  * on the slug conflict, so drop it before creating it.
@@ -125,27 +125,25 @@ test.describe("admin published pages", () => {
 
     const pageId = trackPage(
       await createPageViaUi(page, {
-        contentMarkdown: `## 下書き\n\n下書き本文 ${suffix}`,
+        contentMarkdown: `## Draft\n\nDraft body ${suffix}`,
         slug,
         title,
       })
     );
 
     await expect(page).toHaveURL(new RegExp(`/pages/${pageId}`, "u"));
-    await expect(versionStatus(page, 1, "下書き")).toBeVisible();
+    await expect(versionStatus(page, 1, "Draft")).toBeVisible();
 
     // The list row says the same thing about the page it links to.
     await page.goto(adminUrl("/pages"));
     await expect(
-      page
-        .locator("tr", { hasText: title })
-        .getByText("下書き", { exact: true })
+      page.locator("tr", { hasText: title }).getByText("Draft", { exact: true })
     ).toBeVisible();
 
     const response = await page.goto(hostUrl(slug));
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
   });
 
@@ -155,11 +153,11 @@ test.describe("admin published pages", () => {
     const suffix = uniqueSuffix();
     const slug = `/e2e-page-${suffix}`;
     const title = `E2E Published Page ${suffix}`;
-    const body = `公開本文 ${suffix}`;
+    const body = `Published body ${suffix}`;
 
     trackPage(
       await createPageViaUi(page, {
-        contentMarkdown: `## 見出し\n\n${body}`,
+        contentMarkdown: `## Heading\n\n${body}`,
         slug,
         title,
       })
@@ -177,11 +175,11 @@ test.describe("admin published pages", () => {
     const suffix = uniqueSuffix();
     const slug = `/e2e-page-${suffix}`;
     const title = `E2E Edited Page ${suffix}`;
-    const body = `初版本文 ${suffix}`;
+    const body = `First body ${suffix}`;
 
     const pageId = trackPage(
       await createPageViaUi(page, {
-        contentMarkdown: `## 初版\n\n${body}`,
+        contentMarkdown: `## First version\n\n${body}`,
         slug,
         title,
       })
@@ -194,9 +192,9 @@ test.describe("admin published pages", () => {
     // changes the public page without publishing anything.
     const editedTitle = `${title} (edited)`;
     await page.goto(adminUrl(`/pages/${pageId}`));
-    const titleField = page.getByRole("textbox", { name: "タイトル" });
+    const titleField = page.getByRole("textbox", { name: "Title" });
     await fillField(titleField, editedTitle);
-    await page.getByRole("button", { name: "タイトルを更新" }).click();
+    await page.getByRole("button", { name: "Update title" }).click();
     // FlashToast strips `?updated=1` via a client replace; assert on the value
     // rather than waiting for a load event that may never re-fire.
     await expect(titleField).toHaveValue(editedTitle, { timeout: 30_000 });
@@ -205,14 +203,16 @@ test.describe("admin published pages", () => {
 
     // The body does live on a version: saving makes a draft, and only
     // publishing that draft moves the public page.
-    const editedBody = `改訂本文 ${suffix}`;
+    const editedBody = `Revised body ${suffix}`;
     await page.goto(adminUrl(`/pages/${pageId}`));
     await fillField(
-      page.getByRole("textbox", { name: "本文" }),
-      `## 改訂\n\n${editedBody}`
+      page.getByRole("textbox", { name: "Content" }),
+      `## Revision\n\n${editedBody}`
     );
-    await page.getByRole("button", { name: "この内容で下書きを保存" }).click();
-    await expect(versionStatus(page, 2, "下書き")).toBeVisible({
+    await page
+      .getByRole("button", { name: "Save this content as a draft" })
+      .click();
+    await expect(versionStatus(page, 2, "Draft")).toBeVisible({
       timeout: 30_000,
     });
 
@@ -244,12 +244,12 @@ test.describe("admin published pages", () => {
     const fields = pageFormFields(page);
     await fillField(fields.slug, slug);
     await fillField(fields.title, `E2E Slug Duplicate ${suffix}`);
-    await page.getByRole("button", { name: "ページを作成" }).click();
+    await page.getByRole("button", { name: "Create page" }).click();
 
     await expect(
       page
         .getByRole("status")
-        .filter({ hasText: "同じ slug のページが既に存在します" })
+        .filter({ hasText: "A page with the same slug already exists" })
     ).toBeVisible();
     // Still on the create form — no redirect, and no second page.
     await expect(page).toHaveURL(/\/pages\/new/u);
@@ -259,9 +259,12 @@ test.describe("admin published pages", () => {
     page,
   }) => {
     const suffix = uniqueSuffix();
-    const localeSlug = "/en";
+    // A locale the tenant does not serve by default: spelling out its own
+    // default redirects to the unprefixed URL, which would strip the segment
+    // this page's slug is made of before anything could match it.
+    const localeSlug = "/ja";
     const title = `E2E Locale Slug Page ${suffix}`;
-    const body = `ロケール風 slug の本文 ${suffix}`;
+    const body = `Locale-like slug body ${suffix}`;
 
     deleteSeedTenantPageBySlug(localeSlug);
     trackPage(
@@ -273,7 +276,7 @@ test.describe("admin published pages", () => {
     );
     await publishVersion(page, 1);
 
-    // `/en` is the English home: the locale prefix is split off before the
+    // `/ja` is the Japanese home: the locale prefix is split off before the
     // published-page rules are consulted, and nothing is left to match a slug.
     const homeResponse = await page.goto(hostUrl(localeSlug));
     expect(homeResponse?.status(), await page.content()).toBe(200);
@@ -281,7 +284,7 @@ test.describe("admin published pages", () => {
       page.getByRole("heading", { level: 1, name: title })
     ).toHaveCount(0);
 
-    // `/en/en` is that same page, read under the English locale. This is what
+    // `/ja/ja` is that same page, read under the Japanese locale. This is what
     // `apps/web-host/proxy.ts` preserves by stripping the locale first.
     await expectPublicPageHeading(page, `${localeSlug}${localeSlug}`, title);
     await expect(page.getByText(body)).toBeVisible();
@@ -299,9 +302,9 @@ test.describe("admin published pages", () => {
     // console not-found page, never the foreign page's workspace.
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
     await expect(page.getByText(OTHER_TENANT.page.title)).toHaveCount(0);
-    await expect(page.getByRole("textbox", { name: "本文" })).toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "Content" })).toHaveCount(0);
   });
 });

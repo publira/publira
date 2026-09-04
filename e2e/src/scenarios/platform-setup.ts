@@ -22,14 +22,18 @@ export const SETUP_OPERATOR = {
 } as const;
 
 /**
- * The language chosen on the setup form.
+ * The language chosen on the setup form, and the code it is saved under.
  *
- * Playwright's Chromium asks for English, and the screen opens in it because
- * nothing has been saved yet, so picking Japanese is what separates the saved
- * platform default from the browser's preference on every screen afterwards. It
- * is also the value the development seed stores, so the restore file puts back
- * exactly what the form chose.
+ * What this suite asserts about the choice is that `platform_config` holds it
+ * afterwards, which it reads from the row rather than from a screen. That the
+ * saved default then outranks the visitor's own `Accept-Language` is a separate
+ * claim, and `platform.locale-switching.spec.ts` makes it directly: it saves a
+ * language and opens the login screen in a fresh context with no cookie.
+ *
+ * So the form picks English, which is also what the development seed stores —
+ * the restore file puts back exactly what the form chose — and every screen
+ * this suite reads afterwards is in the same language as the rest of `e2e/`.
  */
-export const SETUP_DEFAULT_LOCALE_LABEL = "日本語" as const;
+export const SETUP_DEFAULT_LOCALE_LABEL = "English" as const;
 
-export const SETUP_DEFAULT_LOCALE_CODE = "ja" as const;
+export const SETUP_DEFAULT_LOCALE_CODE = "en" as const;

@@ -105,7 +105,7 @@ test.describe("admin publish flow", () => {
   }) => {
     const suffix = uniqueSuffix();
     const title = `E2E Draft Series ${suffix}`;
-    const synopsis = `下書き概要 ${suffix}`;
+    const synopsis = `Draft synopsis ${suffix}`;
 
     const seriesId = trackSeries(
       await createSeriesViaUi(page, { synopsis, title })
@@ -122,7 +122,7 @@ test.describe("admin publish flow", () => {
     const editedSynopsis = `${synopsis} (edited)`;
     await fields.title.fill(editedTitle);
     await fields.synopsis.fill(editedSynopsis);
-    await page.getByRole("button", { name: "シリーズを更新" }).click();
+    await page.getByRole("button", { name: "Update series" }).click();
     // FlashToast strips `?updated=1` via client replace; assert on values
     // rather than waiting for a load event that may never re-fire.
     await expect(fields.title).toHaveValue(editedTitle, {
@@ -133,11 +133,11 @@ test.describe("admin publish flow", () => {
     // List row reflects the save.
     await page.goto(adminUrl("/series"));
     await expect(page.getByText(editedTitle)).toBeVisible();
-    // Exact match: the synopsis cell can also contain the word 下書き.
+    // Exact match: the synopsis cell can also contain the word "Draft".
     await expect(
       page
         .locator("tr", { hasText: editedTitle })
-        .getByText("下書き", { exact: true })
+        .getByText("Draft", { exact: true })
     ).toBeVisible();
   });
 
@@ -146,7 +146,7 @@ test.describe("admin publish flow", () => {
   }) => {
     const suffix = uniqueSuffix();
     const title = `E2E Published Series ${suffix}`;
-    const synopsis = `公開概要 ${suffix}`;
+    const synopsis = `Published synopsis ${suffix}`;
     // Past wall clock → immediate publish on create.
     const seriesId = trackSeries(
       await createSeriesViaUi(page, {
@@ -179,7 +179,7 @@ test.describe("admin publish flow", () => {
     const seriesId = trackSeries(
       await createSeriesViaUi(page, {
         publishedAt: publishedAtOneHourAgo(),
-        synopsis: `親シリーズ ${suffix}`,
+        synopsis: `Parent series ${suffix}`,
         title: seriesTitle,
       })
     );
@@ -221,11 +221,11 @@ test.describe("admin publish flow", () => {
     await page.goto(adminUrl("/series/new"));
     const fields = seriesFormFields(page);
     await fields.title.fill(`E2E Invalid ${uniqueSuffix()}`);
-    await fields.synopsis.fill("概要だけ埋めた不完全な入力");
+    await fields.synopsis.fill("Synopsis only, nothing else filled in");
     // Intentionally skip label selection.
-    await page.getByRole("button", { name: "シリーズを作成" }).click();
+    await page.getByRole("button", { name: "Create series" }).click();
 
-    await expect(formMessage(page)).toContainText(/レーベルは必須/u);
+    await expect(formMessage(page)).toContainText(/A label is required/u);
     // Still on the create form — no redirect.
     await expect(page).toHaveURL(/\/series\/new/u);
   });
@@ -243,9 +243,7 @@ test.describe("admin publish flow", () => {
     // foreign series body (see (protected)/not-found.tsx and getSeries).
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByText(
-        /ページが見つかりません|対象のシリーズが見つかりませんでした/u
-      )
+      page.getByText(/Page not found|The series could not be found/u)
     ).toBeVisible();
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.title)

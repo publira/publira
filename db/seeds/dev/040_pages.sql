@@ -1,4 +1,4 @@
--- pages シード: プライバシーポリシーと利用規約のサンプルデータ
+-- pages seed: sample privacy policy and terms of service
 WITH tenant_scope AS (
     SELECT t.id AS tenant_id
     FROM tenants t
@@ -10,7 +10,7 @@ SELECT
     '018f1000-0001-7000-8000-000000000001'::uuid,
     ts.tenant_id,
     '/privacy',
-    'プライバシーポリシー'
+    'Privacy policy'
 FROM tenant_scope ts
 ON CONFLICT (tenant_id, slug) DO UPDATE
 SET title = EXCLUDED.title,
@@ -20,7 +20,7 @@ UPDATE page_versions pv
 SET page_id = p.id,
     tenant_id = p.tenant_id,
     version_number = 1,
-    content_markdown = E'## 個人情報の取得について\n\n本サービスでは、会員登録・サービス利用にあたり必要最小限の個人情報を取得します。\n\n## 個人情報の利用目的\n\n取得した個人情報は以下の目的でのみ利用します。\n\n- サービスの提供・運営\n- ユーザーへのお知らせ・連絡\n- サービス改善のための統計分析\n\n## 第三者提供について\n\n法令に基づく場合を除き、個人情報を第三者に提供することはありません。\n\n## お問い合わせ\n\nプライバシーに関するご質問はサポートまでご連絡ください。',
+    content_markdown = E'## What we collect\n\nWe collect the minimum personal information needed to register an account and to run the service.\n\n## How we use it\n\nWe use the information we collect only for the purposes below.\n\n- Providing and operating the service\n- Sending notices and other messages to users\n- Statistical analysis that helps us improve the service\n\n## Sharing with third parties\n\nWe do not share personal information with third parties except where the law requires it.\n\n## Contact\n\nPlease contact support with any question about privacy.',
     author_user_id = (
         SELECT u.id
         FROM users u
@@ -42,7 +42,7 @@ SELECT
     p.id,
     p.tenant_id,
     1,
-    E'## 個人情報の取得について\n\n本サービスでは、会員登録・サービス利用にあたり必要最小限の個人情報を取得します。\n\n## 個人情報の利用目的\n\n取得した個人情報は以下の目的でのみ利用します。\n\n- サービスの提供・運営\n- ユーザーへのお知らせ・連絡\n- サービス改善のための統計分析\n\n## 第三者提供について\n\n法令に基づく場合を除き、個人情報を第三者に提供することはありません。\n\n## お問い合わせ\n\nプライバシーに関するご質問はサポートまでご連絡ください。',
+    E'## What we collect\n\nWe collect the minimum personal information needed to register an account and to run the service.\n\n## How we use it\n\nWe use the information we collect only for the purposes below.\n\n- Providing and operating the service\n- Sending notices and other messages to users\n- Statistical analysis that helps us improve the service\n\n## Sharing with third parties\n\nWe do not share personal information with third parties except where the law requires it.\n\n## Contact\n\nPlease contact support with any question about privacy.',
     (
         SELECT u.id
         FROM users u
@@ -87,7 +87,7 @@ SELECT
     '018f1000-0003-7000-8000-000000000001'::uuid,
     ts.tenant_id,
     '/terms',
-    '利用規約'
+    'Terms of service'
 FROM tenant_scope ts
 ON CONFLICT (tenant_id, slug) DO UPDATE
 SET title = EXCLUDED.title,
@@ -97,7 +97,7 @@ UPDATE page_versions pv
 SET page_id = p.id,
     tenant_id = p.tenant_id,
     version_number = 1,
-    content_markdown = E'## 第1条（適用）\n\n本規約は、本サービスの利用に関する条件を定めるものです。ユーザーは本規約に同意の上、本サービスを利用してください。\n\n## 第2条（利用登録）\n\n利用登録は、所定の登録フォームに必要事項を入力し、運営者が承認した時点で完了します。\n\n## 第3条（禁止事項）\n\n以下の行為を禁止します。\n\n- 法令または公序良俗に違反する行為\n- 本サービスの運営を妨害する行為\n- 他のユーザーへの迷惑行為\n\n## 第4条（免責事項）\n\n本サービスの利用により生じた損害について、運営者は一切の責任を負いません。\n\n## 第5条（規約の変更）\n\n運営者は必要に応じて本規約を変更できます。変更後の規約はサービス上に掲載した時点で効力を生じます。',
+    content_markdown = E'## Article 1 (Scope)\n\nThese terms set out the conditions for using the service. Use the service only if you agree to them.\n\n## Article 2 (Registration)\n\nRegistration is complete once you have filled in the registration form and the operator has approved it.\n\n## Article 3 (Prohibited conduct)\n\nThe following is prohibited.\n\n- Conduct that breaks the law or public order\n- Conduct that interferes with the operation of the service\n- Conduct that troubles other users\n\n## Article 4 (Disclaimer)\n\nThe operator accepts no liability for damages arising from use of the service.\n\n## Article 5 (Changes to these terms)\n\nThe operator may change these terms as needed. A change takes effect once it is published on the service.',
     author_user_id = (
         SELECT u.id
         FROM users u
@@ -119,7 +119,7 @@ SELECT
     p.id,
     p.tenant_id,
     1,
-    E'## 第1条（適用）\n\n本規約は、本サービスの利用に関する条件を定めるものです。ユーザーは本規約に同意の上、本サービスを利用してください。\n\n## 第2条（利用登録）\n\n利用登録は、所定の登録フォームに必要事項を入力し、運営者が承認した時点で完了します。\n\n## 第3条（禁止事項）\n\n以下の行為を禁止します。\n\n- 法令または公序良俗に違反する行為\n- 本サービスの運営を妨害する行為\n- 他のユーザーへの迷惑行為\n\n## 第4条（免責事項）\n\n本サービスの利用により生じた損害について、運営者は一切の責任を負いません。\n\n## 第5条（規約の変更）\n\n運営者は必要に応じて本規約を変更できます。変更後の規約はサービス上に掲載した時点で効力を生じます。',
+    E'## Article 1 (Scope)\n\nThese terms set out the conditions for using the service. Use the service only if you agree to them.\n\n## Article 2 (Registration)\n\nRegistration is complete once you have filled in the registration form and the operator has approved it.\n\n## Article 3 (Prohibited conduct)\n\nThe following is prohibited.\n\n- Conduct that breaks the law or public order\n- Conduct that interferes with the operation of the service\n- Conduct that troubles other users\n\n## Article 4 (Disclaimer)\n\nThe operator accepts no liability for damages arising from use of the service.\n\n## Article 5 (Changes to these terms)\n\nThe operator may change these terms as needed. A change takes effect once it is published on the service.',
     (
         SELECT u.id
         FROM users u
@@ -165,7 +165,7 @@ SELECT
     '018f1000-0005-7000-8000-000000000001'::uuid,
     ts.tenant_id,
     '/legal/terms',
-    '階層スラッグテスト'
+    'Nested slug test'
 FROM tenant_scope ts
 ON CONFLICT (tenant_id, slug) DO UPDATE
 SET title = EXCLUDED.title,
@@ -175,7 +175,7 @@ UPDATE page_versions pv
 SET page_id = p.id,
     tenant_id = p.tenant_id,
     version_number = 1,
-    content_markdown = E'## 階層 slug テスト\n\n`/legal/terms` が表示できていれば OK です。',
+    content_markdown = E'## Nested slug test\n\nIf `/legal/terms` renders, this works.',
     author_user_id = (
         SELECT u.id
         FROM users u
@@ -197,7 +197,7 @@ SELECT
     p.id,
     p.tenant_id,
     1,
-    E'## 階層 slug テスト\n\n`/legal/terms` が表示できていれば OK です。',
+    E'## Nested slug test\n\nIf `/legal/terms` renders, this works.',
     (
         SELECT u.id
         FROM users u

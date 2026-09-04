@@ -41,7 +41,7 @@ test.describe("platform GET /logout", () => {
 
     await page.goto(platformUrl("/tenants"));
     await expect(
-      page.getByRole("heading", { name: /テナント/u }).first()
+      page.getByRole("heading", { name: /Tenants/u }).first()
     ).toBeVisible();
   });
 
@@ -78,7 +78,7 @@ test.describe("platform GET /logout", () => {
 
     await page.goto(platformUrl("/tenants"));
     await expect(
-      page.getByRole("heading", { name: /テナント/u }).first()
+      page.getByRole("heading", { name: /Tenants/u }).first()
     ).toBeVisible();
   });
 });

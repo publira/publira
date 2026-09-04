@@ -26,15 +26,15 @@ test.describe("web-host episode access", () => {
         name: SEED_TENANT.series.paidEpisodeTitle,
       })
     ).toBeVisible();
-    await expect(page.getByText("このエピソードは有料です")).toBeVisible();
+    await expect(page.getByText("This episode is paid")).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "ログインして閲覧する" })
+      page.getByRole("link", { name: "Sign in to read" })
     ).toHaveAttribute(
       "href",
       `${hostPath("/login")}?returnTo=${encodeURIComponent(paidEpisodePath)}`
     );
     await expect(
-      page.getByText("本文画像はまだ公開されていません。")
+      page.getByText("The pages of this episode have not been published yet.")
     ).toHaveCount(0);
   });
 
@@ -51,14 +51,12 @@ test.describe("web-host episode access", () => {
       })
     ).toBeVisible();
     await expect(
-      page.getByText("本文画像はまだ公開されていません。")
+      page.getByText("The pages of this episode have not been published yet.")
     ).toBeVisible();
-    await expect(page.getByText("このエピソードは有料です")).toHaveCount(0);
-    await expect(page.getByText("このエピソードは閲覧できません")).toHaveCount(
-      0
-    );
+    await expect(page.getByText("This episode is paid")).toHaveCount(0);
+    await expect(page.getByText("You cannot read this episode")).toHaveCount(0);
     await expect(
-      page.getByRole("link", { name: "ログインして閲覧する" })
+      page.getByRole("link", { name: "Sign in to read" })
     ).toHaveCount(0);
   });
 
@@ -66,7 +64,7 @@ test.describe("web-host episode access", () => {
     page,
   }) => {
     await page.goto(hostPath(paidEpisodePath));
-    await page.getByRole("link", { name: "ログインして閲覧する" }).click();
+    await page.getByRole("link", { name: "Sign in to read" }).click();
 
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
     // The login shell is a non-interactive skeleton until searchParams
@@ -74,14 +72,14 @@ test.describe("web-host episode access", () => {
     await expect(page.locator('input[name="returnTo"]')).toHaveValue(
       paidEpisodePath
     );
-    await page.getByLabel(/メールアドレス/u).fill(SEED_MEMBER.email);
-    await page.getByLabel(/パスワード/u).fill(SEED_MEMBER.password);
-    await page.getByRole("button", { name: "ログイン" }).click();
+    await page.getByLabel(/Email address/u).fill(SEED_MEMBER.email);
+    await page.getByLabel(/Password/u).fill(SEED_MEMBER.password);
+    await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(page).toHaveURL(new RegExp(`${paidEpisodePath}$`, "u"));
     await expect(
-      page.getByText("本文画像はまだ公開されていません。")
+      page.getByText("The pages of this episode have not been published yet.")
     ).toBeVisible();
-    await expect(page.getByText("このエピソードは有料です")).toHaveCount(0);
+    await expect(page.getByText("This episode is paid")).toHaveCount(0);
   });
 });

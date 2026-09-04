@@ -14,24 +14,28 @@ test.describe("web-platform notification bell", () => {
     await signInAsSeedPlatformSuperAdmin(page, "/");
 
     const bell = page.getByRole("button", {
-      name: "通知、未読はありません",
+      name: "Notifications, none unread",
     });
     await expect(bell).toBeVisible();
 
     await bell.click();
     const menu = page.getByRole("dialog");
-    await expect(menu.getByRole("heading", { name: "通知" })).toBeVisible();
-    await expect(menu.getByText("通知はまだありません。")).toBeVisible();
+    await expect(
+      menu.getByRole("heading", { name: "Notifications" })
+    ).toBeVisible();
+    await expect(menu.getByText("No notifications yet.")).toBeVisible();
 
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
     await expect(bell).toBeFocused();
 
     await bell.click();
-    const more = menu.getByRole("link", { name: "もっと見る" });
+    const more = menu.getByRole("link", { name: "View all" });
     await expect(more).toHaveAttribute("href", "/notifications");
     await Promise.all([page.waitForURL(/\/notifications\/?$/u), more.click()]);
-    await expect(page.getByRole("heading", { name: "通知" })).toBeVisible();
-    await expect(page.getByText("通知はまだありません。")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Notifications" })
+    ).toBeVisible();
+    await expect(page.getByText("No notifications yet.")).toBeVisible();
   });
 });

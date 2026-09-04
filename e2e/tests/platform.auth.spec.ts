@@ -49,7 +49,7 @@ test.describe("web-platform auth", () => {
 
     await expect(page).toHaveURL(/\/tenants\/?$/u);
     await expect(
-      page.getByRole("heading", { name: /テナント/u }).first()
+      page.getByRole("heading", { name: /Tenants/u }).first()
     ).toBeVisible();
     expect(await currentSession(page)).toBeTruthy();
   });
@@ -79,7 +79,7 @@ test.describe("web-platform auth", () => {
 
     await expect(page).toHaveURL(/\/tenants\/?$/u);
     await expect(
-      page.getByRole("heading", { name: /テナント/u }).first()
+      page.getByRole("heading", { name: /Tenants/u }).first()
     ).toBeVisible();
   });
 
@@ -93,7 +93,7 @@ test.describe("web-platform auth", () => {
 
     await expectSameOriginPath(page, WEB_PLATFORM_BASE_URL, "/");
     await expect(
-      page.getByRole("heading", { name: "横断オペレーションの基準点" })
+      page.getByRole("heading", { name: "Cross-tenant operations hub" })
     ).toBeVisible();
   });
 
@@ -163,7 +163,7 @@ test.describe("web-platform auth", () => {
     applyScenarioSql(AUTH_E2E_SCENARIO);
     await signInAsPlatformOperator(page, SCENARIO_AUTH_PLATFORM, "/tenants");
     await expect(
-      page.getByRole("heading", { name: /テナント/u }).first()
+      page.getByRole("heading", { name: /Tenants/u }).first()
     ).toBeVisible();
 
     bumpPlatformUserCredentialsVersion(SCENARIO_AUTH_PLATFORM.email);
