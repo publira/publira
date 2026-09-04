@@ -178,9 +178,8 @@ func testJPEG() []byte {
 	return buf.Bytes()
 }
 
-// newTestServer builds the handler the way cmd/image-server does, with a token
-// manager: an episode body is always encrypted, and the free branch derives its
-// key material from a token this manager recomputes.
+// newTestServer builds the handler with the token manager an encrypted
+// episode-body response needs, the way cmd/image-server does.
 func newTestServer(t *testing.T, resolver ResolverQuerier, factory TenantScopedQuerierFactory, store ObjectStore) *Server {
 	t.Helper()
 	return newTestServerWithTokens(t, resolver, factory, store, auth.NewTokenManager([]byte(testMediaJWTSecret)))
