@@ -7,8 +7,8 @@ import 'package:publira/api/episode_image_client.dart';
 /// An [ImageProvider] for one body page, fetched and decrypted by
 /// [EpisodeImageClient] instead of read straight off the network.
 ///
-/// A page of a paid body arrives encrypted, so `NetworkImage` cannot decode
-/// it. Everything else a page needs from Flutter — the shared image cache,
+/// A body page can arrive encrypted, so `NetworkImage` cannot decode it.
+/// Everything else a page needs from Flutter — the shared image cache,
 /// `loadingBuilder`, `errorBuilder`, and [evict] on retry — works the same
 /// way, because two providers naming the same URL under the same request
 /// headers compare equal and therefore share one cache entry.

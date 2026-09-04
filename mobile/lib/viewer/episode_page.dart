@@ -22,11 +22,11 @@ class EpisodePage extends StatefulWidget {
   final EpisodeImageItem image;
   final Size viewport;
 
-  /// Sent with the image request so image-server can name the tenant and, for
-  /// a paid body, the reader.
+  /// Sent with the image request so image-server can name the tenant and,
+  /// when the reader is signed in, the reader.
   final Map<String, String> headers;
 
-  /// Fetches the page, decrypting it when the body is a paid one.
+  /// Fetches the page, decrypting it when the response says it is encrypted.
   final EpisodeImageClient client;
 
   @override

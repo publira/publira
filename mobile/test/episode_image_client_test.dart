@@ -14,6 +14,12 @@ import 'support/jwt_fixture.dart';
 const _pageUrl = 'http://images.test/media/PAGE0001';
 const _keyId = 'cache-key-0001';
 
+/// Subject of the media token a free body's image URL carries
+/// (`server/internal/auth`.`FreeEpisodeMediaSubject`). It stands in for the
+/// reader that path does not have, so it names nobody and is the same for
+/// every reader of the episode inside one rotation window.
+const _freeSubject = 'anonymous-free-episode';
+
 final _plaintext = Uint8List.fromList(
   List<int>.generate(200, (index) => index % 251),
 );
@@ -21,6 +27,7 @@ final _plaintext = Uint8List.fromList(
 void main() {
   final readerToken = jwtWithSubject('USRPUBLIC0001');
   final mediaToken = jwtWithSubject('USRPUBLIC0002');
+  final freeToken = jwtWithSubject(_freeSubject);
 
   /// image-server's stream is its own inverse, so the fixtures are built with
   /// the very function under test. What pins that function to the server is
@@ -118,6 +125,68 @@ void main() {
     );
 
     expect(bytes, _plaintext);
+  });
+
+  test('fetch decrypts a free page for a reader with no credential', () async {
+    // The API puts a per-episode, per-window media token on a free body's
+    // image URL, and image-server encrypts under it. A signed-out reader sends
+    // no header, so that token is the whole of the material they hold.
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        encrypted(freeToken, _freeSubject),
+        200,
+        headers: encryptionHeaders(),
+      ),
+    );
+
+    final bytes = await client.fetch(
+      Uri.parse('$_pageUrl?$mediaTokenQueryParam=$freeToken'),
+    );
+
+    expect(bytes, _plaintext);
+  });
+
+  test('fetch decrypts a free page for a signed-in reader', () async {
+    // The same URL, read with a bearer. image-server resolves the header
+    // first, finds a reader this body is readable by, and encrypts under that
+    // token instead of under the free material the URL still carries.
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        encrypted(readerToken, 'USRPUBLIC0001'),
+        200,
+        headers: encryptionHeaders(),
+      ),
+    );
+
+    final bytes = await client.fetch(
+      Uri.parse('$_pageUrl?$mediaTokenQueryParam=$freeToken'),
+      headers: {'authorization': 'Bearer $readerToken'},
+    );
+
+    expect(bytes, _plaintext);
+  });
+
+  test('fetch reports a free page whose material it cannot read', () async {
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        encrypted(freeToken, _freeSubject),
+        200,
+        headers: encryptionHeaders(),
+      ),
+    );
+
+    // A `t` that is not a JWT has no subject to derive a key from, which is
+    // the same dead end as a URL that carries no `t` at all.
+    await expectLater(
+      client.fetch(Uri.parse('$_pageUrl?$mediaTokenQueryParam=not-a-jwt')),
+      throwsA(
+        isA<EpisodeImageException>().having(
+          (error) => error.kind,
+          'kind',
+          EpisodeImageFailureKind.decryption,
+        ),
+      ),
+    );
   });
 
   test('fetch asks for a rendition this app can decode', () async {
@@ -305,6 +374,40 @@ void main() {
       _plaintext,
     );
   });
+
+  test(
+    'a free page decoded once is drawn again once its material has rotated',
+    () async {
+      final pages = InMemoryOfflineLibrary();
+      var reachable = true;
+      final client = clientAnswering((_) async {
+        if (!reachable) {
+          throw http.ClientException('connection refused');
+        }
+        return http.Response.bytes(
+          encrypted(freeToken, _freeSubject),
+          200,
+          headers: encryptionHeaders(),
+        );
+      }, pages: pages);
+
+      await client.fetch(
+        Uri.parse('$_pageUrl?$mediaTokenQueryParam=$freeToken'),
+      );
+      await settle();
+      reachable = false;
+
+      // The free material rotates daily and is not written down, so what decides
+      // whether a saved free page can be drawn is the page's address, which
+      // leaves the token out.
+      expect(
+        await client.fetch(
+          Uri.parse('$_pageUrl?$mediaTokenQueryParam=next-window-token'),
+        ),
+        _plaintext,
+      );
+    },
+  );
 
   test('fetch reports an unreachable server the device cannot cover', () async {
     final client = clientAnswering((_) async {

@@ -19,10 +19,11 @@ abstract class EpisodePageStore {
 
 /// [url] with everything that authorizes one request taken off it.
 ///
-/// A paid page carries a media token in the query that is reissued on every
-/// read, while the page behind it does not change. That token is both the
-/// reason a saved page has to be named without it and a credential that has no
-/// business being written to the device.
+/// An image URL carries a media token in the query that is reissued while the
+/// page behind it does not change: on every read for a body the reader is
+/// entitled to, and once a rotation window for a free one. That token is both
+/// the reason a saved page has to be named without it and a credential that
+/// has no business being written to the device.
 ///
 /// Only that token is dropped. Any other query field the API puts on an image
 /// URL is part of which page is being asked for, so it stays in the address

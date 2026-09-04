@@ -139,9 +139,12 @@ void main() {
       ConnectFixtureServer.seedEpisodeId,
     );
 
+    // The free body's own media token is part of the reference, not decoration
+    // on it: it is what a signed-out reader decrypts the page with.
     expect(
       detail!.images.first.url.toString(),
-      '$imageBaseUrl/images/episodes/${ConnectFixtureServer.seedEpisodeId}-page-1',
+      '$imageBaseUrl/images/episodes/${ConnectFixtureServer.seedEpisodeId}-page-1'
+      '?t=${ConnectFixtureServer.freeEpisodeMediaToken}',
     );
   });
 

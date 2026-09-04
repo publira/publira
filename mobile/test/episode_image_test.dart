@@ -68,6 +68,49 @@ void main() {
     expect(find.byKey(const ValueKey('episode-page-error')), findsNothing);
   });
 
+  testWidgets('a free page is drawn for a reader with no credential', (
+    tester,
+  ) async {
+    // Nothing to lose to the `Authorization` header: the material is the media
+    // token the API put on the free page's own URL, whose subject names the
+    // episode's readers collectively rather than any one of them.
+    final freeToken = jwtWithSubject('anonymous-free-episode');
+    final client = EpisodeImageClient(
+      httpClient: MockClient(
+        (_) async => http.Response.bytes(
+          decryptImageBytes(
+            ciphertext: _png,
+            keyId: _keyId,
+            subject: 'anonymous-free-episode',
+            token: freeToken,
+          ),
+          200,
+          headers: const {
+            imageEncryptionHeader: imageEncryptionAlgorithm,
+            imageContentTypeHeader: 'image/png',
+            imageKeyIdHeader: _keyId,
+          },
+        ),
+      ),
+    );
+
+    await _pumpReader(
+      tester,
+      client: client,
+      headers: const {'x-forwarded-host': 'localhost'},
+      page: EpisodeImageItem(
+        id: _page.id,
+        url: Uri.parse('${_page.url}?$mediaTokenQueryParam=$freeToken'),
+        displayOrder: _page.displayOrder,
+        width: _page.width,
+        height: _page.height,
+      ),
+    );
+
+    expect((await _drawnImage(tester))?.width, 4);
+    expect(find.byKey(const ValueKey('episode-page-error')), findsNothing);
+  });
+
   testWidgets('a plaintext page is drawn the same way', (tester) async {
     // The reader has to keep working while image-server runs with
     // `PUBLIRA_IMAGE_ENCRYPTION` off and answers with the image itself.
@@ -271,11 +314,12 @@ Future<void> _pumpReader(
   WidgetTester tester, {
   required EpisodeImageClient client,
   required Map<String, String> headers,
+  EpisodeImageItem? page,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
       home: EpisodeReader(
-        images: [_page],
+        images: [page ?? _page],
         imageHeaders: headers,
         imageClient: client,
       ),

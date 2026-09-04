@@ -32,11 +32,14 @@ class EpisodeImageException implements Exception {
 /// Fetches one body page from image-server, decrypting it when the response
 /// says it is encrypted.
 ///
-/// A paid, entitled page comes back as `application/octet-stream` with an
-/// `X-Publira-Image-Encryption` stream that only the credential the request
-/// carried can reverse (see [decryptImageBytes]). A free page, or any page at
-/// all while image-server runs with `PUBLIRA_IMAGE_ENCRYPTION` off, carries no
-/// such header and is passed through untouched.
+/// An encrypted page comes back as `application/octet-stream` with an
+/// `X-Publira-Image-Encryption` stream that only the material the request
+/// carried can reverse (see [decryptImageBytes]). For a body this reader is
+/// entitled to, that material is the credential itself; for a free body it is
+/// the media token the API put on the image URL, which is what lets a
+/// signed-out reader recover the page. A response with no such header — every
+/// page while image-server runs with `PUBLIRA_IMAGE_ENCRYPTION` off — is
+/// passed through untouched.
 class EpisodeImageClient {
   EpisodeImageClient({
     http.Client? httpClient,
@@ -63,8 +66,8 @@ class EpisodeImageClient {
   /// terminated, which is what a reader leaving an episode wants.
   void close() => _http.close();
 
-  /// Loads [url] with [headers], which name the tenant and, for a paid body,
-  /// the reader.
+  /// Loads [url] with [headers], which name the tenant and, when the reader
+  /// is signed in, the reader.
   ///
   /// A page that cannot be fetched at all is read from [pages] instead, so an
   /// episode already on the device turns without a network. A page
@@ -181,7 +184,10 @@ class EpisodeImageClient {
   ///
   /// It resolves the request's own credential and prefers the `Authorization`
   /// header over the media token in the query, so the app has to read the two
-  /// in the same order to arrive at the same key.
+  /// in the same order to arrive at the same key. A free body is what makes
+  /// the second one reachable without a session: its URL carries a media token
+  /// issued for the episode rather than for a reader, and a signed-out request
+  /// sends no header for that token to lose to.
   String? _credential(Uri url, Map<String, String> headers) {
     for (final entry in headers.entries) {
       if (entry.key.toLowerCase() != 'authorization') {
