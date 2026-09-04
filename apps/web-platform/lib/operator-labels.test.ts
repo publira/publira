@@ -8,66 +8,51 @@ import {
   getOperatorStatusLabel,
 } from "./operator-labels";
 
-const ja = await loadPlatformMessages("ja");
 const en = await loadPlatformMessages("en");
 
 describe("platform-operator-labels", () => {
   describe("getOperatorRoleLabel", () => {
-    it("should return Japanese label for platform_super_admin", () => {
-      expect(getOperatorRoleLabel("platform_super_admin", ja)).toBe(
-        "スーパー管理者"
+    it("should return the label for platform_super_admin", () => {
+      expect(getOperatorRoleLabel("platform_super_admin", en)).toBe(
+        "Super admin"
       );
     });
 
-    it("should return English label when the catalog is en", () => {
+    it("should return the label for platform_operator", () => {
       expect(getOperatorRoleLabel("platform_operator", en)).toBe("Operator");
     });
 
-    it("should return Japanese label for platform_operator", () => {
-      expect(getOperatorRoleLabel("platform_operator", ja)).toBe(
-        "オペレーター"
-      );
-    });
-
-    it("should return Japanese label for platform_auditor", () => {
-      expect(getOperatorRoleLabel("platform_auditor", ja)).toBe("監査担当");
+    it("should return the label for platform_auditor", () => {
+      expect(getOperatorRoleLabel("platform_auditor", en)).toBe("Auditor");
     });
 
     it("should return original role for unknown role", () => {
-      expect(getOperatorRoleLabel("unknown_role", ja)).toBe("unknown_role");
+      expect(getOperatorRoleLabel("unknown_role", en)).toBe("unknown_role");
     });
   });
 
   describe("getOperatorStatusLabel", () => {
-    it("should return Japanese label for active", () => {
-      expect(getOperatorStatusLabel("active", ja)).toBe("有効");
+    it("should return the label for active", () => {
+      expect(getOperatorStatusLabel("active", en)).toBe("Active");
     });
 
-    it("should return Japanese label for inactive", () => {
-      expect(getOperatorStatusLabel("inactive", ja)).toBe("無効");
+    it("should return the label for inactive", () => {
+      expect(getOperatorStatusLabel("inactive", en)).toBe("Inactive");
     });
 
-    it("should return Japanese label for suspended", () => {
-      expect(getOperatorStatusLabel("suspended", ja)).toBe("停止中");
+    it("should return the label for suspended", () => {
+      expect(getOperatorStatusLabel("suspended", en)).toBe("Suspended");
     });
 
     it("should return original status for unknown status", () => {
-      expect(getOperatorStatusLabel("unknown_status", ja)).toBe(
+      expect(getOperatorStatusLabel("unknown_status", en)).toBe(
         "unknown_status"
       );
     });
   });
 
   describe("getOperatorRoleSelectItems", () => {
-    it("should return Japanese labels in super-admin / operator / auditor order", () => {
-      expect(getOperatorRoleSelectItems(ja)).toEqual([
-        { label: "スーパー管理者", value: "platform_super_admin" },
-        { label: "オペレーター", value: "platform_operator" },
-        { label: "監査担当", value: "platform_auditor" },
-      ]);
-    });
-
-    it("should return English labels when the catalog is en", () => {
+    it("should return labels in super-admin / operator / auditor order", () => {
       expect(getOperatorRoleSelectItems(en)).toEqual([
         { label: "Super admin", value: "platform_super_admin" },
         { label: "Operator", value: "platform_operator" },
@@ -79,26 +64,26 @@ describe("platform-operator-labels", () => {
   describe("getOperatorRoleCardDescription", () => {
     it("should return self message when isSelf is true", () => {
       expect(
-        getOperatorRoleCardDescription({ isSelf: true, isSuperAdmin: true }, ja)
-      ).toBe("自分自身のロールは変更できません。");
+        getOperatorRoleCardDescription({ isSelf: true, isSuperAdmin: true }, en)
+      ).toBe("You cannot change your own role.");
     });
 
     it("should return permission denied message when not super admin", () => {
       expect(
         getOperatorRoleCardDescription(
           { isSelf: false, isSuperAdmin: false },
-          ja
+          en
         )
-      ).toBe("ロールの変更はスーパー管理者のみ実行できます。");
+      ).toBe("Only a super admin can change roles.");
     });
 
     it("should return success message when can modify", () => {
       expect(
         getOperatorRoleCardDescription(
           { isSelf: false, isSuperAdmin: true },
-          ja
+          en
         )
-      ).toBe("オペレーターのロールを変更します。");
+      ).toBe("Change this operator's role.");
     });
   });
 });

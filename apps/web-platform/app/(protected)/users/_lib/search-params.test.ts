@@ -11,7 +11,7 @@ describe("parseUsersFilters", () => {
         limit: "10",
         status: " active ",
         tenant_id: " tenant_a ",
-        tenant_q: " 出版 ",
+        tenant_q: " Press ",
         token: "next-page",
       })
     ).toEqual({
@@ -20,7 +20,7 @@ describe("parseUsersFilters", () => {
       limit: 10,
       status: "active",
       tenantId: "tenant_a",
-      tenantQuery: "出版",
+      tenantQuery: "Press",
       token: "next-page",
     });
   });
@@ -33,7 +33,7 @@ describe("parseUsersFilters", () => {
         limit: "7",
         status: "unknown",
         tenant_id: ["tenant_a", "tenant_b"],
-        tenant_q: ["出版", "別の出版"],
+        tenant_q: ["Press", "Other Press"],
         token: ["first", "second"],
       })
     ).toEqual({
@@ -57,11 +57,11 @@ describe("buildUsersPath", () => {
         limit: 10,
         status: "suspended",
         tenantId: "tenant_a",
-        tenantQuery: "出版",
+        tenantQuery: "Press",
         token: "next-page",
       })
     ).toBe(
-      "/users?status=suspended&tenant_id=tenant_a&tenant_q=%E5%87%BA%E7%89%88&created_from=2026-03-01&created_to=2026-03-02&limit=10&token=next-page"
+      "/users?status=suspended&tenant_id=tenant_a&tenant_q=Press&created_from=2026-03-01&created_to=2026-03-02&limit=10&token=next-page"
     );
   });
 

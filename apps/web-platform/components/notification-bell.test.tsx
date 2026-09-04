@@ -43,48 +43,48 @@ const renderBell = ({
     <NotificationBell>
       <NotificationBellTrigger unreadCount={unreadCount}>
         {unreadCount > 0
-          ? `通知、未読${unreadCount}件`
-          : "通知、未読はありません"}
+          ? `Notifications, ${unreadCount} unread`
+          : "Notifications, none unread"}
       </NotificationBellTrigger>
       <NotificationBellContent>
         <NotificationBellHeader unreadCount={unreadCount}>
-          通知
+          Notifications
         </NotificationBellHeader>
         {state === "empty" ? (
           <NotificationBellEmpty>
             <NotificationBellEmptyTitle>
-              通知はまだありません。
+              No notifications yet.
             </NotificationBellEmptyTitle>
             <NotificationBellEmptyDescription>
-              通知が届くとここに表示されます。
+              New notifications will appear here.
             </NotificationBellEmptyDescription>
           </NotificationBellEmpty>
         ) : null}
         {state === "loading" ? (
           <NotificationBellLoading>
-            通知を読み込んでいます。
+            Loading notifications.
           </NotificationBellLoading>
         ) : null}
         {state === "error" ? (
           <NotificationBellError>
-            通知を表示できませんでした。
+            Could not show the notifications.
           </NotificationBellError>
         ) : null}
         {state === "notification" ? (
           <NotificationBellList>
             <NotificationBellItem href="/tenants/tenant_01" isRead={false}>
-              <NotificationBellItemState>未読</NotificationBellItemState>
+              <NotificationBellItemState>Unread</NotificationBellItemState>
               <NotificationBellItemTitle>
-                予約公開に失敗しました
+                Scheduled publication failed
               </NotificationBellItemTitle>
               <NotificationBellItemDescription>
-                テナントの公開設定を確認してください。
+                Check the publication settings of this tenant.
               </NotificationBellItemDescription>
             </NotificationBellItem>
           </NotificationBellList>
         ) : null}
         <NotificationBellMore href="/notifications">
-          もっと見る
+          See more
         </NotificationBellMore>
       </NotificationBellContent>
     </NotificationBell>
@@ -94,13 +94,15 @@ describe("NotificationBell", () => {
   it("does not show a count when there are no notifications", () => {
     renderBell();
     const trigger = screen.getByRole("button", {
-      name: "通知、未読はありません",
+      name: "Notifications, none unread",
     });
     expect(trigger.textContent).not.toContain("0");
     fireEvent.click(trigger);
-    expect(screen.getByText("通知はまだありません。")).toBeDefined();
-    expect(screen.getByText("通知が届くとここに表示されます。")).toBeDefined();
-    const more = screen.getByRole("link", { name: "もっと見る" });
+    expect(screen.getByText("No notifications yet.")).toBeDefined();
+    expect(
+      screen.getByText("New notifications will appear here.")
+    ).toBeDefined();
+    const more = screen.getByRole("link", { name: "See more" });
     expect(more.getAttribute("href")).toBe("/notifications");
     fireEvent.click(more);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -108,14 +110,16 @@ describe("NotificationBell", () => {
 
   it("shows a count when there are unread notifications", () => {
     renderBell({ unreadCount: 3 });
-    expect(screen.getByRole("button", { name: "通知、未読3件" })).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: "Notifications, 3 unread" })
+    ).toBeDefined();
     expect(screen.getByText("3")).toBeDefined();
   });
 
   it("shows 99+ when the count exceeds 99", () => {
     renderBell({ unreadCount: 120 });
     expect(
-      screen.getByRole("button", { name: "通知、未読120件" })
+      screen.getByRole("button", { name: "Notifications, 120 unread" })
     ).toBeDefined();
     expect(screen.getByText("99+")).toBeDefined();
   });
@@ -123,31 +127,31 @@ describe("NotificationBell", () => {
   it("navigates to the target content from a recent notification when opened", () => {
     renderBell({ state: "notification" });
     fireEvent.click(
-      screen.getByRole("button", { name: "通知、未読はありません" })
+      screen.getByRole("button", { name: "Notifications, none unread" })
     );
     expect(
       screen
-        .getByRole("link", { name: /予約公開に失敗しました/u })
+        .getByRole("link", { name: /Scheduled publication failed/u })
         .getAttribute("href")
     ).toBe("/tenants/tenant_01");
   });
 
   it.each([
-    ["loading", "通知を読み込んでいます。"],
-    ["error", "通知を表示できませんでした。"],
-  ] as const)("%s 中も通知メニューを開ける", (state, message) => {
+    ["loading", "Loading notifications."],
+    ["error", "Could not show the notifications."],
+  ] as const)("opens the notification menu while %s too", (state, message) => {
     renderBell({ state });
     fireEvent.click(
-      screen.getByRole("button", { name: "通知、未読はありません" })
+      screen.getByRole("button", { name: "Notifications, none unread" })
     );
     expect(screen.getByText(message)).toBeDefined();
-    expect(screen.getByRole("link", { name: "もっと見る" })).toBeDefined();
+    expect(screen.getByRole("link", { name: "See more" })).toBeDefined();
   });
 
   it("returns focus to the trigger when closed with Escape", () => {
     renderBell();
     const trigger = screen.getByRole("button", {
-      name: "通知、未読はありません",
+      name: "Notifications, none unread",
     });
     trigger.focus();
     fireEvent.click(trigger);

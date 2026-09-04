@@ -33,7 +33,7 @@ describe("resolveTenantFilter", () => {
         matches: [],
         searchOk: false,
         tenantId: "tenant_a",
-        tenantQuery: "出版",
+        tenantQuery: "Press",
       })
     ).toEqual({ kind: "resolved", tenantId: "tenant_a" });
   });
@@ -55,7 +55,7 @@ describe("resolveTenantFilter", () => {
         matches: [{ publicId: "tenant_a" }],
         searchOk: true,
         tenantId: "",
-        tenantQuery: "出版",
+        tenantQuery: "Press",
       })
     ).toEqual({ kind: "resolved", tenantId: "tenant_a" });
   });
@@ -66,7 +66,7 @@ describe("resolveTenantFilter", () => {
         matches: [],
         searchOk: true,
         tenantId: "tenant_z",
-        tenantQuery: "存在しない",
+        tenantQuery: "no-such-tenant",
       })
     ).toEqual({ kind: "none" });
   });

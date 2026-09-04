@@ -9,14 +9,14 @@ describe("parseTenantFilters", () => {
     expect(
       parseTenantFilters(
         {
-          name: " テスト出版 ",
+          name: " Test Publishing ",
           status: " active ",
           token: " page-token ",
         },
         allowedStatuses
       )
     ).toEqual({
-      name: "テスト出版",
+      name: "Test Publishing",
       status: "active",
       token: " page-token ",
     });
@@ -32,7 +32,7 @@ describe("parseTenantFilters", () => {
     expect(
       parseTenantFilters(
         {
-          name: ["テスト出版", "サンプル出版"],
+          name: ["Test Publishing", "Sample Publishing"],
           status: "unknown",
           token: ["first", "second"],
         },
@@ -50,13 +50,11 @@ describe("buildTenantsPath", () => {
   it("keeps filters and the page token in the URL", () => {
     expect(
       buildTenantsPath({
-        name: "テスト 出版",
+        name: "Test Publishing",
         status: "active",
         token: "next/page",
       })
-    ).toBe(
-      "/tenants?name=%E3%83%86%E3%82%B9%E3%83%88+%E5%87%BA%E7%89%88&status=active&token=next%2Fpage"
-    );
+    ).toBe("/tenants?name=Test+Publishing&status=active&token=next%2Fpage");
   });
 
   it("returns the list root when there are no conditions", () => {

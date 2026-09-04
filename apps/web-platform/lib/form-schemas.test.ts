@@ -8,18 +8,18 @@ import {
 } from "./form-schemas";
 
 describe("requiredTrimmedString", () => {
-  const schema = requiredTrimmedString("名前は必須です。");
+  const schema = requiredTrimmedString("Name is required.");
 
   it("trims and accepts a non-empty value", () => {
-    expect(schema.parse("  山田  ")).toBe("山田");
+    expect(schema.parse("  Ito  ")).toBe("Ito");
   });
 
   it("rejects empty or missing values with the given message", () => {
     expect(schema.safeParse("").error?.issues[0]?.message).toBe(
-      "名前は必須です。"
+      "Name is required."
     );
     expect(schema.safeParse(null).error?.issues[0]?.message).toBe(
-      "名前は必須です。"
+      "Name is required."
     );
   });
 });
@@ -32,19 +32,21 @@ describe("optionalTrimmedString", () => {
 
   it("uses the given message when the value is too long", () => {
     expect(
-      optionalTrimmedString(4, "4文字以内で入力してください。").safeParse(
-        "12345"
-      ).error?.issues[0]?.message
-    ).toBe("4文字以内で入力してください。");
+      optionalTrimmedString(4, "Use 4 characters or fewer.").safeParse("12345")
+        .error?.issues[0]?.message
+    ).toBe("Use 4 characters or fewer.");
   });
 });
 
 describe("intFormSchema", () => {
-  const schema = intFormSchema("ポートは 1〜65535 の整数で入力してください。", {
-    fallback: 587,
-    max: 65_535,
-    min: 1,
-  });
+  const schema = intFormSchema(
+    "Enter the port as an integer between 1 and 65535.",
+    {
+      fallback: 587,
+      max: 65_535,
+      min: 1,
+    }
+  );
 
   it("uses the fallback for a blank field", () => {
     expect(schema.parse("")).toBe(587);

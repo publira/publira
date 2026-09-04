@@ -41,9 +41,9 @@ const notification = (id: string, createdAt: string) => ({
   notificationType: "episode_publish_failed",
   payload: JSON.stringify({
     episode_id: "EP01",
-    episode_title: "第1話",
+    episode_title: "Episode 1",
     series_id: "SR01",
-    series_title: "作品A",
+    series_title: "Series A",
     tenant_id: "SeedTNNTAAA1",
     tenant_name: "Acme",
   }),
@@ -65,7 +65,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("ja", {
+    const result = await listNotifications("en", {
       limit: 20,
       token: "current-page",
     });
@@ -88,7 +88,7 @@ describe("notification lib", () => {
     mockListNotificationsApi.mockResolvedValue({ notifications: [] });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("ja");
+    const result = await listNotifications("en");
 
     expect(mockListNotificationsApi).toHaveBeenCalledWith(
       {
@@ -110,19 +110,19 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("ja");
+    const result = await listNotifications("en");
 
     expect(result.ok).toBe(true);
     expect(result.notifications).toEqual([
       {
         createdAt: "2026-04-04T00:00:00Z",
         description:
-          "テナント「Acme」の「第1話」（作品A）を公開できませんでした。",
+          "“Episode 1” (Series A) could not be published for tenant “Acme”.",
         href: "/tenants/SeedTNNTAAA1",
         id: "n1",
         isRead: false,
         notificationType: "episode_publish_failed",
-        title: "エピソードの公開に失敗しました",
+        title: "An episode could not be published",
       },
     ]);
   });
@@ -142,17 +142,17 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("ja");
+    const result = await listNotifications("en");
 
     expect(result.notifications).toEqual([
       {
         createdAt: "2026-04-04T00:00:00Z",
-        description: "内容の詳細はありません。",
+        description: "No further details are available.",
         href: undefined,
         id: "n1",
         isRead: true,
         notificationType: "smtp_dead",
-        title: "通知",
+        title: "Notification",
       },
     ]);
   });
@@ -166,7 +166,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("ja");
+    const result = await listNotifications("en");
 
     expect(result.notifications.map((item) => item.id)).toEqual(["n2", "n1"]);
   });
@@ -177,10 +177,10 @@ describe("notification lib", () => {
     );
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("ja");
+    const result = await listNotifications("en");
 
     expect(result).toEqual({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       nextToken: "",
       notifications: [],
       ok: false,
@@ -196,14 +196,14 @@ describe("notification lib", () => {
 
     const { listNotifications } = await import("./notification");
 
-    await expect(listNotifications("ja")).rejects.toThrow();
+    await expect(listNotifications("en")).rejects.toThrow();
   });
 
   it("returns a result without tokens when there is no session", async () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications("ja", {
+    const result = await listNotifications("en", {
       token: "current-page",
     });
 
@@ -220,7 +220,7 @@ describe("notification lib", () => {
     mockCountUnreadNotificationsApi.mockResolvedValue({ unreadCount: 3 });
 
     const { countUnreadNotifications } = await import("./notification");
-    const result = await countUnreadNotifications("ja");
+    const result = await countUnreadNotifications("en");
 
     expect(mockCountUnreadNotificationsApi).toHaveBeenCalledWith(
       {},
@@ -235,11 +235,10 @@ describe("notification lib", () => {
     );
 
     const { countUnreadNotifications } = await import("./notification");
-    const result = await countUnreadNotifications("ja");
+    const result = await countUnreadNotifications("en");
 
     expect(result).toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
       requiresSignIn: false,
       unreadCount: 0,
@@ -251,7 +250,7 @@ describe("notification lib", () => {
 
     const { countUnreadNotifications } = await import("./notification");
 
-    await expect(countUnreadNotifications("ja")).rejects.toThrow();
+    await expect(countUnreadNotifications("en")).rejects.toThrow();
   });
 
   it("passes notification_id when marking one notification as read", async () => {
@@ -260,7 +259,7 @@ describe("notification lib", () => {
     const { markNotificationAsRead } = await import("./notification");
     const result = await markNotificationAsRead(
       { notificationId: "11111111-1111-4111-8111-111111111111" },
-      "ja"
+      "en"
     );
 
     expect(mockMarkNotificationAsReadApi).toHaveBeenCalledWith(
@@ -274,7 +273,7 @@ describe("notification lib", () => {
     mockMarkAllNotificationsAsReadApi.mockResolvedValue({ markedCount: 4 });
 
     const { markAllNotificationsAsRead } = await import("./notification");
-    const result = await markAllNotificationsAsRead("ja");
+    const result = await markAllNotificationsAsRead("en");
 
     expect(result).toEqual({ markedCount: 4, ok: true });
   });

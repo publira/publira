@@ -19,7 +19,7 @@ vi.mock("next/cache", () => ({
 }));
 
 vi.mock("#lib/locale", () => ({
-  getPlatformLocale: () => Promise.resolve("ja"),
+  getPlatformLocale: () => Promise.resolve("en"),
 }));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
@@ -62,10 +62,10 @@ describe("notification actions", () => {
       formData({ notification_id: notificationId })
     );
 
-    expect(result).toEqual({ message: "既読にしました。", ok: true });
+    expect(result).toEqual({ message: "Marked as read.", ok: true });
     expect(mockMarkNotificationAsRead).toHaveBeenCalledWith(
       { notificationId },
-      "ja"
+      "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:notifications");
   });
@@ -78,7 +78,7 @@ describe("notification actions", () => {
     );
 
     expect(result).toEqual({
-      message: "入力内容を確認してください。",
+      message: "Please check the information you entered.",
       ok: false,
     });
     expect(mockMarkNotificationAsRead).not.toHaveBeenCalled();
@@ -95,16 +95,16 @@ describe("notification actions", () => {
     const result = await markAllNotificationsAsReadAction(null, formData({}));
 
     expect(result).toEqual({
-      message: "未読をすべて既読にしました。",
+      message: "Marked all notifications as read.",
       ok: true,
     });
-    expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith("ja");
+    expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith("en");
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:notifications");
   });
 
   it("returns a message without updating tags when the API rejects", async () => {
     mockMarkAllNotificationsAsRead.mockResolvedValueOnce({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       ok: false,
     });
 
@@ -112,7 +112,7 @@ describe("notification actions", () => {
     const result = await markAllNotificationsAsReadAction(null, formData({}));
 
     expect(result).toEqual({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

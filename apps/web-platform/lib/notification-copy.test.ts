@@ -7,6 +7,7 @@ import {
   parseNotificationPayload,
 } from "./notification-copy";
 
+const en = sharedCatalog("en");
 const ja = sharedCatalog("ja");
 
 describe("parseNotificationPayload", () => {
@@ -15,19 +16,19 @@ describe("parseNotificationPayload", () => {
       parseNotificationPayload(
         JSON.stringify({
           episode_id: "EP01",
-          episode_title: "第1話",
+          episode_title: "Episode 1",
           extra: "ignored",
           series_id: "SR01",
-          series_title: "作品A",
+          series_title: "Series A",
           tenant_id: "SeedTNNTAAA1",
           tenant_name: "Acme",
         })
       )
     ).toEqual({
       episode_id: "EP01",
-      episode_title: "第1話",
+      episode_title: "Episode 1",
       series_id: "SR01",
-      series_title: "作品A",
+      series_title: "Series A",
       tenant_id: "SeedTNNTAAA1",
       tenant_name: "Acme",
     });
@@ -66,22 +67,41 @@ describe("notificationDisplay", () => {
       notificationDisplay(
         "episode_publish_failed",
         {
-          episode_title: "第1話",
-          series_title: "作品A",
+          episode_title: "Episode 1",
+          series_title: "Series A",
           tenant_id: "SeedTNNTAAA1",
+          tenant_name: "Acme",
+        },
+        en
+      )
+    ).toEqual({
+      description:
+        "“Episode 1” (Series A) could not be published for tenant “Acme”.",
+      href: "/tenants/SeedTNNTAAA1",
+      title: "An episode could not be published",
+    });
+
+    expect(notificationDisplay("episode_publish_failed", {}, en)).toEqual({
+      description: "the scheduled episode could not be published.",
+      href: undefined,
+      title: "An episode could not be published",
+    });
+  });
+
+  it("builds that copy from the catalog it is given, so locale=ja is Japanese", () => {
+    expect(
+      notificationDisplay(
+        "episode_publish_failed",
+        {
+          episode_title: "Episode 1",
+          series_title: "Series A",
           tenant_name: "Acme",
         },
         ja
       )
     ).toEqual({
       description:
-        "テナント「Acme」の「第1話」（作品A）を公開できませんでした。",
-      href: "/tenants/SeedTNNTAAA1",
-      title: "エピソードの公開に失敗しました",
-    });
-
-    expect(notificationDisplay("episode_publish_failed", {}, ja)).toEqual({
-      description: "予約していたエピソードを公開できませんでした。",
+        "テナント「Acme」の「Episode 1」（Series A）を公開できませんでした。",
       href: undefined,
       title: "エピソードの公開に失敗しました",
     });
@@ -89,11 +109,11 @@ describe("notificationDisplay", () => {
 
   it("keeps unknown types as generic notifications", () => {
     expect(
-      notificationDisplay("invite_accepted", { tenant_id: "SeedTNNTAAA1" }, ja)
+      notificationDisplay("invite_accepted", { tenant_id: "SeedTNNTAAA1" }, en)
     ).toEqual({
-      description: "内容の詳細はありません。",
+      description: "No further details are available.",
       href: "/tenants/SeedTNNTAAA1",
-      title: "通知",
+      title: "Notification",
     });
   });
 });

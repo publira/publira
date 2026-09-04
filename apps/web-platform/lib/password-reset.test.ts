@@ -28,7 +28,7 @@ describe("requestPlatformPasswordReset", () => {
     mockRequestPasswordReset.mockResolvedValueOnce({ requested: true });
 
     await expect(
-      requestPlatformPasswordReset("operator@example.com", "ja")
+      requestPlatformPasswordReset("operator@example.com", "en")
     ).resolves.toEqual({ ok: true, requested: true });
   });
 
@@ -38,22 +38,22 @@ describe("requestPlatformPasswordReset", () => {
     );
 
     await expect(
-      requestPlatformPasswordReset("invalid", "ja")
+      requestPlatformPasswordReset("invalid", "en")
     ).resolves.toEqual({
-      message: "メールアドレスを確認してください。",
+      message: "Check the email address.",
       ok: false,
     });
   });
 
-  it("returns an English message for locale=en", async () => {
+  it("words that copy in the locale it was given, so locale=ja is Japanese", async () => {
     mockRequestPasswordReset.mockRejectedValueOnce(
       new ConnectError("invalid email", Code.InvalidArgument)
     );
 
     await expect(
-      requestPlatformPasswordReset("invalid", "en")
+      requestPlatformPasswordReset("invalid", "ja")
     ).resolves.toEqual({
-      message: "Check the email address.",
+      message: "メールアドレスを確認してください。",
       ok: false,
     });
   });
@@ -72,7 +72,7 @@ describe("requestPlatformPasswordReset", () => {
     );
 
     await expect(
-      requestPlatformPasswordReset("operator@example.com", "ja")
+      requestPlatformPasswordReset("operator@example.com", "en")
     ).rejects.toThrow("boom");
   });
 });
@@ -86,10 +86,9 @@ describe("confirmPlatformPasswordReset", () => {
     );
 
     await expect(
-      confirmPlatformPasswordReset(TOKEN, "new-password", "ja")
+      confirmPlatformPasswordReset(TOKEN, "new-password", "en")
     ).resolves.toEqual({
-      message:
-        "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
+      message: "This reset link has expired. Request the reset email again.",
       ok: false,
       reason: "expired",
     });
@@ -126,7 +125,7 @@ describe("confirmPlatformPasswordReset", () => {
     );
 
     await expect(
-      confirmPlatformPasswordReset(TOKEN, "new-password", "ja")
+      confirmPlatformPasswordReset(TOKEN, "new-password", "en")
     ).rejects.toThrow("boom");
   });
 });

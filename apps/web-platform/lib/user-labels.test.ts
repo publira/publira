@@ -3,24 +3,24 @@ import { describe, expect, it } from "vitest";
 import { loadPlatformMessages } from "./locale";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "./user-labels";
 
-const ja = await loadPlatformMessages("ja");
+const en = await loadPlatformMessages("en");
 
 describe("platform-end-user-labels", () => {
   describe("getEndUserStatusLabel", () => {
-    it("should return Japanese label for active", () => {
-      expect(getEndUserStatusLabel("active", ja)).toBe("有効");
+    it("should return the label for active", () => {
+      expect(getEndUserStatusLabel("active", en)).toBe("Active");
     });
 
-    it("should return Japanese label for suspended", () => {
-      expect(getEndUserStatusLabel("suspended", ja)).toBe("停止中");
+    it("should return the label for suspended", () => {
+      expect(getEndUserStatusLabel("suspended", en)).toBe("Suspended");
     });
 
-    it("should return Japanese label for inactive", () => {
-      expect(getEndUserStatusLabel("inactive", ja)).toBe("無効");
+    it("should return the label for inactive", () => {
+      expect(getEndUserStatusLabel("inactive", en)).toBe("Inactive");
     });
 
     it("should return original status for unknown status", () => {
-      expect(getEndUserStatusLabel("unknown_status", ja)).toBe(
+      expect(getEndUserStatusLabel("unknown_status", en)).toBe(
         "unknown_status"
       );
     });

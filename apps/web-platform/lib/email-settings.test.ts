@@ -53,7 +53,7 @@ describe("getPlatformEmailSettings", () => {
       },
     });
 
-    await expect(getPlatformEmailSettings("ja")).resolves.toEqual({
+    await expect(getPlatformEmailSettings("en")).resolves.toEqual({
       ok: true,
       settings: {
         encryption: "starttls",
@@ -70,8 +70,8 @@ describe("getPlatformEmailSettings", () => {
   it("returns a failure without calling the API when sessionId is empty", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
-    await expect(getPlatformEmailSettings("ja")).resolves.toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+    await expect(getPlatformEmailSettings("en")).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
     });
@@ -79,11 +79,11 @@ describe("getPlatformEmailSettings", () => {
     expect(mockGetPlatformEmailSettings).not.toHaveBeenCalled();
   });
 
-  it("returns an English session error for locale=en", async () => {
+  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
-    await expect(getPlatformEmailSettings("en")).resolves.toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
+    await expect(getPlatformEmailSettings("ja")).resolves.toEqual({
+      message: "セッションが無効です。再ログインしてください。",
       ok: false,
       requiresSignIn: true,
     });
@@ -108,7 +108,7 @@ describe("updatePlatformEmailSettings", () => {
       encryption: "tls",
       fromAddress: "noreply@example.com",
       host: "smtp.example.com",
-      locale: "ja",
+      locale: "en",
       password: "secret",
       passwordUpdateMode: SECRET_UPDATE_MODE_REPLACE,
       port: 465,
@@ -156,7 +156,7 @@ describe("sendPlatformSmtpTestEmail", () => {
         encryption: "starttls",
         fromAddress: "noreply@example.com",
         host: "smtp.example.com",
-        locale: "ja",
+        locale: "en",
         password: "",
         passwordUpdateMode: 1,
         port: 587,

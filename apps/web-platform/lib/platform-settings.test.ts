@@ -60,7 +60,7 @@ describe("platform-settings", () => {
 
     const { getPlatformSettings } = await import("./platform-settings");
 
-    const result = await getPlatformSettings("ja");
+    const result = await getPlatformSettings("en");
 
     expect(result).toEqual({
       defaultLocale: "en",
@@ -79,27 +79,27 @@ describe("platform-settings", () => {
 
     const { getPlatformSettings } = await import("./platform-settings");
 
-    const result = await getPlatformSettings("ja");
+    const result = await getPlatformSettings("en");
 
     expect(result).toEqual({
       defaultTimezone: "Asia/Tokyo",
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
     });
     expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();
   });
 
-  it("returns an English session error for locale=en", async () => {
+  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     const { getPlatformSettings } = await import("./platform-settings");
 
-    const result = await getPlatformSettings("en");
+    const result = await getPlatformSettings("ja");
 
     expect(result).toEqual({
       defaultTimezone: "Asia/Tokyo",
-      message: "Your session is no longer valid. Please sign in again.",
+      message: "セッションが無効です。再ログインしてください。",
       ok: false,
       requiresSignIn: true,
     });
@@ -112,7 +112,7 @@ describe("platform-settings", () => {
 
     const { getPlatformSettings } = await import("./platform-settings");
 
-    const result = await getPlatformSettings("ja");
+    const result = await getPlatformSettings("en");
 
     expect(result.ok).toBe(false);
     expect(result.defaultTimezone).toBe("Asia/Tokyo");
@@ -126,7 +126,7 @@ describe("platform-settings", () => {
 
     const { getPlatformSettings } = await import("./platform-settings");
 
-    const result = await getPlatformSettings("ja");
+    const result = await getPlatformSettings("en");
 
     expect(result.ok).toBe(false);
     expect(result).not.toHaveProperty("defaultLocale");
@@ -153,7 +153,7 @@ describe("platform-settings", () => {
     const { updatePlatformDefaultTimezone } =
       await import("./platform-settings");
 
-    const result = await updatePlatformDefaultTimezone("Europe/Paris", "ja");
+    const result = await updatePlatformDefaultTimezone("Europe/Paris", "en");
 
     expect(result).toEqual({ defaultTimezone: "Europe/Paris", ok: true });
     // `default_locale` is required now, so a zone-only save reads the stored
@@ -173,7 +173,7 @@ describe("platform-settings", () => {
     const { updatePlatformDefaultTimezone } =
       await import("./platform-settings");
 
-    const result = await updatePlatformDefaultTimezone("Europe/Paris", "ja");
+    const result = await updatePlatformDefaultTimezone("Europe/Paris", "en");
 
     expect(result.ok).toBe(false);
     expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
@@ -193,7 +193,7 @@ describe("platform-settings", () => {
     const { updatePlatformDefaultTimezone } =
       await import("./platform-settings");
 
-    const result = await updatePlatformDefaultTimezone("Asia/Nowhere", "ja");
+    const result = await updatePlatformDefaultTimezone("Asia/Nowhere", "en");
 
     expect(result).toEqual({
       message: "default_timezone must be a valid IANA time zone name",
@@ -212,7 +212,7 @@ describe("platform-settings", () => {
     const { updatePlatformDefaultTimezone } =
       await import("./platform-settings");
 
-    const result = await updatePlatformDefaultTimezone("Europe/Paris", "ja");
+    const result = await updatePlatformDefaultTimezone("Europe/Paris", "en");
 
     expect(result.ok).toBe(false);
   });
@@ -226,11 +226,11 @@ describe("platform-settings", () => {
 
     const { updatePlatformDefaultLocale } = await import("./platform-settings");
 
-    const result = await updatePlatformDefaultLocale("en", "ja");
+    const result = await updatePlatformDefaultLocale("en", "en");
 
     expect(result).toEqual({ defaultLocale: "en", ok: true });
-    // 画面が持つ値ではなくサーバの現在値を送るので、別セッションで保存された
-    // タイムゾーンを巻き戻さない。
+    // The server's current value is sent rather than the one the screen holds,
+    // so a time zone saved in another session is not rolled back.
     expect(mockUpdatePlatformSettingsApi).toHaveBeenCalledWith(
       { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
       { headers: { Authorization: "Bearer session-token" } }
@@ -244,7 +244,7 @@ describe("platform-settings", () => {
 
     const { updatePlatformDefaultLocale } = await import("./platform-settings");
 
-    const result = await updatePlatformDefaultLocale("en", "ja");
+    const result = await updatePlatformDefaultLocale("en", "en");
 
     expect(result.ok).toBe(false);
     expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
@@ -263,10 +263,10 @@ describe("platform-settings", () => {
 
     const { updatePlatformDefaultLocale } = await import("./platform-settings");
 
-    const result = await updatePlatformDefaultLocale("en", "ja");
+    const result = await updatePlatformDefaultLocale("en", "en");
 
     expect(result).toEqual({
-      message: "入力内容に誤りがあります。",
+      message: "The submitted values are invalid.",
       ok: false,
     });
   });
@@ -276,10 +276,10 @@ describe("platform-settings", () => {
 
     const { updatePlatformDefaultLocale } = await import("./platform-settings");
 
-    const result = await updatePlatformDefaultLocale("en", "ja");
+    const result = await updatePlatformDefaultLocale("en", "en");
 
     expect(result).toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
     });
     expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();

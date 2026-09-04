@@ -242,15 +242,15 @@ describe("createInitialUser", () => {
       createInitialUser({
         defaultLocale: "en",
         email: "admin@example.com",
-        locale: "ja",
-        name: "管理者",
+        locale: "en",
+        name: "Admin",
         password: "password",
       })
     ).resolves.toEqual({ ok: true });
     expect(mockCreateInitialUser).toHaveBeenCalledWith({
       defaultLocale: "en",
       email: "admin@example.com",
-      name: "管理者",
+      name: "Admin",
       password: "password",
     });
   });
@@ -264,14 +264,13 @@ describe("createInitialUser", () => {
       createInitialUser({
         defaultLocale: "ja",
         email: "admin@example.com",
-        locale: "ja",
-        name: "管理者",
+        locale: "en",
+        name: "Admin",
         password: "password",
       })
     ).resolves.toEqual({
       alreadyCompleted: true,
-      message:
-        "セットアップは既に完了しています。ログイン画面からサインインしてください。",
+      message: "Setup is already complete. Sign in from the sign-in screen.",
       ok: false,
     });
   });
@@ -285,33 +284,34 @@ describe("createInitialUser", () => {
       createInitialUser({
         defaultLocale: "ja",
         email: "invalid",
-        locale: "ja",
-        name: "管理者",
+        locale: "en",
+        name: "Admin",
         password: "password",
       })
     ).resolves.toEqual({
       alreadyCompleted: false,
-      message: "入力内容に誤りがあります。",
+      message: "The submitted values are invalid.",
       ok: false,
     });
   });
 
-  it("renders the failure copy in the locale it was given", async () => {
+  it("renders the failure copy in the locale it was given, so locale=ja is Japanese", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
       new ConnectError("setup already completed", Code.AlreadyExists)
     );
 
     await expect(
       createInitialUser({
-        defaultLocale: "en",
+        defaultLocale: "ja",
         email: "admin@example.com",
-        locale: "en",
+        locale: "ja",
         name: "Admin",
         password: "password",
       })
     ).resolves.toEqual({
       alreadyCompleted: true,
-      message: "Setup is already complete. Sign in from the sign-in screen.",
+      message:
+        "セットアップは既に完了しています。ログイン画面からサインインしてください。",
       ok: false,
     });
   });
@@ -325,8 +325,8 @@ describe("createInitialUser", () => {
       createInitialUser({
         defaultLocale: "ja",
         email: "admin@example.com",
-        locale: "ja",
-        name: "管理者",
+        locale: "en",
+        name: "Admin",
         password: "password",
       })
     ).rejects.toThrow("boom");
@@ -339,8 +339,8 @@ describe("createInitialUser", () => {
       createInitialUser({
         defaultLocale: "ja",
         email: "admin@example.com",
-        locale: "ja",
-        name: "管理者",
+        locale: "en",
+        name: "Admin",
         password: "password",
       })
     ).rejects.toBe("boom");
