@@ -18,7 +18,6 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
-	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -34,29 +33,14 @@ type TenantAdminInvitationPayload struct {
 	Token        string `json:"token"`
 }
 
-// TenantAdminInvitationHandlerConfig provides the worker-owned dependencies
-// needed to render and deliver invitation email.
-type TenantAdminInvitationHandlerConfig struct {
-	DB        *sql.DB
-	Encryptor emailsettings.SecretManager
-	Mailer    internalsmtp.RenderedSender
-	Renderer  emailrenderer.Renderer
-}
-
 // NewTenantAdminInvitationHandler creates the handler used by the resident
 // outbox worker. Missing runtime dependencies are retried, since operators may
 // restore the renderer or SMTP configuration while an event is pending.
-func NewTenantAdminInvitationHandler(cfg TenantAdminInvitationHandlerConfig) Handler {
+func NewTenantAdminInvitationHandler(cfg EmailHandlerConfig) Handler {
 	queries := dbmodels.New(cfg.DB)
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
-		if cfg.DB == nil {
-			return errors.New("tenant admin invitation handler database is not configured")
-		}
-		if cfg.Mailer == nil {
-			return errors.New("tenant admin invitation handler smtp sender is not configured")
-		}
-		if cfg.Renderer == nil {
-			return errors.New("tenant admin invitation handler email renderer is not configured")
+		if err := cfg.require("tenant admin invitation"); err != nil {
+			return err
 		}
 
 		payload, err := decodeTenantAdminInvitationPayload(event)
@@ -106,11 +90,7 @@ func NewTenantAdminInvitationHandler(cfg TenantAdminInvitationHandlerConfig) Han
 		if err != nil {
 			return fmt.Errorf("render tenant admin invitation: %w", err)
 		}
-		if err := cfg.Mailer.SendRenderedEmail(ctx, settings, invitation.Email, internalsmtp.RenderedEmail{
-			Subject: rendered.Subject,
-			HTML:    rendered.HTML,
-			Text:    rendered.Text,
-		}); err != nil {
+		if err := sendRenderedEmail(ctx, cfg.Mailer, settings, invitation.Email, rendered); err != nil {
 			return fmt.Errorf("send tenant admin invitation: %w", err)
 		}
 		return nil

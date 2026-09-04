@@ -57,6 +57,7 @@ const (
 	testListTenantMembersDescQuery         = "-- name: ListTenantMembersDesc :many\n"
 	testListTenantMembersAscQuery          = "-- name: ListTenantMembersAsc :many\n"
 	testGetPlatformSMTPConfigQuery         = "-- name: GetPlatformSMTPConfig :one\n"
+	testInsertOutboxEventQuery             = "-- name: InsertOutboxEvent :one\n"
 	testUpsertPlatformSMTPConfigQuery      = "-- name: UpsertPlatformSMTPConfig :one\n"
 
 	// Platform-wide settings.

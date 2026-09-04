@@ -158,7 +158,7 @@ Building requires libvips. For the details, see [cmd/image-server/README.md](cmd
 ## Platform Console URL
 
 - `PUBLIRA_PLATFORM_APP_URL`
-  - The base URL of the Platform Console included in the platform-auth password reset email
+  - The base URL of the Platform Console that the outbox worker builds the password reset and email change confirmation links from
   - Example: `https://platform.example.com`
   - When unset, `http://platform.localhost:3080` is used for local development
 
@@ -175,7 +175,7 @@ These are URLs reachable inside the private network, not the public ones meant f
 ## Email renderer
 
 - `PUBLIRA_EMAIL_RENDERER_URL`
-  - The URL of the ConnectRPC service that outbox-worker uses to render tenant administrator invitation emails into HTML and plain text
+  - The URL of the ConnectRPC service that outbox-worker uses to render its emails into HTML and plain text
   - Example: `http://email-renderer:8080` (container-to-container)
   - When unset, `http://localhost:8080` is used for local development
 

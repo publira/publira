@@ -2,6 +2,8 @@ package platformapi
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -118,7 +121,7 @@ func TestDBSuspendOperatorRevokesLoginAndIssuedToken(t *testing.T) {
 // A token minted against an older credentials_version must stop working, which is
 // what makes a password reset terminate the sessions it was meant to terminate.
 func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
-	ts, pg, mailer := newDBIntegrationEnvWithMailer(t)
+	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
 
@@ -144,12 +147,10 @@ func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
 		t.Fatalf("password reset token rows = %d, want only the newest request to remain", got)
 	}
 
-	sent := mailer.sent()
-	if len(sent) != 2 {
-		t.Fatalf("reset emails = %d, want 2", len(sent))
+	if got := countOutboxEvents(t, pg, outbox.EventTypePlatformPasswordResetEmail); got != 2 {
+		t.Fatalf("queued reset emails = %d, want 2", got)
 	}
-	staleToken := tokenFromConfirmationEmail(t, sent[0])
-	freshToken := tokenFromConfirmationEmail(t, sent[1])
+	staleToken, freshToken := platformPasswordResetTokensInOrder(t, pg)
 
 	verify, err := authClient.VerifyPasswordResetToken(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenRequest{
 		Token: staleToken,
@@ -226,7 +227,7 @@ func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
 }
 
 func TestDBConfirmPasswordResetRejectsExpiredToken(t *testing.T) {
-	ts, pg, mailer := newDBIntegrationEnvWithMailer(t)
+	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
 
@@ -235,7 +236,7 @@ func TestDBConfirmPasswordResetRejectsExpiredToken(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
-	token := tokenFromConfirmationEmail(t, mailer.sentTo(t, operator.Email))
+	token := platformOutboxToken(t, pg, outbox.EventTypePlatformPasswordResetEmail, "")
 
 	expirePlatformPasswordResetTokens(t, pg)
 
@@ -258,7 +259,7 @@ func TestDBConfirmPasswordResetRejectsExpiredToken(t *testing.T) {
 // The address is only free until the confirmation completes, so the final update
 // has to answer to platform_users_email_key rather than the pre-flight check.
 func TestDBConfirmEmailChangeRejectsAddressTakenAfterRequest(t *testing.T) {
-	ts, pg, mailer := newDBIntegrationEnvWithMailer(t)
+	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
 
@@ -270,8 +271,8 @@ func TestDBConfirmEmailChangeRejectsAddressTakenAfterRequest(t *testing.T) {
 		t.Fatalf("RequestEmailChange: %v", err)
 	}
 
-	currentToken := tokenFromConfirmationEmail(t, mailer.sentTo(t, operator.Email))
-	newToken := tokenFromConfirmationEmail(t, mailer.sentTo(t, "moved@example.com"))
+	currentToken := platformOutboxToken(t, pg, outbox.EventTypePlatformEmailChangeConfirmationEmail, ":current_email")
+	newToken := platformOutboxToken(t, pg, outbox.EventTypePlatformEmailChangeConfirmationEmail, ":new_email")
 
 	// Someone else claims the address between the request and the confirmation.
 	seedPlatformUserWithoutRole(t, pg, "PLATOTHER001", "moved@example.com", "Faster Claimant")
@@ -302,7 +303,7 @@ func TestDBConfirmEmailChangeRejectsAddressTakenAfterRequest(t *testing.T) {
 }
 
 func TestDBRequestEmailChangeRejectsExistingAddress(t *testing.T) {
-	ts, pg, _ := newDBIntegrationEnvWithMailer(t)
+	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	pg.SeedPlatformSuperAdmin(t, "PLATADMIN001", "superadmin@example.com", "Platform Super Admin")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
@@ -320,28 +321,59 @@ func TestDBRequestEmailChangeRejectsExistingAddress(t *testing.T) {
 	}
 }
 
-// Password reset mail cannot be sent without SMTP settings, and a request that
-// could not be delivered must not leave a usable token behind.
-func TestDBRequestPasswordResetWithoutSMTPLeavesNoToken(t *testing.T) {
+// The mail is queued rather than dialed out, so no SMTP configuration is needed
+// to answer the request — and the event lands in the same transaction as the
+// token it carries, with no tenant of its own.
+func TestDBRequestPasswordResetQueuesTenantlessOutboxEvent(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
 
-	_, err := authClient.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
+	if _, err := authClient.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
 		Email: operator.Email,
-	}))
-	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("RequestPasswordReset code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	})); err != nil {
+		t.Fatalf("RequestPasswordReset without SMTP settings: %v", err)
 	}
-	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_user_password_reset_tokens"); got != 0 {
-		t.Fatalf("password reset token rows = %d, want the undelivered request to clean up", got)
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_user_password_reset_tokens"); got != 1 {
+		t.Fatalf("password reset token rows = %d, want 1", got)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var tenantID sql.NullString
+	var idempotencyKey string
+	var payload []byte
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT tenant_id, idempotency_key, payload
+		FROM outbox_events
+		WHERE event_type = $1
+	`, outbox.EventTypePlatformPasswordResetEmail).Scan(&tenantID, &idempotencyKey, &payload); err != nil {
+		t.Fatalf("load password reset outbox event: %v", err)
+	}
+	if tenantID.Valid {
+		t.Fatalf("tenant_id = %q, want null for a platform console mail", tenantID.String)
+	}
+
+	var body outbox.PlatformPasswordResetEmailPayload
+	if err := json.Unmarshal(payload, &body); err != nil {
+		t.Fatalf("decode password reset payload: %v", err)
+	}
+	tokenID := platformScalar(t, pg, "SELECT id::text FROM platform_user_password_reset_tokens")
+	if body.TokenID != tokenID || body.Token == "" {
+		t.Fatalf("payload = %+v, want the stored token id plus a token", body)
+	}
+	if idempotencyKey != "platform_password_reset_email:"+tokenID {
+		t.Fatalf("idempotency key = %q", idempotencyKey)
+	}
+	if auth.HashToken(body.Token) != platformScalar(t, pg, "SELECT token_hash FROM platform_user_password_reset_tokens") {
+		t.Fatal("payload token does not hash to the stored token_hash")
 	}
 }
 
 // An unknown address is answered the same way as a known one, so the endpoint
 // cannot be used to enumerate operators.
 func TestDBRequestPasswordResetHidesUnknownAddress(t *testing.T) {
-	ts, pg, mailer := newDBIntegrationEnvWithMailer(t)
+	ts, pg := newDBIntegrationEnv(t)
 	pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
 
@@ -357,8 +389,8 @@ func TestDBRequestPasswordResetHidesUnknownAddress(t *testing.T) {
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_user_password_reset_tokens"); got != 0 {
 		t.Fatalf("password reset token rows = %d, want 0", got)
 	}
-	if sent := mailer.sent(); len(sent) != 0 {
-		t.Fatalf("emails sent = %d, want none for an unknown address", len(sent))
+	if got := countOutboxEvents(t, pg, outbox.EventTypePlatformPasswordResetEmail); got != 0 {
+		t.Fatalf("queued emails = %d, want none for an unknown address", got)
 	}
 }
 
@@ -373,4 +405,56 @@ func expirePlatformPasswordResetTokens(t *testing.T, pg *testutil.PostgresEnv) {
 	`); err != nil {
 		t.Fatalf("expire password reset tokens: %v", err)
 	}
+}
+
+// platformPasswordResetTokensInOrder returns the link secrets of the queued
+// reset mails oldest first, which is how a test tells a superseded request from
+// the one that replaced it.
+func platformPasswordResetTokensInOrder(t *testing.T, pg *testutil.PostgresEnv) (string, string) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	rows, err := pg.DB.QueryContext(ctx, `
+		SELECT payload
+		FROM outbox_events
+		WHERE event_type = $1
+		ORDER BY id ASC
+	`, outbox.EventTypePlatformPasswordResetEmail)
+	if err != nil {
+		t.Fatalf("load password reset outbox events: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+
+	var tokens []string
+	for rows.Next() {
+		var payload []byte
+		if err := rows.Scan(&payload); err != nil {
+			t.Fatalf("scan password reset payload: %v", err)
+		}
+		var body outbox.PlatformPasswordResetEmailPayload
+		if err := json.Unmarshal(payload, &body); err != nil {
+			t.Fatalf("decode password reset payload: %v", err)
+		}
+		tokens = append(tokens, body.Token)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate password reset outbox events: %v", err)
+	}
+	if len(tokens) != 2 {
+		t.Fatalf("queued reset tokens = %d, want 2", len(tokens))
+	}
+	return tokens[0], tokens[1]
+}
+
+func platformScalar(t *testing.T, pg *testutil.PostgresEnv, query string) string {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var value string
+	if err := pg.DB.QueryRowContext(ctx, query).Scan(&value); err != nil {
+		t.Fatalf("query %q: %v", query, err)
+	}
+	return value
 }

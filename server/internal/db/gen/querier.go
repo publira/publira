@@ -202,6 +202,7 @@ type Querier interface {
 	GetPlatformUserByID(ctx context.Context, id uuid.UUID) (PlatformUser, error)
 	GetPlatformUserByPublicID(ctx context.Context, publicID string) (PlatformUser, error)
 	GetPlatformUserEmailChangeTokenByHash(ctx context.Context, currentEmailTokenHash string) (GetPlatformUserEmailChangeTokenByHashRow, error)
+	GetPlatformUserEmailChangeTokenByID(ctx context.Context, id uuid.UUID) (PlatformUserEmailChangeToken, error)
 	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
 	// 公開中シリーズを 1 本以上持つ creator だけを返す。不在と同じく呼び出し側
 	// で not_found にするので、非公開の著者の存在は漏れない。

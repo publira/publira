@@ -82,7 +82,7 @@ func TestWorkerRetriesTenantAdminInvitationEmail(t *testing.T) {
 
 	mailer := &retryingInvitationMailer{}
 	handlers := outbox.DefaultRegistry()
-	handlers.Register(outbox.EventTypeTenantAdminInvitationEmail, outbox.NewTenantAdminInvitationHandler(outbox.TenantAdminInvitationHandlerConfig{
+	handlers.Register(outbox.EventTypeTenantAdminInvitationEmail, outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
 		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: invitationRendererStub{},
 	}))
 	worker := startTestWorker(t, pg.DB, outbox.Config{Handlers: handlers})
@@ -230,7 +230,7 @@ func TestTenantAdminInvitationEmailUsesTheTenantDefaultLocale(t *testing.T) {
 	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-locale")
 
 	renderer := &recordingInvitationRenderer{}
-	handler := outbox.NewTenantAdminInvitationHandler(outbox.TenantAdminInvitationHandlerConfig{
+	handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
 		DB: pg.DB, Encryptor: encryptor, Mailer: &recordingInvitationMailer{}, Renderer: renderer,
 	})
 	if err := handler(context.Background(), event); err != nil {
@@ -258,7 +258,7 @@ func TestTenantAdminInvitationEmailFailsPermanentlyOnAnUnusableLocale(t *testing
 
 	renderer := &recordingInvitationRenderer{}
 	mailer := &recordingInvitationMailer{}
-	handler := outbox.NewTenantAdminInvitationHandler(outbox.TenantAdminInvitationHandlerConfig{
+	handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
 		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
 	})
 	err := handler(context.Background(), event)
@@ -288,7 +288,7 @@ func TestTenantAdminInvitationEmailFailsPermanentlyOnAnUnusableLocaleWithoutSMTP
 
 	renderer := &recordingInvitationRenderer{}
 	mailer := &recordingInvitationMailer{}
-	handler := outbox.NewTenantAdminInvitationHandler(outbox.TenantAdminInvitationHandlerConfig{
+	handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
 		DB: pg.DB, Encryptor: newInvitationEncryptor(t), Mailer: mailer, Renderer: renderer,
 	})
 	err := handler(context.Background(), event)

@@ -61,7 +61,7 @@ func main() {
 		}
 	}
 
-	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, outbox.TenantAdminInvitationHandlerConfig{
+	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, outbox.EmailHandlerConfig{
 		DB:        db,
 		Encryptor: encryptor,
 		Mailer:    internalsmtp.NewClient(),
@@ -106,9 +106,12 @@ func resolveWorkerDBURL(fallback string) string {
 	return defaultWorkerDBURL
 }
 
-func workerConfig(logger *slog.Logger, invitationHandler outbox.TenantAdminInvitationHandlerConfig) outbox.Config {
+func workerConfig(logger *slog.Logger, emailHandlers outbox.EmailHandlerConfig) outbox.Config {
 	handlers := outbox.DefaultRegistry()
-	handlers.Register(outbox.EventTypeTenantAdminInvitationEmail, outbox.NewTenantAdminInvitationHandler(invitationHandler))
+	handlers.Register(outbox.EventTypeTenantAdminInvitationEmail, outbox.NewTenantAdminInvitationHandler(emailHandlers))
+	handlers.Register(outbox.EventTypePlatformPasswordResetEmail, outbox.NewPlatformPasswordResetEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypePlatformEmailChangeConfirmationEmail, outbox.NewPlatformEmailChangeConfirmationEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypePlatformEmailChangedNoticeEmail, outbox.NewPlatformEmailChangedNoticeEmailHandler(emailHandlers))
 	return outbox.Config{
 		Logger:            logger,
 		Handlers:          handlers,

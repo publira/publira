@@ -33,7 +33,6 @@ type platformServer struct {
 	recorder  auditlog.Recorder
 	encryptor emailsettings.SecretManager
 	tester    internalsmtp.Tester
-	mailer    internalsmtp.Sender
 	tokens    *auth.TokenManager
 	logger    *slog.Logger
 }
@@ -110,10 +109,6 @@ func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logge
 }
 
 func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) http.Handler {
-	var mailer internalsmtp.Sender
-	if sender, ok := tester.(internalsmtp.Sender); ok {
-		mailer = sender
-	}
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -126,7 +121,6 @@ func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 		recorder:  recorder,
 		encryptor: encryptor,
 		tester:    tester,
-		mailer:    mailer,
 		tokens:    tokens,
 		logger:    logger,
 	}

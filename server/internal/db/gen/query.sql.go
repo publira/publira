@@ -2621,6 +2621,32 @@ func (q *Queries) GetPlatformUserEmailChangeTokenByHash(ctx context.Context, cur
 	return i, err
 }
 
+const getPlatformUserEmailChangeTokenByID = `-- name: GetPlatformUserEmailChangeTokenByID :one
+SELECT id, platform_user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, current_email_confirmed_at, new_email_confirmed_at, expires_at, completed_at, created_at
+FROM platform_user_email_change_tokens
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetPlatformUserEmailChangeTokenByID(ctx context.Context, id uuid.UUID) (PlatformUserEmailChangeToken, error) {
+	row := q.db.QueryRowContext(ctx, getPlatformUserEmailChangeTokenByID, id)
+	var i PlatformUserEmailChangeToken
+	err := row.Scan(
+		&i.ID,
+		&i.PlatformUserID,
+		&i.CurrentEmail,
+		&i.NewEmail,
+		&i.CurrentEmailTokenHash,
+		&i.NewEmailTokenHash,
+		&i.CurrentEmailConfirmedAt,
+		&i.NewEmailConfirmedAt,
+		&i.ExpiresAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getPlatformUserPasswordResetTokenByHash = `-- name: GetPlatformUserPasswordResetTokenByHash :one
 SELECT id, platform_user_id, token_hash, expires_at, completed_at, created_at
 FROM platform_user_password_reset_tokens

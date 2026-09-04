@@ -3,12 +3,10 @@ package platformapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http/httptest"
-	"net/url"
-	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -17,8 +15,6 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/emailsettings"
-	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -26,43 +22,17 @@ import (
 // newDBIntegrationEnv resets the shared PostgreSQL (Testcontainers) and starts an
 // httptest server talking to it as publira_platform. Nothing is seeded, so tests
 // that need operators or end users seed them through the returned env.
+//
+// No SMTP anything: the auth mails are outbox_events rows the resident worker
+// picks up, so the RPCs under test never resolve settings or dial a server.
 func newDBIntegrationEnv(t *testing.T) (*httptest.Server, *testutil.PostgresEnv) {
-	t.Helper()
-	return newDBIntegrationEnvWithSMTP(t, nil, nil)
-}
-
-// newDBIntegrationEnvWithMailer is newDBIntegrationEnv plus a recording mailer and
-// a stored platform SMTP config, so flows that send mail (password reset, email
-// change) run end to end without a real SMTP server.
-func newDBIntegrationEnvWithMailer(t *testing.T) (*httptest.Server, *testutil.PostgresEnv, *recordingMailer) {
-	t.Helper()
-
-	encryptor := newTestEncryptor(t)
-	mailer := &recordingMailer{}
-	server, pg := newDBIntegrationEnvWithSMTP(t, encryptor, mailer)
-	seedPlatformSMTPConfig(t, pg, encryptor)
-	return server, pg, mailer
-}
-
-func newDBIntegrationEnvWithSMTP(
-	t *testing.T,
-	encryptor emailsettings.SecretManager,
-	mailer *recordingMailer,
-) (*httptest.Server, *testutil.PostgresEnv) {
 	t.Helper()
 
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenPlatformDB(t)
 
-	// NewHandler wires a mailer whenever the tester is non-nil and also implements
-	// smtp.Sender, so a missing mailer has to stay a nil interface value — a typed
-	// nil pointer would be taken for a configured sender.
-	var tester internalsmtp.Tester
-	if mailer != nil {
-		tester = mailer
-	}
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), encryptor, tester, testutil.TokenManager()))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return server, pg
 }
@@ -113,95 +83,51 @@ func newDBBearerRequest[T any](token string, msg T) *connect.Request[T] {
 	return req
 }
 
-// recordingMailer stands in for the SMTP client: it keeps whatever the handlers
-// would have sent so tests can pull confirmation tokens out of the mail body.
-type recordingMailer struct {
-	mu       sync.Mutex
-	messages []recordedEmail
-}
-
-type recordedEmail struct {
-	Recipient string
-	Subject   string
-	Body      string
-}
-
-func (m *recordingMailer) SendTestEmail(_ context.Context, _ emailsettings.SMTPSettings, recipient string) error {
-	return m.record(recordedEmail{Recipient: recipient, Subject: "test"})
-}
-
-func (m *recordingMailer) SendEmail(
-	_ context.Context,
-	_ emailsettings.SMTPSettings,
-	recipient, subject, body string,
-) error {
-	return m.record(recordedEmail{Recipient: recipient, Subject: subject, Body: body})
-}
-
-func (m *recordingMailer) record(message recordedEmail) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.messages = append(m.messages, message)
-	return nil
-}
-
-func (m *recordingMailer) sent() []recordedEmail {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return append([]recordedEmail(nil), m.messages...)
-}
-
-func (m *recordingMailer) sentTo(t *testing.T, recipient string) recordedEmail {
+// platformOutboxToken pulls the link secret out of the queued mail event, which
+// is where a confirmation token now waits until the worker renders it.
+func platformOutboxToken(t *testing.T, pg *testutil.PostgresEnv, eventType, idempotencyKeySuffix string) string {
 	t.Helper()
-	for _, message := range m.sent() {
-		if message.Recipient == recipient {
-			return message
-		}
-	}
-	t.Fatalf("no email sent to %s (sent: %+v)", recipient, m.sent())
-	return recordedEmail{}
-}
-
-// tokenFromConfirmationEmail pulls the ?token= value out of the confirmation URL
-// the handler embedded in the mail body.
-func tokenFromConfirmationEmail(t *testing.T, message recordedEmail) string {
-	t.Helper()
-	for _, field := range strings.Fields(message.Body) {
-		if !strings.Contains(field, "token=") {
-			continue
-		}
-		parsed, err := url.Parse(field)
-		if err != nil {
-			continue
-		}
-		if token := parsed.Query().Get("token"); token != "" {
-			return token
-		}
-	}
-	t.Fatalf("no confirmation token in email body: %q", message.Body)
-	return ""
-}
-
-func seedPlatformSMTPConfig(t *testing.T, pg *testutil.PostgresEnv, encryptor emailsettings.SecretManager) {
-	t.Helper()
-
-	encrypted, err := encryptor.EncryptString("smtp-password")
-	if err != nil {
-		t.Fatalf("EncryptString: %v", err)
-	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if _, err := dbmodels.New(pg.DB).UpsertPlatformSMTPConfig(ctx, dbmodels.UpsertPlatformSMTPConfigParams{
-		Host:              "smtp.example.com",
-		Port:              587,
-		Username:          "mailer",
-		PasswordEncrypted: encrypted,
-		Encryption:        "starttls",
-		FromAddress:       "no-reply@example.com",
-	}); err != nil {
-		t.Fatalf("UpsertPlatformSMTPConfig: %v", err)
+
+	var payload []byte
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT payload
+		FROM outbox_events
+		WHERE event_type = $1
+			AND idempotency_key LIKE '%' || $2
+		ORDER BY id DESC
+		LIMIT 1
+	`, eventType, idempotencyKeySuffix).Scan(&payload); err != nil {
+		t.Fatalf("load %s outbox event: %v", eventType, err)
 	}
+
+	var body struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(payload, &body); err != nil {
+		t.Fatalf("decode %s payload: %v", eventType, err)
+	}
+	if body.Token == "" {
+		t.Fatalf("%s payload carries no token", eventType)
+	}
+	return body.Token
+}
+
+// countOutboxEvents counts the queued mail of one kind, which is how a test says
+// "and nothing was mailed" now that the RPC no longer sends anything itself.
+func countOutboxEvents(t *testing.T, pg *testutil.PostgresEnv, eventType string) int {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var count int
+	if err := pg.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_events WHERE event_type = $1`, eventType).Scan(&count); err != nil {
+		t.Fatalf("count %s outbox events: %v", eventType, err)
+	}
+	return count
 }
 
 // seedPlatformUserWithoutRole inserts a platform_users row that holds no platform
