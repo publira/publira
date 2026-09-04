@@ -27,7 +27,6 @@ VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: ListTenantUserRoles :many
--- テナントユーザーのロール一覧を取得する
 SELECT role
 FROM tenant_user_roles
 WHERE user_id = $1
@@ -64,12 +63,13 @@ WHERE u.status = 'inactive'
         WHERE tur.user_id = u.id
     );
 
--- ListEndUsers はエンドユーザー（tenant_user_roles 未保持）の一覧を
--- (created_at, id) の降順で表示する。テナントメンバーは意図的に含めない。
--- プラットフォームのユーザー一覧はこの結果が完全な集合であり、クライアントが
--- ListTenantMembers で補完しない。
--- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
--- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- ListEndUsers lists the end users (the ones that hold no tenant_user_roles
+-- row) in (created_at, id) DESC. Tenant members are left out deliberately:
+-- this result is the complete set behind the platform user list, and the
+-- client does not top it up with ListTenantMembers.
+-- Forward uses the DESC query; backward uses ASC so the index can be scanned
+-- in reverse. The handler flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
 -- name: ListEndUsersDesc :many
 SELECT u.id,
     u.public_id,
@@ -156,11 +156,13 @@ WHERE NOT EXISTS (
 ORDER BY u.created_at ASC, u.id ASC
 LIMIT sqlc.arg('limit');
 
--- Platform ListTenantMembers はテナントに所属する管理・編集ユーザーを
--- (created_at, id) の降順で表示する。admin の ListTenantUsers とは列が違う
--- （こちらはメール・ステータスも返し、検索の絞り込みを持たない）ので別のクエリ。
--- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
--- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- Platform ListTenantMembers lists the administrative and editorial users of
+-- a tenant in (created_at, id) DESC. It stays a separate query from admin's
+-- ListTenantUsers because the columns differ: this one also returns the
+-- email and the status, and it carries no search filter.
+-- Forward uses the DESC query; backward uses ASC so the index can be scanned
+-- in reverse. The handler flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
 -- name: ListTenantMembersDesc :many
 SELECT u.id AS user_id,
     u.public_id,
@@ -249,13 +251,14 @@ WHERE u.tenant_id = sqlc.arg('tenant_id')
 ORDER BY u.created_at ASC, u.id ASC
 LIMIT sqlc.arg('limit');
 
--- Admin ListTenantUsers は (created_at, id) の降順で表示する。
--- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
--- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
--- 絞り込みは SQL 側で行う。handler で取得済みの 1 ページ分だけを突き合わせると、
--- その先のページにいる該当ユーザーが検索結果から丸ごと落ちる。
+-- Admin ListTenantUsers is (created_at, id) DESC. Forward uses the DESC
+-- query; backward uses ASC so the index can be scanned in reverse. The
+-- handler flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
+-- The search filter is applied in SQL. Matching only the single page the
+-- handler has already fetched would drop every matching user that sits on a
+-- later page.
 -- name: ListTenantUsersDesc :many
--- テナントに所属する管理・編集ユーザー一覧（次ページ方向）
 SELECT u.id AS user_id,
     u.public_id,
     u.name,
@@ -304,7 +307,6 @@ ORDER BY u.created_at DESC, u.id DESC
 LIMIT sqlc.arg('limit');
 
 -- name: ListTenantUsersAsc :many
--- テナントに所属する管理・編集ユーザー一覧（前ページ方向）
 SELECT u.id AS user_id,
     u.public_id,
     u.name,
@@ -353,12 +355,10 @@ ORDER BY u.created_at ASC, u.id ASC
 LIMIT sqlc.arg('limit');
 
 -- name: DeleteTenantUserRolesByUserID :exec
--- テナントユーザーのロールをすべて削除する
 DELETE FROM tenant_user_roles
 WHERE user_id = $1;
 
 -- name: GetUserByPublicID :one
--- public_idでテナントユーザーを取得
 SELECT u.id,
     u.public_id,
     u.name,
@@ -371,7 +371,6 @@ WHERE u.public_id = $1
 LIMIT 1;
 
 -- name: GetUserByPublicIDForTenant :one
--- テナントスコープで public_id からユーザーを取得
 SELECT u.id,
     u.public_id,
     u.name,
@@ -385,61 +384,53 @@ WHERE u.tenant_id = $1
 LIMIT 1;
 
 -- name: UpdateUserStatus :one
--- ユーザーのステータスを更新
 UPDATE users
 SET status = $2
 WHERE public_id = $1
 RETURNING *;
 
 -- name: UpdateUserStatusByID :one
--- ユーザーのステータスをID指定で更新
 UPDATE users
 SET status = $2
 WHERE id = $1
 RETURNING *;
 
 -- name: UpdateUserEmailVerifiedAtByID :one
--- ユーザーのメール確認日時を更新
 UPDATE users
 SET email_verified_at = $2
 WHERE id = $1
 RETURNING *;
 
 -- name: UpdateUserEmailByID :one
--- ユーザーのメールアドレスをID指定で更新
 UPDATE users
 SET email = $2
 WHERE id = $1
 RETURNING *;
 
 -- name: UpdateUserPasswordHashByID :one
--- ユーザーのパスワードハッシュをID指定で更新
 UPDATE users
 SET password_hash = $2
 WHERE id = $1
 RETURNING *;
 
 -- name: DeleteUserByID :exec
--- ユーザーを物理削除（外部キー制約により関連データも削除）
+-- Hard delete. Related rows go with the user wherever the foreign key cascades.
 DELETE FROM users
 WHERE id = $1;
 
 -- name: UpdateUserNameByID :one
--- ユーザーの表示名をID指定で更新
 UPDATE users
 SET name = $2
 WHERE id = $1
 RETURNING *;
 
 -- name: GetUserNotificationSettings :one
--- ユーザーの通知設定を取得
 SELECT *
 FROM user_notification_settings
 WHERE user_id = $1
 LIMIT 1;
 
 -- name: UpsertUserNotificationSettings :one
--- ユーザーの通知設定を作成または更新
 INSERT INTO user_notification_settings (user_id, email_notifications_enabled, updated_at)
 VALUES ($1, $2, NOW())
 ON CONFLICT (user_id) DO UPDATE

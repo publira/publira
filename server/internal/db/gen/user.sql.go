@@ -133,7 +133,6 @@ DELETE FROM tenant_user_roles
 WHERE user_id = $1
 `
 
-// テナントユーザーのロールをすべて削除する
 func (q *Queries) DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteTenantUserRolesByUserID, userID)
 	return err
@@ -144,7 +143,7 @@ DELETE FROM users
 WHERE id = $1
 `
 
-// ユーザーを物理削除（外部キー制約により関連データも削除）
+// Hard delete. Related rows go with the user wherever the foreign key cascades.
 func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteUserByID, id)
 	return err
@@ -228,7 +227,6 @@ type GetUserByPublicIDRow struct {
 	CreatedAt time.Time     `json:"created_at"`
 }
 
-// public_idでテナントユーザーを取得
 func (q *Queries) GetUserByPublicID(ctx context.Context, publicID string) (GetUserByPublicIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByPublicID, publicID)
 	var i GetUserByPublicIDRow
@@ -273,7 +271,6 @@ type GetUserByPublicIDForTenantRow struct {
 	CreatedAt time.Time     `json:"created_at"`
 }
 
-// テナントスコープで public_id からユーザーを取得
 func (q *Queries) GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByPublicIDForTenantParams) (GetUserByPublicIDForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetUserByPublicIDForTenantRow
@@ -296,7 +293,6 @@ WHERE user_id = $1
 LIMIT 1
 `
 
-// ユーザーの通知設定を取得
 func (q *Queries) GetUserNotificationSettings(ctx context.Context, userID uuid.UUID) (UserNotificationSetting, error) {
 	row := q.db.QueryRowContext(ctx, getUserNotificationSettings, userID)
 	var i UserNotificationSetting
@@ -480,12 +476,13 @@ type ListEndUsersDescRow struct {
 	TenantName     string    `json:"tenant_name"`
 }
 
-// ListEndUsers はエンドユーザー（tenant_user_roles 未保持）の一覧を
-// (created_at, id) の降順で表示する。テナントメンバーは意図的に含めない。
-// プラットフォームのユーザー一覧はこの結果が完全な集合であり、クライアントが
-// ListTenantMembers で補完しない。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+// ListEndUsers lists the end users (the ones that hold no tenant_user_roles
+// row) in (created_at, id) DESC. Tenant members are left out deliberately:
+// this result is the complete set behind the platform user list, and the
+// client does not top it up with ListTenantMembers.
+// Forward uses the DESC query; backward uses ASC so the index can be scanned
+// in reverse. The handler flips ASC rows back into display order.
+// cursor rules: proto/README.md.
 func (q *Queries) ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescParams) ([]ListEndUsersDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEndUsersDesc,
 		arg.CreatedAfter,
@@ -760,11 +757,13 @@ type ListTenantMembersDescRow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Platform ListTenantMembers はテナントに所属する管理・編集ユーザーを
-// (created_at, id) の降順で表示する。admin の ListTenantUsers とは列が違う
-// （こちらはメール・ステータスも返し、検索の絞り込みを持たない）ので別のクエリ。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+// Platform ListTenantMembers lists the administrative and editorial users of
+// a tenant in (created_at, id) DESC. It stays a separate query from admin's
+// ListTenantUsers because the columns differ: this one also returns the
+// email and the status, and it carries no search filter.
+// Forward uses the DESC query; backward uses ASC so the index can be scanned
+// in reverse. The handler flips ASC rows back into display order.
+// cursor rules: proto/README.md.
 func (q *Queries) ListTenantMembersDesc(ctx context.Context, arg ListTenantMembersDescParams) ([]ListTenantMembersDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTenantMembersDesc,
 		arg.TenantID,
@@ -809,7 +808,6 @@ WHERE user_id = $1
 ORDER BY role
 `
 
-// テナントユーザーのロール一覧を取得する
 func (q *Queries) ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
 	rows, err := q.db.QueryContext(ctx, listTenantUserRoles, userID)
 	if err != nil {
@@ -899,7 +897,6 @@ type ListTenantUsersAscRow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// テナントに所属する管理・編集ユーザー一覧（前ページ方向）
 func (q *Queries) ListTenantUsersAsc(ctx context.Context, arg ListTenantUsersAscParams) ([]ListTenantUsersAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTenantUsersAsc,
 		arg.TenantID,
@@ -1002,12 +999,13 @@ type ListTenantUsersDescRow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Admin ListTenantUsers は (created_at, id) の降順で表示する。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
-// 絞り込みは SQL 側で行う。handler で取得済みの 1 ページ分だけを突き合わせると、
-// その先のページにいる該当ユーザーが検索結果から丸ごと落ちる。
-// テナントに所属する管理・編集ユーザー一覧（次ページ方向）
+// Admin ListTenantUsers is (created_at, id) DESC. Forward uses the DESC
+// query; backward uses ASC so the index can be scanned in reverse. The
+// handler flips ASC rows back into display order.
+// cursor rules: proto/README.md.
+// The search filter is applied in SQL. Matching only the single page the
+// handler has already fetched would drop every matching user that sits on a
+// later page.
 func (q *Queries) ListTenantUsersDesc(ctx context.Context, arg ListTenantUsersDescParams) ([]ListTenantUsersDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTenantUsersDesc,
 		arg.TenantID,
@@ -1056,7 +1054,6 @@ type UpdateUserEmailByIDParams struct {
 	Email string    `json:"email"`
 }
 
-// ユーザーのメールアドレスをID指定で更新
 func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUserEmailByID, arg.ID, arg.Email)
 	var i User
@@ -1087,7 +1084,6 @@ type UpdateUserEmailVerifiedAtByIDParams struct {
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
 }
 
-// ユーザーのメール確認日時を更新
 func (q *Queries) UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUserEmailVerifiedAtByID, arg.ID, arg.EmailVerifiedAt)
 	var i User
@@ -1118,7 +1114,6 @@ type UpdateUserNameByIDParams struct {
 	Name string    `json:"name"`
 }
 
-// ユーザーの表示名をID指定で更新
 func (q *Queries) UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByIDParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUserNameByID, arg.ID, arg.Name)
 	var i User
@@ -1149,7 +1144,6 @@ type UpdateUserPasswordHashByIDParams struct {
 	PasswordHash string    `json:"password_hash"`
 }
 
-// ユーザーのパスワードハッシュをID指定で更新
 func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUserPasswordHashByID, arg.ID, arg.PasswordHash)
 	var i User
@@ -1180,7 +1174,6 @@ type UpdateUserStatusParams struct {
 	Status   string `json:"status"`
 }
 
-// ユーザーのステータスを更新
 func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUserStatus, arg.PublicID, arg.Status)
 	var i User
@@ -1211,7 +1204,6 @@ type UpdateUserStatusByIDParams struct {
 	Status string    `json:"status"`
 }
 
-// ユーザーのステータスをID指定で更新
 func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUserStatusByID, arg.ID, arg.Status)
 	var i User
@@ -1244,7 +1236,6 @@ type UpsertUserNotificationSettingsParams struct {
 	EmailNotificationsEnabled bool      `json:"email_notifications_enabled"`
 }
 
-// ユーザーの通知設定を作成または更新
 func (q *Queries) UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error) {
 	row := q.db.QueryRowContext(ctx, upsertUserNotificationSettings, arg.UserID, arg.EmailNotificationsEnabled)
 	var i UserNotificationSetting

@@ -1,6 +1,7 @@
--- ListTenants は (created_at, id) の降順で表示する。
--- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
--- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- ListTenants is (created_at, id) DESC. Forward uses the DESC query;
+-- backward uses ASC so the index can be scanned in reverse. The handler
+-- flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
 -- name: ListTenantsDesc :many
 SELECT *
 FROM tenants
@@ -42,43 +43,44 @@ ORDER BY created_at ASC, id ASC
 LIMIT sqlc.arg('limit');
 
 -- name: CreateTenant :one
--- プラットフォーム管理者向けテナント作成
--- default_locale は列 DEFAULT を持たないため、呼び出し側が必ず明示する。timezone も
--- 列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
+-- Tenant creation for platform administrators.
+-- default_locale has no column DEFAULT, so the caller always passes it
+-- explicitly. timezone is not left to its column DEFAULT either: the
+-- platform default is applied explicitly.
 INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
 VALUES (sqlc.arg('id'), sqlc.arg('public_id'), sqlc.arg('domain'), sqlc.narg('admin_domain'), sqlc.arg('name'), 'active', sqlc.arg('timezone'), sqlc.arg('default_locale'))
 RETURNING *;
 
 -- name: UpdateTenantStatus :one
--- テナントの状態 (active / suspended) を更新する
+-- Update the tenant status (active / suspended).
 UPDATE tenants
 SET status = $2
 WHERE public_id = $1
 RETURNING *;
 
 -- name: UpdateTenantInfo :one
--- テナントの名前・ドメインを更新する
+-- Update the tenant name and its domains.
 UPDATE tenants
 SET name = sqlc.arg('name'), domain = sqlc.arg('domain'), admin_domain = sqlc.narg('admin_domain')
 WHERE public_id = sqlc.arg('public_id')
 RETURNING *;
 
 -- name: UpdateTenantTimezone :one
--- テナントの表示タイムゾーン (IANA 名) を更新する
+-- Update the tenant display time zone (an IANA name).
 UPDATE tenants
 SET timezone = sqlc.arg('timezone')
 WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: UpdateTenantDefaultLocale :one
--- テナントの既定ロケールを更新する
 UPDATE tenants
 SET default_locale = sqlc.arg('default_locale')
 WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: GetTenantByDomains :one
--- 候補ホスト名の順序を保ったまま最初に一致したテナントを返す
+-- Return the first tenant that matches, keeping the order of the candidate
+-- host names.
 SELECT t.*
 FROM unnest(sqlc.arg('domains')::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t ON t.domain = candidate.domain
@@ -86,7 +88,8 @@ ORDER BY candidate.ord
 LIMIT 1;
 
 -- name: GetAdminTenantByDomains :one
--- 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
+-- Return the first tenant that matches admin_domain, or the admin.{domain}
+-- fallback, keeping the order of the candidate host names.
 SELECT t.*
 FROM unnest(sqlc.arg('domains')::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t
@@ -136,7 +139,6 @@ WHERE id = $1
 LIMIT 1;
 
 -- name: GetTenantByUserID :one
--- ユーザーが所属するテナントを取得
 SELECT t.id,
     t.public_id,
     t.name,
