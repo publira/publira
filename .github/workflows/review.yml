@@ -5,10 +5,11 @@ name: Review
 
 on:
   # `pull_request` cannot be used: a fork's GITHUB_TOKEN is read-only and could
-  # not add the label. `pull_request_target` runs against the base branch, and
-  # nothing here checks out or executes the head branch.
+  # not add a label. `pull_request_target` runs against the base branch, and
+  # nothing here checks out or executes the head branch. The types are the
+  # union of what the jobs need; each one narrows from there.
   pull_request_target:
-    types: [opened, ready_for_review]
+    types: [opened, ready_for_review, synchronize]
 
 permissions: {}
 
@@ -17,11 +18,15 @@ jobs:
     name: Label review size
     # An `opened` event for a draft is skipped, so a pull request opened as a
     # draft is labelled when it is marked ready and one opened ready is
-    # labelled immediately.
-    if: github.event.pull_request.draft == false
+    # labelled immediately. A `synchronize` is skipped too: the score is a
+    # snapshot of the moment review was requested, not of the latest push.
+    if: github.event.pull_request.draft == false && github.event.action != 'synchronize'
     runs-on: ubicloud-standard-2
     timeout-minutes: 10
     permissions:
+      # A job's `permissions` replaces the workflow's `{}` outright rather than
+      # adding to it, so the checkout needs `contents: read` spelled out here.
+      contents: read
       pull-requests: write
     steps:
       # `pull_request_target` resolves to the base commit, so this is the
@@ -116,3 +121,53 @@ jobs:
               issue_number: context.payload.pull_request.number,
               labels: [label],
             });
+
+  ai-assisted-label:
+    name: Label AI assistance
+    if: github.event.pull_request.draft == false
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 10
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Apply the label to match the commit trailers
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const LABEL = 'ai-assisted';
+            const { owner, repo } = context.repo;
+            const pull = context.payload.pull_request;
+
+            const commits = await github.paginate(
+              'GET /repos/{owner}/{repo}/pulls/{pull_number}/commits',
+              { owner, repo, pull_number: pull.number, per_page: 100 },
+            );
+            // Git matches a trailer token case-insensitively, so the label has
+            // to as well: `assisted-by:` is the same disclosure.
+            const trailer = /^assisted-by:[ \t]*\S/im;
+            const assisted = commits.some(({ commit }) => trailer.test(commit.message));
+            const labelled = pull.labels.some((label) => label.name === LABEL);
+
+            if (assisted === labelled) {
+              core.info(`#${pull.number} already reads as ${assisted ? '' : 'not '}AI-assisted`);
+              return;
+            }
+
+            if (assisted) {
+              await github.rest.issues.addLabels({
+                ...context.repo,
+                issue_number: pull.number,
+                labels: [LABEL],
+              });
+              core.info(`Added ${LABEL} to #${pull.number}`);
+              return;
+            }
+
+            // The trailer is the only source of truth: a branch that lost its
+            // agent commits to a force-push loses the label with them.
+            await github.rest.issues.removeLabel({
+              ...context.repo,
+              issue_number: pull.number,
+              name: LABEL,
+            });
+            core.info(`Removed ${LABEL} from #${pull.number}`);

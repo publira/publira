@@ -25,10 +25,15 @@
 | Displayed job | Purpose |
 | --- | --- |
 | `Label review size` | Give a pull request one `size/*` label computed from its diff. |
+| `Label AI assistance` | Give a pull request the `ai-assisted` label when its commits disclose a coding agent. |
+
+Both jobs are triggered by `pull_request_target`, whose types are the union of what they need: `opened`, `ready_for_review`, and `synchronize`. `pull_request` cannot be used: a fork's `GITHUB_TOKEN` is read-only and could not add a label. An `opened` event for a draft is skipped by both, so a pull request opened as a draft is labelled when it is marked ready and one opened ready is labelled immediately.
+
+### Review size
 
 A diff's line count says little about how much review a pull request needs: a lock-file refresh and a rewrite of the session cookie handling can both read as `+400 −120`. The label states the expected review load, so the queue can be sorted by cost and an outlier is visible as a candidate to split. It describes a pull request; it does not gate anything, and it is not recomputed on `synchronize` — the label is a snapshot from the moment review was requested.
 
-### The score
+#### The score
 
 [`scripts/pr-size.ts`](../../scripts/pr-size.ts) reads a unified diff on standard input and prints the score and the bucket, so a local run and the workflow agree on the number by construction:
 
@@ -67,13 +72,25 @@ score = Σ over changed files ( coefficient(path) × significant_lines(file) )
 
 Coefficients and thresholds live in `scripts/pr-size.ts`; its classification and bucket assignment are covered by `scripts/pr-size.test.ts`. `scripts/` sits outside the pnpm workspace, so Vitest does not reach it: the tests run under `node --test` through `pnpm test:scripts`, which `pnpm preflight` and the `Test / TypeScript` job both call.
 
-### The job
+#### The job
 
-`Label review size` is triggered by `pull_request_target` with types `opened` and `ready_for_review`. An `opened` event for a draft is skipped, so a pull request opened as a draft is labelled when it is marked ready and one opened ready is labelled immediately. `pull_request` cannot be used: a fork's `GITHUB_TOKEN` is read-only and could not add the label.
+`Label review size` skips `synchronize` on top of the shared draft check, which is what makes the label a snapshot rather than a running score.
 
-The job holds `pull-requests: write` and nothing else, and it never checks out the head branch — `pull_request_target` resolves to the base commit, so the scorer that runs is the one that was reviewed and merged. It reads per-file patches from `GET /repos/{owner}/{repo}/pulls/{number}/files` and pipes them to that scorer; where the API omits a patch (a binary or oversized file), it stands in one significant line for each addition and deletion the API counted.
+The job holds `contents: read` and `pull-requests: write`, and it never checks out the head branch — `pull_request_target` resolves to the base commit, so the scorer that runs is the one that was reviewed and merged. A job's `permissions` block replaces the workflow's `permissions: {}` rather than adding to it, so the read the checkout needs has to be spelled out in the job. It reads per-file patches from `GET /repos/{owner}/{repo}/pulls/{number}/files` and pipes them to that scorer; where the API omits a patch (a binary or oversized file), it stands in one significant line for each addition and deletion the API counted.
 
 A pull request that already carries a `size/*` label is left alone and the run log says so. A label the author set — an agent following `skills/create-pr`, or a human who has judged the review load — wins over the mechanical score.
+
+### AI assistance
+
+Every commit written with the help of a coding agent carries an `Assisted-by:` trailer — that trailer, and not the label, is the disclosure this repository requires, and `AGENTS.md` is where the requirement is stated. A trailer is only visible once the commits are open, though, so from the pull request list and from the notification a reviewer acts on, an agent-written pull request looks exactly like a hand-written one. The two do not want the same reading: an agent's diff is fluent everywhere, including the places it did not understand, so the parts worth doubting are not the parts that look rough. `Label AI assistance` carries the disclosure onto the pull request as the `ai-assisted` label, where it is visible before the review starts and can be filtered and counted afterwards.
+
+The job reads the commit messages from `GET /repos/{owner}/{repo}/pulls/{number}/commits` and treats the pull request as agent-assisted when any of them carries an `Assisted-by:` trailer, matched case-insensitively as Git itself matches a trailer token. It holds `pull-requests: write` and nothing else, and checks nothing out.
+
+It runs on `synchronize` as well as `opened` and `ready_for_review`, because the label tracks the commits rather than the moment review was requested: an agent commit pushed onto a hand-written branch has to be caught. For the same reason the trailers are the only source of truth, so the job removes the label as readily as it adds it — a branch that lost its agent commits to a force-push loses the label on the next event.
+
+The label discloses and nothing more. It fails no check and blocks no merge, and there is one label rather than one per agent: the trailer already records the agent and the model, and a label per tool would multiply with every tool anyone uses.
+
+`skills/create-pr` writes no label for this. The label is derived from the trailer the skill already writes, so an agent cannot ship an unlabelled pull request by forgetting one; the skill states the same rule from its side, so an agent does not set or clear `ai-assisted` by hand either.
 
 ## Regenerate
 
