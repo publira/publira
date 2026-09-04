@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	getTenantConfigByTenantIDQuery         = "-- name: GetTenantConfigByTenantID :one\nSELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline\nFROM tenant_config\nWHERE tenant_id = $1\nLIMIT 1\n"
+	getTenantConfigByTenantIDQuery         = "-- name: GetTenantConfigByTenantID :one\nSELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode\nFROM tenant_config\nWHERE tenant_id = $1\nLIMIT 1\n"
 	getTenantThemeByTenantIDQuery          = "-- name: GetTenantThemeByTenantID :one\nSELECT\n    t.id AS tenant_id,\n    COALESCE(tt.background_color, '#f6f2e9') AS background_color,\n    COALESCE(tt.foreground_color, '#1e2b38') AS foreground_color,\n    COALESCE(tt.surface_color, '#fbf8f2') AS surface_color,\n    COALESCE(tt.surface_foreground_color, '#1e2b38') AS surface_foreground_color,\n    COALESCE(tt.card_color, '#fffdf8') AS card_color,\n    COALESCE(tt.card_foreground_color, '#1e2b38') AS card_foreground_color,\n    COALESCE(tt.popover_color, '#fffdf8') AS popover_color,\n    COALESCE(tt.popover_foreground_color, '#1e2b38') AS popover_foreground_color,\n    COALESCE(tt.primary_color, '#0f7c82') AS primary_color,\n    COALESCE(tt.primary_foreground_color, '#f4fbfb') AS primary_foreground_color,\n    COALESCE(tt.secondary_color, '#b35235') AS secondary_color,\n    COALESCE(tt.secondary_foreground_color, '#fff6f1') AS secondary_foreground_color,\n    COALESCE(tt.accent_color, '#7aae90') AS accent_color,\n    COALESCE(tt.accent_foreground_color, '#0f2a1f') AS accent_foreground_color,\n    COALESCE(tt.muted_color, '#e9e1d3') AS muted_color,\n    COALESCE(tt.muted_foreground_color, '#56616e') AS muted_foreground_color,\n    COALESCE(tt.border_color, '#d7ccba') AS border_color,\n    COALESCE(tt.input_color, '#e3d8c7') AS input_color,\n    COALESCE(tt.ring_color, '#2d8d93') AS ring_color,\n    COALESCE(tt.success_color, '#247542') AS success_color,\n    COALESCE(tt.success_foreground_color, '#f3fcf7') AS success_foreground_color,\n    COALESCE(tt.warning_color, '#9b6217') AS warning_color,\n    COALESCE(tt.warning_foreground_color, '#fff8ea') AS warning_foreground_color,\n    COALESCE(tt.destructive_color, '#b54444') AS destructive_color,\n    COALESCE(tt.destructive_foreground_color, '#fff4f4') AS destructive_foreground_color,\n    COALESCE(tt.info_color, '#2b5e9f') AS info_color,\n    COALESCE(tt.info_foreground_color, '#f3f8ff') AS info_foreground_color,\n    tt.icon_image_id,\n    fi.updated_at AS icon_image_updated_at,\n    tt.logo_image_id,\n    li.updated_at AS logo_image_updated_at,\n    COALESCE(tt.updated_at, NOW()) AS updated_at\nFROM tenants t\nLEFT JOIN tenant_themes tt ON tt.tenant_id = t.id\nLEFT JOIN tenant_images fi ON fi.id = tt.icon_image_id\nLEFT JOIN tenant_images li ON li.id = tt.logo_image_id\nWHERE t.id = $1\n"
 	listTenantImageVariantsByImageIDsQuery = "-- name: ListTenantImageVariantsByImageIDs :many\nSELECT tenant_image_id,\n    variant_type,\n    label,\n    content_type,\n    file_size_bytes,\n    width,\n    height\nFROM tenant_image_variants\nWHERE tenant_image_id = ANY($1::uuid [])\nORDER BY tenant_image_id,\n    variant_type\n"
 )
@@ -135,7 +135,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline",
+			"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline", "comment_mode",
 		}).AddRow(
 			tenantID,
 			sql.NullString{String: "© Publira", Valid: true},
@@ -143,6 +143,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 			now,
 			now,
 			sql.NullString{String: "Tagline", Valid: true},
+			"disabled",
 		))
 	expectPaymentsUnavailable(mock, tenantID)
 

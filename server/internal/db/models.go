@@ -153,6 +153,24 @@ type Episode struct {
 	TenantID   uuid.UUID `json:"tenant_id"`
 }
 
+type EpisodeComment struct {
+	ID           uuid.UUID      `json:"id"`
+	TenantID     uuid.UUID      `json:"tenant_id"`
+	PublicID     string         `json:"public_id"`
+	EpisodeID    uuid.UUID      `json:"episode_id"`
+	UserID       uuid.UUID      `json:"user_id"`
+	Body         string         `json:"body"`
+	Status       string         `json:"status"`
+	ApprovedBy   uuid.NullUUID  `json:"approved_by"`
+	HiddenBy     uuid.NullUUID  `json:"hidden_by"`
+	HiddenReason sql.NullString `json:"hidden_reason"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	PublishedAt  sql.NullTime   `json:"published_at"`
+	HiddenAt     sql.NullTime   `json:"hidden_at"`
+	WithdrawnAt  sql.NullTime   `json:"withdrawn_at"`
+}
+
 type EpisodeFollow struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 	UserID    uuid.UUID `json:"user_id"`
@@ -488,6 +506,7 @@ type TenantConfig struct {
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	SiteTagline     sql.NullString `json:"site_tagline"`
+	CommentMode     string         `json:"comment_mode"`
 }
 
 type TenantImage struct {
