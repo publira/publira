@@ -217,9 +217,9 @@ class ConnectFixtureServer {
   /// another value to act out a token the API has stopped accepting.
   String? activeAccessToken;
 
-  /// Whether a page leaves as ciphertext, standing in for image-server's
-  /// `PUBLIRA_IMAGE_ENCRYPTION`. Set it to false to act out the server the
-  /// reader still has to work against while the flag is off.
+  /// Whether a page leaves as ciphertext. Set it to false to act out an
+  /// image-server instance a rolling deploy has not replaced yet, which the
+  /// reader still has to work against for the length of the rollout.
   bool encryptImages;
 
   /// Replace the whole body of the matching RPC, whichever status the RPC is

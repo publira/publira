@@ -202,8 +202,8 @@ void main() {
       tester,
     ) async {
       await withFailureScreenshot(tester, 'fixture-viewer-plain', () async {
-        // What image-server answers with `PUBLIRA_IMAGE_ENCRYPTION` off: the
-        // image itself, under no stream the reader has to reverse.
+        // What an image-server instance a rolling deploy has not replaced
+        // yet answers with: the image itself, under no stream to reverse.
         server.encryptImages = false;
         await pumpApp(
           tester,

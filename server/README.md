@@ -132,7 +132,7 @@ The Go integration tests against RustFS use the Testcontainers helper `StartRust
 
 After checking permissions, `image-server` / `admin-image-server` convert JPEG/PNG/GIF to WebP or AVIF with [Manael](https://github.com/manaelproxy/manael) and resize them with `w` / `h` / `fit` / `q`. The converted result is kept in an intermediate cache, so the same `Accept` and query does not hit S3 or run the conversion again.
 
-For episode body images, when `PUBLIRA_IMAGE_ENCRYPTION=enabled`, the cached converted plaintext is not returned as-is: it is encrypted just before the response, bound to a JWT and its `sub`. The default is disabled, so that enabling it explicitly after the client-side decryption is deployed keeps an early deploy from breaking existing viewers. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response from `admin-image-server` remain ordinary image responses.
+For episode body images, the cached converted plaintext is never returned as-is: `image-server` encrypts it just before the response, bound to a JWT and its `sub`. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response from `admin-image-server` remain ordinary image responses.
 
 | Header | Value / meaning |
 | --- | --- |
@@ -151,7 +151,6 @@ Which JWT a body is bound to depends on which rule let the request through:
 
 - `PUBLIRA_REDIS_URL`: Redis for the conversion cache. Unset / `disabled` / `off` / `false` means in-process memory only
 - `PUBLIRA_IMAGE_CACHE_TTL`: TTL of the conversion cache (a Go duration or a number of seconds; default `1h`)
-- `PUBLIRA_IMAGE_ENCRYPTION`: with `enabled` / `true` / `on` / `1`, encrypts episode bodies with `xor-hmac-sha256-v1` (disabled by default). Read by `image-server` only, so it takes both a paid and a free body at once and leaves `admin-image-server` alone
 
 Building requires libvips. For the details, see [cmd/image-server/README.md](cmd/image-server/README.md).
 

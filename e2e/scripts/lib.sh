@@ -81,13 +81,6 @@ export PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET:-publira-e2e-only-insecure-web
 # works as long as every process in the stack shares it.
 export PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET:-publira-e2e-only-insecure-access-token-secret}"
 
-# Episode body encryption in image-server. On here, unlike the default the
-# servers ship with: the seeded viewer episode is free and the performance
-# suite reads it signed out, so this is what makes that suite measure the
-# delivery the reader actually gets — ciphertext the canvas viewer reverses —
-# rather than a plaintext page no viewer plugin touches.
-export PUBLIRA_IMAGE_ENCRYPTION="${PUBLIRA_IMAGE_ENCRYPTION:-enabled}"
-
 # PID files, logs, and local storage for one stack run.
 #
 # Concurrent stacks that override ports or COMPOSE_PROJECT_NAME must not share

@@ -63,7 +63,6 @@ type Handler struct {
 	cache           ImageCache
 	proxy           http.Handler
 	maxConverted    int
-	encryptImages   bool
 	// previewForTenantStaff is set on admin-image-server. It accepts
 	// AudienceAdminMedia query tokens and serves an episode image when the
 	// named user holds a tenant staff role, ignoring publish state and price.
@@ -100,7 +99,6 @@ func newHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFacto
 		tokens:                tokens,
 		cache:                 newImageCacheFromEnv(logger),
 		maxConverted:          defaultMaxConvertedBytes,
-		encryptImages:         imageEncryptionEnabled(),
 		previewForTenantStaff: previewForTenantStaff,
 	}
 	origin, proxy, err := startOriginAndProxy(h)
@@ -166,9 +164,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			objectKey = access.ObjectKey
 			contentTypeFromDB = access.ContentType
 			cacheControl = "private, max-age=60"
-			if h.encryptImages {
-				cipher = &imageCipher{rawToken: credential.rawToken, subject: credential.claims.Subject}
-			}
+			cipher = &imageCipher{rawToken: credential.rawToken, subject: credential.claims.Subject}
 		}
 	}
 
@@ -217,7 +213,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 		// extract does not depend on whether its episode is sold. The admin
 		// preview host is left out: it renders bodies with an <img>, which
 		// cannot decrypt.
-		if h.encryptImages && !h.previewForTenantStaff {
+		if !h.previewForTenantStaff {
 			freeCipher, cipherErr := h.freeEpisodeImageCipher(r, tenant.ID, publicAccess.EpisodeID)
 			if cipherErr != nil {
 				h.logger.ErrorContext(ctx, "failed to derive free episode image cipher", "error", cipherErr, "media_id", mediaID.String())

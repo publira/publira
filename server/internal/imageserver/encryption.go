@@ -5,8 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"os"
-	"strings"
 )
 
 const (
@@ -15,15 +13,6 @@ const (
 )
 
 var errInvalidImageCipherMaterial = errors.New("invalid image cipher material")
-
-func imageEncryptionEnabled() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("PUBLIRA_IMAGE_ENCRYPTION"))) {
-	case "1", "enabled", "on", "true":
-		return true
-	default:
-		return false
-	}
-}
 
 // imageCipher encrypts an already-converted rendition immediately before it
 // leaves the image server. Its key is deliberately derived from the short-lived

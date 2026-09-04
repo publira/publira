@@ -178,9 +178,11 @@ func testJPEG() []byte {
 	return buf.Bytes()
 }
 
+// newTestServer builds the handler with the token manager an encrypted
+// episode-body response needs, the way cmd/image-server does.
 func newTestServer(t *testing.T, resolver ResolverQuerier, factory TenantScopedQuerierFactory, store ObjectStore) *Server {
 	t.Helper()
-	return newTestServerWithTokens(t, resolver, factory, store, nil)
+	return newTestServerWithTokens(t, resolver, factory, store, auth.NewTokenManager([]byte(testMediaJWTSecret)))
 }
 
 func newTestServerWithTokens(t *testing.T, resolver ResolverQuerier, factory TenantScopedQuerierFactory, store ObjectStore, tokens *auth.TokenManager) *Server {
@@ -243,8 +245,8 @@ func TestEpisodeImageConvertsToWebPAndCaches(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("first status = %d, body = %q", rec.Code, rec.Body.String())
 	}
-	if got := rec.Header().Get("Content-Type"); got != "image/webp" {
-		t.Fatalf("first Content-Type = %q, want image/webp", got)
+	if got := rec.Header().Get(imageContentTypeHeader); got != "image/webp" {
+		t.Fatalf("first %s = %q, want image/webp", imageContentTypeHeader, got)
 	}
 	if got := rec.Header().Get(imageCacheHeader); got != "miss" {
 		t.Fatalf("first %s = %q, want miss", imageCacheHeader, got)
@@ -261,8 +263,8 @@ func TestEpisodeImageConvertsToWebPAndCaches(t *testing.T) {
 	if rec2.Code != http.StatusOK {
 		t.Fatalf("second status = %d", rec2.Code)
 	}
-	if got := rec2.Header().Get("Content-Type"); got != "image/webp" {
-		t.Fatalf("second Content-Type = %q, want image/webp", got)
+	if got := rec2.Header().Get(imageContentTypeHeader); got != "image/webp" {
+		t.Fatalf("second %s = %q, want image/webp", imageContentTypeHeader, got)
 	}
 	if got := rec2.Header().Get(imageCacheHeader); got != "hit" {
 		t.Fatalf("second %s = %q, want hit", imageCacheHeader, got)
@@ -307,8 +309,8 @@ func TestEpisodeImageResizeQuery(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
 	}
-	if got := rec.Header().Get("Content-Type"); got != "image/webp" {
-		t.Fatalf("Content-Type = %q, want image/webp", got)
+	if got := rec.Header().Get(imageContentTypeHeader); got != "image/webp" {
+		t.Fatalf("%s = %q, want image/webp", imageContentTypeHeader, got)
 	}
 	if rec.Body.Len() == 0 {
 		t.Fatal("resized body is empty")
@@ -584,8 +586,6 @@ func TestEpisodeImageFreeEpisodeMediaTokenGrantsNothing(t *testing.T) {
 // public branch a reader with no credential takes, and the entitled branch a
 // signed-in reader's bearer takes.
 func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
-	t.Setenv("PUBLIRA_IMAGE_ENCRYPTION", "enabled")
-
 	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
 	episodeID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
@@ -732,25 +732,8 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 		}
 	})
 
-	t.Run("the flag off leaves an ordinary image response", func(t *testing.T) {
-		t.Setenv("PUBLIRA_IMAGE_ENCRYPTION", "disabled")
-		rec := serve(t, anonymousQueries, issueFree(t, time.Now()), "")
-		if rec.Code != http.StatusOK {
-			t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
-		}
-		if got := rec.Header().Get("Content-Type"); got != "image/webp" {
-			t.Errorf("Content-Type = %q, want image/webp", got)
-		}
-		if got := rec.Header().Get(imageEncryptionHeader); got != "" {
-			t.Errorf("%s = %q, want no header", imageEncryptionHeader, got)
-		}
-		if !isWebP(rec.Body.Bytes()) {
-			t.Error("the response body is not the rendition")
-		}
-	})
-
 	// admin-image-server renders bodies with an <img>, which cannot decrypt,
-	// so the flag leaves its responses alone.
+	// so its responses stay ordinary images.
 	t.Run("admin-image-server serves the same body unencrypted", func(t *testing.T) {
 		srv := newTestServerWithConstructor(t,
 			stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "admin.example.test"}},
@@ -778,8 +761,8 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 	})
 
 	// The material names no reader, so it cannot be spent as one: the public
-	// rule still answers, encrypted or not.
-	t.Run("the material unlocks nothing while the flag is on", func(t *testing.T) {
+	// rule is still what decides whether the body is served at all.
+	t.Run("the material unlocks nothing on its own", func(t *testing.T) {
 		paid := anonymousQueries
 		paid.public.HasPublicAccess = false
 		unpublished := anonymousQueries
@@ -796,8 +779,6 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 }
 
 func TestEpisodeImageMediaTokenEncryptsAfterSharedConversionCache(t *testing.T) {
-	t.Setenv("PUBLIRA_IMAGE_ENCRYPTION", "enabled")
-
 	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
 	episodeID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
