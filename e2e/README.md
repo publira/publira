@@ -66,7 +66,7 @@ e2e/
 ├── bootstrap/             # Development bootstrap check (separate lifecycle, no Playwright)
 ├── routing/               # Dev Container Traefik check (separate lifecycle, no Playwright)
 ├── compose.yaml           # postgres + redis + rustfs + traefik (project: publira-e2e)
-├── fixtures/              # binary test data (viewer page images)
+├── fixtures/              # binary test data (viewer page images, eye-catch sources)
 ├── playwright.config.ts
 ├── scripts/               # lifecycle, API controls, readiness, test, and locking helpers
 ├── src/                   # app login, API control, DB, scenario, session, and URL helpers
@@ -80,6 +80,8 @@ e2e/
 ### The edge
 
 Almost every suite talks to `web-host` directly on `:3000`. An episode body image, however, is `/images/episodes/{id}` on the reader's own origin, and only image-server can answer it, so one origin has to serve both. That is what the `traefik` service is for: it listens on `E2E_EDGE_PORT` (default `3080`), sends `/images` to image-server and everything else to web-host, and is the `baseURL` of the `viewer-performance` project alone. A suite that reads a body without being timed — `host.episode-reading.spec.ts` — stays in the ordinary `web-host` project and navigates to the edge by absolute URL, so it never shares the runner with the timing suite. It runs with `network_mode: host` because its backends are host processes on loopback, and its routers are written to `$E2E_RUN_DIR/traefik/routes.yaml` by `up.sh` — a file provider substitutes no variables, and the backend ports are overridable.
+
+An eye-catch is delivered the same way, as `/images/series/{id}/{ratio}/{width}` on the reader's origin. `admin.eye-catch-upload.spec.ts` therefore drives the console on the web-admin origin, where `/images` resolves to nothing, and reads the uploaded bytes back from the edge by absolute URL.
 
 This mirrors the Dev Container's Traefik labels but does not verify them; [`routing/`](./routing/README.md) remains the source of truth for the real routing.
 
@@ -130,7 +132,7 @@ Each measurement is attached to the test result as a `viewer-performance:<metric
 5. Run `task e2e`, or keep the stack running and use `task e2e:test`.
 6. Changes to relevant paths run **Test / E2E**. Changes only in `e2e/routing/**` run **Test / Routing** (`task e2e:routing`) without Playwright.
 
-Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, the member area's My Page and `/settings` tabs, web-host and web-admin authentication and publishing, platform authentication and tenant operations, reading an episode from its first page to its last, UI locale switching in all three apps, and the canvas viewer's rendering budget. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`; the member area uses `070_member_settings.sql`; locale switching uses `080_locale_switching.sql`; the viewer's pages come from `050_viewer_pages.sql`, which `task e2e:db` applies for every run rather than a suite applying it for itself.
+Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, the member area's My Page and `/settings` tabs, web-host and web-admin authentication and publishing, uploading a series' and a label's eye-catch and replacing one aspect ratio of it, platform authentication and tenant operations, reading an episode from its first page to its last, UI locale switching in all three apps, and the canvas viewer's rendering budget. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`; the member area uses `070_member_settings.sql`; locale switching uses `080_locale_switching.sql`; the viewer's pages come from `050_viewer_pages.sql`, which `task e2e:db` applies for every run rather than a suite applying it for itself. The eye-catch suite needs no scenario seed: it creates the series or label it uploads to through the console and removes it afterwards, and its source images are `fixtures/eye-catch/*.jpg`.
 
 Outage specs must run through `task e2e:test`, which sources `lib.sh`. Filtering by file name can leave only isolated projects, so pass `--no-deps` when selecting an isolated project directly (for example, `--project=catalog-outage`).
 

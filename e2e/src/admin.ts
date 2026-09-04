@@ -226,6 +226,37 @@ export const createEpisodeViaUi = async (
   return publicId;
 };
 
+/**
+ * Fill and submit the label create form. Resolves after redirect to the
+ * edit URL (`/labels/<publicId>?created=1`).
+ */
+export const createLabelViaUi = async (
+  page: Page,
+  name: string
+): Promise<string> => {
+  await page.goto(adminUrl("/labels/new"));
+  await expect(
+    page.getByRole("heading", { name: "レーベル新規作成" })
+  ).toBeVisible();
+
+  await page.getByRole("textbox", { name: /レーベル名/u }).fill(name);
+  await page.getByRole("button", { name: "レーベルを作成" }).click();
+  // Must not match the create path `/labels/new` — that already looks like a
+  // label detail URL to a naive `/labels/[^/]+` pattern.
+  await page.waitForURL((url) => {
+    const match = url.pathname.match(/^\/labels\/(?<publicId>[^/]+)(?:\/|$)/u);
+    const publicId = match?.groups?.publicId;
+    return Boolean(publicId && publicId !== "new");
+  });
+
+  const match = page.url().match(/\/labels\/(?<publicId>[^/?#]+)/u);
+  const publicId = match?.groups?.publicId?.trim() ?? "";
+  if (!publicId || publicId === "new") {
+    throw new Error(`could not parse label public id from ${page.url()}`);
+  }
+  return publicId;
+};
+
 export const formMessage = (page: Page): Locator =>
   // FormMessage renders a <p role="status">.
   page.getByRole("status");
