@@ -13,6 +13,16 @@ export const OTHER_TENANT = {
   labelId: "BndrLABLAAA1",
   labelName: "Boundary Label 01",
   name: "Boundary Tenant",
+  /**
+   * Draft page, addressed by uuid rather than a public_id. The seed tenant's
+   * console must answer `/pages/<id>` for it the same way it answers an id
+   * that never existed.
+   */
+  page: {
+    id: "018f0f05-0001-7000-8000-000000000001",
+    slug: "/boundary-page",
+    title: "Boundary Page 001",
+  },
   /** Published, with two published episodes and one still scheduled. */
   publishedSeries: {
     episodeIds: ["BndrEPSDAAA1", "BndrEPSDAAA2"] as const,

@@ -155,6 +155,27 @@ export const deleteLabelsByPublicIds = (publicIds: readonly string[]): void => {
 };
 
 /**
+ * Remove pages created by admin published-page tests.
+ *
+ * `page_versions` cascade from the page, and `pages.published_version_id`
+ * is `ON DELETE SET NULL` against a row that is going away with it, so one
+ * delete clears the whole page.
+ */
+export const deletePagesByIds = (ids: readonly string[]): void => {
+  const quoted: string[] = [];
+  for (const id of ids) {
+    const trimmed = id.trim();
+    if (trimmed.length > 0) {
+      quoted.push(quoteSqlLiteral(trimmed));
+    }
+  }
+  if (quoted.length === 0) {
+    return;
+  }
+  runSql(`DELETE FROM pages WHERE id IN (${quoted.join(", ")});`);
+};
+
+/**
  * Remove tenants created by platform tenant-ops tests.
  * Most tenant-scoped tables cascade; series does not, so wipe empty
  * series/episodes first for safety. Platform audit log rows keep their

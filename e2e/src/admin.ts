@@ -257,6 +257,92 @@ export const createLabelViaUi = async (
   return publicId;
 };
 
+/**
+ * Fill a text field and confirm the value that arrived is the whole value.
+ *
+ * The console's fields are controlled React inputs. `fill` selects what is
+ * there and replaces it, and a re-render landing between those two steps —
+ * hydration finishing on a loaded runner, say — collapses the selection, so
+ * the new text is inserted in front of the old one instead of replacing it.
+ * The result is a form that submits both, which fails much later and reads
+ * like a product defect. Asserting the value here turns that into a retry.
+ */
+export const fillField = async (
+  field: Locator,
+  value: string
+): Promise<void> => {
+  await expect(async () => {
+    await field.fill(value);
+    await expect(field).toHaveValue(value, { timeout: 2000 });
+  }).toPass({ timeout: 30_000 });
+};
+
+export interface CreatePageInput {
+  /** Admin form input; stored and displayed as `/slug`. */
+  slug: string;
+  title: string;
+  /** First version's body. Omitted leaves the page with no version at all. */
+  contentMarkdown?: string;
+}
+
+export interface PageFormFields {
+  slug: Locator;
+  title: Locator;
+  body: Locator;
+}
+
+/**
+ * Fields of the page create form on the page the router currently shows.
+ *
+ * Role locators for the same reason as {@link seriesFormFields}: the router
+ * bfcache keeps a previously visited form mounted inside a hidden
+ * `<Activity>`, and only the one in front of the user is in the accessibility
+ * tree.
+ */
+export const pageFormFields = (page: Page): PageFormFields => ({
+  body: page.getByRole("textbox", { name: "本文" }),
+  slug: page.getByRole("textbox", { name: "slug" }),
+  title: page.getByRole("textbox", { name: "タイトル" }),
+});
+
+/**
+ * Fill and submit the page create form. Resolves after the redirect to the
+ * edit URL (`/pages/<pageId>?created=1`) and returns the page id, which is the
+ * row's uuid rather than a Base58 public_id.
+ */
+export const createPageViaUi = async (
+  page: Page,
+  input: CreatePageInput
+): Promise<string> => {
+  await page.goto(adminUrl("/pages/new"));
+  await expect(
+    page.getByRole("heading", { name: "ページ新規作成" })
+  ).toBeVisible();
+
+  const fields = pageFormFields(page);
+  await fillField(fields.slug, input.slug);
+  await fillField(fields.title, input.title);
+  if (input.contentMarkdown !== undefined) {
+    await fillField(fields.body, input.contentMarkdown);
+  }
+
+  await page.getByRole("button", { name: "ページを作成" }).click();
+  // Must not match the create path `/pages/new` — that already looks like a
+  // page detail URL to a naive `/pages/[^/]+` pattern.
+  await page.waitForURL((url) => {
+    const match = url.pathname.match(/^\/pages\/(?<pageId>[^/]+)(?:\/|$)/u);
+    const pageId = match?.groups?.pageId;
+    return Boolean(pageId && pageId !== "new");
+  });
+
+  const match = page.url().match(/\/pages\/(?<pageId>[^/?#]+)/u);
+  const pageId = match?.groups?.pageId?.trim() ?? "";
+  if (!pageId || pageId === "new") {
+    throw new Error(`could not parse page id from ${page.url()}`);
+  }
+  return pageId;
+};
+
 export const formMessage = (page: Page): Locator =>
   // FormMessage renders a <p role="status">.
   page.getByRole("status");
