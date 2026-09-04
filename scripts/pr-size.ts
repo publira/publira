@@ -17,10 +17,8 @@
  * lines. The coefficients below weigh a line by what it costs to read.
  */
 
-import { readFileSync } from "node:fs";
-import path from "node:path";
-
-const root = path.resolve(import.meta.dirname, "..");
+import { readFile } from "node:fs/promises";
+import { text } from "node:stream/consumers";
 
 /**
  * gitignore-style pattern to an anchored regular expression. `path.matchesGlob`
@@ -65,10 +63,14 @@ const matcher = (patterns: readonly string[]) => {
  * `.gitattributes`, so the coefficient table does not list those paths a second
  * time — it reads them from there.
  */
+const gitattributes = await readFile(
+  new URL(".gitattributes", import.meta.resolve("..")),
+  "utf-8"
+);
+
 const generatedPatterns = (): string[] => {
-  const contents = readFileSync(path.resolve(root, ".gitattributes"), "utf-8");
   const patterns: string[] = [];
-  for (const line of contents.split("\n")) {
+  for (const line of gitattributes.split("\n")) {
     const trimmed = line.trim();
     if (trimmed === "" || trimmed.startsWith("#")) {
       continue;
@@ -303,7 +305,7 @@ export const bucket = (score: number): string => {
 };
 
 if (import.meta.main) {
-  const diff = readFileSync(0, "utf-8");
+  const diff = await text(process.stdin);
   const { files, score } = scoreDiff(diff);
   const label = bucket(score);
   if (process.argv.includes("--json")) {
