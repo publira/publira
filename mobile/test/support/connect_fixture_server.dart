@@ -21,6 +21,7 @@ class ConnectFixtureServer {
     this.episodeStatus = HttpStatus.ok,
     this.tenantStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
+    this.encryptImages = true,
     this.listResponse,
     this.detailResponse,
     this.episodeResponse,
@@ -51,6 +52,15 @@ class ConnectFixtureServer {
   static const memberAccessToken =
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
       '.eyJzdWIiOiJTZWVkTU1CUkFBQTEifQ'
+      '.fixture-signature';
+
+  /// Unsigned JWT whose `sub` is the synthetic subject a free body's media
+  /// token carries (`server/internal/auth`.`FreeEpisodeMediaSubject`). The API
+  /// puts one of these on every free page's URL, and it is the whole of the
+  /// material a signed-out reader decrypts with.
+  static const freeEpisodeMediaToken =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+      '.eyJzdWIiOiJhbm9ueW1vdXMtZnJlZS1lcGlzb2RlIn0'
       '.fixture-signature';
 
   /// Key id the fixture reports for an encrypted page, standing in for
@@ -97,7 +107,9 @@ class ConnectFixtureServer {
           for (var page = 1; page <= seedEpisodePageCount; page++)
             {
               'id': '$seedEpisodeId-page-$page',
-              'imageUrl': '/images/episodes/$seedEpisodeId-page-$page',
+              'imageUrl':
+                  '/images/episodes/$seedEpisodeId-page-$page'
+                  '?$mediaTokenQueryParam=$freeEpisodeMediaToken',
               'contentType': 'image/png',
               'displayOrder': page,
               'width': 800,
@@ -192,6 +204,11 @@ class ConnectFixtureServer {
   /// The bearer `GetMe` accepts and `GetEpisodeDetail` unlocks for. Set it to
   /// another value to act out a token the API has stopped accepting.
   String? activeAccessToken;
+
+  /// Whether a page leaves as ciphertext, standing in for image-server's
+  /// `PUBLIRA_IMAGE_ENCRYPTION`. Set it to false to act out the server the
+  /// reader still has to work against while the flag is off.
+  bool encryptImages;
 
   /// Replace the whole body of the matching RPC, whichever status the RPC is
   /// answering with, so a test can send a shape the client is not expecting or
@@ -416,20 +433,17 @@ class ConnectFixtureServer {
 
   /// Answers a page the way image-server does.
   ///
-  /// A request carrying a reader's token gets the encrypted stream, so the
-  /// reader has to reverse it before anything is drawn; an anonymous request
-  /// for a free page gets the PNG itself, which is also what image-server
-  /// sends while it runs with `PUBLIRA_IMAGE_ENCRYPTION` off.
+  /// The key comes from the material the request carries, resolved in the
+  /// server's own order: the `Authorization` bearer first, then the media
+  /// token on the URL, which is what a free page hands a reader with no
+  /// session. A request carrying neither, and every request at all while
+  /// [encryptImages] is false, gets the PNG itself.
   Future<void> _writeImage(HttpRequest request) async {
-    final authorization =
-        request.headers.value(HttpHeaders.authorizationHeader) ?? '';
-    final token = authorization.startsWith('Bearer ')
-        ? authorization.substring('Bearer '.length)
-        : '';
-    final subject = token.isEmpty ? null : subjectFromJwt(token);
+    final token = encryptImages ? _imageCredential(request) : null;
+    final subject = token == null ? null : subjectFromJwt(token);
 
     request.response.statusCode = HttpStatus.ok;
-    if (subject == null) {
+    if (token == null || subject == null) {
       request.response.headers.contentType = ContentType('image', 'png');
       request.response.add(pageBytes);
       await request.response.close();
@@ -452,6 +466,21 @@ class ConnectFixtureServer {
       ),
     );
     await request.response.close();
+  }
+
+  /// The token image-server would derive this page's key from.
+  String? _imageCredential(HttpRequest request) {
+    final authorization =
+        request.headers.value(HttpHeaders.authorizationHeader) ?? '';
+    if (authorization.startsWith('Bearer ')) {
+      final bearer = authorization.substring('Bearer '.length).trim();
+      if (bearer.isNotEmpty) {
+        return bearer;
+      }
+    }
+    final mediaToken =
+        request.uri.queryParameters[mediaTokenQueryParam]?.trim() ?? '';
+    return mediaToken.isEmpty ? null : mediaToken;
   }
 
   Future<void> _write(HttpRequest request, int status, Object body) async {

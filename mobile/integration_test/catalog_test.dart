@@ -181,6 +181,51 @@ void main() {
           server.lastImageRequestHeaders?.value('x-forwarded-host'),
           'localhost',
         );
+        // Nobody is signed in, so the fixture encrypts this page under the
+        // media token on its own URL, the way image-server does for a free
+        // body. A frame on screen is therefore proof the device derived the
+        // key from that token rather than drawing what it was sent.
+        expect(server.lastImageRequestHeaders?.value('authorization'), isNull);
+        await pumpUntilTrue(
+          tester,
+          () => tester
+              .widgetList<RawImage>(find.byType(RawImage))
+              .any((raw) => raw.image != null),
+          description: 'a decrypted page to reach the screen',
+        );
+        expect(find.byKey(const ValueKey('episode-page-error')), findsNothing);
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testWidgets('a free body draws while the server encrypts nothing', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-viewer-plain', () async {
+        // What image-server answers with `PUBLIRA_IMAGE_ENCRYPTION` off: the
+        // image itself, under no stream the reader has to reverse.
+        server.encryptImages = false;
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+
+        await pumpUntilTrue(
+          tester,
+          () => tester
+              .widgetList<RawImage>(find.byType(RawImage))
+              .any((raw) => raw.image != null),
+          description: 'a page to reach the screen',
+        );
+        expect(find.byKey(const ValueKey('episode-page-error')), findsNothing);
+        await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });
 
