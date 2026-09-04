@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/testutil"
@@ -510,6 +511,47 @@ func TestEpisodeCommentsRejectInconsistentTransitionColumns(t *testing.T) {
 	}
 }
 
+// episode_comments_tenant_isolation, exercised through the RLS-bound admin role
+// rather than the owning superuser the other tests use.
+func TestEpisodeCommentsEnforceTenantIsolation(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	a := seedCommentTenant(t, ctx, pg.DB, "RLA")
+	b := seedCommentTenant(t, ctx, pg.DB, "RLB")
+	queries := dbmodels.New(pg.DB)
+	mustCreateComment(t, ctx, queries, a, "published", "RLAPUBLIC001")
+	mustCreateComment(t, ctx, queries, b, "published", "RLBPUBLIC002")
+
+	withAdminTenant(t, pg, a.tenantID, func(ctx context.Context, conn *sql.Conn) {
+		visible := commentPublicIDsOnConn(t, ctx, conn)
+		if !slices.Equal(visible, []string{"RLAPUBLIC001"}) {
+			t.Fatalf("visible comments = %v, want only this tenant's RLAPUBLIC001", visible)
+		}
+
+		// The policy's WITH CHECK half: a write naming another tenant is refused
+		// rather than silently landing outside the reader's own rows.
+		_, err := conn.ExecContext(ctx, `
+			INSERT INTO episode_comments (id, tenant_id, public_id, episode_id, user_id, body, status, published_at)
+			VALUES ($1, $2, 'RLAXTENANT01', $3, $4, 'body', 'published', NOW())
+		`, uuid.Must(uuid.NewV7()), b.tenantID, b.episodeID, b.userID)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "42501" {
+			t.Fatalf("insert for another tenant error = %v, want SQLSTATE 42501", err)
+		}
+	})
+
+	withAdminTenant(t, pg, b.tenantID, func(ctx context.Context, conn *sql.Conn) {
+		visible := commentPublicIDsOnConn(t, ctx, conn)
+		if !slices.Equal(visible, []string{"RLBPUBLIC002"}) {
+			t.Fatalf("visible comments = %v, want only this tenant's RLBPUBLIC002", visible)
+		}
+	})
+}
+
 func TestTenantConfigCommentModeDefaultsToDisabled(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -669,6 +711,28 @@ func userCommentPublicIDs(rows []dbmodels.ListUserEpisodeCommentsByCreatedAtDesc
 	publicIDs := make([]string, 0, len(rows))
 	for _, row := range rows {
 		publicIDs = append(publicIDs, row.PublicID)
+	}
+	return publicIDs
+}
+
+func commentPublicIDsOnConn(t *testing.T, ctx context.Context, conn *sql.Conn) []string {
+	t.Helper()
+	rows, err := conn.QueryContext(ctx, `SELECT public_id FROM episode_comments ORDER BY public_id`)
+	if err != nil {
+		t.Fatalf("select visible comments: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+
+	var publicIDs []string
+	for rows.Next() {
+		var publicID string
+		if err := rows.Scan(&publicID); err != nil {
+			t.Fatalf("scan visible comment: %v", err)
+		}
+		publicIDs = append(publicIDs, publicID)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate visible comments: %v", err)
 	}
 	return publicIDs
 }

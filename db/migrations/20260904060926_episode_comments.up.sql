@@ -97,16 +97,16 @@ ALTER TABLE ONLY episode_comments
 
 -- INDEX: idx_episode_comments_tenant_episode_status_created_at
 -- The public list of one episode.
-CREATE INDEX idx_episode_comments_tenant_episode_status_created_at ON episode_comments USING btree (tenant_id, episode_id, status, created_at DESC, id);
+CREATE INDEX idx_episode_comments_tenant_episode_status_created_at ON episode_comments USING btree (tenant_id, episode_id, status, created_at DESC, id DESC);
 
 -- INDEX: idx_episode_comments_tenant_status_created_at
 -- The moderation and approval queues, which span every episode of the tenant.
-CREATE INDEX idx_episode_comments_tenant_status_created_at ON episode_comments USING btree (tenant_id, status, created_at DESC, id);
+CREATE INDEX idx_episode_comments_tenant_status_created_at ON episode_comments USING btree (tenant_id, status, created_at DESC, id DESC);
 
 -- INDEX: idx_episode_comments_tenant_user_created_at
 -- The viewer's own comments, and the per-reader rate limit that counts the
 -- most recent of them.
-CREATE INDEX idx_episode_comments_tenant_user_created_at ON episode_comments USING btree (tenant_id, user_id, created_at DESC);
+CREATE INDEX idx_episode_comments_tenant_user_created_at ON episode_comments USING btree (tenant_id, user_id, created_at DESC, id DESC);
 
 -- INDEX: idx_episode_comments_tenant_withdrawn_at
 -- The retention purge. Restricted to withdrawn rows because they are the only
