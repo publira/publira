@@ -1,0 +1,118 @@
+name: Review
+
+# Bucket for review-support automation. Add a job per concern; keep this
+# workflow's name stable so later review-support steps land here.
+
+on:
+  # `pull_request` cannot be used: a fork's GITHUB_TOKEN is read-only and could
+  # not add the label. `pull_request_target` runs against the base branch, and
+  # nothing here checks out or executes the head branch.
+  pull_request_target:
+    types: [opened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  size-label:
+    name: Label review size
+    # An `opened` event for a draft is skipped, so a pull request opened as a
+    # draft is labelled when it is marked ready and one opened ready is
+    # labelled immediately.
+    if: github.event.pull_request.draft == false
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 10
+    permissions:
+      pull-requests: write
+    steps:
+      # `pull_request_target` resolves to the base commit, so this is the
+      # scorer as it was reviewed and merged, not the one the pull request
+      # proposes.
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.20.0
+
+      - name: Collect the pull request diff
+        id: diff
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DIFF_PATH: ${{ runner.temp }}/pull-request.diff
+        with:
+          script: |
+            const { writeFileSync } = require('node:fs');
+            const { owner, repo } = context.repo;
+            const pull = context.payload.pull_request;
+
+            // A label the author set — an agent following skills/create-pr, or
+            // a human who has judged the review load — wins over the
+            // mechanical score.
+            const existing = pull.labels
+              .map((label) => label.name)
+              .find((name) => name.startsWith('size/'));
+            if (existing) {
+              core.info(`#${pull.number} already carries ${existing}: leaving it alone`);
+              core.setOutput('skip', 'true');
+              return;
+            }
+
+            const files = await github.paginate(
+              'GET /repos/{owner}/{repo}/pulls/{pull_number}/files',
+              { owner, repo, pull_number: pull.number, per_page: 100 },
+            );
+
+            const lines = [];
+            for (const file of files) {
+              const before = file.previous_filename ?? file.filename;
+              lines.push(`diff --git a/${before} b/${file.filename}`);
+              lines.push(file.status === 'added' ? '--- /dev/null' : `--- a/${before}`);
+              lines.push(file.status === 'removed' ? '+++ /dev/null' : `+++ b/${file.filename}`);
+              if (file.patch) {
+                lines.push(file.patch);
+                continue;
+              }
+              // A binary or oversized file arrives without a patch. Stand in
+              // one significant line for each one the API counted: the score
+              // is what reading them would have produced, and only the
+              // breakdown is blank.
+              lines.push('@@');
+              lines.push(...Array(file.additions).fill('+unavailable'));
+              lines.push(...Array(file.deletions).fill('-unavailable'));
+            }
+
+            writeFileSync(process.env.DIFF_PATH, `${lines.join('\n')}\n`);
+            core.info(`Collected ${files.length} changed files`);
+            core.setOutput('skip', 'false');
+
+      - name: Score the diff
+        id: score
+        if: steps.diff.outputs.skip != 'true'
+        env:
+          DIFF_PATH: ${{ runner.temp }}/pull-request.diff
+        run: |
+          result="$(node scripts/pr-size.ts --json < "${DIFF_PATH}")"
+          echo "${result}"
+          {
+            echo "score=$(printf '%s' "${result}" | jq -r '.score')"
+            echo "label=$(printf '%s' "${result}" | jq -r '.label')"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Add the label
+        if: steps.diff.outputs.skip != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          LABEL: ${{ steps.score.outputs.label }}
+          SCORE: ${{ steps.score.outputs.score }}
+        with:
+          script: |
+            const label = process.env.LABEL;
+            core.info(`Score ${process.env.SCORE}: ${label}`);
+            await github.rest.issues.addLabels({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: [label],
+            });

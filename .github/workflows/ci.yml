@@ -140,6 +140,9 @@ jobs:
               - 'apps/**'
               - 'locales/**'
               - 'packages/**'
+              # scripts/ is outside the pnpm workspace, so `pnpm test` cannot
+              # reach it; this job runs its `node --test` suite as well.
+              - 'scripts/*.ts'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
@@ -572,6 +575,9 @@ jobs:
 
       - name: Validate / TypeScript Tests
         run: pnpm test
+
+      - name: Validate / Script Tests
+        run: pnpm test:scripts
 
   test-mobile:
     name: Test / Mobile
