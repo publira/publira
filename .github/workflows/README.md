@@ -90,7 +90,7 @@ It runs on `synchronize` as well as `opened` and `ready_for_review`, because the
 
 The label discloses and nothing more. It fails no check and blocks no merge, and there is one label rather than one per agent: the trailer already records the agent and the model, and a label per tool would multiply with every tool anyone uses.
 
-`skills/create-pr` needs no step for this. The label is derived from the trailer the skill already writes, so an agent cannot ship an unlabelled pull request by forgetting one.
+`skills/create-pr` writes no label for this. The label is derived from the trailer the skill already writes, so an agent cannot ship an unlabelled pull request by forgetting one; the skill states the same rule from its side, so an agent does not set or clear `ai-assisted` by hand either.
 
 ## Regenerate
 
