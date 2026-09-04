@@ -55,7 +55,7 @@ func newTestPublicServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, nil, nil, testutil.TokenManager()))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return server, mock
 }

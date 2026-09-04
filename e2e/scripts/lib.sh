@@ -115,6 +115,14 @@ export PUBLIRA_EMAIL_RENDERER_URL="http://127.0.0.1:${E2E_EMAIL_RENDERER_PORT}"
 # without this they would name the dev stack's port instead of this run's.
 export PUBLIRA_PLATFORM_APP_URL="${E2E_WEB_PLATFORM_BASE_URL}"
 
+# Secret decryption for the SMTP password. The worker reports an unusable
+# manager when it is started without keys, and every auth mail it renders stops
+# at that before it reaches Mailpit. The seeded password is not an encrypted
+# envelope, so the manager hands it back verbatim and the key itself is never
+# used — but one has to exist. 32 bytes, base64url, as the parser requires.
+export PUBLIRA_SECRET_ENCRYPTION_KEYS="${PUBLIRA_SECRET_ENCRYPTION_KEYS:-e2e:ZTJlLW9ubHktaW5zZWN1cmUtc2VjcmV0LWtleS0zMmI}"
+export PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID:-e2e}"
+
 # PID files, logs, and local storage for one stack run.
 #
 # Concurrent stacks that override ports or COMPOSE_PROJECT_NAME must not share

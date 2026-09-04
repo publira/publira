@@ -55,7 +55,7 @@ func TestDBProcessStripeWebhookIsolatesTenantSigningSecrets(t *testing.T) {
 
 	var logs bytes.Buffer
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, encryptor, nil, testutil.TokenManager(), slog.New(slog.NewTextHandler(&logs, nil)))
+	server := newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, encryptor, testutil.TokenManager(), slog.New(slog.NewTextHandler(&logs, nil)))
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
@@ -119,7 +119,7 @@ func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
 	}
 
 	db := pg.OpenPublicDB(t)
-	ts := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, encryptor, nil, testutil.TokenManager()))
+	ts := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, encryptor, testutil.TokenManager()))
 	t.Cleanup(ts.Close)
 
 	token, _, err := testutil.TokenManager().Issue(
@@ -172,7 +172,7 @@ func TestDBProcessStripeWebhookProjectsPurchaseEventIdempotently(t *testing.T) {
 	}
 
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, encryptor, nil, testutil.TokenManager(), slog.Default())
+	server := newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, encryptor, testutil.TokenManager(), slog.Default())
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)

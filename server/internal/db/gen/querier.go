@@ -238,6 +238,7 @@ type Querier interface {
 	GetUserByPublicID(ctx context.Context, publicID string) (GetUserByPublicIDRow, error)
 	GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByPublicIDForTenantParams) (GetUserByPublicIDForTenantRow, error)
 	GetUserEmailChangeTokenByHashForTenant(ctx context.Context, arg GetUserEmailChangeTokenByHashForTenantParams) (GetUserEmailChangeTokenByHashForTenantRow, error)
+	GetUserEmailChangeTokenByIDForTenant(ctx context.Context, arg GetUserEmailChangeTokenByIDForTenantParams) (UserEmailChangeToken, error)
 	GetUserEmailVerificationTokenByHashForTenant(ctx context.Context, arg GetUserEmailVerificationTokenByHashForTenantParams) (UserEmailVerificationToken, error)
 	// Admin MFA. Every statement is keyed by user_id alone: the row-level
 	// security policies on both tables already confine them to the tenant the

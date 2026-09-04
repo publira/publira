@@ -65,6 +65,13 @@ WHERE tenant_id = $1
     )
 LIMIT 1;
 
+-- name: GetUserEmailChangeTokenByIDForTenant :one
+SELECT *
+FROM user_email_change_tokens
+WHERE tenant_id = $1
+    AND id = $2
+LIMIT 1;
+
 -- name: GetUserPasswordResetTokenByHashForTenant :one
 SELECT *
 FROM user_password_reset_tokens

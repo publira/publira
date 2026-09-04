@@ -47,7 +47,7 @@ func TestPublicHandlerExposesOnlyPublicRoutes(t *testing.T) {
 
 func newPublicRouteTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	return httptest.NewServer(NewHandler(nil, nil, nil, nil, nil, testutil.TokenManager()))
+	return httptest.NewServer(NewHandler(nil, nil, nil, nil, testutil.TokenManager()))
 }
 
 type captureHandler struct {

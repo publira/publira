@@ -16,7 +16,6 @@ import (
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/secretcrypto"
-	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
 	"github.com/publira/publira/server/internal/storage"
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
@@ -84,7 +83,7 @@ func main() {
 		grpcAddr = defaultPublicGrpcServerURL
 	}
 
-	handler := publicapi.NewHandler(db, dbmodels.New(db), storageProvider, encryptor, internalsmtp.NewClient(), tokens)
+	handler := publicapi.NewHandler(db, dbmodels.New(db), storageProvider, encryptor, tokens)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
