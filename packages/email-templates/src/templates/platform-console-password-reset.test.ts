@@ -57,6 +57,7 @@ describe("PlatformConsolePasswordResetEmail", () => {
       formatDateTime(data.expires_at, { locale: "ja", timeZone })
     );
     expect(result.text).toContain("心当たりがない場合");
+    expect(result.html).toContain("Publira");
   });
 
   it("the en mail comes from the English catalog and its own time zone", async () => {

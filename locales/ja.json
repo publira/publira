@@ -36,7 +36,7 @@
     },
     "layout": {
       "brand": "Publira",
-      "footer": "このメールは Publira から送信されています。"
+      "footer": "このメールは {$brand} から送信されています。"
     },
     "platform_console_email_change_confirmation": {
       "action": "メールアドレス変更を確認する",
@@ -102,7 +102,7 @@
       "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
       "heading": "メールアドレスの確認",
       "ignore": "心当たりがない場合、このメールは破棄してください。",
-      "intro": "Publira のご登録ありがとうございます。",
+      "intro": "{$tenant_name} のご登録ありがとうございます。",
       "preview": "メールアドレスの確認を完了してください。",
       "subject": "{$tenant_name} メールアドレス確認"
     },
@@ -128,8 +128,8 @@
       "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
       "heading": "管理者への招待",
       "ignore": "心当たりがない場合、このメールは破棄してください。",
-      "intro": "Publira 管理画面へ招待されました。",
-      "preview": "Publira 管理画面へ招待されました。",
+      "intro": "{$tenant_name} の管理画面へ招待されました。",
+      "preview": "{$tenant_name} の管理画面へ招待されました。",
       "subject": "{$tenant_name} 管理者招待"
     }
   },

@@ -71,6 +71,7 @@ export const AdminConsoleEmailChangeConfirmationEmail = ({
   timeZone,
 }: AdminConsoleEmailChangeConfirmationEmailProps) => (
   <EmailLayout
+    brand={data.tenant_name}
     locale={locale}
     messages={messages}
     preview={adminConsoleEmailChangeConfirmationPreview(data, messages)}

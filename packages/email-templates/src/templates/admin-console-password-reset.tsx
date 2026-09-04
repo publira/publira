@@ -54,6 +54,7 @@ export const AdminConsolePasswordResetEmail = ({
   timeZone,
 }: AdminConsolePasswordResetEmailProps) => (
   <EmailLayout
+    brand={data.tenant_name}
     locale={locale}
     messages={messages}
     preview={adminConsolePasswordResetPreview(data, messages)}

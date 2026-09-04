@@ -53,6 +53,7 @@ export const ReaderPasswordResetEmail = ({
   timeZone,
 }: ReaderPasswordResetEmailProps) => (
   <EmailLayout
+    brand={data.tenant_name}
     locale={locale}
     messages={messages}
     preview={readerPasswordResetPreview(data, messages)}

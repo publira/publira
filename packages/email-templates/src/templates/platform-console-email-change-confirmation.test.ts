@@ -84,6 +84,7 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
     expect(result.html).toContain(data.current_email);
     expect(result.html).toContain(data.new_email);
     expect(result.text).toContain("心当たりがない場合");
+    expect(result.html).toContain("Publira");
   });
 
   it("the en mail comes from the English catalog and its own time zone", async () => {

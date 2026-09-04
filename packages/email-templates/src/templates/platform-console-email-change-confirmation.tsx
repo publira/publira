@@ -66,6 +66,7 @@ export const PlatformConsoleEmailChangeConfirmationEmail = ({
   timeZone,
 }: PlatformConsoleEmailChangeConfirmationEmailProps) => (
   <EmailLayout
+    brand={emailMessage(messages, "email.layout.brand")}
     locale={locale}
     messages={messages}
     preview={platformConsoleEmailChangeConfirmationPreview(data, messages)}

@@ -43,6 +43,7 @@ export const ReaderEmailChangedNoticeEmail = ({
   messages,
 }: ReaderEmailChangedNoticeEmailProps) => (
   <EmailLayout
+    brand={data.tenant_name}
     locale={locale}
     messages={messages}
     preview={readerEmailChangedNoticePreview(data, messages)}

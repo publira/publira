@@ -48,6 +48,7 @@ describe("PlatformConsoleEmailChangedNoticeEmail", () => {
     expect(result.html).toContain(data.previous_email);
     expect(result.html).toContain(data.new_email);
     expect(result.text).toContain("この変更に心当たりがない場合");
+    expect(result.html).toContain("Publira");
   });
 
   it("the en mail comes from the English catalog", async () => {

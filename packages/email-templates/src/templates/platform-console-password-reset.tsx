@@ -51,6 +51,7 @@ export const PlatformConsolePasswordResetEmail = ({
   timeZone,
 }: PlatformConsolePasswordResetEmailProps) => (
   <EmailLayout
+    brand={emailMessage(messages, "email.layout.brand")}
     locale={locale}
     messages={messages}
     preview={platformConsolePasswordResetPreview(data, messages)}

@@ -40,6 +40,7 @@ export const PlatformConsoleEmailChangedNoticeEmail = ({
   messages,
 }: PlatformConsoleEmailChangedNoticeEmailProps) => (
   <EmailLayout
+    brand={emailMessage(messages, "email.layout.brand")}
     locale={locale}
     messages={messages}
     preview={platformConsoleEmailChangedNoticePreview(data, messages)}

@@ -43,6 +43,7 @@ export const AdminConsoleEmailChangedNoticeEmail = ({
   messages,
 }: AdminConsoleEmailChangedNoticeEmailProps) => (
   <EmailLayout
+    brand={data.tenant_name}
     locale={locale}
     messages={messages}
     preview={adminConsoleEmailChangedNoticePreview(data, messages)}

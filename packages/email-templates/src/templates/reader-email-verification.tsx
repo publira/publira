@@ -53,6 +53,7 @@ export const ReaderEmailVerificationEmail = ({
   timeZone,
 }: ReaderEmailVerificationEmailProps) => (
   <EmailLayout
+    brand={data.tenant_name}
     locale={locale}
     messages={messages}
     preview={readerEmailVerificationPreview(data, messages)}
@@ -61,7 +62,9 @@ export const ReaderEmailVerificationEmail = ({
       {emailMessage(messages, "email.reader_email_verification.heading")}
     </EmailHeading>
     <EmailIntro>
-      {emailMessage(messages, "email.reader_email_verification.intro")}
+      {emailMessage(messages, "email.reader_email_verification.intro", {
+        tenant_name: data.tenant_name,
+      })}
     </EmailIntro>
     <EmailBody>
       {emailMessage(messages, "email.reader_email_verification.body")}

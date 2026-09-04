@@ -42,9 +42,12 @@ export const tenantAdminInvitationSubject = (
   });
 
 export const tenantAdminInvitationPreview = (
-  _data: TenantAdminInvitationData,
+  data: TenantAdminInvitationData,
   messages: Messages
-): string => emailMessage(messages, "email.tenant_admin_invitation.preview");
+): string =>
+  emailMessage(messages, "email.tenant_admin_invitation.preview", {
+    tenant_name: data.tenant_name,
+  });
 
 export const TenantAdminInvitationEmail = ({
   data,
@@ -53,6 +56,7 @@ export const TenantAdminInvitationEmail = ({
   timeZone,
 }: TenantAdminInvitationEmailProps) => (
   <EmailLayout
+    brand={data.tenant_name}
     locale={locale}
     messages={messages}
     preview={tenantAdminInvitationPreview(data, messages)}
@@ -61,7 +65,9 @@ export const TenantAdminInvitationEmail = ({
       {emailMessage(messages, "email.tenant_admin_invitation.heading")}
     </EmailHeading>
     <EmailIntro>
-      {emailMessage(messages, "email.tenant_admin_invitation.intro")}
+      {emailMessage(messages, "email.tenant_admin_invitation.intro", {
+        tenant_name: data.tenant_name,
+      })}
     </EmailIntro>
     <EmailBody>
       {emailMessage(messages, "email.tenant_admin_invitation.body", {

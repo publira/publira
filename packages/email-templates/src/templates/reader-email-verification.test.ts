@@ -67,6 +67,8 @@ describe("ReaderEmailVerificationEmail", () => {
       formatDateTime(data.expires_at, { locale: "ja", timeZone })
     );
     expect(result.text).toContain("心当たりがない場合");
+    expect(result.html).toContain(data.tenant_name);
+    expect(result.html).not.toContain("Publira");
   });
 
   it("the en mail comes from the English catalog and its own time zone", async () => {

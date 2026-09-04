@@ -64,6 +64,7 @@ export const ReaderEmailChangeConfirmationEmail = ({
   timeZone,
 }: ReaderEmailChangeConfirmationEmailProps) => (
   <EmailLayout
+    brand={data.tenant_name}
     locale={locale}
     messages={messages}
     preview={readerEmailChangeConfirmationPreview(data, messages)}
