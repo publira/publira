@@ -6,6 +6,9 @@ import { hostPath } from "../src/urls";
 /** Keep in sync with `SERIES_PAGE_SIZE` in the web-host series list page. */
 const SERIES_PAGE_SIZE = 24;
 
+/** Labels created by `db/seeds/dev/010_catalog.sql`. */
+const SEED_LABEL_COUNT = 10;
+
 /**
  * Main public catalog journeys for the dev-seed tenant (Host `localhost`):
  * catalog top → series list → series detail → episode, plus the label and
@@ -169,8 +172,13 @@ test.describe("web-host catalog browsing", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "レーベル一覧" })
     ).toBeVisible();
-    // db/seeds/dev/010_catalog.sql creates exactly 10 labels.
-    await expect(page.getByRole("heading", { level: 2 })).toHaveCount(10);
+    // One `<h2>` per card. Counting the seeded names rather than every card:
+    // the admin suites run beside this one and register labels of their own
+    // — all named `E2E …` — which sort onto this first page until their test
+    // deletes them again, so a count of the whole page is a race.
+    await expect(
+      page.getByRole("heading", { level: 2, name: /^Seed Label \d{2}$/u })
+    ).toHaveCount(SEED_LABEL_COUNT);
 
     const labelCard = page.getByRole("link").filter({
       has: page.getByRole("heading", {

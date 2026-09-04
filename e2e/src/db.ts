@@ -155,6 +155,29 @@ export const deleteLabelsByPublicIds = (publicIds: readonly string[]): void => {
 };
 
 /**
+ * Remove creators created by admin tests.
+ *
+ * A creator's images and image variants cascade from it, and so do the
+ * `series_creators` rows that attach it to a series — the series itself stays,
+ * and {@link deleteSeriesByPublicIds} is what removes the ones a test made.
+ */
+export const deleteCreatorsByPublicIds = (
+  publicIds: readonly string[]
+): void => {
+  const quoted: string[] = [];
+  for (const publicId of publicIds) {
+    const trimmed = publicId.trim();
+    if (trimmed.length > 0) {
+      quoted.push(quoteSqlLiteral(trimmed));
+    }
+  }
+  if (quoted.length === 0) {
+    return;
+  }
+  runSql(`DELETE FROM creators WHERE public_id IN (${quoted.join(", ")});`);
+};
+
+/**
  * Remove pages created by admin published-page tests.
  *
  * `page_versions` cascade from the page, and `pages.published_version_id`
