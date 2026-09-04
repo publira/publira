@@ -45,6 +45,11 @@ func (r *recordingPlatformRenderer) Render(_ context.Context, request emailrende
 func newPlatformEmailEnv(t *testing.T) (*testutil.PostgresEnv, emailsettings.SecretManager) {
 	t.Helper()
 
+	// The console origin is read from the environment when the link is built, so
+	// pin it rather than asserting the built-in default and depending on the
+	// variable being unset — the E2E stack exports it.
+	t.Setenv("PUBLIRA_PLATFORM_APP_URL", "http://platform.localhost:3080")
+
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	encryptor := newInvitationEncryptor(t)
@@ -233,6 +238,36 @@ func TestPlatformPasswordResetEmailFailsPermanentlyOnAnUnusableLocale(t *testing
 	}
 	if !outbox.IsPermanent(err) {
 		t.Fatalf("handler error = %v, want a permanent failure", err)
+	}
+	if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
+		t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
+	}
+}
+
+// A worker started without encryption keys has no manager to decrypt the stored
+// SMTP password with. That has to surface as a retriable failure — an operator
+// restarting the process with the keys makes the event deliverable — rather than
+// as a panic from a nil manager reaching the decryption path.
+func TestPlatformPasswordResetEmailRetriesWithoutASecretManager(t *testing.T) {
+	pg, _ := newPlatformEmailEnv(t)
+	operator := seedPlatformOperator(t, pg, "PLATOUTBOX08", "operator@example.com")
+	tokenID := seedPlatformPasswordResetToken(t, pg, operator.ID, "reset-token", time.Now().Add(time.Hour))
+
+	renderer := &recordingPlatformRenderer{}
+	mailer := &recordingPlatformMailer{}
+	handler := outbox.NewPlatformPasswordResetEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: nil, Mailer: mailer, Renderer: renderer,
+	})
+	event := newPlatformOutboxEvent(t, outbox.EventTypePlatformPasswordResetEmail,
+		outbox.PlatformPasswordResetEmailPayload{TokenID: tokenID.String(), Token: "reset-token"},
+		"platform_password_reset_email:"+tokenID.String())
+
+	err := handler(context.Background(), event)
+	if err == nil {
+		t.Fatal("handler returned no error without a secret manager")
+	}
+	if outbox.IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a retriable failure", err)
 	}
 	if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
 		t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
