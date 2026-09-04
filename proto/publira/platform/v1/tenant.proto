@@ -4,7 +4,7 @@ package publira.platform.v1;
 
 option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
 
-// プラットフォーム管理者向けテナント情報
+// A tenant as the platform operator sees it.
 message Tenant {
   string public_id = 1;
   string name = 2;
@@ -25,7 +25,7 @@ message ListTenantsRequest {
 
   // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 1;
-  // フィルタ条件
+  // Filters.
   string name = 3;
   string public_id = 4;
   string status = 5;
@@ -81,7 +81,7 @@ message ResumeTenantResponse {
   Tenant tenant = 1;
 }
 
-// テナントメンバー情報
+// A member of a tenant.
 message TenantMember {
   string user_public_id = 1;
   string name = 2;
@@ -213,7 +213,7 @@ message UpdateTenantResponse {
   Tenant tenant = 1;
 }
 
-// プラットフォーム運営者向けテナント管理サービス
+// Tenant administration for the platform operator.
 service PlatformTenantService {
   rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse) {}
   rpc GetTenant(GetTenantRequest) returns (GetTenantResponse) {}

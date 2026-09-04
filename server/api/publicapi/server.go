@@ -105,8 +105,9 @@ func (s *apiServer) queriesFor(ctx context.Context) Querier {
 	return s.queries
 }
 
-// NewHandler は公開 API 専用の HTTP ハンドラを返します。
-// CatalogService / AuthService / NotificationService / TenantService / DomainService を公開し、管理 API は含みません。
+// NewHandler returns the HTTP handler for the public API alone. It serves
+// CatalogService, AuthService, NotificationService, TenantService, and
+// DomainService, and none of the admin API.
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender, tokens *auth.TokenManager) http.Handler {
 	return handlerFromServer(newAPIServer(db, queries, storageProvider, encryptor, mailer, tokens, slog.Default()))
 }

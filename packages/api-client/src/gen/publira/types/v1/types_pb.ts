@@ -167,14 +167,15 @@ export const LabelSchema: GenMessage<Label> = /*@__PURE__*/
  */
 export type SeriesEyeCatchVariant = Message<"publira.types.v1.SeriesEyeCatchVariant"> & {
   /**
-   * ラベル形式: "{ratio}_{width}w" (例: "portrait_1200w", "landscape_1600w")
+   * Label format: "{ratio}_{width}w" (for example "portrait_1200w",
+   * "landscape_1600w").
    *
    * @generated from field: string label = 1;
    */
   label: string;
 
   /**
-   * 用途種別: portrait / square / landscape / og
+   * Intended use: portrait / square / landscape / og.
    *
    * @generated from field: string variant_type = 7;
    */

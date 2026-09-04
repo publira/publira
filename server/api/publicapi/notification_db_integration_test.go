@@ -139,7 +139,7 @@ func TestDBMemberNotificationsDoNotMixWithAnnouncements(t *testing.T) {
 	announcementID := uuid.Must(uuid.NewV7())
 	if _, err := env.PG.DB.ExecContext(ctx, `
 		INSERT INTO announcements (id, tenant_id, announcement_type, title, body)
-		VALUES ($1, $2, 'announcement', 'お知らせ', '本文')
+		VALUES ($1, $2, 'announcement', 'Notice', 'Body')
 	`, announcementID, tenant.ID); err != nil {
 		t.Fatalf("insert announcement: %v", err)
 	}

@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	// プラットフォームオペレーター・認証
+	// Platform operators and authentication.
 	testGetPlatformUserByPublicIDQuery          = "-- name: GetPlatformUserByPublicID :one\n"
 	testGetPlatformUserByIDQuery                = "-- name: GetPlatformUserByID :one\n"
 	testGetPlatformUserByEmailQuery             = "-- name: GetPlatformUserByEmail :one\n"
@@ -47,7 +47,7 @@ const (
 	testBumpPlatformUserCredentialsVersionQuery = "-- name: BumpPlatformUserCredentialsVersion :one\n"
 	testPlatformSessionToken                    = "platform-session-token"
 
-	// テナントメンバー
+	// Tenant members.
 	testGetTenantByPublicIDQuery           = "-- name: GetTenantByPublicID :one\n"
 	testGetUserByEmailForTenantQuery       = "-- name: GetUserByEmailForTenant :one\n"
 	testGetUserByPublicIDForTenantQuery    = "-- name: GetUserByPublicIDForTenant :one\n"
@@ -59,12 +59,12 @@ const (
 	testGetPlatformSMTPConfigQuery         = "-- name: GetPlatformSMTPConfig :one\n"
 	testUpsertPlatformSMTPConfigQuery      = "-- name: UpsertPlatformSMTPConfig :one\n"
 
-	// プラットフォーム全体設定
+	// Platform-wide settings.
 	testGetPlatformConfigQuery           = "-- name: GetPlatformConfig :one\n"
 	testUpsertPlatformSettingsQuery      = "-- name: UpsertPlatformSettings :one\n"
 	testUpsertPlatformDefaultLocaleQuery = "-- name: UpsertPlatformDefaultLocale :one\n"
 
-	// エンドユーザー
+	// End users.
 	testListEndUsersDescQuery           = "-- name: ListEndUsersDesc :many\n"
 	testListEndUsersAscQuery            = "-- name: ListEndUsersAsc :many\n"
 	testGetUserByPublicIDQuery          = "-- name: GetUserByPublicID :one\n"

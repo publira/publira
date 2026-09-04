@@ -17,8 +17,8 @@ func TestDBGetAnnouncementReturnsInboxRowByID(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 
-	broadcastID := insertAnnouncement(t, env, tenant.ID, uuid.NullUUID{}, "/series/S001", "全体向け")
-	mineID := insertAnnouncement(t, env, tenant.ID, uuid.NullUUID{UUID: member.ID, Valid: true}, "https://example.com/a", "自分宛て")
+	broadcastID := insertAnnouncement(t, env, tenant.ID, uuid.NullUUID{}, "/series/S001", "Broadcast")
+	mineID := insertAnnouncement(t, env, tenant.ID, uuid.NullUUID{UUID: member.ID, Valid: true}, "https://example.com/a", "Addressed to me")
 
 	client := env.authClient()
 	token := tokenFor(t, tenant, member)
@@ -36,8 +36,8 @@ func TestDBGetAnnouncementReturnsInboxRowByID(t *testing.T) {
 	if broadcast.Msg.Announcement.LinkUrl != "/series/S001" {
 		t.Fatalf("broadcast link_url = %q, want /series/S001", broadcast.Msg.Announcement.LinkUrl)
 	}
-	if broadcast.Msg.Announcement.Title != "全体向け" {
-		t.Fatalf("broadcast title = %q, want 全体向け", broadcast.Msg.Announcement.Title)
+	if broadcast.Msg.Announcement.Title != "Broadcast" {
+		t.Fatalf("broadcast title = %q, want Broadcast", broadcast.Msg.Announcement.Title)
 	}
 
 	mine, err := client.GetAnnouncement(context.Background(), newBearerRequest(&publirav1.GetAnnouncementRequest{
@@ -61,8 +61,8 @@ func TestDBGetAnnouncementHidesRowsOutsideInbox(t *testing.T) {
 	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	other := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0002", "other@tenant-a.example.com", "Other")
 
-	theirs := insertAnnouncement(t, env, first.ID, uuid.NullUUID{UUID: other.ID, Valid: true}, "/series/THEIRS", "他人宛て")
-	foreign := insertAnnouncement(t, env, second.ID, uuid.NullUUID{}, "/series/FOREIGN", "他テナント")
+	theirs := insertAnnouncement(t, env, first.ID, uuid.NullUUID{UUID: other.ID, Valid: true}, "/series/THEIRS", "Addressed to someone else")
+	foreign := insertAnnouncement(t, env, second.ID, uuid.NullUUID{}, "/series/FOREIGN", "Another tenant")
 	missing := uuid.Must(uuid.NewV7())
 
 	client := env.authClient()
@@ -97,7 +97,7 @@ func insertAnnouncement(
 	if _, err := env.PG.DB.ExecContext(ctx, `
 		INSERT INTO announcements (
 			id, tenant_id, target_user_id, announcement_type, title, body, link_url
-		) VALUES ($1, $2, $3, 'announcement', $4, '本文', $5)
+		) VALUES ($1, $2, $3, 'announcement', $4, 'Body', $5)
 	`, id, tenantID, targetUserID, title, sql.NullString{String: linkURL, Valid: linkURL != ""}); err != nil {
 		t.Fatalf("insert announcement: %v", err)
 	}

@@ -334,16 +334,16 @@ func TestUpdatePageTitleOnlyPreservesDisplayInFooter(t *testing.T) {
 
 	// Omitted optional field → sql.NullBool{Valid: false} → driver nil arg.
 	mock.ExpectQuery(regexp.QuoteMeta(updatePageQuery)).
-		WithArgs("更新後タイトル", nil, pageID, tenantID).
+		WithArgs("Updated Title", nil, pageID, tenantID).
 		WillReturnRows(sqlmock.NewRows(pageColumns()).
-			AddRow(pageID, tenantID, "/privacy", "更新後タイトル", uuid.NullUUID{}, true, now, now))
+			AddRow(pageID, tenantID, "/privacy", "Updated Title", uuid.NullUUID{}, true, now, now))
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminPagesServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdatePageRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PageId: pageID.String(),
-		Title:  "更新後タイトル",
+		Title:  "Updated Title",
 		// DisplayInFooter intentionally omitted
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
@@ -355,8 +355,8 @@ func TestUpdatePageTitleOnlyPreservesDisplayInFooter(t *testing.T) {
 	if resp.Msg.Page == nil {
 		t.Fatalf("page is nil")
 	}
-	if resp.Msg.Page.Title != "更新後タイトル" {
-		t.Fatalf("title = %q, want 更新後タイトル", resp.Msg.Page.Title)
+	if resp.Msg.Page.Title != "Updated Title" {
+		t.Fatalf("title = %q, want Updated Title", resp.Msg.Page.Title)
 	}
 	if !resp.Msg.Page.DisplayInFooter {
 		t.Fatalf("display_in_footer = false, want true (preserved on title-only update)")
@@ -377,9 +377,9 @@ func TestUpdatePageSetsDisplayInFooterWhenPresent(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectQuery(regexp.QuoteMeta(updatePageQuery)).
-		WithArgs("タイトル", sql.NullBool{Bool: false, Valid: true}, pageID, tenantID).
+		WithArgs("Title", sql.NullBool{Bool: false, Valid: true}, pageID, tenantID).
 		WillReturnRows(sqlmock.NewRows(pageColumns()).
-			AddRow(pageID, tenantID, "/privacy", "タイトル", uuid.NullUUID{}, false, now, now))
+			AddRow(pageID, tenantID, "/privacy", "Title", uuid.NullUUID{}, false, now, now))
 	expectAdminAuditLogInsert(mock)
 
 	displayInFooter := false
@@ -387,7 +387,7 @@ func TestUpdatePageSetsDisplayInFooterWhenPresent(t *testing.T) {
 	req := connect.NewRequest(&publiraadminv1.UpdatePageRequest{
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PageId:          pageID.String(),
-		Title:           "タイトル",
+		Title:           "Title",
 		DisplayInFooter: &displayInFooter,
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)

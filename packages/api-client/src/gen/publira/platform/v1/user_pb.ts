@@ -13,7 +13,7 @@ export const file_publira_platform_v1_user: GenFile = /*@__PURE__*/
   fileDesc("Ch5wdWJsaXJhL3BsYXRmb3JtL3YxL3VzZXIucHJvdG8SE3B1YmxpcmEucGxhdGZvcm0udjEihgEKB0VuZFVzZXISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDgoGc3RhdHVzGAQgASgJEhIKCmNyZWF0ZWRfYXQYBSABKAkSEgoKdGVuYW50X2lkcxgGIAMoCRITCgt0ZW5hbnRfbmFtZRgHIAEoCSKuAQoTTGlzdEVuZFVzZXJzUmVxdWVzdBINCgVsaW1pdBgBIAEoBRIVCg1jcmVhdGVkX2FmdGVyGAMgASgJEg4KBnN0YXR1cxgEIAEoCRIWCg5jcmVhdGVkX2JlZm9yZRgFIAEoCRISCgpwdWJsaWNfaWRzGAYgAygJEhgKEHRlbmFudF9wdWJsaWNfaWQYByABKAkSDQoFdG9rZW4YCCABKAlKBAgCEANSBm9mZnNldCJvChRMaXN0RW5kVXNlcnNSZXNwb25zZRIrCgV1c2VycxgBIAMoCzIcLnB1YmxpcmEucGxhdGZvcm0udjEuRW5kVXNlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIiYKEUdldEVuZFVzZXJSZXF1ZXN0EhEKCXB1YmxpY19pZBgBIAEoCSJAChJHZXRFbmRVc2VyUmVzcG9uc2USKgoEdXNlchgBIAEoCzIcLnB1YmxpcmEucGxhdGZvcm0udjEuRW5kVXNlciIqChVTdXNwZW5kRW5kVXNlclJlcXVlc3QSEQoJcHVibGljX2lkGAEgASgJIkQKFlN1c3BlbmRFbmRVc2VyUmVzcG9uc2USKgoEdXNlchgBIAEoCzIcLnB1YmxpcmEucGxhdGZvcm0udjEuRW5kVXNlciIsChdVbnN1c3BlbmRFbmRVc2VyUmVxdWVzdBIRCglwdWJsaWNfaWQYASABKAkiRgoYVW5zdXNwZW5kRW5kVXNlclJlc3BvbnNlEioKBHVzZXIYASABKAsyHC5wdWJsaXJhLnBsYXRmb3JtLnYxLkVuZFVzZXIiKQoURGVsZXRlRW5kVXNlclJlcXVlc3QSEQoJcHVibGljX2lkGAEgASgJIioKFURlbGV0ZUVuZFVzZXJSZXNwb25zZRIRCglwdWJsaWNfaWQYASABKAkypwQKE1BsYXRmb3JtVXNlclNlcnZpY2USZQoMTGlzdEVuZFVzZXJzEigucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0RW5kVXNlcnNSZXF1ZXN0GikucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0RW5kVXNlcnNSZXNwb25zZSIAEl8KCkdldEVuZFVzZXISJi5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldEVuZFVzZXJSZXF1ZXN0GicucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRFbmRVc2VyUmVzcG9uc2UiABJrCg5TdXNwZW5kRW5kVXNlchIqLnB1YmxpcmEucGxhdGZvcm0udjEuU3VzcGVuZEVuZFVzZXJSZXF1ZXN0GisucHVibGlyYS5wbGF0Zm9ybS52MS5TdXNwZW5kRW5kVXNlclJlc3BvbnNlIgAScQoQVW5zdXNwZW5kRW5kVXNlchIsLnB1YmxpcmEucGxhdGZvcm0udjEuVW5zdXNwZW5kRW5kVXNlclJlcXVlc3QaLS5wdWJsaXJhLnBsYXRmb3JtLnYxLlVuc3VzcGVuZEVuZFVzZXJSZXNwb25zZSIAEmgKDURlbGV0ZUVuZFVzZXISKS5wdWJsaXJhLnBsYXRmb3JtLnYxLkRlbGV0ZUVuZFVzZXJSZXF1ZXN0GioucHVibGlyYS5wbGF0Zm9ybS52MS5EZWxldGVFbmRVc2VyUmVzcG9uc2UiAEJOWkxnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
 
 /**
- * エンドユーザー情報（プラットフォーム運営者視点）
+ * An end user as the platform operator sees them.
  *
  * @generated from message publira.platform.v1.EndUser
  */
@@ -77,9 +77,9 @@ export type ListEndUsersRequest = Message<"publira.platform.v1.ListEndUsersReque
   limit: number;
 
   /**
-   * フィルタ条件
+   * Filters.
    *
-   * RFC3339形式
+   * RFC 3339
    *
    * @generated from field: string created_after = 3;
    */
@@ -93,7 +93,7 @@ export type ListEndUsersRequest = Message<"publira.platform.v1.ListEndUsersReque
   status: string;
 
   /**
-   * RFC3339形式
+   * RFC 3339
    *
    * @generated from field: string created_before = 5;
    */
@@ -294,7 +294,7 @@ export const DeleteEndUserResponseSchema: GenMessage<DeleteEndUserResponse> = /*
   messageDesc(file_publira_platform_v1_user, 10);
 
 /**
- * プラットフォーム運営者向けエンドユーザー管理サービス
+ * End user administration for the platform operator.
  *
  * @generated from service publira.platform.v1.PlatformUserService
  */

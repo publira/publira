@@ -5,7 +5,8 @@ package publira.platform.v1;
 option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
 
 message GetDashboardSummaryRequest {
-  // recent_events の最大取得件数。0 以下はデフォルト件数になる。
+  // Maximum number of recent_events to return. Zero or less falls back to the
+  // default count.
   int32 recent_events_limit = 1;
 }
 
@@ -21,7 +22,7 @@ message GetDashboardSummaryResponse {
   int32 total_tenants = 1;
   int32 active_tenants = 2;
   int32 suspended_tenants = 3;
-  // inactive 状態のエンドユーザー数を pending として扱う。
+  // End users in the inactive state, counted as pending.
   int32 pending_end_users = 4;
   repeated DashboardRecentEvent recent_events = 5;
 }

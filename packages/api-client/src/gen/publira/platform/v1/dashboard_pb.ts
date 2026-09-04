@@ -17,7 +17,8 @@ export const file_publira_platform_v1_dashboard: GenFile = /*@__PURE__*/
  */
 export type GetDashboardSummaryRequest = Message<"publira.platform.v1.GetDashboardSummaryRequest"> & {
   /**
-   * recent_events の最大取得件数。0 以下はデフォルト件数になる。
+   * Maximum number of recent_events to return. Zero or less falls back to the
+   * default count.
    *
    * @generated from field: int32 recent_events_limit = 1;
    */
@@ -88,7 +89,7 @@ export type GetDashboardSummaryResponse = Message<"publira.platform.v1.GetDashbo
   suspendedTenants: number;
 
   /**
-   * inactive 状態のエンドユーザー数を pending として扱う。
+   * End users in the inactive state, counted as pending.
    *
    * @generated from field: int32 pending_end_users = 4;
    */

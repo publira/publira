@@ -20,41 +20,43 @@ import (
 )
 
 const (
-	// MaxUploadBytes は入稿画像の上限サイズ (20 MiB) です。
+	// MaxUploadBytes is the largest upload accepted, 20 MiB.
 	MaxUploadBytes = 20 << 20
-	// MaxPixels は入稿画像の上限ピクセル数です。
+	// MaxPixels is the largest pixel count accepted in an upload.
 	MaxPixels = 40_000_000
 )
 
-// variantTargetWidths は生成する派生画像の幅 (px) のリストです。
-// 入稿画像の幅がターゲット幅以下の場合、その派生は生成しません。
+// variantTargetWidths lists the widths, in pixels, the derived images are
+// generated at. A target width is skipped when the upload is no wider than it,
+// so a variant is never enlarged beyond its source.
 var variantTargetWidths = []int{480, 960, 1440}
 
-// Variant は派生画像の情報を保持します。
+// Variant holds one derived image.
 type Variant struct {
-	// VariantType は用途種別です (portrait/square/landscape/og)。
+	// VariantType names the intended use: portrait / square / landscape / og.
 	VariantType string
-	// Label は "w480" のように幅を示すラベルです (object key 生成に利用します)。
+	// Label states the width, as in "w480". Object keys are built from it.
 	Label string
-	// ContentType は "image/jpeg" や "image/png" などの MIME タイプです。
+	// ContentType is the MIME type, such as "image/jpeg" or "image/png".
 	ContentType string
-	// Extension は ".jpg" や ".png" などのファイル拡張子です。
+	// Extension is the file extension, such as ".jpg" or ".png".
 	Extension string
-	// Width / Height はピクセル単位の画像サイズです。
+	// Width and Height are the image size in pixels.
 	Width  int
 	Height int
-	// Data はエンコード済みの画像バイト列です。
+	// Data is the encoded image.
 	Data []byte
 }
 
-// BuildVariants は raw バイト列から複数サイズの派生画像を生成して返します。
+// BuildVariants derives images at several sizes from raw.
 //
-// 入稿画像の幅が 480 / 960 / 1440 px を超える場合はそれぞれのサイズにリサイズした
-// 派生を生成し、元サイズも含めた全バリアントを返します。
-// 以下の場合は error を返します:
-//   - データが空 / 上限サイズ超過
-//   - content_type が image/* でない
-//   - デコード不能 / 寸法が 0 以下 / ピクセル数が上限超過
+// A source wider than 480, 960, or 1440 px is resized down to each of those
+// widths, and the returned set also includes the source size itself. It
+// returns an error when:
+//   - the data is empty or exceeds the size cap
+//   - content_type is not image/*
+//   - the image is undecodable, has non-positive dimensions, or exceeds the
+//     pixel cap
 func BuildVariants(raw []byte, contentType string) ([]Variant, error) {
 	if len(raw) == 0 {
 		return nil, errors.New("image data is required")
@@ -137,8 +139,8 @@ func BuildVariants(raw []byte, contentType string) ([]Variant, error) {
 	return variants, nil
 }
 
-// outputFormat は入稿フォーマットから出力 MIME タイプとファイル拡張子を決定します。
-// PNG / GIF はロスレス保持のため PNG に、それ以外は JPEG に変換します。
+// outputFormat picks the output MIME type and file extension from the source
+// format. PNG and GIF stay lossless as PNG; everything else becomes JPEG.
 func outputFormat(sourceFormat string) (contentType, extension string) {
 	switch strings.ToLower(strings.TrimSpace(sourceFormat)) {
 	case "png", "gif":
@@ -148,7 +150,8 @@ func outputFormat(sourceFormat string) (contentType, extension string) {
 	}
 }
 
-// sourceFormatContentType は image.DecodeConfig が返すフォーマット名を MIME タイプに変換します。
+// sourceFormatContentType turns the format name image.DecodeConfig reports
+// into a MIME type.
 func sourceFormatContentType(sourceFormat string) string {
 	switch strings.ToLower(strings.TrimSpace(sourceFormat)) {
 	case "png":
@@ -162,8 +165,8 @@ func sourceFormatContentType(sourceFormat string) string {
 	}
 }
 
-// selectWidths は sourceWidth に応じて生成する派生幅の一覧を返します。
-// sourceWidth 未満のターゲット幅のみ含め、末尾に sourceWidth 自体を追加します。
+// selectWidths returns the widths to derive for a source of sourceWidth: the
+// target widths below it, followed by sourceWidth itself.
 func selectWidths(sourceWidth int) []int {
 	if sourceWidth <= 0 {
 		return []int{1}
@@ -184,7 +187,7 @@ func selectWidths(sourceWidth int) []int {
 	return selected
 }
 
-// scaledHeight はアスペクト比を保ちながら targetWidth に対する高さを計算します。
+// scaledHeight computes the height that keeps the aspect ratio at targetWidth.
 func scaledHeight(sourceWidth, sourceHeight, targetWidth int) int {
 	if sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 {
 		return 1
@@ -196,8 +199,8 @@ func scaledHeight(sourceWidth, sourceHeight, targetWidth int) int {
 	return h
 }
 
-// encode は src を width×height にリサイズして指定フォーマットでエンコードします。
-// Catmull-Rom カーネルを使用して高品質な縮小を行います。
+// encode resizes src to width x height and encodes it in the given format,
+// downscaling through the Catmull-Rom kernel for quality.
 func encode(src image.Image, width, height int, contentType string) ([]byte, error) {
 	dst := image.NewRGBA(image.Rect(0, 0, width, height))
 	xdraw.CatmullRom.Scale(dst, dst.Bounds(), src, src.Bounds(), xdraw.Over, nil)
@@ -216,22 +219,24 @@ func encode(src image.Image, width, height int, contentType string) ([]byte, err
 	return buf.Bytes(), nil
 }
 
-// EyeCatchMinWidth / EyeCatchMinHeight は入稿マスター画像の最小サイズです (3:4 基準)。
+// EyeCatchMinWidth and EyeCatchMinHeight are the smallest upload accepted for
+// a whole eye-catch, stated against the 3:4 ratio.
 const (
 	EyeCatchMinWidth  = 2400
 	EyeCatchMinHeight = 3200
 	EyeCatchMaxBytes  = 10 << 20
 )
 
-// eyeCatchAspectSpec はアイキャッチ派生サイズ生成の仕様です。
+// eyeCatchAspectSpec describes the sizes derived for one eye-catch ratio.
 type eyeCatchAspectSpec struct {
 	ratio      string // "portrait" / "square" / "landscape" / "og"
-	aspectW    int    // アスペクト幅
-	aspectH    int    // アスペクト高さ
-	widthSteps []int  // 生成する幅 (px)
+	aspectW    int    // aspect width
+	aspectH    int    // aspect height
+	widthSteps []int  // widths to generate, in pixels
 }
 
-// eyeCatchAspectSpecs はイシュー仕様に基づく派生サイズ定義です。
+// eyeCatchAspectSpecs is the set of ratios and widths an eye-catch is
+// delivered in.
 var eyeCatchAspectSpecs = []eyeCatchAspectSpec{
 	{"portrait", 3, 4, []int{600, 900, 1200}},
 	{"square", 1, 1, []int{600, 900, 1200}},
@@ -384,7 +389,7 @@ func lookupEyeCatchAspectSpec(variantType string) (eyeCatchAspectSpec, bool) {
 	return eyeCatchAspectSpec{}, false
 }
 
-// centerCropToAspect は src を指定アスペクト比にセンタークロップして返します。
+// centerCropToAspect centre-crops src to the given aspect ratio.
 func centerCropToAspect(src image.Image, aspectW, aspectH int) image.Image {
 	bounds := src.Bounds()
 	srcW := bounds.Dx()
@@ -434,14 +439,14 @@ func centerCropToAspect(src image.Image, aspectW, aspectH int) image.Image {
 	return dst
 }
 
-// BuildEyeCatchVariants はマスター画像からアイキャッチ用全バリアントを生成します。
+// BuildEyeCatchVariants derives every eye-catch variant from a single upload.
 //
-// 入力バリデーション:
-//   - 10MB 以内、image/* content_type
-//   - 最小サイズ 2400x3200px (3:4 基準)
+// Input validation:
+//   - within EyeCatchMaxBytes, image/* content_type
+//   - at least 2400x3200 px, the minimum stated against the 3:4 ratio
 //
-// 出力: portrait / square / landscape / og の各アスペクト比 × 複数幅のバリアント。
-// ラベル形式は "{ratio}_{width}w" (例: "portrait_1200w")。
+// It returns the portrait, square, landscape, and og ratios, each at several
+// widths, labelled "{ratio}_{width}w" (for example "portrait_1200w").
 func BuildEyeCatchVariants(raw []byte, contentType string) ([]Variant, error) {
 	if len(raw) == 0 {
 		return nil, errors.New("image data is required")
@@ -504,33 +509,34 @@ func BuildEyeCatchVariants(raw []byte, contentType string) ([]Variant, error) {
 	return variants, nil
 }
 
-// TenantVariantTypeLogo / TenantVariantTypeIcon はテナントのブランディング
-// 画像の用途です。series の variant_type (portrait / square / …) と同じ位置づけで、
-// サイズではありません。配信サイズは image-server が保存済みマスターから
-// リクエスト時に縮小して作ります。
+// TenantVariantTypeLogo and TenantVariantTypeIcon name what a tenant branding
+// image is for. They sit where a series variant_type does (portrait / square /
+// …) and say nothing about size: image-server downscales the stored image to
+// the requested size when it is asked for.
 const (
 	TenantVariantTypeLogo = "logo"
 	TenantVariantTypeIcon = "icon"
 )
 
-// IconMaxBytes / IconMinDimension / IconMaxDimension はテナント
-// icon の入稿制約です。最小 32px は 32x32 の描画に耐える下限、最大 512px は
-// apple-touch-icon まで賄える上限で、それを超える入稿は縮小します。
+// IconMaxBytes, IconMinDimension, and IconMaxDimension constrain a tenant icon
+// upload. The 32 px floor is what a 32x32 rendering needs; the 512 px ceiling
+// covers apple-touch-icon, and anything larger is scaled down to it.
 const (
 	IconMaxBytes     = 10 << 20
 	IconMinDimension = 32
 	IconMaxDimension = 512
 )
 
-// BuildIcon は入稿画像からテナント icon のバリアントを 1 つ生成します。
+// BuildIcon derives the single tenant icon variant from an upload.
 //
-// 入力バリデーション:
-//   - 10MB 以内、image/* content_type
-//   - ピクセル数が MaxPixels 以内
-//   - センタークロップ後の一辺が 32px 以上
+// Input validation:
+//   - within IconMaxBytes, image/* content_type
+//   - pixel count within MaxPixels
+//   - at least 32 px on a side after centre-cropping
 //
-// 出力は常に PNG です。icon は透過を保ったまま小さなサイズで描画されるため、
-// JPEG に落とすと背景が潰れます。
+// The output is always PNG. An icon is drawn small with its transparency
+// intact, and encoding it as JPEG would fill that transparency with a
+// background.
 func BuildIcon(raw []byte, contentType string) (Variant, error) {
 	if len(raw) == 0 {
 		return Variant{}, errors.New("image data is required")
@@ -547,9 +553,9 @@ func BuildIcon(raw []byte, contentType string) (Variant, error) {
 		return Variant{}, errors.New("content_type must be image/*")
 	}
 
-	// 展開後のサイズはヘッダから先に検査します。入力バイト数の上限だけでは、
-	// 小さな PNG / WebP が巨大な寸法を宣言してデコードでメモリを食い潰す経路を
-	// 塞げません。
+	// The declared dimensions are checked before decoding: the byte cap alone
+	// leaves a small PNG or WebP free to claim a huge canvas and exhaust
+	// memory while it is being decoded.
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
 	if err != nil {
 		return Variant{}, errors.New("image is not decodable")
@@ -591,25 +597,29 @@ func BuildIcon(raw []byte, contentType string) (Variant, error) {
 	}, nil
 }
 
-// LogoMaxBytes / LogoMinDimension / LogoMaxDimension はテナント logo の入稿制限です。
+// LogoMaxBytes, LogoMinDimension, and LogoMaxDimension constrain a tenant logo
+// upload.
 //
-// icon と違い縦横比は保ちます。logo は多くがワードマークで、正方形に切り出すと
-// 文字が欠けるためです。長辺だけを LogoMaxDimension に収めます。
+// Unlike an icon, a logo keeps its aspect ratio: most logos are wordmarks, and
+// cropping one to a square cuts letters off. Only the longest edge is brought
+// within LogoMaxDimension.
 const (
 	LogoMaxBytes     = 10 << 20
 	LogoMinDimension = 32
 	LogoMaxDimension = 1024
 )
 
-// BuildLogo は入稿画像からテナント logo のバリアントを 1 つ生成します。
+// BuildLogo derives the single tenant logo variant from an upload.
 //
-// 入力バリデーション:
-//   - 10MB 以内、image/* content_type
-//   - ピクセル数が MaxPixels 以内
-//   - 短辺が 32px 以上 (長辺を縮小したあとの寸法も含む)
+// Input validation:
+//   - within LogoMaxBytes, image/* content_type
+//   - pixel count within MaxPixels
+//   - at least 32 px on the shortest edge, measured after the longest edge is
+//     scaled down as well
 //
-// 出力は常に PNG です。logo は背景色の異なるヘッダーに重ねて置かれるため、
-// JPEG に落とすと透過が失われて周囲に矩形が出ます。
+// The output is always PNG. A logo is placed over headers of differing
+// background colors, so encoding it as JPEG would drop its transparency and
+// leave a rectangle around it.
 func BuildLogo(raw []byte, contentType string) (Variant, error) {
 	if len(raw) == 0 {
 		return Variant{}, errors.New("image data is required")
@@ -626,9 +636,9 @@ func BuildLogo(raw []byte, contentType string) (Variant, error) {
 		return Variant{}, errors.New("content_type must be image/*")
 	}
 
-	// 展開後のサイズはヘッダから先に検査します。入力バイト数の上限だけでは、
-	// 小さな PNG / WebP が巨大な寸法を宣言してデコードでメモリを食い潰す経路を
-	// 塞げません。
+	// The declared dimensions are checked before decoding: the byte cap alone
+	// leaves a small PNG or WebP free to claim a huge canvas and exhaust
+	// memory while it is being decoded.
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
 	if err != nil {
 		return Variant{}, errors.New("image is not decodable")
@@ -648,9 +658,10 @@ func BuildLogo(raw []byte, contentType string) (Variant, error) {
 		return Variant{}, errors.New("image is not decodable")
 	}
 
-	// 短辺の下限は縮小後にも効かせます。入稿時に両辺が 32px 以上でも、
-	// 20000x40 のような極端に細長い入力は長辺を 1024px に収める過程で短辺が
-	// 数 px まで潰れ、ロゴとして使えない画像が保存されるためです。
+	// The floor on the shortest edge applies after scaling too. Both edges can
+	// clear 32 px on upload and still fail here: bringing the longest edge of
+	// something like 20000x40 within 1024 px crushes the short edge to a few
+	// pixels, storing an image no longer usable as a logo.
 	width, height := fitWithinLongestEdge(cfg.Width, cfg.Height, LogoMaxDimension)
 	if width < LogoMinDimension || height < LogoMinDimension {
 		return Variant{}, fmt.Errorf("logo image aspect ratio is too extreme: %dx%d after scaling is below %dpx", width, height, LogoMinDimension)
@@ -672,8 +683,9 @@ func BuildLogo(raw []byte, contentType string) (Variant, error) {
 	}, nil
 }
 
-// fitWithinLongestEdge は縦横比を保ったまま長辺を maxEdge に収めた寸法を返します。
-// 長辺がすでに maxEdge 以下なら入力をそのまま返し、拡大はしません。
+// fitWithinLongestEdge returns the dimensions that bring the longest edge
+// within maxEdge while keeping the aspect ratio. A source already within
+// maxEdge is returned unchanged; nothing is ever enlarged.
 func fitWithinLongestEdge(sourceWidth, sourceHeight, maxEdge int) (width, height int) {
 	if sourceWidth <= maxEdge && sourceHeight <= maxEdge {
 		return sourceWidth, sourceHeight

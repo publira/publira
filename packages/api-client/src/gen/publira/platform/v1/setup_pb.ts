@@ -13,7 +13,7 @@ export const file_publira_platform_v1_setup: GenFile = /*@__PURE__*/
   fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL3NldHVwLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIhkKF0NoZWNrU2V0dXBTdGF0dXNSZXF1ZXN0IksKGENoZWNrU2V0dXBTdGF0dXNSZXNwb25zZRIXCg9zZXR1cF9jb21wbGV0ZWQYASABKAgSFgoOZGVmYXVsdF9sb2NhbGUYAiABKAkiYQoYQ3JlYXRlSW5pdGlhbFVzZXJSZXF1ZXN0EgwKBG5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSEAoIcGFzc3dvcmQYAyABKAkSFgoOZGVmYXVsdF9sb2NhbGUYBCABKAkiGwoZQ3JlYXRlSW5pdGlhbFVzZXJSZXNwb25zZTL/AQoUUGxhdGZvcm1TZXR1cFNlcnZpY2UScQoQQ2hlY2tTZXR1cFN0YXR1cxIsLnB1YmxpcmEucGxhdGZvcm0udjEuQ2hlY2tTZXR1cFN0YXR1c1JlcXVlc3QaLS5wdWJsaXJhLnBsYXRmb3JtLnYxLkNoZWNrU2V0dXBTdGF0dXNSZXNwb25zZSIAEnQKEUNyZWF0ZUluaXRpYWxVc2VyEi0ucHVibGlyYS5wbGF0Zm9ybS52MS5DcmVhdGVJbml0aWFsVXNlclJlcXVlc3QaLi5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZUluaXRpYWxVc2VyUmVzcG9uc2UiAEJOWkxnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
 
 /**
- * セットアップ状態確認リクエスト
+ * Request to check the platform setup status.
  *
  * @generated from message publira.platform.v1.CheckSetupStatusRequest
  */
@@ -28,13 +28,13 @@ export const CheckSetupStatusRequestSchema: GenMessage<CheckSetupStatusRequest> 
   messageDesc(file_publira_platform_v1_setup, 0);
 
 /**
- * セットアップ状態確認レスポンス
+ * Response carrying the platform setup status.
  *
  * @generated from message publira.platform.v1.CheckSetupStatusResponse
  */
 export type CheckSetupStatusResponse = Message<"publira.platform.v1.CheckSetupStatusResponse"> & {
   /**
-   * true の場合: 既にセットアップ済み (ユーザーが存在する)
+   * True once the platform has been set up, meaning at least one user exists.
    *
    * @generated from field: bool setup_completed = 1;
    */
@@ -63,7 +63,7 @@ export const CheckSetupStatusResponseSchema: GenMessage<CheckSetupStatusResponse
   messageDesc(file_publira_platform_v1_setup, 1);
 
 /**
- * 初期管理ユーザー作成リクエスト
+ * Request to create the first operator account.
  *
  * @generated from message publira.platform.v1.CreateInitialUserRequest
  */
@@ -101,7 +101,7 @@ export const CreateInitialUserRequestSchema: GenMessage<CreateInitialUserRequest
   messageDesc(file_publira_platform_v1_setup, 2);
 
 /**
- * 初期管理ユーザー作成レスポンス
+ * Response returned after the first operator account is created.
  *
  * @generated from message publira.platform.v1.CreateInitialUserResponse
  */
@@ -116,13 +116,13 @@ export const CreateInitialUserResponseSchema: GenMessage<CreateInitialUserRespon
   messageDesc(file_publira_platform_v1_setup, 3);
 
 /**
- * プラットフォーム初期セットアップサービス (認証不要)
+ * Initial platform setup, served without authentication.
  *
  * @generated from service publira.platform.v1.PlatformSetupService
  */
 export const PlatformSetupService: GenService<{
   /**
-   * セットアップ完了済みかどうかを確認する
+   * Reports whether the platform has already been set up.
    *
    * @generated from rpc publira.platform.v1.PlatformSetupService.CheckSetupStatus
    */
@@ -132,7 +132,7 @@ export const PlatformSetupService: GenService<{
     output: typeof CheckSetupStatusResponseSchema;
   },
   /**
-   * 最初の管理ユーザーを作成する (ユーザー数が0の場合のみ許可)
+   * Creates the first operator account, allowed only while no user exists.
    *
    * @generated from rpc publira.platform.v1.PlatformSetupService.CreateInitialUser
    */

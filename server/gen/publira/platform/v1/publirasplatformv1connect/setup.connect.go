@@ -43,9 +43,9 @@ const (
 
 // PlatformSetupServiceClient is a client for the publira.platform.v1.PlatformSetupService service.
 type PlatformSetupServiceClient interface {
-	// セットアップ完了済みかどうかを確認する
+	// Reports whether the platform has already been set up.
 	CheckSetupStatus(context.Context, *connect.Request[v1.CheckSetupStatusRequest]) (*connect.Response[v1.CheckSetupStatusResponse], error)
-	// 最初の管理ユーザーを作成する (ユーザー数が0の場合のみ許可)
+	// Creates the first operator account, allowed only while no user exists.
 	CreateInitialUser(context.Context, *connect.Request[v1.CreateInitialUserRequest]) (*connect.Response[v1.CreateInitialUserResponse], error)
 }
 
@@ -94,9 +94,9 @@ func (c *platformSetupServiceClient) CreateInitialUser(ctx context.Context, req 
 // PlatformSetupServiceHandler is an implementation of the publira.platform.v1.PlatformSetupService
 // service.
 type PlatformSetupServiceHandler interface {
-	// セットアップ完了済みかどうかを確認する
+	// Reports whether the platform has already been set up.
 	CheckSetupStatus(context.Context, *connect.Request[v1.CheckSetupStatusRequest]) (*connect.Response[v1.CheckSetupStatusResponse], error)
-	// 最初の管理ユーザーを作成する (ユーザー数が0の場合のみ許可)
+	// Creates the first operator account, allowed only while no user exists.
 	CreateInitialUser(context.Context, *connect.Request[v1.CreateInitialUserRequest]) (*connect.Response[v1.CreateInitialUserResponse], error)
 }
 

@@ -168,16 +168,16 @@ func TestListTenantUsersFiltersByQueryInSQL(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantUsersDescQuery)).
 		WithArgs(
 			uuid.NullUUID{UUID: tenantID, Valid: true},
-			sql.NullString{String: "編集", Valid: true},
+			sql.NullString{String: "Editor", Valid: true},
 			uuid.NullUUID{},
 			false,
 			sql.NullTime{},
 			defaultTenantUserListLimit+1,
 		).
-		WillReturnRows(addTenantUserRow(tenantUserColumns(), userID, "USER001", "編集 太郎", now))
+		WillReturnRows(addTenantUserRow(tenantUserColumns(), userID, "USER001", "Editor Taro", now))
 
 	req := newTenantUserRequest(tenantID, sessionToken)
-	req.Msg.Query = "  編集  "
+	req.Msg.Query = "  Editor  "
 	resp, err := client.ListTenantUsers(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListTenantUsers: %v", err)

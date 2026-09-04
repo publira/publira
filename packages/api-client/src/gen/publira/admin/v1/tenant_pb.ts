@@ -171,7 +171,8 @@ export const UpdateTenantDefaultLocaleResponseSchema: GenMessage<UpdateTenantDef
   messageDesc(file_publira_admin_v1_tenant, 7);
 
 /**
- * テナント単位の運用設定（サイト文言用の TenantConfig / 配色用の TenantTheme とは別責務）
+ * Per-tenant operational settings, separate from TenantConfig (site copy) and
+ * TenantTheme (colors).
  *
  * @generated from service publira.admin.v1.TenantSettingsService
  */

@@ -15,8 +15,9 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// TestPublicHandlerExposesOnlyPublicRoutes は、NewHandler が公開 API (CatalogService, AuthService) だけ
-// 公開し、管理 API (AdminSeriesService, AdminAuthService) は登録しないことを検証する。
+// TestPublicHandlerExposesOnlyPublicRoutes asserts that NewHandler serves the
+// public API (CatalogService, AuthService) and registers none of the admin API
+// (AdminSeriesService, AdminAuthService).
 func TestPublicHandlerExposesOnlyPublicRoutes(t *testing.T) {
 	ts := newPublicRouteTestServer(t)
 	t.Cleanup(ts.Close)

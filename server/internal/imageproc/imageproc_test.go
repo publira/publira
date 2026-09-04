@@ -14,7 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/imageproc"
 )
 
-// --- ヘルパー ---
+// --- helpers ---
 
 func makeJPEG(t *testing.T, width, height int) []byte {
 	t.Helper()
@@ -45,7 +45,8 @@ func makePNG(t *testing.T, width, height int) []byte {
 // --- TestBuildVariants ---
 
 func TestBuildVariants_SmallImage_ReturnsOriginalOnly(t *testing.T) {
-	// 幅 200px は全ターゲット幅 (480/960/1440) 以下なので派生は元サイズのみ
+	// 200 px is no wider than any target width (480/960/1440), so the source
+	// size is the only variant.
 	raw := makePNG(t, 200, 150)
 	variants, err := imageproc.BuildVariants(raw, "image/png")
 	if err != nil {
@@ -67,7 +68,7 @@ func TestBuildVariants_SmallImage_ReturnsOriginalOnly(t *testing.T) {
 }
 
 func TestBuildVariants_LargeJPEG_GeneratesDerivatives(t *testing.T) {
-	// 幅 1600px → 480 / 960 / 1440 / 1600 の 4 バリアント
+	// 1600 px wide yields four variants: 480, 960, 1440, and 1600.
 	raw := makeJPEG(t, 1600, 900)
 	variants, err := imageproc.BuildVariants(raw, "image/jpeg")
 	if err != nil {
@@ -77,7 +78,7 @@ func TestBuildVariants_LargeJPEG_GeneratesDerivatives(t *testing.T) {
 		t.Fatalf("got %d variants, want 4", len(variants))
 	}
 
-	// アスペクト比 16:9 のため各幅の高さは round(900 * width / 1600)
+	// The source is 16:9, so each height is round(900 * width / 1600).
 	wantVariants := []struct{ width, height int }{
 		{480, 270},
 		{960, 540},
@@ -101,7 +102,8 @@ func TestBuildVariants_LargeJPEG_GeneratesDerivatives(t *testing.T) {
 }
 
 func TestBuildVariants_ExactlyAtTarget_NoSmallerVariant(t *testing.T) {
-	// 幅ちょうど 480px → ターゲット幅と等しいので 480 未満のバリアントは生成されない
+	// Exactly 480 px wide: equal to a target width, so nothing below 480 is
+	// generated.
 	raw := makeJPEG(t, 480, 360)
 	variants, err := imageproc.BuildVariants(raw, "image/jpeg")
 	if err != nil {
@@ -116,7 +118,7 @@ func TestBuildVariants_ExactlyAtTarget_NoSmallerVariant(t *testing.T) {
 }
 
 func TestBuildVariants_PNG_KeepsLossless(t *testing.T) {
-	// PNG → PNG (ロスレス維持)
+	// PNG stays PNG, keeping it lossless.
 	raw := makePNG(t, 1000, 800)
 	variants, err := imageproc.BuildVariants(raw, "image/png")
 	if err != nil {
@@ -164,7 +166,7 @@ func TestBuildVariants_WrongContentType_Error(t *testing.T) {
 }
 
 func TestBuildVariants_ContentTypeAutoDetect(t *testing.T) {
-	// content_type が空の場合はバイト列から自動検出
+	// An empty content_type is detected from the bytes.
 	raw := makePNG(t, 10, 10)
 	variants, err := imageproc.BuildVariants(raw, "")
 	if err != nil {
@@ -388,9 +390,9 @@ func TestBuildIcon_RejectsEmptyData(t *testing.T) {
 	}
 }
 
-// pngHeaderWithDeclaredSize は IHDR だけを持つ PNG を組み立てます。
-// image.DecodeConfig は IHDR しか読まないため、実データを伴わずに巨大な寸法を
-// 宣言した入稿を再現できます。
+// pngHeaderWithDeclaredSize builds a PNG holding nothing but an IHDR chunk.
+// image.DecodeConfig reads only that chunk, so this reproduces an upload that
+// declares huge dimensions while carrying no actual image data.
 func pngHeaderWithDeclaredSize(width, height uint32) []byte {
 	var ihdr bytes.Buffer
 	ihdr.WriteString("IHDR")
@@ -407,7 +409,7 @@ func pngHeaderWithDeclaredSize(width, height uint32) []byte {
 }
 
 func TestBuildIcon_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
-	// 入稿バイト数は数十バイトでも、展開すれば 16 億ピクセルになる画像。
+	// A few dozen bytes on upload that decode to 1.6 billion pixels.
 	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
 
 	if _, err := imageproc.BuildIcon(raw, "image/png"); err == nil {
@@ -477,7 +479,8 @@ func TestBuildLogo_RejectsShortEdgeBelowMinimum(t *testing.T) {
 }
 
 func TestBuildLogo_RejectsShortEdgeThatFallsBelowMinimumAfterScaling(t *testing.T) {
-	// 両辺とも入稿時は 32px 以上だが、長辺を 1024px に収めると短辺が 2px になる。
+	// Both edges clear 32 px on upload, but bringing the longest edge within
+	// 1024 px leaves the short edge at 2 px.
 	raw := makePNG(t, 20_000, 40)
 	if _, err := imageproc.BuildLogo(raw, "image/png"); err == nil {
 		t.Fatal("want error for an image whose short edge falls below the minimum after scaling")

@@ -29,7 +29,7 @@ import (
 	"github.com/publira/publira/server/internal/tracing"
 )
 
-// Querier は adminapi が必要とする DB 操作インターフェースです。
+// Querier is the set of database operations adminapi needs.
 type Querier interface {
 	dbmodels.Querier
 }
@@ -213,8 +213,9 @@ func (s *adminServer) authenticateSession(
 	}, nil
 }
 
-// NewHandler は管理 API 専用の HTTP ハンドラを返します。
-// AdminSeriesService と AdminAuthService のみ公開し、公開 API (CatalogService, AuthService) は含みません。
+// NewHandler returns the HTTP handler for the admin API alone. It serves only
+// AdminSeriesService and AdminAuthService, and none of the public API
+// (CatalogService, AuthService).
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) http.Handler {
 	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, nil)
 }

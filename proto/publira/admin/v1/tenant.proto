@@ -46,7 +46,8 @@ message UpdateTenantDefaultLocaleResponse {
   string default_locale = 1;
 }
 
-// テナント単位の運用設定（サイト文言用の TenantConfig / 配色用の TenantTheme とは別責務）
+// Per-tenant operational settings, separate from TenantConfig (site copy) and
+// TenantTheme (colors).
 service TenantSettingsService {
   rpc GetTenantTimezone(GetTenantTimezoneRequest) returns (GetTenantTimezoneResponse) {}
   rpc UpdateTenantTimezone(UpdateTenantTimezoneRequest) returns (UpdateTenantTimezoneResponse) {}

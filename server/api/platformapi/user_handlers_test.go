@@ -17,12 +17,14 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 )
 
-// GetUserByPublicID の RETURNING カラム（id, public_id, name, email, status, tenant_id, created_at）
+// The columns GetUserByPublicID returns: id, public_id, name, email, status,
+// tenant_id, created_at.
 func endUserGetByPublicIDColumns() []string {
 	return []string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}
 }
 
-// ListEndUsers の結果カラム（所属テナントは JOIN で同梱）
+// The columns ListEndUsers returns; the tenant a user belongs to comes along
+// through a JOIN.
 func listEndUsersResultColumns() []string {
 	return []string{"id", "public_id", "name", "email", "status", "created_at", "tenant_public_id", "tenant_name"}
 }
@@ -31,12 +33,12 @@ func getTenantByUserIDColumns() []string {
 	return []string{"id", "public_id", "name", "created_at"}
 }
 
-// UpdateUserStatus の RETURNING カラム
+// The columns UpdateUserStatus returns.
 func updateUserStatusResultColumns() []string {
 	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version"}
 }
 
-// TestListEndUsers はエンドユーザー一覧の正常系を検証する。
+// TestListEndUsers asserts the success path of listing end users.
 func TestListEndUsers(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -86,7 +88,8 @@ func TestListEndUsersDatabaseErrorIsHidden(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestListEndUsersUnauthenticated は未認証の場合 Unauthenticated を返すことを検証する。
+// TestListEndUsersUnauthenticated asserts that an unauthenticated caller gets
+// Unauthenticated.
 func TestListEndUsersUnauthenticated(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
@@ -97,7 +100,7 @@ func TestListEndUsersUnauthenticated(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestGetEndUser はエンドユーザー詳細の正常系を検証する。
+// TestGetEndUser asserts the success path of reading one end user.
 func TestGetEndUser(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -125,7 +128,7 @@ func TestGetEndUser(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestGetEndUserNotFound は存在しないユーザーの場合 NotFound を返すことを検証する。
+// TestGetEndUserNotFound asserts that an unknown user yields NotFound.
 func TestGetEndUserNotFound(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -144,7 +147,8 @@ func TestGetEndUserNotFound(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestSuspendEndUser はエンドユーザーを停止しセッションが失効することを検証する。
+// TestSuspendEndUser asserts that suspending an end user also invalidates
+// their sessions.
 func TestSuspendEndUser(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -153,30 +157,30 @@ func TestSuspendEndUser(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	// ensureManageableEndUser: ユーザー取得
+	// ensureManageableEndUser: read the user.
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDQuery)).
 		WithArgs("EUSER00001").
 		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
 			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", nil, now))
 
-	// ensureManageableEndUser: テナントメンバーシップ確認（なし）
+	// ensureManageableEndUser: check tenant membership, of which there is none.
 	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 
-	// ステータスを suspended に更新
+	// Update the status to suspended.
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdateUserStatusQuery)).
 		WithArgs("EUSER00001", "suspended").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
 			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1)))
 
-	// セッション失効
+	// Invalidate the sessions.
 	mock.ExpectQuery(regexp.QuoteMeta(testBumpUserCredentialsVersionQuery)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
 			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(2)))
 
-	// テナント情報取得（なし）
+	// Read the tenant, of which there is none.
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(getTenantByUserIDColumns()))
@@ -193,7 +197,8 @@ func TestSuspendEndUser(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestSuspendEndUserWithPlatformRole はテナントメンバーの停止が拒否されることを検証する。
+// TestSuspendEndUserWithPlatformRole asserts that suspending a tenant member
+// is refused.
 func TestSuspendEndUserWithPlatformRole(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -207,7 +212,7 @@ func TestSuspendEndUserWithPlatformRole(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
 			AddRow(endUserID, "PLATUSER002", "Platform User 2", "platform2@example.com", "active", nil, now))
 
-	// テナントロールを持っているため拒否
+	// Refused because the user holds a tenant role.
 	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
@@ -219,7 +224,7 @@ func TestSuspendEndUserWithPlatformRole(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestUnsuspendEndUser は停止解除の正常系を検証する。
+// TestUnsuspendEndUser asserts the success path of lifting a suspension.
 func TestUnsuspendEndUser(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -258,7 +263,8 @@ func TestUnsuspendEndUser(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestUnsuspendEndUserWithTenantMembership はテナントメンバー保持ユーザーの停止解除が拒否されることを検証する。
+// TestUnsuspendEndUserWithTenantMembership asserts that lifting the
+// suspension of a user who is a tenant member is refused.
 func TestUnsuspendEndUserWithTenantMembership(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -283,7 +289,7 @@ func TestUnsuspendEndUserWithTenantMembership(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestDeleteEndUser はエンドユーザーの物理削除が正常に動作することを検証する。
+// TestDeleteEndUser asserts that deleting an end user row works.
 func TestDeleteEndUser(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -317,7 +323,8 @@ func TestDeleteEndUser(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestDeleteEndUserWithPlatformRole はテナントメンバー保持ユーザーの削除が拒否されることを検証する。
+// TestDeleteEndUserWithPlatformRole asserts that deleting a user who is a
+// tenant member is refused.
 func TestDeleteEndUserWithPlatformRole(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
