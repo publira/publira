@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { RedisIncrementalCacheHandler } from "./incremental-cache-handler";
 import { getRedisClient, resetRedisClientsForTests } from "./redis-client";
@@ -89,6 +89,152 @@ describe("Redis handlers integration", () => {
     await handler.refreshTags();
     const missed = await handler.get(cacheKey, []);
     expect(missed).toBeUndefined();
+  });
+
+  it("use-cache handler serves a revalidated tag within its serve-stale window", async ({
+    skip,
+  }) => {
+    if (!available) {
+      skip();
+    }
+
+    const handler = createUseCacheHandler({ keyPrefix, redisUrl });
+    const tag = "tenant:t1:window";
+    const write = async (
+      cacheKey: string,
+      body: string,
+      timestamp: number
+    ): Promise<void> => {
+      await handler.set(
+        cacheKey,
+        Promise.resolve({
+          expire: 3600,
+          revalidate: 60,
+          stale: 30,
+          tags: [tag],
+          timestamp,
+          value: new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode(body));
+              controller.close();
+            },
+          }),
+        })
+      );
+    };
+
+    // Written far enough back that the revalidation below is unambiguously
+    // later, while staying inside the entry's own 60s revalidate window.
+    await write("uc-window-before", "before", Date.now() - 5000);
+    // A year, the window `revalidateTag(tag, "max")` asks Next.js for.
+    await handler.updateTags([tag], { expire: 365 * 24 * 60 * 60 });
+    await handler.refreshTags();
+
+    // The older value is still served, and asks to be revalidated.
+    const stale = await handler.get("uc-window-before", []);
+    expect(stale).toBeDefined();
+    if (!stale) {
+      throw new Error("expected the previous value to still be served");
+    }
+    expect(stale.revalidate).toBe(-1);
+    expect(new TextDecoder().decode(await streamToBuffer(stale.value))).toBe(
+      "before"
+    );
+
+    // The value written to replace it is not caught by the same window.
+    await write("uc-window-after", "after", Date.now());
+    const fresh = await handler.get("uc-window-after", []);
+    expect(fresh).toBeDefined();
+    if (!fresh) {
+      throw new Error("expected the replacement value to be cached");
+    }
+    expect(fresh.revalidate).toBe(60);
+    expect(new TextDecoder().decode(await streamToBuffer(fresh.value))).toBe(
+      "after"
+    );
+  });
+
+  it("use-cache handler keeps a value written while the stale-serving window was open", async ({
+    skip,
+  }) => {
+    if (!available) {
+      skip();
+    }
+
+    const handler = createUseCacheHandler({ keyPrefix, redisUrl });
+    const tag = "tenant:t1:closed-window";
+    const windowSeconds = 60;
+    const revalidatedAt = Date.now();
+
+    await handler.updateTags([tag], { expire: windowSeconds });
+
+    // Written after the revalidation, while its window was still open.
+    await handler.set(
+      "uc-closed-window",
+      Promise.resolve({
+        expire: 7200,
+        revalidate: 3600,
+        stale: 30,
+        tags: [tag],
+        timestamp: revalidatedAt + 1000,
+        value: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode("during"));
+            controller.close();
+          },
+        }),
+      })
+    );
+
+    // Only the clock moves; the Redis client keeps its real timers.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(revalidatedAt + (windowSeconds + 10) * 1000);
+      const hit = await handler.get("uc-closed-window", []);
+      expect(hit).toBeDefined();
+      if (!hit) {
+        throw new Error("expected the value to outlive the closed window");
+      }
+      expect(hit.revalidate).toBe(3600);
+      expect(new TextDecoder().decode(await streamToBuffer(hit.value))).toBe(
+        "during"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("incremental handler keeps caching a tag after it is revalidated", async ({
+    skip,
+  }) => {
+    if (!available) {
+      skip();
+    }
+
+    const handler = new RedisIncrementalCacheHandler(
+      { _requestHeaders: {}, revalidatedTags: [] },
+      { keyPrefix, redisUrl }
+    );
+    const tag = "tenant:t1:image-window";
+
+    await handler.revalidateTag(tag, { expire: 365 * 24 * 60 * 60 });
+    handler.resetRequestCache();
+
+    await handler.set(
+      "img-window",
+      {
+        buffer: Buffer.from([0xff, 0xd8, 0xff]),
+        etag: "e2",
+        extension: "jpg",
+        kind: "IMAGE",
+        revalidate: 120,
+        upstreamEtag: "u2",
+      },
+      { tags: [tag] }
+    );
+
+    const hit = await handler.get("img-window", { kind: "IMAGE" });
+    expect(hit).not.toBeNull();
   });
 
   it("incremental handler set/get IMAGE and revalidateTag", async ({

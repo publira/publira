@@ -269,19 +269,22 @@ export class RedisIncrementalCacheHandler {
 
   async revalidateTag(
     tags: string | string[],
-    durations?: { expire?: number }
+    /** The serve-stale window Next.js offers; see `revalidatedAt` below. */
+    _durations?: { expire?: number }
   ): Promise<void> {
     const list = (Array.isArray(tags) ? tags : [tags]).filter(Boolean);
     if (list.length === 0) {
       return;
     }
 
-    const now = Date.now();
-    const expireAt =
-      durations?.expire === undefined ? now : now + durations.expire * 1000;
+    // The moment of the revalidation, never the end of the profile's
+    // serve-stale window: every entry the tag names is deleted below, so there
+    // is nothing left to serve stale, and a timestamp in the future would
+    // instead invalidate the entries written to replace them.
+    const revalidatedAt = Date.now();
 
     for (const tag of list) {
-      this.localTagTimestamps.set(tag, expireAt);
+      this.localTagTimestamps.set(tag, revalidatedAt);
     }
 
     await withRedis(this.config, undefined, async (client) => {
@@ -289,7 +292,7 @@ export class RedisIncrementalCacheHandler {
       for (const tag of list) {
         multi.set(
           tagTimestampKey(this.config.keyPrefix, tag),
-          String(expireAt)
+          String(revalidatedAt)
         );
       }
       await multi.exec();
