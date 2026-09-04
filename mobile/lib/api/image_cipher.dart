@@ -16,7 +16,10 @@ const imageContentTypeHeader = 'x-publira-image-content-type';
 const imageKeyIdHeader = 'x-publira-image-key-id';
 
 /// Query parameter holding the AudienceMedia token
-/// (`server/internal/auth`.`MediaTokenQueryParam`).
+/// (`server/internal/auth`.`MediaTokenQueryParam`). On a body the reader is
+/// entitled to it is issued for that reader; on a free one it is issued for
+/// the episode and a rotation window, so every reader of that episode is
+/// handed the same token and the page still decodes without a session.
 const mediaTokenQueryParam = 't';
 
 /// Domain separator the server prefixes to the key input. The trailing NUL is
@@ -25,10 +28,11 @@ const _encryptionDomain = 'publira:image:xor-hmac-sha256:v1\x00';
 
 /// Reverses image-server's [imageEncryptionAlgorithm] stream.
 ///
-/// The content key is derived from the very JWT the request was authorized
-/// with, so an entitled reader can reproduce it without the server ever
-/// sending a key. This is delivery-layer obfuscation rather than DRM: whoever
-/// may read the page necessarily holds the material that recovers its pixels.
+/// The content key is derived from a JWT the reader already holds — the
+/// credential the request was authorized with, or, for a free body, the media
+/// token on its image URL — so the server never sends a key. This is
+/// delivery-layer obfuscation rather than DRM: whoever may read the page
+/// necessarily holds the material that recovers its pixels.
 ///
 /// [keyId] is the server's cache key for the rendition, taken from
 /// `X-Publira-Image-Key-Id`; [subject] is the `sub` claim of [token].

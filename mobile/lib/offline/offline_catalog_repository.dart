@@ -167,8 +167,8 @@ class OfflineCatalogRepository implements CatalogRepository {
 
   /// The same body with everything that authorizes a request taken out.
   ///
-  /// The request headers carry the reader's bearer token, and a paid page's
-  /// URL carries the media token that reads it. Neither belongs on the device,
+  /// The request headers carry the reader's bearer token, and a page's URL
+  /// carries the media token that decodes it. Neither belongs on the device,
   /// and neither is needed: a saved page is read off disk under a name that
   /// leaves the media token out.
   EpisodeDetail _forStorage(EpisodeDetail detail) {
