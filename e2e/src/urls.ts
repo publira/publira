@@ -32,6 +32,10 @@ export const WEB_HOST_BASE_URL = envUrl(
  * and only the edge joins web-host and image-server under one host and port.
  * Suites that never load a body image keep using WEB_HOST_BASE_URL, so one
  * more hop does not sit in front of every navigation they time out on.
+ *
+ * It is the `viewer-performance` project's `baseURL`. A suite that reads a body
+ * without being timed takes it as an absolute base instead, so it stays in the
+ * ordinary chain rather than on that project's deliberately empty machine.
  */
 export const WEB_HOST_EDGE_BASE_URL = envUrl(
   "E2E_WEB_HOST_EDGE_BASE_URL",

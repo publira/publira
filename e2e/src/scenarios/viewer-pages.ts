@@ -10,8 +10,8 @@ import { SEED_TENANT } from "./multi-tenant";
  * one other suites reach for, and mobile's live integration test reads its
  * empty state as proof of a working round trip.
  */
-const VIEWER_EPISODE_ID = "SeedEPSDAAA2";
-const VIEWER_EPISODE_TITLE = "Seed Episode 001-02";
+export const VIEWER_EPISODE_ID = "SeedEPSDAAA2";
+export const VIEWER_EPISODE_TITLE = "Seed Episode 001-02";
 
 /** Reading-order page count; keep in sync with the scenario's generate_series. */
 export const VIEWER_PAGE_COUNT = 8;
@@ -25,3 +25,20 @@ export const VIEWER_EPISODE_PATH = `/series/${SEED_TENANT.series.publicId}/episo
  */
 export const viewerPageLabel = (page: number): string =>
   `${VIEWER_EPISODE_TITLE} ${page}ページ`;
+
+/**
+ * The accessible name of the reader's `<progress>`, from
+ * `host.episode.viewer.progress`. Its `value` is the last page of the spread on
+ * screen and its `max` is the page count, so the reader's own report of where
+ * it is can be read without depending on the wording of the status text.
+ */
+export const VIEWER_PROGRESS_LABEL = "読み進み";
+
+/**
+ * The `episode_images` id the scenario gives one page, derived the way its SQL
+ * derives it. A page's body request is `/images/episodes/{id}`, so this is what
+ * a suite intercepts to fail a single page and leave the rest of the episode
+ * alone.
+ */
+export const viewerPageImageId = (page: number): string =>
+  `0199a121-1121-7000-8000-${String(page).padStart(12, "0")}`;

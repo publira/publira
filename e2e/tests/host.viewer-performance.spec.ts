@@ -2,8 +2,9 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
-  VIEWER_PAGE_COUNT,
   VIEWER_EPISODE_PATH,
+  VIEWER_PAGE_COUNT,
+  VIEWER_PROGRESS_LABEL,
   viewerPageLabel,
 } from "../src/scenarios/viewer-pages";
 import { hostPath } from "../src/urls";
@@ -37,14 +38,6 @@ const BUDGET = {
   /** Key press → the reader reports the new spread. */
   turnResponseMs: 200,
 } as const;
-
-/**
- * `host.episode.viewer.progress`, the accessible name of the reader's
- * `<progress>`. Its `value` is the first page of the spread on screen and its
- * `max` is the page count, so the reader's own report of where it is can be
- * read without depending on the wording of the status text.
- */
-const PROGRESS_LABEL = "読み進み";
 
 interface ViewerTurnMetrics {
   pageReadyMs: number | null;
@@ -180,7 +173,7 @@ const installViewerMetrics = (progressLabel: string) => {
  * screen after one turn.
  */
 const readOneSpread = async (page: Page) => {
-  await page.addInitScript(installViewerMetrics, PROGRESS_LABEL);
+  await page.addInitScript(installViewerMetrics, VIEWER_PROGRESS_LABEL);
   await page.goto(hostPath(VIEWER_EPISODE_PATH));
 
   await expect(
@@ -247,7 +240,7 @@ test.describe("web-host viewer rendering performance", () => {
       });
     }
 
-    await expect(page.getByLabel(PROGRESS_LABEL)).toHaveAttribute(
+    await expect(page.getByLabel(VIEWER_PROGRESS_LABEL)).toHaveAttribute(
       "max",
       String(VIEWER_PAGE_COUNT)
     );

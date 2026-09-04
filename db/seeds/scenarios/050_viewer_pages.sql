@@ -17,7 +17,8 @@
 -- Fixed UUIDs (`0199a121-1121-70xx-…`) keep the scenario idempotent: applying
 -- it twice updates the same eight images instead of appending eight more.
 --
--- Used by e2e/tests/host.viewer-performance.spec.ts.
+-- Used by e2e/tests/host.episode-reading.spec.ts and
+-- e2e/tests/host.viewer-performance.spec.ts.
 
 BEGIN;
 
