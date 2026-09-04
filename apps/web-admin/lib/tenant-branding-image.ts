@@ -25,7 +25,7 @@ export interface TenantBrandingImage {
  * The generated `TenantImageVariant` fields {@link toVariants} reads. Naming
  * them against the message type is what makes a proto rename fail here — a
  * restated structural type keeps compiling, the empty string it substitutes
- * fails the check below, and the card then reads as「未設定」with nothing
+ * fails the check below, and the card then reads as "Not set" with nothing
  * pointing at the cause.
  */
 type RawTenantImageVariant = Pick<

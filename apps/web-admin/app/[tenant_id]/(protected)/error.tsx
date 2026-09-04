@@ -17,10 +17,10 @@ import { ErrorScreen } from "#components/error-screen";
  *
  * It catches what the data helpers do not turn into a message:
  * `rethrowUnclassifiedRpcError()` lets `internal` / `unimplemented` and any
- * non-RPC throw reach this boundary instead of collapsing into
- * 「時間をおいて再試行してください。」. Failures a form can act on — invalid
- * input, conflicts — stay inline as `FormMessage`, and a resource the caller
- * cannot see is `notFound()` (see `not-found.tsx`).
+ * non-RPC throw reach this boundary instead of collapsing into "Please try
+ * again later." Failures a form can act on — invalid input, conflicts — stay
+ * inline as `FormMessage`, and a resource the caller cannot see is
+ * `notFound()` (see `not-found.tsx`).
  *
  * `SectionErrorBoundary` narrows the reach: a section wrapped in one takes its
  * own throws, so only a failure outside every such boundary — or one in a page

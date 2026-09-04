@@ -183,7 +183,8 @@ export const logoutPublic = async (
       buildSessionHeaders(accessToken)
     );
   } catch {
-    // セッション失効・ネットワークエラー時もクッキーはクリアする
+    // The cookie is cleared either way: an expired session and an unreachable
+    // API both leave the caller with nothing worth keeping.
   }
 };
 

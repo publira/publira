@@ -16,19 +16,21 @@ interface EyeCatchPictureProps {
   fetchPriority?: "high" | "low" | "auto";
 }
 
-/** content-type 優先順: avif > webp > その他(jpeg/png 等) */
+/** Content-type preference: avif > webp > anything else (jpeg, png, …). */
 const CT_PRIORITY: Record<string, number> = {
   "image/avif": 0,
   "image/webp": 1,
 };
 
 /**
- * 複数幅のバリアントから <img srcset> 要素を生成する。
+ * Builds an `<img srcset>` from the variants of several widths.
  *
- * - preferredType (デフォルト: "landscape") に一致するバリアントを使用する。
- *   一致がなければ全バリアントにフォールバックする。
- * - 複数のコンテンツタイプが混在する場合は最も優先度が高いタイプのバリアントのみ使用する。
- *   (DB ユニーク制約により同一サイズが複数フォーマットで存在することは基本ないが念のため)
+ * - Uses the variants matching `preferredType` (default: `"landscape"`),
+ *   falling back to every variant when none matches.
+ * - When several content types are mixed in, keeps only the variants of the
+ *   highest-priority type. A unique constraint in the database makes one size
+ *   in several formats unlikely, but the mix is handled rather than assumed
+ *   away.
  */
 export const EyeCatchPicture = ({
   variants,
@@ -46,7 +48,7 @@ export const EyeCatchPicture = ({
     return null;
   }
 
-  // 最も優先度の高い content-type のバリアントを選択
+  // Pick the variants of the highest-priority content type.
   const [bestType] = [...new Set(pool.map((v) => v.contentType))].toSorted(
     (a, b) => (CT_PRIORITY[a] ?? 99) - (CT_PRIORITY[b] ?? 99)
   );

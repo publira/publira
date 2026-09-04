@@ -180,7 +180,7 @@ export default defineConfig({
        * discarded rather than reaching application code. Requiring a
        * session would tie a display setting to sign-in without protecting
        * anything. Every other cookie write in these apps stays covered — the
-       * override names this one file per app. See AGENTS.md "UI ロケール"
+       * override names this one file per app. See apps/AGENTS.md "UI locale"
        * (#867, #868).
        */
       files: ["apps/*/lib/locale-action.ts"],
@@ -264,9 +264,9 @@ export default defineConfig({
     "sonarjs/function-name": "off",
     // Domain unions routinely have 3+ members (status, role, tab keys, …).
     "sonarjs/max-union-size": "off",
-    // Repeated Japanese UI/error strings are normal; threshold is too noisy.
+    // Repeated UI and error strings are normal; the threshold is too noisy.
     "sonarjs/no-duplicate-string": "off",
-    // Flags Japanese UI copy that merely mentions パスワード (false positives).
+    // Flags UI copy that merely mentions a password (false positives).
     "sonarjs/no-hardcoded-passwords": "off",
     // TypeScript optional fields and API shapes use undefined, not null.
     "sonarjs/no-undefined-assignment": "off",

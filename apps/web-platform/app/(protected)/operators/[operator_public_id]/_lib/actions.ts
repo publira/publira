@@ -35,8 +35,9 @@ const operatorPublicIdSchema = (messages: PlatformMessages) =>
  *
  * A Server Action is its own request, so it authenticates independently of the
  * page that rendered the control. A rejected session used to arrive as the same
- * `null` a `GetMe` without an operator does, and「この操作を行う権限がありません。」
- * next to a button is a dead end for someone who has simply been signed out.
+ * `null` a `GetMe` without an operator does, and "You do not have permission to
+ * perform this action." next to a button is a dead end for someone who has
+ * simply been signed out.
  */
 const resolveCurrentOperator =
   async (): Promise<PlatformCurrentOperator | null> => {

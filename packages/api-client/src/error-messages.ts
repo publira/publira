@@ -10,7 +10,7 @@ import { rpcErrorDisposition } from "./errors.js";
  * A screen that needs different wording passes an override for that one
  * category instead of re-deriving the category itself. `precondition` and
  * `unexpected` have no shared copy — what a failed precondition means is
- * specific to the operation ("この招待は再送できない状態です。"), and
+ * specific to the operation ("This invitation cannot be resent."), and
  * `unexpected` is by definition unclassified. Both fall back to the caller's
  * operation-specific message unless overridden here.
  */
@@ -31,7 +31,7 @@ export interface RpcErrorMessageOptions {
  * Shared rather than per-app on purpose: the same RPC error has to read the
  * same way in `web-host`, `web-admin`, and `web-platform`, in each locale.
  *
- * `fallback` is the operation-specific message ("著者の保存に失敗しました。…")
+ * `fallback` is the operation-specific message ("Could not save the creator. …")
  * used when the category has no shared wording. Pass `overrides` to replace
  * the shared wording for individual categories.
  *

@@ -22,8 +22,8 @@ import { ErrorScreen } from "#components/error-screen";
  * `unimplemented` and any non-RPC throw, while classified failures become
  * either a message the screen renders inline (`ok: false`) or a `null` the page
  * turns into `notFound()`. So the throws that land here are exactly the ones no
- * copy in `rpcErrorMessage`'s table describes, and 「時間をおいて再試行してく
- * ださい。」 with a digest is the honest answer for them.
+ * copy in `rpcErrorMessage`'s table describes, and "Please try again later."
+ * with a digest is the honest answer for them.
  *
  * The two neighbours stay where they are. Failures a form can act on — invalid
  * input, conflicts — remain inline `FormMessage`s next to the control, and the

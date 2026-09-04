@@ -30,7 +30,8 @@ export const isCurrentPath = (
   if (!pathname.startsWith(`${href}/`)) {
     return false;
   }
-  // プレフィックスで一致しているが、より具体的な別のナビアイテムも一致する場合は非アクティブにする
+  // The prefix matches, but a more specific nav item may match too; that one
+  // owns the active state, so this item stays inactive.
   if (allHrefs) {
     return !allHrefs.some(
       (other) =>

@@ -184,8 +184,8 @@ const REJECTED_REQUEST_DISPOSITIONS: ReadonlySet<RpcErrorDisposition> = new Set(
  *
  * Excludes `unavailable` (transport / overload) and `unexpected` (the server
  * broke, or the throw was not an RPC error at all): those say nothing the user
- * can fix and must reach an error boundary instead of becoming "入力内容に誤り
- * があります。".
+ * can fix and must reach an error boundary instead of becoming "The submitted
+ * values are invalid.".
  */
 export const isRejectedRequestRpcError = (error: unknown): boolean =>
   REJECTED_REQUEST_DISPOSITIONS.has(rpcErrorDisposition(error));
@@ -196,7 +196,7 @@ export const isRejectedRequestRpcError = (error: unknown): boolean =>
  * Call it first in a `catch` that turns errors into a message: everything with
  * a disposition stays as a message the user can act on, and everything else —
  * `internal`, `unimplemented`, a bug in our own mapping code — is rethrown
- * instead of being flattened into "時間をおいて再試行してください。" and lost.
+ * instead of being flattened into "Please try again later." and lost.
  */
 export const rethrowUnclassifiedRpcError = (error: unknown): void => {
   if (rpcErrorDisposition(error) === "unexpected") {

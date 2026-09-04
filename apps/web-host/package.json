@@ -2,7 +2,7 @@
   "name": "@publira/web-host",
   "version": "0.1.0",
   "private": true,
-  "description": "テナント公開サイト (配信・認証・マイページ)",
+  "description": "Public tenant site: catalog delivery, reader authentication, and account pages",
   "repository": {
     "type": "git",
     "url": "https://github.com/publira/publira.git",

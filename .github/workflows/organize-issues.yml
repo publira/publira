@@ -35,7 +35,7 @@ jobs:
           script: |
             const EPIC = 'epic';
             const MAX_DEPTH = 8;
-            const COMMENT = 'すべての sub-issue がクローズされたため、この Epic をクローズします。';
+            const COMMENT = 'Closing this Epic because all of its sub-issues are closed.';
             const { owner, repo } = context.repo;
 
             function startNumbers() {

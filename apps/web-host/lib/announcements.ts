@@ -50,8 +50,8 @@ export const announcementsCacheTag = tenantAnnouncementsTag;
  *
  * The `invalid-argument` override is why this list words its own session
  * failure: {@link isSignInRequiredError} counts that category as a rejected
- * session, so the shared「入力内容に誤りがあります。」would contradict the
- * login redirect it triggers.
+ * session, so the shared "The submitted values are invalid." would contradict
+ * the login redirect it triggers.
  */
 const mapErrorToMessage = async (
   error: unknown,
