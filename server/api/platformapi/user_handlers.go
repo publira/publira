@@ -196,7 +196,7 @@ func (s *platformServer) ListEndUsers(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListEndUsersRequest],
 ) (*connect.Response[publirasplatformv1.ListEndUsersResponse], error) {
-	// Platform管理権限チェック
+	// Check for platform operator permission.
 	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func (s *platformServer) ListEndUsers(
 		}
 	}
 
-	// フィルタパラメータを処理
+	// Build the filter parameters.
 	var createdAfterFilter sql.NullTime
 	if req.Msg.CreatedAfter != "" {
 		t, parseErr := time.Parse(time.RFC3339, req.Msg.CreatedAfter)
@@ -282,7 +282,7 @@ func (s *platformServer) GetEndUser(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.GetEndUserRequest],
 ) (*connect.Response[publirasplatformv1.GetEndUserResponse], error) {
-	// Platform管理権限チェック
+	// Check for platform operator permission.
 	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func (s *platformServer) SuspendEndUser(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.SuspendEndUserRequest],
 ) (*connect.Response[publirasplatformv1.SuspendEndUserResponse], error) {
-	// Platform管理権限チェック
+	// Check for platform operator permission.
 	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
@@ -329,7 +329,7 @@ func (s *platformServer) SuspendEndUser(
 		return nil, err
 	}
 
-	// ステータスを更新
+	// Update the status.
 	updated, err := s.queriesFor(ctx).UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
 		PublicID: publicID,
 		Status:   userStatusSuspended,
@@ -338,7 +338,7 @@ func (s *platformServer) SuspendEndUser(
 		return nil, s.internalDBError(ctx, "failed to suspend end user", err, "public_id", publicID)
 	}
 
-	// セッションを失効させる
+	// Invalidate the existing sessions.
 	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, updated.ID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to bump end user credentials version", err, "user_id", updated.ID.String(), "public_id", publicID)
 	}
@@ -367,7 +367,7 @@ func (s *platformServer) UnsuspendEndUser(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.UnsuspendEndUserRequest],
 ) (*connect.Response[publirasplatformv1.UnsuspendEndUserResponse], error) {
-	// Platform管理権限チェック
+	// Check for platform operator permission.
 	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
@@ -382,7 +382,7 @@ func (s *platformServer) UnsuspendEndUser(
 		return nil, err
 	}
 
-	// ステータスを更新
+	// Update the status.
 	updated, err := s.queriesFor(ctx).UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
 		PublicID: publicID,
 		Status:   userStatusActive,
@@ -418,7 +418,7 @@ func (s *platformServer) DeleteEndUser(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.DeleteEndUserRequest],
 ) (*connect.Response[publirasplatformv1.DeleteEndUserResponse], error) {
-	// Platform管理権限チェック
+	// Check for platform operator permission.
 	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
@@ -434,7 +434,7 @@ func (s *platformServer) DeleteEndUser(
 		return nil, err
 	}
 
-	// ユーザーを物理削除
+	// Delete the user row itself.
 	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.ID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to delete end user", err, "user_id", user.ID.String(), "public_id", publicID)
 	}

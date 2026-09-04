@@ -23,7 +23,8 @@ const (
 
 type GetDashboardSummaryRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// recent_events の最大取得件数。0 以下はデフォルト件数になる。
+	// Maximum number of recent_events to return. Zero or less falls back to the
+	// default count.
 	RecentEventsLimit int32 `protobuf:"varint,1,opt,name=recent_events_limit,json=recentEventsLimit,proto3" json:"recent_events_limit,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
@@ -147,7 +148,7 @@ type GetDashboardSummaryResponse struct {
 	TotalTenants     int32                  `protobuf:"varint,1,opt,name=total_tenants,json=totalTenants,proto3" json:"total_tenants,omitempty"`
 	ActiveTenants    int32                  `protobuf:"varint,2,opt,name=active_tenants,json=activeTenants,proto3" json:"active_tenants,omitempty"`
 	SuspendedTenants int32                  `protobuf:"varint,3,opt,name=suspended_tenants,json=suspendedTenants,proto3" json:"suspended_tenants,omitempty"`
-	// inactive 状態のエンドユーザー数を pending として扱う。
+	// End users in the inactive state, counted as pending.
 	PendingEndUsers int32                   `protobuf:"varint,4,opt,name=pending_end_users,json=pendingEndUsers,proto3" json:"pending_end_users,omitempty"`
 	RecentEvents    []*DashboardRecentEvent `protobuf:"bytes,5,rep,name=recent_events,json=recentEvents,proto3" json:"recent_events,omitempty"`
 	unknownFields   protoimpl.UnknownFields

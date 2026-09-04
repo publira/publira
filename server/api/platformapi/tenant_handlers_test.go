@@ -326,7 +326,8 @@ func TestListTenantMembersSuccess(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestListTenantMembersEmptyList はメンバーが存在しない場合に空リストを返すことを検証する。
+// TestListTenantMembersEmptyList asserts that a tenant with no members yields
+// an empty list.
 func TestListTenantMembersEmptyList(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -351,7 +352,8 @@ func TestListTenantMembersEmptyList(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// TestListTenantMembersTenantNotFound は存在しないテナントの場合 NotFound を返すことを検証する。
+// TestListTenantMembersTenantNotFound asserts that an unknown tenant yields
+// NotFound.
 func TestListTenantMembersTenantNotFound(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 

@@ -84,7 +84,7 @@ func (s *platformServer) CreateInitialUser(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	// Fast-path: セットアップ済み確認
+	// Fast path: check whether setup has already run.
 	count, err := s.queriesFor(ctx).CountPlatformUsers(ctx)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to count platform users", err)

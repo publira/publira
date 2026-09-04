@@ -22,7 +22,7 @@ import (
 	"github.com/publira/publira/server/internal/tracing"
 )
 
-// Querier は platformapi が必要とする DB 操作インターフェースです。
+// Querier is the set of database operations platformapi needs.
 type Querier interface {
 	dbmodels.Querier
 }
@@ -96,8 +96,9 @@ func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (strin
 	return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
 }
 
-// NewHandler はプラットフォーム API 用の HTTP ハンドラを返します。
-// DB 接続は publira_platform ユーザーで行い、BYPASSRLS 属性により RLS を透過します。
+// NewHandler returns the HTTP handler for the platform API. It connects to the
+// database as publira_platform, whose BYPASSRLS attribute lets it read past
+// row-level security.
 func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) http.Handler {
 	return newHandler(db, queries, logger, encryptor, tester, tokens, nil)
 }
@@ -181,10 +182,10 @@ func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 	mux.Handle(notificationPath, notificationHandler)
 	authPath, authHandler := publirasplatformv1connect.NewPlatformAuthServiceHandler(server, traced)
 	mux.Handle(authPath, authHandler)
-	// セットアップサービスは認証不要で公開する
+	// The setup service is served without authentication.
 	setupPath, setupHandler := publirasplatformv1connect.NewPlatformSetupServiceHandler(server, traced)
 	mux.Handle(setupPath, setupHandler)
-	// エンドユーザー管理サービス
+	// End user administration.
 	userPath, userHandler := publirasplatformv1connect.NewPlatformUserServiceHandler(
 		server,
 		traced,

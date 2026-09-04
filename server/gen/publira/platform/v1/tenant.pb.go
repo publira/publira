@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// プラットフォーム管理者向けテナント情報
+// A tenant as the platform operator sees it.
 type Tenant struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	PublicId    string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -120,7 +120,7 @@ type ListTenantsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
-	// フィルタ条件
+	// Filters.
 	Name     string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	Status   string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
@@ -644,7 +644,7 @@ func (x *ResumeTenantResponse) GetTenant() *Tenant {
 	return nil
 }
 
-// テナントメンバー情報
+// A member of a tenant.
 type TenantMember struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserPublicId  string                 `protobuf:"bytes,1,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`

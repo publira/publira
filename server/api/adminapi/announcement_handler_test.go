@@ -97,8 +97,8 @@ func TestCreateAnnouncementRequiresTenantAdmin(t *testing.T) {
 	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Title:  "メンテナンス告知",
-		Body:   "本日 25:00 からメンテナンスを実施します。",
+		Title:  "Maintenance Notice",
+		Body:   "Maintenance starts today at 25:00.",
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -136,22 +136,22 @@ func TestCreateAnnouncementForSelectedUsers(t *testing.T) {
 			AddRow(user2ID, "USER002", "User Two", "u2@example.com", "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now))
 
 	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
-		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "更新情報", "本文", sqlmock.AnyArg(), json.RawMessage("{}")).
+		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}")).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at"}).
-			AddRow(announcement1ID, tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "更新情報", "本文", "/series/S001", json.RawMessage("{}"), now))
+			AddRow(announcement1ID, tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now))
 
 	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
-		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "更新情報", "本文", sqlmock.AnyArg(), json.RawMessage("{}")).
+		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}")).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at"}).
-			AddRow(announcement2ID, tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "更新情報", "本文", "/series/S001", json.RawMessage("{}"), now))
+			AddRow(announcement2ID, tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now))
 
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
 		Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Title:               "更新情報",
-		Body:                "本文",
+		Title:               "Update",
+		Body:                "Body",
 		LinkUrl:             "/series/S001",
 		AudienceType:        publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS,
 		TargetUserPublicIds: []string{"USER001", "USER002"},
@@ -181,7 +181,7 @@ func TestListAnnouncementsSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantDescQuery)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
-		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "お知らせ", "本文", "/announcements", now))
+		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "Notice", "Body", "/announcements", now))
 
 	resp, err := client.ListAnnouncements(context.Background(), newAnnouncementRequest(tenantID, sessionToken))
 	if err != nil {

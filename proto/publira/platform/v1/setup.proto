@@ -4,12 +4,12 @@ package publira.platform.v1;
 
 option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
 
-// セットアップ状態確認リクエスト
+// Request to check the platform setup status.
 message CheckSetupStatusRequest {}
 
-// セットアップ状態確認レスポンス
+// Response carrying the platform setup status.
 message CheckSetupStatusResponse {
-  // true の場合: 既にセットアップ済み (ユーザーが存在する)
+  // True once the platform has been set up, meaning at least one user exists.
   bool setup_completed = 1;
   // UI locale code (ja, en) the console renders in for a visitor who has not
   // signed in. The login screen has no session to read the platform settings
@@ -22,7 +22,7 @@ message CheckSetupStatusResponse {
   string default_locale = 2;
 }
 
-// 初期管理ユーザー作成リクエスト
+// Request to create the first operator account.
 message CreateInitialUserRequest {
   string name = 1;
   string email = 2;
@@ -33,13 +33,13 @@ message CreateInitialUserRequest {
   string default_locale = 4;
 }
 
-// 初期管理ユーザー作成レスポンス
+// Response returned after the first operator account is created.
 message CreateInitialUserResponse {}
 
-// プラットフォーム初期セットアップサービス (認証不要)
+// Initial platform setup, served without authentication.
 service PlatformSetupService {
-  // セットアップ完了済みかどうかを確認する
+  // Reports whether the platform has already been set up.
   rpc CheckSetupStatus(CheckSetupStatusRequest) returns (CheckSetupStatusResponse) {}
-  // 最初の管理ユーザーを作成する (ユーザー数が0の場合のみ許可)
+  // Creates the first operator account, allowed only while no user exists.
   rpc CreateInitialUser(CreateInitialUserRequest) returns (CreateInitialUserResponse) {}
 }

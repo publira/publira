@@ -90,7 +90,7 @@ func (s *platformServer) ListTenants(
 		}
 	}
 
-	// フィルタパラメータを処理
+	// Build the filter parameters.
 	filterName := strings.TrimSpace(req.Msg.Name)
 	filterPublicID := strings.TrimSpace(req.Msg.PublicId)
 	filterStatus := strings.TrimSpace(req.Msg.Status)

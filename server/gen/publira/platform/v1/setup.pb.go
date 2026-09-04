@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// セットアップ状態確認リクエスト
+// Request to check the platform setup status.
 type CheckSetupStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -58,10 +58,10 @@ func (*CheckSetupStatusRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_setup_proto_rawDescGZIP(), []int{0}
 }
 
-// セットアップ状態確認レスポンス
+// Response carrying the platform setup status.
 type CheckSetupStatusResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// true の場合: 既にセットアップ済み (ユーザーが存在する)
+	// True once the platform has been set up, meaning at least one user exists.
 	SetupCompleted bool `protobuf:"varint,1,opt,name=setup_completed,json=setupCompleted,proto3" json:"setup_completed,omitempty"`
 	// UI locale code (ja, en) the console renders in for a visitor who has not
 	// signed in. The login screen has no session to read the platform settings
@@ -120,7 +120,7 @@ func (x *CheckSetupStatusResponse) GetDefaultLocale() string {
 	return ""
 }
 
-// 初期管理ユーザー作成リクエスト
+// Request to create the first operator account.
 type CreateInitialUserRequest struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Name     string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -192,7 +192,7 @@ func (x *CreateInitialUserRequest) GetDefaultLocale() string {
 	return ""
 }
 
-// 初期管理ユーザー作成レスポンス
+// Response returned after the first operator account is created.
 type CreateInitialUserResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields

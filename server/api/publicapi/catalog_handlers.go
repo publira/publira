@@ -473,7 +473,7 @@ func (s *apiServer) ListPublishedLabels(
 		items = append(items, item)
 	}
 
-	// ラベル画像バリアント情報を取得
+	// Fetch the label image variants.
 	if len(imageIDs) > 0 {
 		variantsByImageID, variantsErr := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
 		if variantsErr != nil {
@@ -620,7 +620,7 @@ func (s *apiServer) GetSeriesDetail(
 		res.Msg.Series.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
 	}
 
-	// ラベル情報を処理
+	// Fill in the label.
 	if row.LabelPublicID.Valid && row.LabelName.Valid {
 		label := &publirattypesv1.Label{
 			PublicId: row.LabelPublicID.String,
@@ -788,7 +788,8 @@ func (s *apiServer) GetEpisodeDetail(
 	return res, nil
 }
 
-// labelEyeCatchVariantsByImageIDs ラベル画像IDのリストからバリアント情報を取得する
+// labelEyeCatchVariantsByImageIDs fetches the variants of the given label
+// images.
 func (s *apiServer) labelEyeCatchVariantsByImageIDs(
 	ctx context.Context,
 	imageIDs []uuid.UUID,

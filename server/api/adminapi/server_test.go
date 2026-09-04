@@ -13,8 +13,9 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// TestAdminHandlerExposesOnlyAdminRoutes は、NewHandler が管理 API (AdminSeriesService, AdminAuthService) だけ
-// 公開し、公開 API (CatalogService, AuthService) は登録しないことを検証する。
+// TestAdminHandlerExposesOnlyAdminRoutes asserts that NewHandler serves the
+// admin API (AdminSeriesService, AdminAuthService) and registers none of the
+// public API (CatalogService, AuthService).
 func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
 	ts := newAdminRouteTestServer(t)
 	t.Cleanup(ts.Close)

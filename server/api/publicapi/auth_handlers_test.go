@@ -89,7 +89,7 @@ func addAnnouncementRow(
 		uuid.NullUUID{},
 		"member_episode_published",
 		title,
-		"最新話が公開されました",
+		"The latest episode is out",
 		"/series/S001/episodes/E001",
 		json.RawMessage("{}"),
 		createdAt,
@@ -133,7 +133,7 @@ func TestAuthListAnnouncementsSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserDescQuery)).
 		WithArgs(userID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
-		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "新着エピソード", now))
+		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "New Episode", now))
 
 	req := newListAnnouncementsRequest(tenantID)
 	req.Msg.Limit = -1
@@ -443,7 +443,7 @@ func TestAuthGetAnnouncement(t *testing.T) {
 
 		mock.ExpectQuery(regexp.QuoteMeta(getAnnouncementForUserQuery)).
 			WithArgs(userID, announcementID, tenantID).
-			WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "新着エピソード", now))
+			WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "New Episode", now))
 
 		resp, err := client.GetAnnouncement(context.Background(), newAuthedPublicRequest(&publirav1.GetAnnouncementRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},

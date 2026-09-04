@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// エンドユーザー情報（プラットフォーム運営者視点）
+// An end user as the platform operator sees them.
 type EndUser struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	PublicId  string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -120,10 +120,10 @@ type ListEndUsersRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
-	// フィルタ条件
-	CreatedAfter  string   `protobuf:"bytes,3,opt,name=created_after,json=createdAfter,proto3" json:"created_after,omitempty"`    // RFC3339形式
+	// Filters.
+	CreatedAfter  string   `protobuf:"bytes,3,opt,name=created_after,json=createdAfter,proto3" json:"created_after,omitempty"`    // RFC 3339
 	Status        string   `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`                                    // active, suspended, inactive
-	CreatedBefore string   `protobuf:"bytes,5,opt,name=created_before,json=createdBefore,proto3" json:"created_before,omitempty"` // RFC3339形式
+	CreatedBefore string   `protobuf:"bytes,5,opt,name=created_before,json=createdBefore,proto3" json:"created_before,omitempty"` // RFC 3339
 	PublicIds     []string `protobuf:"bytes,6,rep,name=public_ids,json=publicIds,proto3" json:"public_ids,omitempty"`
 	// Tenant public_id. Empty means every tenant.
 	TenantPublicId string `protobuf:"bytes,7,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`

@@ -342,9 +342,10 @@ func (x *Label) GetEyeCatchImageVariants() []*SeriesEyeCatchVariant {
 
 type SeriesEyeCatchVariant struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// ラベル形式: "{ratio}_{width}w" (例: "portrait_1200w", "landscape_1600w")
+	// Label format: "{ratio}_{width}w" (for example "portrait_1200w",
+	// "landscape_1600w").
 	Label string `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
-	// 用途種別: portrait / square / landscape / og
+	// Intended use: portrait / square / landscape / og.
 	VariantType   string `protobuf:"bytes,7,opt,name=variant_type,json=variantType,proto3" json:"variant_type,omitempty"`
 	Url           string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
 	ContentType   string `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
