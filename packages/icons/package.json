@@ -82,7 +82,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "lucide-react": "1.38.0"
+    "lucide-react": "1.39.0"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
