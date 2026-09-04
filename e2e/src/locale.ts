@@ -109,16 +109,30 @@ export const storedLocaleCookie = async (
 };
 
 /**
- * The status the server answered with before the browser followed a redirect,
- * or `undefined` when the navigation was answered directly.
+ * The status the server answered the navigation with before the browser
+ * followed a redirect, or `undefined` when it was answered directly.
  *
  * `page.goto` reports the final response, so a redirect that stopped happening
  * would otherwise still pass every assertion about what is on screen.
+ *
+ * `redirectedFrom()` yields one hop, so the chain is walked to its start: what
+ * a caller asserts is the answer to the URL it asked for, not the last hop of
+ * however many the browser then followed.
  */
 export const redirectStatus = async (
   response: Response | null
 ): Promise<number | undefined> => {
-  const redirected = response?.request().redirectedFrom();
-  const first = await redirected?.response();
-  return first?.status();
+  let first = response?.request().redirectedFrom();
+  if (!first) {
+    return undefined;
+  }
+
+  let earlier = first.redirectedFrom();
+  while (earlier) {
+    first = earlier;
+    earlier = first.redirectedFrom();
+  }
+
+  const firstResponse = await first.response();
+  return firstResponse?.status();
 };
