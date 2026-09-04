@@ -8,8 +8,8 @@ import {
 } from "./field-errors";
 
 const schema = z.object({
-  port: z.number().int().min(1, "1 以上で入力してください。"),
-  title: z.string().min(1, "タイトルは必須です。").max(5, "長すぎます。"),
+  port: z.number().int().min(1, "Enter 1 or more."),
+  title: z.string().min(1, "Title is required.").max(5, "Too long."),
 });
 
 const parseFailure = (input: unknown): z.ZodError<z.input<typeof schema>> => {
@@ -26,14 +26,14 @@ describe("toFieldErrors", () => {
     const errors = toFieldErrors(parseFailure({ port: 0, title: "" }));
 
     expect(errors).toEqual({
-      port: "1 以上で入力してください。",
-      title: "タイトルは必須です。",
+      port: "Enter 1 or more.",
+      title: "Title is required.",
     });
   });
 
   it("omits fields that passed", () => {
     expect(toFieldErrors(parseFailure({ port: 587, title: "" }))).toEqual({
-      title: "タイトルは必須です。",
+      title: "Title is required.",
     });
   });
 
@@ -41,15 +41,15 @@ describe("toFieldErrors", () => {
     const multiRule = z.object({
       code: z
         .string()
-        .startsWith("#", "先頭は # です。")
-        .length(7, "7 文字です。"),
+        .startsWith("#", "Must start with #.")
+        .length(7, "Must be 7 characters."),
     });
     const parsed = multiRule.safeParse({ code: "abc" });
     if (parsed.success) {
       throw new Error("expected the schema to reject this input");
     }
 
-    expect(toFieldErrors(parsed.error)).toEqual({ code: "先頭は # です。" });
+    expect(toFieldErrors(parsed.error)).toEqual({ code: "Must start with #." });
   });
 });
 
@@ -58,7 +58,7 @@ describe("toFormErrorMessage", () => {
     const rangeSchema = z
       .object({ from: z.string(), to: z.string() })
       .refine((value) => value.from <= value.to, {
-        message: "終了日は開始日以降にしてください。",
+        message: "The end date must not precede the start date.",
       });
     const parsed = rangeSchema.safeParse({
       from: "2024-03-10",
@@ -68,17 +68,17 @@ describe("toFormErrorMessage", () => {
       throw new Error("expected the schema to reject this input");
     }
 
-    expect(toFormErrorMessage(parsed.error, { locale: "ja" })).toBe(
-      "終了日は開始日以降にしてください。"
+    expect(toFormErrorMessage(parsed.error, { locale: "en" })).toBe(
+      "The end date must not precede the start date."
     );
   });
 
   it("falls back to the first field message", () => {
     expect(
       toFormErrorMessage(parseFailure({ port: 587, title: "" }), {
-        locale: "ja",
+        locale: "en",
       })
-    ).toBe("タイトルは必須です。");
+    ).toBe("Title is required.");
   });
 
   it("uses the shared wording when nothing else is available", () => {
@@ -89,10 +89,10 @@ describe("toFormErrorMessage", () => {
     );
     expect(
       toFormErrorMessage(error, {
-        fallback: "保存できません。",
+        fallback: "Cannot save.",
         locale: "ja",
       })
-    ).toBe("保存できません。");
+    ).toBe("Cannot save.");
   });
 
   it("uses the locale-specific shared wording when asked", () => {

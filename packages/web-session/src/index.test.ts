@@ -121,7 +121,7 @@ describe("web-session", () => {
       expect(() => resolveAuthSecret()).toThrow(/at least 32 bytes/u);
     });
 
-    it("measures the length in bytes, not code units", () => {
+    it("measures a non-ASCII secret in bytes, not code units", () => {
       // 12 characters, 36 UTF-8 bytes: long enough to key A256GCM.
       setSecret("あいうえおかきくけこさし");
 

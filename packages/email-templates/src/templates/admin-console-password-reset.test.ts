@@ -8,7 +8,7 @@ import { adminConsolePasswordResetDataSchema } from "./admin-console-password-re
 const data = {
   expires_at: "2030-01-15T12:00:00Z",
   reset_url: "https://admin.example.test/confirm-password?token=abc",
-  tenant_name: "青灯書房",
+  tenant_name: "Aoto Press",
 };
 
 describe("adminConsolePasswordResetDataSchema", () => {
@@ -60,7 +60,7 @@ describe("AdminConsolePasswordResetEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("青灯書房 管理画面パスワード再設定");
+    expect(result.subject).toBe("Aoto Press 管理画面パスワード再設定");
     expect(result.html).toContain("管理画面パスワードの再設定");
     expect(result.html).toContain(data.reset_url);
     expect(result.html).toContain(
@@ -88,7 +88,7 @@ describe("AdminConsolePasswordResetEmail", () => {
 
     const expires = formatDateTime(data.expires_at, { locale: "en", timeZone });
 
-    expect(result.subject).toBe("青灯書房 admin console password reset");
+    expect(result.subject).toBe("Aoto Press admin console password reset");
     expect(result.html).toContain("Reset your admin console password");
     expect(result.html).toContain(expires);
     expect(expires).not.toBe(

@@ -11,8 +11,11 @@ const data = {
   expires_at: "2030-01-15T12:00:00Z",
   new_email: "new-owner@example.test",
   recipient_kind: "current_email",
-  tenant_name: "青灯書房",
+  tenant_name: "Aoto Press",
 };
+const currentAddressBody =
+  "This change needs confirmation from your current address.";
+const newAddressBody = "This change needs confirmation from your new address.";
 
 describe("adminConsoleEmailChangeConfirmationDataSchema", () => {
   it("accepts the variables the sender fills in", () => {
@@ -83,7 +86,7 @@ describe("AdminConsoleEmailChangeConfirmationEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("青灯書房 管理画面メールアドレス変更確認");
+    expect(result.subject).toBe("Aoto Press 管理画面メールアドレス変更確認");
     expect(result.html).toContain("管理画面メールアドレス変更の確認");
     expect(result.html).toContain(data.confirm_url);
     expect(result.html).toContain(
@@ -114,7 +117,7 @@ describe("AdminConsoleEmailChangeConfirmationEmail", () => {
     const expires = formatDateTime(data.expires_at, { locale: "en", timeZone });
 
     expect(result.subject).toBe(
-      "青灯書房 admin console email address change confirmation"
+      "Aoto Press admin console email address change confirmation"
     );
     expect(result.html).toContain(
       "Confirm your admin console email address change"
@@ -126,17 +129,17 @@ describe("AdminConsoleEmailChangeConfirmationEmail", () => {
   });
 
   it("addresses the side of the change the sender names", async () => {
-    const messages = await loadEmailMessages("ja");
+    const messages = await loadEmailMessages("en");
     const toCurrent = await renderEmail({
       data,
-      locale: "ja",
+      locale: "en",
       messages,
       template: "admin_console_email_change_confirmation",
       timeZone: "Asia/Tokyo",
     });
     const toNew = await renderEmail({
       data: { ...data, recipient_kind: "new_email" },
-      locale: "ja",
+      locale: "en",
       messages,
       template: "admin_console_email_change_confirmation",
       timeZone: "Asia/Tokyo",
@@ -148,11 +151,9 @@ describe("AdminConsoleEmailChangeConfirmationEmail", () => {
       return;
     }
 
-    expect(toCurrent.text).toContain("現在のメールアドレス側の確認が必要です");
-    expect(toCurrent.text).not.toContain(
-      "新しいメールアドレス側の確認が必要です"
-    );
-    expect(toNew.text).toContain("新しいメールアドレス側の確認が必要です");
-    expect(toNew.text).not.toContain("現在のメールアドレス側の確認が必要です");
+    expect(toCurrent.text).toContain(currentAddressBody);
+    expect(toCurrent.text).not.toContain(newAddressBody);
+    expect(toNew.text).toContain(newAddressBody);
+    expect(toNew.text).not.toContain(currentAddressBody);
   });
 });

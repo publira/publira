@@ -6,10 +6,10 @@ import { isTemplateId, resolveEmail, TEMPLATE_IDS } from "./registry";
 import { renderEmail } from "./render";
 
 const sampleData = {
-  action_label: "開く",
+  action_label: "Open",
   action_url: "https://example.com",
-  body: "本文",
-  title: "件名",
+  body: "Body text",
+  title: "Subject line",
 };
 
 describe("TEMPLATE_IDS", () => {
@@ -34,17 +34,17 @@ describe("TEMPLATE_IDS", () => {
 });
 
 describe("resolveEmail", () => {
-  let jaMessages: Messages;
+  let messages: Messages;
 
   beforeAll(async () => {
-    jaMessages = await loadEmailMessages("ja");
+    messages = await loadEmailMessages("en");
   });
 
   it("an unknown template becomes unknown_template", () => {
     const result = resolveEmail({
       data: {},
-      locale: "ja",
-      messages: jaMessages,
+      locale: "en",
+      messages,
       template: "password_reset",
       timeZone: "Asia/Tokyo",
     });
@@ -58,9 +58,9 @@ describe("resolveEmail", () => {
 
   it("invalid data becomes invalid_data", () => {
     const result = resolveEmail({
-      data: { tenant_name: "青灯書房" },
-      locale: "ja",
-      messages: jaMessages,
+      data: { tenant_name: "Aoto Press" },
+      locale: "en",
+      messages,
       template: "tenant_admin_invitation",
       timeZone: "Asia/Tokyo",
     });
@@ -76,8 +76,8 @@ describe("resolveEmail", () => {
   it("an invalid timeZone becomes invalid_data", () => {
     const result = resolveEmail({
       data: sampleData,
-      locale: "ja",
-      messages: jaMessages,
+      locale: "en",
+      messages,
       template: "sample",
       timeZone: "Local",
     });
@@ -93,7 +93,7 @@ describe("resolveEmail", () => {
     const result = resolveEmail({
       data: sampleData,
       locale: "fr",
-      messages: jaMessages,
+      messages,
       template: "sample",
       timeZone: "Asia/Tokyo",
     });
@@ -110,8 +110,8 @@ describe("renderEmail", () => {
   it("a failure comes back without being rendered to HTML", async () => {
     const result = await renderEmail({
       data: {},
-      locale: "ja",
-      messages: await loadEmailMessages("ja"),
+      locale: "en",
+      messages: await loadEmailMessages("en"),
       template: "does_not_exist",
       timeZone: "Asia/Tokyo",
     });

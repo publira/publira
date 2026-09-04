@@ -4,28 +4,10 @@ import { describe, expect, it } from "vitest";
 import { rpcErrorMessage } from "./error-messages";
 import { Code } from "./errors";
 
-const fallback = "保存に失敗しました。時間をおいて再試行してください。";
+const fallback = "Could not save. Please try again later.";
 
 describe("rpcErrorMessage", () => {
   it("returns the shared message for a mapped category", () => {
-    expect(
-      rpcErrorMessage(new ConnectError("x", Code.Unauthenticated), fallback, {
-        locale: "ja",
-      })
-    ).toBe("セッションが無効です。再ログインしてください。");
-    expect(
-      rpcErrorMessage(new ConnectError("x", Code.PermissionDenied), fallback, {
-        locale: "ja",
-      })
-    ).toBe("この操作を行う権限がありません。");
-    expect(
-      rpcErrorMessage(new ConnectError("x", Code.InvalidArgument), fallback, {
-        locale: "ja",
-      })
-    ).toBe("入力内容に誤りがあります。");
-  });
-
-  it("a locale renders the shared categories in that language", () => {
     expect(
       rpcErrorMessage(new ConnectError("x", Code.Unauthenticated), fallback, {
         locale: "en",
@@ -58,6 +40,24 @@ describe("rpcErrorMessage", () => {
     ).toBe("Could not connect to the server. Please try again later.");
   });
 
+  it("ja renders the same categories in Japanese", () => {
+    expect(
+      rpcErrorMessage(new ConnectError("x", Code.Unauthenticated), fallback, {
+        locale: "ja",
+      })
+    ).toBe("セッションが無効です。再ログインしてください。");
+    expect(
+      rpcErrorMessage(new ConnectError("x", Code.PermissionDenied), fallback, {
+        locale: "ja",
+      })
+    ).toBe("この操作を行う権限がありません。");
+    expect(
+      rpcErrorMessage(new ConnectError("x", Code.InvalidArgument), fallback, {
+        locale: "ja",
+      })
+    ).toBe("入力内容に誤りがあります。");
+  });
+
   it("a category without a shared message returns the fallback", () => {
     expect(
       rpcErrorMessage(
@@ -83,9 +83,9 @@ describe("rpcErrorMessage", () => {
       rpcErrorMessage(new ConnectError("x", Code.NotFound), fallback, {
         locale: "en",
         overrides: {
-          "not-found": "指定したエピソードが見つかりません。",
+          "not-found": "That episode could not be found.",
         },
       })
-    ).toBe("指定したエピソードが見つかりません。");
+    ).toBe("That episode could not be found.");
   });
 });

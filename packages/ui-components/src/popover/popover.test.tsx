@@ -14,19 +14,19 @@ describe("Popover", () => {
   it("shows its content in a Portal on the shared surface, and Escape returns to the trigger", () => {
     render(
       <Popover>
-        <PopoverTrigger>言語を選択</PopoverTrigger>
+        <PopoverTrigger>Choose a language</PopoverTrigger>
         <PopoverContent align="end" className="w-48" sideOffset={8}>
-          <PopoverTitle>表示言語</PopoverTitle>
-          <button type="button">日本語</button>
+          <PopoverTitle>Language</PopoverTitle>
+          <button type="button">English</button>
         </PopoverContent>
       </Popover>
     );
 
-    const trigger = screen.getByRole("button", { name: "言語を選択" });
+    const trigger = screen.getByRole("button", { name: "Choose a language" });
     trigger.focus();
     fireEvent.click(trigger);
 
-    const content = screen.getByRole("dialog", { name: "表示言語" });
+    const content = screen.getByRole("dialog", { name: "Language" });
     expect(content.className).toContain("max-w-[calc(100vw-2rem)]");
     expect(content.className).toContain("border-border");
     expect(content.className).toContain("w-48");

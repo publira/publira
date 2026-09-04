@@ -27,14 +27,14 @@ vi.mock("next/link", () => ({
 const renderMenu = (logoutAction = () => {}) =>
   render(
     <SiteLayoutUserMenu>
-      <SiteLayoutUserMenuTrigger ariaLabel="アカウントメニュー" />
+      <SiteLayoutUserMenuTrigger ariaLabel="Account menu" />
       <SiteLayoutUserMenuContent>
-        <SiteLayoutUserMenuMyPageLink href="/ja/my">
-          マイページ
+        <SiteLayoutUserMenuMyPageLink href="/en/my">
+          My Page
         </SiteLayoutUserMenuMyPageLink>
         <SiteLayoutUserMenuSeparator />
-        <SiteLayoutUserMenuLogout action={logoutAction} ariaLabel="ログアウト">
-          ログアウト
+        <SiteLayoutUserMenuLogout action={logoutAction} ariaLabel="Sign out">
+          Sign out
         </SiteLayoutUserMenuLogout>
       </SiteLayoutUserMenuContent>
     </SiteLayoutUserMenu>
@@ -45,20 +45,20 @@ afterEach(cleanup);
 describe("SiteLayoutUserMenu slots", () => {
   it("opening it shows the my-page and sign-out links", () => {
     renderMenu();
-    fireEvent.click(screen.getByRole("button", { name: "アカウントメニュー" }));
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
 
     expect(
-      screen.getByRole("menuitem", { name: "マイページ" }).getAttribute("href")
-    ).toBe("/ja/my");
-    expect(screen.getByRole("menuitem", { name: "ログアウト" })).toBeTruthy();
+      screen.getByRole("menuitem", { name: "My Page" }).getAttribute("href")
+    ).toBe("/en/my");
+    expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeTruthy();
   });
 
   it("the sign-out slot carries the Server Action form", () => {
     const logoutAction = vi.fn();
     renderMenu(logoutAction);
-    fireEvent.click(screen.getByRole("button", { name: "アカウントメニュー" }));
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
 
-    const logout = screen.getByRole("menuitem", { name: "ログアウト" });
+    const logout = screen.getByRole("menuitem", { name: "Sign out" });
     const form = logout.closest("form");
     expect(form).toBeTruthy();
     if (form) {

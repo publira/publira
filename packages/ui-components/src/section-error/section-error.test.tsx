@@ -9,42 +9,42 @@ describe("SectionError", () => {
   it("shows the heading and the description with the alert role", () => {
     render(
       <SectionError
-        description="この操作を行う権限がありません。"
-        title="オペレーター一覧を表示できませんでした"
+        description="You do not have permission to perform this action."
+        title="Could not load the operator list"
       />
     );
 
     expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.getByText("Could not load the operator list")).toBeTruthy();
     expect(
-      screen.getByText("オペレーター一覧を表示できませんでした")
+      screen.getByText("You do not have permission to perform this action.")
     ).toBeTruthy();
-    expect(screen.getByText("この操作を行う権限がありません。")).toBeTruthy();
   });
 
   it("the error ID appears only when a digest is given", () => {
-    const { rerender } = render(<SectionError title="読み込めませんでした" />);
+    const { rerender } = render(<SectionError title="Could not load" />);
 
     expect(screen.queryByText("2870412426")).toBeNull();
 
     rerender(
       <SectionError
-        digest={{ label: "エラー ID:", value: "2870412426" }}
-        title="読み込めませんでした"
+        digest={{ label: "Error ID:", value: "2870412426" }}
+        title="Could not load"
       />
     );
 
     expect(screen.getByText("2870412426")).toBeTruthy();
-    expect(screen.getByText("エラー ID:")).toBeTruthy();
+    expect(screen.getByText("Error ID:")).toBeTruthy();
   });
 
   it("renders actions as they are", () => {
     render(
       <SectionError
-        actions={<button type="button">再試行</button>}
-        title="読み込めませんでした"
+        actions={<button type="button">Try again</button>}
+        title="Could not load"
       />
     );
 
-    expect(screen.getByRole("button", { name: "再試行" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 });

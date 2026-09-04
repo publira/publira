@@ -5,9 +5,9 @@ import { formatSimpleMessage, simpleMessageSyntaxError } from "./mf2";
 describe("simpleMessageSyntaxError", () => {
   it("accepts every shape the catalog is allowed to use", () => {
     for (const source of [
-      "ホーム",
-      "{$name}のロゴ",
-      "{$first}–{$last} / {$total}ページ",
+      "Home",
+      "{$name} logo",
+      "{$first}–{$last} / {$total} pages",
       "\\{ literal braces \\}",
       "{ $count }",
       "100%",
@@ -19,7 +19,7 @@ describe("simpleMessageSyntaxError", () => {
   });
 
   it("rejects the old bare {name} interpolation", () => {
-    expect(simpleMessageSyntaxError("通知、未読{count}件")).toContain(
+    expect(simpleMessageSyntaxError("Notifications, {count} unread")).toContain(
       "literal expressions"
     );
   });
@@ -41,7 +41,7 @@ describe("simpleMessageSyntaxError", () => {
     ).toContain("declarations");
     expect(
       simpleMessageSyntaxError(
-        ".input {$count :number}\n.match $count\none {{1件}}\n* {{{$count}件}}"
+        ".input {$count :number}\n.match $count\none {{1 item}}\n* {{{$count} items}}"
       )
     ).toContain("selection");
   });
@@ -50,13 +50,13 @@ describe("simpleMessageSyntaxError", () => {
 describe("formatSimpleMessage", () => {
   it("substitutes values and stringifies numbers", () => {
     expect(
-      formatSimpleMessage("{$first} / {$total}ページ", { first: 3, total: 12 })
-    ).toBe("3 / 12ページ");
+      formatSimpleMessage("{$first} / {$total} pages", { first: 3, total: 12 })
+    ).toBe("3 / 12 pages");
   });
 
   it("does not localize a number, so the host locale cannot leak in", () => {
-    expect(formatSimpleMessage("{$count}件", { count: 12_345 })).toBe(
-      "12345件"
+    expect(formatSimpleMessage("{$count} items", { count: 12_345 })).toBe(
+      "12345 items"
     );
   });
 
@@ -79,7 +79,7 @@ describe("formatSimpleMessage", () => {
   });
 
   it("returns plain text unchanged", () => {
-    expect(formatSimpleMessage("ホーム", { unused: 1 })).toBe("ホーム");
+    expect(formatSimpleMessage("Home", { unused: 1 })).toBe("Home");
   });
 
   it("throws on a message that is not well-formed MF2", () => {

@@ -7,7 +7,7 @@ import { adminConsoleEmailChangedNoticeDataSchema } from "./admin-console-email-
 const data = {
   new_email: "new-owner@example.test",
   previous_email: "owner@example.test",
-  tenant_name: "青灯書房",
+  tenant_name: "Aoto Press",
 };
 
 describe("adminConsoleEmailChangedNoticeDataSchema", () => {
@@ -49,7 +49,7 @@ describe("AdminConsoleEmailChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("青灯書房 管理画面メールアドレス変更完了");
+    expect(result.subject).toBe("Aoto Press 管理画面メールアドレス変更完了");
     expect(result.html).toContain("管理画面メールアドレス変更の完了");
     expect(result.html).toContain(data.previous_email);
     expect(result.html).toContain(data.new_email);
@@ -72,7 +72,9 @@ describe("AdminConsoleEmailChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("青灯書房 admin console email address changed");
+    expect(result.subject).toBe(
+      "Aoto Press admin console email address changed"
+    );
     expect(result.html).toContain(
       "Your admin console email address was changed"
     );

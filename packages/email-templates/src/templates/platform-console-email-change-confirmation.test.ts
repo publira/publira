@@ -12,6 +12,9 @@ const data = {
   new_email: "new-owner@example.test",
   recipient_kind: "current_email",
 };
+const currentAddressBody =
+  "This change needs confirmation from your current address.";
+const newAddressBody = "This change needs confirmation from your new address.";
 
 describe("platformConsoleEmailChangeConfirmationDataSchema", () => {
   it("accepts the variables the sender fills in", () => {
@@ -117,17 +120,17 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
   });
 
   it("addresses the side of the change the sender names", async () => {
-    const messages = await loadEmailMessages("ja");
+    const messages = await loadEmailMessages("en");
     const toCurrent = await renderEmail({
       data,
-      locale: "ja",
+      locale: "en",
       messages,
       template: "platform_console_email_change_confirmation",
       timeZone: "Asia/Tokyo",
     });
     const toNew = await renderEmail({
       data: { ...data, recipient_kind: "new_email" },
-      locale: "ja",
+      locale: "en",
       messages,
       template: "platform_console_email_change_confirmation",
       timeZone: "Asia/Tokyo",
@@ -139,11 +142,9 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
       return;
     }
 
-    expect(toCurrent.text).toContain("現在のメールアドレス側の確認が必要です");
-    expect(toCurrent.text).not.toContain(
-      "新しいメールアドレス側の確認が必要です"
-    );
-    expect(toNew.text).toContain("新しいメールアドレス側の確認が必要です");
-    expect(toNew.text).not.toContain("現在のメールアドレス側の確認が必要です");
+    expect(toCurrent.text).toContain(currentAddressBody);
+    expect(toCurrent.text).not.toContain(newAddressBody);
+    expect(toNew.text).toContain(newAddressBody);
+    expect(toNew.text).not.toContain(currentAddressBody);
   });
 });

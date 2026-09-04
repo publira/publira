@@ -15,44 +15,45 @@ const ActionForm = () => {
   return (
     <form action={formAction}>
       <FormMessage variant={count % 2 === 0 ? "success" : "destructive"}>
-        {`${count} 回目のメッセージ`}
+        {`Message ${count}`}
       </FormMessage>
-      <button type="submit">送信</button>
+      <button type="submit">Submit</button>
     </form>
   );
 };
 
 describe("FormMessage", () => {
   it("shows the status role and the info icon by default", () => {
-    render(<FormMessage>保存しました</FormMessage>);
+    render(<FormMessage>Saved</FormMessage>);
 
     expect(screen.getByRole("status")).toBeTruthy();
-    expect(screen.getByText("保存しました")).toBeTruthy();
+    expect(screen.getByText("Saved")).toBeTruthy();
     expect(screen.getByText("i")).toBeTruthy();
   });
 
   it("shows the icon for the success variant", () => {
-    render(<FormMessage variant="success">成功</FormMessage>);
+    render(<FormMessage variant="success">Done</FormMessage>);
 
     expect(screen.getByText("✓")).toBeTruthy();
-    expect(screen.getByText("成功")).toBeTruthy();
+    expect(screen.getByText("Done")).toBeTruthy();
   });
 
   it("the body updates across consecutive Action submissions", async () => {
-    // React は Action の完了後にフォームを reset する。resettable element の
-    // <output> だとその reset で本文が畳まれ、2 回目以降の更新が DOM に届かない。
+    // React resets the form once the Action settles. With <output>, a
+    // resettable element, that reset collapses the body, so the second and
+    // later updates never reach the DOM.
     render(<ActionForm />);
 
-    const submit = screen.getByRole("button", { name: "送信" });
+    const submit = screen.getByRole("button", { name: "Submit" });
 
     fireEvent.click(submit);
     await waitFor(() => {
-      expect(screen.getByText("1 回目のメッセージ")).toBeTruthy();
+      expect(screen.getByText("Message 1")).toBeTruthy();
     });
 
     fireEvent.click(submit);
     await waitFor(() => {
-      expect(screen.getByText("2 回目のメッセージ")).toBeTruthy();
+      expect(screen.getByText("Message 2")).toBeTruthy();
     });
   });
 });
