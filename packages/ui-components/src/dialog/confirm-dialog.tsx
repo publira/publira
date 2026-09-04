@@ -21,16 +21,16 @@ export interface ConfirmDialogProps {
   trigger: ReactElement;
   title: ReactNode;
   description?: ReactNode;
-  cancelText?: ReactNode;
-  actionText?: ReactNode;
+  cancelText: ReactNode;
+  actionText: ReactNode;
   actionVariant?: NonNullable<ButtonProps["variant"]>;
   onAction?: () => void;
 }
 
 export const ConfirmDialog = ({
-  actionText = "実行",
+  actionText,
   actionVariant = "destructive",
-  cancelText = "キャンセル",
+  cancelText,
   description,
   onAction,
   title,

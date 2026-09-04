@@ -49,9 +49,10 @@ const NotificationManagerData = async ({
   searchParams,
 }: Pick<NotificationsPageProps, "searchParams">) => {
   const { token } = parseNotificationsSearchParams(await searchParams);
+  const locale = await getPlatformLocale();
   const [listResult, unreadResult, timeZone] = await Promise.all([
-    listNotifications({ token }),
-    countUnreadNotifications(),
+    listNotifications(locale, { token }),
+    countUnreadNotifications(locale),
     getPlatformDisplayTimeZone(),
   ]);
   await redirectToLoginIfSessionRejected(listResult, unreadResult);
@@ -101,7 +102,7 @@ const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="platform.notifications.list_failed" />
+            <Message message="platform.notifications.list_error" />
           </Suspense>
         }
       >

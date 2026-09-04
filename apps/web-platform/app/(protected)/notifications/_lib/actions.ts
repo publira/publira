@@ -1,12 +1,14 @@
 "use server";
 
-import { validationErrorMessage } from "@publira/utils/field-errors";
+import { getMessage } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
 import { withPlatformSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { getPlatformLocale } from "#lib/locale";
 import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
@@ -24,6 +26,8 @@ export const markNotificationAsReadAction = async (
   formData: FormData
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
+  const locale = await getPlatformLocale();
+  const messages = sharedCatalog(locale);
   const parsed = markOneSchema.safeParse(
     toFormDataInput(formData, {
       notificationId: { kind: "value", name: "notification_id" },
@@ -31,13 +35,13 @@ export const markNotificationAsReadAction = async (
   );
   if (!parsed.success) {
     return {
-      message: validationErrorMessage("ja"),
+      message: getMessage(messages, "errors.validation"),
       ok: false,
     };
   }
 
   const result = await withPlatformSessionReauth(() =>
-    markNotificationAsRead(parsed.data)
+    markNotificationAsRead(parsed.data, locale)
   );
   if (!result.ok) {
     return {
@@ -48,7 +52,7 @@ export const markNotificationAsReadAction = async (
 
   updateTag(notificationsCacheTag);
   return {
-    message: "既読にしました。",
+    message: getMessage(messages, "platform.notifications.mark_read_success"),
     ok: true,
   };
 };
@@ -58,8 +62,10 @@ export const markAllNotificationsAsReadAction = async (
   _formData: FormData
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
+  const locale = await getPlatformLocale();
+  const messages = sharedCatalog(locale);
   const result = await withPlatformSessionReauth(() =>
-    markAllNotificationsAsRead()
+    markAllNotificationsAsRead(locale)
   );
   if (!result.ok) {
     return {
@@ -70,7 +76,10 @@ export const markAllNotificationsAsReadAction = async (
 
   updateTag(notificationsCacheTag);
   return {
-    message: "未読をすべて既読にしました。",
+    message: getMessage(
+      messages,
+      "platform.notifications.mark_all_read_success"
+    ),
     ok: true,
   };
 };

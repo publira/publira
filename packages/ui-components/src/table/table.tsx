@@ -56,7 +56,8 @@ export const TableCell = ({ className, ...props }: TdProps) => (
 
 export interface TableEmptyRowProps {
   colSpan: number;
-  children?: ReactNode;
+  /** What the empty table says, in the caller's locale. */
+  children: ReactNode;
 }
 
 export const TableEmptyRow = ({ children, colSpan }: TableEmptyRowProps) => (
@@ -65,7 +66,7 @@ export const TableEmptyRow = ({ children, colSpan }: TableEmptyRowProps) => (
       className="py-10 text-center text-sm text-muted-foreground"
       colSpan={colSpan}
     >
-      {children ?? "データがありません"}
+      {children}
     </TableCell>
   </TableRow>
 );

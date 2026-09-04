@@ -88,7 +88,7 @@ const renderNotificationListBody = ({
         description={listErrorMessage}
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="platform.notifications.list_failed" />
+            <Message message="platform.notifications.list_error" />
           </Suspense>
         }
       />

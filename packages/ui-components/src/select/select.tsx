@@ -24,7 +24,7 @@ export const Select = ({
   className,
   id,
   items,
-  placeholder = "選択してください",
+  placeholder,
   ...props
 }: SelectProps) => {
   const safeItems = items ?? [];

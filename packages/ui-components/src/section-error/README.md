@@ -10,8 +10,8 @@ import { SectionError } from "@publira/ui-components";
 export default function Example() {
   return (
     <SectionError
-      description="この操作を行う権限がありません。"
-      title="オペレーター一覧を表示できませんでした"
+      description="You do not have permission to perform this action."
+      title="Could not display the operators"
     />
   );
 }
@@ -19,7 +19,7 @@ export default function Example() {
 
 ## sectionErrorFallback
 
-The fallback to pass to `catchError` from `next/error`. It renders a `SectionError` with a retry button and the `error.digest`. The `catchError` call itself belongs in each app's `components/section-error-catch.tsx`, and what a screen uses is the `components/section-error-boundary.tsx` that wraps it and resolves the guidance text, the retry button label, and the error ID label from the catalog.
+The fallback to pass to `catchError` from `next/error`. It renders a `SectionError` with a retry button and the `error.digest`. `SectionError` takes that digest as `{ label, value }`, so a digest can never reach the screen without the label that introduces it — this package holds no copy of its own to fall back on. The `catchError` call itself belongs in each app's `components/section-error-catch.tsx`, and what a screen uses is the `components/section-error-boundary.tsx` that wraps it and resolves the guidance text, the retry button label, and the error ID label from the catalog.
 
 ```tsx
 "use client";
@@ -33,7 +33,7 @@ export const SectionErrorCatch = catchError(sectionErrorFallback);
 Place it outside the `<Suspense>`, so the section's skeleton comes back while the retry runs.
 
 ```tsx
-<SectionErrorBoundary title="おすすめ作品を表示できませんでした">
+<SectionErrorBoundary title="Could not display the recommendations">
   <Suspense fallback={<CardGridSkeleton />}>
     <RecommendedSeriesSection />
   </Suspense>

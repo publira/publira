@@ -50,6 +50,7 @@ export const ActorFilterCombobox = ({
         emptyMessage={getMessage(messages, "admin.audit.filter.actor_empty")}
         items={normalizedItems}
         onValueChange={handleValueChange}
+        removeLabel={getMessage(messages, "admin.audit.filter.actor_remove")}
         searchPlaceholder={getMessage(
           messages,
           "admin.audit.filter.actor_placeholder"

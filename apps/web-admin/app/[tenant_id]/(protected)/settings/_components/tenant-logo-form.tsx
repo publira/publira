@@ -138,6 +138,7 @@ export const TenantLogoForm = ({
                   "admin.settings.delete_action"
                 )}
                 actionVariant="destructive"
+                cancelText={getMessage(messages, "admin.common.cancel")}
                 description={getMessage(
                   messages,
                   "admin.settings.logo.delete_description"

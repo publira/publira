@@ -14,9 +14,10 @@ export interface ComboboxProps {
   items: readonly ComboboxItem[];
   value: string;
   onValueChange: (nextValue: string) => void;
+  /** Shown in the empty popup when nothing matches what was typed. */
+  emptyMessage: string;
   id?: string;
   placeholder?: string;
-  emptyMessage?: string;
   disabled?: boolean;
   className?: string;
 }
@@ -25,9 +26,9 @@ export const Combobox = ({
   items,
   value,
   onValueChange,
+  emptyMessage,
   id,
-  placeholder = "検索",
-  emptyMessage = "一致する項目が見つかりません。",
+  placeholder,
   disabled,
   className,
 }: ComboboxProps) => {

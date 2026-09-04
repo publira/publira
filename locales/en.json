@@ -180,7 +180,8 @@
         "actor_placeholder": "Search actors",
         "actor_empty": "No actor matches.",
         "apply": "Apply",
-        "reset": "Reset"
+        "reset": "Reset",
+        "actor_remove": "Remove actor"
       },
       "actions": {
         "all": "All",
@@ -393,7 +394,8 @@
         "tenant_member": "Member",
         "tenant_owner": "Owner",
         "unset": "No role"
-      }
+      },
+      "cancel": "Cancel"
     },
     "creators": {
       "detail_error": "Could not display the author",
@@ -689,7 +691,8 @@
           "created_at": "Created",
           "published_at": "Published",
           "actions": "Actions"
-        }
+        },
+        "version_option": "v{$version} · {$status}"
       }
     },
     "series": {
@@ -752,7 +755,9 @@
         "eye_catch_preview_alt": "Uploaded image preview",
         "eye_catch_preview_empty": "The selected image will appear here.",
         "eye_catch_description": "Select a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px. Saving generates purpose-specific variants (3:4 / 1:1 / 16:9 / OG) and device sizes.",
-        "eye_catch_update": "Update cover image"
+        "eye_catch_update": "Update cover image",
+        "creators_no_match": "No matching creators found.",
+        "creators_remove": "Remove creator"
       },
       "validation": {
         "label_required": "A label is required.",
@@ -2191,7 +2196,7 @@
       "empty_page_title": "There are no notifications to show on this page.",
       "empty_title": "No notifications yet.",
       "heading": "Notifications",
-      "list_failed": "Could not display notifications",
+      "list_error": "Could not display notifications",
       "menu_more": "View all",
       "mark_all_read": "Mark all as read",
       "mark_read": "Mark as read",
@@ -2202,7 +2207,24 @@
       "per_page": "Showing up to {$count} per page, newest first.",
       "read": "Read",
       "title": "Notifications",
-      "unread": "Unread"
+      "unread": "Unread",
+      "count_failed": "Could not load the unread count. Please try again later.",
+      "list_failed": "Could not load your notifications. Please try again later.",
+      "mark_all_read_failed": "Could not mark every notification as read. Please try again later.",
+      "mark_all_read_success": "Marked all notifications as read.",
+      "mark_read_failed": "Could not mark the notification as read. Please try again later.",
+      "mark_read_success": "Marked as read.",
+      "events": {
+        "publish_failed_description": "{$subject} could not be published.",
+        "publish_failed_description_tenant": "{$subject} could not be published for tenant “{$tenant}”.",
+        "publish_failed_title": "An episode could not be published",
+        "subject_episode": "“{$episode}”",
+        "subject_in_series": "“{$episode}” ({$series})",
+        "subject_series": "an episode of “{$series}”",
+        "subject_unnamed": "the scheduled episode",
+        "unknown_description": "No further details are available.",
+        "unknown_title": "Notification"
+      }
     },
     "settings": {
       "account_description": "Manage the signed-in operator account.",

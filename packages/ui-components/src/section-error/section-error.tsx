@@ -5,8 +5,27 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 type DivProps = Omit<ComponentPropsWithoutRef<"div">, "title">;
 
+/**
+ * The digest and the label that introduces it, as one prop.
+ *
+ * They travel together because this package holds no copy of its own: a caller
+ * that has a digest to show is the only one that can word the prefix in the
+ * reader's language, so the type makes showing one without its label
+ * impossible rather than falling back to a fixed language.
+ */
+export interface SectionErrorDigest {
+  /** Prefix shown before `value`, such as "Error ID:". */
+  label: ReactNode;
+  /**
+   * `error.digest` from the boundary that caught the failure. Server Component
+   * errors are stripped of their message before they reach the client, so the
+   * digest is the only handle a reader can quote to match the server log.
+   */
+  value: string;
+}
+
 export type SectionErrorProps = DivProps & {
-  /** Recovery affordance — a 再試行 button from an error boundary, a link out. */
+  /** Recovery affordance — a retry button from an error boundary, a link out. */
   actions?: ReactNode;
   /**
    * Why the section is missing, in the reader's terms. An error boundary passes
@@ -14,14 +33,7 @@ export type SectionErrorProps = DivProps & {
    * `rpcErrorMessage` produced for it.
    */
   description?: ReactNode;
-  /**
-   * `error.digest` from the boundary that caught the failure. Server Component
-   * errors are stripped of their message before they reach the client, so the
-   * digest is the only handle a reader can quote to match the server log.
-   */
-  digest?: string;
-  /** Prefix shown before `digest`. Defaults to the Japanese console copy. */
-  digestLabel?: ReactNode;
+  digest?: SectionErrorDigest;
   title: ReactNode;
 };
 
@@ -46,7 +58,6 @@ export const SectionError = ({
   className,
   description,
   digest,
-  digestLabel = "エラー ID:",
   title,
   ...props
 }: SectionErrorProps) => (
@@ -67,7 +78,7 @@ export const SectionError = ({
     {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
     {digest ? (
       <p className="text-xs text-muted-foreground">
-        {digestLabel} <code className="font-mono">{digest}</code>
+        {digest.label} <code className="font-mono">{digest.value}</code>
       </p>
     ) : null}
   </div>

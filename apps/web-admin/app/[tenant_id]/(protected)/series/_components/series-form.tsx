@@ -115,9 +115,17 @@ const CreatorField = ({
           </FieldDescription>
         ) : (
           <MultiCombobox
+            emptyMessage={getMessage(
+              messages,
+              "admin.series.form.creators_no_match"
+            )}
             id={comboboxId}
             items={creatorItems}
             onValueChange={onChange}
+            removeLabel={getMessage(
+              messages,
+              "admin.series.form.creators_remove"
+            )}
             searchPlaceholder={getMessage(
               messages,
               "admin.series.form.creators_search"

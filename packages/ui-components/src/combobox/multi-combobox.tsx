@@ -15,9 +15,12 @@ export interface MultiComboboxProps {
   items: readonly MultiComboboxItem[];
   value: readonly string[];
   onValueChange: (nextValue: string[]) => void;
+  /** Shown in the empty popup when nothing matches what was typed. */
+  emptyMessage: string;
+  /** Accessible name of the button that drops one selected chip. */
+  removeLabel: string;
   id?: string;
   searchPlaceholder?: string;
-  emptyMessage?: string;
   disabled?: boolean;
   className?: string;
 }
@@ -26,9 +29,10 @@ export const MultiCombobox = ({
   items,
   value,
   onValueChange,
+  emptyMessage,
+  removeLabel,
   id,
-  searchPlaceholder = "検索",
-  emptyMessage = "一致する項目が見つかりません。",
+  searchPlaceholder,
   disabled,
   className,
 }: MultiComboboxProps) => {
@@ -92,7 +96,7 @@ export const MultiCombobox = ({
                   >
                     {item.label}
                     <BaseCombobox.ChipRemove
-                      aria-label="削除"
+                      aria-label={removeLabel}
                       className="rounded p-0.5 hover:bg-background"
                     >
                       <CloseIcon className="h-3 w-3" />

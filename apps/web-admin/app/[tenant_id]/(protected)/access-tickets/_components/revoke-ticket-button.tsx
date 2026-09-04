@@ -58,6 +58,7 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
           "admin.access_tickets.revoke_confirm_action"
         )}
         actionVariant="destructive"
+        cancelText={getMessage(messages, "admin.common.cancel")}
         description={getMessage(
           messages,
           "admin.access_tickets.revoke_confirm_description"

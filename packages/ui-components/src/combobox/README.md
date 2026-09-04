@@ -15,8 +15,8 @@ import {
 import { useState } from "react";
 
 const items = [
-  { label: "りんご", value: "apple" },
-  { label: "みかん", value: "orange" },
+  { label: "Apple", value: "apple" },
+  { label: "Orange", value: "orange" },
 ];
 
 export default function Example() {
@@ -26,18 +26,25 @@ export default function Example() {
   return (
     <>
       <Field>
-        <FieldLabel>レーベル</FieldLabel>
+        <FieldLabel>Label</FieldLabel>
         <FieldContent>
-          <Combobox items={items} onValueChange={setLabel} value={label} />
+          <Combobox
+            emptyMessage="No matching items."
+            items={items}
+            onValueChange={setLabel}
+            value={label}
+          />
         </FieldContent>
       </Field>
 
       <Field>
-        <FieldLabel>クリエイター</FieldLabel>
+        <FieldLabel>Creators</FieldLabel>
         <FieldContent>
           <MultiCombobox
+            emptyMessage="No matching items."
             items={items}
             onValueChange={setCreators}
+            removeLabel="Remove"
             value={creators}
           />
         </FieldContent>
@@ -46,6 +53,8 @@ export default function Example() {
   );
 }
 ```
+
+The copy props are required and hold no default: this package is shared by apps that resolve their locale in different ways, so it cannot read one itself and a default here would word part of the control in a fixed language. Resolve each string from the caller's catalog.
 
 ## Subpath import
 
@@ -60,8 +69,9 @@ import { Combobox, MultiCombobox } from "@publira/ui-components/combobox";
 | `items` | `{ label: string; value: string }[]` | Required | The available options |
 | `value` | `string` / `string[]` | Required | The selected value. `MultiCombobox` takes an array |
 | `onValueChange` | `(next) => void` | Required | Called when the selection changes |
+| `emptyMessage` | `string` | Required | Shown when nothing matches |
+| `removeLabel` | `string` | Required (`MultiCombobox`) | Accessible name of the button that drops one selected chip |
 | `id` | `string` | Generated | The id of the input. When omitted, it is associated with `FieldLabel` automatically |
-| `placeholder` / `searchPlaceholder` | `string` | `"検索"` | Placeholder shown while nothing is selected |
-| `emptyMessage` | `string` | `"一致する項目が見つかりません。"` | Shown when nothing matches |
+| `placeholder` / `searchPlaceholder` | `string` | — | Placeholder shown while nothing is selected |
 | `disabled` | `boolean` | — | Disable the control |
 | `className` | `string` | — | className of the input (of the input group for `MultiCombobox`) |

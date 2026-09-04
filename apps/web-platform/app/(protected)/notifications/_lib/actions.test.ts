@@ -18,6 +18,10 @@ vi.mock("next/cache", () => ({
   updateTag: mockUpdateTag,
 }));
 
+vi.mock("#lib/locale", () => ({
+  getPlatformLocale: () => Promise.resolve("ja"),
+}));
+
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/api-client", () => ({
@@ -59,9 +63,10 @@ describe("notification actions", () => {
     );
 
     expect(result).toEqual({ message: "既読にしました。", ok: true });
-    expect(mockMarkNotificationAsRead).toHaveBeenCalledWith({
-      notificationId,
-    });
+    expect(mockMarkNotificationAsRead).toHaveBeenCalledWith(
+      { notificationId },
+      "ja"
+    );
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:notifications");
   });
 
@@ -93,7 +98,7 @@ describe("notification actions", () => {
       message: "未読をすべて既読にしました。",
       ok: true,
     });
-    expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith();
+    expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith("ja");
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:notifications");
   });
 
