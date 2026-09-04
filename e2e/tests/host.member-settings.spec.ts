@@ -63,16 +63,12 @@ const emailChangeTokenCount = (): string =>
  * starting values back. `mode: "serial"` stops a failed write from being read
  * back as a pass by the test after it.
  *
- * `/settings/security` requests an email change rather than a password change,
- * and its success path ends in an SMTP send. The seeded settings name the Dev
- * Container's `mailpit`, a host that resolves only there and never on the CI
- * runner, so that path would pass here and fail in **Test / E2E** — and the
- * confirmation tokens it mails are stored hashed, so the round trip could not
- * be finished from the database either. What is asserted instead is the gate
- * in front of the send: a wrong current password is refused, the address stays
- * put, and no change token is left behind. Covering the round trip needs a
- * mail path the E2E stack owns — see
- * https://github.com/publira/publira/issues/1490.
+ * `/settings/security` requests an email change rather than a password change.
+ * What is asserted here is the gate in front of the send: a wrong current
+ * password is refused, the address stays put, and no change token is left
+ * behind. The round trip a valid request starts — the two confirmation links
+ * and the address the account ends up signing in with — belongs to
+ * `host.email-change.spec.ts`, which owns an account of its own to move.
  */
 test.describe("web-host member settings", () => {
   test.describe.configure({ mode: "serial" });

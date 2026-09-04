@@ -66,6 +66,18 @@ export const WEB_PLATFORM_BASE_URL = envUrl(
   "http://platform.localhost:4100"
 );
 
+/**
+ * Mailpit's HTTP API (the `mailpit` service in `e2e/compose.yaml`).
+ *
+ * A confirmation token is stored hashed, so the link a flow mailed is the only
+ * readable form of it: a spec that finishes such a round trip reads the message
+ * back from here.
+ */
+export const MAILPIT_BASE_URL = envUrl(
+  "E2E_MAILPIT_BASE_URL",
+  "http://127.0.0.1:8026"
+);
+
 /** Public API gRPC/Connect origin used by web-host (readyz probe target). */
 export const PUBLIC_API_BASE_URL = envUrl(
   "E2E_PUBLIC_API_BASE_URL",

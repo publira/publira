@@ -18,6 +18,8 @@ export COMPOSE_FILE="${COMPOSE_FILE:-${E2E_DIR}/compose.yaml}"
 export E2E_POSTGRES_PORT="${E2E_POSTGRES_PORT:-5433}"
 export E2E_REDIS_PORT="${E2E_REDIS_PORT:-6380}"
 export E2E_RUSTFS_PORT="${E2E_RUSTFS_PORT:-9003}"
+export E2E_MAILPIT_SMTP_PORT="${E2E_MAILPIT_SMTP_PORT:-1026}"
+export E2E_MAILPIT_HTTP_PORT="${E2E_MAILPIT_HTTP_PORT:-8026}"
 
 export E2E_WEB_HOST_PORT="${E2E_WEB_HOST_PORT:-3000}"
 export E2E_WEB_ADMIN_PORT="${E2E_WEB_ADMIN_PORT:-4000}"
@@ -64,6 +66,9 @@ export E2E_PLATFORM_API_BASE_URL="${E2E_PLATFORM_API_BASE_URL:-http://127.0.0.1:
 # Same web-host, reached through the edge. Only the viewer performance suite
 # uses it, because it is the only one that needs `/images` to resolve.
 export E2E_WEB_HOST_EDGE_BASE_URL="${E2E_WEB_HOST_EDGE_BASE_URL:-http://localhost:${E2E_EDGE_PORT}}"
+# Mailpit's HTTP API. A spec reads the confirmation link out of the message a
+# flow mailed, because the database keeps only the token's hash.
+export E2E_MAILPIT_BASE_URL="${E2E_MAILPIT_BASE_URL:-http://127.0.0.1:${E2E_MAILPIT_HTTP_PORT}}"
 
 # publish-episodes interval (seconds). Short so scheduled episodes can land in
 # the same Playwright run without multi-minute waits.
@@ -115,6 +120,8 @@ else
     [[ "${E2E_POSTGRES_PORT}" != "5433" ]] ||
     [[ "${E2E_REDIS_PORT}" != "6380" ]] ||
     [[ "${E2E_RUSTFS_PORT}" != "9003" ]] ||
+    [[ "${E2E_MAILPIT_SMTP_PORT}" != "1026" ]] ||
+    [[ "${E2E_MAILPIT_HTTP_PORT}" != "8026" ]] ||
     [[ "${E2E_WEB_HOST_PORT}" != "3000" ]] ||
     [[ "${E2E_WEB_ADMIN_PORT}" != "4000" ]] ||
     [[ "${E2E_WEB_PLATFORM_PORT}" != "4100" ]] ||
@@ -134,7 +141,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-s3${E2E_RUSTFS_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}-ow${E2E_OUTBOX_WORKER_PORT}-img${E2E_IMAGE_SERVER_PORT}-edge${E2E_EDGE_PORT}"
+    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-s3${E2E_RUSTFS_PORT}-mp${E2E_MAILPIT_SMTP_PORT}-${E2E_MAILPIT_HTTP_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}-ow${E2E_OUTBOX_WORKER_PORT}-img${E2E_IMAGE_SERVER_PORT}-edge${E2E_EDGE_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi

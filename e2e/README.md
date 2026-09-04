@@ -17,7 +17,7 @@ Development bootstrap, from empty database volumes through `task setup` and all 
   sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
   ```
 
-The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8001` / `8101` (admin API), `8002` / `8102` (platform API), `8003` (outbox worker), `8200` (image-server), `5433` (E2E Postgres), `6380` (E2E Redis), and `9003` (E2E RustFS / S3).
+The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8001` / `8101` (admin API), `8002` / `8102` (platform API), `8003` (outbox worker), `8200` (image-server), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), and `1026` / `8026` (E2E Mailpit SMTP / API).
 
 PIDs and logs default to `e2e/.run/`. When `E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
@@ -37,8 +37,8 @@ This always tears down app processes and compose volumes, including on failure o
 | Command | Purpose |
 | --- | --- |
 | `task e2e:prepare` | Build server binaries and web apps; install Playwright Chromium. |
-| `task e2e:up` | Start Postgres, Redis, RustFS, and the Traefik edge only. |
-| `task e2e:db` | Migrate, apply development seed, create the S3 bucket (`task storage:init`), and seed the viewer's page fixtures. |
+| `task e2e:up` | Start Postgres, Redis, RustFS, Mailpit, and the Traefik edge only. |
+| `task e2e:db` | Migrate, apply development seed, point the seeded SMTP settings at the E2E Mailpit, create the S3 bucket (`task storage:init`), and seed the viewer's page fixtures. |
 | `task e2e:start-apps` | Start APIs, `publish-episodes`, outbox worker, image-server, and the three web apps in the background. |
 | `bash e2e/scripts/{api-server,admin-api-server,platform-api-server}.sh <start\|start-wait\|stop>` | Operate one API server for outage scenarios. |
 | `bash e2e/scripts/image-server.sh <start\|start-wait\|stop>` | Operate image-server on its own. |
@@ -65,7 +65,7 @@ For Next.js HMR during development, use `E2E_WEB_MODE=dev task e2e`; CI does not
 e2e/
 ├── bootstrap/             # Development bootstrap check (separate lifecycle, no Playwright)
 ├── routing/               # Dev Container Traefik check (separate lifecycle, no Playwright)
-├── compose.yaml           # postgres + redis + rustfs + traefik (project: publira-e2e)
+├── compose.yaml           # postgres + redis + rustfs + mailpit + traefik (project: publira-e2e)
 ├── fixtures/              # binary test data (viewer page images, eye-catch sources)
 ├── playwright.config.ts
 ├── scripts/               # lifecycle, API controls, readiness, test, and locking helpers
@@ -73,9 +73,15 @@ e2e/
 └── tests/                 # catalogue, admin, host, platform, and health scenarios
 ```
 
-- **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), RustFS (S3-compatible, path-style, bucket `publira`), and Traefik.
+- **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), RustFS (S3-compatible, path-style, bucket `publira`), Mailpit (SMTP sink), and Traefik.
 - **Host processes:** API, admin API, platform API, batch `publish-episodes`, outbox worker, image-server, and standalone `web-host`, `web-admin`, and `web-platform` (`node server.js`).
 - **Seed:** development `task db:setup`: public domain `localhost`, admin domain `admin.localhost`, tenant `Seed Tenant`, and platform user `platform@example.com`. `task e2e:db` then runs `scripts/seed-viewer-pages.sh`, which applies `db/seeds/scenarios/050_viewer_pages.sql` and uploads `fixtures/viewer-pages/*.jpg` to the object keys those rows name, giving `Seed Episode 001-02` a body the canvas viewer can draw. It is deliberately not the series' first episode: 001-01 is the one other suites reach for, and mobile's live integration test reads its empty state as proof of a working round trip.
+
+### Mail
+
+The `mailpit` service is the stack's SMTP sink: intake on `E2E_MAILPIT_SMTP_PORT` (default `1026`), messages on `E2E_MAILPIT_HTTP_PORT` (default `8026`). `task e2e:db` points the platform and tenant SMTP settings at that intake, so what the API servers send lands there.
+
+`src/mail.ts` reads it back over that API, at the origin `MAILPIT_BASE_URL` in `src/urls.ts` names (`E2E_MAILPIT_BASE_URL`): `waitForMessageTo(recipient)` returns the newest message for one address, `clearMessagesTo(recipient)` deletes that address's mail, and `tokenFromLink(message, pathname)` returns the `token` query value of the link whose path matches.
 
 ### The edge
 
@@ -102,7 +108,7 @@ A spec that changes a stored setting the whole console reads gets an isolated pr
 | Readiness | `readiness failed: <name>` in logs; Playwright does not start. |
 | Playwright | `Playwright tests failed`; inspect `test-results/`, `playwright-report/`, and `.run/logs/`. |
 
-`wait-ready` verifies RustFS on `:9003/health`, public/admin/platform API readiness on `:8100`–`:8102`, image-server on `:8200/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-host's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, and RustFS.
+`wait-ready` verifies RustFS on `:9003/health`, public/admin/platform API readiness on `:8100`–`:8102`, image-server on `:8200/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-host's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, RustFS, and Mailpit.
 
 ## Viewer rendering performance
 
@@ -132,7 +138,7 @@ Each measurement is attached to the test result as a `viewer-performance:<metric
 5. Run `task e2e`, or keep the stack running and use `task e2e:test`.
 6. Changes to relevant paths run **Test / E2E**. Changes only in `e2e/routing/**` run **Test / Routing** (`task e2e:routing`) without Playwright.
 
-Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, the member area's My Page and `/settings` tabs, web-host and web-admin authentication and publishing, uploading a series' and a label's eye-catch and replacing one aspect ratio of it, platform authentication and tenant operations, reading an episode from its first page to its last, UI locale switching in all three apps, and the canvas viewer's rendering budget. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`; the member area uses `070_member_settings.sql`; locale switching uses `080_locale_switching.sql`; the viewer's pages come from `050_viewer_pages.sql`, which `task e2e:db` applies for every run rather than a suite applying it for itself. The eye-catch suite needs no scenario seed: it creates the series or label it uploads to through the console and removes it afterwards, and its source images are `fixtures/eye-catch/*.jpg`.
+Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, the member area's My Page and `/settings` tabs, the email address change round trip, web-host and web-admin authentication and publishing, uploading a series' and a label's eye-catch and replacing one aspect ratio of it, platform authentication and tenant operations, reading an episode from its first page to its last, UI locale switching in all three apps, and the canvas viewer's rendering budget. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`; the member area uses `070_member_settings.sql` and the email address change `090_email_change.sql`; locale switching uses `080_locale_switching.sql`; the viewer's pages come from `050_viewer_pages.sql`, which `task e2e:db` applies for every run rather than a suite applying it for itself. The eye-catch suite needs no scenario seed: it creates the series or label it uploads to through the console and removes it afterwards, and its source images are `fixtures/eye-catch/*.jpg`.
 
 Outage specs must run through `task e2e:test`, which sources `lib.sh`. Filtering by file name can leave only isolated projects, so pass `--no-deps` when selecting an isolated project directly (for example, `--project=catalog-outage`).
 
