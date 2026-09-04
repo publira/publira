@@ -1213,7 +1213,7 @@ func (q *Queries) CreateTenantAdminInvitation(ctx context.Context, arg CreateTen
 const createTenantConfig = `-- name: CreateTenantConfig :one
 INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
 VALUES ($1, $2, $3, $4)
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode
 `
 
 type CreateTenantConfigParams struct {
@@ -1238,6 +1238,7 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SiteTagline,
+		&i.CommentMode,
 	)
 	return i, err
 }
@@ -3341,7 +3342,7 @@ func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenan
 }
 
 const getTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
-SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline
+SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode
 FROM tenant_config
 WHERE tenant_id = $1
 LIMIT 1
@@ -3357,6 +3358,7 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SiteTagline,
+		&i.CommentMode,
 	)
 	return i, err
 }
@@ -9402,7 +9404,7 @@ const updateTenantConfig = `-- name: UpdateTenantConfig :one
 UPDATE tenant_config
 SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
 WHERE tenant_id = $1
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode
 `
 
 type UpdateTenantConfigParams struct {
@@ -9427,6 +9429,7 @@ func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfig
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SiteTagline,
+		&i.CommentMode,
 	)
 	return i, err
 }

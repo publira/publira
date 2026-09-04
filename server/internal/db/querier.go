@@ -13,6 +13,9 @@ import (
 )
 
 type Querier interface {
+	// Approval is what publishes a comment posted under approval_required, so it is
+	// also where published_at is first written.
+	ApproveEpisodeCommentByPublicIDForTenant(ctx context.Context, arg ApproveEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
 	BumpPlatformUserCredentialsVersion(ctx context.Context, id uuid.UUID) (PlatformUser, error)
 	BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error)
 	CancelTenantAdminInvitation(ctx context.Context, arg CancelTenantAdminInvitationParams) (TenantAdminInvitation, error)
@@ -44,6 +47,25 @@ type Querier interface {
 	CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error)
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
+	// Reader comments on published episodes.
+	//
+	// Every state transition is an UPDATE on the single episode_comments row, so
+	// the WHERE clause of each one names the status it is allowed to move from and
+	// the query returns no row when the comment was already moved by someone else.
+	// The caller tells "not found" from "already handled" by that.
+	//
+	// Expected plans:
+	//   ListPublishedEpisodeCommentsByCreatedAt*
+	//     -> idx_episode_comments_tenant_episode_status_created_at
+	//   ListUserEpisodeCommentsByCreatedAt*
+	//     -> idx_episode_comments_tenant_user_created_at
+	//   ListEpisodeCommentsByStatusCreatedAt*
+	//     -> idx_episode_comments_tenant_status_created_at
+	//   PurgeWithdrawnEpisodeComments
+	//     -> idx_episode_comments_tenant_withdrawn_at
+	// status and published_at come from the tenant's comment_mode: 'published' with
+	// a timestamp under immediate, 'pending' with NULL under approval_required.
+	CreateEpisodeComment(ctx context.Context, arg CreateEpisodeCommentParams) (EpisodeComment, error)
 	// Durable member follows. Episode, series, and creator follows have
 	// distinct source tables; content_events must not be used to model any of them.
 	CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error)
@@ -228,6 +250,9 @@ type Querier interface {
 	GetUserNotificationSettings(ctx context.Context, userID uuid.UUID) (UserNotificationSetting, error)
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
 	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
+	// hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
+	// has no staff actor to name.
+	HideEpisodeCommentByPublicIDForTenant(ctx context.Context, arg HideEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
 	// テナント操作監査ログを記録する
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	// Engagement / recommend query skeleton.
@@ -361,6 +386,13 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescParams) ([]ListEndUsersDescRow, error)
+	// The previous-page half of ListEpisodeCommentsByStatusCreatedAtDesc.
+	ListEpisodeCommentsByStatusCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentsByStatusCreatedAtAscParams) ([]EpisodeComment, error)
+	// The console queues: 'pending' is the approval queue, 'hidden' the removed
+	// comments staff can restore, 'withdrawn' what an author deleted and the
+	// retention window still keeps. One tenant-wide list per status, so a moderator
+	// does not have to open an episode to find work.
+	ListEpisodeCommentsByStatusCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentsByStatusCreatedAtDescParams) ([]EpisodeComment, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)
 	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error)
 	// ListEpisodeReadThroughDesc walked the other way, to build a previous page.
@@ -468,6 +500,13 @@ type Querier interface {
 	// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
 	ListPublishedAuthorsByIDs(ctx context.Context, arg ListPublishedAuthorsByIDsParams) ([]ListPublishedAuthorsByIDsRow, error)
 	ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedCreatorFollowTargetPublicIDsByIDsParams) ([]ListPublishedCreatorFollowTargetPublicIDsByIDsRow, error)
+	// The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
+	// handler reverses the returned rows to preserve the newest-first display order.
+	ListPublishedEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtAscParams) ([]ListPublishedEpisodeCommentsByCreatedAtAscRow, error)
+	// The public list of one episode. Only 'published' rows appear here, so a
+	// pending, removed, or withdrawn comment is absent for every reader; the author
+	// sees their own through ListUserEpisodeCommentsByCreatedAt*.
+	ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtDescParams) ([]ListPublishedEpisodeCommentsByCreatedAtDescRow, error)
 	// These projections are used only while constructing the public Follow API
 	// response. The follow relations and their cursor queries remain UUID-only.
 	ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedEpisodeFollowTargetPublicIDsByIDsParams) ([]ListPublishedEpisodeFollowTargetPublicIDsByIDsRow, error)
@@ -601,6 +640,12 @@ type Querier interface {
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
 	ListUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) ([]ListUnusedUserMfaRecoveryCodesRow, error)
+	// The previous-page half of ListUserEpisodeCommentsByCreatedAtDesc.
+	ListUserEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListUserEpisodeCommentsByCreatedAtAscParams) ([]ListUserEpisodeCommentsByCreatedAtAscRow, error)
+	// The viewer's own comments. A comment removed by staff or by the report
+	// threshold stays in this list exactly as it was, because the removal is
+	// silent; only the author's own withdrawal takes it away from them.
+	ListUserEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserEpisodeCommentsByCreatedAtDescParams) ([]ListUserEpisodeCommentsByCreatedAtDescRow, error)
 	// The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
 	// the returned rows to preserve the public newest-first display order.
 	ListUserFollowsByCreatedAtAsc(ctx context.Context, arg ListUserFollowsByCreatedAtAscParams) ([]ListUserFollowsByCreatedAtAscRow, error)
@@ -710,6 +755,10 @@ type Querier interface {
 	ProjectPurchaseContentEvent(ctx context.Context, arg ProjectPurchaseContentEventParams) (ContentEvent, error)
 	// ページバージョンを公開状態にする
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
+	// The end of the retention window for a comment its author deleted. The inner
+	// select bounds one chunk, so a tenant with a long backlog is drained over
+	// several statements instead of one long-running delete.
+	PurgeWithdrawnEpisodeComments(ctx context.Context, arg PurgeWithdrawnEpisodeCommentsParams) (int64, error)
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
 	RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMfaTotpFailureParams) (UserMfaTotp, error)
@@ -717,6 +766,10 @@ type Querier interface {
 	// claim time; callers pass now minus the stale-processing grace period.
 	RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error)
 	ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error
+	// A restored comment returns to the state the removal interrupted, which
+	// published_at records: one that was already public becomes public again, and
+	// one removed while still awaiting approval goes back into that queue.
+	RestoreEpisodeCommentByPublicIDForTenant(ctx context.Context, arg RestoreEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
 	RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error)
 	// ページの公開バージョンIDを更新する
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
@@ -813,6 +866,11 @@ type Querier interface {
 	// Free episodes (price = 0) are evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (sql.NullBool, error)
 	UserHasValidPurchaseForEpisode(ctx context.Context, arg UserHasValidPurchaseForEpisodeParams) (bool, error)
+	// The author's own deletion. It applies to a comment staff had removed too,
+	// since the author was never told about that removal and still sees the
+	// comment. The removal columns are cleared because no removal is in force on a
+	// withdrawn row any more; audit_logs keeps what staff did and why.
+	WithdrawEpisodeCommentByPublicIDForUser(ctx context.Context, arg WithdrawEpisodeCommentByPublicIDForUserParams) (EpisodeComment, error)
 }
 
 var _ Querier = (*Queries)(nil)
