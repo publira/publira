@@ -33,8 +33,12 @@ export interface Message {
   text: string;
 }
 
-/** Mailpit keeps 500 messages by default; one page covers a whole run. */
-const MESSAGE_LIST_LIMIT = 200;
+/**
+ * Mailpit prunes to 500 stored messages by default, so a page this size holds
+ * every message that can exist for one recipient and no other page has to be
+ * fetched.
+ */
+const MESSAGE_PAGE_LIMIT = 500;
 const DEFAULT_TIMEOUT_MS = 20_000;
 
 const mailpitRequest = async (
@@ -56,12 +60,23 @@ const mailpitJson = async <T>(path: string): Promise<T> => {
   return body as T;
 };
 
-/** Newest first, as Mailpit orders them. */
+/**
+ * Newest first, as Mailpit orders them.
+ *
+ * The recipient goes into the search query rather than into a filter over the
+ * whole mailbox, so the page size bounds one address's mail instead of every
+ * worker's. `to:` matches the header rather than the address exactly, so the
+ * exact comparison stays here.
+ */
 const summariesTo = async (recipient: string): Promise<MailpitSummary[]> => {
-  const { messages } = await mailpitJson<{ messages: MailpitSummary[] }>(
-    `/api/v1/messages?limit=${MESSAGE_LIST_LIMIT}`
-  );
   const wanted = recipient.trim().toLowerCase();
+  const query = new URLSearchParams({
+    limit: String(MESSAGE_PAGE_LIMIT),
+    query: `to:"${wanted}"`,
+  });
+  const { messages } = await mailpitJson<{ messages: MailpitSummary[] }>(
+    `/api/v1/search?${query.toString()}`
+  );
   return messages.filter((message) =>
     (message.To ?? []).some(
       (address) => address.Address.toLowerCase() === wanted

@@ -79,9 +79,9 @@ e2e/
 
 ### Mail
 
-Every flow that mails a token — the email address change, and sign-up verification and password reset with it — sends over SMTP, and the token itself is stored only as a hash. The `mailpit` service is what gives those flows one path that behaves the same locally and on the CI runner: it takes the SMTP intake on `E2E_MAILPIT_SMTP_PORT` (default `1026`) and serves the messages on `E2E_MAILPIT_HTTP_PORT` (default `8026`).
+The `mailpit` service is the stack's SMTP sink: intake on `E2E_MAILPIT_SMTP_PORT` (default `1026`), messages on `E2E_MAILPIT_HTTP_PORT` (default `8026`). `task e2e:db` points the platform and tenant SMTP settings at that intake, so what the API servers send lands there.
 
-The development seed points the platform and tenant SMTP settings at the Dev Container's `mailpit` service name, which resolves in neither place, so `scripts/db-setup.sh` rewrites the rows to `127.0.0.1` and the published port. `src/mail.ts` reads the sink over its API: `waitForMessageTo` and `clearMessagesTo` take a recipient address, so a suite sees only mail sent to the addresses it owns, and `tokenFromLink` takes the token out of the link a message carries. `MAILPIT_BASE_URL` in `src/urls.ts` (`E2E_MAILPIT_BASE_URL`) is the origin they use.
+`src/mail.ts` reads it back over that API, at the origin `MAILPIT_BASE_URL` in `src/urls.ts` names (`E2E_MAILPIT_BASE_URL`): `waitForMessageTo(recipient)` returns the newest message for one address, `clearMessagesTo(recipient)` deletes that address's mail, and `tokenFromLink(message, pathname)` returns the `token` query value of the link whose path matches.
 
 ### The edge
 
