@@ -138,9 +138,19 @@ const ViewerPageTemplate = () => {
           role="alert"
         >
           <p className="text-sm text-neutral-200">{copy.pageError}</p>
+          {/* The click stops here. A click near the edge of the viewport turns
+              the page, and an unpaired page keeps the half of the spread its
+              own parity gives it — so this control is drawn inside that zone
+              whenever the page it covers stands alone. Without this the reader
+              would be carried to the next spread by the button they pressed to
+              stay put. The viewport already makes the same exception for
+              keyboard input. */}
           <button
             className="rounded-full border border-neutral-500 px-4 py-1.5 text-sm font-medium text-neutral-100 transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100"
-            onClick={retry}
+            onClick={(event) => {
+              event.stopPropagation();
+              retry();
+            }}
             type="button"
           >
             {copy.reload}
