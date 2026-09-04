@@ -195,6 +195,9 @@ jobs:
               - 'apps/web-host/**'
               - 'apps/web-admin/**'
               - 'apps/web-platform/**'
+              # The stack builds and runs email-renderer: the outbox worker
+              # renders every mail it delivers through it.
+              - 'apps/email-renderer/**'
               - 'packages/**'
               - 'server/**'
               - 'db/**'
