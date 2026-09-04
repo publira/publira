@@ -81,6 +81,24 @@ export PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET:-publira-e2e-only-insecure-web
 # works as long as every process in the stack shares it.
 export PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET:-publira-e2e-only-insecure-access-token-secret}"
 
+# Next.js cache-tag revalidation. Without a token the Go servers build no
+# revalidate client at all, so every RevalidateTags call is a no-op and a
+# setting saved through a console stays behind a `"use cache"` entry for the
+# whole run. The token is the shared secret between those servers and the
+# revalidate Route Handler each web app mounts; any value works as long as
+# every process in the stack has the same one.
+export PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN:-publira-e2e-only-insecure-revalidate-token}"
+
+# Where the servers send the tags. Always built from the E2E ports, for the
+# same reason as PUBLIRA_REDIS_URL above: an inherited Dev Container value
+# names the dev stack's apps, so the tags would drop another build's cache
+# entries and leave this run's untouched. The hostnames follow how start-apps
+# binds each app — web-host binds `localhost`, while web-admin and
+# web-platform bind 0.0.0.0 and are reached over IPv4.
+export PUBLIRA_WEB_HOST_INTERNAL_URL="http://localhost:${E2E_WEB_HOST_PORT}"
+export PUBLIRA_WEB_ADMIN_INTERNAL_URL="http://127.0.0.1:${E2E_WEB_ADMIN_PORT}"
+export PUBLIRA_WEB_PLATFORM_INTERNAL_URL="http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}"
+
 # PID files, logs, and local storage for one stack run.
 #
 # Concurrent stacks that override ports or COMPOSE_PROJECT_NAME must not share
