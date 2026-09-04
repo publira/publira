@@ -9,7 +9,7 @@ The package that provides the shared frontend utilities.
 | Import | What it provides |
 | --- | --- |
 | `@publira/utils` | The client-safe barrel: `cn`, the `Temporal` date and time helpers, `formatPercent`, the IANA time zone list and its validation, `decodeBase64Url`, the tenant theme tokens and their contrast rules, and `getTenantDomainCandidates` |
-| `@publira/utils/cn` | `cn`, the `clsx` + `tailwind-merge` className helper, on its own |
+| `@publira/utils/cn` | `cn`, the Tailwind-aware className helper, on its own |
 | `@publira/utils/format-date-time` | The tenant-time-zone-aware date and time helpers on their own |
 | `@publira/utils/theme-css-variables` | The tenant theme colors as `--publira-color-*` custom properties, and `DEFAULT_TENANT_THEME_COLORS` |
 | `@publira/utils/theme-contrast` | The WCAG AA contrast check the theme settings form and its preview share |
