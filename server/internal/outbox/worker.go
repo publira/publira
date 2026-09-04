@@ -18,7 +18,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 const (

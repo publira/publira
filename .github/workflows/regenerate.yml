@@ -90,7 +90,7 @@ jobs:
 
             ## Changes
 
-            - Ran `task gen` and committed the resulting `server/gen/**`, `packages/api-client/src/gen/**`, and `server/internal/db/**`
+            - Ran `task gen` and committed the resulting `server/gen/**`, `packages/api-client/src/gen/**`, and `server/internal/db/gen/**`
 
             ## How to Test
 
@@ -105,4 +105,4 @@ jobs:
           add-paths: |
             packages/api-client/src/gen/**
             server/gen/**
-            server/internal/db/**
+            server/internal/db/gen/**

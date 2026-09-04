@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/publira/publira/server/config"
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/sqldb"

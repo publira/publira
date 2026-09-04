@@ -7,8 +7,8 @@ server/gen/** linguist-generated
 packages/api-client/src/gen/** linguist-generated
 packages/locales/src/gen/** linguist-generated
 
-# sqlc (sqlc.yaml → server/internal/db)
-server/internal/db/** linguist-generated
+# sqlc (sqlc.yaml → server/internal/db/gen)
+server/internal/db/gen/** linguist-generated
 server/internal/locale/gen/** linguist-generated
 
 # External skill packages pulled via skills-lock.json (do not hand-edit)

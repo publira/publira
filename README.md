@@ -26,7 +26,7 @@ As an OSS project, it values portability, ease of operation, and freedom from ve
 │   │   └── outbox-worker/    # Outbox + River resident worker
 │   ├── gen/            # buf generated code (Go)
 │   └── internal/
-│       └── db/         # sqlc generated code (DB/Go)
+│       └── db/gen/     # sqlc generated code (DB/Go)
 ├── infra/
 │   └── docker/         # Production Dockerfiles (per role, built from the repository root)
 ├── mobile/             # [Flutter] Mobile app (iOS/Android)

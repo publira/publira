@@ -7,7 +7,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 func TestProjectorRequiresDatabase(t *testing.T) {

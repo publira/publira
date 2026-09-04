@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v86"
 
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 func TestStripePurchaseMetadata(t *testing.T) {

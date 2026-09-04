@@ -6,7 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 func (s *adminServer) GetDashboard(
