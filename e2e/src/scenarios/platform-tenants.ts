@@ -27,6 +27,34 @@ export const SCENARIO_PLATFORM_OPERATOR = {
   role: "platform_operator",
 } as const;
 
+/**
+ * Scenario seed: the operator `platform.operator-management.spec.ts` promotes.
+ *
+ * Its own account rather than {@link SCENARIO_PLATFORM_OPERATOR}, because the
+ * role-denial cases sign in as that one and need it left a plain operator.
+ * Password reuses the same bcrypt hash as the super admin (`platformpass`).
+ */
+export const SCENARIO_ROLE_CHANGE_OPERATOR = {
+  email: "platform-role-change@example.com",
+  name: "Role Change Platform Operator",
+  password: "platformpass",
+  publicId: "ScenPFUSAAA3",
+  role: "platform_operator",
+} as const;
+
+/**
+ * Scenario seed: the operator `platform.operator-management.spec.ts`
+ * deactivates, which is why it is not one another spec signs in as. Password
+ * reuses the same bcrypt hash as the super admin (`platformpass`).
+ */
+export const SCENARIO_DEACTIVATED_OPERATOR = {
+  email: "platform-deactivated@example.com",
+  name: "Deactivated Platform Operator",
+  password: "platformpass",
+  publicId: "ScenPFUSAAA4",
+  role: "platform_operator",
+} as const;
+
 export const PLATFORM_OPERATORS_SCENARIO = "030_platform_operators";
 
 /** Unique run suffix so re-runs do not collide with leftover tenant names/domains. */

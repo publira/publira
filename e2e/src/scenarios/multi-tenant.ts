@@ -51,6 +51,7 @@ export const SEED_TENANT = {
   labelId: "SeedLABLAAA1",
   labelName: "Seed Label 01",
   name: "Seed Tenant",
+  publicId: "SeedTNNTAAA1",
   series: {
     /** `Seed Episode 001-10` is the priced one; 001-01 is free. */
     freeEpisodeId: "SeedEPSDAAA1",
