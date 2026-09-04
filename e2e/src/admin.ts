@@ -101,6 +101,10 @@ export const seriesFormFields = (page: Page): SeriesFormFields => ({
 export interface CreateSeriesInput {
   title: string;
   synopsis: string;
+  /** Creator to attach. Defaults to the seeded author. */
+  creatorName?: string;
+  /** Label to attach. Defaults to the seeded label. */
+  labelName?: string;
   /** When set, series is published at this absolute instant (Tokyo wall clock). */
   publishedAt?: Temporal.Instant;
   readingPeriodHours?: number;
@@ -129,12 +133,12 @@ export const createSeriesViaUi = async (
   await selectComboboxOption(
     page,
     fields.labelCombobox,
-    SEED_CATALOG.labelName
+    input.labelName ?? SEED_CATALOG.labelName
   );
   await selectComboboxOption(
     page,
     fields.creatorCombobox,
-    SEED_CATALOG.creatorName
+    input.creatorName ?? SEED_CATALOG.creatorName
   );
 
   if (input.publishedAt) {
@@ -226,6 +230,22 @@ export const createEpisodeViaUi = async (
   return publicId;
 };
 
+export interface LabelFormFields {
+  name: Locator;
+}
+
+/**
+ * Fields of the label form on the page the router currently shows.
+ *
+ * Role locators for the same reason as {@link seriesFormFields}: the router
+ * bfcache keeps a previously visited form mounted inside a hidden
+ * `<Activity>`, and only the one in front of the user is in the accessibility
+ * tree.
+ */
+export const labelFormFields = (page: Page): LabelFormFields => ({
+  name: page.getByRole("textbox", { name: /レーベル名/u }),
+});
+
 /**
  * Fill and submit the label create form. Resolves after redirect to the
  * edit URL (`/labels/<publicId>?created=1`).
@@ -239,7 +259,7 @@ export const createLabelViaUi = async (
     page.getByRole("heading", { name: "レーベル新規作成" })
   ).toBeVisible();
 
-  await page.getByRole("textbox", { name: /レーベル名/u }).fill(name);
+  await labelFormFields(page).name.fill(name);
   await page.getByRole("button", { name: "レーベルを作成" }).click();
   // Must not match the create path `/labels/new` — that already looks like a
   // label detail URL to a naive `/labels/[^/]+` pattern.
@@ -275,6 +295,68 @@ export const fillField = async (
     await field.fill(value);
     await expect(field).toHaveValue(value, { timeout: 2000 });
   }).toPass({ timeout: 30_000 });
+};
+
+export interface CreatorFormFields {
+  name: Locator;
+  profileText: Locator;
+}
+
+/**
+ * Fields of the creator form on the page the router currently shows.
+ *
+ * Role locators for the same reason as {@link seriesFormFields}: the router
+ * bfcache keeps a previously visited form mounted inside a hidden
+ * `<Activity>`, and only the one in front of the user is in the accessibility
+ * tree.
+ */
+export const creatorFormFields = (page: Page): CreatorFormFields => ({
+  name: page.getByRole("textbox", { name: /名前/u }),
+  profileText: page.getByRole("textbox", { name: /プロフィール/u }),
+});
+
+export interface CreateCreatorInput {
+  name: string;
+  /** Optional on the form; omitted leaves the profile empty. */
+  profileText?: string;
+}
+
+/**
+ * Fill and submit the creator create form. Resolves after the redirect to the
+ * edit URL (`/creators/<publicId>?created=1`).
+ */
+export const createCreatorViaUi = async (
+  page: Page,
+  input: CreateCreatorInput
+): Promise<string> => {
+  await page.goto(adminUrl("/creators/new"));
+  await expect(
+    page.getByRole("heading", { name: "著者新規作成" })
+  ).toBeVisible();
+
+  const fields = creatorFormFields(page);
+  await fillField(fields.name, input.name);
+  if (input.profileText !== undefined) {
+    await fillField(fields.profileText, input.profileText);
+  }
+
+  await page.getByRole("button", { name: "著者を作成" }).click();
+  // Must not match the create path `/creators/new` — that already looks like a
+  // creator detail URL to a naive `/creators/[^/]+` pattern.
+  await page.waitForURL((url) => {
+    const match = url.pathname.match(
+      /^\/creators\/(?<publicId>[^/]+)(?:\/|$)/u
+    );
+    const publicId = match?.groups?.publicId;
+    return Boolean(publicId && publicId !== "new");
+  });
+
+  const match = page.url().match(/\/creators\/(?<publicId>[^/?#]+)/u);
+  const publicId = match?.groups?.publicId?.trim() ?? "";
+  if (!publicId || publicId === "new") {
+    throw new Error(`could not parse creator public id from ${page.url()}`);
+  }
+  return publicId;
 };
 
 export interface CreatePageInput {
