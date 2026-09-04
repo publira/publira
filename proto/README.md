@@ -47,7 +47,7 @@ Go encoding and validation live in [server/internal/pagination](../server/intern
 - Use row-value comparison for keyset scans. `(a.created_at, a.id) < ($1, $2)` can use a composite index, while `a.created_at < $1 OR (a.created_at = $1 AND a.id < $2)` may not.
 - Index the same combination as the sort keys. A btree can scan in reverse, so separate ascending and descending indexes are unnecessary.
 - **Do not branch `ORDER BY` on a runtime parameter.** `CASE WHEN $1 THEN ... END` does not align with index ordering, which can force a full sort before `LIMIT` and defeat keyset pagination. Use separate queries with a fixed `ORDER BY` for each order.
-- If a list row is expensive (`json_agg` or multiple `LEFT JOIN`s), make the keyset scan a lightweight query that returns only IDs, then fetch display data by ID. This keeps one heavy query while each sort-order query stays short. `ListPublishedSeries` uses this pattern (`ListActiveSeriesIDsBy*` and `ListActiveSeriesByIDs` in `db/query/query.sql`).
+- If a list row is expensive (`json_agg` or multiple `LEFT JOIN`s), make the keyset scan a lightweight query that returns only IDs, then fetch display data by ID. This keeps one heavy query while each sort-order query stays short. `ListPublishedSeries` uses this pattern (`ListActiveSeriesIDsBy*` and `ListActiveSeriesByIDs` in `db/query/series.sql`).
 
 ### Lists with selectable ordering
 
