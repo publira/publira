@@ -278,9 +278,10 @@ type ListTenantAdminInvitationsDescParams struct {
 	Limit           int32         `json:"limit"`
 }
 
-// Platform ListTenantAdminInvitations は (created_at, id) の降順で表示する。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+// Platform ListTenantAdminInvitations is (created_at, id) DESC. Forward uses
+// the DESC query; backward uses ASC so the index can be scanned in reverse.
+// The handler flips ASC rows back into display order.
+// cursor rules: proto/README.md.
 func (q *Queries) ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error) {
 	rows, err := q.db.QueryContext(ctx, listTenantAdminInvitationsDesc,
 		arg.TenantID,

@@ -23,7 +23,8 @@ WHERE public_id = $1
 LIMIT 1;
 
 -- name: CountPlatformUsers :one
--- プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
+-- Count the platform administrators. Zero means the platform has not been
+-- set up yet.
 SELECT COUNT(*)::int
 FROM platform_users;
 
@@ -33,7 +34,6 @@ VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: UpdatePlatformUserStatus :one
--- プラットフォームユーザーのステータスを更新
 UPDATE platform_users
 SET status = $2
 WHERE public_id = $1
@@ -69,9 +69,10 @@ FROM platform_users pu
     INNER JOIN platform_user_roles pur ON pur.platform_user_id = pu.id
 ORDER BY pu.id;
 
--- Platform ListOperators は (created_at, id) の降順で表示する。
--- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
--- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- Platform ListOperators is (created_at, id) DESC. Forward uses the DESC
+-- query; backward uses ASC so the index can be scanned in reverse. The
+-- handler flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
 -- name: ListPlatformOperatorsDesc :many
 SELECT pu.id,
     pu.public_id,

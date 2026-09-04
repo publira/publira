@@ -28,7 +28,8 @@ type Querier interface {
 	// テナントの下書きエピソード数を取得する（ダッシュボード用）
 	CountDraftEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountPendingEndUsers(ctx context.Context) (int32, error)
-	// プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
+	// Count the platform administrators. Zero means the platform has not been
+	// set up yet.
 	CountPlatformUsers(ctx context.Context) (int32, error)
 	// テナントの公開中シリーズ数を取得する（ダッシュボード用）
 	CountPublishedSeriesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
@@ -96,9 +97,10 @@ type Querier interface {
 	CreateSeriesFollow(ctx context.Context, arg CreateSeriesFollowParams) (SeriesFollow, error)
 	CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error)
 	CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error)
-	// プラットフォーム管理者向けテナント作成
-	// default_locale は列 DEFAULT を持たないため、呼び出し側が必ず明示する。timezone も
-	// 列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
+	// Tenant creation for platform administrators.
+	// default_locale has no column DEFAULT, so the caller always passes it
+	// explicitly. timezone is not left to its column DEFAULT either: the
+	// platform default is applied explicitly.
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error)
 	CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error)
@@ -124,7 +126,6 @@ type Querier interface {
 	// `batch purge-orphan-images`.
 	DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error)
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
-	// テナントユーザーのロールをすべて削除する
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
 	// An upload points its creator at the new icon and leaves the previous
 	// creator_images row behind, referenced by nothing. created_at guards the
@@ -135,7 +136,7 @@ type Querier interface {
 	// A tenant image is reachable from either branding slot, and the theme holds
 	// both, so one row can be the icon of one theme and nothing else anywhere.
 	DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error)
-	// ユーザーを物理削除（外部キー制約により関連データも削除）
+	// Hard delete. Related rows go with the user wherever the foreign key cascades.
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserMfaRecoveryCodesByUserID(ctx context.Context, userID uuid.UUID) error
@@ -146,7 +147,8 @@ type Querier interface {
 	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
 	GetAccessTicketByPublicIDForTenant(ctx context.Context, arg GetAccessTicketByPublicIDForTenantParams) (GetAccessTicketByPublicIDForTenantRow, error)
 	GetActiveAccessTicketForUserEpisode(ctx context.Context, arg GetActiveAccessTicketForUserEpisodeParams) (AccessTicket, error)
-	// 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
+	// Return the first tenant that matches admin_domain, or the admin.{domain}
+	// fallback, keeping the order of the candidate host names.
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
 	// お知らせ 1 件を取得（既読状態付き）。inbox に属する行だけを返す。
 	// 他人・他テナントの行は 0 件になり、存在の有無は区別しない。
@@ -224,11 +226,11 @@ type Querier interface {
 	GetTenantAdminInvitationByHashForTenant(ctx context.Context, arg GetTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByIDForTenant(ctx context.Context, arg GetTenantAdminInvitationByIDForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, arg GetTenantAdminInvitationByTenantAndEmailParams) (TenantAdminInvitation, error)
-	// 候補ホスト名の順序を保ったまま最初に一致したテナントを返す
+	// Return the first tenant that matches, keeping the order of the candidate
+	// host names.
 	GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
 	GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error)
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
-	// ユーザーが所属するテナントを取得
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
@@ -237,9 +239,7 @@ type Querier interface {
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
-	// public_idでテナントユーザーを取得
 	GetUserByPublicID(ctx context.Context, publicID string) (GetUserByPublicIDRow, error)
-	// テナントスコープで public_id からユーザーを取得
 	GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByPublicIDForTenantParams) (GetUserByPublicIDForTenantRow, error)
 	GetUserEmailChangeTokenByHashForTenant(ctx context.Context, arg GetUserEmailChangeTokenByHashForTenantParams) (GetUserEmailChangeTokenByHashForTenantRow, error)
 	GetUserEmailVerificationTokenByHashForTenant(ctx context.Context, arg GetUserEmailVerificationTokenByHashForTenantParams) (UserEmailVerificationToken, error)
@@ -247,7 +247,6 @@ type Querier interface {
 	// security policies on both tables already confine them to the tenant the
 	// connection is scoped to.
 	GetUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
-	// ユーザーの通知設定を取得
 	GetUserNotificationSettings(ctx context.Context, userID uuid.UUID) (UserNotificationSetting, error)
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
 	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
@@ -380,12 +379,13 @@ type Querier interface {
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error)
 	ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams) ([]ListEndUsersAscRow, error)
-	// ListEndUsers はエンドユーザー（tenant_user_roles 未保持）の一覧を
-	// (created_at, id) の降順で表示する。テナントメンバーは意図的に含めない。
-	// プラットフォームのユーザー一覧はこの結果が完全な集合であり、クライアントが
-	// ListTenantMembers で補完しない。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	// ListEndUsers lists the end users (the ones that hold no tenant_user_roles
+	// row) in (created_at, id) DESC. Tenant members are left out deliberately:
+	// this result is the complete set behind the platform user list, and the
+	// client does not top it up with ListTenantMembers.
+	// Forward uses the DESC query; backward uses ASC so the index can be scanned
+	// in reverse. The handler flips ASC rows back into display order.
+	// cursor rules: proto/README.md.
 	ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescParams) ([]ListEndUsersDescRow, error)
 	// The previous-page half of ListEpisodeCommentsByStatusCreatedAtDesc.
 	ListEpisodeCommentsByStatusCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentsByStatusCreatedAtAscParams) ([]EpisodeComment, error)
@@ -471,9 +471,10 @@ type Querier interface {
 	// Worker fan-out: every platform user that holds a role is an operator.
 	ListPlatformOperatorIDs(ctx context.Context) ([]uuid.UUID, error)
 	ListPlatformOperatorsAsc(ctx context.Context, arg ListPlatformOperatorsAscParams) ([]ListPlatformOperatorsAscRow, error)
-	// Platform ListOperators は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	// Platform ListOperators is (created_at, id) DESC. Forward uses the DESC
+	// query; backward uses ASC so the index can be scanned in reverse. The
+	// handler flips ASC rows back into display order.
+	// cursor rules: proto/README.md.
 	ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatformOperatorsDescParams) ([]ListPlatformOperatorsDescRow, error)
 	ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error)
 	// 公開著者一覧の cursor ページネーションは 2 段構え。
@@ -608,9 +609,10 @@ type Querier interface {
 	// is still one notification.
 	ListTenantAdminIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
 	ListTenantAdminInvitationsAsc(ctx context.Context, arg ListTenantAdminInvitationsAscParams) ([]TenantAdminInvitation, error)
-	// Platform ListTenantAdminInvitations は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	// Platform ListTenantAdminInvitations is (created_at, id) DESC. Forward uses
+	// the DESC query; backward uses ASC so the index can be scanned in reverse.
+	// The handler flips ASC rows back into display order.
+	// cursor rules: proto/README.md.
 	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
 	// The theme carries the icon and the logo together, so both images' variants
 	// are read in one statement rather than one query per slot.
@@ -618,27 +620,29 @@ type Querier interface {
 	// Worker fan-out: members are tenant users that do not hold a tenant role.
 	ListTenantMemberIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
 	ListTenantMembersAsc(ctx context.Context, arg ListTenantMembersAscParams) ([]ListTenantMembersAscRow, error)
-	// Platform ListTenantMembers はテナントに所属する管理・編集ユーザーを
-	// (created_at, id) の降順で表示する。admin の ListTenantUsers とは列が違う
-	// （こちらはメール・ステータスも返し、検索の絞り込みを持たない）ので別のクエリ。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	// Platform ListTenantMembers lists the administrative and editorial users of
+	// a tenant in (created_at, id) DESC. It stays a separate query from admin's
+	// ListTenantUsers because the columns differ: this one also returns the
+	// email and the status, and it carries no search filter.
+	// Forward uses the DESC query; backward uses ASC so the index can be scanned
+	// in reverse. The handler flips ASC rows back into display order.
+	// cursor rules: proto/README.md.
 	ListTenantMembersDesc(ctx context.Context, arg ListTenantMembersDescParams) ([]ListTenantMembersDescRow, error)
-	// テナントユーザーのロール一覧を取得する
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
-	// テナントに所属する管理・編集ユーザー一覧（前ページ方向）
 	ListTenantUsersAsc(ctx context.Context, arg ListTenantUsersAscParams) ([]ListTenantUsersAscRow, error)
-	// Admin ListTenantUsers は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
-	// 絞り込みは SQL 側で行う。handler で取得済みの 1 ページ分だけを突き合わせると、
-	// その先のページにいる該当ユーザーが検索結果から丸ごと落ちる。
-	// テナントに所属する管理・編集ユーザー一覧（次ページ方向）
+	// Admin ListTenantUsers is (created_at, id) DESC. Forward uses the DESC
+	// query; backward uses ASC so the index can be scanned in reverse. The
+	// handler flips ASC rows back into display order.
+	// cursor rules: proto/README.md.
+	// The search filter is applied in SQL. Matching only the single page the
+	// handler has already fetched would drop every matching user that sits on a
+	// later page.
 	ListTenantUsersDesc(ctx context.Context, arg ListTenantUsersDescParams) ([]ListTenantUsersDescRow, error)
 	ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) ([]Tenant, error)
-	// ListTenants は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	// ListTenants is (created_at, id) DESC. Forward uses the DESC query;
+	// backward uses ASC so the index can be scanned in reverse. The handler
+	// flips ASC rows back into display order.
+	// cursor rules: proto/README.md.
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
 	ListUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) ([]ListUnusedUserMfaRecoveryCodesRow, error)
 	// The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
@@ -804,32 +808,24 @@ type Querier interface {
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, error)
 	UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePlatformUserEmailByIDParams) (PlatformUser, error)
 	UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error)
-	// プラットフォームユーザーのステータスを更新
 	UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error)
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	UpdateSeriesEyeCatchImageID(ctx context.Context, arg UpdateSeriesEyeCatchImageIDParams) error
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
 	UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error)
-	// テナントの既定ロケールを更新する
 	UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error)
-	// テナントの名前・ドメインを更新する
+	// Update the tenant name and its domains.
 	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)
-	// テナントの状態 (active / suspended) を更新する
+	// Update the tenant status (active / suspended).
 	UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error)
-	// テナントの表示タイムゾーン (IANA 名) を更新する
+	// Update the tenant display time zone (an IANA name).
 	UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTimezoneParams) (Tenant, error)
-	// ユーザーのメールアドレスをID指定で更新
 	UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error)
-	// ユーザーのメール確認日時を更新
 	UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error)
-	// ユーザーの表示名をID指定で更新
 	UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByIDParams) (User, error)
-	// ユーザーのパスワードハッシュをID指定で更新
 	UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error)
-	// ユーザーのステータスを更新
 	UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error)
-	// ユーザーのステータスをID指定で更新
 	UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error)
 	// Daily stats are full-day replacements. Upsert keeps a single row per
 	// (tenant, date, entity). rating_count / rating_sum are that day's flow — the
@@ -856,7 +852,6 @@ type Querier interface {
 	// Starting enrollment replaces whatever unconfirmed secret was there and
 	// clears the lock, so a stalled attempt never blocks the next one.
 	UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfaTotpSecretParams) (UserMfaTotp, error)
-	// ユーザーの通知設定を作成または更新
 	UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error)
 	UpsertUserRecommendFeatures(ctx context.Context, arg UpsertUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	// Creators are public when they have at least one active series, matching

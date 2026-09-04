@@ -68,9 +68,10 @@ type CreateTenantParams struct {
 	DefaultLocale string         `json:"default_locale"`
 }
 
-// プラットフォーム管理者向けテナント作成
-// default_locale は列 DEFAULT を持たないため、呼び出し側が必ず明示する。timezone も
-// 列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
+// Tenant creation for platform administrators.
+// default_locale has no column DEFAULT, so the caller always passes it
+// explicitly. timezone is not left to its column DEFAULT either: the
+// platform default is applied explicitly.
 func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, createTenant,
 		arg.ID,
@@ -143,7 +144,8 @@ ORDER BY candidate.ord
 LIMIT 1
 `
 
-// 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
+// Return the first tenant that matches admin_domain, or the admin.{domain}
+// fallback, keeping the order of the candidate host names.
 func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, getAdminTenantByDomains, pq.Array(domains))
 	var i Tenant
@@ -170,7 +172,8 @@ ORDER BY candidate.ord
 LIMIT 1
 `
 
-// 候補ホスト名の順序を保ったまま最初に一致したテナントを返す
+// Return the first tenant that matches, keeping the order of the candidate
+// host names.
 func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, getTenantByDomains, pq.Array(domains))
 	var i Tenant
@@ -257,7 +260,6 @@ type GetTenantByUserIDRow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// ユーザーが所属するテナントを取得
 func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getTenantByUserID, id)
 	var i GetTenantByUserIDRow
@@ -396,9 +398,10 @@ type ListTenantsDescParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// ListTenants は (created_at, id) の降順で表示する。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+// ListTenants is (created_at, id) DESC. Forward uses the DESC query;
+// backward uses ASC so the index can be scanned in reverse. The handler
+// flips ASC rows back into display order.
+// cursor rules: proto/README.md.
 func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error) {
 	rows, err := q.db.QueryContext(ctx, listTenantsDesc,
 		arg.FilterName,
@@ -506,7 +509,6 @@ type UpdateTenantDefaultLocaleParams struct {
 	ID            uuid.UUID `json:"id"`
 }
 
-// テナントの既定ロケールを更新する
 func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, updateTenantDefaultLocale, arg.DefaultLocale, arg.ID)
 	var i Tenant
@@ -539,7 +541,7 @@ type UpdateTenantInfoParams struct {
 	PublicID    string         `json:"public_id"`
 }
 
-// テナントの名前・ドメインを更新する
+// Update the tenant name and its domains.
 func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, updateTenantInfo,
 		arg.Name,
@@ -575,7 +577,7 @@ type UpdateTenantStatusParams struct {
 	Status   string `json:"status"`
 }
 
-// テナントの状態 (active / suspended) を更新する
+// Update the tenant status (active / suspended).
 func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, updateTenantStatus, arg.PublicID, arg.Status)
 	var i Tenant
@@ -606,7 +608,7 @@ type UpdateTenantTimezoneParams struct {
 	ID       uuid.UUID `json:"id"`
 }
 
-// テナントの表示タイムゾーン (IANA 名) を更新する
+// Update the tenant display time zone (an IANA name).
 func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTimezoneParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, updateTenantTimezone, arg.Timezone, arg.ID)
 	var i Tenant

@@ -41,7 +41,8 @@ SELECT COUNT(*)::int
 FROM platform_users
 `
 
-// プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
+// Count the platform administrators. Zero means the platform has not been
+// set up yet.
 func (q *Queries) CountPlatformUsers(ctx context.Context) (int32, error) {
 	row := q.db.QueryRowContext(ctx, countPlatformUsers)
 	var column_1 int32
@@ -420,9 +421,10 @@ type ListPlatformOperatorsDescRow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Platform ListOperators は (created_at, id) の降順で表示する。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+// Platform ListOperators is (created_at, id) DESC. Forward uses the DESC
+// query; backward uses ASC so the index can be scanned in reverse. The
+// handler flips ASC rows back into display order.
+// cursor rules: proto/README.md.
 func (q *Queries) ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatformOperatorsDescParams) ([]ListPlatformOperatorsDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPlatformOperatorsDesc,
 		arg.CursorID,
@@ -632,7 +634,6 @@ type UpdatePlatformUserStatusParams struct {
 	Status   string `json:"status"`
 }
 
-// プラットフォームユーザーのステータスを更新
 func (q *Queries) UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error) {
 	row := q.db.QueryRowContext(ctx, updatePlatformUserStatus, arg.PublicID, arg.Status)
 	var i PlatformUser
