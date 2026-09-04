@@ -191,6 +191,11 @@ func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate 
 	return counts, err
 }
 
+// insertStatsSQL rebuilds one tenant's rows for one UTC day.
+//
+// purchase_count comes from the purchases table alone. A purchase is also
+// projected into content_events, so counting both sources would double every
+// sale; purchases is the one that owns the fact.
 const insertStatsSQL = `
 WITH episode_events AS (
 	SELECT

@@ -32,10 +32,4 @@ Conversion follows the request's `Accept` (`image/webp` / `image/avif`) and the 
 
 ## Authorization for episode body images
 
-`GET /images/episodes/{media_id}` identifies the reader in the following order.
-
-1. `Authorization: Bearer <JWT>` (audience `public`)
-2. The `t=<JWT>` query (audience `media`. Because a browser cannot attach a header to an `<img>`, `GetEpisodeDetail` appends it to the URL)
-3. If neither is present, or verification fails, the request is treated as anonymous
-
-When the reader is identified, the decision uses `GetEpisodeImageAccessByIDForUser`; for an anonymous request it uses `GetEpisodeImagePublicAccessByIDForTenant`. Both follow the same rules as the API: `price = 0`, a valid purchase, or a valid access ticket. A `media` token has no effect outside the episode it was issued for, and the `t` query is not part of the intermediate cache key. The `admin-media` tokens meant for the admin UI are not verified by this process. For the details, see the authentication sections of [server/README.md](../../README.md).
+`GET /images/episodes/{media_id}` identifies the reader from `Authorization: Bearer <JWT>` (audience `public`) or from the `t=<JWT>` query (audience `media`), and treats a request carrying neither — or a credential that does not verify — as anonymous. Whichever it is, the grant itself is read from the database under the same rules as the API: `price = 0`, a valid purchase, or a valid access ticket. The `admin-media` tokens meant for the admin UI are not verified by this process. For the details, see the authentication sections of [server/README.md](../../README.md).

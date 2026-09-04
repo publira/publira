@@ -1,3 +1,20 @@
+// Package revalidate sends Next.js cache tags to the internal revalidation
+// route of every web app, from admin-api-server and from the scheduled
+// publication batch.
+//
+// The three destinations are private network addresses
+// (PUBLIRA_WEB_*_INTERNAL_URL), never the public domain a browser uses and
+// never the reverse proxy: this is server-to-server traffic, and routing it
+// through the edge would make an internal cache invalidation depend on the
+// tenant domain in Host. All three are required together, because each app
+// keeps its own Redis key space under PUBLIRA_CACHE_APP and the same tag has
+// to reach all of them. A missing or malformed URL therefore disables
+// revalidation for the whole process rather than leaving one app stale; the
+// caller logs the reason and starts anyway, since serving from a cache that
+// expires on its own is better than refusing to serve.
+//
+// Tags are sent as they are, with no tenant restriction. A tag already names
+// what it invalidates, and the apps that hold it are shared by every tenant.
 package revalidate
 
 import (

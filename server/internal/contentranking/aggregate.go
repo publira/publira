@@ -103,7 +103,11 @@ type window struct {
 
 // windows and entityTypes together decide how many snapshots one tenant gets:
 // each combination is its own row, because a reader asks for one period and
-// one kind of entity at a time.
+// one kind of entity at a time. Every combination is written on every run,
+// the empty ones included — an empty leaderboard is the answer that a run
+// happened and found nothing, which a missing row cannot say — so a silent
+// tenant costs the same four rows a busy one does, and purge.go is what takes
+// the old periods away again.
 var (
 	windows     = []window{{key: DailyRankingKey, days: 1}, {key: WeeklyRankingKey, days: weeklyWindowDays}}
 	entityTypes = []string{"series", "episode"}
@@ -201,6 +205,16 @@ func (a *Aggregator) listTenantIDs(ctx context.Context) ([]uuid.UUID, error) {
 // rankTenant writes every window and entity type for one tenant in a single
 // transaction, so a reader never sees the daily ranking of this run beside the
 // weekly ranking of the last one.
+//
+// The eight window scans behind those snapshots are bounded by the daily rows
+// the tenant produced — at most one per entity per day, capped by the size of
+// the catalogue — rather than by raw event volume, so they stay small next to
+// the aggregate-content-stats run that feeds them. The budget is the daily
+// cron interval, shared with the batches that run before and after; judge one
+// run from the elapsed time in its completion log. If a run stops fitting, the
+// fix is upstream of the scan — fewer tenants per invocation, or a
+// materialised per-entity window rollup — because the item limit bounds only
+// what is written, not what is read.
 func (a *Aggregator) rankTenant(
 	ctx context.Context,
 	tenantID uuid.UUID,

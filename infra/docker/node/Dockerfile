@@ -51,6 +51,13 @@ RUN turbo prune "@publira/${APP_NAME}" --docker
 # -----------------------------------------------------------------------------
 # Runtime dependency tree. Installed from the manifests alone, so the layer is
 # reused whenever only source changes, and dev-only packages never reach the runner.
+#
+# There is no standalone output to fall back on here, the way the Next.js role
+# has one: the runner gets this tree plus each workspace package's dist/, and
+# nothing else. Anything the compiled output imports at runtime therefore has
+# to sit in a `dependencies` field — a devDependencies entry, or an unmet
+# peerDependency, disappears under --prod and the container dies on
+# `Cannot find package`.
 FROM base AS deps
 
 COPY --from=prepare /app/out/json/ .

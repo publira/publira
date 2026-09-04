@@ -4,7 +4,7 @@ This check verifies the full path from setup in a clean environment through star
 
 ## Why it is needed
 
-A PostgreSQL 18 data-directory change once disagreed with the Compose volume mount and prevented the database container from starting, causing `task setup` to fail. `pnpm preflight` cannot see this configuration issue, and Playwright E2E ([`../README.md`](../README.md)) uses its own `e2e/compose.yaml` stack rather than the development definition.
+`pnpm preflight` cannot see a Compose or development-environment regression, and Playwright E2E ([`../README.md`](../README.md)) uses its own `e2e/compose.yaml` stack rather than the development definition. Nothing else exercises the file a developer actually starts from.
 
 This check therefore starts the repository-root **`compose.yaml` itself** — the same file the Dev Container builds on — under a dedicated project name, and reproduces the experience of beginning development with empty volumes.
 
@@ -54,11 +54,7 @@ To preserve a local development `task dev`, run `BOOTSTRAP_SKIP_DEV=1 task e2e:b
 | 3 | `compose stop db rustfs` then `compose up --wait db rustfs`. | Data directory, migration state, and all seed counts match before restart; a sentinel object and its contents remain in the bucket before rerunning `storage-init`; subsequent `task db:setup` and `task storage:init` stay clean. |
 | 4 | Run `task dev`. | Five Go servers (public / admin / platform API Connect + gRPC ports, image, and admin image) and three Next.js apps return 200 from `/livez` and `/readyz`; all 11 ports listen; the bootstrap Redis has application connections. |
 
-Phase 2 runs all of `task setup` only where Flutter SDK is available (the Dev Container). Elsewhere it runs `task deps` without `mobile:deps` plus `task db:setup`; **Test / Mobile** owns mobile dependencies.
-
-`scripts/lib.sh` exports `PUBLIRA_DB_URL`, `PUBLIRA_*_DB_URL`, `PUBLIRA_REDIS_URL`, `PUBLIRA_S3_*`, `AWS_*`, `PUBLIRA_AUTH_SECRET`, and `PUBLIRA_AUTH_JWT_SECRET` so `task dev` uses the bootstrap stack. The two secrets are check values—not stack addresses—required for Next.js session encryption and Go access-token signing. Storage uses Dev-Container path style, with `PUBLIRA_S3_ENDPOINT` fixed to bootstrap RustFS at `http://127.0.0.1:${BOOTSTRAP_RUSTFS_PORT}`. API targets keep their usual localhost ports.
-
-The phase-4 Redis `connected_clients` assertion rules out apps that return 200 while connected to a different Redis. Turbo uses strict environment mode; without `PUBLIRA_REDIS_URL` in `turbo.json` `dev` `passThroughEnv`, an app would fall back to `redis://localhost:6379`.
+`scripts/lib.sh` exports `PUBLIRA_DB_URL`, `PUBLIRA_*_DB_URL`, `PUBLIRA_REDIS_URL`, `PUBLIRA_S3_*`, `AWS_*`, `PUBLIRA_AUTH_SECRET`, and `PUBLIRA_AUTH_JWT_SECRET` so `task dev` uses the bootstrap stack. Storage uses Dev-Container path style, with `PUBLIRA_S3_ENDPOINT` fixed to bootstrap RustFS at `http://127.0.0.1:${BOOTSTRAP_RUSTFS_PORT}`. API targets keep their usual localhost ports.
 
 ## Layout
 
@@ -73,10 +69,6 @@ e2e/bootstrap/
     ├── dev-up.sh / dev-wait.sh / dev-down.sh
     └── down.sh
 ```
-
-The root `compose.yaml` already publishes each data store on its standard port, and the Dev Container overlay resets those because app containers reach `db:5432` / `redis:6379` / `http://rustfs:9000` by service name. Bootstrap runs `task dev` on the host but must not collide with either, so `compose.override.yaml` replaces the published ports (`!override`) with `127.0.0.1:5434` / `6381` / `9002`.
-
-`task db:setup` uses the bootstrap DB because `db/Taskfile.yaml` gives `PUBLIRA_DB_URL` precedence over its default. When unset, it keeps targeting the Dev Container `db` service.
 
 ## Failure triage
 

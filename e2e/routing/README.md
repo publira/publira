@@ -8,9 +8,9 @@ Playwright E2E ([`../README.md`](../README.md)) connects directly to application
 
 The `app` labels in `.devcontainer/compose.yaml` are the source of truth for Traefik routing. A one-line label change can break priority, `HostRegexp`, `/api` strip-prefixing, the `/api/v1/revalidate` exception, or the admin `/images` route. `pnpm preflight`, Playwright, and bootstrap cannot detect these regressions.
 
-The `strip-trace-context` middleware on the `web` entrypoint is another trust boundary: it removes incoming `traceparent`, `tracestate`, and `baggage`. Requests still succeed if it is detached, so the regression is silent without this check. See [`../../server/README.md`](../../server/README.md#trace-context-arriving-from-outside).
+The `strip-trace-context` middleware on the same entrypoint is covered too: it removes incoming `traceparent`, `tracestate`, and `baggage`, and requests still succeed if it is detached, so that regression is silent without this check. See [`../../server/README.md`](../../server/README.md#trace-context-arriving-from-outside).
 
-The check starts **the same compose files** (the root `compose.yaml` the Dev Container overlay builds on, plus that overlay) under a dedicated project name, replacing only the `app` process with an echo server for port responses. The labels remain unchanged, so compose-rule changes are tested directly.
+The check starts **the same compose files** (the root `compose.yaml` the Dev Container overlay builds on, plus that overlay) under a dedicated project name, replacing only the `app` process with an echo server.
 
 ## Prerequisites
 
@@ -45,27 +45,9 @@ It always tears down the compose project and volumes, whether it succeeds, fails
 
 ## What it verifies
 
-The echo server responds with `{"backend","port","path","host","method"}` and the received `traceparent`, `tracestate`, and `baggage` values. Assertions cover both **which backend received a request** and **the path it saw** after strip-prefixing.
+The echo server responds with `{"backend","port","path","host","method"}` and the received `traceparent`, `tracestate`, and `baggage` values, so every probe can assert both **which backend received a request** and **the path it saw** after strip-prefixing.
 
-| Route | Example | Expected result |
-| --- | --- | --- |
-| web-host | `Host: localhost` `/` | `web-host` (`:3000`), path `/` |
-| web-host fallback | `Host: other.localhost` `/catalog` | `web-host` |
-| web-admin | `Host: admin.localhost` `/` | `web-admin` (`:4000`) |
-| web-admin regexp | `Host: admin2.example.com` `/series` | `web-admin` (`admin\d*`) |
-| non-match | `Host: administrator.localhost` `/` | `web-host` |
-| web-platform | `Host: platform.localhost` `/` | `web-platform` (`:4100`) |
-| Host with port | `Host: admin.localhost:3080` `/` | `web-admin`; Traefik uses only the hostname |
-| `/api` strip | `GET /api/readyz` | `api` (`:8000`), path `/readyz` |
-| `/api` on admin / platform | `Host: admin.localhost` `/api/readyz` | `api`, path `/readyz` (priority 105 > 100) |
-| revalidate exception | `POST /api/v1/revalidate` | `web-host`, path `/api/v1/revalidate` (not stripped) |
-| revalidate on admin | `Host: admin.localhost` `POST /api/v1/revalidate` | `web-admin` |
-| revalidate prefix | `GET /api/v1/revalidate/extra` | `api`, path `/v1/revalidate/extra` (only exact match is excluded) |
-| `/images` | `GET /images/cover` | `image-server` (`:8200`) |
-| `/images` on platform | `Host: platform.localhost` `/images/cover` | `image-server` (priority 110 > 100) |
-| `/images` on admin | `Host: admin.localhost` `/images/cover` | `admin-image-server` (`:8201`, priority 130) |
-
-The trace-context checks send forged `traceparent`, `tracestate`, and `baggage` values and add assertions that **all three are absent** at the backend. Since this is an entrypoint-default middleware, the checks cover all six backends, including web, `/api`, the revalidate exception, and `/images`.
+`scripts/test.sh` is the list of probes: host-based routing including the `HostRegexp` for admin and platform and a host carrying a port, `/api` strip-prefixing and its exact-match `/api/v1/revalidate` exception, the `/images` routes on the public and the admin host, and — against every one of the six backends — forged `traceparent`, `tracestate`, and `baggage` values that must be gone by the time the request arrives.
 
 ## Layout
 
