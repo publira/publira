@@ -52,12 +52,12 @@ describe("web-host announcements", () => {
     mockListAnnouncements.mockResolvedValueOnce({
       announcements: [
         {
-          body: "本文",
+          body: "Body",
           createdAt: "2026-04-05T10:00:00Z",
           id: "N001",
           isRead: false,
           linkUrl: "/series/S001",
-          title: "お知らせ",
+          title: "Announcement",
         },
       ],
       nextToken: "djF8Zg",
@@ -65,16 +65,16 @@ describe("web-host announcements", () => {
     });
 
     await expect(
-      listMyAnnouncements("TENANT001", undefined, { locale: "ja" })
+      listMyAnnouncements("TENANT001", undefined, { locale: "en" })
     ).resolves.toEqual({
       announcements: [
         {
-          body: "本文",
+          body: "Body",
           createdAt: "2026-04-05T10:00:00Z",
           id: "N001",
           isRead: false,
           linkUrl: "/series/S001",
-          title: "お知らせ",
+          title: "Announcement",
         },
       ],
       nextToken: "djF8Zg",
@@ -87,7 +87,7 @@ describe("web-host announcements", () => {
     const { listMyAnnouncements } = await importAnnouncements();
     mockListAnnouncements.mockResolvedValueOnce({ announcements: [] });
 
-    await listMyAnnouncements("TENANT001", undefined, { locale: "ja" });
+    await listMyAnnouncements("TENANT001", undefined, { locale: "en" });
 
     expect(mockListAnnouncements).toHaveBeenCalledWith(
       { limit: 20, tenant: { tenantId: "TENANT001" }, token: "" },
@@ -101,7 +101,7 @@ describe("web-host announcements", () => {
 
     await listMyAnnouncements("TENANT001", "sid_001", {
       limit: 5,
-      locale: "ja",
+      locale: "en",
       token: "djF8Zg",
     });
 
@@ -117,7 +117,7 @@ describe("web-host announcements", () => {
     mockListAnnouncements.mockRejectedValueOnce(error);
 
     await expect(
-      listMyAnnouncements("TENANT001", undefined, { locale: "ja" })
+      listMyAnnouncements("TENANT001", undefined, { locale: "en" })
     ).rejects.toBe(error);
   });
 
@@ -126,22 +126,22 @@ describe("web-host announcements", () => {
 
     mockGetAnnouncement.mockResolvedValueOnce({
       announcement: {
-        body: "本文",
+        body: "Body",
         createdAt: "2026-04-05T10:00:00Z",
         id: announcementId,
         isRead: false,
         linkUrl: "/series/S001",
-        title: "お知らせ",
+        title: "Announcement",
       },
     });
 
     await expect(getMyAnnouncement(tenantId, announcementId)).resolves.toEqual({
-      body: "本文",
+      body: "Body",
       createdAt: "2026-04-05T10:00:00Z",
       id: announcementId,
       isRead: false,
       linkUrl: "/series/S001",
-      title: "お知らせ",
+      title: "Announcement",
     });
     expect(mockGetAnnouncement).toHaveBeenCalledWith(
       { announcementId, tenant: { tenantId } },
@@ -154,12 +154,12 @@ describe("web-host announcements", () => {
     const { getMyAnnouncement } = await importAnnouncements();
     mockGetAnnouncement.mockResolvedValueOnce({
       announcement: {
-        body: "本文",
+        body: "Body",
         createdAt: "2026-04-05T10:00:00Z",
         id: announcementId,
         isRead: false,
         linkUrl: "/series/S001",
-        title: "お知らせ",
+        title: "Announcement",
       },
     });
 

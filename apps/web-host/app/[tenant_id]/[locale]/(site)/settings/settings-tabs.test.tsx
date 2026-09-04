@@ -7,21 +7,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SettingsTabs } from "./settings-tabs";
 
 const labels = {
-  basic: "基本設定",
-  follows: "フォロー",
-  notifications: "通知",
-  security: "セキュリティ",
+  basic: "General",
+  follows: "Follows",
+  notifications: "Notifications",
+  security: "Security",
 };
 
 const mockUsePathname = vi.hoisted(() => vi.fn(() => "/settings"));
 
 vi.mock("#components/locale-provider", () => ({
-  useLocale: () => "ja",
-  useTenantDefaultLocale: () => "ja",
+  useLocale: () => "en",
+  useTenantDefaultLocale: () => "en",
 }));
 
 vi.mock("next/navigation", () => ({
-  useParams: () => ({ locale: "ja" }),
+  useParams: () => ({ locale: "en" }),
   usePathname: () => mockUsePathname(),
 }));
 
@@ -50,7 +50,7 @@ describe("SettingsTabs", () => {
     render(<SettingsTabs labels={labels} />);
 
     expect(
-      screen.getByRole("link", { name: "フォロー" }).getAttribute("href")
+      screen.getByRole("link", { name: "Follows" }).getAttribute("href")
     ).toBe("/settings/follows");
   });
 
@@ -58,8 +58,8 @@ describe("SettingsTabs", () => {
     mockUsePathname.mockReturnValue("/settings/follows");
     render(<SettingsTabs labels={labels} />);
 
-    const follows = screen.getByRole("link", { name: "フォロー" });
-    const basic = screen.getByRole("link", { name: "基本設定" });
+    const follows = screen.getByRole("link", { name: "Follows" });
+    const basic = screen.getByRole("link", { name: "General" });
     expect(follows.className).toContain("border-primary");
     expect(basic.className).toContain("border-transparent");
   });
@@ -68,12 +68,12 @@ describe("SettingsTabs", () => {
   // must not depend on which of the two shapes `usePathname()` returns.
   it("The selected tab does not change even after rewriting the path", () => {
     mockUsePathname.mockReturnValue(
-      "/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/ja/settings/follows"
+      "/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/en/settings/follows"
     );
     render(<SettingsTabs labels={labels} />);
 
-    const follows = screen.getByRole("link", { name: "フォロー" });
-    const basic = screen.getByRole("link", { name: "基本設定" });
+    const follows = screen.getByRole("link", { name: "Follows" });
+    const basic = screen.getByRole("link", { name: "General" });
     expect(follows.className).toContain("border-primary");
     expect(basic.className).toContain("border-transparent");
   });

@@ -82,7 +82,7 @@ describe("web-host proxy session handling", () => {
     expect(response.status).toBe(307);
     const location = new URL(response.headers.get("location") ?? "");
     expect(location.pathname).toBe("/login");
-    // `returnTo` は locale を落とした形で持ち回る。
+    // `returnTo` travels with the locale prefix removed.
     expect(location.searchParams.get("returnTo")).toBe("/settings");
   });
 
@@ -213,8 +213,8 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
-  // 既定ロケールはこのアプリの定数ではなくテナントの設定なので、`en` の
-  // テナントに来た locale 無しの URL が `/ja` へ落ちてはいけない。
+  // The default locale is a tenant setting rather than a constant of this app,
+  // so a locale-less URL on an `en` tenant must not fall back to `/ja`.
   it("For tenants whose default locale is en, rewrite URLs without locale as en.", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
@@ -273,7 +273,8 @@ describe("web-host proxy locale routing", () => {
     expect(location.search).toBe("?source=bookmark");
   });
 
-  // locale を名指しした URL は読者の選択なので、既定ロケールで引き戻さない。
+  // A URL that names a locale is the reader's own choice, so it is never pulled
+  // back to the default locale.
   it("Even if the default locale is en, /ja URLs are delivered as is.", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",

@@ -60,7 +60,7 @@ const page = (search = `?t=${entitled.token}`): ViewerPage => ({
   id: "page-1",
   mimeType: "image/jpeg",
   src: `/images/episodes/page-1${search}`,
-  title: "第1話 1ページ",
+  title: "Episode 1, page 1",
 });
 
 const encryptedResponse = (

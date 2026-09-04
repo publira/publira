@@ -23,15 +23,15 @@ describe("TenantBrandLogo", () => {
   it("Display logo image", () => {
     render(
       <TenantBrandLogo
-        alt="青枝出版のロゴ"
-        fallbackLabel="青枝出版"
+        alt="Acme Publishing logo"
+        fallbackLabel="Acme Publishing"
         variant={variant}
       />
     );
 
     expect(
       screen
-        .getByAltText<HTMLImageElement>("青枝出版のロゴ")
+        .getByAltText<HTMLImageElement>("Acme Publishing logo")
         .src.includes("logo-1")
     ).toBe(true);
   });
@@ -39,15 +39,15 @@ describe("TenantBrandLogo", () => {
   it("Fallback to site name text if loading fails", () => {
     render(
       <TenantBrandLogo
-        alt="青枝出版のロゴ"
-        fallbackLabel="青枝出版"
+        alt="Acme Publishing logo"
+        fallbackLabel="Acme Publishing"
         variant={variant}
       />
     );
 
-    fireEvent.error(screen.getByAltText("青枝出版のロゴ"));
+    fireEvent.error(screen.getByAltText("Acme Publishing logo"));
 
-    expect(screen.queryByAltText("青枝出版のロゴ")).toBeNull();
-    expect(screen.getByText("青枝出版")).toBeDefined();
+    expect(screen.queryByAltText("Acme Publishing logo")).toBeNull();
+    expect(screen.getByText("Acme Publishing")).toBeDefined();
   });
 });

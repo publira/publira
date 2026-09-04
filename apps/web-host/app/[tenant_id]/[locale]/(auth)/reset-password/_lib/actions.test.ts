@@ -29,7 +29,7 @@ vi.mock("#lib/email-flash-cookie", () => ({
 }));
 
 vi.mock("#lib/tenant", () => ({
-  getTenantDefaultLocale: () => "ja",
+  getTenantDefaultLocale: () => "en",
 }));
 
 const formData = (values: Record<string, string>): FormData => {
@@ -55,7 +55,7 @@ describe("requestPasswordResetAction", () => {
     const { requestPasswordResetAction } = await import("./actions");
     await requestPasswordResetAction(
       { message: "", ok: false },
-      formData({ email, locale: "ja", tenantId })
+      formData({ email, locale: "en", tenantId })
     );
 
     expect(mockRequestPublicPasswordReset).toHaveBeenCalledWith(
@@ -75,11 +75,11 @@ describe("requestPasswordResetAction", () => {
     const { requestPasswordResetAction } = await import("./actions");
     const result = await requestPasswordResetAction(
       { message: "", ok: false },
-      formData({ email, locale: "ja", tenantId })
+      formData({ email, locale: "en", tenantId })
     );
 
     expect(result).toEqual({
-      message: "再設定メールの送信に失敗しました。入力内容をご確認ください。",
+      message: "Could not send the reset email. Please check what you entered.",
       ok: false,
     });
     expect(mockSetEmailFlashCookie).not.toHaveBeenCalled();

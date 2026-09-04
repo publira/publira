@@ -61,20 +61,20 @@ describe("notification actions", () => {
     const result = await markNotificationAsReadAction(
       null,
       formData({
-        locale: "ja",
+        locale: "en",
         notificationId,
         tenantId,
       })
     );
 
-    expect(result).toEqual({ message: "既読にしました。", ok: true });
+    expect(result).toEqual({ message: "Marked as read.", ok: true });
     expect(mockMarkNotificationAsRead).toHaveBeenCalledWith({
-      locale: "ja",
+      locale: "en",
       notificationId,
       tenantId,
     });
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
-      "ja",
+      "en",
       "/notifications",
       tenantId
     );
@@ -88,14 +88,14 @@ describe("notification actions", () => {
     const result = await markNotificationAsReadAction(
       null,
       formData({
-        locale: "ja",
+        locale: "en",
         notificationId: "not-a-uuid",
         tenantId,
       })
     );
 
     expect(result).toEqual({
-      message: "入力内容を確認してください。",
+      message: "Please check the information you entered.",
       ok: false,
     });
     expect(mockMarkNotificationAsRead).not.toHaveBeenCalled();
@@ -111,16 +111,16 @@ describe("notification actions", () => {
     const { markAllNotificationsAsReadAction } = await import("./actions");
     const result = await markAllNotificationsAsReadAction(
       null,
-      formData({ locale: "ja", tenantId })
+      formData({ locale: "en", tenantId })
     );
 
     expect(result).toEqual({
-      message: "未読をすべて既読にしました。",
+      message: "Marked every unread notification as read.",
       ok: true,
     });
-    expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(tenantId, "ja");
+    expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(tenantId, "en");
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
-      "ja",
+      "en",
       "/notifications",
       tenantId
     );
@@ -131,18 +131,18 @@ describe("notification actions", () => {
 
   it("If the API rejects, return a message and do not update the tag.", async () => {
     mockMarkAllNotificationsAsRead.mockResolvedValueOnce({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       ok: false,
     });
 
     const { markAllNotificationsAsReadAction } = await import("./actions");
     const result = await markAllNotificationsAsReadAction(
       null,
-      formData({ locale: "ja", tenantId })
+      formData({ locale: "en", tenantId })
     );
 
     expect(result).toEqual({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

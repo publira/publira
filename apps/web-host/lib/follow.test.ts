@@ -70,7 +70,7 @@ describe("getMyFollowStatus", () => {
       tenantId,
       "series",
       "SERIES01",
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
@@ -88,7 +88,7 @@ describe("getMyFollowStatus", () => {
       tenantId,
       "author",
       "AUTHOR01",
-      "ja"
+      "en"
     );
 
     expect(mockGetMyFollowStatus).toHaveBeenCalledWith(
@@ -114,7 +114,7 @@ describe("getMyFollowStatus", () => {
       tenantId,
       "series",
       "SERIES01",
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
@@ -133,11 +133,11 @@ describe("getMyFollowStatus", () => {
       tenantId,
       "series",
       "MISSING01",
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
-      message: "対象が見つかりません。",
+      message: "The requested item could not be found.",
       ok: false,
     });
   });
@@ -154,7 +154,7 @@ describe("followTarget / unfollowTarget", () => {
 
     await expect(
       followTarget({
-        locale: "ja",
+        locale: "en",
         publicId: "SERIES01",
         targetKind: "series",
         tenantId,
@@ -174,7 +174,7 @@ describe("followTarget / unfollowTarget", () => {
 
     await expect(
       unfollowTarget({
-        locale: "ja",
+        locale: "en",
         publicId: "AUTHOR01",
         targetKind: "author",
         tenantId,
@@ -189,7 +189,7 @@ describe("followTarget / unfollowTarget", () => {
 
     await expect(
       followTarget({
-        locale: "ja",
+        locale: "en",
         publicId: "SERIES01",
         targetKind: "series",
         tenantId,

@@ -37,7 +37,7 @@ describe("web-host auth-shared", () => {
     );
 
     expect(url.pathname).toBe("/login");
-    // `returnTo` は locale を落とした形で保存する。
+    // `returnTo` is stored with the locale prefix removed.
     expect(url.searchParams.get("returnTo")).toBe("/me?from=settings");
   });
 
@@ -46,7 +46,7 @@ describe("web-host auth-shared", () => {
     expect(sanitizeRedirectPath("/en/dashboard")).toBe("/dashboard");
     expect(sanitizeRedirectPath("https://example.com")).toBe("/");
     expect(sanitizeRedirectPath("/login?returnTo=/dashboard")).toBe("/");
-    // locale 付きの /login も再ログインループを作らせない。
+    // A locale-prefixed /login must not create a sign-in loop either.
     expect(sanitizeRedirectPath("/ja/login?returnTo=/dashboard")).toBe("/");
     expect(sanitizeRedirectPath(null)).toBe("/");
     expect(sanitizeRedirectPath("//evil.example.com")).toBe("/");

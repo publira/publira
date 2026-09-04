@@ -36,7 +36,7 @@ const tenantResponse = {
   siteDescription: "",
   siteTagline: "",
   tenantDomain: "example.test",
-  tenantName: "テナント",
+  tenantName: "Example Tenant",
   tenantPublicId: "TENANT_PUBLIC",
   theme: undefined,
   timezone: "America/Los_Angeles",

@@ -27,7 +27,7 @@ describe("splitLocalePathname", () => {
       pathname: "/series/SR01",
     });
     expect(splitLocalePathname("/")).toEqual({ locale: null, pathname: "/" });
-    // 未対応のロケールコードも「ロケールではない」として扱う。
+    // An unsupported locale code is not a locale either.
     expect(splitLocalePathname("/fr/series")).toEqual({
       locale: null,
       pathname: "/fr/series",

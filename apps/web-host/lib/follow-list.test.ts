@@ -67,7 +67,7 @@ describe("listMyFollows", () => {
     const { listMyFollows } = await import("./follow-list");
     const result = await listMyFollows(tenantId, {
       limit: 20,
-      locale: "ja",
+      locale: "en",
       token: "current-page",
     });
 
@@ -91,7 +91,7 @@ describe("listMyFollows", () => {
     mockListMyFollows.mockResolvedValue({ follows: [] });
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId, { locale: "ja" });
+    const result = await listMyFollows(tenantId, { locale: "en" });
 
     expect(mockListMyFollows).toHaveBeenCalledWith(
       {
@@ -117,7 +117,7 @@ describe("listMyFollows", () => {
     });
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId, { locale: "ja" });
+    const result = await listMyFollows(tenantId, { locale: "en" });
 
     expect(result.ok).toBe(true);
     expect(result.follows).toEqual([
@@ -147,7 +147,7 @@ describe("listMyFollows", () => {
     });
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId, { locale: "ja" });
+    const result = await listMyFollows(tenantId, { locale: "en" });
 
     expect(result.follows).toEqual([
       {
@@ -162,11 +162,11 @@ describe("listMyFollows", () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId, { locale: "ja" });
+    const result = await listMyFollows(tenantId, { locale: "en" });
 
     expect(result).toEqual({
       follows: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -181,7 +181,7 @@ describe("listMyFollows", () => {
     );
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId, { locale: "ja" });
+    const result = await listMyFollows(tenantId, { locale: "en" });
 
     expect(result).toMatchObject({
       ok: false,
@@ -195,11 +195,11 @@ describe("listMyFollows", () => {
     );
 
     const { listMyFollows } = await import("./follow-list");
-    const result = await listMyFollows(tenantId, { locale: "ja" });
+    const result = await listMyFollows(tenantId, { locale: "en" });
 
     expect(result).toEqual({
       follows: [],
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -213,8 +213,8 @@ describe("listMyFollows", () => {
     );
 
     const { listMyFollows } = await import("./follow-list");
-    await expect(listMyFollows(tenantId, { locale: "ja" })).rejects.toThrow(
-      "フォロー一覧を取得できませんでした。時間をおいて再試行してください。"
+    await expect(listMyFollows(tenantId, { locale: "en" })).rejects.toThrow(
+      "Could not load your follows. Please try again later."
     );
   });
 });
@@ -241,23 +241,23 @@ describe("resolveFollowListItems", () => {
   it("Add the title of the published work/author and the published page URL", async () => {
     mockGetSeriesDetail.mockResolvedValueOnce({
       ok: true,
-      value: { episodes: [], series: { title: "公開シリーズ" } },
+      value: { episodes: [], series: { title: "Published Series" } },
     });
     mockGetPublishedAuthorDetail.mockResolvedValueOnce({
       ok: true,
-      value: { name: "公開著者" },
+      value: { name: "Published Author" },
     });
 
     const { resolveFollowListItems } = await import("./follow-list");
     await expect(
-      resolveFollowListItems(tenantId, entries, "ja")
+      resolveFollowListItems(tenantId, entries, "en")
     ).resolves.toEqual([
       {
         followedAt: "2026-06-02T00:00:00Z",
         href: "/series/SERIES01",
         publicId: "SERIES01",
         targetKind: "series",
-        title: "公開シリーズ",
+        title: "Published Series",
         unavailable: false,
       },
       {
@@ -265,14 +265,14 @@ describe("resolveFollowListItems", () => {
         href: "/authors/AUTHOR01",
         publicId: "AUTHOR01",
         targetKind: "author",
-        title: "公開著者",
+        title: "Published Author",
         unavailable: false,
       },
     ]);
     expect(mockGetPublishedAuthorDetail).toHaveBeenCalledWith(
       tenantId,
       "AUTHOR01",
-      { limit: 1, locale: "ja" }
+      { limit: 1, locale: "en" }
     );
   });
 
@@ -282,14 +282,14 @@ describe("resolveFollowListItems", () => {
     const { resolveFollowListItems } = await import("./follow-list");
     const [seriesEntry] = entries;
     await expect(
-      resolveFollowListItems(tenantId, [seriesEntry], "ja")
+      resolveFollowListItems(tenantId, [seriesEntry], "en")
     ).resolves.toEqual([
       {
         followedAt: "2026-06-02T00:00:00Z",
         href: undefined,
         publicId: "SERIES01",
         targetKind: "series",
-        title: "現在公開されていません",
+        title: "Not currently published",
         unavailable: true,
       },
     ]);
@@ -297,14 +297,14 @@ describe("resolveFollowListItems", () => {
 
   it("If catalog acquisition fails, use publicId as title and leave link.", async () => {
     mockGetPublishedAuthorDetail.mockResolvedValueOnce({
-      message: "著者を取得できませんでした。",
+      message: "Could not load the author.",
       ok: false,
     });
 
     const { resolveFollowListItems } = await import("./follow-list");
     const [, authorEntry] = entries;
     await expect(
-      resolveFollowListItems(tenantId, [authorEntry], "ja")
+      resolveFollowListItems(tenantId, [authorEntry], "en")
     ).resolves.toEqual([
       {
         followedAt: "2026-06-01T00:00:00Z",

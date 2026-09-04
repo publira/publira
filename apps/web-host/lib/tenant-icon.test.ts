@@ -7,7 +7,7 @@ const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   acceptsPayments: false,
   defaultLocale: "ja",
   domain: "example.test",
-  name: "テナント",
+  name: "Example Tenant",
   publicId: "TENANT_PUBLIC",
   timeZone: "Asia/Tokyo",
   ...overrides,

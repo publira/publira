@@ -42,20 +42,20 @@ vi.mock("./catalog", async (importOriginal) => {
 
 const seriesFixture = [
   {
-    creatorNames: ["著者A"],
+    creatorNames: ["Author A"],
     creators: [],
     labelName: "",
     publicId: "SERIES_1",
     synopsis: "S1",
-    title: "シリーズ1",
+    title: "Series 1",
   },
   {
-    creatorNames: ["著者B"],
+    creatorNames: ["Author B"],
     creators: [],
     labelName: "",
     publicId: "SERIES_2",
     synopsis: "S2",
-    title: "シリーズ2",
+    title: "Series 2",
   },
 ];
 
@@ -67,7 +67,7 @@ const detailSeries1 = {
       publicId: "EP_1_1",
       publishedAt: "2026-03-01T00:00:00Z",
       status: "published",
-      title: "第1話",
+      title: "Episode 1",
     },
     {
       orderIndex: 2,
@@ -75,16 +75,16 @@ const detailSeries1 = {
       publicId: "EP_1_2",
       publishedAt: "2026-03-15T00:00:00Z",
       status: "published",
-      title: "第2話",
+      title: "Episode 2",
     },
   ],
   series: {
-    creatorNames: ["著者A"],
+    creatorNames: ["Author A"],
     labelName: "",
     publicId: "SERIES_1",
     readingPeriodHours: 0,
     synopsis: "",
-    title: "シリーズ1",
+    title: "Series 1",
   },
 };
 
@@ -96,16 +96,16 @@ const detailSeries2 = {
       publicId: "EP_2_1",
       publishedAt: "2026-03-20T00:00:00Z",
       status: "published",
-      title: "第1話",
+      title: "Episode 1",
     },
   ],
   series: {
-    creatorNames: ["著者B"],
+    creatorNames: ["Author B"],
     labelName: "",
     publicId: "SERIES_2",
     readingPeriodHours: 0,
     synopsis: "",
-    title: "シリーズ2",
+    title: "Series 2",
   },
 };
 
@@ -132,13 +132,13 @@ describe("catalog-top section loaders", () => {
     });
 
     const result = await getCatalogTopRecommendedSeries("TENANT_001", {
-      locale: "ja",
+      locale: "en",
       maxRecommended: 2,
     });
 
     expect(mockListRecommendedSeries).toHaveBeenCalledWith("TENANT_001", {
       limit: 2,
-      locale: "ja",
+      locale: "en",
     });
     expect(result.ok && result.value.map((item) => item.publicId)).toEqual([
       "SERIES_2",
@@ -148,19 +148,17 @@ describe("catalog-top section loaders", () => {
 
   it("getCatalogTopRecommendedSeries reports a failed recommendation read", async () => {
     mockListRecommendedSeries.mockResolvedValue({
-      message:
-        "おすすめ作品を取得できませんでした。時間をおいて再試行してください。",
+      message: "Could not load the recommended works. Please try again later.",
       ok: false,
     });
 
     await expect(
       getCatalogTopRecommendedSeries("TENANT_001", {
-        locale: "ja",
+        locale: "en",
         maxRecommended: 6,
       })
     ).resolves.toEqual({
-      message:
-        "おすすめ作品を取得できませんでした。時間をおいて再試行してください。",
+      message: "Could not load the recommended works. Please try again later.",
       ok: false,
     });
   });
@@ -181,7 +179,7 @@ describe("catalog-top section loaders", () => {
 
     const result = await getCatalogTopNewEpisodes("TENANT_001", {
       detailFetchLimit: 4,
-      locale: "ja",
+      locale: "en",
       maxNewEpisodes: 4,
       seriesLimit: 10,
     });
@@ -209,7 +207,7 @@ describe("catalog-top section loaders", () => {
 
     const result = await getCatalogTopUpdatedSeries("TENANT_001", {
       detailFetchLimit: 4,
-      locale: "ja",
+      locale: "en",
       maxUpdatedSeries: 4,
       seriesLimit: 10,
     });
@@ -225,8 +223,8 @@ describe("catalog-top section loaders", () => {
       ok: true,
       value: {
         authors: [
-          { id: "AUTHOR_1", name: "著者A", seriesCount: 2 },
-          { id: "AUTHOR_2", name: "著者B", seriesCount: 1 },
+          { id: "AUTHOR_1", name: "Author A", seriesCount: 2 },
+          { id: "AUTHOR_2", name: "Author B", seriesCount: 1 },
         ],
         nextToken: "",
         previousToken: "",
@@ -238,7 +236,7 @@ describe("catalog-top section loaders", () => {
         labels: [
           {
             eyeCatchImageVariants: [],
-            name: "ラベルA",
+            name: "Label A",
             publicId: "LABEL_1",
             seriesCount: 3,
           },
@@ -250,28 +248,28 @@ describe("catalog-top section loaders", () => {
 
     await expect(
       getCatalogTopFeaturedAuthors("TENANT_001", {
-        locale: "ja",
+        locale: "en",
         maxAuthors: 6,
       })
     ).resolves.toEqual({
       ok: true,
       value: [
-        { id: "AUTHOR_1", name: "著者A", seriesCount: 2 },
-        { id: "AUTHOR_2", name: "著者B", seriesCount: 1 },
+        { id: "AUTHOR_1", name: "Author A", seriesCount: 2 },
+        { id: "AUTHOR_2", name: "Author B", seriesCount: 1 },
       ],
     });
     expect(mockListPublishedAuthors).toHaveBeenCalledWith("TENANT_001", {
       limit: 6,
-      locale: "ja",
+      locale: "en",
     });
     await expect(
-      getCatalogTopFeaturedLabels("TENANT_001", { locale: "ja", maxLabels: 6 })
+      getCatalogTopFeaturedLabels("TENANT_001", { locale: "en", maxLabels: 6 })
     ).resolves.toEqual({
       ok: true,
       value: [
         {
           eyeCatchImageVariants: [],
-          name: "ラベルA",
+          name: "Label A",
           publicId: "LABEL_1",
           seriesCount: 3,
         },
@@ -285,19 +283,17 @@ describe("catalog-top section loaders", () => {
    */
   it("If retrieving the series list fails, the section also returns failure.", async () => {
     mockListPublishedSeries.mockResolvedValue({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
 
     await expect(
       getCatalogTopNewEpisodes("TENANT_001", {
-        locale: "ja",
+        locale: "en",
         maxNewEpisodes: 6,
       })
     ).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
   });
@@ -308,19 +304,17 @@ describe("catalog-top section loaders", () => {
       value: { nextToken: "", previousToken: "", series: seriesFixture },
     });
     mockGetSeriesDetail.mockResolvedValue({
-      message:
-        "シリーズを取得できませんでした。時間をおいて再試行してください。",
+      message: "Could not load the series. Please try again later.",
       ok: false,
     });
 
     await expect(
       getCatalogTopUpdatedSeries("TENANT_001", {
-        locale: "ja",
+        locale: "en",
         maxUpdatedSeries: 6,
       })
     ).resolves.toEqual({
-      message:
-        "シリーズを取得できませんでした。時間をおいて再試行してください。",
+      message: "Could not load the series. Please try again later.",
       ok: false,
     });
   });
@@ -338,7 +332,7 @@ describe("catalog-top section loaders", () => {
             labelName: "",
             publicId: "SERIES_1",
             synopsis: "",
-            title: "シリーズ1",
+            title: "Series 1",
           },
           {
             creatorNames: [],
@@ -346,7 +340,7 @@ describe("catalog-top section loaders", () => {
             labelName: "",
             publicId: "SERIES_2",
             synopsis: "",
-            title: "シリーズ2",
+            title: "Series 2",
           },
         ],
       },
@@ -366,7 +360,7 @@ describe("catalog-top section loaders", () => {
                 publicId: "EP_2_1",
                 publishedAt: "2026-03-20T00:00:00Z",
                 status: "published",
-                title: "第1話",
+                title: "Episode 1",
               },
             ],
             series: {
@@ -375,7 +369,7 @@ describe("catalog-top section loaders", () => {
               publicId: "SERIES_2",
               readingPeriodHours: 0,
               synopsis: "",
-              title: "シリーズ2",
+              title: "Series 2",
             },
           },
         });
@@ -384,7 +378,7 @@ describe("catalog-top section loaders", () => {
 
     const options = {
       detailFetchLimit: 10,
-      locale: "ja",
+      locale: "en",
       maxNewEpisodes: 10,
       maxUpdatedSeries: 10,
       seriesLimit: 10,

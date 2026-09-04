@@ -43,31 +43,31 @@ const renderBell = ({
     <NotificationBell>
       <NotificationBellTrigger unreadCount={unreadCount}>
         {unreadCount > 0
-          ? `通知、未読${unreadCount}件`
-          : "通知、未読はありません"}
+          ? `Notifications, ${unreadCount} unread`
+          : "Notifications, none unread"}
       </NotificationBellTrigger>
       <NotificationBellContent>
         <NotificationBellHeader unreadCount={unreadCount}>
-          通知
+          Notifications
         </NotificationBellHeader>
         {state === "empty" ? (
           <NotificationBellEmpty>
             <NotificationBellEmptyTitle>
-              通知はまだありません。
+              You have no notifications yet.
             </NotificationBellEmptyTitle>
             <NotificationBellEmptyDescription>
-              通知が届くとここに表示されます。
+              When an episode is published, your notifications appear here.
             </NotificationBellEmptyDescription>
           </NotificationBellEmpty>
         ) : null}
         {state === "loading" ? (
           <NotificationBellLoading>
-            通知を読み込んでいます。
+            Loading notifications.
           </NotificationBellLoading>
         ) : null}
         {state === "error" ? (
           <NotificationBellError>
-            通知を表示できませんでした。
+            Could not display your notifications.
           </NotificationBellError>
         ) : null}
         {state === "notification" ? (
@@ -76,18 +76,18 @@ const renderBell = ({
               href="/ja/series/SR01/episodes/EP01"
               isRead={false}
             >
-              <NotificationBellItemState>未読</NotificationBellItemState>
+              <NotificationBellItemState>Unread</NotificationBellItemState>
               <NotificationBellItemTitle>
-                新しいエピソードが公開されました
+                A new episode has been published
               </NotificationBellItemTitle>
               <NotificationBellItemDescription>
-                「第1話」が公開されました。
+                “Episode 1” has been published.
               </NotificationBellItemDescription>
             </NotificationBellItem>
           </NotificationBellList>
         ) : null}
         <NotificationBellMore href="/ja/notifications">
-          もっと見る
+          View all
         </NotificationBellMore>
       </NotificationBellContent>
     </NotificationBell>
@@ -97,13 +97,17 @@ describe("NotificationBell", () => {
   it("If it is 0, do not display the number.", () => {
     renderBell();
     const trigger = screen.getByRole("button", {
-      name: "通知、未読はありません",
+      name: "Notifications, none unread",
     });
     expect(trigger.textContent).not.toContain("0");
     fireEvent.click(trigger);
-    expect(screen.getByText("通知はまだありません。")).toBeDefined();
-    expect(screen.getByText("通知が届くとここに表示されます。")).toBeDefined();
-    const more = screen.getByRole("link", { name: "もっと見る" });
+    expect(screen.getByText("You have no notifications yet.")).toBeDefined();
+    expect(
+      screen.getByText(
+        "When an episode is published, your notifications appear here."
+      )
+    ).toBeDefined();
+    const more = screen.getByRole("link", { name: "View all" });
     expect(more.getAttribute("href")).toBe("/ja/notifications");
     fireEvent.click(more);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -111,14 +115,16 @@ describe("NotificationBell", () => {
 
   it("If there are any unread items, display the number.", () => {
     renderBell({ unreadCount: 3 });
-    expect(screen.getByRole("button", { name: "通知、未読3件" })).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: "Notifications, 3 unread" })
+    ).toBeDefined();
     expect(screen.getByText("3")).toBeDefined();
   });
 
   it("If the number exceeds 99, display 99+.", () => {
     renderBell({ unreadCount: 120 });
     expect(
-      screen.getByRole("button", { name: "通知、未読120件" })
+      screen.getByRole("button", { name: "Notifications, 120 unread" })
     ).toBeDefined();
     expect(screen.getByText("99+")).toBeDefined();
   });
@@ -126,31 +132,31 @@ describe("NotificationBell", () => {
   it("When opened, you can move from the most recent notification to the target content.", () => {
     renderBell({ state: "notification" });
     fireEvent.click(
-      screen.getByRole("button", { name: "通知、未読はありません" })
+      screen.getByRole("button", { name: "Notifications, none unread" })
     );
     expect(
       screen
-        .getByRole("link", { name: /新しいエピソードが公開されました/u })
+        .getByRole("link", { name: /A new episode has been published/u })
         .getAttribute("href")
     ).toBe("/ja/series/SR01/episodes/EP01");
   });
 
   it.each([
-    ["loading", "通知を読み込んでいます。"],
-    ["error", "通知を表示できませんでした。"],
-  ] as const)("%s 中も通知メニューを開ける", (state, message) => {
+    ["loading", "Loading notifications."],
+    ["error", "Could not display your notifications."],
+  ] as const)("opens the notification menu while %s", (state, message) => {
     renderBell({ state });
     fireEvent.click(
-      screen.getByRole("button", { name: "通知、未読はありません" })
+      screen.getByRole("button", { name: "Notifications, none unread" })
     );
     expect(screen.getByText(message)).toBeDefined();
-    expect(screen.getByRole("link", { name: "もっと見る" })).toBeDefined();
+    expect(screen.getByRole("link", { name: "View all" })).toBeDefined();
   });
 
   it("Close with Escape to return focus to trigger", () => {
     renderBell();
     const trigger = screen.getByRole("button", {
-      name: "通知、未読はありません",
+      name: "Notifications, none unread",
     });
     trigger.focus();
     fireEvent.click(trigger);

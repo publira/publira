@@ -9,8 +9,8 @@ import type { NotificationItem } from "../notification-types";
 import { NotificationList } from "./notification-list";
 
 vi.mock("#components/locale-provider", () => ({
-  useLocale: () => "ja",
-  useTenantDefaultLocale: () => "ja",
+  useLocale: () => "en",
+  useTenantDefaultLocale: () => "en",
 }));
 
 vi.mock("next/link", () => ({
@@ -23,19 +23,19 @@ vi.mock("next/link", () => ({
 // provide. The catalog is the real one, so the assertions stay on the copy a
 // reader actually sees.
 vi.mock("#lib/locale", () => ({
-  getLocale: () => Promise.resolve("ja"),
-  loadHostMessages: () => Promise.resolve(sharedCatalog("ja")),
+  getLocale: () => Promise.resolve("en"),
+  loadHostMessages: () => Promise.resolve(sharedCatalog("en")),
 }));
 
 vi.mock("./notification-read-actions", () => ({
   MarkAllNotificationsAsReadButton: ({ tenantId }: { tenantId: string }) => (
-    <button type="button">すべて既読にする {tenantId}</button>
+    <button type="button">Mark all as read {tenantId}</button>
   ),
   MarkNotificationAsReadButton: ({
     notificationId,
   }: {
     notificationId: string;
-  }) => <button type="button">既読にする {notificationId}</button>,
+  }) => <button type="button">Mark as read {notificationId}</button>,
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -45,12 +45,12 @@ const notification = (
   overrides: Partial<NotificationItem> = {}
 ): NotificationItem => ({
   createdAt: "2026-06-01T00:00:00Z",
-  description: "「第1話」（作品A）が公開されました。",
+  description: "“Episode 1” (Series A) is now available.",
   href: "/series/SR01/episodes/EP01",
   id,
   isRead: false,
   notificationType: "episode_published",
-  title: "新しいエピソードが公開されました",
+  title: "A new episode has been published",
   ...overrides,
 });
 
@@ -83,18 +83,18 @@ describe("NotificationList", () => {
   it("The empty notification state is displayed when the first page is empty.", async () => {
     await renderList();
 
-    expect(screen.getByText("通知はまだありません。")).toBeDefined();
-    expect(screen.queryByLabelText("通知一覧ページング")).toBeNull();
-    expect(screen.queryByText(`すべて既読にする ${tenantId}`)).toBeNull();
+    expect(screen.getByText("You have no notifications yet.")).toBeDefined();
+    expect(screen.queryByLabelText("Notifications pagination")).toBeNull();
+    expect(screen.queryByText(`Mark all as read ${tenantId}`)).toBeNull();
   });
 
   it("Even if the destination of the page is empty, it will not notify you that the entire list is empty.", async () => {
     await renderList({ previousToken: "previous", token: "current" });
 
     expect(
-      screen.getByText("このページに表示できる通知がありません。")
+      screen.getByText("There are no notifications on this page.")
     ).toBeDefined();
-    const previous = screen.getByRole("link", { name: "前のページ" });
+    const previous = screen.getByRole("link", { name: "Previous page" });
     expect(previous.getAttribute("href")).toBe("/notifications?token=previous");
   });
 
@@ -107,7 +107,7 @@ describe("NotificationList", () => {
           createdAt: "2026-05-31T00:00:00Z",
           href: undefined,
           isRead: true,
-          title: "通知",
+          title: "Notification",
         }),
       ],
       previousToken: "previous",
@@ -115,26 +115,26 @@ describe("NotificationList", () => {
     });
 
     const titleLink = screen.getByRole("link", {
-      name: "新しいエピソードが公開されました",
+      name: "A new episode has been published",
     });
     expect(titleLink.getAttribute("href")).toBe("/series/SR01/episodes/EP01");
-    expect(screen.getByText("2026/06/01 9:00")).toBeDefined();
-    expect(screen.getByText("未読")).toBeDefined();
-    expect(screen.getByText("既読")).toBeDefined();
-    expect(screen.getByText("既読にする n1")).toBeDefined();
-    expect(screen.queryByText("既読にする n2")).toBeNull();
-    expect(screen.getByText(`すべて既読にする ${tenantId}`)).toBeDefined();
+    expect(screen.getByText("Jun 1, 2026, 9:00 AM")).toBeDefined();
+    expect(screen.getByText("Unread")).toBeDefined();
+    expect(screen.getByText("Read")).toBeDefined();
+    expect(screen.getByText("Mark as read n1")).toBeDefined();
+    expect(screen.queryByText("Mark as read n2")).toBeNull();
+    expect(screen.getByText(`Mark all as read ${tenantId}`)).toBeDefined();
     expect(
-      screen.getByRole("link", { name: "前のページ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Previous page" }).getAttribute("href")
     ).toBe("/notifications?token=previous");
     expect(
-      screen.getByRole("link", { name: "次のページ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Next page" }).getAttribute("href")
     ).toBe("/notifications?token=next");
   });
 
   it("If acquisition fails, only an error will be displayed and an empty list will not be displayed.", async () => {
     await renderList({
-      listErrorMessage: "通知一覧を取得できませんでした。",
+      listErrorMessage: "Could not load your notifications.",
       nextToken: "next",
       previousToken: "previous",
       unreadCount: 2,
@@ -142,14 +142,14 @@ describe("NotificationList", () => {
 
     const sectionError = screen.getByRole("alert");
     expect(sectionError.textContent).toContain(
-      "通知一覧を表示できませんでした"
+      "Could not display your notifications"
     );
     expect(sectionError.textContent).toContain(
-      "通知一覧を取得できませんでした。"
+      "Could not load your notifications."
     );
-    expect(screen.queryByText("通知はまだありません。")).toBeNull();
-    expect(screen.queryByLabelText("通知一覧ページング")).toBeNull();
-    expect(screen.queryByText(`すべて既読にする ${tenantId}`)).toBeNull();
+    expect(screen.queryByText("You have no notifications yet.")).toBeNull();
+    expect(screen.queryByLabelText("Notifications pagination")).toBeNull();
+    expect(screen.queryByText(`Mark all as read ${tenantId}`)).toBeNull();
   });
 
   it("Display the creation date and time on the tenant time zone wall clock", async () => {
@@ -159,7 +159,7 @@ describe("NotificationList", () => {
       unreadCount: 1,
     });
 
-    expect(screen.getByText("2026/05/31 17:00")).toBeDefined();
-    expect(screen.queryByText("2026/06/01 9:00")).toBeNull();
+    expect(screen.getByText("May 31, 2026, 5:00 PM")).toBeDefined();
+    expect(screen.queryByText("Jun 1, 2026, 9:00 AM")).toBeNull();
   });
 });

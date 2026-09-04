@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { UnfollowButton } from "./unfollow-button";
 
 vi.mock("#components/locale-provider", () => ({
-  useLocale: () => "ja",
-  useTenantDefaultLocale: () => "ja",
+  useLocale: () => "en",
+  useTenantDefaultLocale: () => "en",
 }));
 
 vi.mock("#lib/follow-actions", () => ({
@@ -25,9 +25,9 @@ describe("UnfollowButton", () => {
     render(
       <UnfollowButton
         copy={{
-          ariaLabel: "「公開シリーズ」のフォローを解除する",
-          pending: "更新中…",
-          submit: "フォローを解除",
+          ariaLabel: "Unfollow Published Series",
+          pending: "Updating…",
+          submit: "Unfollow",
         }}
         publicId="SERIES01"
         returnTo="/settings/follows"
@@ -38,12 +38,12 @@ describe("UnfollowButton", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "「公開シリーズ」のフォローを解除する",
+        name: "Unfollow Published Series",
       })
     ).toBeDefined();
     expect(screen.queryByRole("status")).toBeNull();
     expect(
-      screen.queryByRole("button", { name: "「公開シリーズ」をフォローする" })
+      screen.queryByRole("button", { name: "Follow Published Series" })
     ).toBeNull();
   });
 });

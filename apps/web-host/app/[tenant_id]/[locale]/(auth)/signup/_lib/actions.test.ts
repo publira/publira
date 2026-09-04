@@ -28,7 +28,7 @@ vi.mock("#lib/email-flash-cookie", () => ({
 }));
 
 vi.mock("#lib/tenant", () => ({
-  getTenantDefaultLocale: () => "ja",
+  getTenantDefaultLocale: () => "en",
 }));
 
 const formData = (values: Record<string, string>): FormData => {
@@ -46,7 +46,7 @@ const password = "secret-password";
 const validSignupFields = {
   confirmPassword: password,
   email,
-  locale: "ja",
+  locale: "en",
   name: "Example User",
   password,
   tenantId,
@@ -100,7 +100,7 @@ describe("signupAction", () => {
     );
 
     expect(result).toEqual({
-      message: "新規登録に失敗しました。入力内容をご確認ください。",
+      message: "Could not create your account. Please check what you entered.",
       ok: false,
     });
     expect(mockSetEmailFlashCookie).not.toHaveBeenCalled();
