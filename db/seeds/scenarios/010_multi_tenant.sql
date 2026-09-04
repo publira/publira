@@ -8,6 +8,7 @@
 --   - 1 published series with 2 published episodes (visible)
 --   - 1 scheduled episode on that series (must stay hidden)
 --   - 1 unpublished series (must stay hidden, detail must 404-equivalent)
+--   - 1 page (the seed tenant's console must not be able to open it)
 --
 -- public_id is a fixed Base58 value in the same scheme as the dev seed (`Bndr`
 -- instead of `Seed` for this scenario), so the values are stable and can be
@@ -17,6 +18,9 @@
 --   creator  BndrAUTHAAA1
 --   series   BndrSERSAAA1 (published) / BndrSERSAAA2 (unpublished)
 --   episodes BndrEPSDAAA1 / BndrEPSDAAA2 (published), BndrEPSDAAA3 (scheduled)
+--
+-- A page has no public_id; it is addressed by its uuid, which is fixed here
+-- as 018f0f05-0001-7000-8000-000000000001 for the same reason.
 
 WITH tenant_seed AS (
     SELECT '018f0f00-0001-7000-8000-000000000001'::uuid AS id
@@ -251,3 +255,23 @@ SET price = EXCLUDED.price,
     scheduled_at = EXCLUDED.scheduled_at,
     published_at = EXCLUDED.published_at,
     tenant_id = EXCLUDED.tenant_id;
+
+-- A page owned by this tenant, so the seed tenant's console can be asked to
+-- open it by id. It stays a draft with no version: the edit screen must answer
+-- the same way for a foreign page as for one that never existed.
+WITH tenant_scope AS (
+    SELECT t.id AS tenant_id
+    FROM tenants t
+    WHERE t.domain = 'other.localhost'
+    LIMIT 1
+)
+INSERT INTO pages (id, tenant_id, slug, title)
+SELECT
+    '018f0f05-0001-7000-8000-000000000001'::uuid,
+    ts.tenant_id,
+    '/boundary-page',
+    'Boundary Page 001'
+FROM tenant_scope ts
+ON CONFLICT (tenant_id, slug) DO UPDATE
+SET title = EXCLUDED.title,
+    updated_at = NOW();
