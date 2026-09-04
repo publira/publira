@@ -22,7 +22,7 @@ WHERE tenant_id = $1
     AND is_published = true
 `
 
-// テナントの公開中シリーズ数を取得する（ダッシュボード用）
+// For the tenant dashboard.
 func (q *Queries) CountPublishedSeriesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
 	row := q.db.QueryRowContext(ctx, countPublishedSeriesForTenant, tenantID)
 	var published_series_count int32
@@ -180,7 +180,7 @@ SELECT s.id,
     sl.synopsis,
     s.is_published,
     s.published_at,
-    -- 複数の著者情報をJSON配列として1カラムにまとめる
+    -- Collect the several creators into one column as a JSON array
     COALESCE(
         json_agg(
             json_build_object(
@@ -373,8 +373,9 @@ type ListActiveSeriesByIDsRow struct {
 	LabelInfo              json.RawMessage `json:"label_info"`
 }
 
-// 公開中のシリーズの表示内容を取得する (テナントIDで絞り込み)
-// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
+// Display data for the published series, narrowed by tenant id.
+// No ORDER BY: the caller sorts the rows into the id order stage one settled
+// on.
 func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesByIDs, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
@@ -511,19 +512,22 @@ type ListActiveSeriesIDsByPublishedAtDescParams struct {
 	Limit             int32         `json:"limit"`
 }
 
-// 公開シリーズ一覧の cursor ページネーションは 2 段構えになっている。
+// The cursor pagination of the published series list runs in two stages.
 //
-// 1 段目がここに並ぶ 4 本のキーセット走査で、1 ページぶんの id だけを決める。
-// 並び替えキーは (published_at, id) か (title, id)。id は UUIDv7 なので、
-// published_at や title が同着でも一意に決まる。ORDER BY を並び順ごとに
-// 固定した別のクエリに分けてあるのは、CASE で分岐させると索引順に読めなく
-// なり、LIMIT の手前で全件ソートが入るため。それぞれ
-// idx_series_tenant_published_at / idx_series_tenant_title をそのまま辿る。
-// 前ページ方向は、並び順を反転した側のクエリを呼んで呼び出し側で並べ直す。
+// Stage one is the four keyset scans below, which settle nothing but the ids
+// of one page. The sort key is (published_at, id) or (title, id); id is a
+// UUIDv7, so the order stays unique even when published_at or title ties.
+// Every sort order gets its own query with a fixed ORDER BY, because
+// branching with CASE stops the rows from being read in index order and puts
+// a full sort ahead of the LIMIT. As written, each query walks
+// idx_series_tenant_published_at or idx_series_tenant_title directly.
+// Backward calls the query of the reversed order, and the caller sorts the
+// rows back.
 //
-// 2 段目が ListActiveSeriesByIDs で、決まった id の表示内容だけを組み立てる。
+// Stage two is ListActiveSeriesByIDs, which builds the display data for the
+// ids stage one settled on.
 //
-// cursor の共通仕様は proto/README.md を参照。
+// cursor rules: proto/README.md.
 func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtDesc,
 		arg.TenantID,
@@ -725,11 +729,11 @@ type ListPublishedSeriesIDsByCreatorTitleAscParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// 著者詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
-// ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
-// ListActiveSeriesIDsByTitleAsc と同じ形で、creator で絞る。
-// 前ページ方向は ListPublishedSeriesIDsByCreatorTitleDesc を呼んで
-// 呼び出し側で並べ直す。
+// The related series of a creator detail page. A keyset scan on title + id.
+// The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc
+// uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by creator.
+// Backward calls ListPublishedSeriesIDsByCreatorTitleDesc, and the caller
+// sorts the rows back.
 func (q *Queries) ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleAsc,
 		arg.CreatorID,
@@ -800,7 +804,7 @@ type ListPublishedSeriesIDsByCreatorTitleDescParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// ListPublishedSeriesIDsByCreatorTitleAsc の前ページ方向。
+// The backward direction of ListPublishedSeriesIDsByCreatorTitleAsc.
 func (q *Queries) ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleDesc,
 		arg.CreatorID,
@@ -870,12 +874,12 @@ type ListPublishedSeriesIDsByLabelTitleAscParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// レーベル詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
-// ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
-// ListActiveSeriesIDsByTitleAsc と同じ形で、label_id で絞る。
-// 前ページ方向は ListPublishedSeriesIDsByLabelTitleDesc を呼んで
-// 呼び出し側で並べ直す。
-// 索引: idx_series_tenant_label_title
+// The related series of a label detail page. A keyset scan on title + id.
+// The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc
+// uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by label_id.
+// Backward calls ListPublishedSeriesIDsByLabelTitleDesc, and the caller
+// sorts the rows back.
+// Index: idx_series_tenant_label_title
 func (q *Queries) ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByLabelTitleAsc,
 		arg.LabelID,
@@ -945,7 +949,7 @@ type ListPublishedSeriesIDsByLabelTitleDescParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// ListPublishedSeriesIDsByLabelTitleAsc の前ページ方向。
+// The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
 func (q *Queries) ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByLabelTitleDesc,
 		arg.LabelID,
@@ -1019,14 +1023,15 @@ type ListPublishedSeriesIDsBySearchTitleAscParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// SearchPublishedSeries。タイトルまたはあらすじが query_pattern に
-// ILIKE マッチする公開シリーズをタイトル + id のキーセットで取る。
-// query_pattern は呼び出し側が '%q%' に組み立て、ILIKE の %/_ は
-// ESCAPE '!' でリテラルにする。
-// 索引方針: idx_series_tenant_title がキーセット半を担う。ILIKE '%q%' は
-// btree に乗らないので、テナント + is_published で絞ったうえで LIMIT が
-// 効くうちはシーケンシャルで足りる。件数が増えて遅延が見えたら title と
-// series_listings.synopsis に pg_trgm GIN を足す。
+// SearchPublishedSeries. Takes the published series whose title or synopsis
+// ILIKE-matches query_pattern, by a keyset on title + id.
+// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+// with ESCAPE '!'.
+// Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
+// cannot ride a btree, so a sequential scan is enough while the LIMIT still
+// bites after narrowing by tenant and is_published. Once the row count makes
+// the latency visible, add a pg_trgm GIN index on title and
+// series_listings.synopsis.
 func (q *Queries) ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsBySearchTitleAsc,
 		arg.TenantID,
@@ -1100,7 +1105,7 @@ type ListPublishedSeriesIDsBySearchTitleDescParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// ListPublishedSeriesIDsBySearchTitleAsc の前ページ方向。
+// The backward direction of ListPublishedSeriesIDsBySearchTitleAsc.
 func (q *Queries) ListPublishedSeriesIDsBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsBySearchTitleDesc,
 		arg.TenantID,
@@ -1304,10 +1309,11 @@ type ListSeriesByTenantDescRow struct {
 	EyeCatchImageFileSizeBytes int64          `json:"eye_catch_image_file_size_bytes"`
 }
 
-// Admin ListSeries は (created_at, id) の降順で表示する。
-// 次ページは降順、前ページは昇順のクエリで idx_series_tenant_created_at を
-// 走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
-// が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
+// Admin ListSeries is (created_at, id) DESC. Forward uses the DESC query;
+// backward uses ASC so idx_series_tenant_created_at can be scanned in
+// reverse. The handler flips ASC rows back into display order. id is a
+// UUIDv7, so the order stays unique even when created_at ties.
+// cursor rules: proto/README.md.
 func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listSeriesByTenantDesc,
 		arg.TenantID,
