@@ -27,6 +27,9 @@ stack_env() {
     -u E2E_POSTGRES_PORT \
     -u E2E_REDIS_PORT \
     -u E2E_RUSTFS_PORT \
+    -u E2E_MAILPIT_SMTP_PORT \
+    -u E2E_MAILPIT_HTTP_PORT \
+    -u E2E_MAILPIT_BASE_URL \
     -u PUBLIRA_S3_ENDPOINT \
     -u E2E_WEB_HOST_PORT \
     -u E2E_WEB_ADMIN_PORT \
@@ -87,6 +90,15 @@ elif [[ "${edge_override_dir}" != *"-edge3081" ]]; then
   fail "E2E_EDGE_PORT override dir ${edge_override_dir} does not encode edge3081"
 else
   pass "E2E_EDGE_PORT override isolates RUN_DIR"
+fi
+
+mailpit_override_dir="$(compute_run_dir E2E_MAILPIT_SMTP_PORT=1027)"
+if [[ "${mailpit_override_dir}" == "${default_run_dir}" ]]; then
+  fail "E2E_MAILPIT_SMTP_PORT override still uses ${mailpit_override_dir}"
+elif [[ "${mailpit_override_dir}" != *"-mp1027-"* ]]; then
+  fail "E2E_MAILPIT_SMTP_PORT override dir ${mailpit_override_dir} does not encode mp1027"
+else
+  pass "E2E_MAILPIT_SMTP_PORT override isolates RUN_DIR"
 fi
 
 image_override_dir="$(compute_run_dir E2E_IMAGE_SERVER_PORT=8210)"
