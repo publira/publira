@@ -32,6 +32,7 @@ export E2E_PLATFORM_API_PORT="${E2E_PLATFORM_API_PORT:-8002}"
 export E2E_PLATFORM_API_GRPC_PORT="${E2E_PLATFORM_API_GRPC_PORT:-8102}"
 export E2E_OUTBOX_WORKER_PORT="${E2E_OUTBOX_WORKER_PORT:-8003}"
 export E2E_IMAGE_SERVER_PORT="${E2E_IMAGE_SERVER_PORT:-8200}"
+export E2E_EMAIL_RENDERER_PORT="${E2E_EMAIL_RENDERER_PORT:-8300}"
 # Traefik entrypoint. `/images` belongs to image-server and everything else to
 # web-host, so the browser can reach both from one origin the way the Dev
 # Container edge serves them.
@@ -104,6 +105,12 @@ export PUBLIRA_WEB_HOST_INTERNAL_URL="http://localhost:${E2E_WEB_HOST_PORT}"
 export PUBLIRA_WEB_ADMIN_INTERNAL_URL="http://127.0.0.1:${E2E_WEB_ADMIN_PORT}"
 export PUBLIRA_WEB_PLATFORM_INTERNAL_URL="http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}"
 
+# Where the outbox worker renders its mail. Always built from the E2E port, for
+# the same reason as PUBLIRA_REDIS_URL above: the isolated dev profile exports
+# PUBLIRA_EMAIL_RENDERER_URL for its own renderer, so an inherited value would
+# have this stack's worker render through a process it neither starts nor stops.
+export PUBLIRA_EMAIL_RENDERER_URL="http://127.0.0.1:${E2E_EMAIL_RENDERER_PORT}"
+
 # PID files, logs, and local storage for one stack run.
 #
 # Concurrent stacks that override ports or COMPOSE_PROJECT_NAME must not share
@@ -133,6 +140,7 @@ else
     [[ "${E2E_PLATFORM_API_GRPC_PORT}" != "8102" ]] ||
     [[ "${E2E_OUTBOX_WORKER_PORT}" != "8003" ]] ||
     [[ "${E2E_IMAGE_SERVER_PORT}" != "8200" ]] ||
+    [[ "${E2E_EMAIL_RENDERER_PORT}" != "8300" ]] ||
     [[ "${E2E_EDGE_PORT}" != "3080" ]]; then
     _e2e_uses_default_stack=0
   fi
@@ -141,7 +149,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-s3${E2E_RUSTFS_PORT}-mp${E2E_MAILPIT_SMTP_PORT}-${E2E_MAILPIT_HTTP_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}-ow${E2E_OUTBOX_WORKER_PORT}-img${E2E_IMAGE_SERVER_PORT}-edge${E2E_EDGE_PORT}"
+    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-s3${E2E_RUSTFS_PORT}-mp${E2E_MAILPIT_SMTP_PORT}-${E2E_MAILPIT_HTTP_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}-ow${E2E_OUTBOX_WORKER_PORT}-img${E2E_IMAGE_SERVER_PORT}-er${E2E_EMAIL_RENDERER_PORT}-edge${E2E_EDGE_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi

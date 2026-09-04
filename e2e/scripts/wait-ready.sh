@@ -74,6 +74,10 @@ wait_http "platform-api/readyz" \
   "http://127.0.0.1:${E2E_PLATFORM_API_GRPC_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
+wait_http "email-renderer/readyz" \
+  "http://127.0.0.1:${E2E_EMAIL_RENDERER_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
+
 wait_http "outbox-worker/readyz" \
   "http://127.0.0.1:${E2E_OUTBOX_WORKER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"

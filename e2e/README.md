@@ -17,11 +17,11 @@ Development bootstrap, from empty database volumes through `task setup` and all 
   sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
   ```
 
-The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8001` / `8101` (admin API), `8002` / `8102` (platform API), `8003` (outbox worker), `8200` (image-server), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), and `1026` / `8026` (E2E Mailpit SMTP / API).
+The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8001` / `8101` (admin API), `8002` / `8102` (platform API), `8003` (outbox worker), `8200` (image-server), `8300` (email-renderer), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), and `1026` / `8026` (E2E Mailpit SMTP / API).
 
 PIDs and logs default to `e2e/.run/`. When `E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
-Use distinct compose projects and **all** distinct ports (`E2E_IMAGE_SERVER_PORT` and `E2E_EDGE_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process. `PUBLIRA_REVALIDATE_TOKEN` is defaulted the same way and reaches admin-api-server, the publish-episodes batch, and all three apps, so Next.js cache tags are actually dropped during a run; the `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` targets it needs are built from the E2E ports like Redis and S3.
+Use distinct compose projects and **all** distinct ports (`E2E_IMAGE_SERVER_PORT`, `E2E_EMAIL_RENDERER_PORT`, and `E2E_EDGE_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process. `PUBLIRA_REVALIDATE_TOKEN` is defaulted the same way and reaches admin-api-server, the publish-episodes batch, and all three apps, so Next.js cache tags are actually dropped during a run; the `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` targets it needs are built from the E2E ports like Redis and S3.
 
 ## One-command run
 
@@ -36,12 +36,13 @@ This always tears down app processes and compose volumes, including on failure o
 
 | Command | Purpose |
 | --- | --- |
-| `task e2e:prepare` | Build server binaries and web apps; install Playwright Chromium. |
+| `task e2e:prepare` | Build server binaries, the web apps, and email-renderer; install Playwright Chromium. |
 | `task e2e:up` | Start Postgres, Redis, RustFS, Mailpit, and the Traefik edge only. |
 | `task e2e:db` | Migrate, apply development seed, point the seeded SMTP settings at the E2E Mailpit, create the S3 bucket (`task storage:init`), and seed the viewer's page fixtures. |
-| `task e2e:start-apps` | Start APIs, `publish-episodes`, outbox worker, image-server, and the three web apps in the background. |
+| `task e2e:start-apps` | Start APIs, `publish-episodes`, email-renderer, outbox worker, image-server, and the three web apps in the background. |
 | `bash e2e/scripts/{api-server,admin-api-server,platform-api-server}.sh <start\|start-wait\|stop>` | Operate one API server for outage scenarios. |
 | `bash e2e/scripts/image-server.sh <start\|start-wait\|stop>` | Operate image-server on its own. |
+| `bash e2e/scripts/email-renderer.sh <start\|start-wait\|stop>` | Operate email-renderer on its own. |
 | `task e2e:wait-ready` | Wait for HTTP readiness with wait4x; failure is `readiness failed: …`. |
 | `task e2e:test` | Run Playwright only against a running stack. |
 | `task e2e:test-lib` | Verify `E2E_RUN_DIR` isolation and compose-project locks (no Docker required; also run by `task e2e`). |
@@ -74,7 +75,7 @@ e2e/
 ```
 
 - **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), RustFS (S3-compatible, path-style, bucket `publira`), Mailpit (SMTP sink), and Traefik.
-- **Host processes:** API, admin API, platform API, batch `publish-episodes`, outbox worker, image-server, and standalone `web-host`, `web-admin`, and `web-platform` (`node server.js`).
+- **Host processes:** API, admin API, platform API, batch `publish-episodes`, email-renderer, outbox worker, image-server, and standalone `web-host`, `web-admin`, and `web-platform` (`node server.js`).
 - **Seed:** development `task db:setup`: public domain `localhost`, admin domain `admin.localhost`, tenant `Seed Tenant`, and platform user `platform@example.com`. `task e2e:db` then runs `scripts/seed-viewer-pages.sh`, which applies `db/seeds/scenarios/050_viewer_pages.sql` and uploads `fixtures/viewer-pages/*.jpg` to the object keys those rows name, giving `Seed Episode 001-02` a body the canvas viewer can draw. It is deliberately not the series' first episode: 001-01 is the one other suites reach for, and mobile's live integration test reads its empty state as proof of a working round trip.
 
 ### Mail
@@ -82,6 +83,8 @@ e2e/
 The `mailpit` service is the stack's SMTP sink: intake on `E2E_MAILPIT_SMTP_PORT` (default `1026`), messages on `E2E_MAILPIT_HTTP_PORT` (default `8026`). `task e2e:db` points the platform and tenant SMTP settings at that intake, so what the API servers send lands there.
 
 `src/mail.ts` reads it back over that API, at the origin `MAILPIT_BASE_URL` in `src/urls.ts` names (`E2E_MAILPIT_BASE_URL`): `waitForMessageTo(recipient)` returns the newest message for one address, `clearMessagesTo(recipient)` deletes that address's mail, and `tokenFromLink(message, pathname)` returns the `token` query value of the link whose path matches.
+
+The `email-renderer` service turns a template into the subject, HTML, and text the outbox worker delivers, so mail sent through the worker needs it running. It is a host process like the rest: `E2E_EMAIL_RENDERER_PORT` (default `8300`) is its port, and `PUBLIRA_EMAIL_RENDERER_URL` — built from that port, never inherited — is what points the worker at it. Without it the worker retries every event it picks up until the row dead-letters.
 
 ### The edge
 
@@ -108,7 +111,7 @@ A spec that changes a stored setting the whole console reads gets an isolated pr
 | Readiness | `readiness failed: <name>` in logs; Playwright does not start. |
 | Playwright | `Playwright tests failed`; inspect `test-results/`, `playwright-report/`, and `.run/logs/`. |
 
-`wait-ready` verifies RustFS on `:9003/health`, public/admin/platform API readiness on `:8100`–`:8102`, image-server on `:8200/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-host's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, RustFS, and Mailpit.
+`wait-ready` verifies RustFS on `:9003/health`, public/admin/platform API readiness on `:8100`–`:8102`, email-renderer on `:8300/readyz`, the outbox worker on `:8003/readyz`, image-server on `:8200/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-host's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, RustFS, and Mailpit.
 
 ## Viewer rendering performance
 

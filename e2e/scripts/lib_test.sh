@@ -42,6 +42,7 @@ stack_env() {
     -u E2E_PLATFORM_API_GRPC_PORT \
     -u E2E_OUTBOX_WORKER_PORT \
     -u E2E_IMAGE_SERVER_PORT \
+    -u E2E_EMAIL_RENDERER_PORT \
     -u E2E_EDGE_PORT \
     -u E2E_LOCK_HELD \
     "$@"
@@ -108,6 +109,15 @@ elif [[ "${image_override_dir}" != *"-img8210-"* ]]; then
   fail "E2E_IMAGE_SERVER_PORT override dir ${image_override_dir} does not encode img8210"
 else
   pass "E2E_IMAGE_SERVER_PORT override isolates RUN_DIR"
+fi
+
+renderer_override_dir="$(compute_run_dir E2E_EMAIL_RENDERER_PORT=8310)"
+if [[ "${renderer_override_dir}" == "${default_run_dir}" ]]; then
+  fail "E2E_EMAIL_RENDERER_PORT override still uses ${renderer_override_dir}"
+elif [[ "${renderer_override_dir}" != *"-er8310-"* ]]; then
+  fail "E2E_EMAIL_RENDERER_PORT override dir ${renderer_override_dir} does not encode er8310"
+else
+  pass "E2E_EMAIL_RENDERER_PORT override isolates RUN_DIR"
 fi
 
 project_override_dir="$(compute_run_dir COMPOSE_PROJECT_NAME=publira-e2e-alt)"
