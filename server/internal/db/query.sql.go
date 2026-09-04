@@ -2119,7 +2119,8 @@ SELECT ei.id,
             SELECT 1
             FROM purchases p
             WHERE p.tenant_id = s.tenant_id
-                AND p.user_id = $3
+                -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+                AND p.user_id = $1::uuid
                 AND p.episode_id = e.id
                 AND (
                     p.expires_at IS NULL
@@ -2130,7 +2131,7 @@ SELECT ei.id,
             SELECT 1
             FROM access_tickets at
             WHERE at.tenant_id = s.tenant_id
-                AND at.user_id = $3
+                AND at.user_id = $1
                 AND at.episode_id = e.id
                 AND at.revoked_at IS NULL
                 AND (
@@ -2150,15 +2151,15 @@ JOIN LATERAL (
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
-WHERE ei.id = $1
-    AND s.tenant_id = $2
+WHERE ei.id = $2
+    AND s.tenant_id = $3
 LIMIT 1
 `
 
 type GetEpisodeImageAccessByIDForUserParams struct {
+	UserID   uuid.UUID `json:"user_id"`
 	ID       uuid.UUID `json:"id"`
 	TenantID uuid.UUID `json:"tenant_id"`
-	UserID   uuid.UUID `json:"user_id"`
 }
 
 type GetEpisodeImageAccessByIDForUserRow struct {
@@ -2171,7 +2172,7 @@ type GetEpisodeImageAccessByIDForUserRow struct {
 }
 
 func (q *Queries) GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeImageAccessByIDForUser, arg.ID, arg.TenantID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, getEpisodeImageAccessByIDForUser, arg.UserID, arg.ID, arg.TenantID)
 	var i GetEpisodeImageAccessByIDForUserRow
 	err := row.Scan(
 		&i.ID,
@@ -6050,7 +6051,8 @@ FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
     JOIN series s ON s.id = e.series_id
 WHERE p.tenant_id = $1
-    AND p.user_id = $2
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
+    AND p.user_id = $2::uuid
     AND e.tenant_id = $1
     AND s.tenant_id = $1
     AND (
@@ -6150,7 +6152,8 @@ FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
     JOIN series s ON s.id = e.series_id
 WHERE p.tenant_id = $1
-    AND p.user_id = $2
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
+    AND p.user_id = $2::uuid
     AND e.tenant_id = $1
     AND s.tenant_id = $1
     AND (
@@ -10065,7 +10068,8 @@ SELECT (
             SELECT 1
             FROM purchases p
             WHERE p.tenant_id = $1
-                AND p.user_id = $2
+                -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+                AND p.user_id = $2::uuid
                 AND p.episode_id = $3
                 AND (
                     p.expires_at IS NULL
@@ -10107,7 +10111,8 @@ SELECT EXISTS (
     SELECT 1
     FROM purchases
     WHERE tenant_id = $1
-        AND user_id = $2
+        -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+        AND user_id = $2::uuid
         AND episode_id = $3
         AND (expires_at IS NULL OR expires_at > NOW())
 ) AS has_purchase

@@ -196,6 +196,48 @@ func TestRunStopsAtACancelledContext(t *testing.T) {
 	}
 }
 
+// A day is rebuilt from its sources every time it is recomputed, so a buyer who
+// closes their account afterwards must not change what that day earned. The
+// purchase survives the delete without them and keeps counting.
+func TestRunCountsAPurchaseWhoseBuyerWasDeleted(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	statDate := time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)
+	tenant := pg.SeedTenant(t, "STATSGONE001", "gone-stats.example.com", "Gone Stats")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "GONESERIES01"})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "GONEEP001"})
+	leaving := pg.SeedEndUser(t, tenant.ID, "GONEBUYER001", "leaving@gone-stats.example.com", "Leaving Buyer")
+	staying := pg.SeedEndUser(t, tenant.ID, "GONEBUYER002", "staying@gone-stats.example.com", "Staying Buyer")
+	insertPurchase(t, pg.DB, tenant.ID, leaving.ID, episode.ID, statDate.Add(10*time.Hour))
+	insertPurchase(t, pg.DB, tenant.ID, staying.ID, episode.ID, statDate.Add(11*time.Hour))
+
+	aggregator := New(pg.OpenPlatformDB(t))
+	if _, err := aggregator.Run(context.Background(), statDate); err != nil {
+		t.Fatalf("Run before the delete: %v", err)
+	}
+	before := loadStats(t, pg.DB, statDate)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := pg.DB.ExecContext(ctx, "DELETE FROM users WHERE id = $1", leaving.ID); err != nil {
+		t.Fatalf("delete the buyer: %v", err)
+	}
+
+	if _, err := aggregator.Run(context.Background(), statDate); err != nil {
+		t.Fatalf("Run after the delete: %v", err)
+	}
+	after := loadStats(t, pg.DB, statDate)
+
+	key := statKey{tenantID: tenant.ID, entityType: "episode", entityID: episode.ID}
+	if before[key].purchaseCount != 2 {
+		t.Fatalf("purchase_count before the delete = %d, want 2", before[key].purchaseCount)
+	}
+	if after[key].purchaseCount != before[key].purchaseCount {
+		t.Fatalf("purchase_count after the delete = %d, want %d", after[key].purchaseCount, before[key].purchaseCount)
+	}
+}
+
 func TestRunRejectsTenantScopedRole(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

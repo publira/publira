@@ -110,6 +110,10 @@ func (e *publicDBEnv) ratingClient() publirav1connect.RatingServiceClient {
 	return publirav1connect.NewRatingServiceClient(e.Server.Client(), e.Server.URL)
 }
 
+func (e *publicDBEnv) purchaseClient() publirav1connect.PurchaseServiceClient {
+	return publirav1connect.NewPurchaseServiceClient(e.Server.Client(), e.Server.URL)
+}
+
 func (e *publicDBEnv) authClient() publirav1connect.AuthServiceClient {
 	return publirav1connect.NewAuthServiceClient(e.Server.Client(), e.Server.URL)
 }

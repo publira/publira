@@ -2206,7 +2206,8 @@ SELECT ei.id,
             SELECT 1
             FROM purchases p
             WHERE p.tenant_id = s.tenant_id
-                AND p.user_id = $3
+                -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+                AND p.user_id = sqlc.arg('user_id')::uuid
                 AND p.episode_id = e.id
                 AND (
                     p.expires_at IS NULL
@@ -2217,7 +2218,7 @@ SELECT ei.id,
             SELECT 1
             FROM access_tickets at
             WHERE at.tenant_id = s.tenant_id
-                AND at.user_id = $3
+                AND at.user_id = sqlc.arg('user_id')
                 AND at.episode_id = e.id
                 AND at.revoked_at IS NULL
                 AND (
@@ -2237,8 +2238,8 @@ JOIN LATERAL (
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
-WHERE ei.id = $1
-    AND s.tenant_id = $2
+WHERE ei.id = sqlc.arg('id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
 LIMIT 1;
 
 -- Tenant-staff preview: membership and role are evaluated in the handler.
@@ -3490,9 +3491,10 @@ SELECT (
         EXISTS (
             SELECT 1
             FROM purchases p
-            WHERE p.tenant_id = $1
-                AND p.user_id = $2
-                AND p.episode_id = $3
+            WHERE p.tenant_id = sqlc.arg('tenant_id')
+                -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+                AND p.user_id = sqlc.arg('user_id')::uuid
+                AND p.episode_id = sqlc.arg('episode_id')
                 AND (
                     p.expires_at IS NULL
                     OR p.expires_at > NOW()
@@ -3501,9 +3503,9 @@ SELECT (
         OR EXISTS (
             SELECT 1
             FROM access_tickets at
-            WHERE at.tenant_id = $1
-                AND at.user_id = $2
-                AND at.episode_id = $3
+            WHERE at.tenant_id = sqlc.arg('tenant_id')
+                AND at.user_id = sqlc.arg('user_id')
+                AND at.episode_id = sqlc.arg('episode_id')
                 AND at.revoked_at IS NULL
                 AND (
                     at.expires_at IS NULL
@@ -3538,7 +3540,8 @@ SELECT EXISTS (
     SELECT 1
     FROM purchases
     WHERE tenant_id = sqlc.arg('tenant_id')
-        AND user_id = sqlc.arg('user_id')
+        -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+        AND user_id = sqlc.arg('user_id')::uuid
         AND episode_id = sqlc.arg('episode_id')
         AND (expires_at IS NULL OR expires_at > NOW())
 ) AS has_purchase;
@@ -3557,7 +3560,8 @@ FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
     JOIN series s ON s.id = e.series_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')
-    AND p.user_id = sqlc.arg('user_id')
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
+    AND p.user_id = sqlc.arg('user_id')::uuid
     AND e.tenant_id = sqlc.arg('tenant_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
     AND (
@@ -3595,7 +3599,8 @@ FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
     JOIN series s ON s.id = e.series_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')
-    AND p.user_id = sqlc.arg('user_id')
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
+    AND p.user_id = sqlc.arg('user_id')::uuid
     AND e.tenant_id = sqlc.arg('tenant_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
     AND (
