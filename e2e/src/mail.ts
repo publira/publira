@@ -102,6 +102,18 @@ export const clearMessagesTo = async (recipient: string): Promise<void> => {
   });
 };
 
+/**
+ * How much mail is addressed to `recipient` right now.
+ *
+ * The API servers hand a message to the sink before they answer the RPC that
+ * sent it, so a spec that has already seen the response can read a count of
+ * zero as "nothing was sent" rather than "nothing has arrived yet".
+ */
+export const countMessagesTo = async (recipient: string): Promise<number> => {
+  const summaries = await summariesTo(recipient);
+  return summaries.length;
+};
+
 /** The newest message addressed to `recipient`, waiting until one arrives. */
 export const waitForMessageTo = async (
   recipient: string,
