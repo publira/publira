@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetLocale, mockGetTenantName, mockNotFound, mockTenantId } =
   vi.hoisted(() => ({
-    mockGetLocale: vi.fn(() => Promise.resolve("ja")),
+    mockGetLocale: vi.fn(() => Promise.resolve("en")),
     mockGetTenantName: vi.fn(),
     mockNotFound: vi.fn(() => {
       throw new Error("NEXT_NOT_FOUND");
@@ -26,7 +26,7 @@ vi.mock("#lib/locale", async () => {
 
   return {
     getLocale: mockGetLocale,
-    loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
+    loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
   };
 });
 
@@ -46,14 +46,14 @@ describe("generateMetadata", () => {
 
   it("builds the title from the tenant name the public API returns", async () => {
     mockTenantId.mockResolvedValueOnce(tenantId);
-    mockGetTenantName.mockResolvedValueOnce("サンプル出版社");
+    mockGetTenantName.mockResolvedValueOnce("Example Publishing");
 
     const { generateMetadata } = await import("./layout");
 
     await expect(generateMetadata()).resolves.toEqual({
       title: {
-        default: "サンプル出版社 管理画面",
-        template: "%s | サンプル出版社 管理画面",
+        default: "Example Publishing Admin console",
+        template: "%s | Example Publishing Admin console",
       },
     });
     expect(mockGetTenantName).toHaveBeenCalledWith(tenantId);
@@ -81,7 +81,7 @@ describe("generateMetadata", () => {
 
   it("resolves the locale and the tenant name from the trimmed tenant_id", async () => {
     mockTenantId.mockResolvedValueOnce(` ${tenantId} `);
-    mockGetTenantName.mockResolvedValueOnce("サンプル出版社");
+    mockGetTenantName.mockResolvedValueOnce("Example Publishing");
 
     const { generateMetadata } = await import("./layout");
 

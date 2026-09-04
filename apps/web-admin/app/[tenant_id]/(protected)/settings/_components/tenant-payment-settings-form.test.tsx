@@ -50,7 +50,7 @@ const noopAction = (): Promise<TenantPaymentSettingsFormState> =>
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -68,9 +68,9 @@ describe("TenantPaymentSettingsForm", () => {
       />
     );
 
-    expect(screen.getByText("未設定")).toBeDefined();
-    expect(screen.getByLabelText("シークレットキー")).toBeDefined();
-    expect(screen.getByLabelText("Webhook 署名シークレット")).toBeDefined();
+    expect(screen.getByText("Not set")).toBeDefined();
+    expect(screen.getByLabelText("Secret key")).toBeDefined();
+    expect(screen.getByLabelText("Webhook signing secret")).toBeDefined();
   });
 
   it("shows only the hint and never the plaintext of a usable configuration", () => {
@@ -82,13 +82,13 @@ describe("TenantPaymentSettingsForm", () => {
       />
     );
 
-    expect(screen.getByText("利用可能")).toBeDefined();
+    expect(screen.getByText("Ready")).toBeDefined();
     expect(screen.getByDisplayValue("sk_test_••••••••KLMN")).toBeDefined();
     expect(screen.getByDisplayValue("whsec_••••••••WXYZ")).toBeDefined();
     expect(screen.queryByDisplayValue(/sk_test_[^•]/u)).toBeNull();
-    expect(
-      screen.queryByLabelText("シークレットキー")?.getAttribute("type")
-    ).toBe("text");
+    expect(screen.queryByLabelText("Secret key")?.getAttribute("type")).toBe(
+      "text"
+    );
   });
 
   it("reports missing configuration when it is enabled without a secret", () => {
@@ -100,7 +100,7 @@ describe("TenantPaymentSettingsForm", () => {
       />
     );
 
-    expect(screen.getByText("設定不足")).toBeDefined();
+    expect(screen.getByText("Incomplete")).toBeDefined();
   });
 
   it("shows a saved but disabled configuration as disabled", () => {
@@ -112,7 +112,7 @@ describe("TenantPaymentSettingsForm", () => {
       />
     );
 
-    expect(screen.getByText("無効")).toBeDefined();
+    expect(screen.getByText("Disabled")).toBeDefined();
   });
 
   it("stays read-only for someone who is not a tenant admin", () => {
@@ -125,19 +125,18 @@ describe("TenantPaymentSettingsForm", () => {
     );
 
     expect(
-      screen.getByLabelText<HTMLInputElement>("Stripe 決済を有効にする")
-        .disabled
+      screen.getByLabelText<HTMLInputElement>("Enable Stripe payments").disabled
     ).toBe(true);
     expect(
-      screen.getByRole<HTMLButtonElement>("button", { name: "保存" }).disabled
+      screen.getByRole<HTMLButtonElement>("button", { name: "Save" }).disabled
     ).toBe(true);
     expect(
-      screen.getAllByRole<HTMLButtonElement>("button", { name: "変更する" })[0]
+      screen.getAllByRole<HTMLButtonElement>("button", { name: "Change" })[0]
         ?.disabled
     ).toBe(true);
     expect(
       screen.getByText(
-        "この設定はテナント管理者のみ編集できます。現在は閲覧専用です。"
+        "Only a tenant administrator can change this setting. You have read-only access."
       )
     ).toBeDefined();
   });
@@ -148,13 +147,15 @@ describe("TenantPaymentSettingsForm", () => {
         action={noopAction}
         canEdit
         initialSettings={emptyTenantPaymentSettings}
-        loadErrorMessage="この操作を行う権限がありません。"
+        loadErrorMessage="You do not have permission to perform this action."
       />
     );
 
-    expect(screen.getByText("この操作を行う権限がありません。")).toBeDefined();
     expect(
-      screen.getByRole<HTMLButtonElement>("button", { name: "保存" }).disabled
+      screen.getByText("You do not have permission to perform this action.")
+    ).toBeDefined();
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Save" }).disabled
     ).toBe(true);
   });
 
@@ -169,12 +170,11 @@ describe("TenantPaymentSettingsForm", () => {
 
     fireEvent.click(
       screen.getAllByRole("button", {
-        name: "変更する",
+        name: "Change",
       })[0] as HTMLButtonElement
     );
 
-    const secretInput =
-      screen.getByLabelText<HTMLInputElement>("シークレットキー");
+    const secretInput = screen.getByLabelText<HTMLInputElement>("Secret key");
 
     expect(secretInput.type).toBe("password");
     expect(secretInput.value).toBe("");
@@ -195,7 +195,7 @@ describe("TenantPaymentSettingsForm", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
       expect(screen.getByText("secret is required")).toBeDefined();
@@ -205,7 +205,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("drops the typed secret after saving and shows only the hint", async () => {
     const leakedSecret = "plaintext-secret-value";
     const action = vi.fn().mockResolvedValue({
-      message: "決済設定を保存しました。",
+      message: "The payment settings were saved.",
       ok: true,
       settings: {
         ...readySettings,
@@ -223,13 +223,13 @@ describe("TenantPaymentSettingsForm", () => {
 
     fireEvent.click(
       screen.getAllByRole("button", {
-        name: "変更する",
+        name: "Change",
       })[0] as HTMLButtonElement
     );
-    fireEvent.change(screen.getByLabelText("シークレットキー"), {
+    fireEvent.change(screen.getByLabelText("Secret key"), {
       target: { value: leakedSecret },
     });
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("sk_test_••••••••NEW1")).toBeDefined();

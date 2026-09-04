@@ -17,7 +17,7 @@ const noopAction = vi.fn();
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -35,7 +35,7 @@ describe("TenantTimezoneForm", () => {
       />
     );
 
-    const input = screen.getByLabelText<HTMLInputElement>("タイムゾーン");
+    const input = screen.getByLabelText<HTMLInputElement>("Time zone");
 
     expect(input.value).toBe("America/Los_Angeles");
     expect(input.disabled).toBe(false);
@@ -50,7 +50,7 @@ describe("TenantTimezoneForm", () => {
       />
     );
 
-    expect(screen.getByLabelText<HTMLInputElement>("タイムゾーン").value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>("Time zone").value).toBe(
       "Asia/Calcutta"
     );
   });
@@ -64,17 +64,17 @@ describe("TenantTimezoneForm", () => {
       />
     );
 
-    expect(
-      screen.getByLabelText<HTMLInputElement>("タイムゾーン").disabled
-    ).toBe(true);
+    expect(screen.getByLabelText<HTMLInputElement>("Time zone").disabled).toBe(
+      true
+    );
     expect(
       screen.getByRole<HTMLButtonElement>("button", {
-        name: "タイムゾーンを保存",
+        name: "Save the time zone",
       }).disabled
     ).toBe(true);
     expect(
       screen.getByText(
-        "この設定はテナント管理者のみ編集できます。現在は閲覧専用です。"
+        "Only a tenant administrator can change this setting. You have read-only access."
       )
     ).toBeDefined();
   });
@@ -85,12 +85,10 @@ describe("TenantTimezoneForm", () => {
         action={noopAction}
         canEdit
         initialTimezone="Asia/Tokyo"
-        loadErrorMessage="タイムゾーンの取得に失敗しました。"
+        loadErrorMessage="Could not load the time zone."
       />
     );
 
-    expect(
-      screen.getByText("タイムゾーンの取得に失敗しました。")
-    ).toBeDefined();
+    expect(screen.getByText("Could not load the time zone.")).toBeDefined();
   });
 });

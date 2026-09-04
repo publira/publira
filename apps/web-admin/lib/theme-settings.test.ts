@@ -126,7 +126,7 @@ describe("theme-settings", () => {
 
     const { getTenantThemeSettings } = await import("./theme-settings");
 
-    const result = await getTenantThemeSettings("TENANT001", "ja");
+    const result = await getTenantThemeSettings("TENANT001", "en");
 
     expect(result).toEqual({
       icon: null,
@@ -149,10 +149,10 @@ describe("theme-settings", () => {
 
     const { getTenantThemeSettings } = await import("./theme-settings");
 
-    const result = await getTenantThemeSettings("TENANT001", "ja");
+    const result = await getTenantThemeSettings("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
     });
@@ -175,7 +175,7 @@ describe("theme-settings", () => {
         primaryColor: "#bad",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
@@ -195,7 +195,7 @@ describe("theme-settings", () => {
         ...updatedTheme,
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
@@ -218,7 +218,7 @@ describe("theme-settings", () => {
 
     const { getTenantThemeSettings } = await import("./theme-settings");
 
-    const result = await getTenantThemeSettings("TENANT001", "ja");
+    const result = await getTenantThemeSettings("TENANT001", "en");
 
     expect(result).toEqual({
       icon: storedImage("/images/tenants/icon-1", "icon"),
@@ -229,8 +229,9 @@ describe("theme-settings", () => {
   });
 
   it("treats a variant with no dimensions as unset", async () => {
-    // プレビューは保存時の width / height でレイアウトするため、寸法のない
-    // バリアントを通すと 0x0 の見えない画像になる。未設定として扱う。
+    // The preview lays the image out from the width and height it was saved
+    // with, so letting a variant through without them would render an
+    // invisible 0x0 image. Such a variant counts as unset.
     const stored = storedImageResponse("/images/tenants/icon-1", "icon");
     mockGetTenantThemeApi.mockResolvedValueOnce({
       theme: {
@@ -242,7 +243,7 @@ describe("theme-settings", () => {
 
     const { getTenantThemeSettings } = await import("./theme-settings");
 
-    const result = await getTenantThemeSettings("TENANT001", "ja");
+    const result = await getTenantThemeSettings("TENANT001", "en");
 
     expect(result).toEqual({
       icon: null,
@@ -271,7 +272,7 @@ describe("theme-settings", () => {
         iconData,
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
@@ -293,7 +294,7 @@ describe("theme-settings", () => {
 
     const { deleteTenantIcon } = await import("./theme-settings");
 
-    const result = await deleteTenantIcon("TENANT001", "ja");
+    const result = await deleteTenantIcon("TENANT001", "en");
 
     expect(result).toEqual({ icon: null, ok: true });
     expect(mockDeleteTenantIconApi).toHaveBeenCalledWith(
@@ -318,7 +319,7 @@ describe("theme-settings", () => {
         iconData: new Uint8Array([1]),
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(false);
@@ -339,7 +340,7 @@ describe("theme-settings", () => {
 
     const { getTenantThemeSettings } = await import("./theme-settings");
 
-    const result = await getTenantThemeSettings("TENANT001", "ja");
+    const result = await getTenantThemeSettings("TENANT001", "en");
 
     expect(result).toEqual({
       icon: null,
@@ -368,7 +369,7 @@ describe("theme-settings", () => {
         logoData,
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
@@ -390,7 +391,7 @@ describe("theme-settings", () => {
 
     const { deleteTenantLogo } = await import("./theme-settings");
 
-    const result = await deleteTenantLogo("TENANT001", "ja");
+    const result = await deleteTenantLogo("TENANT001", "en");
 
     expect(result).toEqual({ logo: null, ok: true });
     expect(mockDeleteTenantLogoApi).toHaveBeenCalledWith(
@@ -411,7 +412,7 @@ describe("theme-settings", () => {
 
     const { getTenantThemeLogo } = await import("./theme-settings");
 
-    await expect(getTenantThemeLogo("TENANT001", "ja")).resolves.toEqual(
+    await expect(getTenantThemeLogo("TENANT001", "en")).resolves.toEqual(
       storedImage("/images/tenants/logo-1", "logo")
     );
   });
@@ -421,7 +422,7 @@ describe("theme-settings", () => {
 
     const { getTenantThemeLogo } = await import("./theme-settings");
 
-    await expect(getTenantThemeLogo("TENANT001", "ja")).resolves.toBeNull();
+    await expect(getTenantThemeLogo("TENANT001", "en")).resolves.toBeNull();
   });
 
   it("falls back to null for the shell logo when the theme fetch fails", async () => {
@@ -431,7 +432,7 @@ describe("theme-settings", () => {
 
     const { getTenantThemeLogo } = await import("./theme-settings");
 
-    await expect(getTenantThemeLogo("TENANT001", "ja")).resolves.toBeNull();
+    await expect(getTenantThemeLogo("TENANT001", "en")).resolves.toBeNull();
   });
 
   it("does not pass the untranslated server message through when the logo is rejected", async () => {
@@ -450,7 +451,7 @@ describe("theme-settings", () => {
         logoData: new Uint8Array([1]),
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(false);

@@ -43,10 +43,10 @@ describe("engagement", () => {
         {
           completeCount: BigInt(episodeCompleteCount),
           episodePublicId: "EP001",
-          episodeTitle: "第1話",
+          episodeTitle: "Episode 1",
           memberViewCount: BigInt(episodeMemberViewCount),
           seriesPublicId: "SR001",
-          seriesTitle: "テストシリーズ",
+          seriesTitle: "Test Series",
         },
       ],
       nextToken: "next",
@@ -59,17 +59,17 @@ describe("engagement", () => {
 
     const { listEpisodeReadThrough } = await import("./engagement");
 
-    const result = await listEpisodeReadThrough("TENANT001", "ja");
+    const result = await listEpisodeReadThrough("TENANT001", "en");
 
     expect(result).toEqual({
       episodes: [
         {
           completeCount: 7,
           episodePublicId: "EP001",
-          episodeTitle: "第1話",
+          episodeTitle: "Episode 1",
           memberViewCount: 20,
           seriesPublicId: "SR001",
-          seriesTitle: "テストシリーズ",
+          seriesTitle: "Test Series",
         },
       ],
       nextToken: "next",
@@ -98,7 +98,7 @@ describe("engagement", () => {
 
     const { listEpisodeReadThrough } = await import("./engagement");
 
-    await listEpisodeReadThrough("TENANT001", "ja", { token: "opaque" });
+    await listEpisodeReadThrough("TENANT001", "en", { token: "opaque" });
 
     expect(mockListEpisodeReadThroughApi).toHaveBeenCalledWith(
       { limit: 20, tenant: { tenantId: "TENANT001" }, token: "opaque" },
@@ -111,11 +111,11 @@ describe("engagement", () => {
 
     const { listEpisodeReadThrough } = await import("./engagement");
 
-    const result = await listEpisodeReadThrough("TENANT001", "ja");
+    const result = await listEpisodeReadThrough("TENANT001", "en");
 
     expect(result).toEqual({
       episodes: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -131,12 +131,11 @@ describe("engagement", () => {
 
     const { listEpisodeReadThrough } = await import("./engagement");
 
-    const result = await listEpisodeReadThrough("TENANT001", "ja");
+    const result = await listEpisodeReadThrough("TENANT001", "en");
 
     expect(result).toEqual({
       episodes: [],
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -151,7 +150,7 @@ describe("engagement", () => {
 
     const { listEpisodeReadThrough } = await import("./engagement");
 
-    await expect(listEpisodeReadThrough("TENANT001", "ja")).rejects.toThrow(
+    await expect(listEpisodeReadThrough("TENANT001", "en")).rejects.toThrow(
       "boom"
     );
   });

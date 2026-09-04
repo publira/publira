@@ -29,8 +29,8 @@ vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 vi.mock("#lib/action-messages", async () => {
   const { sharedCatalog } = await import("@publira/i18n/catalog");
   return {
-    getActionLocale: () => Promise.resolve("ja"),
-    getActionMessages: () => Promise.resolve(sharedCatalog("ja")),
+    getActionLocale: () => Promise.resolve("en"),
+    getActionMessages: () => Promise.resolve(sharedCatalog("en")),
   };
 });
 
@@ -110,7 +110,7 @@ describe("verifyMfaAction", () => {
       TENANT_ID,
       "challenge-token",
       "123456",
-      "ja"
+      "en"
     );
     expect(mockWriteAdminSessionCookie).toHaveBeenCalledWith(
       TENANT_ID,
@@ -142,7 +142,7 @@ describe("verifyMfaAction", () => {
   it("keeps a refused code on the form instead of ending the login", async () => {
     mockVerifyAdminMfa.mockResolvedValueOnce({
       challengeExpired: false,
-      message: "コードが正しくありません。",
+      message: "The code is incorrect.",
       ok: false,
     });
 
@@ -153,7 +153,7 @@ describe("verifyMfaAction", () => {
     );
 
     expect(result).toEqual({
-      message: "コードが正しくありません。",
+      message: "The code is incorrect.",
       ok: false,
     });
     expect(mockClearMfaChallenge).not.toHaveBeenCalled();
@@ -163,7 +163,7 @@ describe("verifyMfaAction", () => {
   it("drops a challenge the API no longer honours and asks for the password again", async () => {
     mockVerifyAdminMfa.mockResolvedValueOnce({
       challengeExpired: true,
-      message: "サインインの有効期限が切れました。",
+      message: "This sign-in has expired.",
       ok: false,
     });
 
@@ -213,7 +213,7 @@ describe("verifyMfaAction", () => {
     );
 
     expect(result).toEqual({
-      message: "コードを入力してください。",
+      message: "Enter the code.",
       ok: false,
     });
     expect(mockVerifyAdminMfa).not.toHaveBeenCalled();

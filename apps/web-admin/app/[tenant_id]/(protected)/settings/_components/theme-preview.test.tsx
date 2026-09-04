@@ -12,7 +12,7 @@ import { ThemePreview } from "./theme-preview";
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -57,9 +57,11 @@ describe("ThemePreview", () => {
   it("shows the sample site the colors are judged on", () => {
     render(<ThemePreview theme={DEFAULT_TENANT_THEME_COLORS} />);
 
-    expect(screen.getAllByText("あおぞら書房").length).toBeGreaterThan(0);
-    expect(screen.getByText("夏の終わりの灯台")).toBeTruthy();
-    expect(screen.getByText("夜のパン屋の覚え書き")).toBeTruthy();
+    expect(screen.getAllByText("Aozora Books").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText("The Lighthouse at the End of Summer")
+    ).toBeTruthy();
+    expect(screen.getByText("Notes from the Night Bakery")).toBeTruthy();
   });
 
   it("keeps the facsimile out of the accessibility tree", () => {

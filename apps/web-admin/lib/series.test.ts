@@ -37,7 +37,7 @@ describe("listSeries", () => {
     });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "ja", {
+    const result = await listSeries("TENANT001", "en", {
       limit: 20,
       token: "current-page",
     });
@@ -62,7 +62,7 @@ describe("listSeries", () => {
     mockListSeries.mockResolvedValue({ series: [] });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "ja", {});
+    const result = await listSeries("TENANT001", "en", {});
 
     expect(mockListSeries).toHaveBeenCalledWith(
       {
@@ -72,7 +72,8 @@ describe("listSeries", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
-    // トークン未指定の応答でも、呼び出し側が分岐せずに済むよう空文字へそろえる。
+    // A response that names no token still answers with empty strings, so the
+    // caller never has to branch on their absence.
     expect(result).toMatchObject({
       nextToken: "",
       ok: true,
@@ -83,13 +84,13 @@ describe("listSeries", () => {
   it("returns the keyset order of the server without re-sorting it", async () => {
     mockListSeries.mockResolvedValue({
       series: [
-        { creators: [], publicId: "SERIES002", synopsis: "", title: "ぬ" },
-        { creators: [], publicId: "SERIES001", synopsis: "", title: "あ" },
+        { creators: [], publicId: "SERIES002", synopsis: "", title: "Zulu" },
+        { creators: [], publicId: "SERIES001", synopsis: "", title: "Alpha" },
       ],
     });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "ja", {});
+    const result = await listSeries("TENANT001", "en", {});
 
     expect(result.series.map((item) => item.publicId)).toEqual([
       "SERIES002",
@@ -103,7 +104,7 @@ describe("listSeries", () => {
     );
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "ja", {
+    const result = await listSeries("TENANT001", "en", {
       token: "current-page",
     });
 
@@ -138,13 +139,13 @@ describe("listAllSeries", () => {
       .mockResolvedValueOnce({
         nextToken: "",
         series: [
-          { creators: [], publicId: "SERIES101", synopsis: "", title: "ぬ" },
-          { creators: [], publicId: "SERIES102", synopsis: "", title: "あ" },
+          { creators: [], publicId: "SERIES101", synopsis: "", title: "Zulu" },
+          { creators: [], publicId: "SERIES102", synopsis: "", title: "Alpha" },
         ],
       });
 
     const { listAllSeries } = await import("./series");
-    const result = await listAllSeries("TENANT001", "ja");
+    const result = await listAllSeries("TENANT001", "en");
 
     expect(mockListSeries).toHaveBeenNthCalledWith(
       1,
@@ -177,7 +178,7 @@ describe("listAllSeries", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listAllSeries } = await import("./series");
-    const result = await listAllSeries("TENANT001", "ja");
+    const result = await listAllSeries("TENANT001", "en");
 
     expect(mockListSeries).not.toHaveBeenCalled();
     expect(result).toMatchObject({
@@ -202,7 +203,7 @@ describe("listAllSeries", () => {
       });
 
     const { listAllSeries } = await import("./series");
-    const result = await listAllSeries("TENANT001", "ja");
+    const result = await listAllSeries("TENANT001", "en");
 
     expect(result).toMatchObject({
       ok: false,

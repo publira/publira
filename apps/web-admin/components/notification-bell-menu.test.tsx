@@ -43,48 +43,48 @@ const renderBell = ({
     <NotificationBellMenu>
       <NotificationBellTrigger unreadCount={unreadCount}>
         {unreadCount > 0
-          ? `通知、未読${unreadCount}件`
-          : "通知、未読はありません"}
+          ? `Notifications, ${unreadCount} unread`
+          : "Notifications, none unread"}
       </NotificationBellTrigger>
       <NotificationBellContent>
         <NotificationBellHeader unreadCount={unreadCount}>
-          通知
+          Notifications
         </NotificationBellHeader>
         {state === "empty" ? (
           <NotificationBellEmpty>
             <NotificationBellEmptyTitle>
-              通知はまだありません。
+              You have no notifications yet.
             </NotificationBellEmptyTitle>
             <NotificationBellEmptyDescription>
-              通知が届くとここに表示されます。
+              Your notifications appear here.
             </NotificationBellEmptyDescription>
           </NotificationBellEmpty>
         ) : null}
         {state === "loading" ? (
           <NotificationBellLoading>
-            通知を読み込んでいます。
+            Loading notifications.
           </NotificationBellLoading>
         ) : null}
         {state === "error" ? (
           <NotificationBellError>
-            通知を表示できませんでした。
+            Could not display notifications.
           </NotificationBellError>
         ) : null}
         {state === "notification" ? (
           <NotificationBellList>
             <NotificationBellItem href="/series/SR01" isRead={false}>
-              <NotificationBellItemState>未読</NotificationBellItemState>
+              <NotificationBellItemState>Unread</NotificationBellItemState>
               <NotificationBellItemTitle>
-                予約公開に失敗しました
+                An episode could not be published
               </NotificationBellItemTitle>
               <NotificationBellItemDescription>
-                公開設定を確認してください。
+                Check the publication settings.
               </NotificationBellItemDescription>
             </NotificationBellItem>
           </NotificationBellList>
         ) : null}
         <NotificationBellMore href="/notifications">
-          もっと見る
+          View all
         </NotificationBellMore>
       </NotificationBellContent>
     </NotificationBellMenu>
@@ -94,10 +94,10 @@ describe("NotificationBellMenu", () => {
   it("goes from a notification row to its content and closes the menu after the choice", () => {
     renderBell({ state: "notification" });
     fireEvent.click(
-      screen.getByRole("button", { name: "通知、未読はありません" })
+      screen.getByRole("button", { name: "Notifications, none unread" })
     );
     const notification = screen.getByRole("link", {
-      name: /予約公開に失敗しました/u,
+      name: /An episode could not be published/u,
     });
     expect(notification.getAttribute("href")).toBe("/series/SR01");
 
@@ -106,26 +106,26 @@ describe("NotificationBellMenu", () => {
   });
 
   it.each([
-    ["loading", "通知を読み込んでいます。"],
-    ["error", "通知を表示できませんでした。"],
+    ["loading", "Loading notifications."],
+    ["error", "Could not display notifications."],
   ] as const)("opens the notification menu even while %s", (state, message) => {
     renderBell({ state });
     fireEvent.click(
-      screen.getByRole("button", { name: "通知、未読はありません" })
+      screen.getByRole("button", { name: "Notifications, none unread" })
     );
     expect(screen.getByText(message)).toBeDefined();
-    expect(screen.getByRole("link", { name: "もっと見る" })).toBeDefined();
+    expect(screen.getByRole("link", { name: "View all" })).toBeDefined();
   });
 
   it("returns focus to the trigger when Escape closes it", () => {
     renderBell();
     const trigger = screen.getByRole("button", {
-      name: "通知、未読はありません",
+      name: "Notifications, none unread",
     });
     trigger.focus();
     fireEvent.click(trigger);
 
-    const dialog = screen.getByRole("dialog", { name: "通知" });
+    const dialog = screen.getByRole("dialog", { name: "Notifications" });
     fireEvent.keyDown(dialog, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(trigger);

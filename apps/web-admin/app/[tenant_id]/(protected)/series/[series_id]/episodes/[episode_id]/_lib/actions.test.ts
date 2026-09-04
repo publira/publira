@@ -21,8 +21,8 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { sharedCatalog } = await import("@publira/i18n/catalog");
   return {
-    getActionLocale: () => Promise.resolve("ja"),
-    getActionMessages: () => Promise.resolve(sharedCatalog("ja")),
+    getActionLocale: () => Promise.resolve("en"),
+    getActionMessages: () => Promise.resolve(sharedCatalog("en")),
   };
 });
 
@@ -66,7 +66,7 @@ describe("episode actions", () => {
     const result = await updateEpisodeScheduleAction(null, formData);
 
     expect(result).toEqual({
-      message: "テナント ID が見つかりません。",
+      message: "Tenant ID is missing.",
       mode: "schedule",
       ok: false,
     });
@@ -85,7 +85,7 @@ describe("episode actions", () => {
     const result = await updateEpisodeScheduleAction(null, formData);
 
     expect(result).toEqual({
-      message: "publish_at の形式が正しくありません。",
+      message: "The publish_at format is invalid.",
       mode: "schedule",
       ok: false,
     });
@@ -110,7 +110,7 @@ describe("episode actions", () => {
         publishAt: "2099-06-01T10:00:00Z",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?schedule_updated=1"
@@ -138,7 +138,7 @@ describe("episode actions", () => {
         publishAt: "2099-06-01T17:00:00Z",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
     expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
   });
@@ -154,7 +154,7 @@ describe("episode actions", () => {
     const result = await updateEpisodeScheduleAction(null, formData);
 
     expect(result).toEqual({
-      message: "publish_at の形式が正しくありません。",
+      message: "The publish_at format is invalid.",
       mode: "schedule",
       ok: false,
     });
@@ -172,7 +172,7 @@ describe("episode actions", () => {
     const result = await uploadEpisodePagesAction(null, formData);
 
     expect(result).toEqual({
-      message: "追加するページ画像を選択してください。",
+      message: "Select page images to add.",
       mode: "pages",
       ok: false,
     });
@@ -194,7 +194,7 @@ describe("episode actions", () => {
     const result = await uploadEpisodePagesAction(null, formData);
 
     expect(result).toEqual({
-      message: "ZIP 形式（.zip）のファイルを選択してください。",
+      message: "Select a ZIP (.zip) file.",
       mode: "pages",
       ok: false,
     });
@@ -224,7 +224,7 @@ describe("episode actions", () => {
         ]),
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?pages_uploaded=1"
@@ -242,7 +242,7 @@ describe("episode actions", () => {
     const result = await reorderEpisodeImagesAction(formData);
 
     expect(result).toEqual({
-      message: "並び替え対象の画像がありません。",
+      message: "There are no images to reorder.",
       ok: false,
     });
     expect(mockReorderEpisodeImages).not.toHaveBeenCalled();
@@ -266,7 +266,7 @@ describe("episode actions", () => {
         imageIds: ["IMG1", "IMG2"],
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
     expect(result).toEqual({ ok: true });
   });

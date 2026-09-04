@@ -18,7 +18,7 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -28,7 +28,7 @@ const page: PageListItem = {
   id: "PAGE001",
   publishedVersionId: "",
   slug: "/privacy",
-  title: "プライバシーポリシー",
+  title: "Privacy policy",
   updatedAt: "2030-01-01T00:00:00Z",
 };
 
@@ -63,7 +63,7 @@ it("keeps the ids unique when it is mounted twice", () => {
 it("points each label at its own input when it is mounted twice", () => {
   renderBothForms();
 
-  const titles = screen.getAllByLabelText<HTMLInputElement>(/タイトル/u);
+  const titles = screen.getAllByLabelText<HTMLInputElement>(/Title/u);
 
   expect(titles).toHaveLength(2);
   expect(titles.map((input) => input.value)).toEqual(["", page.title]);

@@ -59,11 +59,11 @@ const mockListEpisodeOptionsAction = vi.mocked(listEpisodeOptionsAction);
 
 const action = () => Promise.resolve({ message: "", ok: false });
 
-const seriesA = { publicId: "SERIES001", title: "シリーズA" };
-const seriesB = { publicId: "SERIES002", title: "シリーズB" };
+const seriesA = { publicId: "SERIES001", title: "Series A" };
+const seriesB = { publicId: "SERIES002", title: "Series B" };
 
-const seriesCombobox = () => screen.getByLabelText(/シリーズ/u);
-const episodeCombobox = () => screen.getByLabelText(/^エピソード/u);
+const seriesCombobox = () => screen.getByLabelText(/Series/u);
+const episodeCombobox = () => screen.getByLabelText(/^Episode/u);
 
 const selectSeries = (item: { publicId: string; title: string }) => {
   fireEvent.change(seriesCombobox(), {
@@ -74,7 +74,7 @@ const selectSeries = (item: { publicId: string; title: string }) => {
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -94,10 +94,10 @@ describe("TicketForm", () => {
 
     expect(seriesCombobox()).toBeDefined();
     expect(episodeCombobox()).toBeDefined();
-    expect(screen.queryByLabelText(/エピソード public_id/u)).toBeNull();
+    expect(screen.queryByLabelText(/Episode public_id/u)).toBeNull();
     expect(
       screen
-        .getByRole("button", { name: "チケットを発行" })
+        .getByRole("button", { name: "Issue the ticket" })
         .hasAttribute("disabled")
     ).toBe(true);
   });
@@ -105,11 +105,11 @@ describe("TicketForm", () => {
   it("falls back to typing the episode public_id when the series list is empty", () => {
     render(<TicketForm action={action} series={[]} timeZone="Asia/Tokyo" />);
 
-    expect(screen.getByLabelText(/エピソード public_id/u)).toBeDefined();
-    expect(screen.queryByLabelText(/^シリーズ$/u)).toBeNull();
+    expect(screen.getByLabelText(/Episode public_id/u)).toBeDefined();
+    expect(screen.queryByLabelText(/^Series$/u)).toBeNull();
     expect(
       screen.getByText(
-        "選択できるシリーズがありません。エピソードの public_id を直接入力してください。"
+        "No series is available to pick, so enter the episode's public_id directly."
       )
     ).toBeDefined();
   });
@@ -119,20 +119,18 @@ describe("TicketForm", () => {
       <TicketForm
         action={action}
         series={[]}
-        seriesErrorMessage="シリーズ一覧の取得に失敗しました。"
+        seriesErrorMessage="Could not load the series."
         timeZone="Asia/Tokyo"
       />
     );
 
-    expect(screen.getByLabelText(/エピソード public_id/u)).toBeDefined();
-    expect(
-      screen.getByText("シリーズ一覧の取得に失敗しました。")
-    ).toBeDefined();
+    expect(screen.getByLabelText(/Episode public_id/u)).toBeDefined();
+    expect(screen.getByText("Could not load the series.")).toBeDefined();
   });
 
   it("loads the episode choices and lets one be picked once a series is selected", async () => {
     mockListEpisodeOptionsAction.mockResolvedValue({
-      episodes: [{ publicId: "EPISODE001", title: "第1話" }],
+      episodes: [{ publicId: "EPISODE001", title: "Episode 1" }],
       ok: true,
     });
 
@@ -146,12 +144,12 @@ describe("TicketForm", () => {
       expect(mockListEpisodeOptionsAction).toHaveBeenCalledWith(
         "TENANT001",
         "SERIES001",
-        "ja"
+        "en"
       );
     });
 
     expect(
-      await screen.findByRole("option", { name: "第1話 (EPISODE001)" })
+      await screen.findByRole("option", { name: "Episode 1 (EPISODE001)" })
     ).toBeDefined();
 
     fireEvent.change(episodeCombobox(), {
@@ -160,7 +158,7 @@ describe("TicketForm", () => {
     await waitFor(() => {
       expect(
         screen
-          .getByRole("button", { name: "チケットを発行" })
+          .getByRole("button", { name: "Issue the ticket" })
           .hasAttribute("disabled")
       ).toBe(false);
     });
@@ -170,11 +168,11 @@ describe("TicketForm", () => {
     mockListEpisodeOptionsAction
       .mockResolvedValueOnce({
         episodes: [],
-        message: "エピソード一覧の取得に失敗しました。",
+        message: "Could not load the episodes.",
         ok: false,
       })
       .mockResolvedValueOnce({
-        episodes: [{ publicId: "EPISODE001", title: "第1話" }],
+        episodes: [{ publicId: "EPISODE001", title: "Episode 1" }],
         ok: true,
       });
 
@@ -185,15 +183,15 @@ describe("TicketForm", () => {
     selectSeries(seriesA);
 
     expect(
-      await screen.findByText("エピソード一覧の取得に失敗しました。")
+      await screen.findByText("Could not load the episodes.")
     ).toBeDefined();
     expect(seriesCombobox()).toBeDefined();
-    expect(screen.queryByLabelText(/エピソード public_id/u)).toBeNull();
+    expect(screen.queryByLabelText(/Episode public_id/u)).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "再試行" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
     expect(
-      await screen.findByRole("option", { name: "第1話 (EPISODE001)" })
+      await screen.findByRole("option", { name: "Episode 1 (EPISODE001)" })
     ).toBeDefined();
     expect(mockListEpisodeOptionsAction).toHaveBeenCalledTimes(2);
   });
@@ -207,7 +205,7 @@ describe("TicketForm", () => {
     mockListEpisodeOptionsAction
       .mockImplementationOnce(() => firstLoad.promise)
       .mockResolvedValueOnce({
-        episodes: [{ publicId: "EPISODE-B", title: "後から選んだ話" }],
+        episodes: [{ publicId: "EPISODE-B", title: "The Later Pick" }],
         ok: true,
       });
 
@@ -223,15 +221,15 @@ describe("TicketForm", () => {
     selectSeries(seriesB);
 
     firstLoad.resolve({
-      episodes: [{ publicId: "EPISODE-A", title: "先に返った話" }],
+      episodes: [{ publicId: "EPISODE-A", title: "The Earlier Answer" }],
       ok: true,
     });
 
     expect(
-      await screen.findByRole("option", { name: "後から選んだ話 (EPISODE-B)" })
+      await screen.findByRole("option", { name: "The Later Pick (EPISODE-B)" })
     ).toBeDefined();
     expect(
-      screen.queryByRole("option", { name: "先に返った話 (EPISODE-A)" })
+      screen.queryByRole("option", { name: "The Earlier Answer (EPISODE-A)" })
     ).toBeNull();
   });
 });

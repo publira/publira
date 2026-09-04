@@ -17,8 +17,8 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { sharedCatalog } = await import("@publira/i18n/catalog");
   return {
-    getActionLocale: () => Promise.resolve("ja"),
-    getActionMessages: () => Promise.resolve(sharedCatalog("ja")),
+    getActionLocale: () => Promise.resolve("en"),
+    getActionMessages: () => Promise.resolve(sharedCatalog("en")),
   };
 });
 
@@ -69,13 +69,13 @@ describe("notification actions", () => {
       })
     );
 
-    expect(result).toEqual({ message: "既読にしました。", ok: true });
+    expect(result).toEqual({ message: "Marked as read.", ok: true });
     expect(mockMarkNotificationAsRead).toHaveBeenCalledWith(
       {
         notificationId,
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("notifications-TENANT001");
   });
@@ -91,7 +91,7 @@ describe("notification actions", () => {
     );
 
     expect(result).toEqual({
-      message: "入力内容を確認してください。",
+      message: "Please check the information you entered.",
       ok: false,
     });
     expect(mockMarkNotificationAsRead).not.toHaveBeenCalled();
@@ -111,19 +111,19 @@ describe("notification actions", () => {
     );
 
     expect(result).toEqual({
-      message: "未読をすべて既読にしました。",
+      message: "Marked all notifications as read.",
       ok: true,
     });
     expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(
       "TENANT001",
-      "ja"
+      "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("notifications-TENANT001");
   });
 
   it("returns the message and leaves the cache tag alone when the API rejects the call", async () => {
     mockMarkAllNotificationsAsRead.mockResolvedValueOnce({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       ok: false,
     });
 
@@ -134,7 +134,7 @@ describe("notification actions", () => {
     );
 
     expect(result).toEqual({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

@@ -35,14 +35,14 @@ describe("getTenantName", () => {
 
   it("returns the tenant name from the public API", async () => {
     mockGetTenant.mockResolvedValueOnce({
-      defaultLocale: "ja",
-      tenantName: "  サンプル出版社  ",
+      defaultLocale: "en",
+      tenantName: "  Example Publishing  ",
       theme: undefined,
     });
 
     const { getTenantName } = await import("./public-api");
 
-    await expect(getTenantName(tenantId)).resolves.toBe("サンプル出版社");
+    await expect(getTenantName(tenantId)).resolves.toBe("Example Publishing");
     expect(mockGetTenant).toHaveBeenCalledWith({
       tenant: { tenantId },
     });

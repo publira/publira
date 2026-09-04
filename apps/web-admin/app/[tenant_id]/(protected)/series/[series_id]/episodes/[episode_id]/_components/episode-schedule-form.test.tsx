@@ -12,7 +12,7 @@ import { EpisodeScheduleForm } from "./episode-schedule-form";
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 

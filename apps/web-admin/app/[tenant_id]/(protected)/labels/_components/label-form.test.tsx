@@ -18,14 +18,14 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
 const label: LabelListItem = {
   eyeCatchImageUpdatedAt: "",
   eyeCatchImageVariants: [],
-  name: "既存レーベル",
+  name: "Existing Label",
   publicId: "LABEL001",
 };
 
@@ -60,7 +60,7 @@ it("keeps the ids unique when it is mounted twice", () => {
 it("points each label at its own input when it is mounted twice", () => {
   renderBothForms();
 
-  const names = screen.getAllByLabelText<HTMLInputElement>(/レーベル名/u);
+  const names = screen.getAllByLabelText<HTMLInputElement>(/Label name/u);
 
   expect(names).toHaveLength(2);
   expect(names.map((input) => input.value)).toEqual(["", label.name]);

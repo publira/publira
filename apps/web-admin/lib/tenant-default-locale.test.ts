@@ -47,7 +47,7 @@ describe("tenant-default-locale", () => {
 
     const { getTenantDefaultLocale } = await import("./tenant-default-locale");
 
-    const result = await getTenantDefaultLocale("TENANT001", "ja");
+    const result = await getTenantDefaultLocale("TENANT001", "en");
 
     expect(result).toEqual({ defaultLocale: "en", ok: true });
     expect(mockGetTenantDefaultLocaleApi).toHaveBeenCalledWith(
@@ -64,10 +64,10 @@ describe("tenant-default-locale", () => {
 
     const { getTenantDefaultLocale } = await import("./tenant-default-locale");
 
-    const result = await getTenantDefaultLocale("TENANT001", "ja");
+    const result = await getTenantDefaultLocale("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
     });
@@ -81,7 +81,7 @@ describe("tenant-default-locale", () => {
 
     const { getTenantDefaultLocale } = await import("./tenant-default-locale");
 
-    const result = await getTenantDefaultLocale("TENANT001", "ja");
+    const result = await getTenantDefaultLocale("TENANT001", "en");
 
     expect(result.ok).toBe(false);
     expect(result).not.toHaveProperty("defaultLocale");
@@ -100,7 +100,7 @@ describe("tenant-default-locale", () => {
         defaultLocale: "en",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({ defaultLocale: "en", ok: true });
@@ -126,11 +126,11 @@ describe("tenant-default-locale", () => {
         defaultLocale: "en",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
-      message: "入力内容に誤りがあります。",
+      message: "The submitted values are invalid.",
       ok: false,
     });
   });
@@ -148,7 +148,7 @@ describe("tenant-default-locale", () => {
         defaultLocale: "en",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(false);
@@ -170,7 +170,7 @@ describe("tenant-default-locale", () => {
 
     const { getTenantDefaultLocale } = await import("./tenant-default-locale");
 
-    const result = await getTenantDefaultLocale("TENANT001", "ja");
+    const result = await getTenantDefaultLocale("TENANT001", "en");
 
     expect(result.ok).toBe(false);
     expect(result).not.toHaveProperty("defaultLocale");

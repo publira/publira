@@ -31,7 +31,7 @@ describe("tenant-detail", () => {
       tenant: {
         adminDomain: "admin.example.com",
         domain: "example.com",
-        name: "青枝出版",
+        name: "Acme Publishing",
         publicId: "tenant_admin_001",
       },
     });
@@ -43,7 +43,7 @@ describe("tenant-detail", () => {
       tenant: {
         adminDomain: "admin.example.com",
         domain: "example.com",
-        name: "青枝出版",
+        name: "Acme Publishing",
         publicId: "tenant_admin_001",
       },
     });

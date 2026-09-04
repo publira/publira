@@ -11,7 +11,7 @@ import { SeriesManager } from "./series-manager";
 
 vi.mock("#components/message", () => ({
   Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(sharedCatalog("ja"), message, values),
+    getMessage(sharedCatalog("en"), message, values),
 }));
 
 vi.mock("next/link", () => ({
@@ -28,7 +28,7 @@ describe("SeriesManager", () => {
   it("says nothing is registered yet when the first page is empty", () => {
     render(
       <SeriesManager
-        locale="ja"
+        locale="en"
         pageSize={20}
         series={[]}
         timeZone="Asia/Tokyo"
@@ -36,15 +36,15 @@ describe("SeriesManager", () => {
     );
 
     expect(
-      screen.getByText("シリーズがまだ登録されていません。")
+      screen.getByText("No series have been registered yet.")
     ).toBeDefined();
-    expect(screen.queryByLabelText("シリーズ一覧のページ送り")).toBeNull();
+    expect(screen.queryByLabelText("Series list pagination")).toBeNull();
   });
 
   it("does not say the whole list is empty when a later page is empty", () => {
     render(
       <SeriesManager
-        locale="ja"
+        locale="en"
         pageSize={20}
         previousHref="?token=previous"
         series={[]}
@@ -52,18 +52,16 @@ describe("SeriesManager", () => {
       />
     );
 
-    expect(
-      screen.getByText("このページに表示できるシリーズはありません。")
-    ).toBeDefined();
-    // 復旧用のリンクは残す。ここを隠すと一覧へ戻る手段が無くなる。
-    expect(screen.getByLabelText("シリーズ一覧のページ送り")).toBeDefined();
+    expect(screen.getByText("No Series to show on this page.")).toBeDefined();
+    // The recovery links stay. Hiding them would leave no way back to the list.
+    expect(screen.getByLabelText("Series list pagination")).toBeDefined();
   });
 
   it("shows only the error and does not call the list empty when the fetch fails", () => {
     render(
       <SeriesManager
-        listErrorMessage="シリーズ一覧を取得できませんでした。"
-        locale="ja"
+        listErrorMessage="Could not load the series."
+        locale="en"
         nextHref="?token=next"
         pageSize={20}
         previousHref="?token=previous"
@@ -72,19 +70,16 @@ describe("SeriesManager", () => {
       />
     );
 
-    // 取得失敗はセクションの失敗なので、他画面と同じ `SectionError`
-    // （role="alert" と「〇〇一覧を表示できませんでした」）で出す。
+    // A failed read is a failed section, so it is reported the way every other
+    // screen reports one: `SectionError`, with role="alert" and a title naming
+    // the list that is missing.
     const sectionError = screen.getByRole("alert");
-    expect(sectionError.textContent).toContain(
-      "シリーズ一覧を表示できませんでした"
-    );
-    expect(sectionError.textContent).toContain(
-      "シリーズ一覧を取得できませんでした。"
-    );
-    expect(screen.queryByText("シリーズがまだ登録されていません。")).toBeNull();
+    expect(sectionError.textContent).toContain("Could not display series");
+    expect(sectionError.textContent).toContain("Could not load the series.");
     expect(
-      screen.queryByText("このページに表示できるシリーズはありません。")
+      screen.queryByText("No series have been registered yet.")
     ).toBeNull();
-    expect(screen.queryByLabelText("シリーズ一覧のページ送り")).toBeNull();
+    expect(screen.queryByText("No Series to show on this page.")).toBeNull();
+    expect(screen.queryByLabelText("Series list pagination")).toBeNull();
   });
 });

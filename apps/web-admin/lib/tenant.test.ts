@@ -22,7 +22,7 @@ describe("tenant", () => {
 
   it("resolves the tenantId from the admin domain candidates", async () => {
     mockGetTenantByDomain.mockResolvedValueOnce({
-      defaultLocale: "ja",
+      defaultLocale: "en",
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
 

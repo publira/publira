@@ -28,13 +28,13 @@ vi.mock("next/cache", () => ({
 const ticket = (publicId: string, createdAt: string) => ({
   createdAt,
   episodePublicId: "EPISODE001",
-  episodeTitle: "第1話",
+  episodeTitle: "Episode 1",
   expiresAt: "",
   note: "",
   publicId,
   revokedAt: "",
   seriesPublicId: "SERIES001",
-  seriesTitle: "シリーズ",
+  seriesTitle: "Series A",
   status: "active",
   userEmail: "reader@example.com",
   userName: "Reader",
@@ -56,7 +56,7 @@ describe("listAccessTickets", () => {
     });
 
     const { listAccessTickets } = await import("./access-ticket");
-    const result = await listAccessTickets("TENANT001", "ja", {
+    const result = await listAccessTickets("TENANT001", "en", {
       limit: 20,
       token: "current-page",
     });
@@ -83,7 +83,7 @@ describe("listAccessTickets", () => {
     mockListAccessTickets.mockResolvedValue({ tickets: [] });
 
     const { listAccessTickets } = await import("./access-ticket");
-    const result = await listAccessTickets("TENANT001", "ja", {});
+    const result = await listAccessTickets("TENANT001", "en", {});
 
     expect(mockListAccessTickets).toHaveBeenCalledWith(
       {
@@ -96,7 +96,8 @@ describe("listAccessTickets", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
-    // トークン未指定の応答でも、呼び出し側が分岐せずに済むよう空文字へそろえる。
+    // A response that names no token still answers with empty strings, so the
+    // caller never has to branch on their absence.
     expect(result).toMatchObject({
       nextToken: "",
       ok: true,
@@ -108,7 +109,7 @@ describe("listAccessTickets", () => {
     mockListAccessTickets.mockResolvedValue({ tickets: [] });
 
     const { listAccessTickets } = await import("./access-ticket");
-    await listAccessTickets("TENANT001", "ja", {
+    await listAccessTickets("TENANT001", "en", {
       activeOnly: true,
       episodePublicId: "EPISODE001",
       token: "current-page",
@@ -137,7 +138,7 @@ describe("listAccessTickets", () => {
     });
 
     const { listAccessTickets } = await import("./access-ticket");
-    const result = await listAccessTickets("TENANT001", "ja", {});
+    const result = await listAccessTickets("TENANT001", "en", {});
 
     expect(result.tickets.map((item) => item.publicId)).toEqual([
       "TICKET002",
@@ -149,7 +150,7 @@ describe("listAccessTickets", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listAccessTickets } = await import("./access-ticket");
-    const result = await listAccessTickets("TENANT001", "ja", {
+    const result = await listAccessTickets("TENANT001", "en", {
       token: "current-page",
     });
 
@@ -168,7 +169,7 @@ describe("listAccessTickets", () => {
     );
 
     const { listAccessTickets } = await import("./access-ticket");
-    const result = await listAccessTickets("TENANT001", "ja", {
+    const result = await listAccessTickets("TENANT001", "en", {
       token: "current-page",
     });
 

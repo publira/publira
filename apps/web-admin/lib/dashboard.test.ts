@@ -30,10 +30,10 @@ describe("dashboard", () => {
       queue: [
         {
           episodePublicId: "EP001",
-          episodeTitle: "第1話",
+          episodeTitle: "Episode 1",
           scheduledAt: "2026-04-01T10:00:00Z",
           seriesPublicId: "SR001",
-          seriesTitle: "テストシリーズ",
+          seriesTitle: "Test Series",
           status: "scheduled",
         },
       ],
@@ -46,17 +46,17 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001", "ja");
+    const result = await getDashboard("TENANT001", "en");
 
     expect(result).toEqual({
       ok: true,
       queue: [
         {
           episodePublicId: "EP001",
-          episodeTitle: "第1話",
+          episodeTitle: "Episode 1",
           scheduledAt: "2026-04-01T10:00:00Z",
           seriesPublicId: "SR001",
-          seriesTitle: "テストシリーズ",
+          seriesTitle: "Test Series",
           status: "scheduled",
         },
       ],
@@ -78,7 +78,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001", "ja");
+    const result = await getDashboard("TENANT001", "en");
 
     expect(result).toEqual({
       ok: true,
@@ -96,10 +96,10 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001", "ja");
+    const result = await getDashboard("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
     });
@@ -113,10 +113,10 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001", "ja");
+    const result = await getDashboard("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
     });
@@ -129,11 +129,10 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001", "ja");
+    const result = await getDashboard("TENANT001", "en");
 
     expect(result).toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
       requiresSignIn: false,
     });
@@ -146,7 +145,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    await expect(getDashboard("TENANT001", "ja")).rejects.toThrow("boom");
+    await expect(getDashboard("TENANT001", "en")).rejects.toThrow("boom");
   });
 
   it("maps an episode in draft status", async () => {
@@ -154,10 +153,10 @@ describe("dashboard", () => {
       queue: [
         {
           episodePublicId: "EP002",
-          episodeTitle: "第2話",
+          episodeTitle: "Episode 2",
           scheduledAt: "",
           seriesPublicId: "SR001",
-          seriesTitle: "テストシリーズ",
+          seriesTitle: "Test Series",
           status: "draft",
         },
       ],
@@ -170,7 +169,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001", "ja");
+    const result = await getDashboard("TENANT001", "en");
 
     if (!result.ok) {
       throw new Error("Expected ok result");

@@ -12,7 +12,7 @@ import { AnnouncementManager } from "./announcement-manager";
 
 vi.mock("#components/message", () => ({
   Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(sharedCatalog("ja"), message, values),
+    getMessage(sharedCatalog("en"), message, values),
 }));
 
 vi.mock("next/link", () => ({
@@ -23,13 +23,13 @@ vi.mock("next/link", () => ({
 
 const announcement = (id: string): AnnouncementItem => ({
   audienceType: "all",
-  body: "本文",
+  body: "Announcement body",
   createdAt: "2026-06-01T00:00:00Z",
   id,
   linkUrl: "/series/S001",
   targetUserName: "",
   targetUserPublicId: "",
-  title: "メンテナンスのお知らせ",
+  title: "Scheduled maintenance",
 });
 
 afterEach(() => {
@@ -41,21 +41,21 @@ describe("AnnouncementManager", () => {
     render(
       <AnnouncementManager
         announcements={[]}
-        locale="ja"
+        locale="en"
         pageSize={20}
         timeZone="Asia/Tokyo"
       />
     );
 
-    expect(screen.getByText("お知らせがまだありません。")).toBeDefined();
-    expect(screen.queryByLabelText("お知らせ一覧のページ送り")).toBeNull();
+    expect(screen.getByText("There are no announcements yet.")).toBeDefined();
+    expect(screen.queryByLabelText("Announcements pagination")).toBeNull();
   });
 
   it("does not say the whole list is empty when a later page is empty", () => {
     render(
       <AnnouncementManager
         announcements={[]}
-        locale="ja"
+        locale="en"
         pageSize={20}
         previousHref="?token=previous"
         timeZone="Asia/Tokyo"
@@ -63,12 +63,12 @@ describe("AnnouncementManager", () => {
     );
 
     expect(
-      screen.getByText("このページに表示できるお知らせはありません。")
+      screen.getByText("No Announcements to show on this page.")
     ).toBeDefined();
-    // 復旧用のリンクは残す。ここを隠すと一覧へ戻る手段が無くなる。
-    const previous = screen.getByRole("link", { name: "前へ" });
+    // The recovery links stay. Hiding them would leave no way back to the list.
+    const previous = screen.getByRole("link", { name: "Previous" });
     expect(previous.getAttribute("href")).toBe("?token=previous");
-    expect(screen.queryByRole("link", { name: "次へ" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Next" })).toBeNull();
   });
 
   it("renders the rows and the pager on a later page", () => {
@@ -76,65 +76,66 @@ describe("AnnouncementManager", () => {
       <AnnouncementManager
         nextHref="?token=next"
         announcements={[announcement("n1")]}
-        locale="ja"
+        locale="en"
         pageSize={20}
         previousHref="?token=previous"
         timeZone="Asia/Tokyo"
       />
     );
 
-    expect(screen.getByText("メンテナンスのお知らせ")).toBeDefined();
+    expect(screen.getByText("Scheduled maintenance")).toBeDefined();
     // 2026-06-01T00:00:00Z is 09:00 the same calendar day in Asia/Tokyo.
-    expect(screen.getByText("2026/06/01 9:00")).toBeDefined();
+    expect(screen.getByText("Jun 1, 2026, 9:00 AM")).toBeDefined();
     expect(
-      screen.getByRole("link", { name: "前へ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Previous" }).getAttribute("href")
     ).toBe("?token=previous");
     expect(
-      screen.getByRole("link", { name: "次へ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Next" }).getAttribute("href")
     ).toBe("?token=next");
   });
 
   it("shows only the error and does not call the list empty when the fetch fails", () => {
     render(
       <AnnouncementManager
-        listErrorMessage="お知らせ一覧を取得できませんでした。"
+        listErrorMessage="Could not load the announcements."
         nextHref="?token=next"
         announcements={[]}
-        locale="ja"
+        locale="en"
         pageSize={20}
         previousHref="?token=previous"
         timeZone="Asia/Tokyo"
       />
     );
 
-    // 取得失敗はセクションの失敗なので、他画面と同じ `SectionError`
-    // （role="alert" と「〇〇一覧を表示できませんでした」）で出す。
+    // A failed read is a failed section, so it is reported the way every other
+    // screen reports one: `SectionError`, with role="alert" and a title naming
+    // the list that is missing.
     const sectionError = screen.getByRole("alert");
     expect(sectionError.textContent).toContain(
-      "お知らせ一覧を表示できませんでした"
+      "Could not display the announcements"
     );
     expect(sectionError.textContent).toContain(
-      "お知らせ一覧を取得できませんでした。"
+      "Could not load the announcements."
     );
-    expect(screen.queryByText("お知らせがまだありません。")).toBeNull();
+    expect(screen.queryByText("There are no announcements yet.")).toBeNull();
     expect(
-      screen.queryByText("このページに表示できるお知らせはありません。")
+      screen.queryByText("No Announcements to show on this page.")
     ).toBeNull();
-    expect(screen.queryByLabelText("お知らせ一覧のページ送り")).toBeNull();
+    expect(screen.queryByLabelText("Announcements pagination")).toBeNull();
   });
 
   it("shows the creation time as a wall clock in the tenant time zone", () => {
     render(
       <AnnouncementManager
         announcements={[announcement("n1")]}
-        locale="ja"
+        locale="en"
         pageSize={20}
         timeZone="America/Los_Angeles"
       />
     );
 
     // 2026-06-01T00:00:00Z is 17:00 the previous calendar day in PDT.
-    expect(screen.getByText("2026/05/31 17:00")).toBeDefined();
-    expect(screen.queryByText("2026/06/01 9:00")).toBeNull();
+    expect(screen.getByText("May 31, 2026, 5:00 PM")).toBeDefined();
+    expect(screen.queryByText("Jun 1, 2026, 9:00 AM")).toBeNull();
   });
 });

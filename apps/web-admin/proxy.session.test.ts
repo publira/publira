@@ -63,7 +63,7 @@ describe("web-admin proxy session handling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveTenantRouting.mockResolvedValue({
-      defaultLocale: "ja",
+      defaultLocale: "en",
       tenantId: TENANT_ID,
     });
   });

@@ -96,7 +96,7 @@ describe("web-admin locale", () => {
   });
 
   describe("loadAdminMessages", () => {
-    it("loads the catalog of the requested locale", async () => {
+    it("loads the catalog of the requested locale, so ja and en differ", async () => {
       const { loadAdminMessages } = await importLocale();
 
       const [ja, en] = await Promise.all([

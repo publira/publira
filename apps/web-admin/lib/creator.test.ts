@@ -50,7 +50,7 @@ describe("listCreators", () => {
     });
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", "ja", {
+    const result = await listCreators("TENANT001", "en", {
       limit: 20,
       token: "current-page",
     });
@@ -74,7 +74,7 @@ describe("listCreators", () => {
     mockListCreators.mockResolvedValue({ creators: [] });
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", "ja", {});
+    const result = await listCreators("TENANT001", "en", {});
 
     expect(mockListCreators).toHaveBeenCalledWith(
       {
@@ -84,7 +84,8 @@ describe("listCreators", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
-    // トークン未指定の応答でも、呼び出し側が分岐せずに済むよう空文字へそろえる。
+    // A response that names no token still answers with empty strings, so the
+    // caller never has to branch on their absence.
     expect(result).toMatchObject({
       nextToken: "",
       ok: true,
@@ -95,13 +96,13 @@ describe("listCreators", () => {
   it("returns the keyset order of the server without re-sorting it", async () => {
     mockListCreators.mockResolvedValue({
       creators: [
-        { name: "ぬ", profileText: "", publicId: "CREATOR002" },
-        { name: "あ", profileText: "", publicId: "CREATOR001" },
+        { name: "Zulu", profileText: "", publicId: "CREATOR002" },
+        { name: "Alpha", profileText: "", publicId: "CREATOR001" },
       ],
     });
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", "ja", {});
+    const result = await listCreators("TENANT001", "en", {});
 
     expect(result.creators.map((item) => item.publicId)).toEqual([
       "CREATOR002",
@@ -116,7 +117,7 @@ describe("listCreators", () => {
     );
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", "ja", {
+    const result = await listCreators("TENANT001", "en", {
       token: "current-page",
     });
 
@@ -151,7 +152,7 @@ describe("getCreator", () => {
         publicId: "CREATOR101",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(mockGetCreator).toHaveBeenCalledExactlyOnceWith(
@@ -184,19 +185,20 @@ describe("getCreator", () => {
         publicId: "CREATOR001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(mockGetCreator).not.toHaveBeenCalled();
     expect(result).toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
     });
   });
 
-  // 不在とテナント外はサーバーがどちらも not_found で返すため、区別せず
-  // notFound へ落とす。
+  // The server answers not_found both for a record that does not exist and
+  // for one outside the tenant, so neither is distinguished here: both fall
+  // through to notFound.
   it("returns notFound when the RPC answers not_found", async () => {
     const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetCreator.mockRejectedValue(
@@ -209,7 +211,7 @@ describe("getCreator", () => {
         publicId: "MISSING",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({ notFound: true, ok: false });
@@ -227,7 +229,7 @@ describe("getCreator", () => {
         publicId: "CREATOR001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(false);
@@ -243,11 +245,11 @@ describe("getCreator", () => {
         publicId: "CREATOR001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
-      message: "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
+      message: "Could not load the creators. Please try again later.",
       ok: false,
     });
   });
@@ -275,7 +277,7 @@ describe("listAllCreators", () => {
       });
 
     const { listAllCreators } = await import("./creator");
-    const result = await listAllCreators("TENANT001", "ja");
+    const result = await listAllCreators("TENANT001", "en");
 
     expect(mockListCreators).toHaveBeenNthCalledWith(
       1,
@@ -311,12 +313,12 @@ describe("listAllCreators", () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { listAllCreators } = await import("./creator");
-    const result = await listAllCreators("TENANT001", "ja");
+    const result = await listAllCreators("TENANT001", "en");
 
     expect(mockListCreators).not.toHaveBeenCalled();
     expect(result).toEqual({
       creators: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -338,12 +340,12 @@ describe("listAllCreators", () => {
       });
 
     const { listAllCreators } = await import("./creator");
-    const result = await listAllCreators("TENANT001", "ja");
+    const result = await listAllCreators("TENANT001", "en");
 
     expect(mockListCreators).toHaveBeenCalledTimes(2);
     expect(result).toEqual({
       creators: [],
-      message: "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
+      message: "Could not load the creators. Please try again later.",
       nextToken: "",
       ok: false,
       previousToken: "",

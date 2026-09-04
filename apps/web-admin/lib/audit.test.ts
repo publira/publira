@@ -56,7 +56,7 @@ describe("audit lib", () => {
     });
 
     const { listAuditLogs } = await import("./audit");
-    const result = await listAuditLogs("TENANT001", "ja", {
+    const result = await listAuditLogs("TENANT001", "en", {
       action: " series_created ",
       actorUserPublicId: " USER001 ",
       limit: 10,
@@ -100,12 +100,12 @@ describe("audit lib", () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { listAuditLogs } = await import("./audit");
-    const result = await listAuditLogs("TENANT001", "ja", { token: "token" });
+    const result = await listAuditLogs("TENANT001", "en", { token: "token" });
 
     expect(mockListAuditLogs).not.toHaveBeenCalled();
     expect(result).toEqual({
       auditLogs: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -122,7 +122,7 @@ describe("audit lib", () => {
     });
 
     const { listAuditLogs } = await import("./audit");
-    await listAuditLogs("TENANT001", "ja", {
+    await listAuditLogs("TENANT001", "en", {
       createdFrom: "2026-08-10",
       createdTo: "2026-08-10",
     });
