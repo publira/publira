@@ -54,6 +54,7 @@ start_web_app() {
         HOSTNAME="${bind_host}" \
         PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" \
         PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
+        PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
         PUBLIRA_CACHE_APP="${cache_app}" \
         "${grpc_url_env_name}=${grpc_url_value}" \
         pnpm exec next dev --port "${app_port}" --hostname "${bind_host}"
@@ -66,6 +67,7 @@ start_web_app() {
         HOSTNAME="${bind_host}" \
         PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" \
         PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
+        PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
         PUBLIRA_CACHE_APP="${cache_app}" \
         "${grpc_url_env_name}=${grpc_url_value}" \
         node server.js
