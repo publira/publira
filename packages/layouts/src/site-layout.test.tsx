@@ -43,41 +43,43 @@ describe("SiteLayout slots", () => {
     render(
       <SiteLayout>
         <SiteLayoutHeader>
-          <SiteLayoutBrand href="/">青枝出版</SiteLayoutBrand>
+          <SiteLayoutBrand href="/">Aoto Press</SiteLayoutBrand>
           <SiteLayoutNav>
-            <SiteLayoutNavLink href="/series">シリーズ</SiteLayoutNavLink>
+            <SiteLayoutNavLink href="/series">Series</SiteLayoutNavLink>
           </SiteLayoutNav>
         </SiteLayoutHeader>
-        <SiteLayoutMain>本文</SiteLayoutMain>
+        <SiteLayoutMain>Body</SiteLayoutMain>
       </SiteLayout>
     );
 
     expect(
-      screen.getByRole("link", { name: "青枝出版" }).dataset.nextLink
+      screen.getByRole("link", { name: "Aoto Press" }).dataset.nextLink
     ).toBe("true");
     expect(
-      screen.getByRole("link", { name: "シリーズ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Series" }).getAttribute("href")
     ).toBe("/series");
-    expect(screen.getByText("本文")).toBeTruthy();
+    expect(screen.getByText("Body")).toBeTruthy();
   });
 
   it("renders each footer area from its own child slot", () => {
     render(
       <SiteLayoutFooter>
-        <SiteLayoutFooterLinks ariaLabel="フッターリンク">
-          <SiteLayoutFooterLink href="/terms">利用規約</SiteLayoutFooterLink>
+        <SiteLayoutFooterLinks ariaLabel="Footer links">
+          <SiteLayoutFooterLink href="/terms">
+            Terms of service
+          </SiteLayoutFooterLink>
         </SiteLayoutFooterLinks>
         <SiteLayoutFooterContent>
-          <SiteLayoutFooterNote>お知らせ</SiteLayoutFooterNote>
+          <SiteLayoutFooterNote>Notice</SiteLayoutFooterNote>
           <SiteLayoutFooterCopyright>© Publira</SiteLayoutFooterCopyright>
         </SiteLayoutFooterContent>
       </SiteLayoutFooter>
     );
 
     expect(
-      screen.getByRole("navigation", { name: "フッターリンク" })
+      screen.getByRole("navigation", { name: "Footer links" })
     ).toBeTruthy();
-    expect(screen.getByText("お知らせ")).toBeTruthy();
+    expect(screen.getByText("Notice")).toBeTruthy();
     expect(screen.getByText("© Publira")).toBeTruthy();
   });
 
@@ -85,19 +87,19 @@ describe("SiteLayout slots", () => {
     render(
       <SiteLayoutActions>
         <SiteLayoutSecondaryAction href="/login">
-          ログイン
+          Sign in
         </SiteLayoutSecondaryAction>
         <SiteLayoutPrimaryAction href="/signup">
-          はじめる
+          Get started
         </SiteLayoutPrimaryAction>
       </SiteLayoutActions>
     );
 
     expect(
-      screen.getByRole("link", { name: "ログイン" }).getAttribute("href")
+      screen.getByRole("link", { name: "Sign in" }).getAttribute("href")
     ).toBe("/login");
     expect(
-      screen.getByRole("link", { name: "はじめる" }).getAttribute("href")
+      screen.getByRole("link", { name: "Get started" }).getAttribute("href")
     ).toBe("/signup");
   });
 
@@ -105,13 +107,13 @@ describe("SiteLayout slots", () => {
     render(
       <SiteLayoutActions>
         <SiteLayoutLogoutAction action={() => {}}>
-          ログアウト
+          Sign out
         </SiteLayoutLogoutAction>
       </SiteLayoutActions>
     );
 
     expect(
-      screen.getByRole("button", { name: "ログアウト" }).closest("form")
+      screen.getByRole("button", { name: "Sign out" }).closest("form")
     ).toBeTruthy();
   });
 });

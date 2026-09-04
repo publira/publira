@@ -7,7 +7,7 @@ import { readerEmailChangedNoticeDataSchema } from "./reader-email-changed-notic
 const data = {
   new_email: "new-owner@example.test",
   previous_email: "owner@example.test",
-  tenant_name: "青灯書房",
+  tenant_name: "Aoto Press",
 };
 
 describe("readerEmailChangedNoticeDataSchema", () => {
@@ -49,7 +49,7 @@ describe("ReaderEmailChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("青灯書房 メールアドレス変更完了");
+    expect(result.subject).toBe("Aoto Press メールアドレス変更完了");
     expect(result.html).toContain("メールアドレス変更の完了");
     expect(result.html).toContain(data.previous_email);
     expect(result.html).toContain(data.new_email);
@@ -72,7 +72,7 @@ describe("ReaderEmailChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("青灯書房 email address changed");
+    expect(result.subject).toBe("Aoto Press email address changed");
     expect(result.html).toContain("Your email address was changed");
     expect(result.text).toContain("If you did not make this change");
   });

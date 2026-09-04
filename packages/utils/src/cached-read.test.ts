@@ -40,8 +40,8 @@ describe("cachedReadFailure", () => {
   });
 
   it("returns a failure with a message and drops the entry", () => {
-    expect(cachedReadFailure("取得できませんでした。")).toEqual({
-      message: "取得できませんでした。",
+    expect(cachedReadFailure("Could not load the data.")).toEqual({
+      message: "Could not load the data.",
       ok: false,
     });
     expect(mockCacheLife).toHaveBeenCalledTimes(1);

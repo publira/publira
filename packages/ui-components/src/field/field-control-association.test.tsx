@@ -14,11 +14,11 @@ import { Switch } from "../switch/switch";
 import { Textarea } from "../textarea/textarea";
 import { Field, FieldLabel } from "./field";
 
-const comboItems = [{ label: "りんご", value: "apple" }] as const;
-const selectItems = [{ label: "選択肢A", value: "a" }] as const;
+const comboItems = [{ label: "Apple", value: "apple" }] as const;
+const selectItems = [{ label: "Option A", value: "a" }] as const;
 const radioItems = [
-  { label: "公開", value: "public" },
-  { label: "非公開", value: "private" },
+  { label: "Public", value: "public" },
+  { label: "Private", value: "private" },
 ] as const;
 
 afterEach(cleanup);
@@ -49,7 +49,7 @@ const StatefulCombobox = ({ id }: { id?: string }) => {
 
   return (
     <Combobox
-      emptyMessage="一致する項目が見つかりません。"
+      emptyMessage="No matching items."
       id={id}
       items={comboItems}
       onValueChange={setValue}
@@ -63,11 +63,11 @@ const StatefulMultiCombobox = ({ id }: { id?: string }) => {
 
   return (
     <MultiCombobox
-      emptyMessage="一致する項目が見つかりません。"
+      emptyMessage="No matching items."
       id={id}
       items={comboItems}
       onValueChange={setValue}
-      removeLabel="削除"
+      removeLabel="Remove"
       value={value}
     />
   );
@@ -112,12 +112,12 @@ describe("for/id association between Field and the form parts", () => {
     ({ renderControl }) => {
       const { container } = render(
         <Field>
-          <FieldLabel>ラベル</FieldLabel>
+          <FieldLabel>Label</FieldLabel>
           {renderControl()}
         </Field>
       );
 
-      const { control, htmlFor } = getAssociation(container, "ラベル");
+      const { control, htmlFor } = getAssociation(container, "Label");
       expect(control.id).toBe(htmlFor);
     }
   );
@@ -135,18 +135,18 @@ describe("for/id association between Field and the form parts", () => {
     const { container } = render(
       <>
         <Field>
-          <FieldLabel>一つ目</FieldLabel>
+          <FieldLabel>First</FieldLabel>
           {renderControl()}
         </Field>
         <Field>
-          <FieldLabel>二つ目</FieldLabel>
+          <FieldLabel>Second</FieldLabel>
           {renderControl()}
         </Field>
       </>
     );
 
-    const first = getAssociation(container, "一つ目");
-    const second = getAssociation(container, "二つ目");
+    const first = getAssociation(container, "First");
+    const second = getAssociation(container, "Second");
 
     expect(first.htmlFor).not.toBe(second.htmlFor);
     expect(first.control.id).not.toBe(second.control.id);
@@ -188,12 +188,12 @@ describe("for/id association between Field and the form parts", () => {
 
       const { container } = render(
         <Field>
-          <FieldLabel>ラベル</FieldLabel>
+          <FieldLabel>Label</FieldLabel>
           {renderControl(explicitId)}
         </Field>
       );
 
-      const { control, htmlFor } = getAssociation(container, "ラベル");
+      const { control, htmlFor } = getAssociation(container, "Label");
       expect(htmlFor).toBe(explicitId);
       expect(control.id).toBe(explicitId);
     }
@@ -223,14 +223,15 @@ describe("for/id association between Field and the form parts", () => {
   ])("clicking the label activates $name", ({ renderControl }) => {
     const { container } = render(
       <Field>
-        <FieldLabel>ラベル</FieldLabel>
+        <FieldLabel>Label</FieldLabel>
         {renderControl()}
       </Field>
     );
 
-    const { control, label } = getAssociation(container, "ラベル");
-    // jsdom は label[for] のクリックで focus を移さない。ブラウザでは同じ活性化が
-    // フォーカスを動かすので、ここではコントロールへ click が届くことを見る。
+    const { control, label } = getAssociation(container, "Label");
+    // jsdom does not move focus when a label[for] is clicked. A browser moves
+    // it on that same activation, so what is checked here is that the click
+    // reaches the control.
     let activated = false;
     control.addEventListener("click", () => {
       activated = true;

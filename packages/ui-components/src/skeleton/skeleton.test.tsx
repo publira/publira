@@ -29,7 +29,7 @@ describe("Skeleton components", () => {
 
     const el = container.firstElementChild;
     expect(el?.classList.contains("motion-safe:animate-pulse")).toBe(true);
-    // 素の animate-pulse だと reduced motion でも動いてしまう
+    // A bare animate-pulse would keep moving under reduced motion.
     expect(el?.classList.contains("animate-pulse")).toBe(false);
   });
 

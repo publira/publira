@@ -8,7 +8,7 @@ import { readerPasswordResetDataSchema } from "./reader-password-reset";
 const data = {
   expires_at: "2030-01-15T12:00:00Z",
   reset_url: "https://reader.example.test/confirm-password?token=abc",
-  tenant_name: "青灯書房",
+  tenant_name: "Aoto Press",
 };
 
 describe("readerPasswordResetDataSchema", () => {
@@ -60,7 +60,7 @@ describe("ReaderPasswordResetEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("青灯書房 パスワード再設定");
+    expect(result.subject).toBe("Aoto Press パスワード再設定");
     expect(result.html).toContain("パスワードの再設定");
     expect(result.html).toContain(data.reset_url);
     expect(result.html).toContain(
@@ -88,7 +88,7 @@ describe("ReaderPasswordResetEmail", () => {
 
     const expires = formatDateTime(data.expires_at, { locale: "en", timeZone });
 
-    expect(result.subject).toBe("青灯書房 password reset");
+    expect(result.subject).toBe("Aoto Press password reset");
     expect(result.html).toContain("Reset your password");
     expect(result.html).toContain(expires);
     expect(expires).not.toBe(

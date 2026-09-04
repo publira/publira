@@ -6,10 +6,10 @@ import { toFormDataInput } from "./form-data";
 describe("toFormDataInput", () => {
   it("reads a text field, keeping the value as submitted", () => {
     const formData = new FormData();
-    formData.set("title", "  タイトル  ");
+    formData.set("title", "  Title  ");
 
     expect(toFormDataInput(formData, { title: "value" })).toEqual({
-      title: "  タイトル  ",
+      title: "  Title  ",
     });
   });
 
@@ -91,7 +91,7 @@ describe("toFormDataInput", () => {
     });
 
     const formData = new FormData();
-    formData.set("title", "  連載タイトル  ");
+    formData.set("title", "  Series title  ");
     formData.set("is_published", "on");
 
     const parsed = schema.safeParse(
@@ -102,7 +102,7 @@ describe("toFormDataInput", () => {
     );
 
     expect(parsed).toMatchObject({
-      data: { isPublished: true, title: "連載タイトル" },
+      data: { isPublished: true, title: "Series title" },
       success: true,
     });
   });

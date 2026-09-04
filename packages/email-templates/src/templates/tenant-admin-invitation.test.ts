@@ -11,7 +11,7 @@ import {
 const invitationData = {
   expires_at: "2030-01-15T12:00:00Z",
   invite_url: "https://admin.example.com/accept-invite?token=abc",
-  tenant_name: "青灯書房",
+  tenant_name: "Aoto Press",
 };
 
 describe("tenantAdminInvitationDataSchema", () => {
@@ -42,7 +42,7 @@ describe("tenantAdminInvitationDataSchema", () => {
   it("rejects CR/LF in tenant_name", () => {
     const parsed = tenantAdminInvitationDataSchema.safeParse({
       ...invitationData,
-      tenant_name: "青灯書房\r\nBcc: injected@example.com",
+      tenant_name: "Aoto Press\r\nBcc: injected@example.com",
     });
 
     expect(parsed.success).toBe(false);
@@ -70,8 +70,8 @@ describe("TenantAdminInvitationEmail", () => {
       timeZone,
     });
 
-    expect(result.subject).toBe("青灯書房 管理者招待");
-    expect(result.html).toContain("青灯書房 の管理画面へ招待されました。");
+    expect(result.subject).toBe("Aoto Press 管理者招待");
+    expect(result.html).toContain("Aoto Press の管理画面へ招待されました。");
     expect(result.html).not.toContain("Publira");
     expect(result.html).not.toContain("招待を受け付けました");
     expect(result.html).toContain("招待を承諾する");
@@ -112,7 +112,7 @@ describe("TenantAdminInvitationEmail", () => {
     const messages = await loadEmailMessages("en");
 
     expect(tenantAdminInvitationSubject(invitationData, messages)).toBe(
-      "青灯書房 admin invitation"
+      "Aoto Press admin invitation"
     );
   });
 });

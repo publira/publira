@@ -7,7 +7,7 @@ import { readerEmailVerificationDataSchema } from "./reader-email-verification";
 
 const data = {
   expires_at: "2030-01-15T12:00:00Z",
-  tenant_name: "青灯書房",
+  tenant_name: "Aoto Press",
   verify_url: "https://reader.example.test/verify?token=abc",
 };
 
@@ -60,7 +60,7 @@ describe("ReaderEmailVerificationEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("青灯書房 メールアドレス確認");
+    expect(result.subject).toBe("Aoto Press メールアドレス確認");
     expect(result.html).toContain("メールアドレスの確認");
     expect(result.html).toContain(data.verify_url);
     expect(result.html).toContain(
@@ -88,7 +88,7 @@ describe("ReaderEmailVerificationEmail", () => {
 
     const expires = formatDateTime(data.expires_at, { locale: "en", timeZone });
 
-    expect(result.subject).toBe("青灯書房 email address verification");
+    expect(result.subject).toBe("Aoto Press email address verification");
     expect(result.html).toContain("Verify your email address");
     expect(result.html).toContain(expires);
     expect(expires).not.toBe(
