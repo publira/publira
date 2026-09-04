@@ -57,7 +57,7 @@ type Querier interface {
 	// Expected plans:
 	//   ListPublishedEpisodeCommentsByCreatedAt*
 	//     -> idx_episode_comments_tenant_episode_status_created_at
-	//   ListUserEpisodeCommentsByCreatedAt*
+	//   ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 	//     -> idx_episode_comments_tenant_user_created_at
 	//   ListEpisodeCommentsByStatusCreatedAt*
 	//     -> idx_episode_comments_tenant_status_created_at
@@ -505,7 +505,7 @@ type Querier interface {
 	ListPublishedEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtAscParams) ([]ListPublishedEpisodeCommentsByCreatedAtAscRow, error)
 	// The public list of one episode. Only 'published' rows appear here, so a
 	// pending, removed, or withdrawn comment is absent for every reader; the author
-	// sees their own through ListUserEpisodeCommentsByCreatedAt*.
+	// sees their own through ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*.
 	ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtDescParams) ([]ListPublishedEpisodeCommentsByCreatedAtDescRow, error)
 	// These projections are used only while constructing the public Follow API
 	// response. The follow relations and their cursor queries remain UUID-only.
@@ -640,12 +640,6 @@ type Querier interface {
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
 	ListUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) ([]ListUnusedUserMfaRecoveryCodesRow, error)
-	// The previous-page half of ListUserEpisodeCommentsByCreatedAtDesc.
-	ListUserEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListUserEpisodeCommentsByCreatedAtAscParams) ([]ListUserEpisodeCommentsByCreatedAtAscRow, error)
-	// The viewer's own comments. A comment removed by staff or by the report
-	// threshold stays in this list exactly as it was, because the removal is
-	// silent; only the author's own withdrawal takes it away from them.
-	ListUserEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserEpisodeCommentsByCreatedAtDescParams) ([]ListUserEpisodeCommentsByCreatedAtDescRow, error)
 	// The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
 	// the returned rows to preserve the public newest-first display order.
 	ListUserFollowsByCreatedAtAsc(ctx context.Context, arg ListUserFollowsByCreatedAtAscParams) ([]ListUserFollowsByCreatedAtAscRow, error)
@@ -653,6 +647,17 @@ type Querier interface {
 	// and future aggregates independent. Public joins make a target that is no
 	// longer visible disappear from this member's list without revealing why.
 	ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error)
+	// The previous-page half of
+	// ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.
+	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscRow, error)
+	// The viewer's own comments on one episode that the public list of that episode
+	// cannot carry. Their published ones are already in it, and listing them here
+	// as well would only make the site reconcile two copies of the same comment.
+	//
+	// A comment removed by staff or by the report threshold stays in this list
+	// exactly as it was, because the removal is silent; only the author's own
+	// withdrawal takes it away from them.
+	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error)
 	// Lock the label row so concurrent eye-catch writes serialize, the way
 	// LockSeriesByPublicIDForTenant does for a series. The read of the row's
 	// current eye_catch_image_id has to be a separate statement: READ COMMITTED

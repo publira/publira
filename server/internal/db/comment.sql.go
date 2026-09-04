@@ -102,7 +102,7 @@ type CreateEpisodeCommentParams struct {
 //
 //	ListPublishedEpisodeCommentsByCreatedAt*
 //	  -> idx_episode_comments_tenant_episode_status_created_at
-//	ListUserEpisodeCommentsByCreatedAt*
+//	ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 //	  -> idx_episode_comments_tenant_user_created_at
 //	ListEpisodeCommentsByStatusCreatedAt*
 //	  -> idx_episode_comments_tenant_status_created_at
@@ -514,7 +514,7 @@ type ListPublishedEpisodeCommentsByCreatedAtDescRow struct {
 
 // The public list of one episode. Only 'published' rows appear here, so a
 // pending, removed, or withdrawn comment is absent for every reader; the author
-// sees their own through ListUserEpisodeCommentsByCreatedAt*.
+// sees their own through ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*.
 func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtDescParams) ([]ListPublishedEpisodeCommentsByCreatedAtDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedEpisodeCommentsByCreatedAtDesc,
 		arg.TenantID,
@@ -553,7 +553,7 @@ func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Contex
 	return items, nil
 }
 
-const listUserEpisodeCommentsByCreatedAtAsc = `-- name: ListUserEpisodeCommentsByCreatedAtAsc :many
+const listUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc = `-- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc :many
 SELECT id,
     public_id,
     episode_id,
@@ -564,39 +564,41 @@ SELECT id,
 FROM episode_comments
 WHERE tenant_id = $1
     AND user_id = $2
-    AND status <> 'withdrawn'
+    AND episode_id = $3
+    AND status IN ('pending', 'hidden')
     AND (
-        $3::timestamptz IS NULL
+        $4::timestamptz IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (created_at, id) >= (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (created_at, id) > (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
     )
 ORDER BY created_at ASC,
     id ASC
-LIMIT $6
+LIMIT $7
 `
 
-type ListUserEpisodeCommentsByCreatedAtAscParams struct {
+type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscParams struct {
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	UserID          uuid.UUID     `json:"user_id"`
+	EpisodeID       uuid.UUID     `json:"episode_id"`
 	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
 	CursorInclusive bool          `json:"cursor_inclusive"`
 	CursorID        uuid.NullUUID `json:"cursor_id"`
 	Limit           int32         `json:"limit"`
 }
 
-type ListUserEpisodeCommentsByCreatedAtAscRow struct {
+type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscRow struct {
 	ID          uuid.UUID    `json:"id"`
 	PublicID    string       `json:"public_id"`
 	EpisodeID   uuid.UUID    `json:"episode_id"`
@@ -606,11 +608,13 @@ type ListUserEpisodeCommentsByCreatedAtAscRow struct {
 	PublishedAt sql.NullTime `json:"published_at"`
 }
 
-// The previous-page half of ListUserEpisodeCommentsByCreatedAtDesc.
-func (q *Queries) ListUserEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListUserEpisodeCommentsByCreatedAtAscParams) ([]ListUserEpisodeCommentsByCreatedAtAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUserEpisodeCommentsByCreatedAtAsc,
+// The previous-page half of
+// ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.
+func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc,
 		arg.TenantID,
 		arg.UserID,
+		arg.EpisodeID,
 		arg.CursorCreatedAt,
 		arg.CursorInclusive,
 		arg.CursorID,
@@ -620,9 +624,9 @@ func (q *Queries) ListUserEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListUserEpisodeCommentsByCreatedAtAscRow
+	var items []ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscRow
 	for rows.Next() {
-		var i ListUserEpisodeCommentsByCreatedAtAscRow
+		var i ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PublicID,
@@ -645,7 +649,7 @@ func (q *Queries) ListUserEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg
 	return items, nil
 }
 
-const listUserEpisodeCommentsByCreatedAtDesc = `-- name: ListUserEpisodeCommentsByCreatedAtDesc :many
+const listUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc = `-- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc :many
 SELECT id,
     public_id,
     episode_id,
@@ -656,39 +660,41 @@ SELECT id,
 FROM episode_comments
 WHERE tenant_id = $1
     AND user_id = $2
-    AND status <> 'withdrawn'
+    AND episode_id = $3
+    AND status IN ('pending', 'hidden')
     AND (
-        $3::timestamptz IS NULL
+        $4::timestamptz IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (created_at, id) <= (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (created_at, id) < (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
     )
 ORDER BY created_at DESC,
     id DESC
-LIMIT $6
+LIMIT $7
 `
 
-type ListUserEpisodeCommentsByCreatedAtDescParams struct {
+type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams struct {
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	UserID          uuid.UUID     `json:"user_id"`
+	EpisodeID       uuid.UUID     `json:"episode_id"`
 	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
 	CursorInclusive bool          `json:"cursor_inclusive"`
 	CursorID        uuid.NullUUID `json:"cursor_id"`
 	Limit           int32         `json:"limit"`
 }
 
-type ListUserEpisodeCommentsByCreatedAtDescRow struct {
+type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow struct {
 	ID          uuid.UUID    `json:"id"`
 	PublicID    string       `json:"public_id"`
 	EpisodeID   uuid.UUID    `json:"episode_id"`
@@ -698,13 +704,18 @@ type ListUserEpisodeCommentsByCreatedAtDescRow struct {
 	PublishedAt sql.NullTime `json:"published_at"`
 }
 
-// The viewer's own comments. A comment removed by staff or by the report
-// threshold stays in this list exactly as it was, because the removal is
-// silent; only the author's own withdrawal takes it away from them.
-func (q *Queries) ListUserEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserEpisodeCommentsByCreatedAtDescParams) ([]ListUserEpisodeCommentsByCreatedAtDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUserEpisodeCommentsByCreatedAtDesc,
+// The viewer's own comments on one episode that the public list of that episode
+// cannot carry. Their published ones are already in it, and listing them here
+// as well would only make the site reconcile two copies of the same comment.
+//
+// A comment removed by staff or by the report threshold stays in this list
+// exactly as it was, because the removal is silent; only the author's own
+// withdrawal takes it away from them.
+func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc,
 		arg.TenantID,
 		arg.UserID,
+		arg.EpisodeID,
 		arg.CursorCreatedAt,
 		arg.CursorInclusive,
 		arg.CursorID,
@@ -714,9 +725,9 @@ func (q *Queries) ListUserEpisodeCommentsByCreatedAtDesc(ctx context.Context, ar
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListUserEpisodeCommentsByCreatedAtDescRow
+	var items []ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow
 	for rows.Next() {
-		var i ListUserEpisodeCommentsByCreatedAtDescRow
+		var i ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PublicID,

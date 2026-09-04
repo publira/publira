@@ -225,15 +225,16 @@ func TestWithdrawEpisodeCommentLeavesTheAuthorsOwnList(t *testing.T) {
 		t.Fatalf("hide: %v", err)
 	}
 
-	own, err := queries.ListUserEpisodeCommentsByCreatedAtDesc(ctx, dbmodels.ListUserEpisodeCommentsByCreatedAtDescParams{
-		TenantID: seed.tenantID,
-		UserID:   seed.userID,
-		Limit:    10,
+	own, err := queries.ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx, dbmodels.ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams{
+		TenantID:  seed.tenantID,
+		UserID:    seed.userID,
+		EpisodeID: seed.episodeID,
+		Limit:     10,
 	})
 	if err != nil {
 		t.Fatalf("list own comments: %v", err)
 	}
-	if got := userCommentPublicIDs(own); !slices.Contains(got, removed.PublicID) {
+	if got := userCommentPublicIDs(own); !slices.Equal(got, []string{removed.PublicID}) {
 		t.Fatalf("own comments = %v, want the staff-removed %s still there", got, removed.PublicID)
 	}
 
@@ -264,16 +265,31 @@ func TestWithdrawEpisodeCommentLeavesTheAuthorsOwnList(t *testing.T) {
 		t.Fatalf("withdrawn comment kept removal columns: %v %v %v", withdrawn.HiddenAt, withdrawn.HiddenBy, withdrawn.HiddenReason)
 	}
 
-	own, err = queries.ListUserEpisodeCommentsByCreatedAtDesc(ctx, dbmodels.ListUserEpisodeCommentsByCreatedAtDescParams{
-		TenantID: seed.tenantID,
-		UserID:   seed.userID,
-		Limit:    10,
+	own, err = queries.ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx, dbmodels.ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams{
+		TenantID:  seed.tenantID,
+		UserID:    seed.userID,
+		EpisodeID: seed.episodeID,
+		Limit:     10,
 	})
 	if err != nil {
 		t.Fatalf("list own comments after withdrawal: %v", err)
 	}
-	if got := userCommentPublicIDs(own); !slices.Equal(got, []string{kept.PublicID}) {
-		t.Fatalf("own comments after withdrawal = %v, want only %s", got, kept.PublicID)
+	if got := userCommentPublicIDs(own); len(got) != 0 {
+		t.Fatalf("own comments after withdrawal = %v, want none", got)
+	}
+
+	// The author's published comment was never in that list: the public list of
+	// the episode already carries it, for them as for everyone else.
+	public, err = queries.ListPublishedEpisodeCommentsByCreatedAtDesc(ctx, dbmodels.ListPublishedEpisodeCommentsByCreatedAtDescParams{
+		TenantID:  seed.tenantID,
+		EpisodeID: seed.episodeID,
+		Limit:     10,
+	})
+	if err != nil {
+		t.Fatalf("list public comments after withdrawal: %v", err)
+	}
+	if got := publishedCommentPublicIDs(public); !slices.Equal(got, []string{kept.PublicID}) {
+		t.Fatalf("public comments after withdrawal = %v, want only %s", got, kept.PublicID)
 	}
 
 	// Staff still read it, which is what the retention window is for.
@@ -707,7 +723,7 @@ func publishedCommentPublicIDs(rows []dbmodels.ListPublishedEpisodeCommentsByCre
 	return publicIDs
 }
 
-func userCommentPublicIDs(rows []dbmodels.ListUserEpisodeCommentsByCreatedAtDescRow) []string {
+func userCommentPublicIDs(rows []dbmodels.ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow) []string {
 	publicIDs := make([]string, 0, len(rows))
 	for _, row := range rows {
 		publicIDs = append(publicIDs, row.PublicID)
