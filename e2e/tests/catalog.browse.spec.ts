@@ -172,14 +172,13 @@ test.describe("web-host catalog browsing", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "レーベル一覧" })
     ).toBeVisible();
-    // One `<h2>` per card. This is a lower bound rather than an equality:
-    // the admin suites run beside this one and register labels of their own,
-    // which sort onto this first page until their test deletes them again.
-    const labelHeadings = page.getByRole("heading", { level: 2 });
-    await expect(labelHeadings.first()).toBeVisible();
-    expect(await labelHeadings.count()).toBeGreaterThanOrEqual(
-      SEED_LABEL_COUNT
-    );
+    // One `<h2>` per card. Counting the seeded names rather than every card:
+    // the admin suites run beside this one and register labels of their own
+    // — all named `E2E …` — which sort onto this first page until their test
+    // deletes them again, so a count of the whole page is a race.
+    await expect(
+      page.getByRole("heading", { level: 2, name: /^Seed Label \d{2}$/u })
+    ).toHaveCount(SEED_LABEL_COUNT);
 
     const labelCard = page.getByRole("link").filter({
       has: page.getByRole("heading", {
