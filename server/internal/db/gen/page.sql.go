@@ -27,7 +27,6 @@ type CreatePageParams struct {
 	DisplayInFooter bool      `json:"display_in_footer"`
 }
 
-// ページを新規作成する
 func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (Page, error) {
 	row := q.db.QueryRowContext(ctx, createPage,
 		arg.ID,
@@ -65,7 +64,6 @@ type CreatePageVersionParams struct {
 	AuthorUserID    uuid.NullUUID `json:"author_user_id"`
 }
 
-// ページバージョンを新規作成する
 func (q *Queries) CreatePageVersion(ctx context.Context, arg CreatePageVersionParams) (PageVersion, error) {
 	row := q.db.QueryRowContext(ctx, createPageVersion,
 		arg.ID,
@@ -97,7 +95,8 @@ FROM page_versions
 WHERE page_id = $1
 `
 
-// ページの最大バージョン番号を取得する（次バージョン番号算出用）
+// The caller adds one to this to number the version it is about to create;
+// COALESCE makes the first version of a page number 1.
 func (q *Queries) GetMaxPageVersionNumberByPageID(ctx context.Context, pageID uuid.UUID) (int32, error) {
 	row := q.db.QueryRowContext(ctx, getMaxPageVersionNumberByPageID, pageID)
 	var max_version int32
@@ -115,7 +114,6 @@ type GetPageByIDForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 }
 
-// テナントのページをIDで取得する
 func (q *Queries) GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (Page, error) {
 	row := q.db.QueryRowContext(ctx, getPageByIDForTenant, arg.ID, arg.TenantID)
 	var i Page
@@ -142,7 +140,6 @@ type GetPageVersionByIDForPageParams struct {
 	PageID uuid.UUID `json:"page_id"`
 }
 
-// ページバージョンをIDで取得する
 func (q *Queries) GetPageVersionByIDForPage(ctx context.Context, arg GetPageVersionByIDForPageParams) (PageVersion, error) {
 	row := q.db.QueryRowContext(ctx, getPageVersionByIDForPage, arg.ID, arg.PageID)
 	var i PageVersion
@@ -214,7 +211,6 @@ type GetPublishedPageBySlugForTenantRow struct {
 	PublishedAt        sql.NullTime  `json:"published_at"`
 }
 
-// テナントの公開中ページをslugで取得する
 func (q *Queries) GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, getPublishedPageBySlugForTenant, arg.TenantID, arg.Slug)
 	var i GetPublishedPageBySlugForTenantRow
@@ -246,7 +242,6 @@ WHERE page_id = $1
 ORDER BY version_number DESC
 `
 
-// ページのバージョン一覧を新しい順に取得する
 func (q *Queries) ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageVersion, error) {
 	rows, err := q.db.QueryContext(ctx, listPageVersionsByPageID, pageID)
 	if err != nil {
@@ -307,9 +302,10 @@ type ListPagesForTenantAscParams struct {
 	Limit           int32         `json:"limit"`
 }
 
-// Admin ListPages は (created_at, id) の昇順で表示する。
-// 次ページは昇順、前ページは降順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+// Admin ListPages is (created_at, id) ASC. Forward uses the ASC query;
+// backward uses DESC so the index can be scanned in reverse. The handler
+// flips DESC rows back into display order.
+// cursor rules: proto/README.md.
 func (q *Queries) ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]Page, error) {
 	rows, err := q.db.QueryContext(ctx, listPagesForTenantAsc,
 		arg.TenantID,
@@ -424,7 +420,8 @@ WHERE p.tenant_id = $1
 ORDER BY p.created_at ASC
 `
 
-// テナントの公開中かつフッター表示対象のページ一覧を取得する
+// Restricted to the pages flagged for the footer, which is the only place a
+// reader navigates to them from.
 func (q *Queries) ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedPagesForTenant, tenantID)
 	if err != nil {
@@ -469,7 +466,6 @@ type PublishPageVersionParams struct {
 	PageID uuid.UUID `json:"page_id"`
 }
 
-// ページバージョンを公開状態にする
 func (q *Queries) PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error) {
 	row := q.db.QueryRowContext(ctx, publishPageVersion, arg.ID, arg.PageID)
 	var i PageVersion
@@ -501,7 +497,6 @@ type SetPagePublishedVersionParams struct {
 	TenantID           uuid.UUID     `json:"tenant_id"`
 }
 
-// ページの公開バージョンIDを更新する
 func (q *Queries) SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error) {
 	row := q.db.QueryRowContext(ctx, setPagePublishedVersion, arg.PublishedVersionID, arg.ID, arg.TenantID)
 	var i Page
@@ -534,8 +529,8 @@ type UpdatePageParams struct {
 	TenantID        uuid.UUID    `json:"tenant_id"`
 }
 
-// ページのタイトルとフッター表示設定を更新する
-// display_in_footer は省略時 (NULL) に既存値を保持する
+// display_in_footer keeps the stored value when the argument is omitted (NULL),
+// so a title-only edit does not have to restate the footer flag.
 func (q *Queries) UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, error) {
 	row := q.db.QueryRowContext(ctx, updatePage,
 		arg.Title,

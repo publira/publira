@@ -47,10 +47,11 @@ WHERE at.tenant_id = $1
     AND at.public_id = $2
 LIMIT 1;
 
--- Admin ListAccessTickets は (created_at, id) の降順で表示する。
--- 次ページは降順、前ページは昇順のクエリで idx_access_tickets_tenant_created_at
--- を走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
--- が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
+-- Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
+-- query; backward uses ASC so idx_access_tickets_tenant_created_at can be
+-- scanned in reverse. The handler flips ASC rows back into display order.
+-- id is a UUIDv7, so the order stays unique even when created_at ties.
+-- cursor rules: proto/README.md.
 -- name: ListAccessTicketsForTenantDesc :many
 SELECT at.id,
     at.tenant_id,
