@@ -9,7 +9,8 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 | `cmd/` | Thin entrypoints only (`api-server`, `admin-api-server`, `platform-api-server`, image servers, `outbox-worker`, and `batch` for every batch job) |
 | `api/` | ConnectRPC handlers (admin / platform / public) |
 | `internal/` | Shared business logic, middleware, storage, auth |
-| `internal/db/` | **sqlc-generated** — do not hand-edit |
+| `internal/db/` | Hand-written PostgreSQL integration tests for the schema in `db/migrations/` and the queries in `db/query/` |
+| `internal/db/gen/` | **sqlc-generated** — do not hand-edit |
 | `gen/` | **buf-generated** protobuf / Connect stubs — do not hand-edit |
 | `config/` | Runtime config |
 | `internal/testutil/` | Shared test helpers (Testcontainers PostgreSQL, Snapshot/Restore) |
@@ -23,7 +24,7 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 2. Keep `cmd/` thin; put real logic in `api/` / `internal/`.
 3. **Every batch job is a subcommand of `cmd/batch`**, one binary and one image, selected by the first argument. A new batch is a new entry in that command's subcommand table, never a new `cmd/` directory: per-batch directories multiply the Docker matrix and the registrations in `infra/docker/Taskfile.yaml` and `scripts/ci-plan-jobs.sh`. Keep each subcommand's own lifecycle — `batch publish-episodes` is a ticker, the rest are one-shot — and resolve `service.name` as `publira-<subcommand>`.
 4. `batch publish-episodes` is a ticker batch, not a job queue. The Outbox worker (`cmd/outbox-worker`) is a long-lived River process, process-separated from the APIs.
-5. Never commit hand-edits under `gen/` or `internal/db/`. Regenerate instead.
+5. Never commit hand-edits to generated output. Regenerate instead. Every generator in this module writes into a directory named `gen/` — buf into `gen/`, sqlc into `internal/db/gen/` — so no file outside one is generated and the rule needs no list of file names.
 
 ## UI locale: no default
 
@@ -73,7 +74,7 @@ Rules live in [`.golangci.yml`](.golangci.yml); the enabled set is golangci-lint
 
 - **Formatting is part of the same gate.** `golangci-lint run` reports a `gofmt`-dirty file as `File is not properly formatted (gofmt)`, so `task server:lint` (and therefore `Lint / Go`) fails on it — there is no separate formatting job. To fix only formatting, run `golangci-lint fmt ./...` from `server/` (`gofmt -w` on individual files works too); it rewrites files in place and reports nothing.
 
-- Generated code is excluded by its canonical `Code generated … DO NOT EDIT.` header, not by path. Do not add `gen/` or `internal/db/` to `exclusions.paths` — `internal/db/` also holds hand-written `*_integration_test.go` files that must stay linted. Keep `exclusions.generated` at `strict`; `lax` matches "do not edit" anywhere in a file's leading comments and silently skips hand-written files that say so in prose.
+- Generated code is excluded by its canonical `Code generated … DO NOT EDIT.` header, not by path. Leave it that way rather than listing `gen/` directories in `exclusions.paths`: the header covers a new generator's output the day it is added, while a path list has to be extended by hand and stops matching without failing. Keep `exclusions.generated` at `strict`; `lax` matches "do not edit" anywhere in a file's leading comments and silently skips hand-written files that say so in prose.
 - **Fix the finding rather than suppress it.** The one standing exception is `errcheck` on deferred cleanup, where the error is unactionable and `defer` has no statement form to discard it:
 
   ```go

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 type tenantQueriesContextKey struct{}

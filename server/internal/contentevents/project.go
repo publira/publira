@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 // DefaultProjectionBatchSize bounds one projection statement, the same trade

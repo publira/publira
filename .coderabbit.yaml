@@ -15,10 +15,6 @@ reviews:
     # apply on top of these, but that list is not published, so nothing here leans on
     # it: every generated / vendored path is named even when a default may cover it.
     - "!**/gen/**"
-    - "!server/internal/db/*.sql.go"
-    - "!server/internal/db/db.go"
-    - "!server/internal/db/models.go"
-    - "!server/internal/db/querier.go"
     - "!packages/**/dist/**"
     - "!**/*.tsbuildinfo"
     - "!pnpm-lock.yaml"

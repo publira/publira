@@ -7,7 +7,7 @@ import (
 	"connectrpc.com/connect"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 const (

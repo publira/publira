@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"time"
 
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/storage"
 )
 

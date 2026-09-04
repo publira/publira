@@ -11,7 +11,7 @@ import (
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/auth"
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 func TestDBAdminNotificationsListUnreadAndMark(t *testing.T) {

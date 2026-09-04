@@ -52,7 +52,7 @@ describe("coefficient", () => {
   it("reads the generated and vendored paths from .gitattributes", () => {
     assert.equal(coefficient("server/gen/publira/v1/catalog.pb.go"), 0);
     assert.equal(coefficient("packages/api-client/src/gen/index.ts"), 0);
-    assert.equal(coefficient("server/internal/db/models.go"), 0);
+    assert.equal(coefficient("server/internal/db/gen/models.go"), 0);
     assert.equal(coefficient(".agents/skills/example/SKILL.md"), 0);
   });
 

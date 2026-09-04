@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	dbmodels "github.com/publira/publira/server/internal/db"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 // EventTypeTest is the first-cut event the worker processes. Business
