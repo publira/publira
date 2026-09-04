@@ -1,9 +1,20 @@
 -- Restore the buyer as a required, RESTRICT-ed reference.
 --
--- A purchase whose buyer was already anonymized names no user, so it cannot
--- satisfy the restored NOT NULL and is dropped first.
-DELETE FROM purchases
-WHERE user_id IS NULL;
+-- A purchase whose buyer was already anonymized names a reader the up cannot
+-- bring back, so the rollback refuses rather than deleting the commerce record
+-- the up exists to preserve. Reattach or archive those rows first.
+DO $$
+DECLARE
+    anonymized bigint;
+BEGIN
+    SELECT count(*) INTO anonymized FROM purchases WHERE user_id IS NULL;
+    IF anonymized > 0 THEN
+        RAISE EXCEPTION
+            'cannot restore purchases.user_id NOT NULL: % purchase(s) have an anonymized buyer',
+            anonymized;
+    END IF;
+END
+$$;
 
 ALTER TABLE ONLY purchases
     DROP CONSTRAINT purchases_tenant_user_id_fkey;
