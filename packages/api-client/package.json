@@ -99,7 +99,7 @@
   },
   "dependencies": {
     "@buf/googleapis_googleapis.bufbuild_es": "catalog:",
-    "@bufbuild/protobuf": "2.14.0",
+    "@bufbuild/protobuf": "2.14.1",
     "@connectrpc/connect": "2.1.2",
     "@connectrpc/connect-node": "2.1.2",
     "@connectrpc/connect-web": "2.1.2",

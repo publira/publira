@@ -22,6 +22,6 @@ plugins:
     out: server/gen
     opt: paths=source_relative
   # renovate: datasource=npm depName=@bufbuild/protobuf
-  - remote: buf.build/bufbuild/es:v2.14.0
+  - remote: buf.build/bufbuild/es:v2.14.1
     out: packages/api-client/src/gen
     opt: target=ts
