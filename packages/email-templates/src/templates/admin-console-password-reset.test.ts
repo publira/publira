@@ -1,0 +1,96 @@
+import { formatDateTime } from "@publira/utils";
+import { describe, expect, it } from "vitest";
+
+import { loadEmailMessages } from "../messages";
+import { renderEmail } from "../render";
+import { adminConsolePasswordResetDataSchema } from "./admin-console-password-reset";
+
+const data = {
+  expires_at: "2030-01-15T12:00:00Z",
+  reset_url: "https://admin.example.test/confirm-password?token=abc",
+  tenant_name: "青灯書房",
+};
+
+describe("adminConsolePasswordResetDataSchema", () => {
+  it("accepts the variables the sender fills in", () => {
+    expect(adminConsolePasswordResetDataSchema.parse(data)).toEqual(data);
+  });
+
+  it("rejects a link that is not http(s)", () => {
+    const parsed = adminConsolePasswordResetDataSchema.safeParse({
+      ...data,
+      reset_url: "ftp://example.test/token",
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects an expiry without a zone", () => {
+    const parsed = adminConsolePasswordResetDataSchema.safeParse({
+      ...data,
+      expires_at: "2030-01-15T12:00:00",
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects an empty tenant_name", () => {
+    const parsed = adminConsolePasswordResetDataSchema.safeParse({
+      ...data,
+      tenant_name: "   ",
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+});
+
+describe("AdminConsolePasswordResetEmail", () => {
+  it("the ja mail carries the link and the expiry in the given time zone", async () => {
+    const timeZone = "Asia/Tokyo";
+    const result = await renderEmail({
+      data,
+      locale: "ja",
+      messages: await loadEmailMessages("ja"),
+      template: "admin_console_password_reset",
+      timeZone,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.subject).toBe("青灯書房 管理画面パスワード再設定");
+    expect(result.html).toContain("管理画面パスワードの再設定");
+    expect(result.html).toContain(data.reset_url);
+    expect(result.html).toContain(
+      formatDateTime(data.expires_at, { locale: "ja", timeZone })
+    );
+    expect(result.text).toContain("心当たりがない場合");
+  });
+
+  it("the en mail comes from the English catalog and its own time zone", async () => {
+    const timeZone = "America/Los_Angeles";
+    const result = await renderEmail({
+      data,
+      locale: "en",
+      messages: await loadEmailMessages("en"),
+      template: "admin_console_password_reset",
+      timeZone,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    const expires = formatDateTime(data.expires_at, { locale: "en", timeZone });
+
+    expect(result.subject).toBe("青灯書房 admin console password reset");
+    expect(result.html).toContain("Reset your admin console password");
+    expect(result.html).toContain(expires);
+    expect(expires).not.toBe(
+      formatDateTime(data.expires_at, { locale: "en", timeZone: "Asia/Tokyo" })
+    );
+  });
+});

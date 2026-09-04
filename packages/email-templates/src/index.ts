@@ -17,19 +17,11 @@ export type {
 export { renderEmail } from "./render";
 export type { RenderEmailResult, RenderEmailSuccess } from "./render";
 export {
-  SampleEmail,
-  sampleEmailDataSchema,
-  sampleEmailPreview,
-  sampleEmailSubject,
-} from "./templates/sample";
-export type { SampleEmailData, SampleEmailProps } from "./templates/sample";
-export {
-  TenantAdminInvitationEmail,
-  tenantAdminInvitationDataSchema,
-  tenantAdminInvitationPreview,
-  tenantAdminInvitationSubject,
-} from "./templates/tenant-admin-invitation";
-export type {
-  TenantAdminInvitationData,
-  TenantAdminInvitationEmailProps,
-} from "./templates/tenant-admin-invitation";
+  EmailBody,
+  EmailDetail,
+  EmailFallbackLink,
+  EmailHeading,
+  EmailIntro,
+  EmailMeta,
+} from "./text";
+export type { EmailFallbackLinkProps, EmailTextProps } from "./text";

@@ -14,7 +14,20 @@ const sampleData = {
 
 describe("TEMPLATE_IDS", () => {
   it("holds the sample and the operational templates", () => {
-    expect(TEMPLATE_IDS).toEqual(["sample", "tenant_admin_invitation"]);
+    expect(TEMPLATE_IDS).toEqual([
+      "sample",
+      "tenant_admin_invitation",
+      "reader_email_verification",
+      "reader_email_change_confirmation",
+      "reader_email_changed_notice",
+      "reader_password_reset",
+      "admin_console_email_change_confirmation",
+      "admin_console_email_changed_notice",
+      "admin_console_password_reset",
+      "platform_console_email_change_confirmation",
+      "platform_console_email_changed_notice",
+      "platform_console_password_reset",
+    ]);
     expect(isTemplateId("tenant_admin_invitation")).toBe(true);
     expect(isTemplateId("missing")).toBe(false);
   });
