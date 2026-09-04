@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/v1;publirav1";
+
+import "publira/types/v1/types.proto";
+
+// One reader comment on an episode, as every visitor of that episode sees it.
+//
+// The author is named by the identifiers a storefront may show next to the
+// text. There is no status field: a comment reaches this message only while it
+// is published, so a reader never learns that another one exists in any other
+// state.
+message EpisodeComment {
+  string public_id = 1;
+  string body = 2;
+  string created_at = 3;
+  string author_public_id = 4;
+  // The author's display name, as stored on their account.
+  string author_name = 5;
+}
+
+// One of the caller's own comments that ListEpisodeComments cannot carry.
+//
+// It has the same fields a published comment is rendered from, minus the author
+// the caller already is, so the site renders it in place among the public ones.
+message MyEpisodeComment {
+  string public_id = 1;
+  string body = 2;
+  string created_at = 3;
+  // True while the comment is still waiting for staff approval, which is what
+  // the site tells the author about a comment nobody else can read yet.
+  //
+  // It stays true for a comment removed before it was ever approved, and false
+  // for one removed after it was published, because it reports the state the
+  // comment would return to. Removal is silent by design: nothing in this
+  // message changes when staff remove a comment.
+  bool awaiting_approval = 4;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListEpisodeCommentsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListEpisodeCommentsResponse {
+  // Newest first.
+  repeated EpisodeComment comments = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListMyEpisodeCommentsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListMyEpisodeCommentsResponse {
+  // Newest first.
+  repeated MyEpisodeComment comments = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message PostEpisodeCommentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  // Non-blank after trimming and at most 1000 Unicode code points. Anything
+  // else is invalid_argument.
+  string body = 3;
+}
+
+message PostEpisodeCommentResponse {
+  // The stored comment. Its awaiting_approval is what tells the author whether
+  // anyone else can read it yet.
+  MyEpisodeComment comment = 1;
+}
+
+message WithdrawEpisodeCommentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string comment_public_id = 2;
+}
+
+// Deliberately empty. A withdrawn comment is gone from every reader-facing
+// response, so there is nothing left to return about it.
+message WithdrawEpisodeCommentResponse {}
+
+service CommentService {
+  // Lists the published comments on a currently public episode, newest first.
+  //
+  // Public: it takes no session, and its result is the same for every reader,
+  // which is what lets a storefront cache it. Every comment in another state
+  // reaches its author through ListMyEpisodeComments instead, so no reader's
+  // pending or removed comment can leak into a shared cache entry.
+  rpc ListEpisodeComments(ListEpisodeCommentsRequest) returns (ListEpisodeCommentsResponse) {}
+  // Lists the caller's own comments on one episode that the public list omits,
+  // newest first.
+  //
+  // Session required. A comment staff removed is returned exactly as it was
+  // before the removal, because the author is never told about it.
+  rpc ListMyEpisodeComments(ListMyEpisodeCommentsRequest) returns (ListMyEpisodeCommentsResponse) {}
+  // Posts one comment on a currently public episode as the authenticated
+  // reader.
+  //
+  // The tenant's comment mode decides the outcome: failed_precondition while
+  // commenting is disabled, an approved comment under immediate, and one
+  // awaiting approval under approval_required. A reader who cannot read the
+  // episode body gets permission_denied.
+  rpc PostEpisodeComment(PostEpisodeCommentRequest) returns (PostEpisodeCommentResponse) {}
+  // Deletes one of the caller's own comments.
+  //
+  // It leaves every reader-facing response, the author's own included. The row
+  // survives for staff until the retention purge removes it, so a report or a
+  // dispute about a comment can still be investigated after its author took it
+  // down.
+  rpc WithdrawEpisodeComment(WithdrawEpisodeCommentRequest) returns (WithdrawEpisodeCommentResponse) {}
+}

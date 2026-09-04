@@ -8,7 +8,7 @@
 -- Expected plans:
 --   ListPublishedEpisodeCommentsByCreatedAt*
 --     -> idx_episode_comments_tenant_episode_status_created_at
---   ListUserEpisodeCommentsByCreatedAt*
+--   ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 --     -> idx_episode_comments_tenant_user_created_at
 --   ListEpisodeCommentsByStatusCreatedAt*
 --     -> idx_episode_comments_tenant_status_created_at
@@ -42,7 +42,7 @@ RETURNING *;
 -- name: ListPublishedEpisodeCommentsByCreatedAtDesc :many
 -- The public list of one episode. Only 'published' rows appear here, so a
 -- pending, removed, or withdrawn comment is absent for every reader; the author
--- sees their own through ListUserEpisodeCommentsByCreatedAt*.
+-- sees their own through ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*.
 SELECT c.id,
     c.public_id,
     c.body,
@@ -114,10 +114,14 @@ ORDER BY c.created_at ASC,
     c.id ASC
 LIMIT sqlc.arg('limit');
 
--- name: ListUserEpisodeCommentsByCreatedAtDesc :many
--- The viewer's own comments. A comment removed by staff or by the report
--- threshold stays in this list exactly as it was, because the removal is
--- silent; only the author's own withdrawal takes it away from them.
+-- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc :many
+-- The viewer's own comments on one episode that the public list of that episode
+-- cannot carry. Their published ones are already in it, and listing them here
+-- as well would only make the site reconcile two copies of the same comment.
+--
+-- A comment removed by staff or by the report threshold stays in this list
+-- exactly as it was, because the removal is silent; only the author's own
+-- withdrawal takes it away from them.
 SELECT id,
     public_id,
     episode_id,
@@ -128,7 +132,8 @@ SELECT id,
 FROM episode_comments
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND user_id = sqlc.arg('user_id')
-    AND status <> 'withdrawn'
+    AND episode_id = sqlc.arg('episode_id')
+    AND status IN ('pending', 'hidden')
     AND (
         sqlc.narg('cursor_created_at')::timestamptz IS NULL
         OR (
@@ -150,8 +155,9 @@ ORDER BY created_at DESC,
     id DESC
 LIMIT sqlc.arg('limit');
 
--- name: ListUserEpisodeCommentsByCreatedAtAsc :many
--- The previous-page half of ListUserEpisodeCommentsByCreatedAtDesc.
+-- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc :many
+-- The previous-page half of
+-- ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.
 SELECT id,
     public_id,
     episode_id,
@@ -162,7 +168,8 @@ SELECT id,
 FROM episode_comments
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND user_id = sqlc.arg('user_id')
-    AND status <> 'withdrawn'
+    AND episode_id = sqlc.arg('episode_id')
+    AND status IN ('pending', 'hidden')
     AND (
         sqlc.narg('cursor_created_at')::timestamptz IS NULL
         OR (
