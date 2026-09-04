@@ -126,12 +126,12 @@ export const PlatformUser = async () => {
 };
 
 export const PlatformNotificationBell = async () => {
-  const [list, unread, locale] = await Promise.all([
-    listNotifications({ limit: notificationMenuLimit }),
-    countUnreadNotifications(),
-    getPlatformLocale(),
+  const locale = await getPlatformLocale();
+  const [list, unread, messages] = await Promise.all([
+    listNotifications(locale, { limit: notificationMenuLimit }),
+    countUnreadNotifications(locale),
+    loadPlatformMessages(locale),
   ]);
-  const messages = await loadPlatformMessages(locale);
   const count = Math.max(0, unread.unreadCount);
   const ariaLabel =
     count > 0
@@ -142,7 +142,7 @@ export const PlatformNotificationBell = async () => {
   let notificationContent = (
     <NotificationBellError>
       <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-        <Message message="platform.notifications.list_failed" />
+        <Message message="platform.notifications.list_error" />
       </Suspense>
     </NotificationBellError>
   );

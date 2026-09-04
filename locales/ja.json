@@ -180,7 +180,8 @@
         "actor_placeholder": "操作者を検索",
         "actor_empty": "一致する操作者が見つかりません。",
         "apply": "適用",
-        "reset": "リセット"
+        "reset": "リセット",
+        "actor_remove": "実行者の選択を解除"
       },
       "actions": {
         "all": "すべて",
@@ -393,7 +394,8 @@
         "tenant_member": "メンバー",
         "tenant_owner": "オーナー",
         "unset": "権限未設定"
-      }
+      },
+      "cancel": "キャンセル"
     },
     "creators": {
       "detail_error": "著者を表示できませんでした",
@@ -689,7 +691,8 @@
           "created_at": "作成日時",
           "published_at": "公開日時",
           "actions": "操作"
-        }
+        },
+        "version_option": "v{$version}・{$status}"
       }
     },
     "series": {
@@ -752,7 +755,9 @@
         "eye_catch_preview_alt": "アップロード画像プレビュー",
         "eye_catch_preview_empty": "新しい画像を選択するとここに表示されます。",
         "eye_catch_description": "JPEG/PNG/WebP、10MB以下、2400x3200px以上の画像を選択してください。保存時に用途別バリアント (3:4 / 1:1 / 16:9 / OG) と端末向けサイズが生成されます。",
-        "eye_catch_update": "アイキャッチを更新"
+        "eye_catch_update": "アイキャッチを更新",
+        "creators_no_match": "一致するクリエイターが見つかりません。",
+        "creators_remove": "クリエイターの選択を解除"
       },
       "validation": {
         "label_required": "レーベルは必須です。",
@@ -2191,7 +2196,7 @@
       "empty_page_title": "このページに表示できる通知はありません。",
       "empty_title": "通知はまだありません。",
       "heading": "通知",
-      "list_failed": "通知一覧を表示できませんでした",
+      "list_error": "通知一覧を表示できませんでした",
       "menu_more": "もっと見る",
       "mark_all_read": "すべて既読にする",
       "mark_read": "既読にする",
@@ -2202,7 +2207,24 @@
       "per_page": "新しい順に、1ページあたり {$count} 件まで表示します。",
       "read": "既読",
       "title": "通知",
-      "unread": "未読"
+      "unread": "未読",
+      "count_failed": "未読件数の取得に失敗しました。時間をおいて再試行してください。",
+      "list_failed": "通知一覧の取得に失敗しました。時間をおいて再試行してください。",
+      "mark_all_read_failed": "一括既読に失敗しました。時間をおいて再試行してください。",
+      "mark_all_read_success": "未読をすべて既読にしました。",
+      "mark_read_failed": "既読への更新に失敗しました。時間をおいて再試行してください。",
+      "mark_read_success": "既読にしました。",
+      "events": {
+        "publish_failed_description": "{$subject}を公開できませんでした。",
+        "publish_failed_description_tenant": "テナント「{$tenant}」の{$subject}を公開できませんでした。",
+        "publish_failed_title": "エピソードの公開に失敗しました",
+        "subject_episode": "「{$episode}」",
+        "subject_in_series": "「{$episode}」（{$series}）",
+        "subject_series": "「{$series}」のエピソード",
+        "subject_unnamed": "予約していたエピソード",
+        "unknown_description": "内容の詳細はありません。",
+        "unknown_title": "通知"
+      }
     },
     "settings": {
       "account_description": "ログイン中のオペレーターアカウントの情報を管理します。",

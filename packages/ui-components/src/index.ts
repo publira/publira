@@ -78,6 +78,7 @@ export { RadioGroup } from "./radio-group";
 export type { RadioGroupProps } from "./radio-group";
 export { SectionError, sectionErrorFallback } from "./section-error";
 export type {
+  SectionErrorDigest,
   SectionErrorFallbackProps,
   SectionErrorProps,
 } from "./section-error";

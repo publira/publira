@@ -177,7 +177,10 @@ export const PageWorkspace = ({
   const versionOptions = initialVersions.map((version) => {
     const status = getVersionStatus(messages, initialPage, version);
     return {
-      label: `v${version.versionNumber} ・ ${status.label}`,
+      label: getMessage(messages, "admin.pages.workspace.version_option", {
+        status: status.label,
+        version: String(version.versionNumber),
+      }),
       value: version.id,
     };
   });

@@ -138,7 +138,7 @@ describe("PlatformNotificationBell", () => {
 
     render(await PlatformNotificationBell());
 
-    expect(listNotifications).toHaveBeenCalledWith({ limit: 5 });
+    expect(listNotifications).toHaveBeenCalledWith("ja", { limit: 5 });
     fireEvent.click(screen.getByRole("button", { name: "通知、未読1件" }));
     expect(
       screen

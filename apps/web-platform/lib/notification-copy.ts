@@ -1,3 +1,5 @@
+import { getMessage } from "@publira/i18n";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { z } from "zod";
 
 export const NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED =
@@ -49,23 +51,44 @@ export interface NotificationDisplay {
   title: string;
 }
 
-const quoted = (value: string): string => `「${value}」`;
-
-const episodeSubject = (payload: NotificationPayload): string => {
+/**
+ * What the row is about, named as precisely as the payload allows.
+ *
+ * Each branch is a whole catalog message rather than a fragment the caller
+ * joins: quoting, the particle that follows a title, and the word order all
+ * differ by language, so a sentence assembled from pieces here would only read
+ * correctly in the language the pieces were written for.
+ */
+const episodeSubject = (
+  messages: SharedMessages,
+  payload: NotificationPayload
+): string => {
   if (payload.episode_title && payload.series_title) {
-    return `${quoted(payload.episode_title)}（${payload.series_title}）`;
+    return getMessage(
+      messages,
+      "platform.notifications.events.subject_in_series",
+      {
+        episode: payload.episode_title,
+        series: payload.series_title,
+      }
+    );
   }
   if (payload.episode_title) {
-    return quoted(payload.episode_title);
+    return getMessage(
+      messages,
+      "platform.notifications.events.subject_episode",
+      { episode: payload.episode_title }
+    );
   }
   if (payload.series_title) {
-    return `${quoted(payload.series_title)}のエピソード`;
+    return getMessage(
+      messages,
+      "platform.notifications.events.subject_series",
+      { series: payload.series_title }
+    );
   }
-  return "予約していたエピソード";
+  return getMessage(messages, "platform.notifications.events.subject_unnamed");
 };
-
-const tenantPrefix = (payload: NotificationPayload): string =>
-  payload.tenant_name ? `テナント${quoted(payload.tenant_name)}の` : "";
 
 /**
  * Platform operators land on the tenant, not a series or episode editor.
@@ -96,27 +119,59 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
 };
 
 /**
+ * The failure sentence, in the two shapes the payload allows. A payload that
+ * names the tenant gets its own message rather than a prefix pasted onto the
+ * other one, for the reason {@link episodeSubject} gives.
+ */
+const publishFailedDescription = (
+  messages: SharedMessages,
+  payload: NotificationPayload
+): string => {
+  const subject = episodeSubject(messages, payload);
+  if (payload.tenant_name) {
+    return getMessage(
+      messages,
+      "platform.notifications.events.publish_failed_description_tenant",
+      { subject, tenant: payload.tenant_name }
+    );
+  }
+
+  return getMessage(
+    messages,
+    "platform.notifications.events.publish_failed_description",
+    { subject }
+  );
+};
+
+/**
  * Inbox copy is assembled here from `notification_type` + payload. The API
  * does not store title/body. Unknown types stay in the list as a generic row.
  */
 export const notificationDisplay = (
   notificationType: string,
-  payload: NotificationPayload
+  payload: NotificationPayload,
+  messages: SharedMessages
 ): NotificationDisplay => {
   const href = notificationHref(payload);
   const type = notificationType.trim();
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED) {
     return {
-      description: `${tenantPrefix(payload)}${episodeSubject(payload)}を公開できませんでした。`,
+      description: publishFailedDescription(messages, payload),
       href,
-      title: "エピソードの公開に失敗しました",
+      title: getMessage(
+        messages,
+        "platform.notifications.events.publish_failed_title"
+      ),
     };
   }
 
   return {
-    description: "内容の詳細はありません。",
+    description: getMessage(
+      messages,
+      "platform.notifications.events.unknown_description"
+    ),
     href,
-    title: "通知",
+    title: getMessage(messages, "platform.notifications.events.unknown_title"),
   };
 };

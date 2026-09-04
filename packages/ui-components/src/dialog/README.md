@@ -11,10 +11,11 @@ import { ConfirmDialog } from "@publira/ui-components/dialog";
 export default function Example() {
   return (
     <ConfirmDialog
-      actionText="削除する"
-      description="この操作は取り消せません。"
-      title="本当に削除しますか？"
-      trigger={<Button variant="destructive">削除</Button>}
+      actionText="Delete"
+      cancelText="Cancel"
+      description="This cannot be undone."
+      title="Delete this item?"
+      trigger={<Button variant="destructive">Delete</Button>}
     />
   );
 }
@@ -34,6 +35,8 @@ import {
   DialogTrigger,
 } from "@publira/ui-components/dialog";
 ```
+
+`actionText` and `cancelText` are required and hold no default: this package is shared by apps that resolve their locale in different ways, so it cannot read one itself and a default here would label both buttons in a fixed language.
 
 ## Props
 

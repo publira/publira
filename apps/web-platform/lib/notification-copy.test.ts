@@ -1,3 +1,4 @@
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -5,6 +6,8 @@ import {
   notificationHref,
   parseNotificationPayload,
 } from "./notification-copy";
+
+const ja = sharedCatalog("ja");
 
 describe("parseNotificationPayload", () => {
   it("extracts only known fields", () => {
@@ -60,12 +63,16 @@ describe("notificationHref", () => {
 describe("notificationDisplay", () => {
   it("builds publication failure copy from tenant and episode names", () => {
     expect(
-      notificationDisplay("episode_publish_failed", {
-        episode_title: "第1話",
-        series_title: "作品A",
-        tenant_id: "SeedTNNTAAA1",
-        tenant_name: "Acme",
-      })
+      notificationDisplay(
+        "episode_publish_failed",
+        {
+          episode_title: "第1話",
+          series_title: "作品A",
+          tenant_id: "SeedTNNTAAA1",
+          tenant_name: "Acme",
+        },
+        ja
+      )
     ).toEqual({
       description:
         "テナント「Acme」の「第1話」（作品A）を公開できませんでした。",
@@ -73,7 +80,7 @@ describe("notificationDisplay", () => {
       title: "エピソードの公開に失敗しました",
     });
 
-    expect(notificationDisplay("episode_publish_failed", {})).toEqual({
+    expect(notificationDisplay("episode_publish_failed", {}, ja)).toEqual({
       description: "予約していたエピソードを公開できませんでした。",
       href: undefined,
       title: "エピソードの公開に失敗しました",
@@ -82,7 +89,7 @@ describe("notificationDisplay", () => {
 
   it("keeps unknown types as generic notifications", () => {
     expect(
-      notificationDisplay("invite_accepted", { tenant_id: "SeedTNNTAAA1" })
+      notificationDisplay("invite_accepted", { tenant_id: "SeedTNNTAAA1" }, ja)
     ).toEqual({
       description: "内容の詳細はありません。",
       href: "/tenants/SeedTNNTAAA1",

@@ -28,7 +28,7 @@ const NotificationBellErrorFallback = () => (
       </NotificationBellHeader>
       <NotificationBellError>
         <Suspense fallback={<Skeleton className="h-4 w-64" />}>
-          <Message message="platform.notifications.list_failed" />
+          <Message message="platform.notifications.list_error" />
         </Suspense>
       </NotificationBellError>
       <NotificationBellMore href="/notifications">

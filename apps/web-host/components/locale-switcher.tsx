@@ -1,7 +1,6 @@
 "use client";
 
-import { getLocales, getMessage } from "@publira/i18n";
-import type { Locale } from "@publira/i18n";
+import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
 import {
   Popover,
   PopoverContent,
@@ -15,16 +14,6 @@ import { toBarePathname, withLocalePrefix } from "#lib/locale-path";
 
 import { useHostMessages } from "./client-message";
 import { useLocale, useTenantDefaultLocale } from "./locale-provider";
-
-/**
- * Autonyms. A language is offered in its own language, so these stay the same
- * whichever locale the page is rendered in and never enter the message
- * catalog.
- */
-const LOCALE_LABELS = {
-  en: "English",
-  ja: "日本語",
-} as const satisfies Record<Locale, string>;
 
 /**
  * Header control that swaps the locale segment and keeps the rest of the path.
@@ -43,6 +32,11 @@ const LOCALE_LABELS = {
  * no value yet, so the site layout renders this inside a `<Suspense>` with
  * {@link LocaleSwitcherSkeleton}: the control streams in and the rest of the
  * shell stays static.
+ *
+ * The language names come from `getLocaleLabel`, the same registry the cookie
+ * consoles read. They are autonyms — a language is offered in its own language
+ * — so they are identical in both directions and belong to the registry rather
+ * than to a per-locale catalog.
  */
 /** Same footprint as the rendered control, so the header does not shift. */
 export const LocaleSwitcherSkeleton = () => (
@@ -63,10 +57,10 @@ export const LocaleSwitcher = () => {
   return (
     <Popover>
       <PopoverTrigger
-        aria-label={`${label}: ${LOCALE_LABELS[currentLocale]}`}
+        aria-label={`${label}: ${getLocaleLabel(currentLocale)}`}
         className="inline-flex h-9 max-w-28 items-center rounded-full border border-border/70 bg-card px-3 text-sm font-medium text-foreground transition-colors hover:border-border hover:bg-muted data-popup-open:bg-muted"
       >
-        <span className="truncate">{LOCALE_LABELS[currentLocale]}</span>
+        <span className="truncate">{getLocaleLabel(currentLocale)}</span>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-48" sideOffset={8}>
         <PopoverTitle className="px-2 py-1.5 text-sm font-medium text-foreground">
@@ -89,7 +83,7 @@ export const LocaleSwitcher = () => {
                 key={locale}
                 lang={locale}
               >
-                {LOCALE_LABELS[locale]}
+                {getLocaleLabel(locale)}
               </Link>
             );
           })}

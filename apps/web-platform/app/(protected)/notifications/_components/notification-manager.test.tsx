@@ -18,7 +18,7 @@ const notificationMessages = {
   "platform.notifications.columns.at": "日時",
   "platform.notifications.columns.content": "内容",
   "platform.notifications.columns.status": "状態",
-  "platform.notifications.list_failed": "通知一覧を表示できませんでした",
+  "platform.notifications.list_error": "通知一覧を表示できませんでした",
   "platform.notifications.mark_all_read": "すべて既読にする",
   "platform.notifications.mark_read": "既読にする",
   "platform.notifications.per_page":

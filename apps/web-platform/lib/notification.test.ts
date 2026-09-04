@@ -65,7 +65,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications({
+    const result = await listNotifications("ja", {
       limit: 20,
       token: "current-page",
     });
@@ -88,7 +88,7 @@ describe("notification lib", () => {
     mockListNotificationsApi.mockResolvedValue({ notifications: [] });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications();
+    const result = await listNotifications("ja");
 
     expect(mockListNotificationsApi).toHaveBeenCalledWith(
       {
@@ -110,7 +110,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications();
+    const result = await listNotifications("ja");
 
     expect(result.ok).toBe(true);
     expect(result.notifications).toEqual([
@@ -142,7 +142,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications();
+    const result = await listNotifications("ja");
 
     expect(result.notifications).toEqual([
       {
@@ -166,7 +166,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications();
+    const result = await listNotifications("ja");
 
     expect(result.notifications.map((item) => item.id)).toEqual(["n2", "n1"]);
   });
@@ -177,7 +177,7 @@ describe("notification lib", () => {
     );
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications();
+    const result = await listNotifications("ja");
 
     expect(result).toEqual({
       message: "この操作を行う権限がありません。",
@@ -196,14 +196,14 @@ describe("notification lib", () => {
 
     const { listNotifications } = await import("./notification");
 
-    await expect(listNotifications()).rejects.toThrow();
+    await expect(listNotifications("ja")).rejects.toThrow();
   });
 
   it("returns a result without tokens when there is no session", async () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     const { listNotifications } = await import("./notification");
-    const result = await listNotifications({
+    const result = await listNotifications("ja", {
       token: "current-page",
     });
 
@@ -220,7 +220,7 @@ describe("notification lib", () => {
     mockCountUnreadNotificationsApi.mockResolvedValue({ unreadCount: 3 });
 
     const { countUnreadNotifications } = await import("./notification");
-    const result = await countUnreadNotifications();
+    const result = await countUnreadNotifications("ja");
 
     expect(mockCountUnreadNotificationsApi).toHaveBeenCalledWith(
       {},
@@ -235,7 +235,7 @@ describe("notification lib", () => {
     );
 
     const { countUnreadNotifications } = await import("./notification");
-    const result = await countUnreadNotifications();
+    const result = await countUnreadNotifications("ja");
 
     expect(result).toEqual({
       message:
@@ -251,16 +251,17 @@ describe("notification lib", () => {
 
     const { countUnreadNotifications } = await import("./notification");
 
-    await expect(countUnreadNotifications()).rejects.toThrow();
+    await expect(countUnreadNotifications("ja")).rejects.toThrow();
   });
 
   it("passes notification_id when marking one notification as read", async () => {
     mockMarkNotificationAsReadApi.mockResolvedValue({ marked: true });
 
     const { markNotificationAsRead } = await import("./notification");
-    const result = await markNotificationAsRead({
-      notificationId: "11111111-1111-4111-8111-111111111111",
-    });
+    const result = await markNotificationAsRead(
+      { notificationId: "11111111-1111-4111-8111-111111111111" },
+      "ja"
+    );
 
     expect(mockMarkNotificationAsReadApi).toHaveBeenCalledWith(
       { notificationId: "11111111-1111-4111-8111-111111111111" },
@@ -273,7 +274,7 @@ describe("notification lib", () => {
     mockMarkAllNotificationsAsReadApi.mockResolvedValue({ markedCount: 4 });
 
     const { markAllNotificationsAsRead } = await import("./notification");
-    const result = await markAllNotificationsAsRead();
+    const result = await markAllNotificationsAsRead("ja");
 
     expect(result).toEqual({ markedCount: 4, ok: true });
   });

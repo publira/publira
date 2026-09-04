@@ -4,6 +4,10 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import type { PlatformNotification } from "@publira/api-client/platform/types";
+import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
@@ -26,15 +30,16 @@ import {
   parseNotificationPayload,
 } from "./notification-copy";
 
-const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
-const listErrorMessage =
-  "通知一覧の取得に失敗しました。時間をおいて再試行してください。";
-const countErrorMessage =
-  "未読件数の取得に失敗しました。時間をおいて再試行してください。";
-const markReadErrorMessage =
-  "既読への更新に失敗しました。時間をおいて再試行してください。";
-const markAllReadErrorMessage =
-  "一括既読に失敗しました。時間をおいて再試行してください。";
+const sessionErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "errors.rpc.unauthenticated");
+const listErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "platform.notifications.list_failed");
+const countErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "platform.notifications.count_failed");
+const markReadErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "platform.notifications.mark_read_failed");
+const markAllReadErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "platform.notifications.mark_all_read_failed");
 
 const defaultPageSize = 20;
 
@@ -45,10 +50,11 @@ const defaultPageSize = 20;
  */
 export const notificationsCacheTag = "platform:notifications";
 
-// This module's copy is still written out in Japanese above rather than read
-// from the catalog, so the shared RPC wording is read in the same language.
-const mapErrorMessage = (error: unknown, fallback: string): string =>
-  rpcErrorMessage(error, fallback, { locale: "ja" });
+const mapErrorMessage = (
+  error: unknown,
+  fallback: string,
+  locale: Locale
+): string => rpcErrorMessage(error, fallback, { locale });
 
 const isUnexpectedError = (error: unknown): boolean =>
   rpcErrorDisposition(error) === "unexpected";
@@ -75,10 +81,14 @@ type RawPlatformNotification = Pick<
   "createdAt" | "id" | "isRead" | "notificationType" | "payload"
 >;
 
-const mapNotification = (item: RawPlatformNotification): NotificationItem => {
+const mapNotification = (
+  item: RawPlatformNotification,
+  messages: SharedMessages
+): NotificationItem => {
   const display = notificationDisplay(
     item.notificationType,
-    parseNotificationPayload(item.payload)
+    parseNotificationPayload(item.payload),
+    messages
   );
 
   return {
@@ -106,16 +116,18 @@ export interface ListNotificationsInput {
 }
 
 const readNotificationList = async (
-  input: ListNotificationsInput = {}
+  input: ListNotificationsInput,
+  locale: Locale
 ): Promise<CachedListNotificationsResult> => {
   "use cache: private";
   cacheTag(notificationsCacheTag);
 
+  const messages = sharedCatalog(locale);
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       nextToken: "",
       notifications: [],
       ok: false,
@@ -137,7 +149,7 @@ const readNotificationList = async (
     return {
       nextToken: response.nextToken ?? "",
       notifications: (response.notifications ?? []).map((item) =>
-        mapNotification(item)
+        mapNotification(item, messages)
       ),
       ok: true,
       previousToken: response.previousToken ?? "",
@@ -146,7 +158,7 @@ const readNotificationList = async (
   } catch (error) {
     dropFailedCacheEntry();
     return {
-      message: mapErrorMessage(error, listErrorMessage),
+      message: mapErrorMessage(error, listErrorMessage(messages), locale),
       nextToken: "",
       notifications: [],
       ok: false,
@@ -157,45 +169,47 @@ const readNotificationList = async (
   }
 };
 
-const readUnreadNotificationCount =
-  async (): Promise<CachedUnreadCountResult> => {
-    "use cache: private";
-    cacheTag(notificationsCacheTag);
+const readUnreadNotificationCount = async (
+  locale: Locale
+): Promise<CachedUnreadCountResult> => {
+  "use cache: private";
+  cacheTag(notificationsCacheTag);
 
-    const sessionId = await resolveAccessToken();
-    if (!sessionId) {
-      dropFailedCacheEntry();
-      return {
-        message: sessionErrorMessage,
-        ok: false,
-        requiresSignIn: true,
-        unexpected: false,
-        unreadCount: 0,
-      };
-    }
+  const messages = sharedCatalog(locale);
+  const sessionId = await resolveAccessToken();
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    return {
+      message: sessionErrorMessage(messages),
+      ok: false,
+      requiresSignIn: true,
+      unexpected: false,
+      unreadCount: 0,
+    };
+  }
 
-    try {
-      const response = await apiClient.notification.countUnreadNotifications(
-        {},
-        buildSessionHeaders(sessionId)
-      );
+  try {
+    const response = await apiClient.notification.countUnreadNotifications(
+      {},
+      buildSessionHeaders(sessionId)
+    );
 
-      return {
-        ok: true,
-        unexpected: false,
-        unreadCount: response.unreadCount ?? 0,
-      };
-    } catch (error) {
-      dropFailedCacheEntry();
-      return {
-        message: mapErrorMessage(error, countErrorMessage),
-        ok: false,
-        requiresSignIn: isUnauthenticatedError(error),
-        unexpected: isUnexpectedError(error),
-        unreadCount: 0,
-      };
-    }
-  };
+    return {
+      ok: true,
+      unexpected: false,
+      unreadCount: response.unreadCount ?? 0,
+    };
+  } catch (error) {
+    dropFailedCacheEntry();
+    return {
+      message: mapErrorMessage(error, countErrorMessage(messages), locale),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+      unexpected: isUnexpectedError(error),
+      unreadCount: 0,
+    };
+  }
+};
 
 /**
  * One page of the signed-in operator's inbox, newest first.
@@ -204,10 +218,14 @@ const readUnreadNotificationCount =
  * Sorting them here would only sort the rows that happen to share a page.
  */
 export const listNotifications = async (
+  locale: Locale,
   input: ListNotificationsInput = {}
 ): Promise<ListNotificationsResult> => {
-  const { unexpected, ...result } = await readNotificationList(input);
-  throwIfUnexpected(unexpected, result.ok ? listErrorMessage : result.message);
+  const { unexpected, ...result } = await readNotificationList(input, locale);
+  throwIfUnexpected(
+    unexpected,
+    result.ok ? listErrorMessage(sharedCatalog(locale)) : result.message
+  );
   return result;
 };
 
@@ -216,23 +234,28 @@ export const listNotifications = async (
  * a header crash — the count is chrome, and the list page is the source of
  * truth when the operator opens it.
  */
-export const countUnreadNotifications =
-  async (): Promise<CountUnreadNotificationsResult> => {
-    const { unexpected, ...result } = await readUnreadNotificationCount();
-    throwIfUnexpected(
-      unexpected,
-      result.ok ? countErrorMessage : result.message
-    );
-    return result;
-  };
+export const countUnreadNotifications = async (
+  locale: Locale
+): Promise<CountUnreadNotificationsResult> => {
+  const { unexpected, ...result } = await readUnreadNotificationCount(locale);
+  throwIfUnexpected(
+    unexpected,
+    result.ok ? countErrorMessage(sharedCatalog(locale)) : result.message
+  );
+  return result;
+};
 
-export const markNotificationAsRead = async (input: {
-  notificationId: string;
-}): Promise<{ message: string; ok: false } | { ok: true }> => {
+export const markNotificationAsRead = async (
+  input: {
+    notificationId: string;
+  },
+  locale: Locale
+): Promise<{ message: string; ok: false } | { ok: true }> => {
+  const messages = sharedCatalog(locale);
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -247,19 +270,22 @@ export const markNotificationAsRead = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorMessage(error, markReadErrorMessage),
+      message: mapErrorMessage(error, markReadErrorMessage(messages), locale),
       ok: false,
     };
   }
 };
 
-export const markAllNotificationsAsRead = async (): Promise<
+export const markAllNotificationsAsRead = async (
+  locale: Locale
+): Promise<
   { message: string; ok: false } | { markedCount: number; ok: true }
 > => {
+  const messages = sharedCatalog(locale);
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return {
-      message: sessionErrorMessage,
+      message: sessionErrorMessage(messages),
       ok: false,
     };
   }
@@ -277,7 +303,11 @@ export const markAllNotificationsAsRead = async (): Promise<
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorMessage(error, markAllReadErrorMessage),
+      message: mapErrorMessage(
+        error,
+        markAllReadErrorMessage(messages),
+        locale
+      ),
       ok: false,
     };
   }

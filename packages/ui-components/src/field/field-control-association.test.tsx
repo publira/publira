@@ -49,6 +49,7 @@ const StatefulCombobox = ({ id }: { id?: string }) => {
 
   return (
     <Combobox
+      emptyMessage="一致する項目が見つかりません。"
       id={id}
       items={comboItems}
       onValueChange={setValue}
@@ -62,9 +63,11 @@ const StatefulMultiCombobox = ({ id }: { id?: string }) => {
 
   return (
     <MultiCombobox
+      emptyMessage="一致する項目が見つかりません。"
       id={id}
       items={comboItems}
       onValueChange={setValue}
+      removeLabel="削除"
       value={value}
     />
   );

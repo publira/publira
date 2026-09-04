@@ -26,9 +26,15 @@ describe("SectionError", () => {
 
     expect(screen.queryByText("2870412426")).toBeNull();
 
-    rerender(<SectionError digest="2870412426" title="読み込めませんでした" />);
+    rerender(
+      <SectionError
+        digest={{ label: "エラー ID:", value: "2870412426" }}
+        title="読み込めませんでした"
+      />
+    );
 
     expect(screen.getByText("2870412426")).toBeTruthy();
+    expect(screen.getByText("エラー ID:")).toBeTruthy();
   });
 
   it("renders actions as they are", () => {

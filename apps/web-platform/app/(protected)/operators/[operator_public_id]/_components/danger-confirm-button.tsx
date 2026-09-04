@@ -10,7 +10,7 @@ interface DangerConfirmButtonProps<T> {
   actionCreator: (arg: T) => Promise<void>;
   actionText: string;
   actionVariant?: NonNullable<ButtonProps["variant"]>;
-  cancelText?: string;
+  cancelText: string;
   description?: string;
   title: string;
   triggerLabel: string;

@@ -5,12 +5,19 @@ import type { ReactNode } from "react";
 import { Button } from "../button/button";
 import { SectionError } from "./section-error";
 
+/**
+ * Every field is required. This package holds no copy, so a boundary that left
+ * one out would have nothing to render but a fixed language; the app that wires
+ * the boundary up is the one that can resolve all four from its own catalog.
+ */
 export interface SectionErrorFallbackProps {
   /** What the reader can do about it. */
-  description?: ReactNode;
-  digestLabel?: ReactNode;
-  retryLabel?: ReactNode;
-  /** Names the section that is missing: 「おすすめ作品を表示できませんでした」. */
+  description: ReactNode;
+  /** Prefix shown before the digest, such as "Error ID:". */
+  digestLabel: ReactNode;
+  /** Label of the button that re-runs the section. */
+  retryLabel: ReactNode;
+  /** Names the section that is missing: "Could not display the recommendations". */
   title: ReactNode;
 }
 
@@ -44,7 +51,8 @@ const errorDigest = (error: unknown): string | undefined => {
 /**
  * Shared body of every app's section-level error boundary: a section
  * that throws is replaced by a `SectionError` naming it, every sibling section
- * keeps whatever it already rendered, and 再試行 re-runs only that subtree.
+ * keeps whatever it already rendered, and the retry button re-runs only that
+ * subtree.
  *
  * Pass it to `catchError` from a module that is already in the client graph:
  *
@@ -74,23 +82,23 @@ const errorDigest = (error: unknown): string | undefined => {
  * Server Component failure.
  */
 export const sectionErrorFallback = (
-  {
-    description = "時間をおいて再試行してください。",
-    digestLabel,
-    retryLabel = "再試行",
-    title,
-  }: SectionErrorFallbackProps,
+  { description, digestLabel, retryLabel, title }: SectionErrorFallbackProps,
   { error, retry }: SectionErrorInfo
-) => (
-  <SectionError
-    actions={
-      <Button onClick={() => retry()} size="sm" variant="outline">
-        {retryLabel}
-      </Button>
-    }
-    description={description}
-    digest={errorDigest(error)}
-    digestLabel={digestLabel}
-    title={title}
-  />
-);
+) => {
+  const digest = errorDigest(error);
+
+  return (
+    <SectionError
+      actions={
+        <Button onClick={() => retry()} size="sm" variant="outline">
+          {retryLabel}
+        </Button>
+      }
+      description={description}
+      digest={
+        digest === undefined ? undefined : { label: digestLabel, value: digest }
+      }
+      title={title}
+    />
+  );
+};
