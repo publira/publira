@@ -43,13 +43,20 @@ services:
       - "127.0.0.1:4318:4318"
       - "127.0.0.1:16686:16686"
 
+  # SMTP sink and UI for the mail the app sends. `MP_DATABASE` is what makes
+  # the mailbox a file instead of the temporary one Mailpit deletes on exit,
+  # so a message stays readable across a restart or a Dev Container rebuild.
   mailpit:
     image: axllent/mailpit:v1.31.0@sha256:c96991d9bef73594c246d89ca81411d4e916f03e76a7d2d72fa2ab5dd3c9ce24
     restart: unless-stopped
+    environment:
+      MP_DATABASE: /data/mailpit.db
     ports:
       # SMTP intake and the web UI.
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
+    volumes:
+      - mailpit-data:/data
 
   # Shared backend for Next.js cacheHandler / cacheHandlers (multi-instance).
   # Valkey is Redis-protocol compatible; keep service name / PUBLIRA_REDIS_URL as redis://...
@@ -85,5 +92,6 @@ services:
       retries: 5
 
 volumes:
+  mailpit-data:
   postgres-data:
   rustfs-data:
