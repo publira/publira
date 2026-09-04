@@ -10,6 +10,7 @@ import "temporal-polyfill/global";
 /** Dev seed tenant admin (Host `admin.localhost`). */
 export const SEED_ADMIN = {
   email: "admin@example.com",
+  name: "Tenant Admin",
   password: "adminpass",
 } as const;
 

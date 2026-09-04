@@ -110,3 +110,54 @@ export const createTenantViaUi = async (
 };
 
 export const formMessage = (page: Page): Locator => page.getByRole("status");
+
+/** Label of the option to pick in an operator role selector. */
+export type OperatorRoleLabel = "オペレーター" | "スーパー管理者" | "監査担当";
+
+export interface CreateOperatorInput {
+  email: string;
+  name: string;
+  roleLabel: OperatorRoleLabel;
+}
+
+/**
+ * Fill and submit the operator create form, resolving after the redirect back
+ * to the list.
+ *
+ * The invited operator's public_id is not on that redirect and the Action
+ * answers with nothing else, so a caller that needs it reads the row it created.
+ */
+export const createOperatorViaUi = async (
+  page: Page,
+  input: CreateOperatorInput
+): Promise<void> => {
+  await page.goto(platformUrl("/operators/new"));
+  await page.getByRole("textbox", { name: /^名前/u }).fill(input.name);
+  await page
+    .getByRole("textbox", { name: /^メールアドレス/u })
+    .fill(input.email);
+  // Base UI Select trigger is the only combobox on this form.
+  await page.getByRole("combobox").click();
+  await page
+    .getByRole("option", { exact: true, name: input.roleLabel })
+    .click();
+  await page.getByRole("button", { name: "追加" }).click();
+  await page.waitForURL((url) => url.pathname === "/operators");
+};
+
+/**
+ * Open the `ConfirmDialog` a destructive console action sits behind and run it.
+ *
+ * The trigger and the confirmation carry different labels — 「無効化」 then
+ * 「無効化する」 — so both are named by the caller rather than derived.
+ */
+export const confirmDangerAction = async (
+  page: Page,
+  triggerLabel: string,
+  confirmLabel: string
+): Promise<void> => {
+  await page.getByRole("button", { exact: true, name: triggerLabel }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { exact: true, name: confirmLabel }).click();
+};

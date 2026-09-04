@@ -9,6 +9,7 @@ export const MEMBER_ANNOUNCEMENTS_SCENARIO = "020_member_announcements";
 /** Dev seed member on Host `localhost` (db/seeds/README.md). */
 export const SEED_MEMBER = {
   email: "member@example.com",
+  name: "Sample Member",
   password: "memberpass",
 } as const;
 

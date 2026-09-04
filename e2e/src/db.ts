@@ -230,3 +230,63 @@ export const deleteTenantsByPublicIds = (
     COMMIT;
   `);
 };
+
+/**
+ * Remove platform operators created through the console, by email address.
+ *
+ * `DeactivateOperator` is a status change, so the console never removes a row
+ * and a suite that invites operators has to. Their audit rows go first:
+ * `platform_audit_logs.actor_platform_user_id` restricts rather than cascades,
+ * which is what keeps an operator's trail from disappearing with the account.
+ */
+export const deletePlatformOperatorsByEmails = (
+  emails: readonly string[]
+): void => {
+  const quoted: string[] = [];
+  for (const email of emails) {
+    const trimmed = email.trim();
+    if (trimmed.length > 0) {
+      quoted.push(quoteSqlLiteral(trimmed));
+    }
+  }
+  if (quoted.length === 0) {
+    return;
+  }
+  const list = quoted.join(", ");
+  runSql(`
+    BEGIN;
+    DELETE FROM platform_audit_logs pal
+    USING platform_users pu
+    WHERE pal.actor_platform_user_id = pu.id
+      AND pu.email IN (${list});
+    DELETE FROM platform_users
+    WHERE email IN (${list});
+    COMMIT;
+  `);
+};
+
+/**
+ * Leave the platform with no operator at all — the one state `/setup` renders
+ * in, since `CheckSetupStatus` reports setup as complete as soon as a single
+ * `platform_users` row exists.
+ *
+ * The audit log goes first for the same restricting foreign key
+ * {@link deletePlatformOperatorsByEmails} works around, and `platform_config`
+ * goes too: a platform that has never been set up has saved no default
+ * language, and leaving the seeded row behind would let a spec assert a saved
+ * language that was already there before the setup form chose one.
+ *
+ * Only `e2e/tests/platform.setup.spec.ts` may call this, and only from the
+ * isolated `platform-setup` project that runs after every other one:
+ * every console screen in the suite needs an operator to sign in as.
+ * `db/seeds/scenarios/110_platform_setup.sql` puts the seeded rows back.
+ */
+export const emptyPlatformOperators = (): void => {
+  runSql(`
+    BEGIN;
+    DELETE FROM platform_audit_logs;
+    DELETE FROM platform_users;
+    DELETE FROM platform_config;
+    COMMIT;
+  `);
+};
