@@ -449,6 +449,12 @@ WHERE current_email_token_hash = $1
     OR new_email_token_hash = $1
 LIMIT 1;
 
+-- name: GetPlatformUserEmailChangeTokenByID :one
+SELECT *
+FROM platform_user_email_change_tokens
+WHERE id = $1
+LIMIT 1;
+
 -- name: GetTenantAdminInvitationByTenantAndEmail :one
 SELECT *
 FROM tenant_admin_invitations

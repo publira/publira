@@ -111,6 +111,10 @@ export PUBLIRA_WEB_PLATFORM_INTERNAL_URL="http://127.0.0.1:${E2E_WEB_PLATFORM_PO
 # have this stack's worker render through a process it neither starts nor stops.
 export PUBLIRA_EMAIL_RENDERER_URL="http://127.0.0.1:${E2E_EMAIL_RENDERER_PORT}"
 
+# Where the platform console auth mail points. The worker builds those links, so
+# without this they would name the dev stack's port instead of this run's.
+export PUBLIRA_PLATFORM_APP_URL="${E2E_WEB_PLATFORM_BASE_URL}"
+
 # PID files, logs, and local storage for one stack run.
 #
 # Concurrent stacks that override ports or COMPOSE_PROJECT_NAME must not share

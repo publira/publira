@@ -1,6 +1,15 @@
 # outbox-worker
 
-A long-lived worker that drains the Outbox and processes the entries as River jobs. It runs as a separate process from the API processes. In addition to `outbox_test`, it handles the tenant administrator invitation email `tenant_admin_invitation_email`.
+A long-lived worker that drains the Outbox and processes the entries as River jobs. It runs as a separate process from the API processes. Besides `outbox_test`, it handles these email events:
+
+| Event type | Mail |
+| --- | --- |
+| `tenant_admin_invitation_email` | Tenant administrator invitation |
+| `platform_password_reset_email` | Platform Console password reset |
+| `platform_email_change_confirmation_email` | Platform Console email change confirmation, one event per address to confirm |
+| `platform_email_changed_notice_email` | Platform Console notice to the previous address once the change completes |
+
+The platform console rows carry no `tenant_id`: their handlers resolve the platform SMTP settings and the platform default locale and time zone rather than a tenant's.
 
 ## Running
 
@@ -40,7 +49,8 @@ In production the connection must use `publira_outbox`, the BYPASSRLS login the 
 - `PUBLIRA_OUTBOX_MAX_ATTEMPTS` (optional, default `10`. The failure count at which an entry becomes `dead`)
 - `PUBLIRA_OUTBOX_STALE_PROCESSING` (optional, a Go duration. Default `15m`. A `processing` row older than this is returned to `pending`)
 - `PUBLIRA_OUTBOX_MAX_WORKERS` (optional, the concurrency of River's default queue. Default `8`)
-- `PUBLIRA_EMAIL_RENDERER_URL` (optional, the URL of the email-renderer that renders tenant administrator invitation emails. `http://localhost:8080` when unset)
+- `PUBLIRA_EMAIL_RENDERER_URL` (optional, the URL of the email-renderer that renders the emails above. `http://localhost:8080` when unset)
+- `PUBLIRA_PLATFORM_APP_URL` (optional, the base URL the Platform Console links in the platform auth mail are built from. `http://platform.localhost:3080` when unset)
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional, the keys used to decrypt the SMTP password. Set the same values as the platform API)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset)

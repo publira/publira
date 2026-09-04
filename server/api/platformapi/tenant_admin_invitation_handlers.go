@@ -19,7 +19,6 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 )
@@ -66,21 +65,6 @@ func generateInvitationToken() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(raw), nil
-}
-
-func platformEmailSettingsFromConfig(config dbmodels.PlatformSmtpConfig, password string) emailsettings.SMTPSettings {
-	settings := emailsettings.SMTPSettings{
-		Host:        config.Host,
-		Port:        config.Port,
-		Username:    config.Username,
-		Password:    password,
-		Encryption:  config.Encryption,
-		FromAddress: config.FromAddress,
-	}
-	if config.ReplyTo.Valid {
-		settings.ReplyTo = config.ReplyTo.String
-	}
-	return settings
 }
 
 func ensureTenantAdminRole(ctx context.Context, txq *dbmodels.Queries, tenantID, userID uuid.UUID) error {

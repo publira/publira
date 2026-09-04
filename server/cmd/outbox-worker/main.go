@@ -13,6 +13,7 @@ import (
 
 	"github.com/publira/publira/server/config"
 	"github.com/publira/publira/server/internal/emailrenderer"
+	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/logging"
@@ -52,16 +53,22 @@ func main() {
 	}
 	defer db.Close() //nolint:errcheck
 
-	var encryptor *secretcrypto.Manager
+	// Declared as the interface, never as *secretcrypto.Manager: a typed nil
+	// assigned to an interface is not nil, and it would slip past the guard in
+	// emailsettings.DecryptPassword into a nil-receiver method call. A process
+	// started without keys has to report an unusable manager, so a handler can
+	// retry once an operator restarts it with them.
+	var encryptor emailsettings.SecretManager
 	if len(cfg.Encryption.Keys) > 0 {
-		encryptor, err = secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
-		if err != nil {
-			logger.Error("failed to initialize secret encryption manager", "error", err)
+		manager, managerErr := secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
+		if managerErr != nil {
+			logger.Error("failed to initialize secret encryption manager", "error", managerErr)
 			os.Exit(1)
 		}
+		encryptor = manager
 	}
 
-	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, outbox.TenantAdminInvitationHandlerConfig{
+	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, outbox.EmailHandlerConfig{
 		DB:        db,
 		Encryptor: encryptor,
 		Mailer:    internalsmtp.NewClient(),
@@ -106,9 +113,12 @@ func resolveWorkerDBURL(fallback string) string {
 	return defaultWorkerDBURL
 }
 
-func workerConfig(logger *slog.Logger, invitationHandler outbox.TenantAdminInvitationHandlerConfig) outbox.Config {
+func workerConfig(logger *slog.Logger, emailHandlers outbox.EmailHandlerConfig) outbox.Config {
 	handlers := outbox.DefaultRegistry()
-	handlers.Register(outbox.EventTypeTenantAdminInvitationEmail, outbox.NewTenantAdminInvitationHandler(invitationHandler))
+	handlers.Register(outbox.EventTypeTenantAdminInvitationEmail, outbox.NewTenantAdminInvitationHandler(emailHandlers))
+	handlers.Register(outbox.EventTypePlatformPasswordResetEmail, outbox.NewPlatformPasswordResetEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypePlatformEmailChangeConfirmationEmail, outbox.NewPlatformEmailChangeConfirmationEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypePlatformEmailChangedNoticeEmail, outbox.NewPlatformEmailChangedNoticeEmailHandler(emailHandlers))
 	return outbox.Config{
 		Logger:            logger,
 		Handlers:          handlers,

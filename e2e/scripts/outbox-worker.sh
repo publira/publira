@@ -37,6 +37,7 @@ start_outbox_worker() {
       PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" \
       PUBLIRA_WORKER_ADDR=":${E2E_OUTBOX_WORKER_PORT}" \
       PUBLIRA_EMAIL_RENDERER_URL="${PUBLIRA_EMAIL_RENDERER_URL}" \
+      PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_PLATFORM_APP_URL}" \
       "${bin}"
   ) >>"${LOG_DIR}/outbox-worker.log" 2>&1 &
   write_pid "outbox-worker" $!

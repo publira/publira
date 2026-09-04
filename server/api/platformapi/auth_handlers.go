@@ -5,11 +5,11 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/mail"
-	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -21,7 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
-	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -31,7 +31,6 @@ const (
 	rolePlatformSuperAdmin        = auth.RolePlatformSuperAdmin
 	platformPasswordResetTokenTTL = 24 * time.Hour
 	platformEmailChangeTokenTTL   = 24 * time.Hour
-	defaultPlatformAppURL         = "http://platform.localhost:3080"
 )
 
 func invalidSessionError() error {
@@ -86,166 +85,73 @@ func (s *platformServer) authenticatePlatformSession(
 	return platformUser, platformUser, resolvedRole, nil
 }
 
-func platformPasswordResetConfirmationURL(token string) (string, error) {
-	baseURL := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_APP_URL"))
-	if baseURL == "" {
-		baseURL = defaultPlatformAppURL
-	}
+// The three platform console auth mails are enqueued as outbox_events rows in
+// the transaction that writes what they announce, and rendered and delivered by
+// the resident worker. The rows carry no tenant_id: a platform operator belongs
+// to no tenant, and publira_platform is BYPASSRLS, so the insert is not subject
+// to the tenant-isolation policy.
 
-	parsed, err := url.Parse(baseURL)
+func enqueuePlatformPasswordResetEmail(ctx context.Context, queries *dbmodels.Queries, tokenID uuid.UUID, token string) error {
+	payload, err := json.Marshal(outbox.PlatformPasswordResetEmailPayload{
+		TokenID: tokenID.String(),
+		Token:   token,
+	})
 	if err != nil {
-		return "", err
+		return fmt.Errorf("marshal platform password reset email event: %w", err)
 	}
-	if parsed.Scheme == "" || parsed.Host == "" {
-		return "", errors.New("platform app url is invalid")
-	}
-
-	confirmURL := parsed.ResolveReference(&url.URL{Path: "/confirm-password"})
-	query := confirmURL.Query()
-	query.Set("token", token)
-	confirmURL.RawQuery = query.Encode()
-	return confirmURL.String(), nil
+	return insertPlatformOutboxEvent(ctx, queries, outbox.EventTypePlatformPasswordResetEmail, payload,
+		"platform_password_reset_email:"+tokenID.String())
 }
 
-func platformEmailChangeConfirmationURL(token string) (string, error) {
-	baseURL := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_APP_URL"))
-	if baseURL == "" {
-		baseURL = defaultPlatformAppURL
-	}
-
-	parsed, err := url.Parse(baseURL)
-	if err != nil {
-		return "", err
-	}
-	if parsed.Scheme == "" || parsed.Host == "" {
-		return "", errors.New("platform app url is invalid")
-	}
-
-	confirmURL := parsed.ResolveReference(&url.URL{Path: "/confirm-email"})
-	query := confirmURL.Query()
-	query.Set("token", token)
-	confirmURL.RawQuery = query.Encode()
-	return confirmURL.String(), nil
-}
-
-func (s *platformServer) resolvePlatformSMTPSettings(ctx context.Context) (emailsettings.SMTPSettings, error) {
-	platformConfig, err := s.queriesFor(ctx).GetPlatformSMTPConfig(ctx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
-		}
-		return emailsettings.SMTPSettings{}, s.internalDBError(ctx, "failed to get platform smtp config", err)
-	}
-
-	password, decryptErr := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, s.encryptor)
-	if decryptErr != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
-	}
-
-	settings := platformEmailSettingsFromConfig(platformConfig, password)
-	if validateErr := emailsettings.Validate(settings, true); validateErr != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, validateErr)
-	}
-	return settings, nil
-}
-
-func (s *platformServer) sendPlatformPasswordResetEmail(
+func enqueuePlatformEmailChangeConfirmationEmail(
 	ctx context.Context,
-	recipientEmail string,
-	token string,
-) error {
-	if s.mailer == nil {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
-	}
-
-	settings, err := s.resolvePlatformSMTPSettings(ctx)
-	if err != nil {
-		return err
-	}
-
-	confirmURL, err := platformPasswordResetConfirmationURL(token)
-	if err != nil {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
-	}
-
-	subject := "Publira Platform Console パスワード再設定"
-	body := "Platform Console アカウントのパスワード再設定リクエストを受け付けました。\r\n" +
-		"以下のリンクを開いて新しいパスワードを設定してください。\r\n\r\n" +
-		confirmURL + "\r\n\r\n" +
-		"このリンクの有効期限は24時間です。\r\n" +
-		"心当たりがない場合、このメールは破棄してください。\r\n"
-	if err := s.mailer.SendEmail(ctx, settings, recipientEmail, subject, body); err != nil {
-		return connect.NewError(connect.CodeInternal, err)
-	}
-	return nil
-}
-
-func (s *platformServer) sendPlatformEmailChangeVerificationEmail(
-	ctx context.Context,
-	recipientEmail string,
+	queries *dbmodels.Queries,
+	tokenID uuid.UUID,
 	recipientKind string,
-	currentEmail string,
-	newEmail string,
 	token string,
 ) error {
-	if s.mailer == nil {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
-	}
-
-	settings, err := s.resolvePlatformSMTPSettings(ctx)
+	payload, err := json.Marshal(outbox.PlatformEmailChangeConfirmationEmailPayload{
+		TokenID: tokenID.String(),
+		Token:   token,
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal platform email change confirmation email event: %w", err)
 	}
-
-	confirmURL, err := platformEmailChangeConfirmationURL(token)
-	if err != nil {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
-	}
-
-	subject := "Publira Platform Console メールアドレス変更確認"
-	body := "Platform Console アカウントのメールアドレス変更リクエストを受け付けました。\r\n"
-	if recipientKind == "current_email" {
-		body += "現在のメールアドレス側の確認が必要です。\r\n"
-	} else {
-		body += "新しいメールアドレス側の確認が必要です。\r\n"
-	}
-	body += "以下のリンクを開いて確認を完了してください。\r\n\r\n" +
-		confirmURL + "\r\n\r\n" +
-		"このリンクの有効期限は24時間です。\r\n" +
-		"心当たりがない場合、このメールは破棄してください。\r\n\r\n" +
-		"現在のメールアドレス: " + currentEmail + "\r\n" +
-		"新しいメールアドレス: " + newEmail + "\r\n"
-
-	if err := s.mailer.SendEmail(ctx, settings, recipientEmail, subject, body); err != nil {
-		return connect.NewError(connect.CodeInternal, err)
-	}
-	return nil
+	// One row per side, so a failure to deliver to one address is retried on its
+	// own rather than resending the other.
+	return insertPlatformOutboxEvent(ctx, queries, outbox.EventTypePlatformEmailChangeConfirmationEmail, payload,
+		"platform_email_change_confirmation_email:"+tokenID.String()+":"+recipientKind)
 }
 
-func (s *platformServer) sendPlatformEmailChangedNotice(
-	ctx context.Context,
-	oldEmail string,
-	newEmail string,
-) error {
-	if s.mailer == nil {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
-	}
-
-	settings, err := s.resolvePlatformSMTPSettings(ctx)
+func enqueuePlatformEmailChangedNoticeEmail(ctx context.Context, queries *dbmodels.Queries, tokenID uuid.UUID) error {
+	payload, err := json.Marshal(outbox.PlatformEmailChangedNoticeEmailPayload{TokenID: tokenID.String()})
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal platform email changed notice email event: %w", err)
 	}
+	return insertPlatformOutboxEvent(ctx, queries, outbox.EventTypePlatformEmailChangedNoticeEmail, payload,
+		"platform_email_changed_notice_email:"+tokenID.String())
+}
 
-	subject := "Publira Platform Console メールアドレス変更完了"
-	body := "Platform Console アカウントのメールアドレスが変更されました。\r\n\r\n" +
-		"変更前: " + oldEmail + "\r\n" +
-		"変更後: " + newEmail + "\r\n\r\n" +
-		"この変更に心当たりがない場合は、すぐにパスワード変更などの対応を行ってください。\r\n"
-
-	if err := s.mailer.SendEmail(ctx, settings, oldEmail, subject, body); err != nil {
-		return connect.NewError(connect.CodeInternal, err)
+func insertPlatformOutboxEvent(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	eventType string,
+	payload []byte,
+	idempotencyKey string,
+) error {
+	_, err := queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		EventType:      eventType,
+		Payload:        payload,
+		IdempotencyKey: idempotencyKey,
+		AvailableAt:    time.Now().UTC(),
+	})
+	// The insert is a no-op when the same key is already queued, and :one then
+	// returns no rows.
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
 	}
-	return nil
+	return err
 }
 
 func (s *platformServer) Login(
@@ -332,11 +238,6 @@ func (s *platformServer) RequestPasswordReset(
 		return nil, s.internalDBError(ctx, "failed to get platform user for password reset", err)
 	}
 
-	if err := s.queriesFor(ctx).DeletePlatformUserPasswordResetTokensByUserID(ctx, platformUser.ID); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_delete_failed")
-		return nil, s.internalDBError(ctx, "failed to delete password reset tokens", err, "platform_user_id", platformUser.ID.String())
-	}
-
 	rawToken := make([]byte, 32)
 	if _, err := rand.Read(rawToken); err != nil {
 		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_generation_failed")
@@ -349,21 +250,34 @@ func (s *platformServer) RequestPasswordReset(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	_, err = s.queriesFor(ctx).CreatePlatformUserPasswordResetToken(ctx, dbmodels.CreatePlatformUserPasswordResetTokenParams{
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin password reset transaction", err, "platform_user_id", platformUser.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	if err := txq.DeletePlatformUserPasswordResetTokensByUserID(ctx, platformUser.ID); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_delete_failed")
+		return nil, s.internalDBError(ctx, "failed to delete password reset tokens", err, "platform_user_id", platformUser.ID.String())
+	}
+	if _, err := txq.CreatePlatformUserPasswordResetToken(ctx, dbmodels.CreatePlatformUserPasswordResetTokenParams{
 		ID:             tokenID,
 		PlatformUserID: platformUser.ID,
 		TokenHash:      auth.HashToken(resetToken),
 		ExpiresAt:      time.Now().Add(platformPasswordResetTokenTTL),
-	})
-	if err != nil {
+	}); err != nil {
 		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_create_failed")
 		return nil, s.internalDBError(ctx, "failed to create password reset token", err, "platform_user_id", platformUser.ID.String())
 	}
-
-	if err := s.sendPlatformPasswordResetEmail(ctx, platformUser.Email, resetToken); err != nil {
-		_ = s.queriesFor(ctx).DeletePlatformUserPasswordResetTokensByUserID(ctx, platformUser.ID)
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "reset_email_send_failed")
-		return nil, err
+	if err := enqueuePlatformPasswordResetEmail(ctx, txq, tokenID, resetToken); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "reset_email_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue platform password reset email", err, "platform_user_id", platformUser.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit password reset transaction", err, "platform_user_id", platformUser.ID.String())
 	}
 
 	auth.AuditEvent(req.Header(), "platform_password_reset_request", "success", "", platformUser.PublicID, "requested")
@@ -504,11 +418,6 @@ func (s *platformServer) RequestEmailChange(
 		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "platform_user_id", platformUser.ID.String())
 	}
 
-	if err := s.queriesFor(ctx).DeletePlatformUserEmailChangeTokensByUserID(ctx, platformUser.ID); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_delete_failed")
-		return nil, s.internalDBError(ctx, "failed to delete email change tokens", err, "platform_user_id", platformUser.ID.String())
-	}
-
 	rawToken := make([]byte, 32)
 	if _, err := rand.Read(rawToken); err != nil {
 		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_generation_failed")
@@ -527,7 +436,19 @@ func (s *platformServer) RequestEmailChange(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	_, err = s.queriesFor(ctx).CreatePlatformUserEmailChangeToken(ctx, dbmodels.CreatePlatformUserEmailChangeTokenParams{
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin email change transaction", err, "platform_user_id", platformUser.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	if err := txq.DeletePlatformUserEmailChangeTokensByUserID(ctx, platformUser.ID); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_delete_failed")
+		return nil, s.internalDBError(ctx, "failed to delete email change tokens", err, "platform_user_id", platformUser.ID.String())
+	}
+	if _, err := txq.CreatePlatformUserEmailChangeToken(ctx, dbmodels.CreatePlatformUserEmailChangeTokenParams{
 		ID:                    tokenID,
 		PlatformUserID:        platformUser.ID,
 		CurrentEmail:          platformUser.Email,
@@ -535,24 +456,24 @@ func (s *platformServer) RequestEmailChange(
 		CurrentEmailTokenHash: auth.HashToken(currentEmailToken),
 		NewEmailTokenHash:     auth.HashToken(newEmailToken),
 		ExpiresAt:             time.Now().Add(platformEmailChangeTokenTTL),
-	})
-	if err != nil {
+	}); err != nil {
 		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_create_failed")
 		return nil, s.internalDBError(ctx, "failed to create email change token", err, "platform_user_id", platformUser.ID.String())
 	}
-
-	if err := s.sendPlatformEmailChangeVerificationEmail(ctx, platformUser.Email, "current_email", platformUser.Email, newEmail, currentEmailToken); err != nil {
-		_ = s.queriesFor(ctx).DeletePlatformUserEmailChangeTokensByUserID(ctx, platformUser.ID)
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "current_email_send_failed")
-		return nil, err
+	if err := enqueuePlatformEmailChangeConfirmationEmail(ctx, txq, tokenID, "current_email", currentEmailToken); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "current_email_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue platform email change confirmation email", err, "platform_user_id", platformUser.ID.String())
 	}
-	if err := s.sendPlatformEmailChangeVerificationEmail(ctx, newEmail, "new_email", platformUser.Email, newEmail, newEmailToken); err != nil {
-		_ = s.queriesFor(ctx).DeletePlatformUserEmailChangeTokensByUserID(ctx, platformUser.ID)
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "new_email_send_failed")
-		return nil, err
+	if err := enqueuePlatformEmailChangeConfirmationEmail(ctx, txq, tokenID, "new_email", newEmailToken); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "new_email_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue platform email change confirmation email", err, "platform_user_id", platformUser.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit email change transaction", err, "platform_user_id", platformUser.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "platform_email_change_request", "success", "", platformUser.PublicID, "confirmation_emails_sent")
+	auth.AuditEvent(req.Header(), "platform_email_change_request", "success", "", platformUser.PublicID, "confirmation_emails_queued")
 	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceRequestEmailChangeResponse{Requested: true}), nil
 }
 
@@ -647,7 +568,15 @@ func (s *platformServer) ConfirmEmailChange(
 		}), nil
 	}
 
-	if _, err := s.queriesFor(ctx).UpdatePlatformUserEmailByID(ctx, dbmodels.UpdatePlatformUserEmailByIDParams{
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin email change confirmation transaction", err, "platform_user_id", platformUser.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	if _, err := txq.UpdatePlatformUserEmailByID(ctx, dbmodels.UpdatePlatformUserEmailByIDParams{
 		ID:    platformUser.ID,
 		Email: changeToken.NewEmail,
 	}); err != nil {
@@ -658,13 +587,17 @@ func (s *platformServer) ConfirmEmailChange(
 		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "email_update_failed")
 		return nil, s.internalDBError(ctx, "failed to update platform user email", err, "platform_user_id", platformUser.ID.String())
 	}
-	if err := s.queriesFor(ctx).MarkPlatformUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
+	if err := txq.MarkPlatformUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
 		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "request_complete_failed")
 		return nil, s.internalDBError(ctx, "failed to complete email change token", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
 	}
-	if err := s.sendPlatformEmailChangedNotice(ctx, changeToken.CurrentEmail, changeToken.NewEmail); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "old_email_notice_failed")
-		return nil, err
+	if err := enqueuePlatformEmailChangedNoticeEmail(ctx, txq, changeToken.ID); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "old_email_notice_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue platform email changed notice email", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit email change confirmation transaction", err, "platform_user_id", platformUser.ID.String())
 	}
 
 	auth.AuditEvent(req.Header(), "platform_email_change_confirm", "success", "", platformUser.PublicID, "email_changed")

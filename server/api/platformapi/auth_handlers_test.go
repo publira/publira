@@ -1,7 +1,6 @@
 package platformapi
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -16,53 +15,24 @@ import (
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auth"
-	"github.com/publira/publira/server/internal/emailsettings"
-	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/outbox"
 )
-
-type passwordResetMailerStub struct {
-	recipient string
-	subject   string
-	body      string
-	settings  emailsettings.SMTPSettings
-	err       error
-	sentTo    []string
-}
-
-func (s *passwordResetMailerStub) SendEmail(
-	_ context.Context,
-	settings emailsettings.SMTPSettings,
-	recipient string,
-	subject string,
-	body string,
-) error {
-	s.settings = settings
-	s.recipient = recipient
-	s.subject = subject
-	s.body = body
-	s.sentTo = append(s.sentTo, recipient)
-	return s.err
-}
-
-func newPasswordResetEncryptor(t *testing.T) *secretcrypto.Manager {
-	t.Helper()
-	mgr, err := secretcrypto.NewManager(map[string][]byte{"k1": bytes.Repeat([]byte{1}, 32)}, "k1")
-	if err != nil {
-		t.Fatalf("NewManager: %v", err)
-	}
-	return mgr
-}
 
 func platformPasswordResetTokenColumns() []string {
 	return []string{"id", "platform_user_id", "token_hash", "expires_at", "completed_at", "created_at"}
 }
 
-func platformEmailChangeTokenColumns() []string {
-	return []string{"id", "platform_user_id", "current_email", "new_email", "current_email_token_hash", "new_email_token_hash", "current_email_confirmed_at", "new_email_confirmed_at", "expires_at", "completed_at", "created_at", "matched_target"}
+func outboxEventColumns() []string {
+	return []string{"id", "tenant_id", "event_type", "payload", "idempotency_key", "status", "attempts", "available_at", "last_error", "created_at", "updated_at"}
 }
 
-func platformSMTPColumnsForAuth() []string {
-	return []string{"singleton", "host", "port", "username", "password_encrypted", "encryption", "from_address", "reply_to", "created_at", "updated_at"}
+func newOutboxEventRow(eventType string) *sqlmock.Rows {
+	return sqlmock.NewRows(outboxEventColumns()).
+		AddRow(uuid.Must(uuid.NewV7()), nil, eventType, []byte("{}"), "key", "pending", int32(0), time.Now(), nil, time.Now(), time.Now())
+}
+
+func platformEmailChangeTokenColumns() []string {
+	return []string{"id", "platform_user_id", "current_email", "new_email", "current_email_token_hash", "new_email_token_hash", "current_email_confirmed_at", "new_email_confirmed_at", "expires_at", "completed_at", "created_at", "matched_target"}
 }
 
 func TestPlatformAuthLoginSuccess(t *testing.T) {
@@ -121,20 +91,16 @@ func TestPlatformAuthLoginDatabaseErrorIsHidden(t *testing.T) {
 
 func TestPlatformAuthRequestPasswordResetSuccess(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	server.encryptor = newPasswordResetEncryptor(t)
-	mailer := &passwordResetMailerStub{}
-	server.mailer = mailer
 	now := time.Now()
 	userID := uuid.Must(uuid.NewV7())
-	encryptedPassword, err := server.encryptor.EncryptString("smtp-secret")
-	if err != nil {
-		t.Fatalf("EncryptString: %v", err)
-	}
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
 		WithArgs("platform@example.com").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
+	// The token and the mail that carries it are written together, so a request
+	// that cannot be announced leaves no usable token behind.
+	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(testDeletePlatformUserPasswordResetTokens)).
 		WithArgs(userID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -142,9 +108,10 @@ func TestPlatformAuthRequestPasswordResetSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), userID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(platformPasswordResetTokenColumns()).
 			AddRow(uuid.Must(uuid.NewV7()), userID, "token-hash", now.Add(time.Hour), nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSMTPConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(platformSMTPColumnsForAuth()).
-			AddRow(true, "smtp.example.com", 587, "mailer", encryptedPassword, "starttls", "no-reply@example.com", nil, now, now))
+	mock.ExpectQuery(regexp.QuoteMeta(testInsertOutboxEventQuery)).
+		WithArgs(sqlmock.AnyArg(), nil, outbox.EventTypePlatformPasswordResetEmail, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformPasswordResetEmail))
+	mock.ExpectCommit()
 
 	resp, err := server.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
 		Email: "platform@example.com",
@@ -154,12 +121,6 @@ func TestPlatformAuthRequestPasswordResetSuccess(t *testing.T) {
 	}
 	if !resp.Msg.Requested {
 		t.Fatal("requested = false, want true")
-	}
-	if mailer.recipient != "platform@example.com" {
-		t.Fatalf("mailer.recipient = %q, want platform@example.com", mailer.recipient)
-	}
-	if mailer.subject == "" || mailer.body == "" {
-		t.Fatal("password reset email was not populated")
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -263,18 +224,11 @@ func TestPlatformAuthConfirmPasswordResetInvalidToken(t *testing.T) {
 
 func TestPlatformAuthRequestEmailChangeSuccess(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	server.encryptor = newPasswordResetEncryptor(t)
-	mailer := &passwordResetMailerStub{}
-	server.mailer = mailer
 	now := time.Now()
 	userID := uuid.Must(uuid.NewV7())
 	passwordHashBytes, err := bcrypt.GenerateFromPassword([]byte("current-password"), bcrypt.DefaultCost)
 	if err != nil {
 		t.Fatalf("GenerateFromPassword: %v", err)
-	}
-	encryptedPassword, err := server.encryptor.EncryptString("smtp-secret")
-	if err != nil {
-		t.Fatalf("EncryptString: %v", err)
 	}
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByPublicIDQuery)).
@@ -287,6 +241,7 @@ func TestPlatformAuthRequestEmailChangeSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
 		WithArgs("next@example.com").
 		WillReturnError(sql.ErrNoRows)
+	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(testDeletePlatformEmailChangeTokens)).
 		WithArgs(userID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -294,12 +249,14 @@ func TestPlatformAuthRequestEmailChangeSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), userID, "platform@example.com", "next@example.com", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "platform_user_id", "current_email", "new_email", "current_email_token_hash", "new_email_token_hash", "current_email_confirmed_at", "new_email_confirmed_at", "expires_at", "completed_at", "created_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), userID, "platform@example.com", "next@example.com", "h1", "h2", nil, nil, now.Add(time.Hour), nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSMTPConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(platformSMTPColumnsForAuth()).
-			AddRow(true, "smtp.example.com", 587, "mailer", encryptedPassword, "starttls", "no-reply@example.com", nil, now, now))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSMTPConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(platformSMTPColumnsForAuth()).
-			AddRow(true, "smtp.example.com", 587, "mailer", encryptedPassword, "starttls", "no-reply@example.com", nil, now, now))
+	// One event per address to confirm, so a delivery failure to one side is
+	// retried without resending the other.
+	for range 2 {
+		mock.ExpectQuery(regexp.QuoteMeta(testInsertOutboxEventQuery)).
+			WithArgs(sqlmock.AnyArg(), nil, outbox.EventTypePlatformEmailChangeConfirmationEmail, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+			WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformEmailChangeConfirmationEmail))
+	}
+	mock.ExpectCommit()
 
 	resp, err := server.RequestEmailChange(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest{
 		CurrentEmail:    "platform@example.com",
@@ -311,12 +268,6 @@ func TestPlatformAuthRequestEmailChangeSuccess(t *testing.T) {
 	}
 	if !resp.Msg.Requested {
 		t.Fatal("requested = false, want true")
-	}
-	if len(mailer.sentTo) != 2 {
-		t.Fatalf("sent email count = %d, want 2", len(mailer.sentTo))
-	}
-	if mailer.sentTo[0] != "platform@example.com" || mailer.sentTo[1] != "next@example.com" {
-		t.Fatalf("recipients = %v, want [platform@example.com next@example.com]", mailer.sentTo)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -344,16 +295,9 @@ func TestPlatformAuthVerifyEmailChangeTokenValid(t *testing.T) {
 
 func TestPlatformAuthConfirmEmailChangeSuccess(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	server.encryptor = newPasswordResetEncryptor(t)
-	mailer := &passwordResetMailerStub{}
-	server.mailer = mailer
 	now := time.Now()
 	userID := uuid.Must(uuid.NewV7())
 	tokenID := uuid.Must(uuid.NewV7())
-	encryptedPassword, err := server.encryptor.EncryptString("smtp-secret")
-	if err != nil {
-		t.Fatalf("EncryptString: %v", err)
-	}
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformEmailChangeTokenByHash)).
 		WithArgs(auth.HashToken("confirm-token")).
@@ -366,6 +310,9 @@ func TestPlatformAuthConfirmEmailChangeSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(testMarkPlatformEmailChangeNewConfirmed)).
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	// The stored address, the completion, and the notice announcing both go in
+	// together: the previous address is never told about a change that failed.
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformUserEmailByID)).
 		WithArgs(userID, "next@example.com").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
@@ -373,9 +320,10 @@ func TestPlatformAuthConfirmEmailChangeSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(testMarkPlatformEmailChangeCompleted)).
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSMTPConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(platformSMTPColumnsForAuth()).
-			AddRow(true, "smtp.example.com", 587, "mailer", encryptedPassword, "starttls", "no-reply@example.com", nil, now, now))
+	mock.ExpectQuery(regexp.QuoteMeta(testInsertOutboxEventQuery)).
+		WithArgs(sqlmock.AnyArg(), nil, outbox.EventTypePlatformEmailChangedNoticeEmail, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformEmailChangedNoticeEmail))
+	mock.ExpectCommit()
 
 	resp, err := server.ConfirmEmailChange(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest{Token: "confirm-token"}))
 	if err != nil {
@@ -383,9 +331,6 @@ func TestPlatformAuthConfirmEmailChangeSuccess(t *testing.T) {
 	}
 	if !resp.Msg.Confirmed || !resp.Msg.Changed {
 		t.Fatalf("response = %+v, want confirmed=true changed=true", resp.Msg)
-	}
-	if mailer.recipient != "platform@example.com" {
-		t.Fatalf("notice recipient = %q, want platform@example.com", mailer.recipient)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
