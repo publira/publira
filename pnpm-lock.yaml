@@ -801,12 +801,9 @@ importers:
       '@publira/i18n':
         specifier: workspace:*
         version: link:../i18n
-      clsx:
-        specifier: 2.1.1
-        version: 2.1.1
-      tailwind-merge:
-        specifier: 3.6.0
-        version: 3.6.0
+      cn:
+        specifier: 0.2.4
+        version: 0.2.4
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -2813,6 +2810,11 @@ packages:
     resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
     engines: {node: '>=0.10.0'}
 
+  cn@0.2.4:
+    resolution: {integrity: sha512-SzQvoh5FwizWtQg9+JueKdjWhlfCZMdu5DqNHm9q1wUlRVmKb9WXlepR9bTTbPwzEOyX1ujJ6lcCppmn3bNUCg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   color-convert@2.0.1:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
     engines: {node: '>=7.0.0'}
@@ -4796,9 +4798,6 @@ packages:
     resolution: {integrity: sha512-yEFYrVhod+hdNyx7g5Bnkkb0G6si8HJurOoOEgC8B/O0uXLHlaey/65KRv6cuWBNhBgHKAROVpc7QyYqE5gFng==}
     engines: {node: '>=20'}
 
-  tailwind-merge@3.6.0:
-    resolution: {integrity: sha512-uxL7qAVQriqRQPAyK3pj66VqskWqoZ37PW94jwOTwNfq/z9oyu1V+eqrZqtR2+fCiXdYOZe/Modt8GtvqNzu+w==}
-
   tailwindcss@4.3.3:
     resolution: {integrity: sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ==}
 
@@ -6701,6 +6700,8 @@ snapshots:
   clsx@2.1.1: {}
 
   cluster-key-slot@1.1.2: {}
+
+  cn@0.2.4: {}
 
   color-convert@2.0.1:
     dependencies:
@@ -9042,8 +9043,6 @@ snapshots:
       '@pkgr/core': 0.3.6
 
   tagged-tag@1.0.0: {}
-
-  tailwind-merge@3.6.0: {}
 
   tailwindcss@4.3.3: {}
 
