@@ -134,6 +134,27 @@ export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
 };
 
 /**
+ * Remove labels created by admin tests.
+ *
+ * A label's images and image variants cascade from it. A series does not, so
+ * this is only for labels no series was attached to — the eye-catch suite
+ * creates one per test and never gives it a series.
+ */
+export const deleteLabelsByPublicIds = (publicIds: readonly string[]): void => {
+  const quoted: string[] = [];
+  for (const publicId of publicIds) {
+    const trimmed = publicId.trim();
+    if (trimmed.length > 0) {
+      quoted.push(quoteSqlLiteral(trimmed));
+    }
+  }
+  if (quoted.length === 0) {
+    return;
+  }
+  runSql(`DELETE FROM labels WHERE public_id IN (${quoted.join(", ")});`);
+};
+
+/**
  * Remove tenants created by platform tenant-ops tests.
  * Most tenant-scoped tables cascade; series does not, so wipe empty
  * series/episodes first for safety. Platform audit log rows keep their
