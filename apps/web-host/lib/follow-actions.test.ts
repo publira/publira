@@ -80,7 +80,7 @@ describe("toggleFollowAction", () => {
       targetKind: "series",
       tenantId,
     });
-    // 再ログインへ送るときにリーダーの locale を保つ。
+    // The reader's locale is kept when they are sent to sign in again.
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
       "en",
       "/series/SERIES01",
@@ -97,7 +97,7 @@ describe("toggleFollowAction", () => {
       null,
       formData({
         intent: "unfollow",
-        locale: "ja",
+        locale: "en",
         publicId: "AUTHOR01",
         returnTo: "/authors/AUTHOR01",
         targetKind: "author",
@@ -107,11 +107,11 @@ describe("toggleFollowAction", () => {
 
     expect(result).toEqual({
       isFollowing: false,
-      message: "フォローを解除しました。",
+      message: "You are no longer following this.",
       ok: true,
     });
     expect(mockUnfollowTarget).toHaveBeenCalledWith({
-      locale: "ja",
+      locale: "en",
       publicId: "AUTHOR01",
       targetKind: "author",
       tenantId,
@@ -127,7 +127,7 @@ describe("toggleFollowAction", () => {
       null,
       formData({
         intent: "unfollow",
-        locale: "ja",
+        locale: "en",
         publicId: "SERIES01",
         returnTo: "/settings/follows",
         targetKind: "series",
@@ -137,11 +137,11 @@ describe("toggleFollowAction", () => {
 
     expect(result).toEqual({
       isFollowing: false,
-      message: "フォローを解除しました。",
+      message: "You are no longer following this.",
       ok: true,
     });
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
-      "ja",
+      "en",
       "/settings/follows",
       tenantId
     );
@@ -155,7 +155,7 @@ describe("toggleFollowAction", () => {
       null,
       formData({
         intent: "follow",
-        locale: "ja",
+        locale: "en",
         publicId: "SERIES01",
         returnTo: "/series/SERIES01",
         targetKind: "episode",
@@ -164,7 +164,7 @@ describe("toggleFollowAction", () => {
     );
 
     expect(result).toEqual({
-      message: "入力内容を確認してください。",
+      message: "Please check the information you entered.",
       ok: false,
     });
     expect(mockFollowTarget).not.toHaveBeenCalled();
@@ -173,7 +173,7 @@ describe("toggleFollowAction", () => {
 
   it("If the API rejects, return a message and do not update the tag.", async () => {
     mockFollowTarget.mockResolvedValueOnce({
-      message: "対象が見つかりません。",
+      message: "The requested item could not be found.",
       ok: false,
     });
 
@@ -182,7 +182,7 @@ describe("toggleFollowAction", () => {
       null,
       formData({
         intent: "follow",
-        locale: "ja",
+        locale: "en",
         publicId: "MISSING01",
         returnTo: "/series/MISSING01",
         targetKind: "series",
@@ -191,7 +191,7 @@ describe("toggleFollowAction", () => {
     );
 
     expect(result).toEqual({
-      message: "対象が見つかりません。",
+      message: "The requested item could not be found.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

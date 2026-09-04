@@ -33,7 +33,7 @@ describe("cursorTokenSchema", () => {
     expect(cursorTokenSchema.parse("a".repeat(8196))).toBe("");
   });
 
-  it("A regular token created from the author name and series title upper limit will be passed.", () => {
+  it("accepts a token built from non-ASCII author names and titles at the length limit", () => {
     const name = "あ".repeat(255);
     const emojiTitle = "😀".repeat(255);
     const id = "00000000-0000-0000-0000-000000000000";
@@ -47,10 +47,10 @@ describe("cursorTokenSchema", () => {
   });
 
   it("Discard tokens that are too long for base64url", () => {
-    // 4 で割った余りが 1 になる長さは、パディング無し base64url では作れない。
+    // Unpadded base64url can never produce a length with a remainder of 1 modulo 4.
     expect(cursorTokenSchema.parse("a")).toBe("");
     expect(cursorTokenSchema.parse("abcde")).toBe("");
-    // 余り 0 / 2 / 3 は正当な長さなので通す。
+    // Remainders of 0, 2, and 3 are valid lengths, so they pass.
     expect(cursorTokenSchema.parse("ab")).toBe("ab");
     expect(cursorTokenSchema.parse("abc")).toBe("abc");
     expect(cursorTokenSchema.parse("abcd")).toBe("abcd");

@@ -10,8 +10,8 @@ import type { FollowListItem } from "#lib/follow-list";
 import { FollowList } from "./follow-list";
 
 vi.mock("#components/locale-provider", () => ({
-  useLocale: () => "ja",
-  useTenantDefaultLocale: () => "ja",
+  useLocale: () => "en",
+  useTenantDefaultLocale: () => "en",
 }));
 
 vi.mock("next/link", () => ({
@@ -33,8 +33,8 @@ vi.mock("next/link", () => ({
 // provide. The catalog is the real one, so the assertions stay on the copy a
 // reader actually sees.
 vi.mock("#lib/locale", () => ({
-  getLocale: () => Promise.resolve("ja"),
-  loadHostMessages: () => Promise.resolve(sharedCatalog("ja")),
+  getLocale: () => Promise.resolve("en"),
+  loadHostMessages: () => Promise.resolve(sharedCatalog("en")),
 }));
 
 vi.mock("./unfollow-button", () => ({
@@ -54,7 +54,7 @@ const follow = (overrides: Partial<FollowListItem> = {}): FollowListItem => ({
   href: "/series/SERIES01",
   publicId: "SERIES01",
   targetKind: "series",
-  title: "公開シリーズ",
+  title: "Published Series",
   unavailable: false,
   ...overrides,
 });
@@ -88,14 +88,16 @@ describe("FollowList", () => {
     await renderList();
 
     expect(
-      screen.getByText("フォロー中の作品・著者はありません。")
+      screen.getByText("You are not following any series or authors.")
     ).toBeDefined();
     expect(
-      screen.getByText(/非公開になった対象は一覧から外れます/u)
+      screen.getByText(
+        /Anything that stops being published drops off the list/u
+      )
     ).toBeDefined();
-    expect(screen.queryByLabelText("フォロー一覧ページング")).toBeNull();
+    expect(screen.queryByLabelText("Follows pagination")).toBeNull();
     expect(
-      screen.getByRole("link", { name: "シリーズを探す" }).getAttribute("href")
+      screen.getByRole("link", { name: "Browse series" }).getAttribute("href")
     ).toBe("/series");
   });
 
@@ -103,9 +105,9 @@ describe("FollowList", () => {
     await renderList({ previousToken: "previous", token: "current" });
 
     expect(
-      screen.getByText("このページに表示できるフォローはありません。")
+      screen.getByText("There are no follows on this page.")
     ).toBeDefined();
-    const previous = screen.getByRole("link", { name: "前のページ" });
+    const previous = screen.getByRole("link", { name: "Previous page" });
     expect(previous.getAttribute("href")).toBe(
       "/settings/follows?token=previous"
     );
@@ -120,28 +122,28 @@ describe("FollowList", () => {
           href: "/authors/AUTHOR01",
           publicId: "AUTHOR01",
           targetKind: "author",
-          title: "公開著者",
+          title: "Published Author",
         }),
       ],
       nextToken: "next",
       previousToken: "previous",
     });
 
-    const seriesLink = screen.getByRole("link", { name: "公開シリーズ" });
+    const seriesLink = screen.getByRole("link", { name: "Published Series" });
     expect(seriesLink.getAttribute("href")).toBe("/series/SERIES01");
-    const authorLink = screen.getByRole("link", { name: "公開著者" });
+    const authorLink = screen.getByRole("link", { name: "Published Author" });
     expect(authorLink.getAttribute("href")).toBe("/authors/AUTHOR01");
-    expect(screen.getByText("作品")).toBeDefined();
-    expect(screen.getByText("著者")).toBeDefined();
-    expect(screen.getByText("2026/06/01 9:00")).toBeDefined();
+    expect(screen.getByText("Series")).toBeDefined();
+    expect(screen.getByText("Author")).toBeDefined();
+    expect(screen.getByText("Jun 1, 2026, 9:00 AM")).toBeDefined();
     expect(
-      screen.getByText("「公開シリーズ」のフォローを解除する SERIES01")
+      screen.getByText("Unfollow Published Series SERIES01")
     ).toBeDefined();
     expect(
-      screen.getByRole("link", { name: "前のページ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Previous page" }).getAttribute("href")
     ).toBe("/settings/follows?token=previous");
     expect(
-      screen.getByRole("link", { name: "次のページ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Next page" }).getAttribute("href")
     ).toBe("/settings/follows?token=next");
   });
 
@@ -150,40 +152,36 @@ describe("FollowList", () => {
       items: [
         follow({
           href: undefined,
-          title: "現在公開されていません",
+          title: "Not currently published",
           unavailable: true,
         }),
       ],
     });
 
-    expect(screen.getByText("現在公開されていません")).toBeDefined();
+    expect(screen.getByText("Not currently published")).toBeDefined();
     expect(
-      screen.queryByRole("link", { name: "現在公開されていません" })
+      screen.queryByRole("link", { name: "Not currently published" })
     ).toBeNull();
     expect(
-      screen.queryByText(
-        "「現在公開されていません」のフォローを解除する SERIES01"
-      )
+      screen.queryByText("Unfollow Not currently published SERIES01")
     ).toBeNull();
   });
 
   it("If acquisition fails, only an error will be displayed and an empty list will not be displayed.", async () => {
     await renderList({
-      listErrorMessage: "フォロー一覧を取得できませんでした。",
+      listErrorMessage: "Could not load your follows.",
       nextToken: "next",
       previousToken: "previous",
     });
 
     const sectionError = screen.getByRole("alert");
     expect(sectionError.textContent).toContain(
-      "フォロー一覧を表示できませんでした"
+      "Could not display your follows"
     );
-    expect(sectionError.textContent).toContain(
-      "フォロー一覧を取得できませんでした。"
-    );
+    expect(sectionError.textContent).toContain("Could not load your follows.");
     expect(
-      screen.queryByText("フォロー中の作品・著者はありません。")
+      screen.queryByText("You are not following any series or authors.")
     ).toBeNull();
-    expect(screen.queryByLabelText("フォロー一覧ページング")).toBeNull();
+    expect(screen.queryByLabelText("Follows pagination")).toBeNull();
   });
 });

@@ -59,7 +59,7 @@ describe("catalog.getEpisodeDetail", () => {
         readingPeriodHours: 72,
         scheduledAt: "",
         status: "published",
-        title: "第2話",
+        title: "Episode 2",
       },
       images: [
         {
@@ -83,7 +83,7 @@ describe("catalog.getEpisodeDetail", () => {
       ],
       series: {
         publicId: "SERIES_001",
-        title: "シリーズタイトル",
+        title: "Series Title",
       },
     });
 
@@ -91,7 +91,7 @@ describe("catalog.getEpisodeDetail", () => {
       "TENANT_001",
       "SERIES_001",
       "EP_001",
-      "ja"
+      "en"
     );
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
@@ -101,9 +101,9 @@ describe("catalog.getEpisodeDetail", () => {
     const detail = result.ok ? result.value : null;
     expect(detail?.series).toEqual({
       publicId: "SERIES_001",
-      title: "シリーズタイトル",
+      title: "Series Title",
     });
-    expect(detail?.episode.title).toBe("第2話");
+    expect(detail?.episode.title).toBe("Episode 2");
     expect(detail?.access).toBe("locked");
     expect(detail?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
     expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
@@ -115,12 +115,12 @@ describe("catalog.getEpisodeDetail", () => {
       images: [],
       series: {
         publicId: "SERIES_001",
-        title: "シリーズタイトル",
+        title: "Series Title",
       },
     });
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -134,17 +134,17 @@ describe("catalog.getEpisodeDetail", () => {
         readingPeriodHours: 0,
         scheduledAt: "",
         status: "published",
-        title: "第1話",
+        title: "Episode 1",
       },
       images: [],
       series: {
         publicId: "SERIES_OTHER",
-        title: "別シリーズ",
+        title: "Another Series",
       },
     });
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -154,7 +154,7 @@ describe("catalog.getEpisodeDetail", () => {
     );
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -166,7 +166,7 @@ describe("catalog.getEpisodeDetail", () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(rehydrated);
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -177,7 +177,7 @@ describe("catalog.getEpisodeDetail", () => {
     );
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -192,24 +192,24 @@ describe("catalog.getEpisodeDetail", () => {
         readingPeriodHours: 0,
         scheduledAt: "",
         status: "published",
-        title: "第1話",
+        title: "Episode 1",
       },
       images: [],
-      series: { publicId: "SERIES_001", title: "シリーズタイトル" },
+      series: { publicId: "SERIES_001", title: "Series Title" },
     });
 
     const result = await getEpisodeDetail(
       " TENANT_001 ",
       " SERIES_001 ",
       " EP_001 ",
-      "ja"
+      "en"
     );
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
       publicId: "EP_001",
       tenant: { tenantId: "TENANT_001" },
     });
-    expect(result.ok && result.value?.episode.title).toBe("第1話");
+    expect(result.ok && result.value?.episode.title).toBe("Episode 1");
   });
 
   // A `"use cache"` function must not throw: the fill would fail the whole
@@ -220,10 +220,9 @@ describe("catalog.getEpisodeDetail", () => {
     );
 
     await expect(
-      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "ja")
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
     ).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
   });
@@ -236,7 +235,7 @@ describe("catalog.getEpisodeViewer", () => {
 
   it("If there is no session, return locked without RPC", async () => {
     await expect(
-      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "", "ja")
+      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "", "en")
     ).resolves.toEqual({
       ok: true,
       value: { access: "locked", images: [] },
@@ -255,7 +254,7 @@ describe("catalog.getEpisodeViewer", () => {
         readingPeriodHours: 72,
         scheduledAt: "",
         status: "published",
-        title: "第10話",
+        title: "Episode 10",
       },
       images: [
         {
@@ -268,7 +267,7 @@ describe("catalog.getEpisodeViewer", () => {
           width: 1200,
         },
       ],
-      series: { publicId: "SERIES_001", title: "シリーズタイトル" },
+      series: { publicId: "SERIES_001", title: "Series Title" },
     });
 
     const result = await getEpisodeViewer(
@@ -276,7 +275,7 @@ describe("catalog.getEpisodeViewer", () => {
       "SERIES_001",
       "EP_010",
       "session-token",
-      "ja"
+      "en"
     );
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith(
@@ -316,10 +315,10 @@ describe("catalog.getEpisodeViewer", () => {
         readingPeriodHours: 72,
         scheduledAt: "",
         status: "published",
-        title: "第10話",
+        title: "Episode 10",
       },
       images: [],
-      series: { publicId: "SERIES_001", title: "シリーズタイトル" },
+      series: { publicId: "SERIES_001", title: "Series Title" },
     });
 
     await expect(
@@ -328,7 +327,7 @@ describe("catalog.getEpisodeViewer", () => {
         "SERIES_001",
         "EP_010",
         "session-token",
-        "ja"
+        "en"
       )
     ).resolves.toEqual({
       ok: true,
@@ -347,7 +346,7 @@ describe("catalog.getEpisodeViewer", () => {
         "SERIES_001",
         "EP_010",
         "session-token",
-        "ja"
+        "en"
       )
     ).resolves.toEqual({
       ok: true,
@@ -366,7 +365,7 @@ describe("catalog.getEpisodeViewer", () => {
         "SERIES_001",
         "EP_010",
         "session-token",
-        "ja"
+        "en"
       )
     ).resolves.toEqual({ ok: true, value: null });
   });
@@ -382,10 +381,10 @@ describe("catalog.getEpisodeViewer", () => {
         readingPeriodHours: 72,
         scheduledAt: "",
         status: "published",
-        title: "第10話",
+        title: "Episode 10",
       },
       images: [],
-      series: { publicId: "SERIES_OTHER", title: "別シリーズ" },
+      series: { publicId: "SERIES_OTHER", title: "Another Series" },
     });
 
     await expect(
@@ -394,7 +393,7 @@ describe("catalog.getEpisodeViewer", () => {
         "SERIES_001",
         "EP_010",
         "session-token",
-        "ja"
+        "en"
       )
     ).resolves.toEqual({ ok: true, value: null });
   });
@@ -410,11 +409,10 @@ describe("catalog.getEpisodeViewer", () => {
         "SERIES_001",
         "EP_010",
         "session-token",
-        "ja"
+        "en"
       )
     ).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
   });

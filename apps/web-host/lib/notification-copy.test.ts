@@ -17,17 +17,17 @@ describe("parseNotificationPayload", () => {
       parseNotificationPayload(
         JSON.stringify({
           episode_id: "EP01",
-          episode_title: "第1話",
+          episode_title: "Episode 1",
           extra: "ignored",
           series_id: "SR01",
-          series_title: "作品A",
+          series_title: "Series A",
         })
       )
     ).toEqual({
       episode_id: "EP01",
-      episode_title: "第1話",
+      episode_title: "Episode 1",
       series_id: "SR01",
-      series_title: "作品A",
+      series_title: "Series A",
     });
   });
 
@@ -63,20 +63,20 @@ describe("notificationDisplay", () => {
       notificationDisplay(
         "episode_published",
         {
-          episode_title: "第1話",
+          episode_title: "Episode 1",
           series_id: "SR01",
-          series_title: "作品A",
+          series_title: "Series A",
         },
-        JA
+        EN
       )
     ).toEqual({
-      description: "「第1話」（作品A）が公開されました。",
+      description: "“Episode 1” (Series A) is now available.",
       href: "/series/SR01",
-      title: "新しいエピソードが公開されました",
+      title: "A new episode has been published",
     });
   });
 
-  it("Switch the wording according to the locale", () => {
+  it("words the notification in the reader's locale, so the ja catalog is Japanese", () => {
     expect(
       notificationDisplay(
         "episode_published",
@@ -85,22 +85,22 @@ describe("notificationDisplay", () => {
           series_id: "SR01",
           series_title: "Work A",
         },
-        EN
+        JA
       )
     ).toEqual({
-      description: "“Chapter 1” (Work A) is now available.",
+      description: "「Chapter 1」（Work A）が公開されました。",
       href: "/series/SR01",
-      title: "A new episode has been published",
+      title: "新しいエピソードが公開されました",
     });
   });
 
   it("Don't drop unknown types and make them generic", () => {
     expect(
-      notificationDisplay("episode_publish_failed", { series_id: "SR01" }, JA)
+      notificationDisplay("episode_publish_failed", { series_id: "SR01" }, EN)
     ).toEqual({
-      description: "内容の詳細はありません。",
+      description: "No further details.",
       href: "/series/SR01",
-      title: "通知",
+      title: "Notification",
     });
   });
 });

@@ -60,13 +60,13 @@ describe("listPublishedPageLinks", () => {
           displayInFooter: true,
           id: "page-1",
           slug: "/privacy",
-          title: "プライバシーポリシー",
+          title: "Privacy Policy",
         },
         {
           displayInFooter: true,
           id: "page-2",
           slug: "/terms",
-          title: "利用規約",
+          title: "Terms of Service",
         },
       ],
     });
@@ -80,13 +80,13 @@ describe("listPublishedPageLinks", () => {
       {
         href: "/privacy",
         id: "page-1",
-        label: "プライバシーポリシー",
+        label: "Privacy Policy",
         slug: "/privacy",
       },
       {
         href: "/terms",
         id: "page-2",
-        label: "利用規約",
+        label: "Terms of Service",
         slug: "/terms",
       },
     ]);
@@ -107,7 +107,7 @@ describe("listPublishedPageLinks", () => {
           displayInFooter: true,
           id: "page-1",
           slug: "/privacy",
-          title: "プライバシーポリシー",
+          title: "Privacy Policy",
         },
       ],
     });
@@ -117,7 +117,7 @@ describe("listPublishedPageLinks", () => {
       {
         href: "/privacy",
         id: "page-1",
-        label: "プライバシーポリシー",
+        label: "Privacy Policy",
         slug: "/privacy",
       },
     ]);
@@ -134,17 +134,17 @@ describe("getPublishedPage", () => {
       page: {
         id: "page-1",
         slug: "/privacy",
-        title: "プライバシーポリシー",
+        title: "Privacy Policy",
       },
       version: {
-        contentMarkdown: "# 見出し\n\n本文",
+        contentMarkdown: "# Heading\n\nBody",
         id: "ver-1",
         publishedAt: "2026-04-01T00:00:00Z",
         versionNumber: 2,
       },
     });
 
-    const result = await getPublishedPage("tenant-uuid", "privacy", "ja");
+    const result = await getPublishedPage("tenant-uuid", "privacy", "en");
 
     expect(mockGetPublishedPage).toHaveBeenCalledWith({
       slug: "/privacy",
@@ -153,11 +153,11 @@ describe("getPublishedPage", () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        contentMarkdown: "# 見出し\n\n本文",
+        contentMarkdown: "# Heading\n\nBody",
         id: "page-1",
         publishedAt: "2026-04-01T00:00:00Z",
         slug: "/privacy",
-        title: "プライバシーポリシー",
+        title: "Privacy Policy",
         versionId: "ver-1",
         versionNumber: 2,
       },
@@ -170,7 +170,7 @@ describe("getPublishedPage", () => {
     );
 
     await expect(
-      getPublishedPage("tenant-uuid", "missing", "ja")
+      getPublishedPage("tenant-uuid", "missing", "en")
     ).resolves.toEqual({
       ok: true,
       value: null,
@@ -194,7 +194,7 @@ describe("getPublishedPage", () => {
         page: {
           id: "page-1",
           slug: "privacy",
-          title: "プライバシーポリシー",
+          title: "Privacy Policy",
         },
         version: {
           contentMarkdown: "body",
@@ -204,7 +204,7 @@ describe("getPublishedPage", () => {
         },
       });
 
-    const result = await getPublishedPage("tenant-uuid", "privacy", "ja");
+    const result = await getPublishedPage("tenant-uuid", "privacy", "en");
     expect(result.ok && result.value?.slug).toBe("privacy");
     expect(mockGetPublishedPage).toHaveBeenNthCalledWith(1, {
       slug: "/privacy",
@@ -223,7 +223,7 @@ describe("getPublishedPage", () => {
     });
 
     await expect(
-      getPublishedPage("tenant-uuid", "privacy", "ja")
+      getPublishedPage("tenant-uuid", "privacy", "en")
     ).resolves.toEqual({
       ok: true,
       value: null,
@@ -237,7 +237,7 @@ describe("getPublishedPage", () => {
     });
 
     await expect(
-      getPublishedPage("tenant-uuid", "privacy", "ja")
+      getPublishedPage("tenant-uuid", "privacy", "en")
     ).resolves.toEqual({
       ok: true,
       value: null,
@@ -245,7 +245,7 @@ describe("getPublishedPage", () => {
   });
 
   it("root slug is null", async () => {
-    await expect(getPublishedPage("tenant-uuid", "/", "ja")).resolves.toEqual({
+    await expect(getPublishedPage("tenant-uuid", "/", "en")).resolves.toEqual({
       ok: true,
       value: null,
     });
@@ -253,7 +253,7 @@ describe("getPublishedPage", () => {
   });
 
   it("Empty tenant ID is null without calling API.", async () => {
-    await expect(getPublishedPage("  ", "privacy", "ja")).resolves.toEqual({
+    await expect(getPublishedPage("  ", "privacy", "en")).resolves.toEqual({
       ok: true,
       value: null,
     });
@@ -271,10 +271,9 @@ describe("getPublishedPage", () => {
     );
 
     await expect(
-      getPublishedPage("tenant-uuid", "privacy", "ja")
+      getPublishedPage("tenant-uuid", "privacy", "en")
     ).resolves.toEqual({
-      message:
-        "ページの内容を取得できませんでした。時間をおいて再試行してください。",
+      message: "Could not load the page content. Please try again later.",
       ok: false,
     });
   });

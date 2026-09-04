@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("./client-message", () => ({
-  useHostMessages: () => sharedCatalog("ja"),
+  useHostMessages: () => sharedCatalog("en"),
 }));
 
 vi.mock("./locale-provider", () => ({
@@ -31,16 +31,16 @@ vi.mock("./locale-provider", () => ({
 afterEach(cleanup);
 
 describe("LocaleSwitcher", () => {
-  it("Display a real link to the current page in a popover", () => {
+  it("lists both locales, the Japanese one by its own autonym, as links to the current page", () => {
     render(<LocaleSwitcher />);
 
     const trigger = screen.getByRole("button", {
-      name: "表示言語: English",
+      name: "Language: English",
     });
     trigger.focus();
     fireEvent.click(trigger);
 
-    expect(screen.getByRole("dialog", { name: "表示言語" })).toBeDefined();
+    expect(screen.getByRole("dialog", { name: "Language" })).toBeDefined();
     expect(
       screen.getByRole("link", { name: "日本語" }).getAttribute("href")
     ).toBe("/series/series_01");

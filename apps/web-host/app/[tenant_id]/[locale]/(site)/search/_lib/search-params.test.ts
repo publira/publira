@@ -19,7 +19,7 @@ describe("parseSearchPageSearchParams", () => {
     });
   });
 
-  it("Cut q that is too long at the upper limit", () => {
+  it("truncates an over-long query at the limit, counting non-ASCII characters", () => {
     const longQuery = "あ".repeat(120);
     expect(parseSearchPageSearchParams({ q: longQuery })).toEqual({
       query: "あ".repeat(100),

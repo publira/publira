@@ -6,12 +6,12 @@ describe("parseLoginSearchParams", () => {
   it("reads a same-origin returnTo and a reset flag", () => {
     expect(
       parseLoginSearchParams({
-        error: "  失敗しました  ",
+        error: "  Something went wrong  ",
         reset: "done",
         returnTo: "/my",
       })
     ).toEqual({
-      errorMessage: "失敗しました",
+      errorMessage: "Something went wrong",
       resetDone: true,
       returnToPath: "/my",
       sessionRevoked: false,

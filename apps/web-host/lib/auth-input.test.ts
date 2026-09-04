@@ -85,8 +85,8 @@ describe("authTokenFormSchema", () => {
 
 describe("errorSearchParamSchema", () => {
   it("trims a message and falls back to empty", () => {
-    expect(errorSearchParamSchema.parse("  失敗しました  ")).toBe(
-      "失敗しました"
+    expect(errorSearchParamSchema.parse("  Something went wrong  ")).toBe(
+      "Something went wrong"
     );
     expect(errorSearchParamSchema.parse(null)).toBe("");
   });

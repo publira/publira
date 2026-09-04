@@ -26,25 +26,25 @@ describe("searchPublishedSeries", () => {
       previousToken: "PREV",
       series: [
         {
-          creators: [{ name: "著者A", publicId: "AUTH_A" }],
-          label: { name: "レーベルA", publicId: "LABEL_A" },
+          creators: [{ name: "Author A", publicId: "AUTH_A" }],
+          label: { name: "Label A", publicId: "LABEL_A" },
           publicId: "SERIES_1",
-          synopsis: "あらすじ",
-          title: "シリーズ1",
+          synopsis: "Synopsis",
+          title: "Series 1",
         },
       ],
     });
 
     const result = await searchPublishedSeries(" TENANT_1 ", {
       limit: 12,
-      locale: "ja",
-      query: "シリーズ",
+      locale: "en",
+      query: "Series",
       token: "abc",
     });
 
     expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
       limit: 12,
-      query: "シリーズ",
+      query: "Series",
       tenant: { tenantId: "TENANT_1" },
       token: "abc",
     });
@@ -55,22 +55,22 @@ describe("searchPublishedSeries", () => {
         previousToken: "PREV",
         series: [
           {
-            creatorNames: ["著者A"],
+            creatorNames: ["Author A"],
             creators: [
               {
                 iconImageUrl: "",
-                name: "著者A",
+                name: "Author A",
                 profileText: "",
                 publicId: "AUTH_A",
               },
             ],
             eyeCatchImageUpdatedAt: undefined,
             eyeCatchImageVariants: undefined,
-            labelName: "レーベルA",
+            labelName: "Label A",
             labelPublicId: "LABEL_A",
             publicId: "SERIES_1",
-            synopsis: "あらすじ",
-            title: "シリーズ1",
+            synopsis: "Synopsis",
+            title: "Series 1",
           },
         ],
       },
@@ -84,7 +84,7 @@ describe("searchPublishedSeries", () => {
       series: [],
     });
 
-    await searchPublishedSeries("TENANT_1", { locale: "ja", query: "Seed" });
+    await searchPublishedSeries("TENANT_1", { locale: "en", query: "Seed" });
 
     expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
       limit: 20,
@@ -100,10 +100,9 @@ describe("searchPublishedSeries", () => {
     );
 
     await expect(
-      searchPublishedSeries("TENANT_1", { locale: "ja", query: "Seed" })
+      searchPublishedSeries("TENANT_1", { locale: "en", query: "Seed" })
     ).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
   });

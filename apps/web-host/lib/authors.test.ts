@@ -29,13 +29,13 @@ describe("listPublishedAuthors", () => {
       authors: [
         {
           iconImageUrl: "/images/creators/creator-yamada",
-          name: "山田 太郎",
+          name: "Jane Doe",
           publicId: "CREATOR_YAMADA",
           publishedSeriesCount: 2,
         },
         {
           iconImageUrl: "",
-          name: "鈴木 花子",
+          name: "John Smith",
           publicId: "CREATOR_SUZUKI",
           publishedSeriesCount: 1,
         },
@@ -46,7 +46,7 @@ describe("listPublishedAuthors", () => {
 
     const result = await listPublishedAuthors(" TENANT_1 ", {
       limit: 12,
-      locale: "ja",
+      locale: "en",
       token: "abc",
     });
 
@@ -62,13 +62,13 @@ describe("listPublishedAuthors", () => {
           {
             iconImageUrl: "/images/creators/creator-yamada",
             id: "CREATOR_YAMADA",
-            name: "山田 太郎",
+            name: "Jane Doe",
             seriesCount: 2,
           },
           {
             iconImageUrl: "",
             id: "CREATOR_SUZUKI",
-            name: "鈴木 花子",
+            name: "John Smith",
             seriesCount: 1,
           },
         ],
@@ -85,7 +85,7 @@ describe("listPublishedAuthors", () => {
       previousToken: "",
     });
 
-    await listPublishedAuthors("TENANT_1", { locale: "ja" });
+    await listPublishedAuthors("TENANT_1", { locale: "en" });
 
     expect(mockListPublishedAuthors).toHaveBeenCalledWith({
       limit: 20,
@@ -102,10 +102,9 @@ describe("listPublishedAuthors", () => {
     );
 
     await expect(
-      listPublishedAuthors("TENANT_1", { locale: "ja" })
+      listPublishedAuthors("TENANT_1", { locale: "en" })
     ).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
   });
@@ -120,22 +119,22 @@ describe("getPublishedAuthorDetail", () => {
     mockGetPublishedAuthorDetail.mockResolvedValueOnce({
       author: {
         iconImageUrl: "/images/creators/creator-a",
-        name: "著者A",
-        profileText: "著者Aのプロフィール",
+        name: "Author A",
+        profileText: "Author A profile",
         publicId: "CREATOR_A",
         publishedSeriesCount: 3,
       },
       nextToken: "NEXT_SERIES",
       previousToken: "",
       series: [
-        { publicId: "SERIES_1", title: "シリーズ1" },
-        { publicId: "SERIES_2", title: "シリーズ2" },
+        { publicId: "SERIES_1", title: "Series 1" },
+        { publicId: "SERIES_2", title: "Series 2" },
       ],
     });
 
     const result = await getPublishedAuthorDetail(" TENANT_1 ", " CREATOR_A ", {
       limit: 12,
-      locale: "ja",
+      locale: "en",
       token: "",
     });
 
@@ -150,13 +149,13 @@ describe("getPublishedAuthorDetail", () => {
       value: {
         iconImageUrl: "/images/creators/creator-a",
         id: "CREATOR_A",
-        name: "著者A",
+        name: "Author A",
         nextToken: "NEXT_SERIES",
         previousToken: "",
-        profileText: "著者Aのプロフィール",
+        profileText: "Author A profile",
         series: [
-          { publicId: "SERIES_1", title: "シリーズ1" },
-          { publicId: "SERIES_2", title: "シリーズ2" },
+          { publicId: "SERIES_1", title: "Series 1" },
+          { publicId: "SERIES_2", title: "Series 2" },
         ],
         seriesCount: 3,
       },
@@ -167,7 +166,7 @@ describe("getPublishedAuthorDetail", () => {
     mockGetPublishedAuthorDetail.mockResolvedValueOnce({
       author: {
         iconImageUrl: "",
-        name: "著者A",
+        name: "Author A",
         profileText: "",
         publicId: "CREATOR_A",
         publishedSeriesCount: 1,
@@ -175,17 +174,17 @@ describe("getPublishedAuthorDetail", () => {
       nextToken: "",
       previousToken: "",
       series: [
-        { publicId: "  ", title: "欠番" },
-        { publicId: "SERIES_1", title: " シリーズ1 " },
+        { publicId: "  ", title: "Missing entry" },
+        { publicId: "SERIES_1", title: " Series 1 " },
       ],
     });
 
     const result = await getPublishedAuthorDetail("TENANT_1", "CREATOR_A", {
-      locale: "ja",
+      locale: "en",
     });
 
     expect(result.ok && result.value?.series).toEqual([
-      { publicId: "SERIES_1", title: "シリーズ1" },
+      { publicId: "SERIES_1", title: "Series 1" },
     ]);
   });
 
@@ -198,7 +197,7 @@ describe("getPublishedAuthorDetail", () => {
     });
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "ja" })
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -208,7 +207,7 @@ describe("getPublishedAuthorDetail", () => {
     );
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "UNKNOWN_CREATOR", { locale: "ja" })
+      getPublishedAuthorDetail("TENANT_1", "UNKNOWN_CREATOR", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -220,7 +219,7 @@ describe("getPublishedAuthorDetail", () => {
     mockGetPublishedAuthorDetail.mockRejectedValueOnce(rehydrated);
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "ja" })
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -231,7 +230,7 @@ describe("getPublishedAuthorDetail", () => {
     );
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "ja" })
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -241,10 +240,9 @@ describe("getPublishedAuthorDetail", () => {
     );
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "ja" })
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
     ).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
   });

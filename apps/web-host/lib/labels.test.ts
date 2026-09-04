@@ -23,21 +23,21 @@ describe("getPublishedLabelDetail", () => {
   it("Return 1 page of label details and affiliation series", async () => {
     mockGetPublishedLabelDetail.mockResolvedValueOnce({
       label: {
-        name: "レーベルA",
+        name: "Label A",
         publicId: "LABEL_A",
         publishedSeriesCount: 3,
       },
       nextToken: "NEXT_SERIES",
       previousToken: "",
       series: [
-        { publicId: "SERIES_1", title: "シリーズ1" },
-        { publicId: "SERIES_2", title: "シリーズ2" },
+        { publicId: "SERIES_1", title: "Series 1" },
+        { publicId: "SERIES_2", title: "Series 2" },
       ],
     });
 
     const result = await getPublishedLabelDetail(" TENANT_1 ", " LABEL_A ", {
       limit: 12,
-      locale: "ja",
+      locale: "en",
       token: "",
     });
 
@@ -51,12 +51,12 @@ describe("getPublishedLabelDetail", () => {
       ok: true,
       value: {
         id: "LABEL_A",
-        name: "レーベルA",
+        name: "Label A",
         nextToken: "NEXT_SERIES",
         previousToken: "",
         series: [
-          { publicId: "SERIES_1", title: "シリーズ1" },
-          { publicId: "SERIES_2", title: "シリーズ2" },
+          { publicId: "SERIES_1", title: "Series 1" },
+          { publicId: "SERIES_2", title: "Series 2" },
         ],
         seriesCount: 3,
       },
@@ -66,31 +66,31 @@ describe("getPublishedLabelDetail", () => {
   it("Drop series lines without publicId", async () => {
     mockGetPublishedLabelDetail.mockResolvedValueOnce({
       label: {
-        name: "レーベルA",
+        name: "Label A",
         publicId: "LABEL_A",
         publishedSeriesCount: 1,
       },
       nextToken: "",
       previousToken: "",
       series: [
-        { publicId: "  ", title: "欠番" },
-        { publicId: "SERIES_1", title: " シリーズ1 " },
+        { publicId: "  ", title: "Missing entry" },
+        { publicId: "SERIES_1", title: " Series 1 " },
       ],
     });
 
     const result = await getPublishedLabelDetail("TENANT_1", "LABEL_A", {
-      locale: "ja",
+      locale: "en",
     });
 
     expect(result.ok && result.value?.series).toEqual([
-      { publicId: "SERIES_1", title: "シリーズ1" },
+      { publicId: "SERIES_1", title: "Series 1" },
     ]);
   });
 
   it("Labels with empty publicId are null", async () => {
     mockGetPublishedLabelDetail.mockResolvedValueOnce({
       label: {
-        name: "レーベルA",
+        name: "Label A",
         publicId: "  ",
         publishedSeriesCount: 1,
       },
@@ -100,7 +100,7 @@ describe("getPublishedLabelDetail", () => {
     });
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "ja" })
+      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -113,7 +113,7 @@ describe("getPublishedLabelDetail", () => {
     });
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "ja" })
+      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -123,7 +123,7 @@ describe("getPublishedLabelDetail", () => {
     );
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "UNKNOWN_LABEL", { locale: "ja" })
+      getPublishedLabelDetail("TENANT_1", "UNKNOWN_LABEL", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -133,7 +133,7 @@ describe("getPublishedLabelDetail", () => {
     mockGetPublishedLabelDetail.mockRejectedValueOnce(rehydrated);
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "ja" })
+      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -143,7 +143,7 @@ describe("getPublishedLabelDetail", () => {
     );
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "ja" })
+      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -153,10 +153,9 @@ describe("getPublishedLabelDetail", () => {
     );
 
     await expect(
-      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "ja" })
+      getPublishedLabelDetail("TENANT_1", "LABEL_A", { locale: "en" })
     ).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
   });
