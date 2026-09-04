@@ -34,38 +34,38 @@ describe("listPlatformAuditLogs", () => {
       auditLogs: [
         {
           action: "tenant.created",
-          actorName: "運営 太郎",
+          actorName: "Taylor Reed",
           actorRole: "platform_owner",
           actorUserPublicId: "op_001",
           createdAt: "2026-03-24T01:23:45Z",
           outcome: "success",
           reason: "",
           targetId: "tenant_001",
-          targetName: "テナントA",
+          targetName: "Tenant A",
           targetPublicId: "tenant_001",
           targetType: "tenant",
-          tenantName: "テナントA",
+          tenantName: "Tenant A",
           tenantPublicId: "tenant_001",
         },
       ],
     });
 
-    await expect(listPlatformAuditLogs({ locale: "ja" })).resolves.toEqual({
+    await expect(listPlatformAuditLogs({ locale: "en" })).resolves.toEqual({
       auditLogs: [
         {
           action: "tenant.created",
-          actorName: "運営 太郎",
+          actorName: "Taylor Reed",
           actorRole: "platform_owner",
           actorUserPublicId: "op_001",
           createdAt: "2026-03-24T01:23:45Z",
           outcome: "success",
           reason: "",
           targetId: "tenant_001",
-          targetName: "テナントA",
+          targetName: "Tenant A",
           targetPublicId: "tenant_001",
           targetType: "tenant",
           tenantId: "tenant_001",
-          tenantName: "テナントA",
+          tenantName: "Tenant A",
         },
       ],
       nextToken: "",
@@ -90,17 +90,17 @@ describe("listPlatformAuditLogs", () => {
       auditLogs: [
         {
           action: "tenant.created",
-          actorName: "運営 太郎",
+          actorName: "Taylor Reed",
           actorRole: "platform_owner",
           actorUserPublicId: "op_001",
           createdAt: "2026-03-24T01:23:45Z",
           outcome: "success",
           reason: "",
           targetId: "tenant_001",
-          targetName: "テナントA",
+          targetName: "Tenant A",
           targetPublicId: "tenant_001",
           targetType: "tenant",
-          tenantName: "テナントA",
+          tenantName: "Tenant A",
           tenantPublicId: "tenant_001",
         },
       ],
@@ -109,23 +109,23 @@ describe("listPlatformAuditLogs", () => {
     });
 
     await expect(
-      listPlatformAuditLogs({ locale: "ja", token: "current-page" })
+      listPlatformAuditLogs({ locale: "en", token: "current-page" })
     ).resolves.toEqual({
       auditLogs: [
         {
           action: "tenant.created",
-          actorName: "運営 太郎",
+          actorName: "Taylor Reed",
           actorRole: "platform_owner",
           actorUserPublicId: "op_001",
           createdAt: "2026-03-24T01:23:45Z",
           outcome: "success",
           reason: "",
           targetId: "tenant_001",
-          targetName: "テナントA",
+          targetName: "Tenant A",
           targetPublicId: "tenant_001",
           targetType: "tenant",
           tenantId: "tenant_001",
-          tenantName: "テナントA",
+          tenantName: "Tenant A",
         },
       ],
       nextToken: "next-page",
@@ -153,7 +153,7 @@ describe("listPlatformAuditLogs", () => {
         action: "tenant.status.updated",
         actorUserPublicId: "op_123",
         limit: 20,
-        locale: "ja",
+        locale: "en",
         tenantId: "tenant_999",
         token: "page-2",
       })
@@ -181,14 +181,14 @@ describe("listPlatformAuditLogs", () => {
       auditLogs: [
         {
           action: "operator.signed_in",
-          actorName: "運営 次郎",
+          actorName: "Jordan Blake",
           actorRole: "platform_owner",
           actorUserPublicId: "op_002",
           createdAt: "2026-03-25T02:34:56Z",
           outcome: "success",
           reason: "",
           targetId: "op_002",
-          targetName: "運営 次郎",
+          targetName: "Jordan Blake",
           targetPublicId: "",
           targetType: "operator",
           tenantId: undefined,
@@ -197,18 +197,18 @@ describe("listPlatformAuditLogs", () => {
       ],
     });
 
-    await expect(listPlatformAuditLogs({ locale: "ja" })).resolves.toEqual({
+    await expect(listPlatformAuditLogs({ locale: "en" })).resolves.toEqual({
       auditLogs: [
         {
           action: "operator.signed_in",
-          actorName: "運営 次郎",
+          actorName: "Jordan Blake",
           actorRole: "platform_owner",
           actorUserPublicId: "op_002",
           createdAt: "2026-03-25T02:34:56Z",
           outcome: "success",
           reason: "",
           targetId: "op_002",
-          targetName: "運営 次郎",
+          targetName: "Jordan Blake",
           targetPublicId: "",
           targetType: "operator",
           tenantId: "",
@@ -224,9 +224,9 @@ describe("listPlatformAuditLogs", () => {
   it("returns an error without calling the API when sessionId cannot be resolved", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
-    await expect(listPlatformAuditLogs({ locale: "ja" })).resolves.toEqual({
+    await expect(listPlatformAuditLogs({ locale: "en" })).resolves.toEqual({
       auditLogs: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -254,10 +254,9 @@ describe("listPlatformAuditLogs", () => {
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(listPlatformAuditLogs({ locale: "ja" })).resolves.toEqual({
+    await expect(listPlatformAuditLogs({ locale: "en" })).resolves.toEqual({
       auditLogs: [],
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -270,7 +269,7 @@ describe("listPlatformAuditLogs", () => {
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(listPlatformAuditLogs({ locale: "ja" })).rejects.toThrow(
+    await expect(listPlatformAuditLogs({ locale: "en" })).rejects.toThrow(
       "boom"
     );
   });

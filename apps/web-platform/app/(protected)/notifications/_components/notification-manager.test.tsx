@@ -4,27 +4,26 @@ import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import ja from "../../../../../../locales/ja.json";
+import en from "../../../../../../locales/en.json";
 import type { NotificationItem } from "../notification-types";
 import { NotificationManager } from "./notification-manager";
 
 const notificationMessages = {
-  "platform.common.next": "次へ",
-  "platform.common.previous": "前へ",
+  "platform.common.next": "Next",
+  "platform.common.previous": "Previous",
   "platform.notifications.card_description":
-    "自分宛の業務イベントです。テナント詳細へ遷移できます。",
-  "platform.notifications.card_title": "通知一覧",
-  "platform.notifications.columns.action": "操作",
-  "platform.notifications.columns.at": "日時",
-  "platform.notifications.columns.content": "内容",
-  "platform.notifications.columns.status": "状態",
-  "platform.notifications.list_error": "通知一覧を表示できませんでした",
-  "platform.notifications.mark_all_read": "すべて既読にする",
-  "platform.notifications.mark_read": "既読にする",
-  "platform.notifications.per_page":
-    "新しい順に、1ページあたり 20 件まで表示します。",
-  "platform.notifications.read": "既読",
-  "platform.notifications.unread": "未読",
+    "Operational events addressed to you. You can navigate to tenant details.",
+  "platform.notifications.card_title": "Notifications",
+  "platform.notifications.columns.action": "Actions",
+  "platform.notifications.columns.at": "Date and time",
+  "platform.notifications.columns.content": "Details",
+  "platform.notifications.columns.status": "Status",
+  "platform.notifications.list_error": "Could not display notifications",
+  "platform.notifications.mark_all_read": "Mark all as read",
+  "platform.notifications.mark_read": "Mark as read",
+  "platform.notifications.per_page": "Showing up to 20 per page, newest first.",
+  "platform.notifications.read": "Read",
+  "platform.notifications.unread": "Unread",
 } as const;
 
 vi.mock("#components/message", () => ({
@@ -40,16 +39,16 @@ vi.mock("#components/pagination-controls", () => ({
     nextHref?: string;
     previousHref?: string;
   }) => (
-    <nav aria-label="通知一覧のページ送り">
-      {previousHref ? <a href={previousHref}>前へ</a> : null}
-      {nextHref ? <a href={nextHref}>次へ</a> : null}
+    <nav aria-label="Notifications pagination">
+      {previousHref ? <a href={previousHref}>Previous</a> : null}
+      {nextHref ? <a href={nextHref}>Next</a> : null}
     </nav>
   ),
 }));
 
 vi.mock("#lib/locale", () => ({
-  getPlatformLocale: () => Promise.resolve("ja"),
-  loadPlatformMessages: () => Promise.resolve(ja),
+  getPlatformLocale: () => Promise.resolve("en"),
+  loadPlatformMessages: () => Promise.resolve(en),
 }));
 
 vi.mock("next/link", () => ({
@@ -60,13 +59,13 @@ vi.mock("next/link", () => ({
 
 vi.mock("./notification-read-actions", () => ({
   MarkAllNotificationsAsReadButton: () => (
-    <button type="button">すべて既読にする</button>
+    <button type="button">Mark all as read</button>
   ),
   MarkNotificationAsReadButton: ({
     notificationId,
   }: {
     notificationId: string;
-  }) => <button type="button">既読にする {notificationId}</button>,
+  }) => <button type="button">Mark as read {notificationId}</button>,
 }));
 
 const notification = (
@@ -74,12 +73,12 @@ const notification = (
   overrides: Partial<NotificationItem> = {}
 ): NotificationItem => ({
   createdAt: "2026-06-01T00:00:00Z",
-  description: "テナント「Acme」の「第1話」（作品A）を公開できませんでした。",
+  description: "Could not publish Episode 1 (Series A) for the tenant Acme.",
   href: "/tenants/SeedTNNTAAA1",
   id,
   isRead: false,
   notificationType: "episode_publish_failed",
-  title: "エピソードの公開に失敗しました",
+  title: "Could not publish the episode",
   ...overrides,
 });
 
@@ -97,9 +96,9 @@ describe("NotificationManager", () => {
       })
     );
 
-    expect(screen.getByText("通知はまだありません。")).toBeDefined();
-    expect(screen.queryByLabelText("通知一覧のページ送り")).toBeNull();
-    expect(screen.queryByText("すべて既読にする")).toBeNull();
+    expect(screen.getByText("No notifications yet.")).toBeDefined();
+    expect(screen.queryByLabelText("Notifications pagination")).toBeNull();
+    expect(screen.queryByText("Mark all as read")).toBeNull();
   });
 
   it("does not show an empty state when a later page is empty", async () => {
@@ -113,9 +112,9 @@ describe("NotificationManager", () => {
     );
 
     expect(
-      screen.getByText("このページに表示できる通知はありません。")
+      screen.getByText("There are no notifications to show on this page.")
     ).toBeDefined();
-    const previous = screen.getByRole("link", { name: "前へ" });
+    const previous = screen.getByRole("link", { name: "Previous" });
     expect(previous.getAttribute("href")).toBe("/notifications?token=previous");
   });
 
@@ -129,7 +128,7 @@ describe("NotificationManager", () => {
             createdAt: "2026-05-31T00:00:00Z",
             href: undefined,
             isRead: true,
-            title: "通知",
+            title: "Notification",
           }),
         ],
         previousHref: "/notifications?token=previous",
@@ -139,27 +138,27 @@ describe("NotificationManager", () => {
     );
 
     const titleLink = screen.getByRole("link", {
-      name: "エピソードの公開に失敗しました",
+      name: "Could not publish the episode",
     });
     expect(titleLink.getAttribute("href")).toBe("/tenants/SeedTNNTAAA1");
-    expect(screen.getByText("2026/06/01 9:00")).toBeDefined();
-    expect(screen.getByText("未読")).toBeDefined();
-    expect(screen.getByText("既読")).toBeDefined();
-    expect(screen.getByText("既読にする n1")).toBeDefined();
-    expect(screen.queryByText("既読にする n2")).toBeNull();
-    expect(screen.getByText("すべて既読にする")).toBeDefined();
+    expect(screen.getByText("Jun 1, 2026, 9:00 AM")).toBeDefined();
+    expect(screen.getByText("Unread")).toBeDefined();
+    expect(screen.getByText("Read")).toBeDefined();
+    expect(screen.getByText("Mark as read n1")).toBeDefined();
+    expect(screen.queryByText("Mark as read n2")).toBeNull();
+    expect(screen.getByText("Mark all as read")).toBeDefined();
     expect(
-      screen.getByRole("link", { name: "前へ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Previous" }).getAttribute("href")
     ).toBe("/notifications?token=previous");
     expect(
-      screen.getByRole("link", { name: "次へ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Next" }).getAttribute("href")
     ).toBe("/notifications?token=next");
   });
 
   it("shows only an error when loading fails", async () => {
     render(
       await NotificationManager({
-        listErrorMessage: "通知一覧を取得できませんでした。",
+        listErrorMessage: "Could not load the notifications.",
         nextHref: "/notifications?token=next",
         notifications: [],
         previousHref: "/notifications?token=previous",
@@ -170,14 +169,14 @@ describe("NotificationManager", () => {
 
     const sectionError = screen.getByRole("alert");
     expect(sectionError.textContent).toContain(
-      "通知一覧を表示できませんでした"
+      "Could not display notifications"
     );
     expect(sectionError.textContent).toContain(
-      "通知一覧を取得できませんでした。"
+      "Could not load the notifications."
     );
-    expect(screen.queryByText("通知はまだありません。")).toBeNull();
-    expect(screen.queryByLabelText("通知一覧のページ送り")).toBeNull();
-    expect(screen.queryByText("すべて既読にする")).toBeNull();
+    expect(screen.queryByText("No notifications yet.")).toBeNull();
+    expect(screen.queryByLabelText("Notifications pagination")).toBeNull();
+    expect(screen.queryByText("Mark all as read")).toBeNull();
   });
 
   it("shows creation times in the platform default time zone", async () => {
@@ -189,7 +188,7 @@ describe("NotificationManager", () => {
       })
     );
 
-    expect(screen.getByText("2026/05/31 17:00")).toBeDefined();
-    expect(screen.queryByText("2026/06/01 9:00")).toBeNull();
+    expect(screen.getByText("May 31, 2026, 5:00 PM")).toBeDefined();
+    expect(screen.queryByText("Jun 1, 2026, 9:00 AM")).toBeNull();
   });
 });

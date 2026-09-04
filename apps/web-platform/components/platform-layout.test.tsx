@@ -27,7 +27,7 @@ vi.mock("../lib/auth-session", () => ({
 }));
 
 vi.mock("../lib/locale", () => ({
-  getPlatformLocale: vi.fn(() => Promise.resolve("ja")),
+  getPlatformLocale: vi.fn(() => Promise.resolve("en")),
   loadPlatformMessages: (locale: Locale) =>
     Promise.resolve(sharedCatalog(locale)),
 }));
@@ -61,7 +61,7 @@ describe("PlatformLayout", () => {
   it("asks the shared stylesheet for the platform console background", () => {
     const { container } = render(
       <PlatformLayout>
-        <p>本文</p>
+        <p>Body</p>
       </PlatformLayout>
     );
 
@@ -74,16 +74,16 @@ describe("PlatformLayout", () => {
 
 describe("PlatformUser", () => {
   it.each([
-    ["ja", "青枝 花子のアカウントメニュー"],
-    ["en", "Account menu for 青枝 花子"],
+    ["en", "Account menu for Avery Quinn"],
+    ["ja", "Avery Quinnのアカウントメニュー"],
   ] as const)(
-    "%s のアカウントメニューの aria-label に氏名を補間する",
+    "interpolates the name into the account menu aria-label in locale=%s",
     async (locale, expected) => {
       vi.mocked(getPlatformLocale).mockResolvedValue(locale);
       vi.mocked(getPlatformCurrentOperator).mockResolvedValue({
         ok: true,
         operator: {
-          name: "青枝 花子",
+          name: "Avery Quinn",
           publicId: "operator_001",
           role: "super_admin",
         },
@@ -98,10 +98,10 @@ describe("PlatformUser", () => {
 
 describe("PlatformLocaleSwitcher", () => {
   it.each([
-    ["ja", "表示言語: 日本語"],
     ["en", "Display language: English"],
+    ["ja", "表示言語: 日本語"],
   ] as const)(
-    "%s の現在の表示言語をヘッダートリガーに示す",
+    "names the current display language on the header trigger in locale=%s",
     async (locale, expected) => {
       vi.mocked(getPlatformLocale).mockResolvedValue(locale);
 
@@ -114,7 +114,7 @@ describe("PlatformLocaleSwitcher", () => {
 
 describe("PlatformNotificationBell", () => {
   it("shows the five most recent notifications in the menu and links to the notification list", async () => {
-    vi.mocked(getPlatformLocale).mockResolvedValue("ja");
+    vi.mocked(getPlatformLocale).mockResolvedValue("en");
     vi.mocked(countUnreadNotifications).mockResolvedValue({
       ok: true,
       unreadCount: 1,
@@ -124,12 +124,12 @@ describe("PlatformNotificationBell", () => {
       notifications: [
         {
           createdAt: "2026-08-01T00:00:00Z",
-          description: "テナントの公開設定を確認してください。",
+          description: "Check the publication settings of this tenant.",
           href: "/tenants/tenant_01",
           id: "notification_01",
           isRead: false,
           notificationType: "episode_publish_failed",
-          title: "予約公開に失敗しました",
+          title: "Scheduled publication failed",
         },
       ],
       ok: true,
@@ -138,11 +138,13 @@ describe("PlatformNotificationBell", () => {
 
     render(await PlatformNotificationBell());
 
-    expect(listNotifications).toHaveBeenCalledWith("ja", { limit: 5 });
-    fireEvent.click(screen.getByRole("button", { name: "通知、未読1件" }));
+    expect(listNotifications).toHaveBeenCalledWith("en", { limit: 5 });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Notifications, 1 unread" })
+    );
     expect(
       screen
-        .getByRole("link", { name: /予約公開に失敗しました/u })
+        .getByRole("link", { name: /Scheduled publication failed/u })
         .getAttribute("href")
     ).toBe("/tenants/tenant_01");
     expect(

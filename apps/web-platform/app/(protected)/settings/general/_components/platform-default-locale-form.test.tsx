@@ -3,18 +3,19 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import ja from "../../../../../../../locales/ja.json";
+import en from "../../../../../../../locales/en.json";
 import { PlatformDefaultLocaleForm } from "./platform-default-locale-form";
 
 const messages = {
   "platform.settings.default_locale_description":
-    "新規に作成するテナントの初期言語です。",
-  "platform.settings.default_locale_help": "日本語または英語を選べます。",
-  "platform.settings.default_locale_label": "既定言語",
+    "The language a newly created tenant starts in.",
+  "platform.settings.default_locale_help":
+    "You can choose Japanese or English.",
+  "platform.settings.default_locale_label": "Default language",
   "platform.settings.default_locale_reload":
-    "保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。",
-  "platform.settings.default_locale_save": "既定言語を保存",
-  "platform.settings.default_locale_title": "既定言語",
+    "Saving now would overwrite the current setting, so reload before changing it.",
+  "platform.settings.default_locale_save": "Save default language",
+  "platform.settings.default_locale_title": "Default language",
 } as const;
 
 vi.mock("#components/message", () => ({
@@ -23,8 +24,8 @@ vi.mock("#components/message", () => ({
 }));
 
 vi.mock("#lib/locale", () => ({
-  getPlatformLocale: () => Promise.resolve("ja"),
-  loadPlatformMessages: () => Promise.resolve(ja),
+  getPlatformLocale: () => Promise.resolve("en"),
+  loadPlatformMessages: () => Promise.resolve(en),
 }));
 
 afterEach(() => {
@@ -39,13 +40,13 @@ describe("PlatformDefaultLocaleForm", () => {
       })
     );
 
-    const trigger = screen.getByLabelText("既定言語");
+    const trigger = screen.getByLabelText("Default language");
 
     expect(trigger.textContent).toContain("English");
     expect(trigger).toHaveProperty("disabled", false);
     expect(
       screen.getByRole<HTMLButtonElement>("button", {
-        name: "既定言語を保存",
+        name: "Save default language",
       }).disabled
     ).toBe(false);
   });
@@ -54,21 +55,24 @@ describe("PlatformDefaultLocaleForm", () => {
     render(
       await PlatformDefaultLocaleForm({
         initialDefaultLocale: "ja",
-        loadErrorMessage: "プラットフォーム設定の取得に失敗しました。",
+        loadErrorMessage: "Could not load the platform settings.",
       })
     );
 
-    expect(screen.getByLabelText("既定言語")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Default language")).toHaveProperty(
+      "disabled",
+      true
+    );
     expect(
       screen.getByRole<HTMLButtonElement>("button", {
-        name: "既定言語を保存",
+        name: "Save default language",
       }).disabled
     ).toBe(true);
     expect(
-      screen.getByText(/プラットフォーム設定の取得に失敗しました。/u)
+      screen.getByText(/Could not load the platform settings\./u)
     ).toBeDefined();
     expect(
-      screen.getByText(/保存すると現在の設定を上書きしてしまうため/u)
+      screen.getByText(/Saving now would overwrite the current setting/u)
     ).toBeDefined();
   });
 });

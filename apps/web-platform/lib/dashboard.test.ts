@@ -55,7 +55,7 @@ describe("getPlatformDashboardSummary", () => {
     });
 
     await expect(
-      getPlatformDashboardSummary({ locale: "ja", recentEventsLimit: 6 })
+      getPlatformDashboardSummary({ locale: "en", recentEventsLimit: 6 })
     ).resolves.toEqual({
       ok: true,
       summary: {
@@ -90,7 +90,7 @@ describe("getPlatformDashboardSummary", () => {
       totalTenants: 0,
     });
 
-    await getPlatformDashboardSummary({ locale: "ja", recentEventsLimit: 999 });
+    await getPlatformDashboardSummary({ locale: "en", recentEventsLimit: 999 });
 
     expect(mockGetDashboardSummary).toHaveBeenCalledWith(
       { recentEventsLimit: 50 },
@@ -102,9 +102,9 @@ describe("getPlatformDashboardSummary", () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(
-      getPlatformDashboardSummary({ locale: "ja" })
+      getPlatformDashboardSummary({ locale: "en" })
     ).resolves.toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
     });
@@ -112,13 +112,13 @@ describe("getPlatformDashboardSummary", () => {
     expect(mockGetDashboardSummary).not.toHaveBeenCalled();
   });
 
-  it("returns an English session error for locale=en", async () => {
+  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(
-      getPlatformDashboardSummary({ locale: "en" })
+      getPlatformDashboardSummary({ locale: "ja" })
     ).resolves.toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
+      message: "セッションが無効です。再ログインしてください。",
       ok: false,
       requiresSignIn: true,
     });
@@ -130,10 +130,9 @@ describe("getPlatformDashboardSummary", () => {
     );
 
     await expect(
-      getPlatformDashboardSummary({ locale: "ja" })
+      getPlatformDashboardSummary({ locale: "en" })
     ).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
       requiresSignIn: false,
     });
@@ -144,7 +143,7 @@ describe("getPlatformDashboardSummary", () => {
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(getPlatformDashboardSummary({ locale: "ja" })).rejects.toThrow(
+    await expect(getPlatformDashboardSummary({ locale: "en" })).rejects.toThrow(
       "boom"
     );
   });

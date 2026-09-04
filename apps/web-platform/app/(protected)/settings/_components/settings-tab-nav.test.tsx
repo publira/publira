@@ -23,13 +23,13 @@ describe("SettingsTabNav", () => {
     render(
       <SettingsTabNav
         current="general"
-        emailLabel="メール設定"
-        generalLabel="一般"
+        emailLabel="Email"
+        generalLabel="General"
       />
     );
 
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
-      ["一般", "メール設定"]
+      ["General", "Email"]
     );
   });
 
@@ -37,12 +37,12 @@ describe("SettingsTabNav", () => {
     render(
       <SettingsTabNav
         current="general"
-        emailLabel="メール設定"
-        generalLabel="一般"
+        emailLabel="Email"
+        generalLabel="General"
       />
     );
 
-    expect(screen.queryByRole("link", { name: "アカウント" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Account" })).toBeNull();
     expect(
       screen
         .getAllByRole("link")

@@ -69,7 +69,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     // `withPlatformSessionReauth` resolves the session before the mutation
     // runs; without a token every Action under test would redirect to /login.
     mockResolveAccessToken.mockResolvedValue("session-token");
-    mockGetPlatformLocale.mockResolvedValue("ja");
+    mockGetPlatformLocale.mockResolvedValue("en");
   });
 
   it("saves a valid IANA name and updates cache tags", async () => {
@@ -87,12 +87,12 @@ describe("updatePlatformDefaultTimezoneAction", () => {
 
     expect(result).toEqual({
       defaultTimezone: "America/Los_Angeles",
-      message: "既定タイムゾーンを保存しました。",
+      message: "Default time zone saved.",
       ok: true,
     });
     expect(mockUpdatePlatformDefaultTimezone).toHaveBeenCalledWith(
       "America/Los_Angeles",
-      "ja"
+      "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:settings");
   });
@@ -112,12 +112,12 @@ describe("updatePlatformDefaultTimezoneAction", () => {
 
     expect(result).toEqual({
       defaultTimezone: "Asia/Calcutta",
-      message: "既定タイムゾーンを保存しました。",
+      message: "Default time zone saved.",
       ok: true,
     });
     expect(mockUpdatePlatformDefaultTimezone).toHaveBeenCalledWith(
       "Asia/Calcutta",
-      "ja"
+      "en"
     );
   });
 
@@ -130,7 +130,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     );
 
     expect(result).toEqual({
-      message: "有効なタイムゾーンを選択してください。",
+      message: "Select a valid time zone.",
       ok: false,
     });
     expect(mockUpdatePlatformDefaultTimezone).not.toHaveBeenCalled();
@@ -146,7 +146,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     );
 
     expect(result).toEqual({
-      message: "有効なタイムゾーンを選択してください。",
+      message: "Select a valid time zone.",
       ok: false,
     });
     expect(mockUpdatePlatformDefaultTimezone).not.toHaveBeenCalled();
@@ -161,14 +161,14 @@ describe("updatePlatformDefaultTimezoneAction", () => {
     );
 
     expect(result).toEqual({
-      message: "タイムゾーンを選択してください。",
+      message: "Select a time zone.",
       ok: false,
     });
     expect(mockUpdatePlatformDefaultTimezone).not.toHaveBeenCalled();
   });
 
-  it("returns an English success message for the English locale", async () => {
-    mockGetPlatformLocale.mockResolvedValue("en");
+  it("words the success message in the console locale, so locale=ja is Japanese", async () => {
+    mockGetPlatformLocale.mockResolvedValue("ja");
     mockUpdatePlatformDefaultTimezone.mockResolvedValueOnce({
       defaultTimezone: "Europe/Paris",
       ok: true,
@@ -183,7 +183,7 @@ describe("updatePlatformDefaultTimezoneAction", () => {
 
     expect(result).toEqual({
       defaultTimezone: "Europe/Paris",
-      message: "Default time zone saved.",
+      message: "既定タイムゾーンを保存しました。",
       ok: true,
     });
   });
@@ -214,7 +214,7 @@ describe("updatePlatformDefaultLocaleAction", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockResolveAccessToken.mockResolvedValue("session-token");
-    mockGetPlatformLocale.mockResolvedValue("ja");
+    mockGetPlatformLocale.mockResolvedValue("en");
   });
 
   it("saves a supported locale and updates cache tags", async () => {
@@ -232,15 +232,15 @@ describe("updatePlatformDefaultLocaleAction", () => {
 
     expect(result).toEqual({
       defaultLocale: "en",
-      message: "既定言語を保存しました。",
+      message: "Default language saved.",
       ok: true,
     });
-    expect(mockUpdatePlatformDefaultLocale).toHaveBeenCalledWith("en", "ja");
+    expect(mockUpdatePlatformDefaultLocale).toHaveBeenCalledWith("en", "en");
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:settings");
   });
 
   it.each(["fr", "ja-JP", ""])(
-    "対応していない %s は往復せずに拒否する",
+    "rejects the unsupported %s without a round trip",
     async (defaultLocale) => {
       const { updatePlatformDefaultLocaleAction } = await import("./actions");
 
@@ -250,7 +250,7 @@ describe("updatePlatformDefaultLocaleAction", () => {
       );
 
       expect(result).toEqual({
-        message: "言語を選択してください。",
+        message: "Select a language.",
         ok: false,
       });
       expect(mockUpdatePlatformDefaultLocale).not.toHaveBeenCalled();
@@ -260,7 +260,7 @@ describe("updatePlatformDefaultLocaleAction", () => {
 
   it("does not update cache tags when saving fails", async () => {
     mockUpdatePlatformDefaultLocale.mockResolvedValueOnce({
-      message: "既定言語の保存に失敗しました。時間をおいて再試行してください。",
+      message: "Could not save the default language. Please try again later.",
       ok: false,
     });
 
@@ -272,7 +272,7 @@ describe("updatePlatformDefaultLocaleAction", () => {
     );
 
     expect(result).toEqual({
-      message: "既定言語の保存に失敗しました。時間をおいて再試行してください。",
+      message: "Could not save the default language. Please try again later.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

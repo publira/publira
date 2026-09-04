@@ -69,9 +69,9 @@ describe("authTokenSearchParamSchema", () => {
 
 describe("authTokenFormSchema", () => {
   it("rejects a missing or malformed token", () => {
-    expect(authTokenFormSchema(JA).safeParse(null).success).toBe(false);
-    expect(authTokenFormSchema(JA).safeParse("short").success).toBe(false);
-    expect(authTokenFormSchema(JA).parse(VALID_TOKEN)).toBe(VALID_TOKEN);
+    expect(authTokenFormSchema(EN).safeParse(null).success).toBe(false);
+    expect(authTokenFormSchema(EN).safeParse("short").success).toBe(false);
+    expect(authTokenFormSchema(EN).parse(VALID_TOKEN)).toBe(VALID_TOKEN);
   });
 
   it("reports the rejection in the catalog's locale", () => {
@@ -96,8 +96,8 @@ describe("emailSearchParamSchema", () => {
 
 describe("errorSearchParamSchema", () => {
   it("trims a message and falls back to empty", () => {
-    expect(errorSearchParamSchema.parse("  失敗しました  ")).toBe(
-      "失敗しました"
+    expect(errorSearchParamSchema.parse("  It did not work  ")).toBe(
+      "It did not work"
     );
     expect(errorSearchParamSchema.parse(null)).toBe("");
   });
@@ -105,11 +105,11 @@ describe("errorSearchParamSchema", () => {
 
 describe("emailFormSchema", () => {
   it("trims and requires an email", () => {
-    expect(emailFormSchema(JA).parse("  operator@example.com  ")).toBe(
+    expect(emailFormSchema(EN).parse("  operator@example.com  ")).toBe(
       "operator@example.com"
     );
-    expect(emailFormSchema(JA).safeParse("").success).toBe(false);
-    expect(emailFormSchema(JA).safeParse("not-an-email").success).toBe(false);
+    expect(emailFormSchema(EN).safeParse("").success).toBe(false);
+    expect(emailFormSchema(EN).safeParse("not-an-email").success).toBe(false);
   });
 
   it("reports the rejection in the catalog's locale", () => {
@@ -127,8 +127,8 @@ describe("emailFormSchema", () => {
 
 describe("passwordFormSchema", () => {
   it("does not trim, and rejects an empty value", () => {
-    expect(passwordFormSchema(JA).parse(" secret ")).toBe(" secret ");
-    expect(passwordFormSchema(JA).safeParse("").success).toBe(false);
+    expect(passwordFormSchema(EN).parse(" secret ")).toBe(" secret ");
+    expect(passwordFormSchema(EN).safeParse("").success).toBe(false);
   });
 
   it("reports the rejection in the catalog's locale", () => {

@@ -16,7 +16,7 @@ const createOperator = (
   $typeName: "publira.platform.v1.PlatformOperator",
   createdAt: "2026-08-01T00:00:00Z",
   email: "operator@example.com",
-  name: "運営 太郎",
+  name: "Taylor Reed",
   publicId: "OPERATOR001",
   role: "platform_operator",
   status: "active",
@@ -87,7 +87,7 @@ describe("listPlatformOperators", () => {
     );
 
     await expect(
-      listPlatformOperators({ limit: 50, locale: "ja", token: "current-page" })
+      listPlatformOperators({ limit: 50, locale: "en", token: "current-page" })
     ).resolves.toEqual({
       nextToken: "next-page",
       ok: true,
@@ -95,7 +95,7 @@ describe("listPlatformOperators", () => {
         {
           createdAt: "2026-08-01T00:00:00Z",
           email: "operator@example.com",
-          name: "運営 太郎",
+          name: "Taylor Reed",
           publicId: "OPERATOR001",
           role: "platform_operator",
           status: "active",
@@ -112,8 +112,8 @@ describe("listPlatformOperators", () => {
   it("returns an error without calling the API when the session cannot be resolved", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
-    await expect(listPlatformOperators({ locale: "ja" })).resolves.toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+    await expect(listPlatformOperators({ locale: "en" })).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
       nextToken: "",
       ok: false,
       operators: [],
@@ -123,11 +123,11 @@ describe("listPlatformOperators", () => {
     expect(mockListOperators).not.toHaveBeenCalled();
   });
 
-  it("returns an English session error for locale=en", async () => {
+  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
-    await expect(listPlatformOperators({ locale: "en" })).resolves.toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
+    await expect(listPlatformOperators({ locale: "ja" })).resolves.toEqual({
+      message: "セッションが無効です。再ログインしてください。",
       nextToken: "",
       ok: false,
       operators: [],
@@ -141,9 +141,8 @@ describe("listPlatformOperators", () => {
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(listPlatformOperators({ locale: "ja" })).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+    await expect(listPlatformOperators({ locale: "en" })).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
       nextToken: "",
       ok: false,
       operators: [],
@@ -157,7 +156,7 @@ describe("listPlatformOperators", () => {
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(listPlatformOperators({ locale: "ja" })).rejects.toThrow(
+    await expect(listPlatformOperators({ locale: "en" })).rejects.toThrow(
       "boom"
     );
   });
@@ -165,7 +164,7 @@ describe("listPlatformOperators", () => {
 
 describe("getPlatformOperator", () => {
   it("returns null without calling RPC for invalid input", async () => {
-    await expect(getPlatformOperator("   ", "ja")).resolves.toBeNull();
+    await expect(getPlatformOperator("   ", "en")).resolves.toBeNull();
     expect(mockGetOperator).not.toHaveBeenCalled();
     expect(mockResolveAccessToken).not.toHaveBeenCalled();
   });
@@ -176,7 +175,7 @@ describe("getPlatformOperator", () => {
     );
 
     await expect(
-      getPlatformOperator("  OPERATOR001  ", "ja")
+      getPlatformOperator("  OPERATOR001  ", "en")
     ).resolves.toMatchObject({
       publicId: "OPERATOR001",
     });
@@ -191,16 +190,16 @@ describe("getPlatformOperator", () => {
       createGetOperatorResponse(
         createOperator({
           email: "second@example.com",
-          name: "運営 次郎",
+          name: "Jordan Blake",
           publicId: "OPERATOR101",
         })
       )
     );
 
-    await expect(getPlatformOperator("OPERATOR101", "ja")).resolves.toEqual({
+    await expect(getPlatformOperator("OPERATOR101", "en")).resolves.toEqual({
       createdAt: "2026-08-01T00:00:00Z",
       email: "second@example.com",
-      name: "運営 次郎",
+      name: "Jordan Blake",
       publicId: "OPERATOR101",
       role: "platform_operator",
       status: "active",
@@ -217,7 +216,7 @@ describe("getPlatformOperator", () => {
       new ConnectError("operator not found", Code.NotFound)
     );
 
-    await expect(getPlatformOperator("UNKNOWN", "ja")).resolves.toBeNull();
+    await expect(getPlatformOperator("UNKNOWN", "en")).resolves.toBeNull();
   });
 
   it("returns null for classified RPC errors", async () => {
@@ -225,7 +224,7 @@ describe("getPlatformOperator", () => {
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(getPlatformOperator("OPERATOR001", "ja")).resolves.toBeNull();
+    await expect(getPlatformOperator("OPERATOR001", "en")).resolves.toBeNull();
   });
 
   it("propagates unclassified RPC errors", async () => {
@@ -233,7 +232,7 @@ describe("getPlatformOperator", () => {
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(getPlatformOperator("OPERATOR001", "ja")).rejects.toThrow(
+    await expect(getPlatformOperator("OPERATOR001", "en")).rejects.toThrow(
       "boom"
     );
   });
