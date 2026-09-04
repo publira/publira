@@ -91,6 +91,8 @@ Host-based URL constants are in `src/urls.ts`. web-host accepts one port and res
 
 Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects, and the `viewer-performance` timing project runs after all of those. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
 
+A spec that changes a stored setting the whole console reads gets an isolated project for the same reason. `platform-locale-switching` (`platform.locale-switching.spec.ts`) is the one: `platform_config` holds a single default language for the deployment, and every web-platform screen without a `publira_locale` cookie renders in it, so the spec runs after `platform-error-boundary` rather than beside the specs that read that console.
+
 ## Readiness and failures
 
 | Stage | Failure signal |
@@ -128,7 +130,7 @@ Each measurement is attached to the test result as a `viewer-performance:<metric
 5. Run `task e2e`, or keep the stack running and use `task e2e:test`.
 6. Changes to relevant paths run **Test / E2E**. Changes only in `e2e/routing/**` run **Test / Routing** (`task e2e:routing`) without Playwright.
 
-Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, the member area's My Page and `/settings` tabs, web-host and web-admin authentication and publishing, platform authentication and tenant operations, reading an episode from its first page to its last, and the canvas viewer's rendering budget. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`; the member area uses `070_member_settings.sql`; the viewer's pages come from `050_viewer_pages.sql`, which `task e2e:db` applies for every run rather than a suite applying it for itself.
+Current scenarios cover health endpoints, public catalogue browsing and tenant boundaries, catalogue and admin error boundaries, member announcements pagination, the member area's My Page and `/settings` tabs, web-host and web-admin authentication and publishing, platform authentication and tenant operations, reading an episode from its first page to its last, UI locale switching in all three apps, and the canvas viewer's rendering budget. Multi-tenant cases use `010_multi_tenant.sql`; platform role-denial cases use `030_platform_operators.sql`; the member area uses `070_member_settings.sql`; locale switching uses `080_locale_switching.sql`; the viewer's pages come from `050_viewer_pages.sql`, which `task e2e:db` applies for every run rather than a suite applying it for itself.
 
 Outage specs must run through `task e2e:test`, which sources `lib.sh`. Filtering by file name can leave only isolated projects, so pass `--no-deps` when selecting an isolated project directly (for example, `--project=catalog-outage`).
 
@@ -139,7 +141,7 @@ Job: **Test / E2E** (`.github/workflows/ci.yml`)
 - Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, server, db, and related build inputs.
 - Failure artifact: `e2e-artifacts` (report, test results, and app logs).
 - Chromium only; `workers: 3`, `fullyParallel: false`, and one retry in CI.
-- Outage and error-boundary scenarios run as isolated dependent projects after the three ordinary projects, and `viewer-performance` runs last so nothing competes with it for the runner.
+- Outage and error-boundary scenarios run as isolated dependent projects after the three ordinary projects, `platform-locale-switching` follows the platform chain, and `viewer-performance` runs last so nothing competes with it for the runner.
 - The required branch check is the final **Summary** job, as with all CI jobs.
 
 See [the workflow overview](../.github/workflows/README.md) for job layout, filters, and failure triage.

@@ -21,6 +21,15 @@ const desktopChrome = devices["Desktop Chrome"];
 const processIsolatedSpecs = /\.(?:outage|error-boundary)\./u;
 
 /**
+ * The spec that changes the saved platform default locale. `platform_config`
+ * is one row for the whole deployment and every console screen without a
+ * `publira_locale` cookie renders in the language it names, so this one cannot
+ * overlap with the rest of the web-platform project. It is chained after the
+ * platform outage projects below, which stop the API it needs.
+ */
+const platformLocaleSwitchingSpecs = /platform\.locale-switching\./u;
+
+/**
  * Timing suites. They report how long the browser took, so they must not share
  * a machine with the other projects; the viewer-performance project below runs
  * them after everything else has finished.
@@ -69,7 +78,11 @@ export default defineConfig({
     },
     {
       name: "web-platform",
-      testIgnore: [processIsolatedSpecs, performanceSpecs],
+      testIgnore: [
+        processIsolatedSpecs,
+        platformLocaleSwitchingSpecs,
+        performanceSpecs,
+      ],
       testMatch: [/platform\./u],
       timeout: 120_000,
       use: {
@@ -149,6 +162,22 @@ export default defineConfig({
         baseURL: WEB_PLATFORM_BASE_URL,
       },
     },
+    // Changes the saved platform default locale, which every web-platform
+    // screen without a `publira_locale` cookie renders in. Chained after the
+    // platform outage projects rather than run beside them: those stop the
+    // platform API, and the rest of the web-platform project reads the console
+    // in the language this spec briefly replaces.
+    {
+      dependencies: ["platform-error-boundary"],
+      fullyParallel: false,
+      name: "platform-locale-switching",
+      testMatch: [platformLocaleSwitchingSpecs],
+      timeout: 120_000,
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_PLATFORM_BASE_URL,
+      },
+    },
     // Last, and on its own: it measures elapsed time, so nothing else may be
     // competing for the CPU. Depending on the tail of every chain above is what
     // empties the worker pool for it. Its baseURL is the Traefik edge, the only
@@ -157,7 +186,7 @@ export default defineConfig({
       dependencies: [
         "catalog-error-boundary",
         "admin-error-boundary",
-        "platform-error-boundary",
+        "platform-locale-switching",
       ],
       fullyParallel: false,
       name: "viewer-performance",

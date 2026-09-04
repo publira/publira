@@ -19,6 +19,18 @@ const envUrl = (name: string, fallback: string): string => {
 /** Public-site path under the default locale: `/series` → `/series`. */
 export const hostPath = (pathname: string): string => pathname;
 
+/**
+ * Public-site path under an explicit locale prefix:
+ * `("en", "/series")` → `/en/series`.
+ *
+ * Only a locale other than the tenant's own default is canonical this way —
+ * the default is served by {@link hostPath}, and spelling it out redirects. A
+ * test therefore says which locale it means rather than which tenant it is
+ * talking to, and the two tenants the suite uses read the same way.
+ */
+export const localeHostPath = (locale: string, pathname: string): string =>
+  pathname === "/" ? `/${locale}` : `/${locale}${pathname}`;
+
 /** Public catalog site (web-host). Matches seed domain `localhost`. */
 export const WEB_HOST_BASE_URL = envUrl(
   "E2E_WEB_HOST_BASE_URL",
@@ -96,6 +108,24 @@ export const WEB_HOST_NOTIFICATION_INBOX_BASE_URL = envUrl(
 export const WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL = envUrl(
   "E2E_WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.notify.localhost")
+);
+
+/**
+ * Public site of the English-default tenant from the scenario seed
+ * `db/seeds/scenarios/080_locale_switching.sql`.
+ *
+ * Every other seeded tenant saves `ja`, so this is the only host where the
+ * unprefixed URL is English and `/ja/...` is the one that keeps its prefix.
+ */
+export const WEB_HOST_ENGLISH_DEFAULT_BASE_URL = envUrl(
+  "E2E_WEB_HOST_ENGLISH_DEFAULT_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "locale.localhost")
+);
+
+/** Admin console of the same English-default tenant. */
+export const WEB_ADMIN_ENGLISH_DEFAULT_BASE_URL = envUrl(
+  "E2E_WEB_ADMIN_ENGLISH_DEFAULT_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.locale.localhost")
 );
 
 /** Host that maps to no tenant at all. */
