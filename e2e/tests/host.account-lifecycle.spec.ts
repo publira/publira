@@ -12,6 +12,7 @@ import {
 import {
   ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP,
   ACCOUNT_LIFECYCLE_MEMBER,
+  ACCOUNT_LIFECYCLE_REPLAY_PASSWORD,
   ACCOUNT_LIFECYCLE_RESET_PASSWORD,
   ACCOUNT_LIFECYCLE_SCENARIO,
   ACCOUNT_LIFECYCLE_SIGNUP,
@@ -62,6 +63,32 @@ const isEmailConfirmed = (email: string): boolean =>
     SELECT email_verified_at IS NOT NULL
     FROM users
     WHERE email = '${email}';
+  `) === "t";
+
+/**
+ * Whether the account's verification token has already been spent.
+ *
+ * A replay is only a replay against a token the flow has consumed, so the
+ * tests below read this before reopening a link a second time.
+ */
+const isVerificationTokenUsed = (email: string): boolean =>
+  querySql(`
+    SELECT used_at IS NOT NULL
+    FROM user_email_verification_tokens
+    WHERE user_id = (SELECT id FROM users WHERE email = '${email}');
+  `) === "t";
+
+/**
+ * The same, for the member's password reset. A request deletes the account's
+ * earlier tokens before it issues one, so there is never more than a row here.
+ */
+const isResetTokenCompleted = (): boolean =>
+  querySql(`
+    SELECT completed_at IS NOT NULL
+    FROM user_password_reset_tokens
+    WHERE user_id = (
+      SELECT id FROM users WHERE public_id = '${ACCOUNT_LIFECYCLE_MEMBER.publicId}'
+    );
   `) === "t";
 
 /**
@@ -148,8 +175,9 @@ const submitNewPassword = async (
  * The suite owns every account it touches — `100_account_lifecycle.sql` — and
  * re-applies that scenario afterwards to put the member's password back and
  * remove the accounts the sign-ups created. `mode: "serial"` keeps a
- * confirmation in the same order as the request that issued its token, and
- * keeps the reset that changes the member's password last.
+ * confirmation in the same order as the request that issued its token, keeps
+ * a replay after the use it replays, and keeps the reset that changes the
+ * member's password to the end.
  */
 test.describe("web-host reader account lifecycle", () => {
   test.describe.configure({ mode: "serial" });
@@ -206,6 +234,24 @@ test.describe("web-host reader account lifecycle", () => {
     ).toBeVisible();
     await expect(page.getByText(ACCOUNT_LIFECYCLE_SIGNUP.name)).toBeVisible();
     expect(await sessionCookie(page)).toBeTruthy();
+  });
+
+  test("reopening the consumed verification link reports the confirmation again", async ({
+    page,
+  }) => {
+    // The same message the test above read; nothing has been sent to this
+    // address since, so the link in it is the one the flow already spent.
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_SIGNUP.email);
+    const token = tokenFromLink(message, VERIFY_PATH);
+    expect(isVerificationTokenUsed(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe(true);
+
+    await openWithToken(page, VERIFY_PATH, token);
+
+    // A reader who opens their link twice is told the address is confirmed,
+    // rather than that something went wrong with a confirmation that worked.
+    await expect(page.getByText(VERIFIED_MESSAGE)).toBeVisible();
+    expect(accountStatus(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe("active");
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe(true);
   });
 
   /**
@@ -353,5 +399,41 @@ test.describe("web-host reader account lifecycle", () => {
     await expect(
       page.getByText(ACCOUNT_LIFECYCLE_MEMBER.publicId)
     ).toBeVisible();
+  });
+
+  test("reopening the consumed reset link cannot set a second password", async ({
+    page,
+  }) => {
+    // The same message the test above spent, so this is a genuine replay of a
+    // completed reset rather than a fresh one.
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+    const token = tokenFromLink(message, CONFIRM_PASSWORD_PATH);
+    expect(isResetTokenCompleted()).toBe(true);
+
+    await openWithToken(page, CONFIRM_PASSWORD_PATH, token);
+    await submitNewPassword(page, ACCOUNT_LIFECYCLE_REPLAY_PASSWORD);
+
+    // The completed reset is reported as done rather than as a failure, the
+    // way a confirmation link opened twice is — but the password it carried
+    // never reaches the account.
+    await page.waitForURL(/\/login\?reset=done$/u);
+
+    await page.goto(hostUrl("/login?returnTo=%2Fmy"));
+    await fillLoginForm(page, {
+      email: ACCOUNT_LIFECYCLE_MEMBER.email,
+      password: ACCOUNT_LIFECYCLE_REPLAY_PASSWORD,
+    });
+    await expectLoginPage(page);
+    await expect(page.getByRole("status")).toContainText(LOGIN_FAILED_MESSAGE);
+
+    await signInAsMember(
+      page,
+      {
+        email: ACCOUNT_LIFECYCLE_MEMBER.email,
+        password: ACCOUNT_LIFECYCLE_RESET_PASSWORD,
+      },
+      "/my"
+    );
+    await expect(page).toHaveURL(/\/my\/?$/u);
   });
 });

@@ -24,6 +24,13 @@ export const ACCOUNT_LIFECYCLE_MEMBER = {
 /** The password the reset round trip moves that member to. */
 export const ACCOUNT_LIFECYCLE_RESET_PASSWORD = "resetmemberpass";
 
+/**
+ * The password a replay of the already-spent reset link submits. Nothing may
+ * ever sign in with it: naming it separately is what makes "the second use set
+ * no password" an assertion rather than an assumption.
+ */
+export const ACCOUNT_LIFECYCLE_REPLAY_PASSWORD = "replaymemberpass";
+
 /** The address a run signs up with, confirms, and then signs in as. */
 export const ACCOUNT_LIFECYCLE_SIGNUP = {
   email: "account-lifecycle-new@example.com",
