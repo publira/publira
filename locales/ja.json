@@ -1,8 +1,121 @@
 {
   "email": {
+    "admin_console_email_change_confirmation": {
+      "action": "メールアドレス変更を確認する",
+      "body_current_email": "現在のメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+      "body_new_email": "新しいメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+      "current_email": "現在のメールアドレス: {$current_email}",
+      "expires": "このリンクの有効期限は {$expires_at} です。",
+      "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
+      "heading": "管理画面メールアドレス変更の確認",
+      "ignore": "心当たりがない場合、このメールは破棄してください。",
+      "intro": "管理画面アカウントのメールアドレス変更リクエストを受け付けました。",
+      "new_email": "新しいメールアドレス: {$new_email}",
+      "preview": "管理画面のメールアドレス変更の確認を完了してください。",
+      "subject": "{$tenant_name} 管理画面メールアドレス変更確認"
+    },
+    "admin_console_email_changed_notice": {
+      "body": "管理画面アカウントのメールアドレスが変更されました。",
+      "heading": "管理画面メールアドレス変更の完了",
+      "new_email": "変更後: {$new_email}",
+      "preview": "管理画面アカウントのメールアドレスが変更されました。",
+      "previous_email": "変更前: {$previous_email}",
+      "subject": "{$tenant_name} 管理画面メールアドレス変更完了",
+      "warning": "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"
+    },
+    "admin_console_password_reset": {
+      "action": "パスワードを再設定する",
+      "body": "以下のボタンから新しいパスワードを設定してください。",
+      "expires": "このリンクの有効期限は {$expires_at} です。",
+      "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
+      "heading": "管理画面パスワードの再設定",
+      "ignore": "心当たりがない場合、このメールは破棄してください。",
+      "intro": "管理画面アカウントのパスワード再設定リクエストを受け付けました。",
+      "preview": "管理画面の新しいパスワードを設定してください。",
+      "subject": "{$tenant_name} 管理画面パスワード再設定"
+    },
     "layout": {
       "brand": "Publira",
-      "footer": "このメールは Publira から送信されています。"
+      "footer": "このメールは {$brand} から送信されています。"
+    },
+    "platform_console_email_change_confirmation": {
+      "action": "メールアドレス変更を確認する",
+      "body_current_email": "現在のメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+      "body_new_email": "新しいメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+      "current_email": "現在のメールアドレス: {$current_email}",
+      "expires": "このリンクの有効期限は {$expires_at} です。",
+      "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
+      "heading": "Platform Console メールアドレス変更の確認",
+      "ignore": "心当たりがない場合、このメールは破棄してください。",
+      "intro": "Platform Console アカウントのメールアドレス変更リクエストを受け付けました。",
+      "new_email": "新しいメールアドレス: {$new_email}",
+      "preview": "Platform Console のメールアドレス変更の確認を完了してください。",
+      "subject": "Publira Platform Console メールアドレス変更確認"
+    },
+    "platform_console_email_changed_notice": {
+      "body": "Platform Console アカウントのメールアドレスが変更されました。",
+      "heading": "Platform Console メールアドレス変更の完了",
+      "new_email": "変更後: {$new_email}",
+      "preview": "Platform Console アカウントのメールアドレスが変更されました。",
+      "previous_email": "変更前: {$previous_email}",
+      "subject": "Publira Platform Console メールアドレス変更完了",
+      "warning": "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"
+    },
+    "platform_console_password_reset": {
+      "action": "パスワードを再設定する",
+      "body": "以下のボタンから新しいパスワードを設定してください。",
+      "expires": "このリンクの有効期限は {$expires_at} です。",
+      "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
+      "heading": "Platform Console パスワードの再設定",
+      "ignore": "心当たりがない場合、このメールは破棄してください。",
+      "intro": "Platform Console アカウントのパスワード再設定リクエストを受け付けました。",
+      "preview": "Platform Console の新しいパスワードを設定してください。",
+      "subject": "Publira Platform Console パスワード再設定"
+    },
+    "reader_email_change_confirmation": {
+      "action": "メールアドレス変更を確認する",
+      "body_current_email": "現在のメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+      "body_new_email": "新しいメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+      "current_email": "現在のメールアドレス: {$current_email}",
+      "expires": "このリンクの有効期限は {$expires_at} です。",
+      "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
+      "heading": "メールアドレス変更の確認",
+      "ignore": "心当たりがない場合、このメールは破棄してください。",
+      "intro": "メールアドレス変更のリクエストを受け付けました。",
+      "new_email": "新しいメールアドレス: {$new_email}",
+      "preview": "メールアドレス変更の確認を完了してください。",
+      "subject": "{$tenant_name} メールアドレス変更確認"
+    },
+    "reader_email_changed_notice": {
+      "body": "アカウントのメールアドレスが変更されました。",
+      "heading": "メールアドレス変更の完了",
+      "new_email": "変更後: {$new_email}",
+      "preview": "アカウントのメールアドレスが変更されました。",
+      "previous_email": "変更前: {$previous_email}",
+      "subject": "{$tenant_name} メールアドレス変更完了",
+      "warning": "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"
+    },
+    "reader_email_verification": {
+      "action": "メールアドレスを確認する",
+      "body": "以下のボタンからメールアドレスの確認を完了してください。",
+      "expires": "このリンクの有効期限は {$expires_at} です。",
+      "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
+      "heading": "メールアドレスの確認",
+      "ignore": "心当たりがない場合、このメールは破棄してください。",
+      "intro": "{$tenant_name} のご登録ありがとうございます。",
+      "preview": "メールアドレスの確認を完了してください。",
+      "subject": "{$tenant_name} メールアドレス確認"
+    },
+    "reader_password_reset": {
+      "action": "パスワードを再設定する",
+      "body": "以下のボタンから新しいパスワードを設定してください。",
+      "expires": "このリンクの有効期限は {$expires_at} です。",
+      "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
+      "heading": "パスワードの再設定",
+      "ignore": "心当たりがない場合、このメールは破棄してください。",
+      "intro": "パスワード再設定のリクエストを受け付けました。",
+      "preview": "新しいパスワードを設定してください。",
+      "subject": "{$tenant_name} パスワード再設定"
     },
     "sample": {
       "preview": "{$body}",
@@ -15,8 +128,8 @@
       "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
       "heading": "管理者への招待",
       "ignore": "心当たりがない場合、このメールは破棄してください。",
-      "intro": "Publira 管理画面へ招待されました。",
-      "preview": "Publira 管理画面へ招待されました。",
+      "intro": "{$tenant_name} の管理画面へ招待されました。",
+      "preview": "{$tenant_name} の管理画面へ招待されました。",
       "subject": "{$tenant_name} 管理者招待"
     }
   },

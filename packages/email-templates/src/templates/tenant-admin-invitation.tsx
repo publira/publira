@@ -1,74 +1,25 @@
 import type { Locale } from "@publira/i18n";
-import { formatDateTime, parseInstant } from "@publira/utils";
-import type { CSSProperties } from "react";
-import { Link, Text } from "react-email";
+import { formatDateTime } from "@publira/utils";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
-import { emailColors, emailFonts } from "../colors";
-import { isHttpUrl } from "../http-url";
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
 import type { Messages } from "../messages";
-import { hasNoLineBreaks } from "../single-line";
 import "../temporal";
-
-const headingStyle: CSSProperties = {
-  color: emailColors.foreground,
-  fontFamily: emailFonts.serif,
-  fontSize: "22px",
-  fontWeight: 600,
-  lineHeight: "30px",
-  margin: "0 0 8px",
-};
-
-const introStyle: CSSProperties = {
-  color: emailColors.muted,
-  fontSize: "13px",
-  lineHeight: "20px",
-  margin: "0 0 16px",
-};
-
-const bodyStyle: CSSProperties = {
-  color: emailColors.foreground,
-  fontSize: "15px",
-  lineHeight: "24px",
-  margin: "0 0 24px",
-};
-
-const metaStyle: CSSProperties = {
-  color: emailColors.muted,
-  fontSize: "13px",
-  lineHeight: "20px",
-  margin: "24px 0 0",
-};
-
-const fallbackStyle: CSSProperties = {
-  color: emailColors.muted,
-  fontSize: "12px",
-  lineHeight: "20px",
-  margin: "16px 0 0",
-  wordBreak: "break-all",
-};
-
-const fallbackLinkStyle: CSSProperties = {
-  color: emailColors.brand,
-};
-
-const isRfc3339Instant = (value: string): boolean =>
-  parseInstant(value) !== null;
+import {
+  EmailBody,
+  EmailFallbackLink,
+  EmailHeading,
+  EmailIntro,
+  EmailMeta,
+} from "../text";
+import { displayNameField, httpUrlField, instantField } from "./fields";
 
 export const tenantAdminInvitationDataSchema = z.object({
-  expires_at: z.string().trim().refine(isRfc3339Instant, {
-    error: "expires_at must be an RFC3339 timestamp",
-  }),
-  invite_url: z
-    .string()
-    .trim()
-    .refine(isHttpUrl, { error: "invite_url must be an http(s) URL" }),
-  tenant_name: z.string().trim().min(1).max(255).refine(hasNoLineBreaks, {
-    error: "tenant_name must not contain CR or LF",
-  }),
+  expires_at: instantField("expires_at"),
+  invite_url: httpUrlField("invite_url"),
+  tenant_name: displayNameField("tenant_name"),
 });
 
 export type TenantAdminInvitationData = z.output<
@@ -91,15 +42,12 @@ export const tenantAdminInvitationSubject = (
   });
 
 export const tenantAdminInvitationPreview = (
-  _data: TenantAdminInvitationData,
+  data: TenantAdminInvitationData,
   messages: Messages
-): string => emailMessage(messages, "email.tenant_admin_invitation.preview");
-
-const formatExpiry = (
-  expiresAt: string,
-  locale: Locale,
-  timeZone: string
-): string => formatDateTime(expiresAt, { locale, timeZone });
+): string =>
+  emailMessage(messages, "email.tenant_admin_invitation.preview", {
+    tenant_name: data.tenant_name,
+  });
 
 export const TenantAdminInvitationEmail = ({
   data,
@@ -108,37 +56,37 @@ export const TenantAdminInvitationEmail = ({
   timeZone,
 }: TenantAdminInvitationEmailProps) => (
   <EmailLayout
+    brand={data.tenant_name}
     locale={locale}
     messages={messages}
     preview={tenantAdminInvitationPreview(data, messages)}
   >
-    <Text style={headingStyle}>
+    <EmailHeading>
       {emailMessage(messages, "email.tenant_admin_invitation.heading")}
-    </Text>
-    <Text style={introStyle}>
-      {emailMessage(messages, "email.tenant_admin_invitation.intro")}
-    </Text>
-    <Text style={bodyStyle}>
+    </EmailHeading>
+    <EmailIntro>
+      {emailMessage(messages, "email.tenant_admin_invitation.intro", {
+        tenant_name: data.tenant_name,
+      })}
+    </EmailIntro>
+    <EmailBody>
       {emailMessage(messages, "email.tenant_admin_invitation.body", {
         tenant_name: data.tenant_name,
       })}
-    </Text>
+    </EmailBody>
     <EmailButton href={data.invite_url}>
       {emailMessage(messages, "email.tenant_admin_invitation.action")}
     </EmailButton>
-    <Text style={metaStyle}>
+    <EmailMeta>
       {emailMessage(messages, "email.tenant_admin_invitation.expires", {
-        expires_at: formatExpiry(data.expires_at, locale, timeZone),
+        expires_at: formatDateTime(data.expires_at, { locale, timeZone }),
       })}
-    </Text>
-    <Text style={metaStyle}>
+    </EmailMeta>
+    <EmailMeta>
       {emailMessage(messages, "email.tenant_admin_invitation.ignore")}
-    </Text>
-    <Text style={fallbackStyle}>
-      {emailMessage(messages, "email.tenant_admin_invitation.fallback_link")}{" "}
-      <Link href={data.invite_url} style={fallbackLinkStyle}>
-        {data.invite_url}
-      </Link>
-    </Text>
+    </EmailMeta>
+    <EmailFallbackLink href={data.invite_url}>
+      {emailMessage(messages, "email.tenant_admin_invitation.fallback_link")}
+    </EmailFallbackLink>
   </EmailLayout>
 );

@@ -61,6 +61,7 @@ export const sampleEmailPreview = (
 
 export const SampleEmail = ({ data, locale, messages }: SampleEmailProps) => (
   <EmailLayout
+    brand={emailMessage(messages, "email.layout.brand")}
     locale={locale}
     messages={messages}
     preview={sampleEmailPreview(data, messages)}

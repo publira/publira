@@ -71,7 +71,8 @@ describe("TenantAdminInvitationEmail", () => {
     });
 
     expect(result.subject).toBe("青灯書房 管理者招待");
-    expect(result.html).toContain("Publira 管理画面へ招待されました。");
+    expect(result.html).toContain("青灯書房 の管理画面へ招待されました。");
+    expect(result.html).not.toContain("Publira");
     expect(result.html).not.toContain("招待を受け付けました");
     expect(result.html).toContain("招待を承諾する");
     expect(result.html).toContain(invitationData.invite_url);

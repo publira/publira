@@ -1,8 +1,121 @@
 {
   "email": {
+    "admin_console_email_change_confirmation": {
+      "action": "Confirm email address change",
+      "body_current_email": "This change needs confirmation from your current address. Open the button below to confirm it.",
+      "body_new_email": "This change needs confirmation from your new address. Open the button below to confirm it.",
+      "current_email": "Current email address: {$current_email}",
+      "expires": "This link expires at {$expires_at}.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Confirm your admin console email address change",
+      "ignore": "If you were not expecting this email, you can ignore it.",
+      "intro": "We received a request to change the email address on your admin console account.",
+      "new_email": "New email address: {$new_email}",
+      "preview": "Confirm your admin console email address change.",
+      "subject": "{$tenant_name} admin console email address change confirmation"
+    },
+    "admin_console_email_changed_notice": {
+      "body": "The email address on your admin console account was changed.",
+      "heading": "Your admin console email address was changed",
+      "new_email": "After: {$new_email}",
+      "preview": "The email address on your admin console account was changed.",
+      "previous_email": "Before: {$previous_email}",
+      "subject": "{$tenant_name} admin console email address changed",
+      "warning": "If you did not make this change, reset your password right away."
+    },
+    "admin_console_password_reset": {
+      "action": "Reset password",
+      "body": "Open the button below to set a new password.",
+      "expires": "This link expires at {$expires_at}.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Reset your admin console password",
+      "ignore": "If you were not expecting this email, you can ignore it.",
+      "intro": "We received a request to reset the password for your admin console account.",
+      "preview": "Set a new admin console password.",
+      "subject": "{$tenant_name} admin console password reset"
+    },
     "layout": {
       "brand": "Publira",
-      "footer": "This email was sent by Publira."
+      "footer": "This email was sent by {$brand}."
+    },
+    "platform_console_email_change_confirmation": {
+      "action": "Confirm email address change",
+      "body_current_email": "This change needs confirmation from your current address. Open the button below to confirm it.",
+      "body_new_email": "This change needs confirmation from your new address. Open the button below to confirm it.",
+      "current_email": "Current email address: {$current_email}",
+      "expires": "This link expires at {$expires_at}.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Confirm your Platform Console email address change",
+      "ignore": "If you were not expecting this email, you can ignore it.",
+      "intro": "We received a request to change the email address on your Platform Console account.",
+      "new_email": "New email address: {$new_email}",
+      "preview": "Confirm your Platform Console email address change.",
+      "subject": "Publira Platform Console email address change confirmation"
+    },
+    "platform_console_email_changed_notice": {
+      "body": "The email address on your Platform Console account was changed.",
+      "heading": "Your Platform Console email address was changed",
+      "new_email": "After: {$new_email}",
+      "preview": "The email address on your Platform Console account was changed.",
+      "previous_email": "Before: {$previous_email}",
+      "subject": "Publira Platform Console email address changed",
+      "warning": "If you did not make this change, reset your password right away."
+    },
+    "platform_console_password_reset": {
+      "action": "Reset password",
+      "body": "Open the button below to set a new password.",
+      "expires": "This link expires at {$expires_at}.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Reset your Platform Console password",
+      "ignore": "If you were not expecting this email, you can ignore it.",
+      "intro": "We received a request to reset the password for your Platform Console account.",
+      "preview": "Set a new Platform Console password.",
+      "subject": "Publira Platform Console password reset"
+    },
+    "reader_email_change_confirmation": {
+      "action": "Confirm email address change",
+      "body_current_email": "This change needs confirmation from your current address. Open the button below to confirm it.",
+      "body_new_email": "This change needs confirmation from your new address. Open the button below to confirm it.",
+      "current_email": "Current email address: {$current_email}",
+      "expires": "This link expires at {$expires_at}.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Confirm your email address change",
+      "ignore": "If you were not expecting this email, you can ignore it.",
+      "intro": "We received a request to change your email address.",
+      "new_email": "New email address: {$new_email}",
+      "preview": "Confirm your email address change.",
+      "subject": "{$tenant_name} email address change confirmation"
+    },
+    "reader_email_changed_notice": {
+      "body": "The email address on your account was changed.",
+      "heading": "Your email address was changed",
+      "new_email": "After: {$new_email}",
+      "preview": "The email address on your account was changed.",
+      "previous_email": "Before: {$previous_email}",
+      "subject": "{$tenant_name} email address changed",
+      "warning": "If you did not make this change, reset your password right away."
+    },
+    "reader_email_verification": {
+      "action": "Verify email address",
+      "body": "Open the button below to finish verifying your email address.",
+      "expires": "This link expires at {$expires_at}.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Verify your email address",
+      "ignore": "If you were not expecting this email, you can ignore it.",
+      "intro": "Thank you for signing up for {$tenant_name}.",
+      "preview": "Finish verifying your email address.",
+      "subject": "{$tenant_name} email address verification"
+    },
+    "reader_password_reset": {
+      "action": "Reset password",
+      "body": "Open the button below to set a new password.",
+      "expires": "This link expires at {$expires_at}.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Reset your password",
+      "ignore": "If you were not expecting this email, you can ignore it.",
+      "intro": "We received a request to reset your password.",
+      "preview": "Set a new password.",
+      "subject": "{$tenant_name} password reset"
     },
     "sample": {
       "preview": "{$body}",
@@ -15,8 +128,8 @@
       "fallback_link": "If the button does not work, paste this URL into your browser.",
       "heading": "Admin invitation",
       "ignore": "If you were not expecting this email, you can ignore it.",
-      "intro": "You have been invited to the Publira admin console.",
-      "preview": "You have been invited to the Publira admin console.",
+      "intro": "You have been invited to the admin console of {$tenant_name}.",
+      "preview": "You have been invited to the admin console of {$tenant_name}.",
       "subject": "{$tenant_name} admin invitation"
     }
   },

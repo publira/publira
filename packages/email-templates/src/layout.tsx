@@ -51,6 +51,12 @@ const footerStyle: CSSProperties = {
 };
 
 export interface EmailLayoutProps {
+  /**
+   * Who the mail is from, as the recipient knows them. A reader signed up on a
+   * tenant's site and never met the platform, so a tenant's mail is branded
+   * with the tenant name; only mail to a platform operator names Publira.
+   */
+  brand: string;
   children: ReactNode;
   locale: Locale;
   messages: Messages;
@@ -58,6 +64,7 @@ export interface EmailLayoutProps {
 }
 
 export const EmailLayout = ({
+  brand,
   children,
   locale,
   messages,
@@ -68,12 +75,10 @@ export const EmailLayout = ({
     <Preview>{preview}</Preview>
     <Body lang={locale} style={bodyStyle}>
       <Container style={containerStyle}>
-        <Text style={brandStyle}>
-          {emailMessage(messages, "email.layout.brand")}
-        </Text>
+        <Text style={brandStyle}>{brand}</Text>
         <Section style={cardStyle}>{children}</Section>
         <Text style={footerStyle}>
-          {emailMessage(messages, "email.layout.footer")}
+          {emailMessage(messages, "email.layout.footer", { brand })}
         </Text>
       </Container>
     </Body>

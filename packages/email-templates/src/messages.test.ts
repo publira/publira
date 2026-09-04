@@ -22,8 +22,8 @@ describe("loadEmailMessages", () => {
         tenant_name: "Aoto Press",
       })
     ).toBe("Aoto Press admin invitation");
-    expect(emailMessage(en, "email.layout.footer")).toBe(
-      "This email was sent by Publira."
-    );
+    expect(
+      emailMessage(en, "email.layout.footer", { brand: "Aoto Press" })
+    ).toBe("This email was sent by Aoto Press.");
   });
 });
