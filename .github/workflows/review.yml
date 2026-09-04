@@ -24,6 +24,9 @@ jobs:
     runs-on: ubicloud-standard-2
     timeout-minutes: 10
     permissions:
+      # A job's `permissions` replaces the workflow's `{}` outright rather than
+      # adding to it, so the checkout needs `contents: read` spelled out here.
+      contents: read
       pull-requests: write
     steps:
       # `pull_request_target` resolves to the base commit, so this is the
