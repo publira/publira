@@ -63,6 +63,18 @@ class ConnectFixtureServer {
       '.eyJzdWIiOiJhbm9ueW1vdXMtZnJlZS1lcGlzb2RlIn0'
       '.fixture-signature';
 
+  /// Another token for the same subject, standing in for the one image-server
+  /// recomputes for the current rotation window. It is never handed out, so a
+  /// page encrypted under it is a page the request cannot read.
+  static const _currentWindowMediaToken =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+      '.eyJzdWIiOiJhbm9ueW1vdXMtZnJlZS1lcGlzb2RlIiwiaWF0IjoxfQ'
+      '.fixture-signature';
+
+  /// Subject both free-path tokens carry
+  /// (`server/internal/auth`.`FreeEpisodeMediaSubject`).
+  static const freeEpisodeMediaSubject = 'anonymous-free-episode';
+
   /// Key id the fixture reports for an encrypted page, standing in for
   /// image-server's per-rendition cache key.
   static const imageKeyId = 'fixture-image-key';
@@ -433,22 +445,18 @@ class ConnectFixtureServer {
 
   /// Answers a page the way image-server does.
   ///
-  /// The key comes from the material the request carries, resolved in the
-  /// server's own order: the `Authorization` bearer first, then the media
-  /// token on the URL, which is what a free page hands a reader with no
-  /// session. A request carrying neither, and every request at all while
-  /// [encryptImages] is false, gets the PNG itself.
+  /// With [encryptImages] on, a page always leaves as ciphertext; only the
+  /// material it is keyed to depends on the request. The PNG itself is what
+  /// the flag being off looks like, and nothing else produces it.
   Future<void> _writeImage(HttpRequest request) async {
-    final token = encryptImages ? _imageCredential(request) : null;
-    final subject = token == null ? null : subjectFromJwt(token);
-
     request.response.statusCode = HttpStatus.ok;
-    if (token == null || subject == null) {
+    if (!encryptImages) {
       request.response.headers.contentType = ContentType('image', 'png');
       request.response.add(pageBytes);
       await request.response.close();
       return;
     }
+    final (token, subject) = _imageCipherMaterial(request);
 
     request.response.headers
       ..contentType = ContentType('application', 'octet-stream')
@@ -468,19 +476,31 @@ class ConnectFixtureServer {
     await request.response.close();
   }
 
-  /// The token image-server would derive this page's key from.
-  String? _imageCredential(HttpRequest request) {
+  /// The token and subject image-server would derive this page's key from.
+  ///
+  /// The request's own material is resolved in the server's order — the
+  /// `Authorization` bearer first, then the media token on the URL, which is
+  /// what a free page hands a reader with no session — and a value the server
+  /// could not read is not material, so it falls through. Presenting nothing
+  /// readable is not a way to be sent a plaintext page: the response is keyed
+  /// to the window token instead, which this request was never handed.
+  (String, String) _imageCipherMaterial(HttpRequest request) {
     final authorization =
         request.headers.value(HttpHeaders.authorizationHeader) ?? '';
     if (authorization.startsWith('Bearer ')) {
       final bearer = authorization.substring('Bearer '.length).trim();
-      if (bearer.isNotEmpty) {
-        return bearer;
+      final subject = subjectFromJwt(bearer);
+      if (subject != null) {
+        return (bearer, subject);
       }
     }
     final mediaToken =
         request.uri.queryParameters[mediaTokenQueryParam]?.trim() ?? '';
-    return mediaToken.isEmpty ? null : mediaToken;
+    final subject = subjectFromJwt(mediaToken);
+    if (subject != null) {
+      return (mediaToken, subject);
+    }
+    return (_currentWindowMediaToken, freeEpisodeMediaSubject);
   }
 
   Future<void> _write(HttpRequest request, int status, Object body) async {
