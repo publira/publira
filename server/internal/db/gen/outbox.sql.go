@@ -156,6 +156,22 @@ type InsertOutboxEventParams struct {
 // same transaction as the domain write. The worker claims due rows,
 // runs the handler, and records done / retry / dead.
 //
+// Auth-mail payloads carry the raw token the token tables store only
+// as a hash. Terminal updates drop that key on the event types below
+// so a processed row does not keep a usable secret. Other event types
+// keep payload.token, if they have one. Keep this list in sync with
+// MarkOutboxEventDone, MarkOutboxEventDead, and the terminal-token
+// data migration:
+//
+//	admin_email_change_confirmation_email
+//	admin_password_reset_email
+//	platform_email_change_confirmation_email
+//	platform_password_reset_email
+//	reader_email_change_confirmation_email
+//	reader_email_verification_email
+//	reader_password_reset_email
+//	tenant_admin_invitation_email
+//
 // Expected plans (empty table may still seq-scan; SET enable_seqscan = off
 // in the integration test to confirm the index is eligible):
 //
@@ -199,6 +215,19 @@ SET
     status = 'dead',
     attempts = attempts + 1,
     last_error = $1,
+    payload = CASE
+        WHEN event_type IN (
+            'admin_email_change_confirmation_email',
+            'admin_password_reset_email',
+            'platform_email_change_confirmation_email',
+            'platform_password_reset_email',
+            'reader_email_change_confirmation_email',
+            'reader_email_verification_email',
+            'reader_password_reset_email',
+            'tenant_admin_invitation_email'
+        ) THEN payload - 'token'
+        ELSE payload
+    END,
     updated_at = NOW()
 WHERE id = $2
     AND status = 'processing'
@@ -210,6 +239,9 @@ type MarkOutboxEventDeadParams struct {
 	ID        uuid.UUID      `json:"id"`
 }
 
+// Same token drop as MarkOutboxEventDone: a dead auth-mail event is
+// as terminal as a successful one, and the secret is no longer
+// needed to send the mail.
 func (q *Queries) MarkOutboxEventDead(ctx context.Context, arg MarkOutboxEventDeadParams) (OutboxEvent, error) {
 	row := q.db.QueryRowContext(ctx, markOutboxEventDead, arg.LastError, arg.ID)
 	var i OutboxEvent
@@ -234,12 +266,35 @@ UPDATE outbox_events
 SET
     status = 'done',
     last_error = NULL,
+    payload = CASE
+        WHEN event_type IN (
+            'admin_email_change_confirmation_email',
+            'admin_password_reset_email',
+            'platform_email_change_confirmation_email',
+            'platform_password_reset_email',
+            'reader_email_change_confirmation_email',
+            'reader_email_verification_email',
+            'reader_password_reset_email',
+            'tenant_admin_invitation_email'
+        ) THEN payload - 'token'
+        ELSE payload
+    END,
     updated_at = NOW()
 WHERE id = $1
     AND status = 'processing'
 RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
 `
 
+// Auth mail is the one place the raw token still has to appear: the
+// token tables store a hash, so the producing transaction writes the
+// secret into payload for the worker to render. Once an auth-mail
+// event is terminal the worker no longer needs it, so the key is
+// dropped and the rest of the payload stays for diagnosis. Other
+// event types are left alone. The plaintext window is the
+// pending/processing lifetime. Retries keep the token so a later
+// attempt can still send the mail. While the worker is running that
+// window is the retry budget (ten attempts, delays doubling from 1s
+// and capped at 1h).
 func (q *Queries) MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
 	row := q.db.QueryRowContext(ctx, markOutboxEventDone, id)
 	var i OutboxEvent

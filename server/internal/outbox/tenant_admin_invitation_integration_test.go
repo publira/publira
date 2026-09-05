@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -95,6 +96,22 @@ func TestWorkerRetriesTenantAdminInvitationEmail(t *testing.T) {
 	}
 	if worker.Metrics().Retry.Load() < 1 {
 		t.Fatalf("retry metric = %d, want at least 1", worker.Metrics().Retry.Load())
+	}
+	if strings.Contains(string(got.Payload), token) {
+		t.Fatalf("done invitation payload still contains raw token: %s", got.Payload)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(got.Payload, &body); err != nil {
+		t.Fatalf("decode done payload: %v", err)
+	}
+	if _, ok := body["token"]; ok {
+		t.Fatalf("done invitation payload still has token key: %s", got.Payload)
+	}
+	if body["tenant_id"] != tenant.ID.String() {
+		t.Fatalf("done invitation payload tenant_id = %v", body["tenant_id"])
+	}
+	if body["invitation_id"] != invitation.ID.String() {
+		t.Fatalf("done invitation payload invitation_id = %v", body["invitation_id"])
 	}
 }
 
