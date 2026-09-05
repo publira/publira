@@ -1,3 +1,8 @@
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -33,6 +38,22 @@ vi.mock("./api-client", () => ({
   }),
   resolveAccessToken: mockResolveSessionId,
 }));
+
+const smtpAuthenticationError = () =>
+  new ConnectError(
+    "smtp connection test failed",
+    Code.FailedPrecondition,
+    undefined,
+    [
+      {
+        desc: ErrorInfoSchema,
+        value: {
+          domain: "publira",
+          reason: "SMTP_TEST_AUTHENTICATION",
+        },
+      },
+    ]
+  );
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -166,5 +187,38 @@ describe("sendPlatformSmtpTestEmail", () => {
         username: "mailer",
       })
     ).resolves.toEqual({ ok: true, recipientEmail: "operator@example.com" });
+  });
+
+  it("renders SMTP test reasons in English and Japanese", async () => {
+    const input = {
+      encryption: "starttls",
+      fromAddress: "noreply@example.com",
+      host: "smtp.example.com",
+      locale: "en" as const,
+      password: "",
+      passwordUpdateMode: 1,
+      port: 587,
+      recipientEmail: "",
+      recipientType: TEST_EMAIL_RECIPIENT_TYPE_SELF,
+      replyTo: "",
+      username: "mailer",
+    };
+    mockSendPlatformSmtpTestEmail.mockRejectedValueOnce(
+      smtpAuthenticationError()
+    );
+    await expect(sendPlatformSmtpTestEmail(input)).resolves.toEqual({
+      message: "SMTP authentication failed.",
+      ok: false,
+    });
+
+    mockSendPlatformSmtpTestEmail.mockRejectedValueOnce(
+      smtpAuthenticationError()
+    );
+    await expect(
+      sendPlatformSmtpTestEmail({ ...input, locale: "ja" })
+    ).resolves.toEqual({
+      message: "SMTP 認証に失敗しました",
+      ok: false,
+    });
   });
 });

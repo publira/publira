@@ -1,5 +1,8 @@
 import type { TenantEmailSettings } from "@publira/api-client/admin/types";
-import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  rpcErrorMessage,
+  smtpTestFailureErrorMessage,
+} from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
@@ -87,6 +90,18 @@ const parseErrorMessage = (error: unknown, locale: Locale): string => {
       precondition: serverMessage,
     },
   });
+};
+
+const parseSmtpTestErrorMessage = (error: unknown, locale: Locale): string => {
+  const fallback = genericErrorMessage(sharedCatalog(locale));
+
+  return (
+    smtpTestFailureErrorMessage(error, locale) ??
+    rpcErrorMessage(error, fallback, {
+      locale,
+      overrides: { precondition: fallback },
+    })
+  );
 };
 
 /**
@@ -233,6 +248,6 @@ export const sendTenantSmtpTestEmail = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    return { message: parseErrorMessage(error, locale), ok: false };
+    return { message: parseSmtpTestErrorMessage(error, locale), ok: false };
   }
 };

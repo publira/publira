@@ -1,7 +1,7 @@
 import { ConnectError } from "@connectrpc/connect";
 import { describe, expect, it } from "vitest";
 
-import { rpcErrorMessage } from "./error-messages";
+import { rpcErrorMessage, smtpTestFailureMessage } from "./error-messages";
 import { Code } from "./errors";
 
 const fallback = "Could not save. Please try again later.";
@@ -87,5 +87,16 @@ describe("rpcErrorMessage", () => {
         },
       })
     ).toBe("That episode could not be found.");
+  });
+});
+
+describe("smtpTestFailureMessage", () => {
+  it("renders the same failure reason in each locale", () => {
+    expect(smtpTestFailureMessage("SMTP_TEST_AUTHENTICATION", "en")).toBe(
+      "SMTP authentication failed."
+    );
+    expect(smtpTestFailureMessage("SMTP_TEST_AUTHENTICATION", "ja")).toBe(
+      "SMTP 認証に失敗しました"
+    );
   });
 });

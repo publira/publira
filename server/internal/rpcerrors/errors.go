@@ -17,6 +17,13 @@ const (
 	ReasonInvitationCanceled      = "INVITATION_CANCELED"
 	ReasonMfaInvalidCode          = "MFA_INVALID_CODE"
 	ReasonMfaLocked               = "MFA_LOCKED"
+	ReasonSMTPTestAuthentication  = "SMTP_TEST_AUTHENTICATION"
+	ReasonSMTPTestConnection      = "SMTP_TEST_CONNECTION"
+	ReasonSMTPTestRecipient       = "SMTP_TEST_RECIPIENT"
+	ReasonSMTPTestStartTLS        = "SMTP_TEST_STARTTLS"
+	ReasonSMTPTestTLS             = "SMTP_TEST_TLS"
+	ReasonSMTPTestTimeout         = "SMTP_TEST_TIMEOUT"
+	ReasonSMTPTestUnknown         = "SMTP_TEST_UNKNOWN"
 )
 
 // NewFieldViolationError reports that one request field caused a rejected RPC.

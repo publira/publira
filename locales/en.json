@@ -143,6 +143,15 @@
       "unauthenticated": "Your session is no longer valid. Please sign in again.",
       "unavailable": "Could not connect to the server. Please try again later."
     },
+    "smtp_test": {
+      "authentication": "SMTP authentication failed.",
+      "connection": "Could not connect to the SMTP server.",
+      "recipient": "The SMTP server rejected the recipient email address.",
+      "starttls": "Could not establish STARTTLS.",
+      "timeout": "The connection to the SMTP server timed out.",
+      "tls": "Could not establish a TLS connection.",
+      "unknown": "The SMTP connection test failed."
+    },
     "validation": "Please check the information you entered."
   },
   "locale": {

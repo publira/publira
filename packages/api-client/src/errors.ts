@@ -5,6 +5,7 @@ import {
 import { Code, ConnectError } from "@connectrpc/connect";
 
 export { Code, ConnectError } from "@connectrpc/connect";
+export { ErrorInfoSchema } from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
 
 /** Stable reasons attached by Publira APIs through `google.rpc.ErrorInfo`. */
 export const RPC_ERROR_REASON = {
@@ -14,6 +15,13 @@ export const RPC_ERROR_REASON = {
   invitationCanceled: "INVITATION_CANCELED",
   mfaInvalidCode: "MFA_INVALID_CODE",
   mfaLocked: "MFA_LOCKED",
+  smtpTestAuthentication: "SMTP_TEST_AUTHENTICATION",
+  smtpTestConnection: "SMTP_TEST_CONNECTION",
+  smtpTestRecipient: "SMTP_TEST_RECIPIENT",
+  smtpTestStartTLS: "SMTP_TEST_STARTTLS",
+  smtpTestTLS: "SMTP_TEST_TLS",
+  smtpTestTimeout: "SMTP_TEST_TIMEOUT",
+  smtpTestUnknown: "SMTP_TEST_UNKNOWN",
 } as const;
 
 export type RpcErrorReason =

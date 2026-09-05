@@ -1,3 +1,4 @@
+import { smtpTestFailureMessage } from "@publira/api-client/error-messages";
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
@@ -132,15 +133,19 @@ export const AuditLogActionCell = ({
   targetType,
 }: AuditLogActionCellProps) => {
   const messages = sharedCatalog(locale);
+  const reasonLabel =
+    action === "tenant_smtp_test_email_sent"
+      ? (smtpTestFailureMessage(reason, locale) ?? reason)
+      : reason;
 
   return (
     <TableCell>
       <div className="font-medium">{actionLabel(action, messages)}</div>
-      {(targetType || targetId || reason) && (
+      {(targetType || targetId || reasonLabel) && (
         <div className="text-xs text-muted-foreground">
           {targetType || getMessage(messages, "admin.audit.target_type_none")}
           {targetId ? ` / ${targetId}` : ""}
-          {reason ? ` / ${reason}` : ""}
+          {reasonLabel ? ` / ${reasonLabel}` : ""}
         </div>
       )}
     </TableCell>

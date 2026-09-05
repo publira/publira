@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 type Tester interface {
@@ -124,27 +125,28 @@ func (c *Client) send(ctx context.Context, settings emailsettings.SMTPSettings, 
 	return nil
 }
 
-func UserFacingError(err error) string {
+// TestFailureReason classifies an SMTP test failure into a stable API reason.
+func TestFailureReason(err error) string {
 	if err == nil {
 		return ""
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
-		return "SMTP サーバーへの接続がタイムアウトしました"
+		return rpcerrors.ReasonSMTPTestTimeout
 	}
 	lower := strings.ToLower(err.Error())
 	switch {
 	case strings.Contains(lower, "authentication") || strings.Contains(lower, "535"):
-		return "SMTP 認証に失敗しました"
+		return rpcerrors.ReasonSMTPTestAuthentication
 	case strings.Contains(lower, "starttls"):
-		return "STARTTLS の確立に失敗しました"
+		return rpcerrors.ReasonSMTPTestStartTLS
 	case strings.Contains(lower, "tls") || strings.Contains(lower, "certificate"):
-		return "TLS 接続に失敗しました"
+		return rpcerrors.ReasonSMTPTestTLS
 	case strings.Contains(lower, "no such host") || strings.Contains(lower, "connection refused") || strings.Contains(lower, "timeout") || strings.Contains(lower, "deadline exceeded"):
-		return "SMTP サーバーに接続できませんでした"
+		return rpcerrors.ReasonSMTPTestConnection
 	case strings.Contains(lower, "rcpt") || strings.Contains(lower, "recipient") || strings.Contains(lower, "mailbox"):
-		return "宛先メールアドレスを受け付けられませんでした"
+		return rpcerrors.ReasonSMTPTestRecipient
 	default:
-		return "SMTP 接続テストに失敗しました"
+		return rpcerrors.ReasonSMTPTestUnknown
 	}
 }
 

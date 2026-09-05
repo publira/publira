@@ -1,3 +1,4 @@
+import { smtpTestFailureMessage } from "@publira/api-client/error-messages";
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
@@ -315,6 +316,14 @@ const renderAuditLogTarget = (log: PlatformAuditLogSummary) => {
   return <p>{buildTargetLabel(log.targetType, log.targetId)}</p>;
 };
 
+const auditLogReason = (
+  log: PlatformAuditLogSummary,
+  locale: Locale
+): string =>
+  log.action === "platform_smtp_test_email_sent"
+    ? (smtpTestFailureMessage(log.reason, locale) ?? log.reason)
+    : log.reason;
+
 const AuditLogsTableBody = async ({
   hasFilter,
   locale,
@@ -397,8 +406,10 @@ const AuditLogsTableBody = async ({
           <TableCell>
             <div className="grid gap-1">
               {renderAuditLogTarget(log)}
-              {log.reason ? (
-                <p className="text-xs text-muted-foreground">{log.reason}</p>
+              {auditLogReason(log, locale) ? (
+                <p className="text-xs text-muted-foreground">
+                  {auditLogReason(log, locale)}
+                </p>
               ) : null}
             </div>
           </TableCell>

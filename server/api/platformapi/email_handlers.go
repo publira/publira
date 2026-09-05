@@ -12,6 +12,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
 
@@ -181,7 +182,7 @@ func (s *platformServer) SendPlatformSmtpTestEmail(
 	}
 
 	if err := s.tester.SendTestEmail(ctx, settings, recipientEmail); err != nil {
-		reason := internalsmtp.UserFacingError(err)
+		reason := internalsmtp.TestFailureReason(err)
 		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
 			ActorPlatformUserID: actor.UserID,
 			ActorRole:           actor.Role,
@@ -192,7 +193,11 @@ func (s *platformServer) SendPlatformSmtpTestEmail(
 			Reason:              reason,
 			ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 		})
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New(reason))
+		return nil, rpcerrors.NewErrorInfoError(
+			connect.CodeFailedPrecondition,
+			errors.New("smtp connection test failed"),
+			reason,
+		)
 	}
 
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{

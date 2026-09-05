@@ -143,6 +143,15 @@
       "unauthenticated": "セッションが無効です。再ログインしてください。",
       "unavailable": "サーバーに接続できませんでした。時間をおいて再試行してください。"
     },
+    "smtp_test": {
+      "authentication": "SMTP 認証に失敗しました",
+      "connection": "SMTP サーバーに接続できませんでした",
+      "recipient": "宛先メールアドレスを受け付けられませんでした",
+      "starttls": "STARTTLS の確立に失敗しました",
+      "timeout": "SMTP サーバーへの接続がタイムアウトしました",
+      "tls": "TLS 接続に失敗しました",
+      "unknown": "SMTP 接続テストに失敗しました"
+    },
     "validation": "入力内容を確認してください。"
   },
   "locale": {
