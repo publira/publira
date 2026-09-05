@@ -29,6 +29,7 @@ const (
 	EventTypeReaderEmailChangeConfirmationEmail = "reader_email_change_confirmation_email"
 	EventTypeReaderEmailChangedNoticeEmail      = "reader_email_changed_notice_email"
 	EventTypeReaderPasswordResetEmail           = "reader_password_reset_email"
+	EventTypeReaderSignupAttemptNoticeEmail     = "reader_signup_attempt_notice_email"
 )
 
 // ReaderEmailVerificationEmailPayload names the verification row the mail is
@@ -62,6 +63,14 @@ type ReaderPasswordResetEmailPayload struct {
 	TenantID string `json:"tenant_id"`
 	TokenID  string `json:"token_id"`
 	Token    string `json:"token"`
+}
+
+// ReaderSignupAttemptNoticeEmailPayload names the account a sign-up tried to
+// reuse. The attempt stores nothing, so the reader's own row is all the notice
+// points at and there is no token to carry.
+type ReaderSignupAttemptNoticeEmailPayload struct {
+	TenantID string `json:"tenant_id"`
+	UserID   string `json:"user_id"`
 }
 
 // NewReaderEmailVerificationEmailHandler sends a new reader the link that
@@ -121,7 +130,7 @@ func NewReaderEmailVerificationEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err != nil {
 			return fmt.Errorf("load reader: %w", err)
 		}
-		verifyURL, err := tenantSiteURL(delivery.tenant, "/verify", payload.Token)
+		verifyURL, err := tenantSiteTokenURL(delivery.tenant, "/verify", payload.Token)
 		if err != nil {
 			return Permanent(fmt.Errorf("build reader email verification url: %w", err))
 		}
@@ -199,7 +208,7 @@ func NewReaderEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handle
 		if err != nil {
 			return err
 		}
-		confirmURL, err := tenantSiteURL(delivery.tenant, "/confirm-email", payload.Token)
+		confirmURL, err := tenantSiteTokenURL(delivery.tenant, "/confirm-email", payload.Token)
 		if err != nil {
 			return Permanent(fmt.Errorf("build reader email change confirmation url: %w", err))
 		}
@@ -342,7 +351,7 @@ func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err != nil {
 			return fmt.Errorf("load reader: %w", err)
 		}
-		resetURL, err := tenantSiteURL(delivery.tenant, "/confirm-password", payload.Token)
+		resetURL, err := tenantSiteTokenURL(delivery.tenant, "/confirm-password", payload.Token)
 		if err != nil {
 			return Permanent(fmt.Errorf("build reader password reset url: %w", err))
 		}
@@ -367,20 +376,97 @@ func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 	}
 }
 
+// NewReaderSignupAttemptNoticeEmailHandler tells a reader that a sign-up was
+// attempted with their address. The sign-up itself is answered as though the
+// address were free, so this mail is the only report the attempt produces, and
+// it carries no link that acts on the account — only the way back in for
+// someone who forgot they already had one.
+func NewReaderSignupAttemptNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("reader signup attempt notice email"); err != nil {
+			return err
+		}
+		var payload ReaderSignupAttemptNoticeEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode reader signup attempt notice email payload: %w", err))
+		}
+		tenantID, err := tenantAuthEventTenantID(event, payload.TenantID)
+		if err != nil {
+			return Permanent(err)
+		}
+		readerID, err := uuid.Parse(payload.UserID)
+		if err != nil {
+			return Permanent(fmt.Errorf("%s payload has an invalid user_id", event.EventType))
+		}
+
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+		reader, err := queries.GetUserByID(ctx, readerID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Permanent(fmt.Errorf("reader %s no longer exists", readerID))
+		}
+		if err != nil {
+			return fmt.Errorf("load reader: %w", err)
+		}
+		// The worker reads past RLS, so the account the payload names is checked
+		// against the tenant the mail goes out for rather than assumed to be one
+		// of its readers.
+		if !reader.TenantID.Valid || reader.TenantID.UUID != tenantID {
+			return Permanent(fmt.Errorf("reader %s does not belong to tenant %s", readerID, tenantID))
+		}
+		resetURL, err := tenantSiteURL(delivery.tenant, "/reset-password")
+		if err != nil {
+			return Permanent(fmt.Errorf("build reader password reset url: %w", err))
+		}
+
+		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+			Template: "reader_signup_attempt_notice",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"email":       reader.Email,
+				"reset_url":   resetURL,
+				"tenant_name": delivery.tenantName,
+			},
+			TimeZone: delivery.timeZone,
+		})
+		if err != nil {
+			return fmt.Errorf("render reader signup attempt notice email: %w", err)
+		}
+		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, reader.Email, rendered); err != nil {
+			return fmt.Errorf("send reader signup attempt notice email: %w", err)
+		}
+		return nil
+	}
+}
+
 // tenantAuthEventIDs checks what every tenant-scoped auth event shares, the
 // reader's and the admin console's alike: the tenant the row belongs to is named
 // by both the event and its payload — the table's own check constraint requires
 // them to agree — and its token_id points at a row the handler can reload.
 func tenantAuthEventIDs(event dbmodels.OutboxEvent, tenantID, tokenID string) (uuid.UUID, uuid.UUID, error) {
-	parsedTenant, err := uuid.Parse(tenantID)
-	if err != nil || !event.TenantID.Valid || parsedTenant != event.TenantID.UUID {
-		return uuid.Nil, uuid.Nil, fmt.Errorf("%s payload has an invalid tenant_id", event.EventType)
+	parsedTenant, err := tenantAuthEventTenantID(event, tenantID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
 	}
 	parsedToken, err := uuid.Parse(tokenID)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("%s payload has an invalid token_id", event.EventType)
 	}
 	return parsedTenant, parsedToken, nil
+}
+
+// tenantAuthEventTenantID is the half of the check above that an event naming
+// no token row still owes: the tenant is named by the event and by its payload
+// alike, which is what the table's own check constraint requires.
+func tenantAuthEventTenantID(event dbmodels.OutboxEvent, tenantID string) (uuid.UUID, error) {
+	parsedTenant, err := uuid.Parse(tenantID)
+	if err != nil || !event.TenantID.Valid || parsedTenant != event.TenantID.UUID {
+		return uuid.Nil, fmt.Errorf("%s payload has an invalid tenant_id", event.EventType)
+	}
+	return parsedTenant, nil
 }
 
 // tenantDelivery is what every tenant-scoped auth mail needs beyond its own
@@ -434,11 +520,21 @@ func resolveTenantDelivery(
 // tenantSiteURL builds a link into the tenant's own storefront. The worker runs
 // outside the request that produced the event, so the origin comes from the
 // tenant's configured domain rather than from an incoming Host header.
-func tenantSiteURL(tenant dbmodels.Tenant, path, token string) (string, error) {
+func tenantSiteURL(tenant dbmodels.Tenant, path string) (string, error) {
 	domain := strings.TrimSpace(tenant.Domain)
 	domain = strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(domain, "https://"), "http://"), "/")
 	if domain == "" {
 		return "", errors.New("tenant domain is not configured")
 	}
-	return "https://" + domain + path + "?token=" + url.QueryEscape(token), nil
+	return "https://" + domain + path, nil
+}
+
+// tenantSiteTokenURL is the same link carrying the secret the mail exists to
+// deliver, which the database stores only as a hash.
+func tenantSiteTokenURL(tenant dbmodels.Tenant, path, token string) (string, error) {
+	base, err := tenantSiteURL(tenant, path)
+	if err != nil {
+		return "", err
+	}
+	return base + "?token=" + url.QueryEscape(token), nil
 }

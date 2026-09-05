@@ -25,8 +25,12 @@ message CreateUserRequest {
 }
 
 message CreateUserResponse {
-  publira.types.v1.User user = 1;
-  publira.types.v1.AccessToken access_token = 2;
+  reserved 1, 2;
+  reserved "user", "access_token";
+  // Every accepted sign-up answers the same way, whether it created an account
+  // or found the address taken. Naming the account here would tell a stranger
+  // which of the two happened.
+  bool accepted = 3;
 }
 
 message VerifyUserEmailRequest {

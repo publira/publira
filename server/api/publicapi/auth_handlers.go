@@ -255,6 +255,26 @@ func enqueueReaderPasswordResetEmail(
 		"reader_password_reset_email:"+tokenID.String())
 }
 
+func enqueueReaderSignupAttemptNoticeEmail(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID, userID, attemptID uuid.UUID,
+) error {
+	payload, err := json.Marshal(outbox.ReaderSignupAttemptNoticeEmailPayload{
+		TenantID: tenantID.String(),
+		UserID:   userID.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal reader signup attempt notice email event: %w", err)
+	}
+	// Every other reader mail is keyed by the row it announces, which collapses
+	// a repeated write into one send. An attempt writes no row, and a reader who
+	// is targeted again months later has to hear about it, so the key names the
+	// attempt instead.
+	return insertReaderOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderSignupAttemptNoticeEmail, payload,
+		"reader_signup_attempt_notice_email:"+attemptID.String())
+}
+
 func insertReaderOutboxEvent(
 	ctx context.Context,
 	queries *dbmodels.Queries,
@@ -305,23 +325,25 @@ func (s *apiServer) CreateUser(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
 
-	_, err = s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		Email:    email,
-	})
-	if err == nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "email_already_exists")
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String())
-	}
-
+	// Hashing before the lookup on purpose. Both addresses are answered the same
+	// way, so the work behind the answer must not be what separates them, and
+	// the hash is the one expensive step in this handler.
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "password_hash_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	existing, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		Email:    email,
+	})
+	if err == nil {
+		return s.acceptSignupForRegisteredEmail(ctx, req, tenant, existing)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_lookup_failed")
+		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String())
 	}
 
 	userID, err := uuid.NewV7()
@@ -364,8 +386,11 @@ func (s *apiServer) CreateUser(
 	})
 	if err != nil {
 		if dberr.IsUniqueViolation(err) {
-			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "email_already_exists")
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+			// Two sign-ups for the same address raced past the read above. The
+			// loser is answered like the one that saw the row, which needs this
+			// transaction out of the way first: the notice opens its own.
+			_ = tx.Rollback()
+			return s.acceptSignupForRacedEmail(ctx, req, tenant, email)
 		}
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_create_failed")
 		return nil, s.internalDBError(ctx, "failed to create user", err, "tenant_id", tenant.ID.String(), "user_id", userID.String())
@@ -395,13 +420,72 @@ func (s *apiServer) CreateUser(
 	}
 
 	auth.AuditEvent(req.Header(), "signup", "success", tenant.PublicID, user.PublicID, "verification_email_enqueued")
-	response := connect.NewResponse(&publirav1.CreateUserResponse{
-		User: &publirattypesv1.User{
-			PublicId: user.PublicID,
-			Name:     user.Name,
-		},
+	return connect.NewResponse(&publirav1.CreateUserResponse{Accepted: true}), nil
+}
+
+// acceptSignupForRegisteredEmail answers a sign-up whose address already has an
+// account exactly as a sign-up for a free address is answered: nothing is
+// created, nothing on the account changes, and the caller is told no more than
+// that the request was taken. The account's owner is the one who learns of it,
+// by mail, because the alternative is a silent dead end for a reader who forgot
+// they had signed up.
+func (s *apiServer) acceptSignupForRegisteredEmail(
+	ctx context.Context,
+	req *connect.Request[publirav1.CreateUserRequest],
+	tenant dbmodels.Tenant,
+	user dbmodels.User,
+) (*connect.Response[publirav1.CreateUserResponse], error) {
+	attemptID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "attempt_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin signup notice transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if err := enqueueReaderSignupAttemptNoticeEmail(ctx, dbmodels.New(tx), tenant.ID, user.ID, attemptID); err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "signup_attempt_notice_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader signup attempt notice email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit signup notice transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	// The audit trail is the one place the two outcomes are still told apart.
+	auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
+	return connect.NewResponse(&publirav1.CreateUserResponse{Accepted: true}), nil
+}
+
+// acceptSignupForRacedEmail is the same answer for the sign-up that lost a race
+// on the address, which learns of the account from the unique violation rather
+// than from a read.
+func (s *apiServer) acceptSignupForRacedEmail(
+	ctx context.Context,
+	req *connect.Request[publirav1.CreateUserRequest],
+	tenant dbmodels.Tenant,
+	email string,
+) (*connect.Response[publirav1.CreateUserResponse], error) {
+	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		Email:    email,
 	})
-	return response, nil
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// The winning row is gone again. There is no owner left to notify,
+			// and the answer still says nothing about that.
+			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "email_already_exists")
+			return connect.NewResponse(&publirav1.CreateUserResponse{Accepted: true}), nil
+		}
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_lookup_failed")
+		return nil, s.internalDBError(ctx, "failed to load the account a signup raced", err, "tenant_id", tenant.ID.String())
+	}
+	return s.acceptSignupForRegisteredEmail(ctx, req, tenant, user)
 }
 
 func (s *apiServer) VerifyUserEmail(

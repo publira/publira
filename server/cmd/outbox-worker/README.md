@@ -12,6 +12,7 @@ A long-lived worker that drains the Outbox and processes the entries as River jo
 | `reader_email_change_confirmation_email` | Reader email change confirmation, one event per address to confirm |
 | `reader_email_changed_notice_email` | Reader notice to the previous address once the change completes |
 | `reader_password_reset_email` | Reader password reset |
+| `reader_signup_attempt_notice_email` | Reader notice that a sign-up was attempted with an address that already has an account |
 | `admin_password_reset_email` | Admin console password reset |
 | `admin_email_change_confirmation_email` | Admin console email change confirmation, one event per address to confirm |
 | `admin_email_changed_notice_email` | Admin console notice to the previous address once the change completes |

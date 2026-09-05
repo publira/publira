@@ -203,9 +203,11 @@ func (x *CreateUserRequest) GetPassword() string {
 }
 
 type CreateUserResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	User          *v1.User               `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	AccessToken   *v1.AccessToken        `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Every accepted sign-up answers the same way, whether it created an account
+	// or found the address taken. Naming the account here would tell a stranger
+	// which of the two happened.
+	Accepted      bool `protobuf:"varint,3,opt,name=accepted,proto3" json:"accepted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -240,18 +242,11 @@ func (*CreateUserResponse) Descriptor() ([]byte, []int) {
 	return file_publira_v1_auth_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *CreateUserResponse) GetUser() *v1.User {
+func (x *CreateUserResponse) GetAccepted() bool {
 	if x != nil {
-		return x.User
+		return x.Accepted
 	}
-	return nil
-}
-
-func (x *CreateUserResponse) GetAccessToken() *v1.AccessToken {
-	if x != nil {
-		return x.AccessToken
-	}
-	return nil
+	return false
 }
 
 type VerifyUserEmailRequest struct {
@@ -1834,10 +1829,9 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x04 \x01(\tR\bpassword\"\x82\x01\n" +
-	"\x12CreateUserResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x12@\n" +
-	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\"g\n" +
+	"\bpassword\x18\x04 \x01(\tR\bpassword\"P\n" +
+	"\x12CreateUserResponse\x12\x1a\n" +
+	"\baccepted\x18\x03 \x01(\bR\bacceptedJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03R\x04userR\faccess_token\"g\n" +
 	"\x16VerifyUserEmailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"5\n" +
@@ -2004,66 +1998,64 @@ var file_publira_v1_auth_proto_depIdxs = []int32{
 	36, // 1: publira.v1.LoginResponse.user:type_name -> publira.types.v1.User
 	37, // 2: publira.v1.LoginResponse.access_token:type_name -> publira.types.v1.AccessToken
 	35, // 3: publira.v1.CreateUserRequest.tenant:type_name -> publira.types.v1.TenantContext
-	36, // 4: publira.v1.CreateUserResponse.user:type_name -> publira.types.v1.User
-	37, // 5: publira.v1.CreateUserResponse.access_token:type_name -> publira.types.v1.AccessToken
-	35, // 6: publira.v1.VerifyUserEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	35, // 7: publira.v1.RequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	35, // 8: publira.v1.ConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	35, // 9: publira.v1.RequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	35, // 10: publira.v1.ConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	35, // 11: publira.v1.LogoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	35, // 12: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	36, // 13: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
-	35, // 14: publira.v1.UpdateMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	36, // 15: publira.v1.UpdateMeResponse.user:type_name -> publira.types.v1.User
-	35, // 16: publira.v1.DeleteMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	35, // 17: publira.v1.GetNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	35, // 18: publira.v1.UpdateNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	35, // 19: publira.v1.GetAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
-	26, // 20: publira.v1.GetAnnouncementResponse.announcement:type_name -> publira.v1.AnnouncementItem
-	35, // 21: publira.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	26, // 22: publira.v1.ListAnnouncementsResponse.announcements:type_name -> publira.v1.AnnouncementItem
-	35, // 23: publira.v1.MarkAnnouncementAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	35, // 24: publira.v1.MarkAllAnnouncementsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 25: publira.v1.AuthService.Login:input_type -> publira.v1.LoginRequest
-	2,  // 26: publira.v1.AuthService.CreateUser:input_type -> publira.v1.CreateUserRequest
-	4,  // 27: publira.v1.AuthService.VerifyUserEmail:input_type -> publira.v1.VerifyUserEmailRequest
-	6,  // 28: publira.v1.AuthService.RequestEmailChange:input_type -> publira.v1.RequestEmailChangeRequest
-	8,  // 29: publira.v1.AuthService.ConfirmEmailChange:input_type -> publira.v1.ConfirmEmailChangeRequest
-	10, // 30: publira.v1.AuthService.RequestPasswordReset:input_type -> publira.v1.RequestPasswordResetRequest
-	12, // 31: publira.v1.AuthService.ConfirmPasswordReset:input_type -> publira.v1.ConfirmPasswordResetRequest
-	14, // 32: publira.v1.AuthService.Logout:input_type -> publira.v1.LogoutRequest
-	16, // 33: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
-	18, // 34: publira.v1.AuthService.UpdateMe:input_type -> publira.v1.UpdateMeRequest
-	20, // 35: publira.v1.AuthService.DeleteMe:input_type -> publira.v1.DeleteMeRequest
-	22, // 36: publira.v1.AuthService.GetNotificationSettings:input_type -> publira.v1.GetNotificationSettingsRequest
-	24, // 37: publira.v1.AuthService.UpdateNotificationSettings:input_type -> publira.v1.UpdateNotificationSettingsRequest
-	27, // 38: publira.v1.AuthService.GetAnnouncement:input_type -> publira.v1.GetAnnouncementRequest
-	29, // 39: publira.v1.AuthService.ListAnnouncements:input_type -> publira.v1.ListAnnouncementsRequest
-	31, // 40: publira.v1.AuthService.MarkAnnouncementAsRead:input_type -> publira.v1.MarkAnnouncementAsReadRequest
-	33, // 41: publira.v1.AuthService.MarkAllAnnouncementsAsRead:input_type -> publira.v1.MarkAllAnnouncementsAsReadRequest
-	1,  // 42: publira.v1.AuthService.Login:output_type -> publira.v1.LoginResponse
-	3,  // 43: publira.v1.AuthService.CreateUser:output_type -> publira.v1.CreateUserResponse
-	5,  // 44: publira.v1.AuthService.VerifyUserEmail:output_type -> publira.v1.VerifyUserEmailResponse
-	7,  // 45: publira.v1.AuthService.RequestEmailChange:output_type -> publira.v1.RequestEmailChangeResponse
-	9,  // 46: publira.v1.AuthService.ConfirmEmailChange:output_type -> publira.v1.ConfirmEmailChangeResponse
-	11, // 47: publira.v1.AuthService.RequestPasswordReset:output_type -> publira.v1.RequestPasswordResetResponse
-	13, // 48: publira.v1.AuthService.ConfirmPasswordReset:output_type -> publira.v1.ConfirmPasswordResetResponse
-	15, // 49: publira.v1.AuthService.Logout:output_type -> publira.v1.LogoutResponse
-	17, // 50: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
-	19, // 51: publira.v1.AuthService.UpdateMe:output_type -> publira.v1.UpdateMeResponse
-	21, // 52: publira.v1.AuthService.DeleteMe:output_type -> publira.v1.DeleteMeResponse
-	23, // 53: publira.v1.AuthService.GetNotificationSettings:output_type -> publira.v1.GetNotificationSettingsResponse
-	25, // 54: publira.v1.AuthService.UpdateNotificationSettings:output_type -> publira.v1.UpdateNotificationSettingsResponse
-	28, // 55: publira.v1.AuthService.GetAnnouncement:output_type -> publira.v1.GetAnnouncementResponse
-	30, // 56: publira.v1.AuthService.ListAnnouncements:output_type -> publira.v1.ListAnnouncementsResponse
-	32, // 57: publira.v1.AuthService.MarkAnnouncementAsRead:output_type -> publira.v1.MarkAnnouncementAsReadResponse
-	34, // 58: publira.v1.AuthService.MarkAllAnnouncementsAsRead:output_type -> publira.v1.MarkAllAnnouncementsAsReadResponse
-	42, // [42:59] is the sub-list for method output_type
-	25, // [25:42] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	35, // 4: publira.v1.VerifyUserEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 5: publira.v1.RequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 6: publira.v1.ConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 7: publira.v1.RequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 8: publira.v1.ConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 9: publira.v1.LogoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 10: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	36, // 11: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
+	35, // 12: publira.v1.UpdateMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	36, // 13: publira.v1.UpdateMeResponse.user:type_name -> publira.types.v1.User
+	35, // 14: publira.v1.DeleteMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 15: publira.v1.GetNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 16: publira.v1.UpdateNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 17: publira.v1.GetAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26, // 18: publira.v1.GetAnnouncementResponse.announcement:type_name -> publira.v1.AnnouncementItem
+	35, // 19: publira.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26, // 20: publira.v1.ListAnnouncementsResponse.announcements:type_name -> publira.v1.AnnouncementItem
+	35, // 21: publira.v1.MarkAnnouncementAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 22: publira.v1.MarkAllAnnouncementsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 23: publira.v1.AuthService.Login:input_type -> publira.v1.LoginRequest
+	2,  // 24: publira.v1.AuthService.CreateUser:input_type -> publira.v1.CreateUserRequest
+	4,  // 25: publira.v1.AuthService.VerifyUserEmail:input_type -> publira.v1.VerifyUserEmailRequest
+	6,  // 26: publira.v1.AuthService.RequestEmailChange:input_type -> publira.v1.RequestEmailChangeRequest
+	8,  // 27: publira.v1.AuthService.ConfirmEmailChange:input_type -> publira.v1.ConfirmEmailChangeRequest
+	10, // 28: publira.v1.AuthService.RequestPasswordReset:input_type -> publira.v1.RequestPasswordResetRequest
+	12, // 29: publira.v1.AuthService.ConfirmPasswordReset:input_type -> publira.v1.ConfirmPasswordResetRequest
+	14, // 30: publira.v1.AuthService.Logout:input_type -> publira.v1.LogoutRequest
+	16, // 31: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
+	18, // 32: publira.v1.AuthService.UpdateMe:input_type -> publira.v1.UpdateMeRequest
+	20, // 33: publira.v1.AuthService.DeleteMe:input_type -> publira.v1.DeleteMeRequest
+	22, // 34: publira.v1.AuthService.GetNotificationSettings:input_type -> publira.v1.GetNotificationSettingsRequest
+	24, // 35: publira.v1.AuthService.UpdateNotificationSettings:input_type -> publira.v1.UpdateNotificationSettingsRequest
+	27, // 36: publira.v1.AuthService.GetAnnouncement:input_type -> publira.v1.GetAnnouncementRequest
+	29, // 37: publira.v1.AuthService.ListAnnouncements:input_type -> publira.v1.ListAnnouncementsRequest
+	31, // 38: publira.v1.AuthService.MarkAnnouncementAsRead:input_type -> publira.v1.MarkAnnouncementAsReadRequest
+	33, // 39: publira.v1.AuthService.MarkAllAnnouncementsAsRead:input_type -> publira.v1.MarkAllAnnouncementsAsReadRequest
+	1,  // 40: publira.v1.AuthService.Login:output_type -> publira.v1.LoginResponse
+	3,  // 41: publira.v1.AuthService.CreateUser:output_type -> publira.v1.CreateUserResponse
+	5,  // 42: publira.v1.AuthService.VerifyUserEmail:output_type -> publira.v1.VerifyUserEmailResponse
+	7,  // 43: publira.v1.AuthService.RequestEmailChange:output_type -> publira.v1.RequestEmailChangeResponse
+	9,  // 44: publira.v1.AuthService.ConfirmEmailChange:output_type -> publira.v1.ConfirmEmailChangeResponse
+	11, // 45: publira.v1.AuthService.RequestPasswordReset:output_type -> publira.v1.RequestPasswordResetResponse
+	13, // 46: publira.v1.AuthService.ConfirmPasswordReset:output_type -> publira.v1.ConfirmPasswordResetResponse
+	15, // 47: publira.v1.AuthService.Logout:output_type -> publira.v1.LogoutResponse
+	17, // 48: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
+	19, // 49: publira.v1.AuthService.UpdateMe:output_type -> publira.v1.UpdateMeResponse
+	21, // 50: publira.v1.AuthService.DeleteMe:output_type -> publira.v1.DeleteMeResponse
+	23, // 51: publira.v1.AuthService.GetNotificationSettings:output_type -> publira.v1.GetNotificationSettingsResponse
+	25, // 52: publira.v1.AuthService.UpdateNotificationSettings:output_type -> publira.v1.UpdateNotificationSettingsResponse
+	28, // 53: publira.v1.AuthService.GetAnnouncement:output_type -> publira.v1.GetAnnouncementResponse
+	30, // 54: publira.v1.AuthService.ListAnnouncements:output_type -> publira.v1.ListAnnouncementsResponse
+	32, // 55: publira.v1.AuthService.MarkAnnouncementAsRead:output_type -> publira.v1.MarkAnnouncementAsReadResponse
+	34, // 56: publira.v1.AuthService.MarkAllAnnouncementsAsRead:output_type -> publira.v1.MarkAllAnnouncementsAsReadResponse
+	40, // [40:57] is the sub-list for method output_type
+	23, // [23:40] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_auth_proto_init() }
