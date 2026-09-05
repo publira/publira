@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/batchlock"
+	"github.com/publira/publira/server/internal/tenantday"
 )
 
 // Aggregator rebuilds content_daily_stats from content_events and purchases.
@@ -35,10 +36,20 @@ func New(db *sql.DB) *Aggregator {
 	return &Aggregator{db: db}
 }
 
-// Run replaces the stats for statDate for every tenant. statDate is interpreted
-// as a UTC calendar day; content_daily_stats is a UTC daily aggregate. Each
-// tenant is its own transaction, so a failure part-way through leaves the
-// tenants already rebuilt with a complete day rather than a half-written one.
+// Options describes one aggregate run.
+type Options struct {
+	// StatDate pins the calendar day to rebuild, read as each tenant's own
+	// local date. Zero means every tenant's own yesterday, which is a
+	// different day for tenants whose zones sit on either side of the run.
+	StatDate time.Time
+}
+
+// Run replaces the stats for one calendar day for every tenant. A day is the
+// tenant's own: content_daily_stats.stat_date covers the instants from that
+// tenant's local midnight to the next, the same day the console's date filters
+// mean. Each tenant is its own transaction, so a failure part-way through
+// leaves the tenants already rebuilt with a complete day rather than a
+// half-written one.
 //
 // One tenant's failure does not stop the others. The cron that drives this
 // rebuilds yesterday and never comes back for a day it missed, so letting a
@@ -49,7 +60,7 @@ func New(db *sql.DB) *Aggregator {
 // A cancelled context is the one failure that does stop the run: every tenant
 // left would fail for that same reason, so the loop ends at the tenant that
 // hit it rather than working through the rest.
-func (a *Aggregator) Run(ctx context.Context, statDate time.Time) (Result, error) {
+func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 	if a == nil || a.db == nil {
 		return Result{}, errors.New("content stats aggregator requires a database")
 	}
@@ -57,18 +68,24 @@ func (a *Aggregator) Run(ctx context.Context, statDate time.Time) (Result, error
 		return Result{}, err
 	}
 
-	date := statDate.UTC().Format(time.DateOnly)
-	tenants, err := a.listTenantIDs(ctx)
+	tenants, err := tenantday.List(ctx, a.db)
 	if err != nil {
 		return Result{}, fmt.Errorf("list tenants: %w", err)
 	}
+	now := time.Now()
 
 	var result Result
 	var failures []error
-	for _, tenantID := range tenants {
-		rows, err := a.aggregateTenant(ctx, tenantID, date)
+	for _, tenant := range tenants {
+		statDate, err := tenant.Date(opts.StatDate, now)
 		if err != nil {
-			failures = append(failures, fmt.Errorf("aggregate tenant %s for %s: %w", tenantID, date, err))
+			failures = append(failures, fmt.Errorf("resolve the day of tenant %s: %w", tenant.ID, err))
+			continue
+		}
+		date := statDate.Format(time.DateOnly)
+		rows, err := a.aggregateTenant(ctx, tenant, date)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("aggregate tenant %s for %s: %w", tenant.ID, date, err))
 			// A cancelled context fails every remaining tenant the same way,
 			// so there is nothing left to salvage by carrying on.
 			if ctx.Err() != nil {
@@ -98,25 +115,8 @@ func (a *Aggregator) requireBypassRLS(ctx context.Context) error {
 	return nil
 }
 
-func (a *Aggregator) listTenantIDs(ctx context.Context) ([]uuid.UUID, error) {
-	rows, err := a.db.QueryContext(ctx, "SELECT id FROM tenants ORDER BY id")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close() //nolint:errcheck
-
-	var tenantIDs []uuid.UUID
-	for rows.Next() {
-		var tenantID uuid.UUID
-		if err := rows.Scan(&tenantID); err != nil {
-			return nil, err
-		}
-		tenantIDs = append(tenantIDs, tenantID)
-	}
-	return tenantIDs, rows.Err()
-}
-
-func (a *Aggregator) aggregateTenant(ctx context.Context, tenantID uuid.UUID, statDate string) (int64, error) {
+func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenant, statDate string) (int64, error) {
+	tenantID := tenant.ID
 	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -131,7 +131,7 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenantID uuid.UUID, st
 		return 0, err
 	}
 
-	sources, err := countSources(ctx, tx, tenantID, statDate)
+	sources, err := countSources(ctx, tx, tenantID, statDate, tenant.TimeZone)
 	if err != nil {
 		return 0, fmt.Errorf("count aggregate sources: %w", err)
 	}
@@ -143,7 +143,7 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenantID uuid.UUID, st
 		return 0, fmt.Errorf("delete previous stats: %w", err)
 	}
 
-	inserted, err := tx.ExecContext(ctx, insertStatsSQL, tenantID, statDate)
+	inserted, err := tx.ExecContext(ctx, insertStatsSQL, tenantID, statDate, tenant.TimeZone)
 	if err != nil {
 		return 0, fmt.Errorf("insert rebuilt stats: %w", err)
 	}
@@ -172,26 +172,29 @@ func (s sourceCounts) total() int64 {
 	return s.events + s.purchases
 }
 
-func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate string) (sourceCounts, error) {
+func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate, timeZone string) (sourceCounts, error) {
 	var counts sourceCounts
 	err := tx.QueryRowContext(ctx, `
 		SELECT
 			(SELECT count(*)
 			 FROM content_events
 			 WHERE tenant_id = $1
-			   AND occurred_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
-			   AND occurred_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
+			   AND occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+			   AND occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
 			   AND event_type IN ('episode_view', 'series_view', 'episode_complete', 'rating', 'favorite')),
 			(SELECT count(*)
 			 FROM purchases
 			 WHERE tenant_id = $1
-			   AND purchased_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
-			   AND purchased_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC'))
-	`, tenantID, statDate).Scan(&counts.events, &counts.purchases)
+			   AND purchased_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+			   AND purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text))
+	`, tenantID, statDate, timeZone).Scan(&counts.events, &counts.purchases)
 	return counts, err
 }
 
-// insertStatsSQL rebuilds one tenant's rows for one UTC day.
+// insertStatsSQL rebuilds one tenant's rows for one of its own calendar
+// days: $2 is that local date and $3 the zone it is read in, so the window is
+// the instants between two local midnights and stays 24 hours only where the
+// zone has no offset change that day.
 //
 // purchase_count comes from the purchases table alone. A purchase is also
 // projected into content_events, so counting both sources would double every
@@ -209,8 +212,8 @@ WITH episode_events AS (
 	FROM content_events ce
 	JOIN episodes e ON e.tenant_id = ce.tenant_id AND e.id = ce.episode_id
 	WHERE ce.tenant_id = $1
-		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
-		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
+		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
 		AND ce.event_type IN ('episode_view', 'episode_complete', 'rating')
 		AND ce.episode_id IS NOT NULL
 	GROUP BY ce.episode_id
@@ -219,8 +222,8 @@ WITH episode_events AS (
 	FROM purchases p
 	JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
 	WHERE p.tenant_id = $1
-		AND p.purchased_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
-		AND p.purchased_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
+		AND p.purchased_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND p.purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
 	GROUP BY p.episode_id
 ), episode_stats AS (
 	SELECT
@@ -243,8 +246,8 @@ WITH episode_events AS (
 		count(*) FILTER (WHERE ce.event_type = 'favorite') AS favorite_count
 	FROM content_events ce
 	WHERE ce.tenant_id = $1
-		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
-		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
+		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
 		AND (
 			ce.event_type IN ('series_view', 'favorite')
 			OR (ce.event_type = 'rating' AND ce.episode_id IS NULL)
@@ -267,15 +270,15 @@ WITH episode_events AS (
 	FROM content_events ce
 	JOIN episodes e ON e.tenant_id = ce.tenant_id AND e.id = ce.episode_id
 	WHERE ce.tenant_id = $1
-		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
-		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
+		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
 		AND ce.event_type = 'episode_view'
 	UNION
 	SELECT ce.series_id AS entity_id, ce.actor_key
 	FROM content_events ce
 	WHERE ce.tenant_id = $1
-		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
-		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
+		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
 		AND ce.event_type = 'series_view'
 ), series_viewer_counts AS (
 	SELECT entity_id, count(*) AS unique_viewer_count

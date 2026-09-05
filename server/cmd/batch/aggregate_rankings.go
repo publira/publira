@@ -40,7 +40,7 @@ func runAggregateRankings(ctx context.Context, logger *slog.Logger, cfg *config.
 	})
 	if err != nil {
 		logger.Error("ranking aggregation failed",
-			"reference_date", referenceDate.Format(time.DateOnly),
+			"reference_date", batchDateLogValue(referenceDate),
 			"item_limit", itemLimit,
 			"algorithm_version", contentranking.AlgorithmVersion,
 			"tenant_count", result.TenantCount,
@@ -52,7 +52,7 @@ func runAggregateRankings(ctx context.Context, logger *slog.Logger, cfg *config.
 		return err
 	}
 	logger.Info("ranking aggregation completed",
-		"reference_date", referenceDate.Format(time.DateOnly),
+		"reference_date", batchDateLogValue(referenceDate),
 		"item_limit", itemLimit,
 		"algorithm_version", contentranking.AlgorithmVersion,
 		"tenant_count", result.TenantCount,
@@ -72,11 +72,7 @@ func resolveRankingDBURL(fallback string) string {
 }
 
 func resolveRankingDate() (time.Time, error) {
-	raw := strings.TrimSpace(os.Getenv("PUBLIRA_CONTENT_RANKING_DATE"))
-	if raw == "" {
-		return time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour), nil
-	}
-	return time.Parse(time.DateOnly, raw)
+	return resolveTenantLocalDate("PUBLIRA_CONTENT_RANKING_DATE")
 }
 
 func resolveRankingItemLimit() (int, error) {

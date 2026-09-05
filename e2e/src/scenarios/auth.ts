@@ -15,6 +15,13 @@ export const AUTH_E2E_SCENARIO = "040_auth_e2e";
 /** Dev seed tenant primary key — the JWT `tid` claim, not the public_id. */
 export const SEED_TENANT_ID = "018f0e6a-1000-7000-8000-000000000001";
 
+/**
+ * The dev seed tenant's time zone. `001_tenant_users.sql` leaves the column to
+ * its default, so this is what `tenants.timezone` holds — the zone every
+ * calendar day the console shows that tenant is counted in.
+ */
+export const SEED_TENANT_TIME_ZONE = "Asia/Tokyo";
+
 export const SEED_ADMIN_PUBLIC_ID = "SeedADMNAAA1";
 export const SEED_MEMBER_PUBLIC_ID = "SeedMMBRAAA1";
 

@@ -53,6 +53,7 @@ describe("engagement", () => {
       periodEnd: "2026-03-14",
       periodStart: "2026-02-15",
       previousToken: "",
+      timeZone: "Asia/Tokyo",
       totalCompleteCount: BigInt(totalCompleteCount),
       totalMemberViewCount: BigInt(totalMemberViewCount),
     });
@@ -74,7 +75,11 @@ describe("engagement", () => {
       ],
       nextToken: "next",
       ok: true,
-      period: { end: "2026-03-14", start: "2026-02-15" },
+      period: {
+        end: "2026-03-14",
+        start: "2026-02-15",
+        timeZone: "Asia/Tokyo",
+      },
       previousToken: "",
       totalCompleteCount: 9,
       totalMemberViewCount: 30,

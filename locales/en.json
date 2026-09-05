@@ -1432,7 +1432,7 @@
       "section_error": "Could not display read-through",
       "list_failed": "Could not load read-through. Please try again later.",
       "summary_title": "This period",
-      "period": "{$start} - {$end}, counted in UTC calendar days.",
+      "period": "{$start} - {$end}, counted in calendar days in the tenant's time zone ({$time_zone}).",
       "definition": "Read-through rate is completions divided by member views over the period. Both count signed-in members only - an anonymous reader cannot be recorded as finishing an episode, so anonymous views are left out of the denominator as well. A completion is counted once per member and episode, on the day they first finished it. Where there are no member views the rate is shown as —, because no share can be taken of nothing.",
       "complete_count_label": "Completions",
       "member_view_count_label": "Member views",

@@ -13,7 +13,7 @@ Without an argument, or with a name that is not one of the nine below, the binar
 | --- | --- | --- |
 | `publish-episodes` | Ticker, until `SIGINT` / `SIGTERM` | Promotes episodes whose scheduled time has passed |
 | `project-episode-reads` | One-shot | Files the missing `episode_complete` events for stored `episode_reads` |
-| `aggregate-content-stats` | One-shot | Rebuilds one UTC day of `content_daily_stats` |
+| `aggregate-content-stats` | One-shot | Rebuilds one calendar day of `content_daily_stats` per tenant |
 | `aggregate-rankings` | One-shot | Rebuilds the daily and weekly `content_ranking_snapshots` |
 | `purge-content-events` | One-shot | Deletes `content_events` rows past their retention window |
 | `purge-ranking-snapshots` | One-shot | Deletes `content_ranking_snapshots` rows past their retention window |
@@ -66,7 +66,9 @@ Run it before `aggregate-content-stats` for the same day. A late projection stil
 
 ## aggregate-content-stats
 
-Fully rebuilds `content_daily_stats` for one UTC day across every tenant, from `content_events` and the Phase 0 `purchases` table.
+Fully rebuilds `content_daily_stats` for one calendar day across every tenant, from `content_events` and the Phase 0 `purchases` table.
+
+A day is the tenant's own: the window runs from that tenant's local midnight to the next, resolved from `tenants.timezone` (falling back to `platform_config.default_timezone`). So one run covers different instants for tenants in different zones, and a tenant whose stored zone cannot be loaded fails on its own without stopping the rest.
 
 For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
 
@@ -78,7 +80,7 @@ PUBLIRA_CONTENT_STATS_DATE=2026-08-28 go run ./server/cmd/batch aggregate-conten
 Environment variables:
 
 - `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
-- `PUBLIRA_CONTENT_STATS_DATE`: UTC date as `YYYY-MM-DD`. Defaults to yesterday (UTC).
+- `PUBLIRA_CONTENT_STATS_DATE`: the calendar date to rebuild as `YYYY-MM-DD`, read as each tenant's own local date. Unset rebuilds every tenant's own yesterday, which is not the same day for all of them.
 
 The structured log records the target date, how many tenants the run finished, the rows created, and the elapsed time — on failure too, since each tenant commits on its own.
 
@@ -96,7 +98,7 @@ PUBLIRA_CONTENT_RANKING_DATE=2026-08-28 go run ./server/cmd/batch aggregate-rank
 Environment variables:
 
 - `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
-- `PUBLIRA_CONTENT_RANKING_DATE`: last UTC day of every window, as `YYYY-MM-DD`. Defaults to yesterday (UTC).
+- `PUBLIRA_CONTENT_RANKING_DATE`: last day of every window, as `YYYY-MM-DD`, read as each tenant's own local date. Unset ends every tenant's windows on its own yesterday.
 - `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT`: how many entities one snapshot carries. Defaults to 50, and must be at least 1.
 
 The structured log records the reference date, item limit, algorithm version, and how many tenants, snapshots, and items the run finished — on failure too, since each tenant commits on its own.
@@ -121,8 +123,8 @@ Each row is one leaderboard, identified by `(tenant_id, ranking_key, period_star
 
 | Column | Meaning |
 | --- | --- |
-| `ranking_key` | `daily` for a single UTC day, `weekly` for the seven days ending on it |
-| `period_start`, `period_end` | Inclusive UTC calendar dates. Equal for a daily ranking |
+| `ranking_key` | `daily` for a single day, `weekly` for the seven days ending on it |
+| `period_start`, `period_end` | Inclusive calendar dates in the tenant's time zone. Equal for a daily ranking |
 | `entity_type` | `series` or `episode`. A run writes both, and never mixes them in one row |
 | `algorithm_version` | The score formula this row was built with. Read it rather than assuming it |
 | `items` | The leaderboard, best first. Never null — an empty array when there is nothing to rank |
@@ -265,7 +267,7 @@ PUBLIRA_RECOMMEND_FEATURES_DATE=2026-08-28 go run ./server/cmd/batch build-recom
 Environment variables:
 
 - `PUBLIRA_RECOMMEND_FEATURES_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
-- `PUBLIRA_RECOMMEND_FEATURES_DATE`: last UTC day of the window, as `YYYY-MM-DD`. Defaults to yesterday (UTC).
+- `PUBLIRA_RECOMMEND_FEATURES_DATE`: last day of the window, as `YYYY-MM-DD`, read as each tenant's own local date. Unset ends every tenant's window on its own yesterday.
 - `PUBLIRA_RECOMMEND_FEATURES_WINDOW_DAYS`: window length in days, ending on that date and including it. Defaults to 28, and must be at least 1.
 
 Run it after `aggregate-content-stats` for the same day: the item snapshot reads the daily stats that batch produces.
@@ -276,7 +278,7 @@ The structured log records the reference date, window, feature version, and how 
 
 Both tables carry `feature_version`, the version of the code that wrote the row.
 
-`window_start` and `window_end` are inclusive UTC calendar dates; `last_event_at` is an ISO 8601 UTC timestamp.
+`window_start` and `window_end` are inclusive calendar dates in the tenant's time zone; `last_event_at` is an ISO 8601 UTC timestamp, because it names an instant rather than a day.
 
 `item_recommend_features.features`:
 

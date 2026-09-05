@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/batchlock"
+	"github.com/publira/publira/server/internal/tenantday"
 )
 
 const (
@@ -28,9 +29,10 @@ const (
 	// than overwriting them.
 	AlgorithmVersion = 1
 
-	// DailyRankingKey ranks a single UTC day, WeeklyRankingKey the seven days
-	// ending on it. Both are recomputed from the same daily stats, so the
-	// weekly ranking never depends on a previous weekly run.
+	// DailyRankingKey ranks a single day, WeeklyRankingKey the seven days
+	// ending on it. The days are the tenant's own, because the daily stats
+	// they are recomputed from are; the weekly ranking therefore never depends
+	// on a previous weekly run.
 	DailyRankingKey  = "daily"
 	WeeklyRankingKey = "weekly"
 
@@ -74,7 +76,8 @@ type Aggregator struct {
 
 // Options describes one ranking run.
 type Options struct {
-	// ReferenceDate is the last UTC calendar day every window covers.
+	// ReferenceDate is the last calendar day every window covers, read as each
+	// tenant's own local date. Zero means every tenant's own yesterday.
 	ReferenceDate time.Time
 	// ItemLimit bounds the items array of each snapshot. Zero means
 	// DefaultItemLimit.
@@ -127,9 +130,6 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 	if a == nil || a.db == nil {
 		return Result{}, errors.New("ranking aggregation requires a database")
 	}
-	if opts.ReferenceDate.IsZero() {
-		return Result{}, errors.New("ranking aggregation requires a reference date")
-	}
 	itemLimit := opts.ItemLimit
 	if itemLimit <= 0 {
 		itemLimit = DefaultItemLimit
@@ -138,18 +138,23 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 		return Result{}, err
 	}
 
-	referenceDate := opts.ReferenceDate.UTC().Truncate(24 * time.Hour)
-	tenants, err := a.listTenantIDs(ctx)
+	tenants, err := tenantday.List(ctx, a.db)
 	if err != nil {
 		return Result{}, fmt.Errorf("list tenants: %w", err)
 	}
+	now := time.Now()
 
 	var result Result
 	var failures []error
-	for _, tenantID := range tenants {
-		snapshots, items, err := a.rankTenant(ctx, tenantID, referenceDate, itemLimit)
+	for _, tenant := range tenants {
+		referenceDate, err := tenant.Date(opts.ReferenceDate, now)
 		if err != nil {
-			failures = append(failures, fmt.Errorf("rank tenant %s at %s: %w", tenantID, referenceDate.Format(time.DateOnly), err))
+			failures = append(failures, fmt.Errorf("resolve the day of tenant %s: %w", tenant.ID, err))
+			continue
+		}
+		snapshots, items, err := a.rankTenant(ctx, tenant.ID, referenceDate, itemLimit)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("rank tenant %s at %s: %w", tenant.ID, referenceDate.Format(time.DateOnly), err))
 			// A cancelled context fails every remaining tenant the same way,
 			// so there is nothing left to salvage by carrying on.
 			if ctx.Err() != nil {
@@ -182,24 +187,6 @@ func requireBypassRLS(ctx context.Context, db *sql.DB, task string) error {
 		return fmt.Errorf("%s requires a database role with BYPASSRLS", task)
 	}
 	return nil
-}
-
-func (a *Aggregator) listTenantIDs(ctx context.Context) ([]uuid.UUID, error) {
-	rows, err := a.db.QueryContext(ctx, "SELECT id FROM tenants ORDER BY id")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close() //nolint:errcheck
-
-	var tenantIDs []uuid.UUID
-	for rows.Next() {
-		var tenantID uuid.UUID
-		if err := rows.Scan(&tenantID); err != nil {
-			return nil, err
-		}
-		tenantIDs = append(tenantIDs, tenantID)
-	}
-	return tenantIDs, rows.Err()
 }
 
 // rankTenant writes every window and entity type for one tenant in a single

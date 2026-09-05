@@ -455,7 +455,7 @@ There is no RPC for withdrawing a rating. Which rating counts is decided on read
 | `complete_count` | `episode_complete` events on that day |
 | `member_view_count` | `episode_view` events on that day whose `user_id` is set |
 
-The rate is `complete_count / member_view_count` over a range of days. A period with no member views has no rate at all rather than a rate of zero; the console shows an em dash there. `AdminEngagementService.ListEpisodeReadThrough` reports the last 28 complete UTC days.
+The rate is `complete_count / member_view_count` over a range of days. A period with no member views has no rate at all rather than a rate of zero; the console shows an em dash there. `AdminEngagementService.ListEpisodeReadThrough` reports the last 28 complete days in the tenant's own time zone, the same calendar day the audit log's date filter means, and names that zone in the response.
 
 ## API server separation
 

@@ -181,9 +181,10 @@ type ListEpisodeReadThroughResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Ordered by complete_count, highest first.
 	Episodes []*EpisodeReadThrough `protobuf:"bytes,1,rep,name=episodes,proto3" json:"episodes,omitempty"`
-	// The reported period, as inclusive UTC calendar dates (YYYY-MM-DD). The
-	// aggregate behind this report is a UTC daily one, so the period it covers
-	// is stated in the same days rather than in the console's time zone.
+	// The reported period, as inclusive calendar dates (YYYY-MM-DD) in the
+	// tenant's time zone. A day here is the tenant's own day, the same one the
+	// audit log's date filter means, so the two screens cannot disagree about
+	// where a day begins.
 	PeriodStart string `protobuf:"bytes,2,opt,name=period_start,json=periodStart,proto3" json:"period_start,omitempty"`
 	PeriodEnd   string `protobuf:"bytes,3,opt,name=period_end,json=periodEnd,proto3" json:"period_end,omitempty"`
 	// The same two counts over every episode in the period. They stay the same
@@ -194,7 +195,11 @@ type ListEpisodeReadThroughResponse struct {
 	// Token for the previous page. Empty on the first page.
 	PreviousToken string `protobuf:"bytes,6,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
 	// Token for the next page. Empty on the last page.
-	NextToken     string `protobuf:"bytes,7,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
+	NextToken string `protobuf:"bytes,7,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
+	// The IANA time zone period_start and period_end are calendar days in, so
+	// the screen can name it rather than assume one. It is the tenant's resolved
+	// zone: the counting and the wording come from the same read.
+	TimeZone      string `protobuf:"bytes,8,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -278,6 +283,13 @@ func (x *ListEpisodeReadThroughResponse) GetNextToken() string {
 	return ""
 }
 
+func (x *ListEpisodeReadThroughResponse) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
 var File_publira_admin_v1_engagement_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_engagement_proto_rawDesc = "" +
@@ -293,7 +305,7 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\x1dListEpisodeReadThroughRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x03 \x01(\tR\x05token\"\xd3\x02\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\"\xf0\x02\n" +
 	"\x1eListEpisodeReadThroughResponse\x12@\n" +
 	"\bepisodes\x18\x01 \x03(\v2$.publira.admin.v1.EpisodeReadThroughR\bepisodes\x12!\n" +
 	"\fperiod_start\x18\x02 \x01(\tR\vperiodStart\x12\x1d\n" +
@@ -303,7 +315,8 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\x17total_member_view_count\x18\x05 \x01(\x03R\x14totalMemberViewCount\x12%\n" +
 	"\x0eprevious_token\x18\x06 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\a \x01(\tR\tnextToken2\x97\x01\n" +
+	"next_token\x18\a \x01(\tR\tnextToken\x12\x1b\n" +
+	"\ttime_zone\x18\b \x01(\tR\btimeZone2\x97\x01\n" +
 	"\x16AdminEngagementService\x12}\n" +
 	"\x16ListEpisodeReadThrough\x12/.publira.admin.v1.ListEpisodeReadThroughRequest\x1a0.publira.admin.v1.ListEpisodeReadThroughResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 

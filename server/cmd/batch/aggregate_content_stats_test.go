@@ -21,6 +21,14 @@ func TestResolveStatDate(t *testing.T) {
 	if _, err := resolveStatDate(); !errors.As(err, &parseErr) {
 		t.Fatalf("invalid date error = %v, want ParseError", err)
 	}
+
+	// Unset is what the cron runs with, and no single day answers it: each
+	// tenant's yesterday is its own, so the aggregate resolves the day per
+	// tenant and this only reports that nothing was pinned.
+	t.Setenv("PUBLIRA_CONTENT_STATS_DATE", "  ")
+	if got, err := resolveStatDate(); err != nil || !got.IsZero() {
+		t.Fatalf("blank date = (%s, %v), want (the zero time, nil)", got, err)
+	}
 }
 
 func TestResolveContentStatsDBURL(t *testing.T) {

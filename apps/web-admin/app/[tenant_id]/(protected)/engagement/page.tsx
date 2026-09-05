@@ -180,6 +180,7 @@ const EngagementContent = async ({
             {getMessage(messages, "admin.engagement.period", {
               end: formatPlainDate(result.period.end, { locale }),
               start: formatPlainDate(result.period.start, { locale }),
+              time_zone: result.period.timeZone,
             })}
           </CardDescription>
         </CardHeader>

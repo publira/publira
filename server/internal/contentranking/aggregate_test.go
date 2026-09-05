@@ -4,31 +4,14 @@ import (
 	"context"
 	"strings"
 	"testing"
-	"time"
-
-	"github.com/DATA-DOG/go-sqlmock"
 )
 
-func TestRunRejectsIncompleteOptions(t *testing.T) {
-	if _, err := New(nil).Run(context.Background(), Options{ReferenceDate: time.Now().UTC()}); err == nil ||
+func TestRunRequiresADatabase(t *testing.T) {
+	// A zero reference date is not an incomplete option: it means every
+	// tenant's own yesterday, which only the run itself can resolve.
+	if _, err := New(nil).Run(context.Background(), Options{}); err == nil ||
 		!strings.Contains(err.Error(), "requires a database") {
 		t.Fatalf("missing database error = %v, want a database requirement", err)
-	}
-
-	// The reference date is checked before the connection is used. The mock
-	// expects nothing, so a run that reached the database would fail on the
-	// unexpected query rather than pass on a handle that was never touched.
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("open mock database: %v", err)
-	}
-	defer db.Close() //nolint:errcheck
-	if _, err := New(db).Run(context.Background(), Options{}); err == nil ||
-		!strings.Contains(err.Error(), "requires a reference date") {
-		t.Fatalf("missing reference date error = %v, want a reference date requirement", err)
-	}
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Fatalf("unexpected database use: %v", err)
 	}
 }
 
