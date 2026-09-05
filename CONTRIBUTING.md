@@ -77,7 +77,7 @@ The shortest path to a green check needs only Task, pnpm, Go, and libvips: `task
 
 ### Working in several worktrees
 
-When you work in several worktrees in parallel, pick a profile per worktree instead of sharing the default development environment. A profile separates the PostgreSQL database, the Valkey logical database, the RustFS bucket, the ports of every service, the cookie names, and the authentication and revalidation secrets. The plain `task setup` / `task dev` keep using the shared environment as before. The profiles do not work outside the Dev Container yet: they address PostgreSQL and Valkey as `db` / `redis`, which resolve only inside the Compose network ([#1599](https://github.com/publira/publira/issues/1599) tracks the host-side support).
+When you work in several worktrees in parallel, pick a profile per worktree instead of sharing the default development environment. A profile separates the PostgreSQL database, the Valkey logical database, the RustFS bucket, the ports of every service, the cookie names, and the authentication and revalidation secrets. The plain `task setup` / `task dev` keep using the shared environment as before. A profile records where PostgreSQL, Valkey, and RustFS are when it is created: the hosts named by `PUBLIRA_DB_URL`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_S3_ENDPOINT` in the shell that runs `task dev-env:create`, or the Compose service names when those are not exported. Inside the Dev Container nothing needs to be set. On the host, export the loopback variables listed under [Running `task setup` / `task dev` on the host](README.md#running-task-setup--task-dev-on-the-host) first, as for the plain `task setup`.
 
 ```bash
 # Once per new worktree (the identifier takes lowercase alphanumerics and -)
@@ -105,7 +105,7 @@ pnpm --dir apps/web-host dev
 
 `task dev-env:list` shows every profile and the worktree that selected it. To discard one, run `task dev-env:destroy NAME=<name>`. It checks that no worktree has the target selected and that it is stopped, then deletes only that profile's database, Redis DB, and bucket after you retype the name. It does not touch the shared development environment, E2E, or other profiles.
 
-A profile's secrets and run logs are stored under `~/.publira/dev-env` by default. Override the location with `PUBLIRA_DEV_ENV_HOME` and the PostgreSQL admin connection with `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` only when you need to. Both are read solely by the development environment scripts.
+A profile's secrets and run logs are stored under `~/.publira/dev-env` by default. Override the location with `PUBLIRA_DEV_ENV_HOME` only when you need to. The scripts create and drop a profile's database as the `postgres` superuser of `compose.yaml` on the profile's PostgreSQL host; `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` replaces that connection for a server with other credentials. Both variables are read solely by the development environment scripts.
 
 ## Verifying a change
 
