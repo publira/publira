@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:publira/api/episode_image_client.dart';
 import 'package:publira/api/episode_page_store.dart';
+import 'package:publira/l10n/formatting.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/viewer/episode_image.dart';
 import 'package:publira/viewer/episode_page.dart';
@@ -164,6 +166,7 @@ class _ReaderControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
     return Container(
       color: Colors.black54,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -176,7 +179,7 @@ class _ReaderControls extends StatelessWidget {
             // reader "next" sits on the left and points left.
             IconButton(
               key: const ValueKey('episode-next-page'),
-              tooltip: '次のページ',
+              tooltip: messages.viewerNextPage,
               color: Colors.white,
               disabledColor: Colors.white30,
               onPressed: onNext,
@@ -184,12 +187,15 @@ class _ReaderControls extends StatelessWidget {
             ),
             Text(
               key: const ValueKey('episode-page-status'),
-              '$page / $pageCount',
+              messages.viewerPageStatus(
+                page: messages.formatInteger(page),
+                total: messages.formatInteger(pageCount),
+              ),
               style: const TextStyle(color: Colors.white),
             ),
             IconButton(
               key: const ValueKey('episode-previous-page'),
-              tooltip: '前のページ',
+              tooltip: messages.viewerPreviousPage,
               color: Colors.white,
               disabledColor: Colors.white30,
               onPressed: onPrevious,

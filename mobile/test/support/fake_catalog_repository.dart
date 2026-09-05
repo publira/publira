@@ -62,14 +62,14 @@ const fixtureSeries = <SeriesItem>[
   SeriesItem(
     id: 'SeedSERSAAA1',
     title: 'Seed Series 001',
-    description: 'Seed Tenant の公開シリーズです。',
+    description: 'A published series of Seed Tenant.',
     episodeCount: 10,
     labelName: 'Seed Label 01',
   ),
   SeriesItem(
     id: 'series-kitchen',
-    title: '小さな台所',
-    description: '一皿から始まる日常料理。',
+    title: 'The Little Kitchen',
+    description: 'Everyday cooking, one plate at a time.',
     episodeCount: 8,
   ),
 ];

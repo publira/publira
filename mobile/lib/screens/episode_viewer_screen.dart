@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/router.dart';
@@ -54,12 +55,13 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
     return FutureBuilder<EpisodeDetail?>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return _shell(
-            title: 'エピソード',
+            title: messages.viewerTitle,
             body: const Center(
               key: ValueKey('episode-viewer-loading'),
               child: CircularProgressIndicator(),
@@ -68,11 +70,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
         }
         if (snapshot.hasError) {
           return _shell(
-            title: 'エピソード',
+            title: messages.viewerTitle,
             body: _ViewerMessage(
               key: const ValueKey('episode-viewer-error'),
-              message: _errorCopy(snapshot.error),
-              actionLabel: '再試行',
+              message: _errorCopy(messages, snapshot.error),
+              actionLabel: messages.commonRetry,
               onAction: _reload,
             ),
           );
@@ -80,40 +82,43 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
         final detail = snapshot.data;
         if (detail == null) {
           return _shell(
-            title: 'エピソード',
+            title: messages.viewerTitle,
             body: _ViewerMessage(
               key: const ValueKey('episode-not-found'),
-              message: 'エピソードが見つかりません (${widget.episodeId})',
-              actionLabel: 'シリーズへ戻る',
+              message: messages.viewerNotFound(id: widget.episodeId),
+              actionLabel: messages.viewerBackToSeries,
               onAction: () =>
                   context.go(AppRoutes.seriesDetailPath(widget.seriesId)),
             ),
           );
         }
-        return _shell(title: detail.episode.title, body: _body(detail));
+        return _shell(
+          title: detail.episode.title,
+          body: _body(messages, detail),
+        );
       },
     );
   }
 
-  Widget _body(EpisodeDetail detail) {
+  Widget _body(AppMessages messages, EpisodeDetail detail) {
     if (detail.access == EpisodeAccess.locked) {
       if (AuthScope.of(context).isSignedIn) {
-        return const _ViewerMessage(
-          key: ValueKey('episode-locked'),
-          message: 'この話は購入すると読めます',
+        return _ViewerMessage(
+          key: const ValueKey('episode-locked'),
+          message: messages.viewerLocked,
         );
       }
       return _ViewerMessage(
         key: const ValueKey('episode-locked'),
-        message: 'この話は購入すると読めます。購入済みの場合はサインインしてください。',
-        actionLabel: 'サインイン',
+        message: messages.viewerLockedSignedOut,
+        actionLabel: messages.commonSignIn,
         onAction: () => context.push(AppRoutes.signIn),
       );
     }
     if (detail.images.isEmpty) {
-      return const _ViewerMessage(
-        key: ValueKey('episode-empty'),
-        message: 'このエピソードにはまだページがありません',
+      return _ViewerMessage(
+        key: const ValueKey('episode-empty'),
+        message: messages.viewerNoPages,
       );
     }
     return EpisodeReader(
@@ -138,17 +143,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
     );
   }
 
-  String _errorCopy(Object? error) {
+  String _errorCopy(AppMessages messages, Object? error) {
     if (error is! CatalogFailure) {
-      return 'エピソードを表示できませんでした';
+      return messages.viewerLoadFailed;
     }
     return switch (error.kind) {
-      CatalogFailureKind.network => 'エピソードを表示できませんでした。通信状況を確認して再試行してください。',
-      CatalogFailureKind.notSaved =>
-        'オフラインのため、このエピソードを表示できません。端末に保存済みのエピソードのみ読めます。',
-      CatalogFailureKind.saveExpired =>
-        '保存したエピソードの閲覧期限が切れました。通信できる状態で開き直してください。',
-      CatalogFailureKind.unexpected => 'エピソードを表示できませんでした',
+      CatalogFailureKind.network => messages.errorsRpcUnavailable,
+      CatalogFailureKind.notSaved => messages.viewerOfflineNotSaved,
+      CatalogFailureKind.saveExpired => messages.viewerSaveExpired,
+      CatalogFailureKind.unexpected => messages.viewerLoadFailed,
     };
   }
 }

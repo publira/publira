@@ -12,6 +12,7 @@ class ConnectFixtureServer {
   ConnectFixtureServer({
     this.tenantId = defaultTenantId,
     this.tenantHost = 'localhost',
+    this.defaultLocale = defaultTenantLocale,
     this.series = const [],
     this.details = const {},
     this.episodes = const {},
@@ -29,6 +30,10 @@ class ConnectFixtureServer {
   });
 
   static const defaultTenantId = '018f0e6a-1000-7000-8000-000000000001';
+
+  /// What the development seed (`db/seeds/dev/001_tenant_users.sql`) stores
+  /// as the tenant's default locale.
+  static const defaultTenantLocale = 'en';
   static const seedSeriesId = 'SeedSERSAAA1';
   static const seedSeriesTitle = 'Seed Series 001';
   static const seedSeriesSynopsis = 'Seed series synopsis for Seed Series 001';
@@ -96,8 +101,8 @@ class ConnectFixtureServer {
       },
       {
         'publicId': 'series-kitchen',
-        'title': '小さな台所',
-        'synopsis': '一皿から始まる日常料理。',
+        'title': 'The Little Kitchen',
+        'synopsis': 'Everyday cooking, one plate at a time.',
       },
     ];
   }
@@ -199,6 +204,10 @@ class ConnectFixtureServer {
 
   final String tenantId;
   final String tenantHost;
+
+  /// The `defaultLocale` `GetTenantByDomain` answers with, which is what the
+  /// app renders in when the device asks for no supported language.
+  final String defaultLocale;
   List<Map<String, Object?>> series;
   Map<String, Map<String, Object?>> details;
 
@@ -295,6 +304,7 @@ class ConnectFixtureServer {
         tenantResponse ??
             {
               if (tenantStatus == HttpStatus.ok) 'tenantId': tenantId,
+              if (tenantStatus == HttpStatus.ok) 'defaultLocale': defaultLocale,
               if (tenantStatus != HttpStatus.ok) 'code': 'not_found',
               if (tenantStatus != HttpStatus.ok) 'message': 'tenant not found',
             },

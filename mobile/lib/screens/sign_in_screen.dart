@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/router.dart';
 
 /// Email and password sign-in against `AuthService/Login`.
@@ -21,7 +22,10 @@ class _SignInScreenState extends State<SignInScreen> {
   final _passwordController = TextEditingController();
 
   var _submitting = false;
-  String? _error;
+
+  /// Why the last attempt failed, rendered in the current locale on each
+  /// build rather than as the copy of the locale it failed under.
+  AuthFailureKind? _failure;
 
   @override
   void dispose() {
@@ -37,7 +41,7 @@ class _SignInScreenState extends State<SignInScreen> {
     final auth = AuthScope.of(context);
     setState(() {
       _submitting = true;
-      _error = null;
+      _failure = null;
     });
     try {
       await auth.signIn(
@@ -50,7 +54,7 @@ class _SignInScreenState extends State<SignInScreen> {
       }
       setState(() {
         _submitting = false;
-        _error = _failureCopy(failure);
+        _failure = failure.kind;
       });
       return;
     } catch (_) {
@@ -62,7 +66,7 @@ class _SignInScreenState extends State<SignInScreen> {
       }
       setState(() {
         _submitting = false;
-        _error = _unexpectedCopy;
+        _failure = AuthFailureKind.unexpected;
       });
       return;
     }
@@ -83,9 +87,10 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final error = _error;
+    final messages = AppMessages.of(context);
+    final failure = _failure;
     return Scaffold(
-      appBar: AppBar(title: const Text('サインイン')),
+      appBar: AppBar(title: Text(messages.commonSignIn)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -94,9 +99,9 @@ class _SignInScreenState extends State<SignInScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (error != null) ...[
+                if (failure != null) ...[
                   Text(
-                    error,
+                    _failureCopy(messages, failure),
                     key: const ValueKey('sign-in-error'),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
@@ -107,30 +112,32 @@ class _SignInScreenState extends State<SignInScreen> {
                 TextFormField(
                   key: const ValueKey('sign-in-email'),
                   controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'メールアドレス',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: messages.signInEmailLabel,
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
                   autofillHints: const [AutofillHints.username],
                   textInputAction: TextInputAction.next,
-                  validator: (value) =>
-                      (value ?? '').trim().isEmpty ? 'メールアドレスを入力してください' : null,
+                  validator: (value) => (value ?? '').trim().isEmpty
+                      ? messages.signInEmailRequired
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   key: const ValueKey('sign-in-password'),
                   controller: _passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'パスワード',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: messages.signInPasswordLabel,
+                    border: const OutlineInputBorder(),
                   ),
                   obscureText: true,
                   autofillHints: const [AutofillHints.password],
                   textInputAction: TextInputAction.done,
-                  validator: (value) =>
-                      (value ?? '').isEmpty ? 'パスワードを入力してください' : null,
+                  validator: (value) => (value ?? '').isEmpty
+                      ? messages.signInPasswordRequired
+                      : null,
                   onFieldSubmitted: (_) => _submit(),
                 ),
                 const SizedBox(height: 24),
@@ -142,11 +149,11 @@ class _SignInScreenState extends State<SignInScreen> {
                           dimension: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('サインイン'),
+                      : Text(messages.commonSignIn),
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'アカウントの作成とパスワードの再設定はウェブサイトで行えます。',
+                  messages.signInWebsiteNote,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -157,16 +164,13 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  static const _unexpectedCopy = 'サインインできませんでした';
-
-  String _failureCopy(AuthFailure failure) {
-    return switch (failure.kind) {
-      AuthFailureKind.invalidCredentials => 'メールアドレスまたはパスワードが正しくありません',
-      AuthFailureKind.emailNotVerified =>
-        'メールアドレスの確認が完了していません。確認メールのリンクを開いてください。',
-      AuthFailureKind.network => 'サインインできませんでした。通信状況を確認して再試行してください。',
+  String _failureCopy(AppMessages messages, AuthFailureKind failure) {
+    return switch (failure) {
+      AuthFailureKind.invalidCredentials => messages.signInInvalidCredentials,
+      AuthFailureKind.emailNotVerified => messages.signInEmailNotVerified,
+      AuthFailureKind.network => messages.errorsRpcUnavailable,
       AuthFailureKind.sessionExpired ||
-      AuthFailureKind.unexpected => _unexpectedCopy,
+      AuthFailureKind.unexpected => messages.signInFailed,
     };
   }
 }

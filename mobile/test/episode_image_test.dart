@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:publira/api/episode_image_client.dart';
 import 'package:publira/api/image_cipher.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/l10n/localizations.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/viewer/episode_image.dart';
 import 'package:publira/viewer/episode_reader.dart';
@@ -261,6 +263,8 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppMessages.supportedLocales,
         home: EpisodeReader(images: [_page], imageHeaders: headers),
       ),
     );
@@ -318,6 +322,8 @@ Future<void> _pumpReader(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: AppMessages.supportedLocales,
       home: EpisodeReader(
         images: [page ?? _page],
         imageHeaders: headers,

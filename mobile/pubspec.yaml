@@ -36,9 +36,15 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  # Material's own strings (back button tooltip, date pickers) in the locale
+  # the app resolved, alongside the copy compiled from locales/*.json.
+  flutter_localizations:
+    sdk: flutter
   flutter_secure_storage: ^10.3.1
   go_router: ^18.0.0
   http: ^1.5.0
+  # Locale-aware number formatting for the values a message takes.
+  intl: ^0.20.3
   # App-private directory the offline library writes saved episodes under.
   path_provider: ^2.1.6
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 
@@ -18,6 +19,17 @@ class TenantResolver {
 
   String? _tenantId;
   Future<String>? _pending;
+  final _defaultLocale = ValueNotifier<String?>(null);
+
+  /// The tenant's default locale code once the lookup has answered, `null`
+  /// before.
+  ///
+  /// It is what the app renders in when the device asks for no supported
+  /// language, and it arrives after the first frame, which is why it is a
+  /// listenable rather than a value. An answer that names no locale leaves
+  /// the previous one in place: a lookup that failed has not changed the
+  /// tenant's setting.
+  ValueListenable<String?> get defaultLocale => _defaultLocale;
 
   /// Throws [ConnectException] when the lookup fails or answers without an id.
   Future<String> resolve() {
@@ -45,6 +57,13 @@ class TenantResolver {
         );
       }
       _tenantId = tenantId;
+      final rawDefaultLocale = body['defaultLocale'];
+      final defaultLocale = rawDefaultLocale is String
+          ? rawDefaultLocale.trim()
+          : '';
+      if (defaultLocale.isNotEmpty) {
+        _defaultLocale.value = defaultLocale;
+      }
       return tenantId;
     } catch (error) {
       _pending = null;

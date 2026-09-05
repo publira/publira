@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/l10n/formatting.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
@@ -42,12 +44,13 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
     return FutureBuilder<SeriesDetail?>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return Scaffold(
-            appBar: AppBar(title: const Text('シリーズ')),
+            appBar: AppBar(title: Text(messages.seriesTitle)),
             body: const Center(
               key: ValueKey('series-detail-loading'),
               child: CircularProgressIndicator(),
@@ -56,11 +59,11 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
         }
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: const Text('シリーズ')),
+            appBar: AppBar(title: Text(messages.seriesTitle)),
             body: _DetailMessage(
               key: const ValueKey('series-detail-error'),
-              message: _errorCopy(snapshot.error),
-              actionLabel: '再試行',
+              message: _errorCopy(messages, snapshot.error),
+              actionLabel: messages.commonRetry,
               onAction: _reload,
             ),
           );
@@ -68,11 +71,11 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
         final detail = snapshot.data;
         if (detail == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('シリーズ')),
+            appBar: AppBar(title: Text(messages.seriesTitle)),
             body: _DetailMessage(
               key: const ValueKey('series-not-found'),
-              message: 'シリーズが見つかりません (${widget.seriesId})',
-              actionLabel: 'カタログへ戻る',
+              message: messages.seriesNotFound(id: widget.seriesId),
+              actionLabel: messages.commonBackToCatalog,
               onAction: () => context.goNamed('catalog'),
             ),
           );
@@ -82,15 +85,15 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
     );
   }
 
-  String _errorCopy(Object? error) {
+  String _errorCopy(AppMessages messages, Object? error) {
     if (error is! CatalogFailure) {
-      return 'ページを表示できませんでした';
+      return messages.seriesLoadFailed;
     }
     return switch (error.kind) {
-      CatalogFailureKind.network => 'ページを表示できませんでした。通信状況を確認して再試行してください。',
-      CatalogFailureKind.notSaved || CatalogFailureKind.saveExpired =>
-        'オフラインのため、このシリーズを表示できません。端末に保存されたデータがありません。',
-      CatalogFailureKind.unexpected => 'ページを表示できませんでした',
+      CatalogFailureKind.network => messages.errorsRpcUnavailable,
+      CatalogFailureKind.notSaved ||
+      CatalogFailureKind.saveExpired => messages.seriesOfflineNotSaved,
+      CatalogFailureKind.unexpected => messages.seriesLoadFailed,
     };
   }
 }
@@ -177,6 +180,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final messages = AppMessages.of(context);
     final series = widget.detail.series;
 
     return Scaffold(
@@ -187,7 +191,9 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           Text(series.title, style: theme.textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text(
-            '${series.episodeCount} 話',
+            messages.seriesEpisodeCount(
+              count: messages.formatInteger(series.episodeCount),
+            ),
             style: theme.textTheme.labelLarge?.copyWith(
               color: theme.colorScheme.primary,
             ),
@@ -197,10 +203,13 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             Text(series.description, style: theme.textTheme.bodyLarge),
           ],
           const SizedBox(height: 24),
-          Text('エピソード一覧', style: theme.textTheme.titleMedium),
+          Text(
+            messages.seriesEpisodesHeading,
+            style: theme.textTheme.titleMedium,
+          ),
           const SizedBox(height: 8),
           if (widget.detail.episodes.isEmpty)
-            const Text('公開中のエピソードはありません')
+            Text(messages.seriesEpisodesEmpty)
           else
             for (final episode in widget.detail.episodes)
               ListTile(
@@ -238,22 +247,23 @@ class _EpisodeTrailing extends StatelessWidget {
     if (!saved && price <= 0) {
       return const SizedBox.shrink();
     }
+    final messages = AppMessages.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (saved)
-          const Padding(
-            key: ValueKey('episode-saved-offline'),
-            padding: EdgeInsets.only(right: 8),
+          Padding(
+            key: const ValueKey('episode-saved-offline'),
+            padding: const EdgeInsets.only(right: 8),
             child: Icon(
               Icons.offline_pin_outlined,
               size: 20,
               // The mark is the only thing that says this episode still opens
               // without a network, so it has to reach a screen reader too.
-              semanticLabel: '保存済み',
+              semanticLabel: messages.seriesSavedOffline,
             ),
           ),
-        if (price > 0) Text('¥$price'),
+        if (price > 0) Text('¥${messages.formatInteger(price)}'),
       ],
     );
   }

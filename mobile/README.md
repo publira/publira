@@ -125,6 +125,7 @@ mobile/
 │   ├── auth/                     # Session, secure storage, AuthController
 │   ├── catalog/                  # CatalogRepository
 │   ├── crypto/                   # HMAC-SHA256 keystream shared by delivery and storage
+│   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
 │   ├── models/                   # Series / episode body
 │   ├── screens/                  # Catalog / series detail / viewer / sign-in / account
@@ -154,6 +155,24 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 The list displays loading, empty, and network-error-with-retry states. Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
 The catalog's app bar carries the account entry point, which opens `/sign-in` for a signed-out reader and `/account` for a signed-in one.
+
+## Localization
+
+Every string the app shows comes from the shared catalogs in `locales/`, and the app renders in the language the device asks for.
+
+### Copy
+
+`scripts/generate-locale-registry.ts` compiles the `mobile` and `errors` namespaces of `locales/*.json` into `lib/l10n/gen/app_messages.dart`: one `AppMessages` getter or method per key, and one subclass per locale. A `{$name}` placeholder becomes a required named parameter, so the compiler is what checks that a screen passes every value a message takes, and a key present in one catalog but not another fails `pnpm locales:generate` rather than a screen. The messages are parsed during generation by `messageformat`, the MessageFormat 2 implementation `@publira/i18n` already uses, so the app holds no message syntax of its own and reads no JSON at runtime; pub.dev offers no MessageFormat 2 implementation, and the app does not need one.
+
+`pnpm locales:check` fails when the generated file is behind the catalogs, and `task mobile:check` formats and analyzes it like any other source. A screen reads the catalog with `AppMessages.of(context)`, and formats a number with `formatInteger` from `lib/l10n/formatting.dart` before handing it to a message, because the catalog's placeholders take strings.
+
+To add copy, add the key under `mobile.<screen>` to every `locales/*.json`, run `pnpm locales:generate`, and use the new member. Reuse an `errors.*` key when the copy is the classification the web apps show for the same failure, such as `errors.rpc.unavailable` for a request that could not reach the API.
+
+### Locale
+
+`PubliraApp` resolves the locale the way `web-host` does, with the device standing in for the browser. The first device language that names a catalog wins, whether by its whole tag or by its language alone. A device set to none of them takes the tenant's `default_locale`, which `GetTenantByDomain` returns and `TenantResolver` keeps; until that answer arrives, and for good when it cannot, on a launch without a network, the app opens in English, the same decision `@publira/i18n` makes for a browser with no usable preference. `MaterialApp.localizationsDelegates` carries the app's own delegate alongside the `flutter_localizations` ones, so Material's own strings follow the same locale.
+
+There is no in-app switcher: the device setting is the switch, and changing it while the app runs re-renders every screen.
 
 ## Viewer
 

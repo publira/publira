@@ -98,7 +98,10 @@ void main() {
     await submitCredentials(tester, password: 'wrong');
     await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-error')));
 
-    expect(find.text('メールアドレスまたはパスワードが正しくありません'), findsOneWidget);
+    expect(
+      find.text('That email address or password is incorrect.'),
+      findsOneWidget,
+    );
     expect(auth.isSignedIn, isFalse);
     expect(find.byKey(const ValueKey('sign-in-submit')), findsOneWidget);
   });
@@ -120,7 +123,7 @@ void main() {
     await submitCredentials(tester);
     await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-error')));
 
-    expect(find.text('サインインできませんでした'), findsOneWidget);
+    expect(find.text('Could not sign in.'), findsOneWidget);
     expect(
       tester
           .widget<FilledButton>(find.byKey(const ValueKey('sign-in-submit')))
@@ -133,9 +136,9 @@ void main() {
     await pumpApp(tester, initialLocation: AppRoutes.signIn);
 
     await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
-    await pumpUntilFound(tester, find.text('メールアドレスを入力してください'));
+    await pumpUntilFound(tester, find.text('Enter your email address.'));
 
-    expect(find.text('パスワードを入力してください'), findsOneWidget);
+    expect(find.text('Enter your password.'), findsOneWidget);
     expect(repository.lastEmail, isNull);
   });
 
@@ -150,7 +153,7 @@ void main() {
     );
 
     await tester.tap(find.byKey(const ValueKey('account-sign-out')));
-    await pumpUntilFound(tester, find.text('サインインしていません'));
+    await pumpUntilFound(tester, find.text('You are not signed in.'));
 
     expect(auth.isSignedIn, isFalse);
     expect(auth.accessToken, isEmpty);
@@ -166,7 +169,7 @@ void main() {
     );
     await pumpUntilFound(tester, find.byKey(const ValueKey('episode-locked')));
 
-    await tester.tap(find.text('サインイン'));
+    await tester.tap(find.text('Sign in'));
     await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-submit')));
 
     expect(find.byKey(const ValueKey('sign-in-email')), findsOneWidget);
@@ -182,7 +185,7 @@ void main() {
     );
     await pumpUntilFound(tester, find.byKey(const ValueKey('episode-locked')));
 
-    await tester.tap(find.text('サインイン'));
+    await tester.tap(find.text('Sign in'));
     await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-submit')));
 
     // What the entitled reader gets back, so the reload is what decides
@@ -209,14 +212,17 @@ void main() {
       repository: repository,
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('サインインの有効期限が切れました'));
+    await pumpUntilFound(
+      tester,
+      find.text('Your session is no longer valid. Please sign in again.'),
+    );
     // The bar slides in from below the viewport, so its action is only where
     // a tap can reach it once that animation has finished.
     await tester.pumpAndSettle();
 
     expect(auth.isSignedIn, isFalse);
 
-    await tester.tap(find.widgetWithText(SnackBarAction, 'サインイン'));
+    await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
     await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-submit')));
     await tester.pumpAndSettle();
   });
