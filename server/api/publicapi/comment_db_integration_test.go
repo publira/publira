@@ -2,13 +2,20 @@ package publicapi
 
 import (
 	"context"
+	"log/slog"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/adminapi"
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -34,20 +41,46 @@ func (e *publicDBEnv) setCommentMode(t *testing.T, tenantID uuid.UUID, mode stri
 	}
 }
 
-// hideComment removes a comment the way the admin console will, so these tests
-// can assert the silence of a removal without waiting for AdminCommentService.
-func (e *publicDBEnv) hideComment(t *testing.T, tenantID uuid.UUID, publicID string, staffID uuid.UUID) {
+// hideComment removes a comment the way the admin console does, through
+// AdminCommentService on its own RLS-bound role. Driving the real RPC is what
+// makes the silence of a removal a property of moderation rather than of a
+// hand-written UPDATE this test invented.
+func (e *publicDBEnv) hideComment(t *testing.T, tenant testutil.Tenant, staff testutil.TenantUser, publicID string) {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if _, err := dbmodels.New(e.PG.DB).HideEpisodeCommentByPublicIDForTenant(ctx, dbmodels.HideEpisodeCommentByPublicIDForTenantParams{
-		TenantID:     tenantID,
-		PublicID:     publicID,
-		HiddenBy:     uuid.NullUUID{UUID: staffID, Valid: true},
-		HiddenReason: "staff",
-	}); err != nil {
-		t.Fatalf("hide comment %s: %v", publicID, err)
+	adminDB := e.PG.OpenAdminDB(t)
+	adminServer := httptest.NewServer(adminapi.NewHandler(
+		adminDB,
+		dbmodels.New(adminDB),
+		&testStorageProvider{},
+		slog.Default(),
+		nil,
+		nil,
+		testutil.TokenManager(),
+	))
+	t.Cleanup(adminServer.Close)
+
+	token, _, err := testutil.TokenManager().Issue(
+		staff.PublicID,
+		auth.AudienceAdmin,
+		tenant.ID.String(),
+		staff.Role,
+		staff.CredentialsVersion,
+		time.Now(),
+	)
+	if err != nil {
+		t.Fatalf("issue admin token: %v", err)
+	}
+
+	req := connect.NewRequest(&publiraadminv1.HideCommentRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
+		PublicId: publicID,
+		Reason:   "Removed for this test.",
+	})
+	req.Header().Set("Authorization", "Bearer "+token)
+	if _, err := publiraadminv1connect.NewAdminCommentServiceClient(adminServer.Client(), adminServer.URL).
+		HideComment(context.Background(), req); err != nil {
+		t.Fatalf("HideComment %s: %v", publicID, err)
 	}
 }
 
@@ -298,7 +331,7 @@ func TestDBRemovedCommentStaysWithItsAuthorAndNobodyElse(t *testing.T) {
 
 	kept := env.mustPostComment(t, tenant, author, episode.PublicID, "This one stays.")
 	removed := env.mustPostComment(t, tenant, author, episode.PublicID, "This one is taken down.")
-	env.hideComment(t, tenant.ID, removed.PublicId, staff.ID)
+	env.hideComment(t, tenant, staff, removed.PublicId)
 
 	// The author reads the removed comment exactly as it was: it comes back
 	// through their own list, and nothing in it says it was removed.

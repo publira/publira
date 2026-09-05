@@ -58,8 +58,9 @@ type Querier interface {
 	//     -> idx_episode_comments_tenant_episode_status_created_at
 	//   ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 	//     -> idx_episode_comments_tenant_user_created_at
-	//   ListEpisodeCommentsByStatusCreatedAt*
-	//     -> idx_episode_comments_tenant_status_created_at
+	//   ListEpisodeCommentsForModerationByCreatedAt*
+	//     -> idx_episode_comments_tenant_status_created_at with a status filter,
+	//        idx_episode_comments_tenant_created_at without one
 	//   PurgeWithdrawnEpisodeComments
 	//     -> idx_episode_comments_tenant_withdrawn_at
 	// status and published_at come from the tenant's comment_mode: 'published' with
@@ -109,6 +110,10 @@ type Querier interface {
 	CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserMfaRecoveryCodeParams) error
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
 	DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error)
+	// The irreversible removal staff reach for when the text must not be retained
+	// at all. It names no status: content under a legal takedown has to go whatever
+	// state it is in, and the reversible removal is a different query.
+	DeleteEpisodeCommentByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeCommentByPublicIDForTenantParams) (int64, error)
 	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
 	// Clears one aspect ratio of an eye-catch, like the series query above.
 	DeleteLabelImageVariantsByType(ctx context.Context, arg DeleteLabelImageVariantsByTypeParams) (int64, error)
@@ -158,6 +163,10 @@ type Querier interface {
 	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
+	// One comment in the shape the moderation list returns. Every moderation action
+	// reads it before deciding and again after writing, so the caller answers from
+	// the stored row rather than from what it assumed the transition would produce.
+	GetEpisodeCommentForModerationByPublicIDForTenant(ctx context.Context, arg GetEpisodeCommentForModerationByPublicIDForTenantParams) (GetEpisodeCommentForModerationByPublicIDForTenantRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
 	// Tenant-staff preview: membership and role are evaluated in the handler.
 	// This query only answers whether the image belongs to the tenant, with no
@@ -401,13 +410,17 @@ type Querier interface {
 	// in reverse. The handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescParams) ([]ListEndUsersDescRow, error)
-	// The previous-page half of ListEpisodeCommentsByStatusCreatedAtDesc.
-	ListEpisodeCommentsByStatusCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentsByStatusCreatedAtAscParams) ([]EpisodeComment, error)
+	// The previous-page half of ListEpisodeCommentsForModerationByCreatedAtDesc.
+	ListEpisodeCommentsForModerationByCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtAscParams) ([]ListEpisodeCommentsForModerationByCreatedAtAscRow, error)
 	// The console queues: 'pending' is the approval queue, 'hidden' the removed
 	// comments staff can restore, 'withdrawn' what an author deleted and the
-	// retention window still keeps. One tenant-wide list per status, so a moderator
-	// does not have to open an episode to find work.
-	ListEpisodeCommentsByStatusCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentsByStatusCreatedAtDescParams) ([]EpisodeComment, error)
+	// retention window still keeps. Every filter is optional, so the same query
+	// answers a tenant-wide queue, one series, one episode, and the whole history
+	// of any of them; a moderator does not have to open an episode to find work.
+	//
+	// The author and the episode are joined in because a comment cannot be judged
+	// from its text alone: staff need to know who wrote it and what it is about.
+	ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentsForModerationByCreatedAtDescRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)
 	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error)
 	// ListEpisodeReadThroughDesc walked the other way, to build a previous page.

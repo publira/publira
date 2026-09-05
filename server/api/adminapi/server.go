@@ -16,6 +16,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/commentretention"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
@@ -53,6 +54,9 @@ type adminServer struct {
 	// completes. Read from the environment at startup: it is a deployment
 	// decision, and a tenant cannot lock itself out of its own console.
 	mfaRequiredForTenantAdmin bool
+	// commentRetentionDays is how long a withdrawn comment survives before the
+	// purge batch deletes it, which is what the console counts down to.
+	commentRetentionDays int
 }
 
 // mfaRequiredForTenantAdminFromEnv reads the deployment's stance on the
@@ -241,6 +245,18 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 	} else if revalidator == nil {
 		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
 	}
+	commentRetentionDays, retentionErr := commentretention.WithdrawnDays()
+	if retentionErr != nil {
+		// The purge batch refuses to run on the same value, so nothing is deleted
+		// early; only the deadline the console shows is affected. Refusing to
+		// serve the whole admin API over it would cost far more than the wrong
+		// date does.
+		logger.Error("withdrawn comment retention window is invalid; falling back to the default",
+			"error", retentionErr,
+			"default_days", commentretention.DefaultWithdrawnDays,
+		)
+		commentRetentionDays = commentretention.DefaultWithdrawnDays
+	}
 	server := &adminServer{
 		db:                    db,
 		queries:               queries,
@@ -254,6 +270,7 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		tokens:                tokens,
 
 		mfaRequiredForTenantAdmin: mfaRequiredForTenantAdminFromEnv(),
+		commentRetentionDays:      commentRetentionDays,
 	}
 	traced := tracing.ConnectHandlerOption()
 
@@ -432,6 +449,17 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(accessTicketPath, accessTicketHandler)
+	commentPath, commentHandler := publiraadminv1connect.NewAdminCommentServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(commentPath, commentHandler)
 	return mux
 }
 

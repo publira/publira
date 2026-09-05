@@ -8,6 +8,7 @@ import { AdminAccessTicketService } from "../gen/publira/admin/v1/access_ticket_
 import { AdminAnnouncementService } from "../gen/publira/admin/v1/announcement_pb.js";
 import { AdminAuditLogService } from "../gen/publira/admin/v1/audit_pb.js";
 import { AdminAuthService } from "../gen/publira/admin/v1/auth_pb.js";
+import { AdminCommentService } from "../gen/publira/admin/v1/comment_pb.js";
 import { AdminCreatorService } from "../gen/publira/admin/v1/creator_pb.js";
 import { AdminDashboardService } from "../gen/publira/admin/v1/dashboard_pb.js";
 import { AdminEmailSettingsService } from "../gen/publira/admin/v1/email_pb.js";
@@ -37,6 +38,7 @@ export interface AdminApiClient {
   accessTickets: Client<typeof AdminAccessTicketService>;
   audit: Client<typeof AdminAuditLogService>;
   auth: Client<typeof AdminAuthService>;
+  comments: Client<typeof AdminCommentService>;
   creator: Client<typeof AdminCreatorService>;
   dashboard: Client<typeof AdminDashboardService>;
   emailSettings: Client<typeof AdminEmailSettingsService>;
@@ -89,6 +91,7 @@ export const createAdminApiClient = (
     announcement: createClient(AdminAnnouncementService, transportInstance),
     audit: createClient(AdminAuditLogService, transportInstance),
     auth: createClient(AdminAuthService, transportInstance),
+    comments: createClient(AdminCommentService, transportInstance),
     creator: createClient(AdminCreatorService, transportInstance),
     dashboard: createClient(AdminDashboardService, transportInstance),
     emailSettings: createClient(AdminEmailSettingsService, transportInstance),

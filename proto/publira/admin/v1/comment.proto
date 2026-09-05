@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// One reader comment as tenant staff read it.
+//
+// The reader-facing EpisodeComment deliberately carries no state, because a
+// reader never learns that a comment exists in any other one. This message is
+// the opposite: the state and the transitions that produced it are what
+// moderation acts on, so they are all here alongside the text.
+message AdminComment {
+  string public_id = 1;
+  string body = 2;
+  // One of pending, published, hidden, withdrawn.
+  string status = 3;
+  string created_at = 4;
+  // When the comment first became publicly readable, which is empty for one
+  // that never was. It survives a removal, so it is also what a restore
+  // returns the comment to.
+  string published_at = 5;
+  // The removal in force. Both are empty in every state but hidden, because a
+  // restore clears them and the author's own withdrawal supersedes them.
+  string hidden_at = 6;
+  // 'staff' for a removal a moderator made, 'auto_reports' for one the report
+  // threshold made with no actor to name.
+  string hidden_reason = 7;
+  // When the author deleted the comment. Empty in every other state.
+  string withdrawn_at = 8;
+  // When the retention purge deletes this withdrawn comment. Empty in every
+  // other state, since nothing else is on that clock.
+  //
+  // It is the deadline rather than the time remaining: a console that renders
+  // the countdown itself stays right while the page is open, and the value
+  // does not go stale in a cached response.
+  string purge_due_at = 9;
+  string author_public_id = 10;
+  // The author's display name, as stored on their account.
+  string author_name = 11;
+  string episode_public_id = 12;
+  string episode_title = 13;
+  string series_public_id = 14;
+  string series_title = 15;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListCommentsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // One of pending, published, hidden, withdrawn. Empty lists every state,
+  // which is the only way to read one episode's whole comment history at once.
+  // Anything else is invalid_argument.
+  string status = 2;
+  // Narrow the list to one series or one episode. Empty means the tenant's
+  // comments on everything, which is what makes the approval queue a single
+  // list rather than one per episode.
+  string series_public_id = 3;
+  string episode_public_id = 4;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 5;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 6;
+}
+
+message ListCommentsResponse {
+  // Newest first.
+  repeated AdminComment comments = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message ApproveCommentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // Recorded on the audit log row. Optional: approving is the queue's ordinary
+  // outcome and usually needs no explanation.
+  string reason = 3;
+}
+
+message ApproveCommentResponse {
+  AdminComment comment = 1;
+}
+
+message HideCommentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // Recorded on the audit log row, which is where a tenant reads back why a
+  // comment was removed when it owes its author a statement of reasons.
+  string reason = 3;
+}
+
+message HideCommentResponse {
+  AdminComment comment = 1;
+}
+
+message RestoreCommentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // Recorded on the audit log row.
+  string reason = 3;
+}
+
+message RestoreCommentResponse {
+  AdminComment comment = 1;
+}
+
+message PurgeCommentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // Required. The row is gone afterwards, so the audit log entry is the only
+  // record left that this comment ever existed, and a purge with no stated
+  // reason leaves a tenant unable to account for it.
+  string reason = 3;
+}
+
+// Deliberately empty. The row is deleted, so there is nothing left to return.
+message PurgeCommentResponse {}
+
+service AdminCommentService {
+  // Lists the tenant's comments for moderation, newest first.
+  //
+  // Withdrawn comments are in it: the author's own deletion takes the comment
+  // away from every reader, but staff keep reading it for the retention window
+  // so a report or a dispute raised before the deletion can still be settled.
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse) {}
+  // Publishes one comment that was posted under approval_required.
+  //
+  // failed_precondition for a comment in any other state, because approving is
+  // what first makes a comment public and no other state is waiting for it.
+  rpc ApproveComment(ApproveCommentRequest) returns (ApproveCommentResponse) {}
+  // Removes one pending or published comment from every reader-facing response.
+  //
+  // The removal is silent: the comment keeps rendering to its author exactly as
+  // it was, so being removed does not itself become a public complaint. It is
+  // reversible through RestoreComment.
+  rpc HideComment(HideCommentRequest) returns (HideCommentResponse) {}
+  // Puts one removed comment back into the state the removal interrupted:
+  // public again when it had been published, back in the approval queue when it
+  // had not.
+  //
+  // failed_precondition for anything but a hidden comment. A withdrawn one is
+  // not restorable at all — its author took it down, and staff putting it back
+  // would republish text its author deleted.
+  rpc RestoreComment(RestoreCommentRequest) returns (RestoreCommentResponse) {}
+  // Deletes one comment irreversibly, for content that must not be retained at
+  // all — a legal takedown, say.
+  //
+  // Separate from HideComment so the routine action stays reversible and the
+  // one that cannot be undone is asked for by name.
+  rpc PurgeComment(PurgeCommentRequest) returns (PurgeCommentResponse) {}
+}

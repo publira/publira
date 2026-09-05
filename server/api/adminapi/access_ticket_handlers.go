@@ -45,11 +45,11 @@ func formatOptionalTime(t sql.NullTime) string {
 	return t.Time.UTC().Format(time.RFC3339)
 }
 
-func formatOptionalNote(note sql.NullString) string {
-	if !note.Valid {
+func formatOptionalString(value sql.NullString) string {
+	if !value.Valid {
 		return ""
 	}
-	return note.String
+	return value.String
 }
 
 type accessTicketFields struct {
@@ -79,7 +79,7 @@ func mapAccessTicket(fields accessTicketFields, now time.Time) *publiraadminv1.A
 		UserEmail:       fields.userEmail,
 		ExpiresAt:       formatOptionalTime(fields.expiresAt),
 		RevokedAt:       formatOptionalTime(fields.revokedAt),
-		Note:            formatOptionalNote(fields.note),
+		Note:            formatOptionalString(fields.note),
 		CreatedAt:       fields.createdAt.UTC().Format(time.RFC3339),
 		Status:          accessTicketStatus(fields.revokedAt, fields.expiresAt, now),
 	}
