@@ -67,6 +67,12 @@ import {
   readerPasswordResetSubject,
 } from "./templates/reader-password-reset";
 import {
+  ReaderSignupAttemptNoticeEmail,
+  readerSignupAttemptNoticeDataSchema,
+  readerSignupAttemptNoticePreview,
+  readerSignupAttemptNoticeSubject,
+} from "./templates/reader-signup-attempt-notice";
+import {
   SampleEmail,
   sampleEmailDataSchema,
   sampleEmailPreview,
@@ -86,6 +92,7 @@ export const TEMPLATE_IDS = [
   "reader_email_change_confirmation",
   "reader_email_changed_notice",
   "reader_password_reset",
+  "reader_signup_attempt_notice",
   "admin_console_email_change_confirmation",
   "admin_console_email_changed_notice",
   "admin_console_password_reset",
@@ -291,6 +298,17 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
     preview: readerPasswordResetPreview,
     schema: readerPasswordResetDataSchema,
     subject: readerPasswordResetSubject,
+  }),
+  reader_signup_attempt_notice: defineTemplate({
+    element: ({ data, locale, messages }) =>
+      createElement(ReaderSignupAttemptNoticeEmail, {
+        data,
+        locale,
+        messages,
+      }),
+    preview: readerSignupAttemptNoticePreview,
+    schema: readerSignupAttemptNoticeDataSchema,
+    subject: readerSignupAttemptNoticeSubject,
   }),
   sample: defineTemplate({
     element: ({ data, locale, messages }) =>

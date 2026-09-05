@@ -21,6 +21,7 @@ describe("TEMPLATE_IDS", () => {
       "reader_email_change_confirmation",
       "reader_email_changed_notice",
       "reader_password_reset",
+      "reader_signup_attempt_notice",
       "admin_console_email_change_confirmation",
       "admin_console_email_changed_notice",
       "admin_console_password_reset",

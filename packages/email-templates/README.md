@@ -20,6 +20,7 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 | `reader_email_change_confirmation` | address change, to the current and to the new address | `tenant_name`, `confirm_url`, `recipient_kind`, `current_email`, `new_email`, `expires_at` |
 | `reader_email_changed_notice` | to the previous address once the change completes | `tenant_name`, `previous_email`, `new_email` |
 | `reader_password_reset` | reader password reset | `tenant_name`, `reset_url`, `expires_at` |
+| `reader_signup_attempt_notice` | to an address a sign-up tried to reuse | `tenant_name`, `email`, `reset_url` |
 | `admin_console_email_change_confirmation` | admin console address change | `tenant_name`, `confirm_url`, `recipient_kind`, `current_email`, `new_email`, `expires_at` |
 | `admin_console_email_changed_notice` | admin console, to the previous address | `tenant_name`, `previous_email`, `new_email` |
 | `admin_console_password_reset` | admin console password reset | `tenant_name`, `reset_url`, `expires_at` |
