@@ -229,6 +229,39 @@ func (q *Queries) GetUserEmailChangeTokenByHashForTenant(ctx context.Context, ar
 	return i, err
 }
 
+const getUserEmailChangeTokenByIDForTenant = `-- name: GetUserEmailChangeTokenByIDForTenant :one
+SELECT id, tenant_id, user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, current_email_confirmed_at, new_email_confirmed_at, expires_at, completed_at, created_at
+FROM user_email_change_tokens
+WHERE tenant_id = $1
+    AND id = $2
+LIMIT 1
+`
+
+type GetUserEmailChangeTokenByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+func (q *Queries) GetUserEmailChangeTokenByIDForTenant(ctx context.Context, arg GetUserEmailChangeTokenByIDForTenantParams) (UserEmailChangeToken, error) {
+	row := q.db.QueryRowContext(ctx, getUserEmailChangeTokenByIDForTenant, arg.TenantID, arg.ID)
+	var i UserEmailChangeToken
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.UserID,
+		&i.CurrentEmail,
+		&i.NewEmail,
+		&i.CurrentEmailTokenHash,
+		&i.NewEmailTokenHash,
+		&i.CurrentEmailConfirmedAt,
+		&i.NewEmailConfirmedAt,
+		&i.ExpiresAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getUserEmailVerificationTokenByHashForTenant = `-- name: GetUserEmailVerificationTokenByHashForTenant :one
 SELECT id, tenant_id, user_id, token_hash, expires_at, used_at, created_at
 FROM user_email_verification_tokens

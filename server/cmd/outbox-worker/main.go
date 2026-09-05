@@ -119,6 +119,10 @@ func workerConfig(logger *slog.Logger, emailHandlers outbox.EmailHandlerConfig) 
 	handlers.Register(outbox.EventTypePlatformPasswordResetEmail, outbox.NewPlatformPasswordResetEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypePlatformEmailChangeConfirmationEmail, outbox.NewPlatformEmailChangeConfirmationEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypePlatformEmailChangedNoticeEmail, outbox.NewPlatformEmailChangedNoticeEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderEmailVerificationEmail, outbox.NewReaderEmailVerificationEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderEmailChangeConfirmationEmail, outbox.NewReaderEmailChangeConfirmationEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderEmailChangedNoticeEmail, outbox.NewReaderEmailChangedNoticeEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderPasswordResetEmail, outbox.NewReaderPasswordResetEmailHandler(emailHandlers))
 	return outbox.Config{
 		Logger:            logger,
 		Handlers:          handlers,

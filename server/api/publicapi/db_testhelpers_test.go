@@ -36,9 +36,10 @@ func newPublicDBEnv(t *testing.T) *publicDBEnv {
 	pg.Reset(t)
 	db := pg.OpenPublicDB(t)
 
-	// Mail delivery and secret decryption belong to the signup and password reset
-	// flows, which these tests seed around rather than drive.
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, nil, nil, testutil.TokenManager()))
+	// Secret decryption belongs to the payment flows, which these tests seed
+	// around rather than drive. The auth mails are outbox rows the public API
+	// writes and never sends, so no SMTP client takes part here.
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return &publicDBEnv{Server: server, PG: pg}
 }

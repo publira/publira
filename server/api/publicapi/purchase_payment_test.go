@@ -87,7 +87,7 @@ func newPublicPaymentServer(t *testing.T, encryptor *secretcrypto.Manager) publi
 
 	var logs bytes.Buffer
 	checkout := &capturingCheckoutProvider{url: "https://checkout.stripe.test/cs_test"}
-	server := newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, encryptor, nil, testutil.TokenManager(), slog.New(slog.NewTextHandler(&logs, nil)))
+	server := newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, encryptor, testutil.TokenManager(), slog.New(slog.NewTextHandler(&logs, nil)))
 	server.newStripeProvider = func(secretKey string) stripeSessionCreator {
 		checkout.secretKey = secretKey
 		return checkout

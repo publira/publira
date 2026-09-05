@@ -19,7 +19,6 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/tenantconn"
 	"github.com/publira/publira/server/internal/tracing"
@@ -38,7 +37,6 @@ type apiServer struct {
 	queries           Querier
 	storage           storage.Provider
 	encryptor         emailsettings.SecretManager
-	mailer            internalsmtp.Sender
 	tokens            *auth.TokenManager
 	logger            *slog.Logger
 	newStripeProvider func(secretKey string) stripeSessionCreator
@@ -105,11 +103,32 @@ func (s *apiServer) queriesFor(ctx context.Context) Querier {
 	return s.queries
 }
 
+// beginTenantTx starts a transaction on the request's tenant-scoped connection.
+// Falling back to s.db.BeginTx would leave RLS: that path borrows a different
+// pool connection that has never set app.current_tenant_id. sqlmock tests skip
+// the interceptor, so they are the only callers allowed to begin on the pool.
+func (s *apiServer) beginTenantTx(ctx context.Context) (*sql.Tx, error) {
+	if conn, ok := rpcmiddleware.TenantConnFromContext(ctx); ok {
+		return conn.BeginTx(ctx, nil)
+	}
+	if isSQLMockDB(s.db) {
+		return s.db.BeginTx(ctx, nil)
+	}
+	return nil, errors.New("tenant-scoped connection is required to begin a transaction")
+}
+
+func isSQLMockDB(db *sql.DB) bool {
+	if db == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(fmt.Sprintf("%T", db.Driver())), "sqlmock")
+}
+
 // NewHandler returns the HTTP handler for the public API alone. It serves
 // CatalogService, AuthService, NotificationService, TenantService, and
 // DomainService, and none of the admin API.
-func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender, tokens *auth.TokenManager) http.Handler {
-	return handlerFromServer(newAPIServer(db, queries, storageProvider, encryptor, mailer, tokens, slog.Default()))
+func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) http.Handler {
+	return handlerFromServer(newAPIServer(db, queries, storageProvider, encryptor, tokens, slog.Default()))
 }
 
 func newAPIServer(
@@ -117,7 +136,6 @@ func newAPIServer(
 	queries Querier,
 	storageProvider storage.Provider,
 	encryptor emailsettings.SecretManager,
-	mailer internalsmtp.Sender,
 	tokens *auth.TokenManager,
 	logger *slog.Logger,
 ) *apiServer {
@@ -129,7 +147,6 @@ func newAPIServer(
 		queries:   queries,
 		storage:   storageProvider,
 		encryptor: encryptor,
-		mailer:    mailer,
 		tokens:    tokens,
 		logger:    logger,
 		newStripeProvider: func(secretKey string) stripeSessionCreator {
@@ -183,7 +200,7 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 			if s.db == nil {
 				return next(ctx, req)
 			}
-			if strings.Contains(strings.ToLower(fmt.Sprintf("%T", s.db.Driver())), "sqlmock") {
+			if isSQLMockDB(s.db) {
 				return next(ctx, req)
 			}
 
