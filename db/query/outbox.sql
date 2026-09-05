@@ -2,6 +2,10 @@
 -- same transaction as the domain write. The worker claims due rows,
 -- runs the handler, and records done / retry / dead.
 --
+-- Auth-mail payloads carry the raw token the token tables store only
+-- as a hash. Terminal updates drop that key so a processed row does
+-- not keep a usable secret.
+--
 -- Expected plans (empty table may still seq-scan; SET enable_seqscan = off
 -- in the integration test to confirm the index is eligible):
 --   ClaimPendingOutboxEvents
@@ -63,11 +67,21 @@ FROM claim
 WHERE o.id = claim.id
 RETURNING o.*;
 
+-- Auth mail is the one place the raw token still has to appear: the
+-- token tables store a hash, so the producing transaction writes the
+-- secret into payload for the worker to render. Once the event is
+-- terminal the worker no longer needs it, so the key is dropped and
+-- the rest of the payload stays for diagnosis. The plaintext window
+-- is the pending/processing lifetime. Retries keep the token so a
+-- later attempt can still send the mail. While the worker is running
+-- that window is the retry budget (ten attempts, delays doubling
+-- from 1s and capped at 1h).
 -- name: MarkOutboxEventDone :one
 UPDATE outbox_events
 SET
     status = 'done',
     last_error = NULL,
+    payload = payload - 'token',
     updated_at = NOW()
 WHERE id = sqlc.arg('id')
     AND status = 'processing'
@@ -85,12 +99,16 @@ WHERE id = sqlc.arg('id')
     AND status = 'processing'
 RETURNING *;
 
+-- Same token drop as MarkOutboxEventDone: a dead auth event is as
+-- terminal as a successful one, and the secret is no longer needed
+-- to send the mail.
 -- name: MarkOutboxEventDead :one
 UPDATE outbox_events
 SET
     status = 'dead',
     attempts = attempts + 1,
     last_error = sqlc.narg('last_error'),
+    payload = payload - 'token',
     updated_at = NOW()
 WHERE id = sqlc.arg('id')
     AND status = 'processing'

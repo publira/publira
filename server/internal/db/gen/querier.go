@@ -287,6 +287,10 @@ type Querier interface {
 	// same transaction as the domain write. The worker claims due rows,
 	// runs the handler, and records done / retry / dead.
 	//
+	// Auth-mail payloads carry the raw token the token tables store only
+	// as a hash. Terminal updates drop that key so a processed row does
+	// not keep a usable secret.
+	//
 	// Expected plans (empty table may still seq-scan; SET enable_seqscan = off
 	// in the integration test to confirm the index is eligible):
 	//   ClaimPendingOutboxEvents
@@ -700,7 +704,19 @@ type Querier interface {
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
 	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error)
+	// Same token drop as MarkOutboxEventDone: a dead auth event is as
+	// terminal as a successful one, and the secret is no longer needed
+	// to send the mail.
 	MarkOutboxEventDead(ctx context.Context, arg MarkOutboxEventDeadParams) (OutboxEvent, error)
+	// Auth mail is the one place the raw token still has to appear: the
+	// token tables store a hash, so the producing transaction writes the
+	// secret into payload for the worker to render. Once the event is
+	// terminal the worker no longer needs it, so the key is dropped and
+	// the rest of the payload stays for diagnosis. The plaintext window
+	// is the pending/processing lifetime. Retries keep the token so a
+	// later attempt can still send the mail. While the worker is running
+	// that window is the retry budget (ten attempts, delays doubling
+	// from 1s and capped at 1h).
 	MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventRetryParams) (OutboxEvent, error)
 	MarkPlatformNotificationAsRead(ctx context.Context, arg MarkPlatformNotificationAsReadParams) (PlatformNotificationRead, error)

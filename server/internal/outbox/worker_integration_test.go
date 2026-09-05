@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -159,6 +160,47 @@ func TestWorkerRecoversStaleProcessing(t *testing.T) {
 	waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
 }
 
+func TestWorkerStripsAuthTokenWhenDone(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXWK001", "outbox-worker.example.com", "Outbox Worker Tenant")
+	queries := dbmodels.New(pg.DB)
+	const rawToken = "raw-done-token"
+	event := insertRawTestEvent(t, ctx, queries, tenant.ID, "test:strip-done", map[string]any{
+		"tenant_id": tenant.ID.String(),
+		"token":     rawToken,
+	})
+
+	startTestWorker(t, pg.DB, outbox.Config{})
+	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
+	assertTerminalPayloadDroppedToken(t, got.Payload, rawToken, tenant.ID.String())
+}
+
+func TestWorkerStripsAuthTokenWhenDead(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXWK001", "outbox-worker.example.com", "Outbox Worker Tenant")
+	queries := dbmodels.New(pg.DB)
+	const rawToken = "raw-dead-token"
+	event := insertRawTestEvent(t, ctx, queries, tenant.ID, "test:strip-dead", map[string]any{
+		"tenant_id": tenant.ID.String(),
+		"token":     rawToken,
+		"fail":      true,
+	})
+
+	startTestWorker(t, pg.DB, outbox.Config{MaxAttempts: 1})
+	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDead)
+	assertTerminalPayloadDroppedToken(t, got.Payload, rawToken, tenant.ID.String())
+}
+
 func TestWorkerProcessesPlatformEvent(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -180,6 +222,50 @@ func TestWorkerProcessesPlatformEvent(t *testing.T) {
 
 	startTestWorker(t, pg.DB, outbox.Config{})
 	waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
+}
+
+func insertRawTestEvent(
+	t *testing.T,
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID uuid.UUID,
+	key string,
+	payload map[string]any,
+) dbmodels.OutboxEvent {
+	t.Helper()
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	event, err := queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      outbox.EventTypeTest,
+		Payload:        body,
+		IdempotencyKey: key,
+		AvailableAt:    time.Now().UTC().Add(-time.Second),
+	})
+	if err != nil {
+		t.Fatalf("InsertOutboxEvent %s: %v", key, err)
+	}
+	return event
+}
+
+func assertTerminalPayloadDroppedToken(t *testing.T, payload json.RawMessage, rawToken, tenantID string) {
+	t.Helper()
+	if strings.Contains(string(payload), rawToken) {
+		t.Fatalf("terminal payload still contains raw token %q: %s", rawToken, payload)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(payload, &body); err != nil {
+		t.Fatalf("decode payload %s: %v", payload, err)
+	}
+	if _, ok := body["token"]; ok {
+		t.Fatalf("terminal payload still has token key: %s", payload)
+	}
+	if body["tenant_id"] != tenantID {
+		t.Fatalf("terminal payload tenant_id = %v, want %s", body["tenant_id"], tenantID)
+	}
 }
 
 func insertTestEvent(
