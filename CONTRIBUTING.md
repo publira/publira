@@ -107,8 +107,6 @@ pnpm --dir apps/web-host dev
 
 A profile's secrets and run logs are stored under `~/.publira/dev-env` by default. Override the location with `PUBLIRA_DEV_ENV_HOME` and the PostgreSQL admin connection with `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` only when you need to. Both are read solely by the development environment scripts.
 
-Coding agents use [`skills/dev-env-profile`](skills/dev-env-profile/SKILL.md) when they start development.
-
 ## Verifying a change
 
 Run the commands that match the area you changed, from the repository root. They are the same commands CI runs.
@@ -127,8 +125,8 @@ When a CI run is red, [`.github/workflows/README.md`](.github/workflows/README.m
 
 ## Commits and pull requests
 
-- **Branch from `main`** and open a pull request against it. Nothing is pushed to `main` directly, and a squash merge is the only merge method the branch rules allow.
-- **Commit subjects and pull request titles use [Conventional Commits](https://www.conventionalcommits.org/)**, in English: `type(scope): description`. The pull request title becomes the subject of the squashed commit and the body becomes its message, so both are read from `git log` long after the pull request is closed.
+- **Branch from `main`** and open a pull request against it. Nothing is pushed to `main` directly.
+- **Commit subjects and pull request titles use [Conventional Commits](https://www.conventionalcommits.org/)**, in English: `type(scope): description`. The pull request title and body become the commit message on `main`, so both are read from `git log` long after the pull request is closed.
 - **Fill in the pull request template** at [`.github/pull_request_template.md`](.github/pull_request_template.md). GitHub loads it into every new pull request; keep its headings.
 - **Disclose a coding agent with an `Assisted-by` trailer, never a co-author trailer.** The full rule and its reasons are in the [AI agent trailer](AGENTS.md#ai-agent-trailer-assisted-by-never-co-authored-by) section of `AGENTS.md`. In short: the trailer discloses the process, a co-author line would claim authorship an AI cannot hold. Pass it with `--trailer` so Git records a real trailer:
 
@@ -137,8 +135,6 @@ When a CI run is red, [`.github/workflows/README.md`](.github/workflows/README.m
     --trailer "Assisted-by: Claude Code:claude-opus-5"
   ```
 
-- **Commit with an email address linked to your GitHub account.** The branch rules require an extra approval for a pull request whose commits are not attributed to a GitHub user.
-- **What the branch rules require before a merge**: the `CI / Summary` check passes on a branch that is up to date with `main`, one approving review is in place, and every review thread is resolved. A new push dismisses earlier approvals, so rebase onto `main` and push before asking for a review rather than after.
 - **Keep one Issue per pull request.** Link it with `Fixes #NNN` in the body so the merge closes it. When a change needs several pull requests, split the Issue rather than the fix.
 
 ## Language
@@ -165,4 +161,4 @@ git diff --name-only origin/main...HEAD | while read -r file; do
 done | sort -u
 ```
 
-The rules are written for coding agents and human contributors alike. The skills under [`skills/`](skills/) are the agent-facing companions: the coding standards in full, the pull request procedure, the isolated development profile, and Issue organization.
+The rules are written for coding agents and human contributors alike.
