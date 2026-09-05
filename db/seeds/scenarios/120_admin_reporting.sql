@@ -224,10 +224,13 @@ SET tenant_id = EXCLUDED.tenant_id,
 
 -- Read-through. The dates move with the day the file is applied on, taken in
 -- each tenant's own time zone because that is the day the aggregate files a
--- row under, and (tenant_id, stat_date, entity_type, entity_id) is unique, so
--- a row re-dated by a later apply could land on the date another of these rows
--- still holds. Removing this scenario's rows first keeps the apply idempotent
--- on any day.
+-- row under. The zone is trimmed the way tenanttz.Resolve trims it, so a
+-- stored value with surrounding spaces — which the not-blank CHECK still
+-- admits — dates these rows on the same day the aggregate would.
+--
+-- (tenant_id, stat_date, entity_type, entity_id) is unique, so a row re-dated
+-- by a later apply could land on the date another of these rows still holds.
+-- Removing this scenario's rows first keeps the apply idempotent on any day.
 DELETE FROM content_daily_stats
 WHERE id >= '018f0f54-0000-7000-8000-000000000000'::uuid
   AND id <= '018f0f54-ffff-7000-8000-ffffffffffff'::uuid;
@@ -305,7 +308,7 @@ SELECT
         || LPAD(TO_HEX(ss.n), 12, '0')
     )::uuid,
     t.id,
-    (NOW() AT TIME ZONE t.timezone)::date + ss.day_offset,
+    (NOW() AT TIME ZONE BTRIM(t.timezone))::date + ss.day_offset,
     'episode',
     ss.episode_id,
     ss.member_view_count,
