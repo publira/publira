@@ -23,7 +23,7 @@
     "eslint-plugin-sonarjs": "4.2.0",
     "oxfmt": "0.66.0",
     "oxlint": "1.81.0",
-    "oxlint-plugin-react-doctor": "0.9.12",
+    "oxlint-plugin-react-doctor": "0.9.13",
     "turbo": "2.10.12",
     "typescript": "catalog:",
     "ultracite": "7.10.7"
