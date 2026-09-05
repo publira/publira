@@ -6,7 +6,7 @@ import Link from "next/link";
 import "./globals.css";
 
 /** The one locale this document renders, named where `lang` is set from it. */
-const NOT_FOUND_LOCALE: Locale = "ja";
+const NOT_FOUND_LOCALE: Locale = "en";
 
 /**
  * App-wide 404 for URLs that match no route at all. Next.js skips the normal
@@ -21,10 +21,12 @@ const NOT_FOUND_LOCALE: Locale = "ja";
  * Tenant-specific `/theme.css` is intentionally omitted: there is no tenant
  * context on an unmatched URL.
  *
- * `lang` stays `ja` rather than following the locale cookie the way the tenant
- * layout does. This document has no layout to resolve a locale in and renders
- * as a static page, so its copy cannot follow the cookie either — pointing the
- * attribute at `en` would only mislabel the Japanese text below.
+ * The locale is a constant rather than the cookie the tenant layout follows.
+ * This document has no layout to resolve a locale in and renders as a static
+ * page, so nothing here can name the reader's language. The copy comes from the
+ * shared catalog, which carries every locale, so the constant chooses a
+ * language rather than reporting one: `en` is the repository's default for a
+ * page that has no reader-specific answer to give.
  */
 export const metadata: Metadata = {
   description: sharedMessage(

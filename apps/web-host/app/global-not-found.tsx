@@ -6,7 +6,7 @@ import Link from "next/link";
 import "./globals.css";
 
 /** The one locale this document renders, named where `lang` is set from it. */
-const NOT_FOUND_LOCALE: Locale = "ja";
+const NOT_FOUND_LOCALE: Locale = "en";
 
 /**
  * App-wide 404 for URLs that match no route at all. Next.js skips the normal
@@ -24,9 +24,10 @@ const NOT_FOUND_LOCALE: Locale = "ja";
  * The locale is a constant rather than the `[locale]` segment every other page
  * follows. An unmatched URL never reached `proxy.ts`'s rewrite, so there is no
  * tenant behind it and no saved default language to word this page in, and this
- * document renders as a static page with no layout to resolve one in. Naming
- * the language the copy below is actually written in is the only honest
- * attribute available; pointing `lang` at anything else would only mislabel it.
+ * document renders as a static page with no layout to resolve one in. The copy
+ * comes from the shared catalog, which carries every locale, so the constant
+ * chooses a language rather than reporting one: `en` is the repository's
+ * default for a page that has no reader-specific answer to give.
  */
 export const metadata: Metadata = {
   description: sharedMessage(
