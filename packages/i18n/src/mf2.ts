@@ -77,11 +77,9 @@ const toParams = (values: MessageValues): Record<string, string> => {
  * Why `message` uses more of MF2 than the catalog allows, or `undefined` when
  * it stays inside the subset.
  */
-const unsupportedConstruct = (message: Model.Message): string | undefined => {
-  if (isSelectMessage(message)) {
-    return "selection ('.match') is not part of the catalog's subset";
-  }
-
+const unsupportedConstruct = (
+  message: Model.PatternMessage
+): string | undefined => {
   if (message.declarations.length > 0) {
     return "declarations ('.input' / '.local') are not part of the catalog's subset";
   }
@@ -108,22 +106,75 @@ const unsupportedConstruct = (message: Model.Message): string | undefined => {
 };
 
 /**
- * Why `source` is not a message this catalog accepts, or `undefined` when it
- * is. Reports MF2 syntax and data model errors from `messageformat`, then the
- * subset rules above.
+ * The data model of `source` when it is a message this catalog accepts, or
+ * the reason it is not: MF2 syntax and data model errors from `messageformat`,
+ * then the subset rules above.
  */
-export const simpleMessageSyntaxError = (
+const parseSimpleMessage = (
   source: string
-): string | undefined => {
+): { message: Model.PatternMessage } | { problem: string } => {
   let message: Model.Message;
   try {
     message = parseMessage(source);
     validate(message);
   } catch (error) {
-    return error instanceof Error ? error.message : String(error);
+    return { problem: error instanceof Error ? error.message : String(error) };
   }
 
-  return unsupportedConstruct(message);
+  if (isSelectMessage(message)) {
+    return {
+      problem: "selection ('.match') is not part of the catalog's subset",
+    };
+  }
+
+  const problem = unsupportedConstruct(message);
+
+  return problem === undefined ? { message } : { problem };
+};
+
+/**
+ * Why `source` is not a message this catalog accepts, or `undefined` when it
+ * is.
+ */
+export const simpleMessageSyntaxError = (
+  source: string
+): string | undefined => {
+  const parsed = parseSimpleMessage(source);
+
+  return "problem" in parsed ? parsed.problem : undefined;
+};
+
+/** One piece of a simple message: literal text, or a `{$name}` placeholder. */
+export type SimpleMessagePart = string | { readonly variable: string };
+
+/**
+ * The text and placeholders of `source` in order, with MF2 escapes resolved.
+ *
+ * This is how a generator that compiles the catalog into another language
+ * reads a message: `messageformat` does the parsing, and the generator only
+ * writes out what it was handed, so no reader of the catalog needs a parser of
+ * its own. Throws when `source` is outside the catalog's subset, with the
+ * reason {@link simpleMessageSyntaxError} reports.
+ */
+export const simpleMessageParts = (source: string): SimpleMessagePart[] => {
+  const parsed = parseSimpleMessage(source);
+  if ("problem" in parsed) {
+    throw new Error(parsed.problem);
+  }
+
+  return parsed.message.pattern.map((part) => {
+    if (typeof part === "string") {
+      return part;
+    }
+
+    // `unsupportedConstruct` has already rejected markup, functions and
+    // literal expressions, so what is left is a variable reference.
+    if (isMarkup(part) || !isVariableRef(part.arg)) {
+      throw new Error(`unexpected ${part.type} in a simple message`);
+    }
+
+    return { variable: part.arg.name };
+  });
 };
 
 /**

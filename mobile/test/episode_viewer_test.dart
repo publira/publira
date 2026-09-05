@@ -102,7 +102,10 @@ void main() {
     await pumpApp(tester, session: fakeSession);
     await pumpUntilFound(tester, find.byKey(const ValueKey('episode-locked')));
 
-    expect(find.text('この話は購入すると読めます'), findsOneWidget);
+    expect(
+      find.text('This episode can be read once it is purchased.'),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
   });
 
@@ -113,7 +116,7 @@ void main() {
     await pumpApp(tester);
     await pumpUntilFound(tester, find.byKey(const ValueKey('episode-empty')));
 
-    expect(find.text('このエピソードにはまだページがありません'), findsOneWidget);
+    expect(find.text('This episode has no pages yet.'), findsOneWidget);
   });
 
   testWidgets('an unknown episode id shows the not-found state', (
@@ -128,8 +131,8 @@ void main() {
       find.byKey(const ValueKey('episode-not-found')),
     );
 
-    await tester.tap(find.text('シリーズへ戻る'));
-    await pumpUntilFound(tester, find.text('エピソード一覧'));
+    await tester.tap(find.text('Back to the series'));
+    await pumpUntilFound(tester, find.text('Episodes'));
 
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
   });
@@ -141,10 +144,13 @@ void main() {
       tester,
       find.byKey(const ValueKey('episode-viewer-error')),
     );
-    expect(find.textContaining('エピソードを表示できませんでした'), findsOneWidget);
+    expect(
+      find.textContaining('Could not connect to the server'),
+      findsOneWidget,
+    );
 
     catalog.episodeError = null;
-    await tester.tap(find.text('再試行'));
+    await tester.tap(find.text('Retry'));
     await pumpUntilFound(
       tester,
       find.byKey(const ValueKey('episode-page-view')),
@@ -160,7 +166,7 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(seriesId),
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('エピソード一覧'));
+    await pumpUntilFound(tester, find.text('Episodes'));
 
     await tester.tap(find.byKey(ValueKey('episode-tile-$episodeId')));
     await pumpUntilFound(
@@ -171,7 +177,7 @@ void main() {
     expect(router.state.uri.path, viewerPath);
 
     await tester.pageBack();
-    await pumpUntilFound(tester, find.text('エピソード一覧'));
+    await pumpUntilFound(tester, find.text('Episodes'));
 
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
   });

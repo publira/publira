@@ -80,6 +80,7 @@ Top-level keys are separated by reader. Copy appearing in only one app belongs u
 | `platform` | Screen copy for `web-platform` (the platform console) |
 | `admin` | Screen copy for `web-admin` (the tenant administration console) |
 | `host` | Screen copy for `web-host` (the tenant-facing public site) |
+| `mobile` | Screen copy for the Flutter app under `mobile/` |
 
 Within an app namespace, separate keys by screen (or a cohesive area). Promote copy to that area's shared section (such as `platform.auth.fields`) only when multiple screens use it.
 
@@ -107,19 +108,20 @@ The embedded files originate in the repository-root `locales/` directory. The se
 
 ### Flutter
 
-Add `../locales/` to the assets in `pubspec.yaml` and open the file for each locale. Only the asset API may concatenate a path at runtime; this differs from web `import()`.
+The app reads no catalog file at runtime. `scripts/generate-locale-registry.ts` compiles the `mobile` and `errors` namespaces into `mobile/lib/l10n/gen/app_messages.dart`: a typed class whose members are the keys, whose parameters are the `{$name}` placeholders, and whose subclasses are the locales. `messageformat` parses every message during generation, so the app ships no message parser. `pnpm locales:check` fails when that file is behind the catalogs. The Localization section of `mobile/README.md` covers how the app reads it and resolves its locale.
 
 ## Adding a key
 
 1. Add the same key to every locale JSON file (do not use an empty string even when a translation is not ready)
-2. Confirm that `pnpm locales:check` passes (it checks that leaves are valid simple messages)
-3. Confirm that `pnpm --filter @publira/i18n typecheck` passes (the `ExactCatalog` tests run from the `packages/i18n` tests)
+2. Run `pnpm locales:generate` when the key is under `mobile` or `errors`, which the Flutter catalog is compiled from
+3. Confirm that `pnpm locales:check` passes (it checks that leaves are valid simple messages and that generated files are current)
+4. Confirm that `pnpm --filter @publira/i18n typecheck` passes (the `ExactCatalog` tests run from the `packages/i18n` tests)
 
 ## Adding a locale
 
-`index.json` is the only hand-maintained list. The TypeScript static import map and the Go allowlist are generated, so do not edit them individually.
+`index.json` is the only hand-maintained list. The TypeScript static import map, the Go allowlist, and the Flutter catalog are generated, so do not edit them individually.
 
 1. Add `<code>.json` to this directory with the same keys as every existing catalog
 2. Add `{ "code": "<code>", "label": "…", "intl": "…" }` to `locales` in `index.json`
 3. Run `pnpm locales:generate` to update generated files
-4. Run `pnpm preflight` and `task server:test-short`
+4. Run `pnpm preflight`, `task server:test-short`, and `task mobile:check`

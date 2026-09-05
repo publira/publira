@@ -11,6 +11,7 @@ import path from "node:path";
 // Node strips the types and resolves `messageformat` from the package the file
 // lives in.
 import { simpleMessageSyntaxError } from "../packages/i18n/src/mf2.ts";
+import { renderDartMessages } from "./dart-messages.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const indexPath = path.resolve(root, "locales/index.json");
@@ -45,9 +46,9 @@ if (!catalogExport || catalogExport.types !== catalogTypePath) {
  * Every leaf is a MessageFormat 2 simple message. `@publira/i18n` formats them
  * at render time, so a leaf `messageformat` rejects — or one that reaches for
  * a feature the catalog does not use — would only fail once the screen that
- * shows it renders.
+ * shows it renders. Returns the parsed catalog for the generators that read it.
  */
-const checkCatalog = (code: string) => {
+const checkCatalog = (code: string): unknown => {
   const catalogPath = `locales/${code}.json`;
   const catalog: unknown = JSON.parse(
     readFileSync(path.resolve(root, catalogPath), "utf-8")
@@ -78,6 +79,8 @@ const checkCatalog = (code: string) => {
   if (problems.length > 0) {
     throw new Error(`Invalid ${catalogPath}:\n${problems.join("\n")}`);
   }
+
+  return catalog;
 };
 
 const index: unknown = JSON.parse(readFileSync(indexPath, "utf-8"));
@@ -115,6 +118,7 @@ const locales = index.locales.map(
 );
 
 const codes = new Set<string>();
+const catalogs = new Map<string, unknown>();
 for (const locale of locales) {
   if (codes.has(locale.code)) {
     fail(`locale code ${JSON.stringify(locale.code)} is duplicated`);
@@ -123,7 +127,7 @@ for (const locale of locales) {
   if (!existsSync(path.resolve(root, `locales/${locale.code}.json`))) {
     fail(`catalog locales/${locale.code}.json does not exist`);
   }
-  checkCatalog(locale.code);
+  catalogs.set(locale.code, checkCatalog(locale.code));
 }
 
 const catalogCodes = new Set(
@@ -198,6 +202,10 @@ const files = new Map([
   [
     "server/internal/locale/gen/locales.go",
     `${generatedHeader}${newline}${newline}package gen${newline}${newline}var Supported = []string{${goCodes}}${newline}`,
+  ],
+  [
+    "mobile/lib/l10n/gen/app_messages.dart",
+    renderDartMessages(locales, catalogs),
   ],
 ]);
 

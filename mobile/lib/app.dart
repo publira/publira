@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/api/connect_client.dart';
@@ -11,6 +12,9 @@ import 'package:publira/auth/session_store.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/config.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/l10n/locale_negotiation.dart';
+import 'package:publira/l10n/localizations.dart';
 import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/offline/offline_catalog_repository.dart';
 import 'package:publira/offline/offline_library.dart';
@@ -27,6 +31,7 @@ class PubliraApp extends StatefulWidget {
     required this.catalog,
     required this.auth,
     this.offline,
+    this.tenantDefaultLocale,
   });
 
   /// Wires the app to the public API described by [config].
@@ -80,6 +85,7 @@ class PubliraApp extends StatefulWidget {
       ),
       auth: auth,
       offline: library,
+      tenantDefaultLocale: tenants.defaultLocale,
     );
   }
 
@@ -95,25 +101,65 @@ class PubliraApp extends StatefulWidget {
   /// with no offline behaviour at all.
   final OfflineLibrary? offline;
 
+  /// The tenant's default locale code, once the tenant lookup has learnt it.
+  ///
+  /// [PubliraApp.fromConfig] hands over what its [TenantResolver] reports; a
+  /// widget test passes a [ValueNotifier] to act the answer out, or nothing,
+  /// in which case only the device's own languages decide the locale.
+  final ValueListenable<String?>? tenantDefaultLocale;
+
   @override
   State<PubliraApp> createState() => _PubliraAppState();
 }
 
-class _PubliraAppState extends State<PubliraApp> {
+class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.auth.addListener(_onAuthChanged);
+    widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
     unawaited(widget.auth.restore());
   }
 
   @override
+  void didUpdateWidget(PubliraApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.tenantDefaultLocale != oldWidget.tenantDefaultLocale) {
+      oldWidget.tenantDefaultLocale?.removeListener(
+        _onTenantDefaultLocaleChanged,
+      );
+      widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
+    }
+  }
+
+  @override
   void dispose() {
+    widget.tenantDefaultLocale?.removeListener(_onTenantDefaultLocaleChanged);
     widget.auth.removeListener(_onAuthChanged);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
+
+  /// The reader changed the device's language while the app was running, so
+  /// the next frame renders in whatever it now asks for.
+  @override
+  void didChangeLocales(List<Locale>? locales) {
+    setState(() {});
+  }
+
+  void _onTenantDefaultLocaleChanged() {
+    setState(() {});
+  }
+
+  /// The locale every screen renders in, decided from the device's languages
+  /// and what the tenant lookup has answered so far.
+  Locale get _locale => resolveAppLocale(
+    deviceLocales: WidgetsBinding.instance.platformDispatcher.locales,
+    tenantDefaultLocale: widget.tenantDefaultLocale?.value,
+  );
 
   /// Tells the reader once when a session the app had stored turned out to be
   /// gone, and offers the way back in rather than signing them in silently.
@@ -122,11 +168,17 @@ class _PubliraAppState extends State<PubliraApp> {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // The messenger sits above `Localizations`, so its context cannot answer
+      // for the copy; the catalog is picked the way the frame was.
+      final messages = AppMessages.forLocale(_locale);
+      if (messages == null) {
+        return;
+      }
       _messengerKey.currentState?.showSnackBar(
         SnackBar(
-          content: const Text('サインインの有効期限が切れました'),
+          content: Text(messages.errorsRpcUnauthenticated),
           action: SnackBarAction(
-            label: 'サインイン',
+            label: messages.commonSignIn,
             onPressed: () => widget.router.push(AppRoutes.signIn),
           ),
         ),
@@ -145,6 +197,9 @@ class _PubliraAppState extends State<PubliraApp> {
           child: MaterialApp.router(
             title: 'Publira',
             scaffoldMessengerKey: _messengerKey,
+            locale: _locale,
+            supportedLocales: AppMessages.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
               useMaterial3: true,

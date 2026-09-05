@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:publira/api/episode_image_client.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/viewer/episode_image.dart';
 import 'package:publira/viewer/page_fit.dart';
@@ -92,14 +93,15 @@ class _PageError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'このページを表示できませんでした',
+          Text(
+            messages.viewerPageFailed,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white),
           ),
           const SizedBox(height: 12),
           OutlinedButton(
@@ -109,7 +111,7 @@ class _PageError extends StatelessWidget {
               side: const BorderSide(color: Colors.white70),
             ),
             onPressed: onRetry,
-            child: const Text('再読み込み'),
+            child: Text(messages.viewerReload),
           ),
         ],
       ),

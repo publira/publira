@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
 
@@ -36,6 +37,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
     final signedIn = AuthScope.of(context).isSignedIn;
     return Scaffold(
       appBar: AppBar(
@@ -44,7 +46,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           IconButton(
             key: const ValueKey('catalog-account'),
             icon: Icon(signedIn ? Icons.person : Icons.person_outline),
-            tooltip: signedIn ? 'アカウント' : 'サインイン',
+            tooltip: signedIn ? messages.accountTitle : messages.commonSignIn,
             onPressed: () =>
                 context.push(signedIn ? AppRoutes.account : AppRoutes.signIn),
           ),
@@ -62,16 +64,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
           if (snapshot.hasError) {
             return _CatalogMessage(
               key: const ValueKey('catalog-error'),
-              message: _errorCopy(snapshot.error),
-              actionLabel: '再試行',
+              message: _errorCopy(messages, snapshot.error),
+              actionLabel: messages.commonRetry,
               onAction: _reload,
             );
           }
           final series = snapshot.data ?? const <SeriesItem>[];
           if (series.isEmpty) {
-            return const _CatalogMessage(
-              key: ValueKey('catalog-empty'),
-              message: '公開中のシリーズはありません',
+            return _CatalogMessage(
+              key: const ValueKey('catalog-empty'),
+              message: messages.catalogEmpty,
             );
           }
           return ListView.separated(
@@ -102,15 +104,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
     );
   }
 
-  String _errorCopy(Object? error) {
+  String _errorCopy(AppMessages messages, Object? error) {
     if (error is! CatalogFailure) {
-      return 'カタログを表示できませんでした';
+      return messages.catalogLoadFailed;
     }
     return switch (error.kind) {
-      CatalogFailureKind.network => 'カタログを表示できませんでした。通信状況を確認して再試行してください。',
-      CatalogFailureKind.notSaved || CatalogFailureKind.saveExpired =>
-        'オフラインのため、カタログを表示できません。端末に保存されたカタログがありません。',
-      CatalogFailureKind.unexpected => 'カタログを表示できませんでした',
+      CatalogFailureKind.network => messages.errorsRpcUnavailable,
+      CatalogFailureKind.notSaved ||
+      CatalogFailureKind.saveExpired => messages.catalogOfflineNotSaved,
+      CatalogFailureKind.unexpected => messages.catalogLoadFailed,
     };
   }
 }

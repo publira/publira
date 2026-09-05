@@ -1874,6 +1874,65 @@
       "view_all": "View all"
     }
   },
+  "mobile": {
+    "account": {
+      "name": "Name",
+      "name_unset": "Not set",
+      "sign_out": "Sign out",
+      "signed_out": "You are not signed in.",
+      "title": "Account"
+    },
+    "catalog": {
+      "empty": "No series have been published yet.",
+      "load_failed": "Could not show the catalog.",
+      "offline_not_saved": "You are offline, and this device holds no saved catalog."
+    },
+    "common": {
+      "back_to_catalog": "Back to the catalog",
+      "retry": "Retry",
+      "sign_in": "Sign in"
+    },
+    "not_found": {
+      "message": "“{$uri}” does not exist.",
+      "title": "Page not found"
+    },
+    "series": {
+      "episode_count": "{$count} episodes",
+      "episodes_empty": "No episodes have been published yet.",
+      "episodes_heading": "Episodes",
+      "load_failed": "Could not show the series.",
+      "not_found": "Series not found ({$id})",
+      "offline_not_saved": "You are offline, and this device holds nothing saved for this series.",
+      "saved_offline": "Saved on this device",
+      "title": "Series"
+    },
+    "sign_in": {
+      "email_label": "Email address",
+      "email_not_verified": "Your email address has not been confirmed yet. Open the link in the confirmation email.",
+      "email_required": "Enter your email address.",
+      "failed": "Could not sign in.",
+      "invalid_credentials": "That email address or password is incorrect.",
+      "password_label": "Password",
+      "password_required": "Enter your password.",
+      "website_note": "Create an account or reset your password on the website."
+    },
+    "viewer": {
+      "back_to_series": "Back to the series",
+      "load_failed": "Could not show the episode.",
+      "locked": "This episode can be read once it is purchased.",
+      "locked_signed_out": "This episode can be read once it is purchased. If you have already bought it, sign in.",
+      "next_page": "Next page",
+      "no_pages": "This episode has no pages yet.",
+      "not_found": "Episode not found ({$id})",
+      "offline_not_saved": "You are offline, and only the episodes saved on this device can be read.",
+      "page_failed": "This page could not be loaded.",
+      "page_status": "{$page} / {$total}",
+      "previous_page": "Previous page",
+      "reload": "Reload",
+      "save_expired": "The saved copy of this episode has expired. Open it again while connected.",
+      "title": "Episode"
+    }
+  },
   "platform": {
     "audit": {
       "actions": {

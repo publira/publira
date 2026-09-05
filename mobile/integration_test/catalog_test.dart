@@ -124,7 +124,7 @@ void main() {
           find.text(ConnectFixtureServer.seedSeriesSynopsis),
           findsOneWidget,
         );
-        expect(find.text('2 話'), findsOneWidget);
+        expect(find.text('2 episodes'), findsOneWidget);
         expect(find.text('¥500'), findsOneWidget);
       });
     });
@@ -145,7 +145,7 @@ void main() {
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
         );
-        await pumpUntilFound(tester, find.text('エピソード一覧'));
+        await pumpUntilFound(tester, find.text('Episodes'));
         await tester.pageBack();
         await pumpUntilFound(tester, find.text('Publira'));
         expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsOneWidget);
@@ -289,7 +289,7 @@ void main() {
           find.byKey(const ValueKey('episode-locked')),
         );
 
-        await tester.tap(find.text('サインイン'));
+        await tester.tap(find.text('Sign in'));
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
@@ -362,7 +362,7 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('catalog-account')));
         await settleOn(find.byKey(const ValueKey('account-sign-out')));
         await tester.tap(find.byKey(const ValueKey('account-sign-out')));
-        await settleOn(find.text('サインインしていません'));
+        await settleOn(find.text('You are not signed in.'));
         await tester.pageBack();
         await settleOn(seriesTile);
 
@@ -406,8 +406,8 @@ void main() {
     testWidgets('missing series shows the not-found state', (tester) async {
       await withFailureScreenshot(tester, 'fixture-not-found', () async {
         await pumpApp(tester, initialLocation: '/series/ZZZZZZZZZZZZ');
-        await pumpUntilFound(tester, find.textContaining('シリーズが見つかりません'));
-        await tester.tap(find.text('カタログへ戻る'));
+        await pumpUntilFound(tester, find.textContaining('Series not found'));
+        await tester.tap(find.text('Back to the catalog'));
         await pumpUntilFound(
           tester,
           find.text(ConnectFixtureServer.seedSeriesTitle),
@@ -423,7 +423,7 @@ void main() {
           tester,
           find.byKey(const ValueKey('catalog-empty')),
         );
-        expect(find.text('公開中のシリーズはありません'), findsOneWidget);
+        expect(find.text('No series have been published yet.'), findsOneWidget);
       });
     });
 
@@ -441,7 +441,7 @@ void main() {
           tester,
           find.byKey(const ValueKey('catalog-error')),
         );
-        expect(find.textContaining('オフラインのため'), findsOneWidget);
+        expect(find.textContaining('You are offline'), findsOneWidget);
         expect(find.byKey(const ValueKey('catalog-retry')), findsOneWidget);
       });
     });
@@ -511,7 +511,7 @@ void main() {
           find.text(ConnectFixtureServer.seedSeriesTitle),
           timeout: const Duration(seconds: 20),
         );
-        expect(find.text('エピソード一覧'), findsOneWidget);
+        expect(find.text('Episodes'), findsOneWidget);
         expect(
           find.text(ConnectFixtureServer.seedEpisodeTitle),
           findsOneWidget,
@@ -566,7 +566,7 @@ void main() {
         await pumpLive(tester, initialLocation: '/series/ZZZZZZZZZZZZ');
         await pumpUntilFound(
           tester,
-          find.textContaining('シリーズが見つかりません'),
+          find.textContaining('Series not found'),
           timeout: const Duration(seconds: 20),
         );
       });
@@ -589,7 +589,7 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
 
-        await tester.tap(find.text('サインイン'));
+        await tester.tap(find.text('Sign in'));
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
@@ -845,7 +845,7 @@ void main() {
         expect(
           find.descendant(
             of: find.byKey(const ValueKey('episode-viewer-error')),
-            matching: find.textContaining('オフラインのため'),
+            matching: find.textContaining('You are offline'),
           ),
           findsOneWidget,
         );
@@ -893,7 +893,7 @@ void main() {
         expect(
           find.descendant(
             of: find.byKey(const ValueKey('episode-viewer-error')),
-            matching: find.textContaining('オフラインのため'),
+            matching: find.textContaining('You are offline'),
           ),
           findsOneWidget,
         );

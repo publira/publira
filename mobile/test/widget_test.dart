@@ -55,12 +55,12 @@ void main() {
 
     final first = fixtureSeries.first;
     await tester.tap(find.byKey(ValueKey('series-tile-${first.id}')));
-    await pumpUntilFound(tester, find.text('エピソード一覧'));
+    await pumpUntilFound(tester, find.text('Episodes'));
 
     expect(find.text(first.title), findsWidgets);
     expect(find.text(first.description), findsWidgets);
-    expect(find.text('${first.episodeCount} 話'), findsOneWidget);
-    expect(find.text('エピソード一覧'), findsOneWidget);
+    expect(find.text('${first.episodeCount} episodes'), findsOneWidget);
+    expect(find.text('Episodes'), findsOneWidget);
     expect(find.text('${first.title} #1'), findsOneWidget);
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(first.id));
   });
@@ -70,7 +70,7 @@ void main() {
 
     final first = fixtureSeries.first;
     await tester.tap(find.byKey(ValueKey('series-tile-${first.id}')));
-    await pumpUntilFound(tester, find.text('エピソード一覧'));
+    await pumpUntilFound(tester, find.text('Episodes'));
 
     await tester.pageBack();
     await pumpUntilFound(tester, find.text('Publira'));
@@ -84,9 +84,9 @@ void main() {
     router = createAppRouter(initialLocation: '/series/does-not-exist');
     await pumpApp(tester);
 
-    expect(find.textContaining('シリーズが見つかりません'), findsOneWidget);
+    expect(find.textContaining('Series not found'), findsOneWidget);
 
-    await tester.tap(find.text('カタログへ戻る'));
+    await tester.tap(find.text('Back to the catalog'));
     await pumpUntilFound(tester, find.text(fixtureSeries.first.title));
 
     expect(find.text('Publira'), findsOneWidget);
@@ -97,10 +97,10 @@ void main() {
     router = createAppRouter(initialLocation: '/no-such-page');
     await pumpApp(tester);
 
-    expect(find.text('ページが見つかりません'), findsOneWidget);
-    expect(find.textContaining('は存在しません'), findsOneWidget);
+    expect(find.text('Page not found'), findsOneWidget);
+    expect(find.textContaining('does not exist'), findsOneWidget);
 
-    await tester.tap(find.text('カタログへ戻る'));
+    await tester.tap(find.text('Back to the catalog'));
     await pumpUntilFound(tester, find.text(fixtureSeries.first.title));
 
     expect(find.text('Publira'), findsOneWidget);
@@ -112,7 +112,7 @@ void main() {
     await pumpApp(tester);
 
     expect(find.byKey(const ValueKey('catalog-empty')), findsOneWidget);
-    expect(find.text('公開中のシリーズはありません'), findsOneWidget);
+    expect(find.text('No series have been published yet.'), findsOneWidget);
     expect(find.byType(ListTile), findsNothing);
   });
 
@@ -123,7 +123,10 @@ void main() {
     await pumpApp(tester);
 
     expect(find.byKey(const ValueKey('catalog-error')), findsOneWidget);
-    expect(find.textContaining('カタログを表示できませんでした'), findsOneWidget);
+    expect(
+      find.textContaining('Could not connect to the server'),
+      findsOneWidget,
+    );
 
     catalog
       ..listError = null
@@ -147,11 +150,14 @@ void main() {
     await pumpApp(tester);
 
     expect(find.byKey(const ValueKey('series-detail-error')), findsOneWidget);
-    expect(find.textContaining('ページを表示できませんでした'), findsOneWidget);
+    expect(
+      find.textContaining('Could not connect to the server'),
+      findsOneWidget,
+    );
 
     catalog.detailError = null;
-    await tester.tap(find.text('再試行'));
-    await pumpUntilFound(tester, find.text('エピソード一覧'));
+    await tester.tap(find.text('Retry'));
+    await pumpUntilFound(tester, find.text('Episodes'));
 
     expect(find.text(fixtureSeries.first.title), findsWidgets);
   });
@@ -196,6 +202,6 @@ void main() {
     await pumpApp(tester);
 
     expect(find.byKey(const ValueKey('catalog-error')), findsOneWidget);
-    expect(find.textContaining('オフラインのため'), findsOneWidget);
+    expect(find.textContaining('You are offline'), findsOneWidget);
   });
 }

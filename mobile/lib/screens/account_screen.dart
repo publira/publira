@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/router.dart';
 
 /// The signed-in reader and the way out of that session.
@@ -11,10 +12,11 @@ class AccountScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
     final auth = AuthScope.of(context);
     final session = auth.session;
     return Scaffold(
-      appBar: AppBar(title: const Text('アカウント')),
+      appBar: AppBar(title: Text(messages.accountTitle)),
       body: SafeArea(
         child: session == null
             ? Center(
@@ -23,12 +25,12 @@ class AccountScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('サインインしていません'),
+                      Text(messages.accountSignedOut),
                       const SizedBox(height: 16),
                       FilledButton(
                         key: const ValueKey('account-sign-in'),
                         onPressed: () => context.push(AppRoutes.signIn),
-                        child: const Text('サインイン'),
+                        child: Text(messages.commonSignIn),
                       ),
                     ],
                   ),
@@ -38,9 +40,11 @@ class AccountScreen extends StatelessWidget {
                 children: [
                   ListTile(
                     key: const ValueKey('account-name'),
-                    title: const Text('お名前'),
+                    title: Text(messages.accountName),
                     subtitle: Text(
-                      session.userName.isEmpty ? '（未設定）' : session.userName,
+                      session.userName.isEmpty
+                          ? messages.accountNameUnset
+                          : session.userName,
                     ),
                   ),
                   const Divider(height: 1),
@@ -49,7 +53,7 @@ class AccountScreen extends StatelessWidget {
                     child: OutlinedButton(
                       key: const ValueKey('account-sign-out'),
                       onPressed: () => unawaited(auth.signOut()),
-                      child: const Text('サインアウト'),
+                      child: Text(messages.accountSignOut),
                     ),
                   ),
                 ],

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { formatSimpleMessage, simpleMessageSyntaxError } from "./mf2";
+import {
+  formatSimpleMessage,
+  simpleMessageParts,
+  simpleMessageSyntaxError,
+} from "./mf2";
 
 describe("simpleMessageSyntaxError", () => {
   it("accepts every shape the catalog is allowed to use", () => {
@@ -84,5 +88,36 @@ describe("formatSimpleMessage", () => {
 
   it("throws on a message that is not well-formed MF2", () => {
     expect(() => formatSimpleMessage("a } b")).toThrow();
+  });
+});
+
+describe("simpleMessageParts", () => {
+  it("splits a message into its text and its placeholders, in order", () => {
+    expect(simpleMessageParts("{$first} / {$total} pages")).toEqual([
+      { variable: "first" },
+      " / ",
+      { variable: "total" },
+      " pages",
+    ]);
+  });
+
+  it("resolves escapes into the text, so a reader needs no parser", () => {
+    expect(simpleMessageParts("\\{ {$q} \\} C:\\\\Users")).toEqual([
+      "{ ",
+      { variable: "q" },
+      " } C:\\Users",
+    ]);
+  });
+
+  it("returns plain text as one part and an empty message as none", () => {
+    expect(simpleMessageParts("Home")).toEqual(["Home"]);
+    expect(simpleMessageParts("")).toEqual([]);
+  });
+
+  it("throws the same reason simpleMessageSyntaxError reports", () => {
+    expect(() => simpleMessageParts("{$count :number}")).toThrow(
+      "functions (':number')"
+    );
+    expect(() => simpleMessageParts("a } b")).toThrow("parse-error");
   });
 });

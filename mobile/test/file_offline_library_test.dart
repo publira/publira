@@ -107,7 +107,11 @@ void main() {
 
   test('a saved catalog is read back by the next launch', () async {
     await open().writeSeriesList(const [
-      SeriesItem(id: _seriesId, title: 'Seed Series 001', description: 'なつやすみ'),
+      SeriesItem(
+        id: _seriesId,
+        title: 'Seed Series 001',
+        description: 'Summer holidays',
+      ),
     ]);
 
     // A second instance stands in for the next launch: nothing carries over in
@@ -116,7 +120,7 @@ void main() {
 
     expect(restored, hasLength(1));
     expect(restored!.single.id, _seriesId);
-    expect(restored.single.description, 'なつやすみ');
+    expect(restored.single.description, 'Summer holidays');
   });
 
   test('a catalog that was never saved reads as absent', () async {

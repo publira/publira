@@ -123,4 +123,45 @@ void main() {
       );
     }
   });
+
+  test(
+    'the default locale the tenant answers with is kept for the app',
+    () async {
+      final resolver = _resolverOver(
+        MockClient(
+          (_) async => http.Response(
+            jsonEncode(const {'tenantId': _tenantId, 'defaultLocale': 'ja'}),
+            200,
+          ),
+        ),
+      );
+      var notified = 0;
+      resolver.defaultLocale.addListener(() => notified++);
+
+      expect(resolver.defaultLocale.value, isNull);
+      await resolver.resolve();
+
+      expect(resolver.defaultLocale.value, 'ja');
+      expect(notified, 1);
+    },
+  );
+
+  test(
+    'an answer naming no locale leaves the default locale unknown',
+    () async {
+      for (final body in const <Map<String, Object?>>[
+        {'tenantId': _tenantId},
+        {'tenantId': _tenantId, 'defaultLocale': '  '},
+        {'tenantId': _tenantId, 'defaultLocale': 1},
+      ]) {
+        final resolver = _resolverOver(
+          MockClient((_) async => http.Response(jsonEncode(body), 200)),
+        );
+
+        await resolver.resolve();
+
+        expect(resolver.defaultLocale.value, isNull, reason: 'body $body');
+      }
+    },
+  );
 }
