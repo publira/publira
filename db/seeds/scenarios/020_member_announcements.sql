@@ -1,4 +1,4 @@
--- Scenario: member announcement list pagination (#717 / #880)
+-- Scenario: member announcement list pagination
 --
 -- Gives the dev seed member (`member@example.com` on Host `localhost`) more
 -- announcements than one page of the public list holds, so E2E can page across

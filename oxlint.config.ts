@@ -71,8 +71,8 @@ export default defineConfig({
        * resettable element, so the reset React runs after a form Action
        * settles replaces its children with a single text node. React keeps
        * rendering into the nodes that reset detached, and every message after
-       * the first stops reaching the document. See AGENTS.md
-       * "Live regions in a form" (#1070).
+       * the first stops reaching the document. See AGENTS.md "Live regions in
+       * a form".
        */
       files: ["packages/ui-components/src/form-message/form-message.tsx"],
       rules: {
@@ -180,8 +180,7 @@ export default defineConfig({
        * discarded rather than reaching application code. Requiring a
        * session would tie a display setting to sign-in without protecting
        * anything. Every other cookie write in these apps stays covered — the
-       * override names this one file per app. See apps/AGENTS.md "UI locale"
-       * (#867, #868).
+       * override names this one file per app. See apps/AGENTS.md "UI locale".
        */
       files: ["apps/*/lib/locale-action.ts"],
       rules: {
@@ -192,7 +191,7 @@ export default defineConfig({
       /**
        * `packages/icons` is the one place allowed to touch `lucide-react`: it
        * is the wrapper that gives every icon the same props and the same
-       * import path. See AGENTS.md "Icons" (#690).
+       * import path. See AGENTS.md "Icons".
        */
       files: ["packages/icons/src/**/*.{ts,tsx}"],
       rules: {
@@ -207,7 +206,7 @@ export default defineConfig({
      * Date/time must go through Temporal (`@publira/utils`), not `Date`.
      * `new Date(str)` reads zone-less input in the host zone and `getTime()`
      * comparisons hide that, so the same value means different instants per
-     * browser and per server. See AGENTS.md "Date and time" (#575).
+     * browser and per server. See AGENTS.md "Date and time".
      */
     "no-restricted-globals": [
       "error",
@@ -227,7 +226,7 @@ export default defineConfig({
     /**
      * Icons come from `@publira/icons`, never straight from `lucide-react`.
      * The wrapper is what keeps one icon set, one prop shape, and one import
-     * path across the apps. See AGENTS.md "Icons" (#690).
+     * path across the apps. See AGENTS.md "Icons".
      */
     "no-restricted-imports": [
       "error",

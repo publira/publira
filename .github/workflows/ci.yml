@@ -87,7 +87,7 @@ jobs:
           # behaviour is unchanged.
           predicate-quantifier: "some-with-excludes"
           filters: |
-            # Documentation-only changes must not start any job (#656). Referenced by
+            # Documentation-only changes must not start any job. Referenced by
             # every filter via the YAML anchor so the list stays in one place; as a
             # filter of its own it is negation-only and therefore always false.
             docs_excluded: &docs_excluded

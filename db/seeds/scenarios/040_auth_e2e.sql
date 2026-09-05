@@ -1,4 +1,4 @@
--- Scenario: dedicated accounts for auth/session-expiry E2E (#67)
+-- Scenario: dedicated accounts for auth/session-expiry E2E
 --
 -- Login / logout / missing-cookie cases use the shared dev seed accounts.
 -- credentials_version bumps must not race those accounts while other specs
