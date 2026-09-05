@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for the report. Write in English, and quote logs, error messages, and UI strings exactly as they were emitted.
 
-        A security vulnerability does not belong in a public Issue.
+        A security vulnerability does not belong in a public Issue. Report it privately through a [security advisory](https://github.com/publira/publira/security/advisories/new) instead.
   - type: textarea
     id: what-happened
     attributes:
