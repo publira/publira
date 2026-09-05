@@ -133,6 +133,33 @@ func TestManagerDecryptLegacyPlaintext(t *testing.T) {
 	}
 }
 
+func TestNilManagerEncryptString(t *testing.T) {
+	var mgr *Manager
+	_, err := mgr.EncryptString("secret")
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("EncryptString error = %v, want ErrUnavailable", err)
+	}
+}
+
+func TestNilManagerDecryptEncryptedEnvelope(t *testing.T) {
+	var mgr *Manager
+	_, err := mgr.DecryptString("enc:v1:k1:nonce:ciphertext")
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("DecryptString error = %v, want ErrUnavailable", err)
+	}
+}
+
+func TestNilManagerDecryptLegacyPlaintext(t *testing.T) {
+	var mgr *Manager
+	got, err := mgr.DecryptString("legacy-plain-text")
+	if err != nil {
+		t.Fatalf("DecryptString: %v", err)
+	}
+	if got != "legacy-plain-text" {
+		t.Fatalf("DecryptString = %q, want legacy plaintext", got)
+	}
+}
+
 func TestNewManagerValidation(t *testing.T) {
 	_, err := NewManager(nil, "k1")
 	if !errors.Is(err, ErrEmptyKeySet) {

@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/secretcrypto"
@@ -59,13 +60,19 @@ func main() {
 	}
 	defer db.Close() //nolint:errcheck
 
-	var encryptor *secretcrypto.Manager
+	// Declared as the interface, never as *secretcrypto.Manager: a typed nil
+	// assigned to an interface is not nil, and it would slip past the guard in
+	// emailsettings.DecryptPassword into a nil-receiver method call. A process
+	// started without keys has to report an unusable manager, so a handler can
+	// retry once an operator restarts it with them.
+	var encryptor emailsettings.SecretManager
 	if len(cfg.Encryption.Keys) > 0 {
-		encryptor, err = secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
-		if err != nil {
-			logger.Error("failed to initialize secret encryption manager", "error", err)
+		manager, managerErr := secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
+		if managerErr != nil {
+			logger.Error("failed to initialize secret encryption manager", "error", managerErr)
 			os.Exit(1)
 		}
+		encryptor = manager
 	}
 
 	addr := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_API_ADDR"))
