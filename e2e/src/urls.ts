@@ -104,6 +104,16 @@ export const WEB_HOST_OTHER_TENANT_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the same second tenant. Its admin comes from
+ * `db/seeds/scenarios/120_admin_reporting.sql`, the one scenario that signs in
+ * there: the tenant boundary of the audit log is asserted from both sides.
+ */
+export const WEB_ADMIN_OTHER_TENANT_BASE_URL = envUrl(
+  "E2E_WEB_ADMIN_OTHER_TENANT_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.other.localhost")
+);
+
+/**
  * Inbox tenant from the scenario seed
  * `db/seeds/scenarios/060_notification_inbox.sql`.
  *
