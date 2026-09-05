@@ -1,14 +1,22 @@
 {
   "$schema": "./node_modules/turbo/schema.json",
-  // Local cache eviction (Turborepo 2.10+). Without a limit `.turbo/cache` only
-  // ever grows: a single `build` / `typegen` entry tars a whole `.next`, so it
-  // can weigh a few GB. Since 2.8 every git worktree shares the main checkout's
-  // `.turbo/cache`, so these are one budget for all worktrees at once, not a
-  // per-worktree one — a dozen branches built in parallel land in the same
-  // directory. Both limits are enforced at the start of every `turbo run` (in
-  // any worktree), oldest entry first.
+  // Turborepo 2.8+ hands every git worktree the main checkout's `.turbo/cache`
+  // unless `cacheDir` is set to a relative path, which resolves from the
+  // current worktree instead. That sharing has to stay off. An artifact is
+  // restored byte for byte, and a `.next` build writes its own absolute path
+  // into `required-server-files.json` and `standalone/`, so a hit hands this
+  // worktree an app whose server points at another branch's checkout — or at a
+  // worktree that has since been deleted.
+  "cacheDir": ".turbo/cache",
+  // Local cache eviction (Turborepo 2.10+). Without a limit `.turbo/cache`
+  // only ever grows, and an unshared cache spends this budget once per
+  // worktree, so a dozen branches each keep their own copy — hence a figure
+  // far below what a single shared directory could afford. A whole app build
+  // tars to a little over 20 MB, so 1 GB still holds several states of every
+  // app at once. Both limits are enforced at the start of every `turbo run`,
+  // oldest entry first.
   "cacheMaxAge": "3d",
-  "cacheMaxSize": "20GB",
+  "cacheMaxSize": "1GB",
   "globalDependencies": ["**/.env.*local", "locales/**"],
   "tasks": {
     "//#check": {},
@@ -17,7 +25,12 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      // `.next/dev` belongs to `next dev`, which no build task writes: it is
+      // whatever the dev server last left in the same directory. Capturing it
+      // made an entry several times larger than the build inside it, and
+      // restoring one drops another branch's dev state onto a running dev
+      // server.
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
     },
     "dev": {
       "dependsOn": ["^build"],
@@ -51,7 +64,7 @@
       "inputs": ["**/*.test.{ts,tsx}"]
     },
     "typegen": {
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
     },
     "typecheck": {
       "dependsOn": ["^typecheck"]
