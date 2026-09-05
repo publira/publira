@@ -263,8 +263,12 @@ func insertReaderOutboxEvent(
 	payload []byte,
 	idempotencyKey string,
 ) error {
-	_, err := queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
-		ID:             uuid.Must(uuid.NewV7()),
+	eventID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("generate outbox event id: %w", err)
+	}
+	_, err = queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             eventID,
 		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
 		EventType:      eventType,
 		Payload:        payload,

@@ -3,6 +3,7 @@ package outbox_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 type recordingReaderMailer struct {
 	recipients []string
 	emails     []internalsmtp.RenderedEmail
+	failure    error
 }
 
 func (m *recordingReaderMailer) SendRenderedEmail(
@@ -30,6 +32,9 @@ func (m *recordingReaderMailer) SendRenderedEmail(
 	recipient string,
 	email internalsmtp.RenderedEmail,
 ) error {
+	if m.failure != nil {
+		return m.failure
+	}
 	m.recipients = append(m.recipients, recipient)
 	m.emails = append(m.emails, email)
 	return nil
@@ -290,6 +295,31 @@ func TestReaderEmailVerificationEmailRetriesWithoutASecretManager(t *testing.T) 
 	}
 	if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
 		t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
+	}
+}
+
+// An SMTP outage is a condition that clears on its own, so a delivery failure
+// leaves the event pending rather than burning the reader's only link.
+func TestReaderEmailVerificationEmailRetriesWhenDeliveryFails(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	reader := pg.SeedUnverifiedEndUser(t, tenant.ID, "READEROUTB12", "reader@example.com", "Reader")
+	tokenID := seedReaderVerificationToken(t, pg, tenant.ID, reader.ID, "verify-token", time.Now().Add(time.Hour))
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{failure: errors.New("smtp is unreachable")}
+	handler := outbox.NewReaderEmailVerificationEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderEmailVerificationEmail,
+		outbox.ReaderEmailVerificationEmailPayload{TenantID: tenant.ID.String(), TokenID: tokenID.String(), Token: "verify-token"},
+		"reader_email_verification_email:"+tokenID.String())
+
+	err := handler(context.Background(), event)
+	if err == nil {
+		t.Fatal("handler returned no error for a mailer that refused the message")
+	}
+	if outbox.IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a retriable failure", err)
 	}
 }
 
