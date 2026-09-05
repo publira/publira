@@ -65,8 +65,6 @@ For the environment variables and how `NEXT_OTEL_VERBOSE` is handled, see [`pack
 
 The per-tenant stylesheet, served by `app/[tenant_id]/theme.css/route.ts` over the `getTenantTheme()` read in `lib/tenant.ts` and its own cache tag from `lib/cache-tags.ts`. The document shell links it, so every page picks up the tenant's colors.
 
-No test yet asserts that a theme saved in the console reaches this stylesheet and the public site end to end; [#1452](https://github.com/publira/publira/issues/1452) covers that.
-
 ### Image delivery (`next/image`)
 
 `images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` point `next/image` at the Manael conversion of image-server. `lib/image-loader.ts` re-exports the shared loader; its specification is in [`packages/utils/README.md`](../../packages/utils/README.md). An `<Image>` whose source does not go through image-server — a temporary `blob:` preview, for instance — is `unoptimized`.
