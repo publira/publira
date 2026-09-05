@@ -283,7 +283,9 @@ test.describe("platform operator management", () => {
     await expect(
       page.getByRole("heading", { name: "Audit logs" })
     ).toBeVisible();
-    await expect(page.getByText("Created an operator").first()).toBeVisible();
+    await expect(
+      page.getByText("Created an operator", { exact: true }).first()
+    ).toBeVisible();
     await expect(page.locator("table tbody tr").first()).toBeVisible();
   });
 

@@ -49,7 +49,7 @@ test.describe("web-platform auth", () => {
 
     await expect(page).toHaveURL(/\/tenants\/?$/u);
     await expect(
-      page.getByRole("heading", { name: /Tenants/u }).first()
+      page.getByRole("heading", { exact: true, name: "Tenants" }).first()
     ).toBeVisible();
     expect(await currentSession(page)).toBeTruthy();
   });
@@ -79,7 +79,7 @@ test.describe("web-platform auth", () => {
 
     await expect(page).toHaveURL(/\/tenants\/?$/u);
     await expect(
-      page.getByRole("heading", { name: /Tenants/u }).first()
+      page.getByRole("heading", { exact: true, name: "Tenants" }).first()
     ).toBeVisible();
   });
 
@@ -163,7 +163,7 @@ test.describe("web-platform auth", () => {
     applyScenarioSql(AUTH_E2E_SCENARIO);
     await signInAsPlatformOperator(page, SCENARIO_AUTH_PLATFORM, "/tenants");
     await expect(
-      page.getByRole("heading", { name: /Tenants/u }).first()
+      page.getByRole("heading", { exact: true, name: "Tenants" }).first()
     ).toBeVisible();
 
     bumpPlatformUserCredentialsVersion(SCENARIO_AUTH_PLATFORM.email);

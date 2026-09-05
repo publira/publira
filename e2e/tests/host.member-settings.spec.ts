@@ -89,7 +89,9 @@ test.describe("web-host member settings", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "My Page" })
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Profile" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { exact: true, name: "Profile" })
+    ).toBeVisible();
     await expect(page.getByText(MEMBER_SETTINGS_MEMBER.name)).toBeVisible();
     await expect(page.getByText(MEMBER_SETTINGS_MEMBER.publicId)).toBeVisible();
     await expect(page.getByText("Subscribed", { exact: true })).toBeVisible();

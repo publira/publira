@@ -45,7 +45,9 @@ test.describe("web-host auth", () => {
     await signInAsSeedMember(page, "/my");
 
     await expect(page).toHaveURL(/\/my\/?$/u);
-    await expect(page.getByRole("heading", { name: "Profile" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { exact: true, name: "Profile" })
+    ).toBeVisible();
     expect(await currentSession(page)).toBeTruthy();
   });
 
@@ -181,7 +183,9 @@ test.describe("web-host auth", () => {
   }) => {
     applyScenarioSql(AUTH_E2E_SCENARIO);
     await signInAsMember(page, SCENARIO_AUTH_MEMBER, "/my");
-    await expect(page.getByRole("heading", { name: "Profile" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { exact: true, name: "Profile" })
+    ).toBeVisible();
 
     bumpUserCredentialsVersion(SCENARIO_AUTH_MEMBER.email);
 
@@ -205,6 +209,8 @@ test.describe("web-host auth", () => {
     expect(await currentSession(page)).toBe(before);
 
     await page.goto(hostUrl("/my"));
-    await expect(page.getByRole("heading", { name: "Profile" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { exact: true, name: "Profile" })
+    ).toBeVisible();
   });
 });

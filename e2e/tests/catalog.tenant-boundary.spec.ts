@@ -234,6 +234,8 @@ test.describe("web-host tenant boundary", () => {
     // Still a real 404: `proxy.ts` answers an unmapped Host before any route
     // renders, so nothing has been committed yet.
     expect(response?.status(), await page.content()).toBe(404);
-    await expect(page.getByRole("heading", { name: "Catalog" })).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { exact: true, name: "Catalog" })
+    ).toHaveCount(0);
   });
 });

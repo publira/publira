@@ -322,7 +322,9 @@ test.describe("platform tenant operations", () => {
     await expect(
       page.getByRole("heading", { name: "Audit logs" })
     ).toBeVisible();
-    await expect(page.getByText("Created a tenant").first()).toBeVisible();
+    await expect(
+      page.getByText("Created a tenant", { exact: true }).first()
+    ).toBeVisible();
     await expect(page.locator("table tbody tr").first()).toBeVisible();
 
     // Detail deep-link still reaches the tenant we just mutated.

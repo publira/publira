@@ -1,5 +1,7 @@
 -- Audit logs (50 rows)
--- actor: admin@example.com (tenant_admin) and member@example.com (member), alternating
+-- actor: admin@example.com (tenant_admin), except rows 7, 16, 25, 32 and 43,
+-- which belong to member@example.com (member) — the same rows that record a
+-- failure, so a member acting outside their role is what every failed row is
 -- Assorted actions against series / episode / label / creator
 WITH tenant_scope AS (
     SELECT t.id AS tenant_id

@@ -47,7 +47,7 @@ test.describe("web-admin auth", () => {
 
     await expect(page).toHaveURL(/\/series\/?$/u);
     await expect(
-      page.getByRole("heading", { name: "Series" }).first()
+      page.getByRole("heading", { exact: true, name: "Series" }).first()
     ).toBeVisible();
     expect(await currentSession(page)).toBeTruthy();
   });
@@ -77,7 +77,7 @@ test.describe("web-admin auth", () => {
 
     await expect(page).toHaveURL(/\/series\/?$/u);
     await expect(
-      page.getByRole("heading", { name: "Series" }).first()
+      page.getByRole("heading", { exact: true, name: "Series" }).first()
     ).toBeVisible();
   });
 
@@ -91,7 +91,7 @@ test.describe("web-admin auth", () => {
 
     await expectSameOriginPath(page, WEB_ADMIN_BASE_URL, "/");
     await expect(
-      page.getByRole("heading", { name: "Dashboard" })
+      page.getByRole("heading", { exact: true, name: "Dashboard" })
     ).toBeVisible();
   });
 
@@ -163,7 +163,7 @@ test.describe("web-admin auth", () => {
     applyScenarioSql(AUTH_E2E_SCENARIO);
     await signInAsAdmin(page, SCENARIO_AUTH_ADMIN, "/");
     await expect(
-      page.getByRole("heading", { name: "Dashboard" })
+      page.getByRole("heading", { exact: true, name: "Dashboard" })
     ).toBeVisible();
 
     bumpUserCredentialsVersion(SCENARIO_AUTH_ADMIN.email);
@@ -181,7 +181,9 @@ test.describe("web-admin auth", () => {
     await signInAsAdmin(page, SEED_MEMBER, "/settings/email");
 
     await expect(page).toHaveURL(/\/settings\/email/u);
-    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { exact: true, name: "Settings" })
+    ).toBeVisible();
     await expect(
       page.getByText(
         "Only a tenant administrator can change this setting. You have read-only access."
@@ -199,7 +201,9 @@ test.describe("web-admin auth", () => {
     await signInAsAdmin(page, SEED_MEMBER, "/settings/payment");
 
     await expect(page).toHaveURL(/\/settings\/payment/u);
-    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { exact: true, name: "Settings" })
+    ).toBeVisible();
     await expect(page.getByRole("link", { name: "Payments" })).toBeVisible();
     await expect(
       page.getByText(
@@ -232,7 +236,7 @@ test.describe("admin GET /logout", () => {
 
     await page.goto(adminUrl("/series"));
     await expect(
-      page.getByRole("heading", { name: "Series" }).first()
+      page.getByRole("heading", { exact: true, name: "Series" }).first()
     ).toBeVisible();
   });
 

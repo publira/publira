@@ -21,7 +21,7 @@ test.describe("web-platform notification bell", () => {
     await bell.click();
     const menu = page.getByRole("dialog");
     await expect(
-      menu.getByRole("heading", { name: "Notifications" })
+      menu.getByRole("heading", { exact: true, name: "Notifications" })
     ).toBeVisible();
     await expect(menu.getByText("No notifications yet.")).toBeVisible();
 
@@ -34,7 +34,7 @@ test.describe("web-platform notification bell", () => {
     await expect(more).toHaveAttribute("href", "/notifications");
     await Promise.all([page.waitForURL(/\/notifications\/?$/u), more.click()]);
     await expect(
-      page.getByRole("heading", { name: "Notifications" })
+      page.getByRole("heading", { exact: true, name: "Notifications" })
     ).toBeVisible();
     await expect(page.getByText("No notifications yet.")).toBeVisible();
   });

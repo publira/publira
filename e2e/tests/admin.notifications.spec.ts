@@ -53,7 +53,7 @@ test.describe("web-admin notification bell", () => {
     await Promise.all([page.waitForURL(/\/notifications\/?$/u), more.click()]);
     await expect(page).toHaveURL(/\/notifications\/?$/u);
     await expect(
-      page.getByRole("heading", { name: "Notifications" })
+      page.getByRole("heading", { exact: true, name: "Notifications" })
     ).toBeVisible();
     await expect(
       page.getByText("You have no notifications yet.")
@@ -65,7 +65,7 @@ test.describe("web-admin notification bell", () => {
     await page.goto(inboxUrl("/announcements"));
     await expect(page).toHaveURL(/\/announcements\/?$/u);
     await expect(
-      page.getByRole("heading", { name: "Announcements" })
+      page.getByRole("heading", { exact: true, name: "Announcements" })
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Create an announcement" })
