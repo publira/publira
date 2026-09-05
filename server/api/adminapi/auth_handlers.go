@@ -19,9 +19,9 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/emailsettings"
-	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
-	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/locale"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 

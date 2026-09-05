@@ -10,9 +10,9 @@ import (
 	"connectrpc.com/connect"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 

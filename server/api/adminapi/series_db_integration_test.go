@@ -7,7 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 )
 
 // seedTwoTenants returns two tenants that share a server, so the second one

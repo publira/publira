@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package publira.types.v1;
 
-option go_package = "github.com/publira/publira/server/internal/gen/publira/types/v1;publirattypesv1";
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/types/v1;publirattypesv1";
 
 // Common data models shared across services
 

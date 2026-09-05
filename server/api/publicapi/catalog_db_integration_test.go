@@ -9,8 +9,8 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/publira/publira/server/internal/auth"
-	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
-	publirav1 "github.com/publira/publira/server/internal/gen/publira/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 

@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
 func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDForTenantRow) *publirattypesv1.Series {

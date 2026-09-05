@@ -11,8 +11,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
-	publirav1 "github.com/publira/publira/server/internal/gen/publira/v1"
-	publirav1connect "github.com/publira/publira/server/internal/gen/publira/v1/publirav1connect"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 )
 
 const getTenantByDomainsQuery = "-- name: GetTenantByDomains :one\n"

@@ -12,8 +12,8 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
-	publirav1connect "github.com/publira/publira/server/internal/gen/publira/v1/publirav1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/testutil"
 )
 

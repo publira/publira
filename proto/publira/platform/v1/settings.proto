@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package publira.platform.v1;
 
-option go_package = "github.com/publira/publira/server/internal/gen/publira/platform/v1;publirasplatformv1";
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
 
 // Platform-wide settings that are not tied to a single tenant. Email/SMTP has its
 // own service (PlatformEmailSettingsService); everything else lands here.

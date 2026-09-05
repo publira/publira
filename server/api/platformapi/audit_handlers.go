@@ -11,8 +11,8 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	publirasplatformv1 "github.com/publira/publira/server/internal/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/pagination"
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 )
 
 type platformAuditLogPageRow struct {

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package publira.platform.v1;
 
-option go_package = "github.com/publira/publira/server/internal/gen/publira/platform/v1;publirasplatformv1";
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
 
 message GetDashboardSummaryRequest {
   // Maximum number of recent_events to return. Zero or less falls back to the

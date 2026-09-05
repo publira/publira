@@ -51,7 +51,7 @@ describe("isSignificant", () => {
 describe("coefficient", () => {
   it("reads the generated and vendored paths from .gitattributes", () => {
     assert.equal(
-      coefficient("server/internal/gen/publira/v1/catalog.pb.go"),
+      coefficient("server/internal/proto/gen/publira/v1/catalog.pb.go"),
       0
     );
     assert.equal(coefficient("packages/api-client/src/gen/index.ts"), 0);
@@ -175,9 +175,9 @@ describe("significantLinesByFile", () => {
 describe("scoreDiff", () => {
   it("scores a generated-only diff as nothing", () => {
     const diff = [
-      "diff --git a/server/internal/gen/publira/v1/catalog.pb.go b/server/internal/gen/publira/v1/catalog.pb.go",
-      "--- a/server/internal/gen/publira/v1/catalog.pb.go",
-      "+++ b/server/internal/gen/publira/v1/catalog.pb.go",
+      "diff --git a/server/internal/proto/gen/publira/v1/catalog.pb.go b/server/internal/proto/gen/publira/v1/catalog.pb.go",
+      "--- a/server/internal/proto/gen/publira/v1/catalog.pb.go",
+      "+++ b/server/internal/proto/gen/publira/v1/catalog.pb.go",
       "@@ -1,2 +1,2 @@",
       "-// protoc-gen-go v1.36.0",
       "+// protoc-gen-go v1.37.0",

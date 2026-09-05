@@ -10,8 +10,8 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	publiraemailv1 "github.com/publira/publira/server/internal/gen/publira/email/v1"
-	publiraemailv1connect "github.com/publira/publira/server/internal/gen/publira/email/v1/publiraemailv1connect"
+	publiraemailv1 "github.com/publira/publira/server/internal/proto/gen/publira/email/v1"
+	publiraemailv1connect "github.com/publira/publira/server/internal/proto/gen/publira/email/v1/publiraemailv1connect"
 	"github.com/publira/publira/server/internal/tracing"
 )
 

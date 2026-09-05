@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package publira.email.v1;
 
-option go_package = "github.com/publira/publira/server/internal/gen/publira/email/v1;publiraemailv1";
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/email/v1;publiraemailv1";
 
 import "google/protobuf/struct.proto";
 

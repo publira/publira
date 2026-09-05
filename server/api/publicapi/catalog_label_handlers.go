@@ -11,9 +11,9 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
-	publirav1 "github.com/publira/publira/server/internal/gen/publira/v1"
 	"github.com/publira/publira/server/internal/pagination"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 )
 
 func publishedLabelFromRow(row dbmodels.GetPublishedLabelByPublicIDRow) *publirav1.PublishedLabel {

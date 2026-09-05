@@ -12,8 +12,8 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
-	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/mfa"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/testutil"

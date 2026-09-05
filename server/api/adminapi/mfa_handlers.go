@@ -14,9 +14,9 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
-	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/mfa"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 

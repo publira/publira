@@ -26,7 +26,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 │   │   └── outbox-worker/    # Outbox + River 常駐ワーカー
 │   └── internal/
 │       ├── db/gen/     # sqlc 自動生成コード (DB/Go)
-│       └── gen/        # buf 自動生成コード (Go)
+│       └── proto/gen/  # buf 自動生成コード (Go)
 ├── infra/
 │   └── docker/         # 本番用 Dockerfile（ロール別・ルートからビルド）
 ├── mobile/             # [Flutter] モバイルアプリ (iOS/Android)

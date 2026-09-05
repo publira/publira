@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	publirav1 "github.com/publira/publira/server/internal/gen/publira/v1"
 	"github.com/publira/publira/server/internal/locale"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 )
 
 func (s *apiServer) GetTenantByDomain(

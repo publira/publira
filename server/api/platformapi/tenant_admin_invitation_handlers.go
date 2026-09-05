@@ -18,9 +18,9 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	publirasplatformv1 "github.com/publira/publira/server/internal/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 )
 
 const tenantAdminInvitationTTL = 24 * time.Hour

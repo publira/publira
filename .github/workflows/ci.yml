@@ -410,8 +410,8 @@ jobs:
       - name: Validate / buf Generated Diff
         run: |
           buf generate
-          git add -A -- server/internal/gen packages/api-client/src/gen
-          if ! git diff --cached --exit-code -- server/internal/gen packages/api-client/src/gen; then
+          git add -A -- server/internal/proto/gen packages/api-client/src/gen
+          if ! git diff --cached --exit-code -- server/internal/proto/gen packages/api-client/src/gen; then
             echo "::error::Generated protobuf code is out of date. Run \`task gen\` and commit the result."
             exit 1
           fi

@@ -16,10 +16,10 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
-	publiraadminv1connect "github.com/publira/publira/server/internal/gen/publira/admin/v1/publiraadminv1connect"
-	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/paymentsettings"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 

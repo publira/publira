@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/pagination"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 )
 
 const (

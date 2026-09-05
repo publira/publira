@@ -14,9 +14,9 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
-	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
-	publirav1 "github.com/publira/publira/server/internal/gen/publira/v1"
-	publirav1connect "github.com/publira/publira/server/internal/gen/publira/v1/publirav1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 )
 
 // capturedArg matches any bound parameter and remembers it, so a test can

@@ -14,8 +14,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/emailsettings"
-	publirasplatformv1 "github.com/publira/publira/server/internal/gen/publira/platform/v1"
-	publirasplatformv1connect "github.com/publira/publira/server/internal/gen/publira/platform/v1/publirasplatformv1connect"
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/secretcrypto"
 )
 

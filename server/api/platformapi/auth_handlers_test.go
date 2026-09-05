@@ -14,8 +14,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/publira/publira/server/internal/auth"
-	publirasplatformv1 "github.com/publira/publira/server/internal/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/outbox"
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 )
 
 func platformPasswordResetTokenColumns() []string {

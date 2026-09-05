@@ -14,9 +14,9 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
-	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
-	"github.com/publira/publira/server/internal/gen/publira/admin/v1/publiraadminv1connect"
-	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
 const (

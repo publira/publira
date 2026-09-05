@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
 )

@@ -6,7 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 )
 
 func TestDBCreateCreatorAndAttachToSeries(t *testing.T) {

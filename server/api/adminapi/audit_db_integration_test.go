@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 )
 
 // TestDBSeriesCreateWritesTenantAuditLog guards the RLS side of audit logging:
