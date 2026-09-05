@@ -33,12 +33,16 @@ const memberField = (column: "email" | "name"): string =>
     `SELECT ${column} FROM users WHERE public_id = '${MEMBER_SETTINGS_MEMBER.publicId}';`
   );
 
+/**
+ * Live regions expose their copy as contents, not as an accessible name, and
+ * `getByRole("alert")` also matches Next.js's route announcer.
+ */
 const expectFlash = (
   page: Page,
   role: "alert" | "status",
   message: string
 ): Promise<void> =>
-  expect(page.getByRole(role, { name: message })).toBeVisible();
+  expect(page.getByRole(role).filter({ hasText: message })).toBeVisible();
 
 const emailChangeTokenCount = (): string =>
   querySql(`
