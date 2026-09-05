@@ -1,4 +1,4 @@
--- Scenario: limited platform operators for role-gated E2E (#517)
+-- Scenario: limited platform operators for role-gated E2E
 --
 -- Adds a platform_operator (not super admin) next to the dev seed super admin.
 -- Password hash matches `platformpass` from db/seeds/dev/001_tenant_users.sql.

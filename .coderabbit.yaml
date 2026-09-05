@@ -111,8 +111,8 @@ reviews:
         - The one translated copy is README.ja.md, paired with the root README.md.
           No other directory gets a *.ja.md.
         - Japanese README files that are still around are leftovers awaiting
-          translation in #1283, not a precedent. Never ask an English line to match
-          the Japanese entries surrounding it.
+          translation, not a precedent. Never ask an English line to match the
+          Japanese entries surrounding it.
         - The "Output language" section of AGENTS.md sets the language of replies to
           the user, not the language of documents stored in the repository. Do not
           cite it to ask for Japanese prose in a Markdown file.

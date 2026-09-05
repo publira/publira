@@ -32,6 +32,8 @@ A code comment is held to the same rule, for the same reason: what a comment exp
 
 A reference to an **open** Issue naming something still to be done — a defect not fixed yet, a lint rule that does not exist yet — stays, because "this is not solved" is information the reader needs; it is the same allowance a TODO comment gets in code. The test is therefore the Issue's state, not the shape of the number, and closing such an Issue includes deleting the reference and whatever sentence was written around it. An issue in another repository (`vercel/next.js#62046`), a non-Issue `#` such as `UTS #35`, and a number shown as an example of a format are not references of this kind.
 
+A comment inside `db/migrations/` keeps whatever it cites. Those files are append-only and CI rejects any edit to one, so the rule cannot reach them and a sweep stops at that directory.
+
 No lint covers this: `git grep` cannot tell an open Issue from a closed one, and a scheduled job asking the GitHub API about every number in every file would cost more upkeep than the rule is worth.
 
 ## What a README holds

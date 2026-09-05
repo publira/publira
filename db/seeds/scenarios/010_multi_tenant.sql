@@ -1,4 +1,4 @@
--- Scenario: multi tenant catalog boundary (#515)
+-- Scenario: multi tenant catalog boundary
 --
 -- Adds a second tenant (`other.localhost`) next to the dev seed tenant
 -- (`localhost`). Everything is named `Boundary …` so E2E assertions can use

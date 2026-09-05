@@ -1,4 +1,4 @@
--- Scenario: a tenant whose notification inbox stays empty (#1380)
+-- Scenario: a tenant whose notification inbox stays empty
 --
 -- The bell's accessible name carries the unread count, and publishing an
 -- episode fans a notification out to every member and every admin of that
