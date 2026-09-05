@@ -104,6 +104,39 @@ func TestUpdatePlatformEmailSettingsKeepsExistingPassword(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
+func TestSendPlatformSmtpTestEmailWithoutSecretManagerReportsUnavailable(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	server.tester = &smtpTesterStub{}
+	now := time.Now()
+	actorID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSMTPConfigQuery)).
+		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
+			AddRow(true, "smtp.example.com", 587, "mailer", "enc:v1:k1:nonce:ciphertext", "starttls", "no-reply@example.com", "reply@example.com", now, now))
+
+	ctx := context.WithValue(context.Background(), platformActorContextKey{}, platformActor{
+		UserID: actorID,
+		Role:   "platform_operator",
+		Email:  "operator@example.com",
+	})
+	_, err := server.SendPlatformSmtpTestEmail(ctx, connect.NewRequest(&publirasplatformv1.SendPlatformSmtpTestEmailRequest{
+		RecipientType:      publirasplatformv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_SELF,
+		Host:               "smtp.example.com",
+		Port:               587,
+		Username:           "mailer",
+		PasswordUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
+		Encryption:         "starttls",
+		FromAddress:        "no-reply@example.com",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("SendPlatformSmtpTestEmail code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	if !errors.Is(err, emailsettings.ErrSecretManagerUnavailable) {
+		t.Fatalf("SendPlatformSmtpTestEmail error = %v, want ErrSecretManagerUnavailable", err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
 func TestSendPlatformSmtpTestEmailUsesRequestSettings(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	server.encryptor = newTestEncryptor(t)

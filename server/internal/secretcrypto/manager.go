@@ -25,6 +25,7 @@ var (
 	ErrUnknownKey        = errors.New("secretcrypto: unknown key id")
 	ErrInvalidCiphertext = errors.New("secretcrypto: invalid ciphertext envelope")
 	ErrDecryptFailed     = errors.New("secretcrypto: decrypt failed")
+	ErrUnavailable       = errors.New("secretcrypto: manager is not configured")
 )
 
 type Manager struct {
@@ -69,6 +70,9 @@ func NewManager(keys map[string][]byte, primaryKeyID string) (*Manager, error) {
 }
 
 func (m *Manager) EncryptString(plaintext string) (string, error) {
+	if m == nil {
+		return "", ErrUnavailable
+	}
 	aead := m.aeadByKeyID[m.primaryKeyID]
 	nonce := make([]byte, aead.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
@@ -88,6 +92,9 @@ func (m *Manager) EncryptString(plaintext string) (string, error) {
 func (m *Manager) DecryptString(value string) (string, error) {
 	if !IsEncryptedEnvelope(value) {
 		return value, nil
+	}
+	if m == nil {
+		return "", ErrUnavailable
 	}
 
 	parts := strings.Split(value, separator)
