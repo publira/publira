@@ -50,7 +50,7 @@ const result = await renderEmail({
   messages: await loadEmailMessages(locale),
   data: {
     invite_url: "https://admin.example.com/accept-invite?token=…",
-    tenant_name: "青灯書房",
+    tenant_name: "Aoto Press",
     expires_at: "2030-01-15T12:00:00Z",
   },
 });
