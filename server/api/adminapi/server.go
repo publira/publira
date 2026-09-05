@@ -16,6 +16,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/commentretention"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
@@ -53,6 +54,9 @@ type adminServer struct {
 	// completes. Read from the environment at startup: it is a deployment
 	// decision, and a tenant cannot lock itself out of its own console.
 	mfaRequiredForTenantAdmin bool
+	// commentRetentionDays is how long a withdrawn comment survives before the
+	// purge batch deletes it, which is what the console counts down to.
+	commentRetentionDays int
 }
 
 // mfaRequiredForTenantAdminFromEnv reads the deployment's stance on the
@@ -215,18 +219,18 @@ func (s *adminServer) authenticateSession(
 // NewHandler returns the HTTP handler for the admin API alone. It serves only
 // AdminSeriesService and AdminAuthService, and none of the public API
 // (CatalogService, AuthService).
-func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) http.Handler {
+func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (http.Handler, error) {
 	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, nil)
 }
 
 // NewHandlerWithAsyncRecorder creates an admin API handler with an
 // AsyncRecorder. The asynchronous writer acquires a fresh tenant-scoped
 // connection for every tenant audit entry.
-func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) http.Handler {
+func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (http.Handler, error) {
 	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, recorder)
 }
 
-func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) http.Handler {
+func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) (http.Handler, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -241,6 +245,14 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 	} else if revalidator == nil {
 		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
 	}
+	// The purge batch refuses to run on a window it cannot parse, so falling
+	// back to the default here would have the console count down to a deadline
+	// nothing enforces. Both processes read the same variable and both refuse
+	// the same values, which is what keeps the promise and the deletion in step.
+	commentRetentionDays, err := commentretention.WithdrawnDays()
+	if err != nil {
+		return nil, err
+	}
 	server := &adminServer{
 		db:                    db,
 		queries:               queries,
@@ -254,6 +266,7 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		tokens:                tokens,
 
 		mfaRequiredForTenantAdmin: mfaRequiredForTenantAdminFromEnv(),
+		commentRetentionDays:      commentRetentionDays,
 	}
 	traced := tracing.ConnectHandlerOption()
 
@@ -432,7 +445,18 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(accessTicketPath, accessTicketHandler)
-	return mux
+	commentPath, commentHandler := publiraadminv1connect.NewAdminCommentServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(commentPath, commentHandler)
+	return mux, nil
 }
 
 func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {

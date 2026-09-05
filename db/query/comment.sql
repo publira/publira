@@ -10,8 +10,9 @@
 --     -> idx_episode_comments_tenant_episode_status_created_at
 --   ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 --     -> idx_episode_comments_tenant_user_created_at
---   ListEpisodeCommentsByStatusCreatedAt*
---     -> idx_episode_comments_tenant_status_created_at
+--   ListEpisodeCommentsForModerationByCreatedAt*
+--     -> idx_episode_comments_tenant_status_created_at with a status filter,
+--        idx_episode_comments_tenant_created_at without one
 --   PurgeWithdrawnEpisodeComments
 --     -> idx_episode_comments_tenant_withdrawn_at
 
@@ -191,62 +192,115 @@ ORDER BY created_at ASC,
     id ASC
 LIMIT sqlc.arg('limit');
 
--- name: ListEpisodeCommentsByStatusCreatedAtDesc :many
+-- name: ListEpisodeCommentsForModerationByCreatedAtDesc :many
 -- The console queues: 'pending' is the approval queue, 'hidden' the removed
 -- comments staff can restore, 'withdrawn' what an author deleted and the
--- retention window still keeps. One tenant-wide list per status, so a moderator
--- does not have to open an episode to find work.
-SELECT *
-FROM episode_comments
-WHERE tenant_id = sqlc.arg('tenant_id')
-    AND status = sqlc.arg('status')
+-- retention window still keeps. Every filter is optional, so the same query
+-- answers a tenant-wide queue, one series, one episode, and the whole history
+-- of any of them; a moderator does not have to open an episode to find work.
+--
+-- The author and the episode are joined in because a comment cannot be judged
+-- from its text alone: staff need to know who wrote it and what it is about.
+SELECT c.*,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_comments c
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND (sqlc.narg('status')::text IS NULL OR c.status = sqlc.narg('status')::text)
+    AND (sqlc.narg('episode_id')::uuid IS NULL OR c.episode_id = sqlc.narg('episode_id')::uuid)
+    AND (sqlc.narg('series_id')::uuid IS NULL OR e.series_id = sqlc.narg('series_id')::uuid)
     AND (
         sqlc.narg('cursor_created_at')::timestamptz IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (created_at, id) <= (
+            AND (c.created_at, c.id) <= (
                 sqlc.narg('cursor_created_at')::timestamptz,
                 sqlc.narg('cursor_id')::uuid
             )
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (created_at, id) < (
+            AND (c.created_at, c.id) < (
                 sqlc.narg('cursor_created_at')::timestamptz,
                 sqlc.narg('cursor_id')::uuid
             )
         )
     )
-ORDER BY created_at DESC,
-    id DESC
+ORDER BY c.created_at DESC,
+    c.id DESC
 LIMIT sqlc.arg('limit');
 
--- name: ListEpisodeCommentsByStatusCreatedAtAsc :many
--- The previous-page half of ListEpisodeCommentsByStatusCreatedAtDesc.
-SELECT *
-FROM episode_comments
-WHERE tenant_id = sqlc.arg('tenant_id')
-    AND status = sqlc.arg('status')
+-- name: ListEpisodeCommentsForModerationByCreatedAtAsc :many
+-- The previous-page half of ListEpisodeCommentsForModerationByCreatedAtDesc.
+SELECT c.*,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_comments c
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND (sqlc.narg('status')::text IS NULL OR c.status = sqlc.narg('status')::text)
+    AND (sqlc.narg('episode_id')::uuid IS NULL OR c.episode_id = sqlc.narg('episode_id')::uuid)
+    AND (sqlc.narg('series_id')::uuid IS NULL OR e.series_id = sqlc.narg('series_id')::uuid)
     AND (
         sqlc.narg('cursor_created_at')::timestamptz IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (created_at, id) >= (
+            AND (c.created_at, c.id) >= (
                 sqlc.narg('cursor_created_at')::timestamptz,
                 sqlc.narg('cursor_id')::uuid
             )
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (created_at, id) > (
+            AND (c.created_at, c.id) > (
                 sqlc.narg('cursor_created_at')::timestamptz,
                 sqlc.narg('cursor_id')::uuid
             )
         )
     )
-ORDER BY created_at ASC,
-    id ASC
+ORDER BY c.created_at ASC,
+    c.id ASC
 LIMIT sqlc.arg('limit');
+
+-- name: GetEpisodeCommentForModerationByPublicIDForTenant :one
+-- One comment in the shape the moderation list returns. Every moderation action
+-- reads it before deciding and again after writing, so the caller answers from
+-- the stored row rather than from what it assumed the transition would produce.
+SELECT c.*,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_comments c
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.public_id = sqlc.arg('public_id');
 
 -- name: ApproveEpisodeCommentByPublicIDForTenant :one
 -- Approval is what publishes a comment posted under approval_required, so it is
@@ -307,6 +361,14 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND public_id = sqlc.arg('public_id')
     AND status <> 'withdrawn'
 RETURNING *;
+
+-- name: DeleteEpisodeCommentByPublicIDForTenant :execrows
+-- The irreversible removal staff reach for when the text must not be retained
+-- at all. It names no status: content under a legal takedown has to go whatever
+-- state it is in, and the reversible removal is a different query.
+DELETE FROM episode_comments
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND public_id = sqlc.arg('public_id');
 
 -- name: PurgeWithdrawnEpisodeComments :execrows
 -- The end of the retention window for a comment its author deleted. The inner

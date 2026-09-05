@@ -78,7 +78,11 @@ func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager()))
+	handler, err := NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager())
+	if err != nil {
+		t.Fatalf("new admin handler: %v", err)
+	}
+	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 	return server, mock
 }

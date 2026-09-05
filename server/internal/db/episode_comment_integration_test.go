@@ -88,9 +88,9 @@ func TestDeletingAModeratorLeavesTheCommentOnItsTenant(t *testing.T) {
 		t.Fatalf("delete moderator: %v", err)
 	}
 
-	queue, err := queries.ListEpisodeCommentsByStatusCreatedAtDesc(ctx, dbmodels.ListEpisodeCommentsByStatusCreatedAtDescParams{
+	queue, err := queries.ListEpisodeCommentsForModerationByCreatedAtDesc(ctx, dbmodels.ListEpisodeCommentsForModerationByCreatedAtDescParams{
 		TenantID: seed.tenantID,
-		Status:   "hidden",
+		Status:   sql.NullString{String: "hidden", Valid: true},
 		Limit:    10,
 	})
 	if err != nil {
@@ -293,9 +293,9 @@ func TestWithdrawEpisodeCommentLeavesTheAuthorsOwnList(t *testing.T) {
 	}
 
 	// Staff still read it, which is what the retention window is for.
-	queue, err := queries.ListEpisodeCommentsByStatusCreatedAtDesc(ctx, dbmodels.ListEpisodeCommentsByStatusCreatedAtDescParams{
+	queue, err := queries.ListEpisodeCommentsForModerationByCreatedAtDesc(ctx, dbmodels.ListEpisodeCommentsForModerationByCreatedAtDescParams{
 		TenantID: seed.tenantID,
-		Status:   "withdrawn",
+		Status:   sql.NullString{String: "withdrawn", Valid: true},
 		Limit:    10,
 	})
 	if err != nil {

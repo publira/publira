@@ -55,7 +55,11 @@ func newPaymentAdminServer(t *testing.T, logs *bytes.Buffer) (*httptest.Server, 
 	if logs != nil {
 		logger = slog.New(slog.NewTextHandler(logs, nil))
 	}
-	ts := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, logger, newAdminTestEncryptor(t), nil, testutil.TokenManager()))
+	handler, err := NewHandler(db, dbmodels.New(db), &testStorageProvider{}, logger, newAdminTestEncryptor(t), nil, testutil.TokenManager())
+	if err != nil {
+		t.Fatalf("new admin handler: %v", err)
+	}
+	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
 	return ts, mock
 }
