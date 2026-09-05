@@ -24,6 +24,7 @@ export {
   type ToDateTimeLocalOptions,
 } from "./format-date-time";
 export { formatPercent, type FormatPercentOptions } from "./format-number";
+export { formatList, type FormatListOptions } from "./format-list";
 export { getTenantDomainCandidates } from "./tenant-domain";
 export {
   DEFAULT_TENANT_THEME_COLORS,

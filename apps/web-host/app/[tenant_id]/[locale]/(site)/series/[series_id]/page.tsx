@@ -1,6 +1,7 @@
 import { getMessage, toIntlLocale } from "@publira/i18n";
 import { CollectionIcon } from "@publira/icons";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { formatList } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -139,7 +140,7 @@ const SeriesDetailContent = async (
             </div>
             {series.creatorNames.length > 0 && (
               <p className="mb-2 text-muted-foreground">
-                {series.creatorNames.join("、")}
+                {formatList(series.creatorNames, { locale })}
               </p>
             )}
             {series.labelName &&
