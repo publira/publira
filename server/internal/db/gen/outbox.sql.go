@@ -297,8 +297,8 @@ RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts,
 // attempt can still send the mail, so that window is the retry budget
 // (ten attempts, delays doubling from 1s and capped at 1h). A worker
 // that dies mid-attempt records no failure, so
-// RecoverStaleProcessingOutboxEvents charges the reclaim to the same
-// budget and every window ends here.
+// RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
+// the same budget and every window ends here.
 func (q *Queries) MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
 	row := q.db.QueryRowContext(ctx, markOutboxEventDone, id)
 	var i OutboxEvent

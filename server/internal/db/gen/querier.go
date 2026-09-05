@@ -744,8 +744,8 @@ type Querier interface {
 	// attempt can still send the mail, so that window is the retry budget
 	// (ten attempts, delays doubling from 1s and capped at 1h). A worker
 	// that dies mid-attempt records no failure, so
-	// RecoverStaleProcessingOutboxEvents charges the reclaim to the same
-	// budget and every window ends here.
+	// RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
+	// the same budget and every window ends here.
 	MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventRetryParams) (OutboxEvent, error)
 	MarkPlatformNotificationAsRead(ctx context.Context, arg MarkPlatformNotificationAsReadParams) (PlatformNotificationRead, error)
