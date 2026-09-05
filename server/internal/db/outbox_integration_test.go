@@ -359,6 +359,62 @@ func TestMarkOutboxEventDoneAndDeadStripToken(t *testing.T) {
 	assertOutboxPayloadDroppedToken(t, dead.Payload, "raw-dead-token", tenantID.String(), invitationID)
 }
 
+func TestMarkOutboxEventDoneAndDeadKeepNonAuthToken(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "OUTBOXTEN001", "outbox.example.com", "admin-outbox.example.com", "Outbox Tenant")
+	queries := dbmodels.New(pg.DB)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+
+	insert := func(key, token string) dbmodels.OutboxEvent {
+		t.Helper()
+		payload, err := json.Marshal(map[string]string{
+			"tenant_id": tenantID.String(),
+			"token":     token,
+		})
+		if err != nil {
+			t.Fatalf("marshal %s payload: %v", key, err)
+		}
+		event, err := queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+			ID:             uuid.Must(uuid.NewV7()),
+			TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+			EventType:      "outbox_test",
+			Payload:        payload,
+			IdempotencyKey: key,
+			AvailableAt:    now.Add(-time.Minute),
+		})
+		if err != nil {
+			t.Fatalf("InsertOutboxEvent %s: %v", key, err)
+		}
+		return event
+	}
+
+	doneEvent := insert("nontoken:done", "keep-done-token")
+	deadEvent := insert("nontoken:dead", "keep-dead-token")
+	if _, err := queries.ClaimPendingOutboxEvents(ctx, 10); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	markedDone, err := queries.MarkOutboxEventDone(ctx, doneEvent.ID)
+	if err != nil {
+		t.Fatalf("MarkOutboxEventDone: %v", err)
+	}
+	assertOutboxPayloadKeepsToken(t, markedDone.Payload, "keep-done-token", tenantID.String())
+
+	dead, err := queries.MarkOutboxEventDead(ctx, dbmodels.MarkOutboxEventDeadParams{
+		ID:        deadEvent.ID,
+		LastError: sql.NullString{String: "max attempts", Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("MarkOutboxEventDead: %v", err)
+	}
+	assertOutboxPayloadKeepsToken(t, dead.Payload, "keep-dead-token", tenantID.String())
+}
+
 func outboxPayloadObject(t *testing.T, payload json.RawMessage) map[string]any {
 	t.Helper()
 	var body map[string]any
@@ -382,6 +438,17 @@ func assertOutboxPayloadDroppedToken(t *testing.T, payload json.RawMessage, rawT
 	}
 	if body["invitation_id"] != invitationID {
 		t.Fatalf("payload invitation_id = %v, want %s", body["invitation_id"], invitationID)
+	}
+}
+
+func assertOutboxPayloadKeepsToken(t *testing.T, payload json.RawMessage, rawToken, tenantID string) {
+	t.Helper()
+	body := outboxPayloadObject(t, payload)
+	if body["token"] != rawToken {
+		t.Fatalf("payload token = %v, want %s", body["token"], rawToken)
+	}
+	if body["tenant_id"] != tenantID {
+		t.Fatalf("payload tenant_id = %v, want %s", body["tenant_id"], tenantID)
 	}
 }
 
