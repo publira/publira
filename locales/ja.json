@@ -1874,6 +1874,65 @@
       "view_all": "すべて見る"
     }
   },
+  "mobile": {
+    "account": {
+      "name": "お名前",
+      "name_unset": "（未設定）",
+      "sign_out": "サインアウト",
+      "signed_out": "サインインしていません",
+      "title": "アカウント"
+    },
+    "catalog": {
+      "empty": "公開中のシリーズはありません",
+      "load_failed": "カタログを表示できませんでした",
+      "offline_not_saved": "オフラインのため、カタログを表示できません。端末に保存されたカタログがありません。"
+    },
+    "common": {
+      "back_to_catalog": "カタログへ戻る",
+      "retry": "再試行",
+      "sign_in": "サインイン"
+    },
+    "not_found": {
+      "message": "「{$uri}」は存在しません。",
+      "title": "ページが見つかりません"
+    },
+    "series": {
+      "episode_count": "{$count} 話",
+      "episodes_empty": "公開中のエピソードはありません",
+      "episodes_heading": "エピソード一覧",
+      "load_failed": "ページを表示できませんでした",
+      "not_found": "シリーズが見つかりません ({$id})",
+      "offline_not_saved": "オフラインのため、このシリーズを表示できません。端末に保存されたデータがありません。",
+      "saved_offline": "保存済み",
+      "title": "シリーズ"
+    },
+    "sign_in": {
+      "email_label": "メールアドレス",
+      "email_not_verified": "メールアドレスの確認が完了していません。確認メールのリンクを開いてください。",
+      "email_required": "メールアドレスを入力してください",
+      "failed": "サインインできませんでした",
+      "invalid_credentials": "メールアドレスまたはパスワードが正しくありません",
+      "password_label": "パスワード",
+      "password_required": "パスワードを入力してください",
+      "website_note": "アカウントの作成とパスワードの再設定はウェブサイトで行えます。"
+    },
+    "viewer": {
+      "back_to_series": "シリーズへ戻る",
+      "load_failed": "エピソードを表示できませんでした",
+      "locked": "この話は購入すると読めます",
+      "locked_signed_out": "この話は購入すると読めます。購入済みの場合はサインインしてください。",
+      "next_page": "次のページ",
+      "no_pages": "このエピソードにはまだページがありません",
+      "not_found": "エピソードが見つかりません ({$id})",
+      "offline_not_saved": "オフラインのため、このエピソードを表示できません。端末に保存済みのエピソードのみ読めます。",
+      "page_failed": "このページを表示できませんでした",
+      "page_status": "{$page} / {$total}",
+      "previous_page": "前のページ",
+      "reload": "再読み込み",
+      "save_expired": "保存したエピソードの閲覧期限が切れました。通信できる状態で開き直してください。",
+      "title": "エピソード"
+    }
+  },
   "platform": {
     "audit": {
       "actions": {
