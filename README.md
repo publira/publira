@@ -12,16 +12,6 @@ As an OSS project, it values portability, ease of operation, and freedom from ve
 
 The repository layout, the toolchain, the verification commands, and the pull request conventions are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Tech stack
-
-- Frontend: Next.js (App Router), React, TypeScript, Tailwind CSS
-- Backend: Go 1.26, ConnectRPC (HTTP/2), sqlc
-- Mobile: Flutter
-- Database: PostgreSQL, golang-migrate
-- Cache: Redis (shared store for the Next.js `cacheHandler` / `cacheHandlers`)
-- Storage/Image: S3-compatible storage
-- Infrastructure: Dev Containers, Docker, Make
-
 ## Setup
 
 ```bash

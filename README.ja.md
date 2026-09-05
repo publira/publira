@@ -12,16 +12,6 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 
 リポジトリの構成、ツールチェーン、検証コマンド、Pull Request の規約は [CONTRIBUTING.md](CONTRIBUTING.md) にあります。
 
-## 技術スタック
-
-- Frontend: Next.js (App Router), React, TypeScript, Tailwind CSS
-- Backend: Go 1.26, ConnectRPC (HTTP/2), sqlc
-- Mobile: Flutter
-- Database: PostgreSQL, golang-migrate
-- Cache: Redis（Next.js `cacheHandler` / `cacheHandlers` の共有ストア）
-- Storage/Image: S3 互換ストレージ
-- Infrastructure: Dev Containers, Docker, Make
-
 ## セットアップ
 
 ```bash
