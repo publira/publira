@@ -107,6 +107,10 @@ export type PublishPageVersionResult =
   | { ok: true; version: PageVersionItem }
   | { ok: false; message: string };
 
+export type UnpublishPageResult =
+  | { ok: true; page: PageItem }
+  | { ok: false; message: string };
+
 export type RollbackPageVersionResult =
   | { ok: true; version: PageVersionItem }
   | { ok: false; message: string };
@@ -535,6 +539,52 @@ export const publishPageVersion = async (
     return {
       ok: true,
       version: mapPageVersion(response.version),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      ok: false,
+    };
+  }
+};
+
+export const unpublishPage = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+  },
+  locale: Locale
+): Promise<UnpublishPageResult> => {
+  const messages = sharedCatalog(locale);
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return {
+      message: sessionErrorMessage(messages),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.unpublishPage(
+      {
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.page?.id?.trim()) {
+      return {
+        message: mutationErrorMessage(messages),
+        ok: false,
+      };
+    }
+
+    return {
+      ok: true,
+      page: mapPage(response.page),
     };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);

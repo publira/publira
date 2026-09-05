@@ -533,6 +533,64 @@ func (s *adminServer) PublishVersion(
 	}), nil
 }
 
+// UnpublishPage takes a page off the public site by clearing its published
+// version. It is idempotent: an already unpublished page is answered the same
+// way, because the operator's intent — this must not be served — holds either
+// way. The page_versions rows are untouched, so PublishVersion puts the same
+// body back up without it being entered again.
+func (s *adminServer) UnpublishPage(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UnpublishPageRequest],
+) (*connect.Response[publiraadminv1.UnpublishPageResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pageID, err := parsePageID(req.Msg.PageId)
+	if err != nil {
+		return nil, err
+	}
+	page, err := s.queriesFor(ctx).SetPagePublishedVersion(ctx, dbmodels.SetPagePublishedVersionParams{
+		ID:                 pageID,
+		TenantID:           tenant.ID,
+		PublishedVersionID: uuid.NullUUID{},
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to unpublish page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID:    tenant.ID,
+		ActorUserID: sessionCtx.User.ID,
+		ActorRole:   sessionCtx.Role,
+		Action:      "page_unpublished",
+		TargetType:  "page",
+		TargetID:    page.ID.String(),
+		Outcome:     auditlog.OutcomeSuccess,
+		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+	})
+	// Both the page's own URL and the footer link list have to stop serving it.
+	if s.reval != nil {
+		tenantID := tenant.ID.String()
+		tags := []string{
+			fmt.Sprintf("tenant:%s:pages", tenantID),
+			fmt.Sprintf("tenant:%s:pages:%s", tenantID, page.ID.String()),
+		}
+		if err := s.reval.RevalidateTags(ctx, tags); err != nil {
+			s.logger.Warn("failed to request next revalidate after page unpublish", "tenant_public_id", tenant.PublicID, "page_id", pageID, "error", err)
+		}
+	}
+	return connect.NewResponse(&publiraadminv1.UnpublishPageResponse{
+		Page: pageFromModel(page),
+	}), nil
+}
+
 func (s *adminServer) RollbackToVersion(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.RollbackToVersionRequest],

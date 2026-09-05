@@ -773,6 +773,102 @@ func (x *PublishVersionResponse) GetVersion() *v1.PageVersion {
 	return nil
 }
 
+type UnpublishPageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PageId        string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnpublishPageRequest) Reset() {
+	*x = UnpublishPageRequest{}
+	mi := &file_publira_admin_v1_page_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnpublishPageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnpublishPageRequest) ProtoMessage() {}
+
+func (x *UnpublishPageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_page_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnpublishPageRequest.ProtoReflect.Descriptor instead.
+func (*UnpublishPageRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *UnpublishPageRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UnpublishPageRequest) GetPageId() string {
+	if x != nil {
+		return x.PageId
+	}
+	return ""
+}
+
+type UnpublishPageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Page          *v1.Page               `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnpublishPageResponse) Reset() {
+	*x = UnpublishPageResponse{}
+	mi := &file_publira_admin_v1_page_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnpublishPageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnpublishPageResponse) ProtoMessage() {}
+
+func (x *UnpublishPageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_page_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnpublishPageResponse.ProtoReflect.Descriptor instead.
+func (*UnpublishPageResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *UnpublishPageResponse) GetPage() *v1.Page {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
 type RollbackToVersionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -784,7 +880,7 @@ type RollbackToVersionRequest struct {
 
 func (x *RollbackToVersionRequest) Reset() {
 	*x = RollbackToVersionRequest{}
-	mi := &file_publira_admin_v1_page_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_page_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -796,7 +892,7 @@ func (x *RollbackToVersionRequest) String() string {
 func (*RollbackToVersionRequest) ProtoMessage() {}
 
 func (x *RollbackToVersionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_page_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_page_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -809,7 +905,7 @@ func (x *RollbackToVersionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollbackToVersionRequest.ProtoReflect.Descriptor instead.
 func (*RollbackToVersionRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{14}
+	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *RollbackToVersionRequest) GetTenant() *v1.TenantContext {
@@ -842,7 +938,7 @@ type RollbackToVersionResponse struct {
 
 func (x *RollbackToVersionResponse) Reset() {
 	*x = RollbackToVersionResponse{}
-	mi := &file_publira_admin_v1_page_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_page_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -854,7 +950,7 @@ func (x *RollbackToVersionResponse) String() string {
 func (*RollbackToVersionResponse) ProtoMessage() {}
 
 func (x *RollbackToVersionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_page_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_page_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -867,7 +963,7 @@ func (x *RollbackToVersionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollbackToVersionResponse.ProtoReflect.Descriptor instead.
 func (*RollbackToVersionResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{15}
+	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *RollbackToVersionResponse) GetVersion() *v1.PageVersion {
@@ -928,14 +1024,19 @@ const file_publira_admin_v1_page_proto_rawDesc = "" +
 	"\n" +
 	"version_id\x18\x03 \x01(\tR\tversionId\"Q\n" +
 	"\x16PublishVersionResponse\x127\n" +
-	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion\"\x8b\x01\n" +
+	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion\"h\n" +
+	"\x14UnpublishPageRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
+	"\apage_id\x18\x02 \x01(\tR\x06pageId\"C\n" +
+	"\x15UnpublishPageResponse\x12*\n" +
+	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\x8b\x01\n" +
 	"\x18RollbackToVersionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x03 \x01(\tR\tversionId\"T\n" +
 	"\x19RollbackToVersionResponse\x127\n" +
-	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion2\x8f\x06\n" +
+	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion2\xf3\x06\n" +
 	"\x11AdminPagesService\x12Y\n" +
 	"\n" +
 	"CreatePage\x12#.publira.admin.v1.CreatePageRequest\x1a$.publira.admin.v1.CreatePageResponse\"\x00\x12Y\n" +
@@ -945,7 +1046,8 @@ const file_publira_admin_v1_page_proto_rawDesc = "" +
 	"\aGetPage\x12 .publira.admin.v1.GetPageRequest\x1a!.publira.admin.v1.GetPageResponse\"\x00\x12b\n" +
 	"\rCreateVersion\x12&.publira.admin.v1.CreateVersionRequest\x1a'.publira.admin.v1.CreateVersionResponse\"\x00\x12_\n" +
 	"\fListVersions\x12%.publira.admin.v1.ListVersionsRequest\x1a&.publira.admin.v1.ListVersionsResponse\"\x00\x12e\n" +
-	"\x0ePublishVersion\x12'.publira.admin.v1.PublishVersionRequest\x1a(.publira.admin.v1.PublishVersionResponse\"\x00\x12n\n" +
+	"\x0ePublishVersion\x12'.publira.admin.v1.PublishVersionRequest\x1a(.publira.admin.v1.PublishVersionResponse\"\x00\x12b\n" +
+	"\rUnpublishPage\x12&.publira.admin.v1.UnpublishPageRequest\x1a'.publira.admin.v1.UnpublishPageResponse\"\x00\x12n\n" +
 	"\x11RollbackToVersion\x12*.publira.admin.v1.RollbackToVersionRequest\x1a+.publira.admin.v1.RollbackToVersionResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
@@ -960,7 +1062,7 @@ func file_publira_admin_v1_page_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_page_proto_rawDescData
 }
 
-var file_publira_admin_v1_page_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_publira_admin_v1_page_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_publira_admin_v1_page_proto_goTypes = []any{
 	(*CreatePageRequest)(nil),         // 0: publira.admin.v1.CreatePageRequest
 	(*CreatePageResponse)(nil),        // 1: publira.admin.v1.CreatePageResponse
@@ -976,50 +1078,56 @@ var file_publira_admin_v1_page_proto_goTypes = []any{
 	(*ListVersionsResponse)(nil),      // 11: publira.admin.v1.ListVersionsResponse
 	(*PublishVersionRequest)(nil),     // 12: publira.admin.v1.PublishVersionRequest
 	(*PublishVersionResponse)(nil),    // 13: publira.admin.v1.PublishVersionResponse
-	(*RollbackToVersionRequest)(nil),  // 14: publira.admin.v1.RollbackToVersionRequest
-	(*RollbackToVersionResponse)(nil), // 15: publira.admin.v1.RollbackToVersionResponse
-	(*v1.TenantContext)(nil),          // 16: publira.types.v1.TenantContext
-	(*v1.Page)(nil),                   // 17: publira.types.v1.Page
-	(*v1.PageVersion)(nil),            // 18: publira.types.v1.PageVersion
+	(*UnpublishPageRequest)(nil),      // 14: publira.admin.v1.UnpublishPageRequest
+	(*UnpublishPageResponse)(nil),     // 15: publira.admin.v1.UnpublishPageResponse
+	(*RollbackToVersionRequest)(nil),  // 16: publira.admin.v1.RollbackToVersionRequest
+	(*RollbackToVersionResponse)(nil), // 17: publira.admin.v1.RollbackToVersionResponse
+	(*v1.TenantContext)(nil),          // 18: publira.types.v1.TenantContext
+	(*v1.Page)(nil),                   // 19: publira.types.v1.Page
+	(*v1.PageVersion)(nil),            // 20: publira.types.v1.PageVersion
 }
 var file_publira_admin_v1_page_proto_depIdxs = []int32{
-	16, // 0: publira.admin.v1.CreatePageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	17, // 1: publira.admin.v1.CreatePageResponse.page:type_name -> publira.types.v1.Page
-	16, // 2: publira.admin.v1.UpdatePageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	17, // 3: publira.admin.v1.UpdatePageResponse.page:type_name -> publira.types.v1.Page
-	16, // 4: publira.admin.v1.ListPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	17, // 5: publira.admin.v1.ListPagesResponse.pages:type_name -> publira.types.v1.Page
-	16, // 6: publira.admin.v1.GetPageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	17, // 7: publira.admin.v1.GetPageResponse.page:type_name -> publira.types.v1.Page
-	16, // 8: publira.admin.v1.CreateVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	18, // 9: publira.admin.v1.CreateVersionResponse.version:type_name -> publira.types.v1.PageVersion
-	16, // 10: publira.admin.v1.ListVersionsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	18, // 11: publira.admin.v1.ListVersionsResponse.versions:type_name -> publira.types.v1.PageVersion
-	16, // 12: publira.admin.v1.PublishVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	18, // 13: publira.admin.v1.PublishVersionResponse.version:type_name -> publira.types.v1.PageVersion
-	16, // 14: publira.admin.v1.RollbackToVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	18, // 15: publira.admin.v1.RollbackToVersionResponse.version:type_name -> publira.types.v1.PageVersion
-	0,  // 16: publira.admin.v1.AdminPagesService.CreatePage:input_type -> publira.admin.v1.CreatePageRequest
-	2,  // 17: publira.admin.v1.AdminPagesService.UpdatePage:input_type -> publira.admin.v1.UpdatePageRequest
-	4,  // 18: publira.admin.v1.AdminPagesService.ListPages:input_type -> publira.admin.v1.ListPagesRequest
-	6,  // 19: publira.admin.v1.AdminPagesService.GetPage:input_type -> publira.admin.v1.GetPageRequest
-	8,  // 20: publira.admin.v1.AdminPagesService.CreateVersion:input_type -> publira.admin.v1.CreateVersionRequest
-	10, // 21: publira.admin.v1.AdminPagesService.ListVersions:input_type -> publira.admin.v1.ListVersionsRequest
-	12, // 22: publira.admin.v1.AdminPagesService.PublishVersion:input_type -> publira.admin.v1.PublishVersionRequest
-	14, // 23: publira.admin.v1.AdminPagesService.RollbackToVersion:input_type -> publira.admin.v1.RollbackToVersionRequest
-	1,  // 24: publira.admin.v1.AdminPagesService.CreatePage:output_type -> publira.admin.v1.CreatePageResponse
-	3,  // 25: publira.admin.v1.AdminPagesService.UpdatePage:output_type -> publira.admin.v1.UpdatePageResponse
-	5,  // 26: publira.admin.v1.AdminPagesService.ListPages:output_type -> publira.admin.v1.ListPagesResponse
-	7,  // 27: publira.admin.v1.AdminPagesService.GetPage:output_type -> publira.admin.v1.GetPageResponse
-	9,  // 28: publira.admin.v1.AdminPagesService.CreateVersion:output_type -> publira.admin.v1.CreateVersionResponse
-	11, // 29: publira.admin.v1.AdminPagesService.ListVersions:output_type -> publira.admin.v1.ListVersionsResponse
-	13, // 30: publira.admin.v1.AdminPagesService.PublishVersion:output_type -> publira.admin.v1.PublishVersionResponse
-	15, // 31: publira.admin.v1.AdminPagesService.RollbackToVersion:output_type -> publira.admin.v1.RollbackToVersionResponse
-	24, // [24:32] is the sub-list for method output_type
-	16, // [16:24] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	18, // 0: publira.admin.v1.CreatePageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 1: publira.admin.v1.CreatePageResponse.page:type_name -> publira.types.v1.Page
+	18, // 2: publira.admin.v1.UpdatePageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 3: publira.admin.v1.UpdatePageResponse.page:type_name -> publira.types.v1.Page
+	18, // 4: publira.admin.v1.ListPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 5: publira.admin.v1.ListPagesResponse.pages:type_name -> publira.types.v1.Page
+	18, // 6: publira.admin.v1.GetPageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 7: publira.admin.v1.GetPageResponse.page:type_name -> publira.types.v1.Page
+	18, // 8: publira.admin.v1.CreateVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	20, // 9: publira.admin.v1.CreateVersionResponse.version:type_name -> publira.types.v1.PageVersion
+	18, // 10: publira.admin.v1.ListVersionsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	20, // 11: publira.admin.v1.ListVersionsResponse.versions:type_name -> publira.types.v1.PageVersion
+	18, // 12: publira.admin.v1.PublishVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	20, // 13: publira.admin.v1.PublishVersionResponse.version:type_name -> publira.types.v1.PageVersion
+	18, // 14: publira.admin.v1.UnpublishPageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 15: publira.admin.v1.UnpublishPageResponse.page:type_name -> publira.types.v1.Page
+	18, // 16: publira.admin.v1.RollbackToVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	20, // 17: publira.admin.v1.RollbackToVersionResponse.version:type_name -> publira.types.v1.PageVersion
+	0,  // 18: publira.admin.v1.AdminPagesService.CreatePage:input_type -> publira.admin.v1.CreatePageRequest
+	2,  // 19: publira.admin.v1.AdminPagesService.UpdatePage:input_type -> publira.admin.v1.UpdatePageRequest
+	4,  // 20: publira.admin.v1.AdminPagesService.ListPages:input_type -> publira.admin.v1.ListPagesRequest
+	6,  // 21: publira.admin.v1.AdminPagesService.GetPage:input_type -> publira.admin.v1.GetPageRequest
+	8,  // 22: publira.admin.v1.AdminPagesService.CreateVersion:input_type -> publira.admin.v1.CreateVersionRequest
+	10, // 23: publira.admin.v1.AdminPagesService.ListVersions:input_type -> publira.admin.v1.ListVersionsRequest
+	12, // 24: publira.admin.v1.AdminPagesService.PublishVersion:input_type -> publira.admin.v1.PublishVersionRequest
+	14, // 25: publira.admin.v1.AdminPagesService.UnpublishPage:input_type -> publira.admin.v1.UnpublishPageRequest
+	16, // 26: publira.admin.v1.AdminPagesService.RollbackToVersion:input_type -> publira.admin.v1.RollbackToVersionRequest
+	1,  // 27: publira.admin.v1.AdminPagesService.CreatePage:output_type -> publira.admin.v1.CreatePageResponse
+	3,  // 28: publira.admin.v1.AdminPagesService.UpdatePage:output_type -> publira.admin.v1.UpdatePageResponse
+	5,  // 29: publira.admin.v1.AdminPagesService.ListPages:output_type -> publira.admin.v1.ListPagesResponse
+	7,  // 30: publira.admin.v1.AdminPagesService.GetPage:output_type -> publira.admin.v1.GetPageResponse
+	9,  // 31: publira.admin.v1.AdminPagesService.CreateVersion:output_type -> publira.admin.v1.CreateVersionResponse
+	11, // 32: publira.admin.v1.AdminPagesService.ListVersions:output_type -> publira.admin.v1.ListVersionsResponse
+	13, // 33: publira.admin.v1.AdminPagesService.PublishVersion:output_type -> publira.admin.v1.PublishVersionResponse
+	15, // 34: publira.admin.v1.AdminPagesService.UnpublishPage:output_type -> publira.admin.v1.UnpublishPageResponse
+	17, // 35: publira.admin.v1.AdminPagesService.RollbackToVersion:output_type -> publira.admin.v1.RollbackToVersionResponse
+	27, // [27:36] is the sub-list for method output_type
+	18, // [18:27] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_page_proto_init() }
@@ -1034,7 +1142,7 @@ func file_publira_admin_v1_page_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_page_proto_rawDesc), len(file_publira_admin_v1_page_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

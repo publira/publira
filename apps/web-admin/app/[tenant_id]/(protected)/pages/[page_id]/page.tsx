@@ -37,6 +37,7 @@ import {
   createDraftVersionAction,
   publishVersionAction,
   rollbackVersionAction,
+  unpublishPageAction,
   updatePageAction,
 } from "../_lib/actions";
 
@@ -129,6 +130,7 @@ const PageWorkspaceData = async ({
       publishAction={publishVersionAction}
       rollbackAction={rollbackVersionAction}
       timeZone={timeZone}
+      unpublishAction={unpublishPageAction}
       updatePageAction={updatePageAction}
     />
   );
@@ -159,6 +161,7 @@ const EditPagePage = ({ params }: EditPagePageProps) => (
       <FlashToast keyName="updated" message="admin.pages.updated" />
       <FlashToast keyName="draft_saved" message="admin.pages.draft_saved" />
       <FlashToast keyName="published" message="admin.pages.published_success" />
+      <FlashToast keyName="unpublished" message="admin.pages.unpublished" />
       <FlashToast keyName="rolled_back" message="admin.pages.rolled_back" />
 
       <SectionErrorBoundary

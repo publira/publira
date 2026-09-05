@@ -54,6 +54,9 @@ const (
 	// AdminPagesServicePublishVersionProcedure is the fully-qualified name of the AdminPagesService's
 	// PublishVersion RPC.
 	AdminPagesServicePublishVersionProcedure = "/publira.admin.v1.AdminPagesService/PublishVersion"
+	// AdminPagesServiceUnpublishPageProcedure is the fully-qualified name of the AdminPagesService's
+	// UnpublishPage RPC.
+	AdminPagesServiceUnpublishPageProcedure = "/publira.admin.v1.AdminPagesService/UnpublishPage"
 	// AdminPagesServiceRollbackToVersionProcedure is the fully-qualified name of the
 	// AdminPagesService's RollbackToVersion RPC.
 	AdminPagesServiceRollbackToVersionProcedure = "/publira.admin.v1.AdminPagesService/RollbackToVersion"
@@ -68,6 +71,9 @@ type AdminPagesServiceClient interface {
 	CreateVersion(context.Context, *connect.Request[v1.CreateVersionRequest]) (*connect.Response[v1.CreateVersionResponse], error)
 	ListVersions(context.Context, *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error)
 	PublishVersion(context.Context, *connect.Request[v1.PublishVersionRequest]) (*connect.Response[v1.PublishVersionResponse], error)
+	// Clears the page's published version. The versions themselves are kept, so
+	// the page can go back up without its body being entered again.
+	UnpublishPage(context.Context, *connect.Request[v1.UnpublishPageRequest]) (*connect.Response[v1.UnpublishPageResponse], error)
 	RollbackToVersion(context.Context, *connect.Request[v1.RollbackToVersionRequest]) (*connect.Response[v1.RollbackToVersionResponse], error)
 }
 
@@ -124,6 +130,12 @@ func NewAdminPagesServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(adminPagesServiceMethods.ByName("PublishVersion")),
 			connect.WithClientOptions(opts...),
 		),
+		unpublishPage: connect.NewClient[v1.UnpublishPageRequest, v1.UnpublishPageResponse](
+			httpClient,
+			baseURL+AdminPagesServiceUnpublishPageProcedure,
+			connect.WithSchema(adminPagesServiceMethods.ByName("UnpublishPage")),
+			connect.WithClientOptions(opts...),
+		),
 		rollbackToVersion: connect.NewClient[v1.RollbackToVersionRequest, v1.RollbackToVersionResponse](
 			httpClient,
 			baseURL+AdminPagesServiceRollbackToVersionProcedure,
@@ -142,6 +154,7 @@ type adminPagesServiceClient struct {
 	createVersion     *connect.Client[v1.CreateVersionRequest, v1.CreateVersionResponse]
 	listVersions      *connect.Client[v1.ListVersionsRequest, v1.ListVersionsResponse]
 	publishVersion    *connect.Client[v1.PublishVersionRequest, v1.PublishVersionResponse]
+	unpublishPage     *connect.Client[v1.UnpublishPageRequest, v1.UnpublishPageResponse]
 	rollbackToVersion *connect.Client[v1.RollbackToVersionRequest, v1.RollbackToVersionResponse]
 }
 
@@ -180,6 +193,11 @@ func (c *adminPagesServiceClient) PublishVersion(ctx context.Context, req *conne
 	return c.publishVersion.CallUnary(ctx, req)
 }
 
+// UnpublishPage calls publira.admin.v1.AdminPagesService.UnpublishPage.
+func (c *adminPagesServiceClient) UnpublishPage(ctx context.Context, req *connect.Request[v1.UnpublishPageRequest]) (*connect.Response[v1.UnpublishPageResponse], error) {
+	return c.unpublishPage.CallUnary(ctx, req)
+}
+
 // RollbackToVersion calls publira.admin.v1.AdminPagesService.RollbackToVersion.
 func (c *adminPagesServiceClient) RollbackToVersion(ctx context.Context, req *connect.Request[v1.RollbackToVersionRequest]) (*connect.Response[v1.RollbackToVersionResponse], error) {
 	return c.rollbackToVersion.CallUnary(ctx, req)
@@ -194,6 +212,9 @@ type AdminPagesServiceHandler interface {
 	CreateVersion(context.Context, *connect.Request[v1.CreateVersionRequest]) (*connect.Response[v1.CreateVersionResponse], error)
 	ListVersions(context.Context, *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error)
 	PublishVersion(context.Context, *connect.Request[v1.PublishVersionRequest]) (*connect.Response[v1.PublishVersionResponse], error)
+	// Clears the page's published version. The versions themselves are kept, so
+	// the page can go back up without its body being entered again.
+	UnpublishPage(context.Context, *connect.Request[v1.UnpublishPageRequest]) (*connect.Response[v1.UnpublishPageResponse], error)
 	RollbackToVersion(context.Context, *connect.Request[v1.RollbackToVersionRequest]) (*connect.Response[v1.RollbackToVersionResponse], error)
 }
 
@@ -246,6 +267,12 @@ func NewAdminPagesServiceHandler(svc AdminPagesServiceHandler, opts ...connect.H
 		connect.WithSchema(adminPagesServiceMethods.ByName("PublishVersion")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminPagesServiceUnpublishPageHandler := connect.NewUnaryHandler(
+		AdminPagesServiceUnpublishPageProcedure,
+		svc.UnpublishPage,
+		connect.WithSchema(adminPagesServiceMethods.ByName("UnpublishPage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminPagesServiceRollbackToVersionHandler := connect.NewUnaryHandler(
 		AdminPagesServiceRollbackToVersionProcedure,
 		svc.RollbackToVersion,
@@ -268,6 +295,8 @@ func NewAdminPagesServiceHandler(svc AdminPagesServiceHandler, opts ...connect.H
 			adminPagesServiceListVersionsHandler.ServeHTTP(w, r)
 		case AdminPagesServicePublishVersionProcedure:
 			adminPagesServicePublishVersionHandler.ServeHTTP(w, r)
+		case AdminPagesServiceUnpublishPageProcedure:
+			adminPagesServiceUnpublishPageHandler.ServeHTTP(w, r)
 		case AdminPagesServiceRollbackToVersionProcedure:
 			adminPagesServiceRollbackToVersionHandler.ServeHTTP(w, r)
 		default:
@@ -305,6 +334,10 @@ func (UnimplementedAdminPagesServiceHandler) ListVersions(context.Context, *conn
 
 func (UnimplementedAdminPagesServiceHandler) PublishVersion(context.Context, *connect.Request[v1.PublishVersionRequest]) (*connect.Response[v1.PublishVersionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.PublishVersion is not implemented"))
+}
+
+func (UnimplementedAdminPagesServiceHandler) UnpublishPage(context.Context, *connect.Request[v1.UnpublishPageRequest]) (*connect.Response[v1.UnpublishPageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.UnpublishPage is not implemented"))
 }
 
 func (UnimplementedAdminPagesServiceHandler) RollbackToVersion(context.Context, *connect.Request[v1.RollbackToVersionRequest]) (*connect.Response[v1.RollbackToVersionResponse], error) {

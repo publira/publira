@@ -49,6 +49,10 @@ const publishVersion = async (
   });
 };
 
+/** The public site's footer link list, named by its `aria-label`. */
+const footerLinks = (page: Page): Locator =>
+  page.getByRole("navigation", { name: "Footer links" });
+
 /**
  * Read the public URL until it shows `title` as its heading.
  *
@@ -165,6 +169,57 @@ test.describe("admin published pages", () => {
 
     await publishVersion(page, 1);
 
+    await expectPublicPageHeading(page, slug, title);
+    await expect(page.getByText(body)).toBeVisible();
+  });
+
+  test("unpublishing takes the page off the public site and out of the footer", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const slug = `/e2e-page-${suffix}`;
+    const title = `E2E Unpublished Page ${suffix}`;
+    const body = `Unpublished body ${suffix}`;
+
+    const pageId = trackPage(
+      await createPageViaUi(page, {
+        contentMarkdown: `## Heading\n\n${body}`,
+        displayInFooter: true,
+        slug,
+        title,
+      })
+    );
+
+    await publishVersion(page, 1);
+    await expectPublicPageHeading(page, slug, title);
+    await expect(
+      footerLinks(page).getByRole("link", { name: title })
+    ).toBeVisible();
+
+    await page.goto(adminUrl(`/pages/${pageId}`));
+    await page.getByRole("button", { exact: true, name: "Unpublish" }).click();
+    // The version is kept and says so: it is the page's pointer that was cleared.
+    await expect(versionStatus(page, 1, "Previously published")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(
+      page.getByRole("button", { exact: true, name: "Unpublish" })
+    ).toHaveCount(0);
+
+    // The page's own URL and the footer link both come off the same cache tags.
+    await expect(async () => {
+      await page.goto(hostUrl(slug));
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Page not found" })
+      ).toBeVisible({ timeout: 5000 });
+      await expect(
+        footerLinks(page).getByRole("link", { name: title })
+      ).toHaveCount(0);
+    }).toPass({ timeout: 60_000 });
+
+    // Nothing about the body had to be entered again to put it back up.
+    await page.goto(adminUrl(`/pages/${pageId}`));
+    await publishVersion(page, 1);
     await expectPublicPageHeading(page, slug, title);
     await expect(page.getByText(body)).toBeVisible();
   });

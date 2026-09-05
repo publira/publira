@@ -85,6 +85,15 @@ message PublishVersionResponse {
   publira.types.v1.PageVersion version = 1;
 }
 
+message UnpublishPageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+}
+
+message UnpublishPageResponse {
+  publira.types.v1.Page page = 1;
+}
+
 message RollbackToVersionRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;
@@ -103,5 +112,8 @@ service AdminPagesService {
   rpc CreateVersion(CreateVersionRequest) returns (CreateVersionResponse) {}
   rpc ListVersions(ListVersionsRequest) returns (ListVersionsResponse) {}
   rpc PublishVersion(PublishVersionRequest) returns (PublishVersionResponse) {}
+  // Clears the page's published version. The versions themselves are kept, so
+  // the page can go back up without its body being entered again.
+  rpc UnpublishPage(UnpublishPageRequest) returns (UnpublishPageResponse) {}
   rpc RollbackToVersion(RollbackToVersionRequest) returns (RollbackToVersionResponse) {}
 }

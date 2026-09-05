@@ -21,6 +21,7 @@ import {
   createPageVersion,
   publishPageVersion,
   rollbackPageVersion,
+  unpublishPage,
   updatePage,
 } from "#lib/page";
 
@@ -252,6 +253,35 @@ export const publishVersionAction = async (formData: FormData) => {
   updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
 
   redirect(`/pages/${parsed.data.pageId}?published=1`);
+};
+
+export const unpublishPageAction = async (formData: FormData) => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
+  const parsed = parsePageForm(formData, messages);
+  if (!parsed.success || !parsed.data.pageId) {
+    return;
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    unpublishPage(
+      {
+        pageId: parsed.data.pageId,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    throw new Error(result.message);
+  }
+
+  updateTag(`pages-${parsed.data.tenantId}`);
+  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+
+  redirect(`/pages/${parsed.data.pageId}?unpublished=1`);
 };
 
 export const rollbackVersionAction = async (formData: FormData) => {

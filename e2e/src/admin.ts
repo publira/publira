@@ -367,12 +367,15 @@ export interface CreatePageInput {
   title: string;
   /** First version's body. Omitted leaves the page with no version at all. */
   contentMarkdown?: string;
+  /** Footer link once published. Off by default, like the form itself. */
+  displayInFooter?: boolean;
 }
 
 export interface PageFormFields {
   slug: Locator;
   title: Locator;
   body: Locator;
+  displayInFooter: Locator;
 }
 
 /**
@@ -385,6 +388,7 @@ export interface PageFormFields {
  */
 export const pageFormFields = (page: Page): PageFormFields => ({
   body: page.getByRole("textbox", { name: "Content" }),
+  displayInFooter: page.getByRole("checkbox", { name: "Show in footer" }),
   slug: page.getByRole("textbox", { name: "slug" }),
   title: page.getByRole("textbox", { name: "Title" }),
 });
@@ -408,6 +412,9 @@ export const createPageViaUi = async (
   await fillField(fields.title, input.title);
   if (input.contentMarkdown !== undefined) {
     await fillField(fields.body, input.contentMarkdown);
+  }
+  if (input.displayInFooter === true) {
+    await fields.displayInFooter.check();
   }
 
   await page.getByRole("button", { name: "Create page" }).click();
