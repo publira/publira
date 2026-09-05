@@ -112,14 +112,14 @@ func TestListTenantUsersFiltersByKeywordAcrossPages(t *testing.T) {
 	}
 	// Oldest, so it lands past the first page of an unfiltered scan.
 	wantedID := mustInsertTenantMemberAt(
-		t, ctx, pg.DB, tenantID, "USERWANTED01", "編集 太郎", createdAt.Add(-time.Hour),
+		t, ctx, pg.DB, tenantID, "USERWANTED01", "Keyword Member", createdAt.Add(-time.Hour),
 	)
 
 	queries := dbmodels.New(pg.DB)
 	tenant := uuid.NullUUID{UUID: tenantID, Valid: true}
 	byName, err := queries.ListTenantUsersDesc(ctx, dbmodels.ListTenantUsersDescParams{
 		TenantID: tenant,
-		Query:    sql.NullString{String: "編集", Valid: true},
+		Query:    sql.NullString{String: "Keyword", Valid: true},
 		Limit:    2,
 	})
 	if err != nil {
