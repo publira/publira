@@ -53,9 +53,10 @@ const platformSetupSpecs = /platform\.setup\./u;
 const performanceSpecs = /\.viewer-performance\./u;
 
 /**
- * CI is ubicloud-standard-4 (4 vCPU). Three workers leave headroom for the
- * Next servers, Go APIs, and Chromium. The same count is used locally so
- * isolation assumptions match CI. CLI `--workers=1` still overrides.
+ * CI is `ubuntu-latest`, which a public repository gets with 4 vCPU. Three
+ * workers leave headroom for the Next servers, Go APIs, and Chromium. The same
+ * count is used locally so isolation assumptions match CI. CLI `--workers=1`
+ * still overrides.
  */
 const workers = 3;
 

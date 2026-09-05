@@ -100,7 +100,7 @@ Host-based URL constants are in `src/urls.ts`. web-host accepts one port and res
 
 ## Parallelism and isolation
 
-`playwright.config.ts` uses `workers: 3` and `fullyParallel: false`: files run in parallel while tests within a file run serially. This matches CI's four-vCPU `ubicloud-standard-4`; temporarily serialize with `task e2e:test -- --workers=1`.
+`playwright.config.ts` uses `workers: 3` and `fullyParallel: false`: files run in parallel while tests within a file run serially. This matches the four vCPUs CI's `ubuntu-latest` runner has on a public repository; temporarily serialize with `task e2e:test -- --workers=1`.
 
 Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects, and the `viewer-performance` timing project runs after all of those. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
 

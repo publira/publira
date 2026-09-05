@@ -21,7 +21,7 @@ jobs:
     # labelled immediately. A `synchronize` is skipped too: the score is a
     # snapshot of the moment review was requested, not of the latest push.
     if: github.event.pull_request.draft == false && github.event.action != 'synchronize'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       # A job's `permissions` replaces the workflow's `{}` outright rather than
@@ -125,7 +125,7 @@ jobs:
   ai-assisted-label:
     name: Label AI assistance
     if: github.event.pull_request.draft == false
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       pull-requests: write

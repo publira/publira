@@ -46,7 +46,7 @@ permissions:
 jobs:
   changes:
     name: Detect changes
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     outputs:
       format: ${{ steps.plan.outputs.format }}
       check: ${{ steps.plan.outputs.check }}
@@ -339,7 +339,7 @@ jobs:
     name: Lint and Format
     needs: changes
     if: needs.changes.outputs.format == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -356,7 +356,7 @@ jobs:
     name: Check
     needs: changes
     if: needs.changes.outputs.check == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -441,7 +441,7 @@ jobs:
     name: Lint / Go
     needs: changes
     if: needs.changes.outputs.lint_go == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -470,7 +470,7 @@ jobs:
     name: Test / Go
     needs: changes
     if: needs.changes.outputs.test_go == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -494,7 +494,7 @@ jobs:
     name: Test / DB Migrations
     needs: changes
     if: needs.changes.outputs.test_db_migrations == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f
@@ -563,7 +563,7 @@ jobs:
     name: Test / TypeScript
     needs: changes
     if: needs.changes.outputs.test_ts == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     env:
       PUBLIRA_REDIS_URL: redis://localhost:6379
     services:
@@ -595,7 +595,7 @@ jobs:
     name: Test / Mobile
     needs: changes
     if: needs.changes.outputs.test_mobile == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -622,7 +622,7 @@ jobs:
     name: Test / Mobile E2E
     needs: changes
     if: needs.changes.outputs.test_mobile_e2e == 'true'
-    runs-on: ubicloud-standard-4
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       COMPOSE_PROJECT_NAME: publira-mobile-e2e
@@ -730,7 +730,7 @@ jobs:
     name: Test / E2E
     needs: changes
     if: needs.changes.outputs.test_e2e == 'true'
-    runs-on: ubicloud-standard-4
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Setup / Checkout
@@ -825,7 +825,7 @@ jobs:
     name: Test / Bootstrap
     needs: changes
     if: needs.changes.outputs.test_bootstrap == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - name: Setup / Checkout
@@ -907,7 +907,7 @@ jobs:
     name: Test / Routing
     needs: changes
     if: needs.changes.outputs.test_routing == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Setup / Checkout
@@ -939,7 +939,7 @@ jobs:
     name: Build
     needs: changes
     if: needs.changes.outputs.build == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -980,7 +980,7 @@ jobs:
     name: Docker / ${{ matrix.target }}
     needs: changes
     if: needs.changes.outputs.docker_any == 'true'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -1051,7 +1051,7 @@ jobs:
       - test-routing
       - build
       - docker
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     steps:
       - name: Aggregate results
         env:
