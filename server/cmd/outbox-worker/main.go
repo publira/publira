@@ -114,6 +114,7 @@ func resolveWorkerDBURL(fallback string) string {
 }
 
 func workerConfig(logger *slog.Logger, emailHandlers outbox.EmailHandlerConfig) outbox.Config {
+	emailHandlers.Logger = logger
 	handlers := outbox.DefaultRegistry()
 	handlers.Register(outbox.EventTypeTenantAdminInvitationEmail, outbox.NewTenantAdminInvitationHandler(emailHandlers))
 	handlers.Register(outbox.EventTypePlatformPasswordResetEmail, outbox.NewPlatformPasswordResetEmailHandler(emailHandlers))

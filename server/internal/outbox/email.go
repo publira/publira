@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
@@ -12,10 +14,11 @@ import (
 
 // EmailHandlerConfig provides the worker-owned dependencies every mail handler
 // needs. One type rather than one per handler family: the worker resolves these
-// four once at startup and hands the same set to each registration.
+// five once at startup and hands the same set to each registration.
 type EmailHandlerConfig struct {
 	DB        *sql.DB
 	Encryptor emailsettings.SecretManager
+	Logger    *slog.Logger
 	Mailer    internalsmtp.RenderedSender
 	Renderer  emailrenderer.Renderer
 }
@@ -34,6 +37,27 @@ func (cfg EmailHandlerConfig) require(kind string) error {
 	default:
 		return nil
 	}
+}
+
+// logDroppedAuthEmail records an event the handler intentionally completes
+// without delivering. A nil logger keeps direct handler tests and embedders
+// that do not own a worker compatible; the outbox worker always supplies its
+// configured logger.
+func (cfg EmailHandlerConfig) logDroppedAuthEmail(
+	ctx context.Context,
+	event dbmodels.OutboxEvent,
+	tokenID string,
+	reason string,
+) {
+	if cfg.Logger == nil {
+		return
+	}
+	cfg.Logger.WarnContext(ctx, "dropped auth email event",
+		"event_id", event.ID,
+		"event_type", event.EventType,
+		"token_id", tokenID,
+		"reason", reason,
+	)
 }
 
 func sendRenderedEmail(

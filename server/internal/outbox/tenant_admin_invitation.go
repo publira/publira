@@ -70,7 +70,20 @@ func NewTenantAdminInvitationHandler(cfg EmailHandlerConfig) Handler {
 
 		// A resend changes the token hash. Never deliver a stale link if its
 		// earlier event has not been processed yet.
-		if invitation.AcceptedAt.Valid || invitation.CanceledAt.Valid || !invitation.ExpiresAt.After(time.Now()) || invitation.TokenHash != auth.HashToken(payload.Token) {
+		if invitation.AcceptedAt.Valid {
+			cfg.logDroppedAuthEmail(ctx, event, invitationID.String(), "invitation_accepted")
+			return nil
+		}
+		if invitation.CanceledAt.Valid {
+			cfg.logDroppedAuthEmail(ctx, event, invitationID.String(), "invitation_canceled")
+			return nil
+		}
+		if !invitation.ExpiresAt.After(time.Now()) {
+			cfg.logDroppedAuthEmail(ctx, event, invitationID.String(), "token_expired")
+			return nil
+		}
+		if invitation.TokenHash != auth.HashToken(payload.Token) {
+			cfg.logDroppedAuthEmail(ctx, event, invitationID.String(), "token_mismatch")
 			return nil
 		}
 

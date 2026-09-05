@@ -69,12 +69,22 @@ func NewPlatformPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 
 		resetToken, err := queries.GetPlatformUserPasswordResetTokenByHash(ctx, auth.HashToken(payload.Token))
 		if errors.Is(err, sql.ErrNoRows) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_not_found")
 			return nil
 		}
 		if err != nil {
 			return fmt.Errorf("load platform password reset token: %w", err)
 		}
-		if resetToken.ID != tokenID || resetToken.CompletedAt.Valid || !resetToken.ExpiresAt.After(time.Now()) {
+		if resetToken.ID != tokenID {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_id_mismatch")
+			return nil
+		}
+		if resetToken.CompletedAt.Valid {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_completed")
+			return nil
+		}
+		if !resetToken.ExpiresAt.After(time.Now()) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_expired")
 			return nil
 		}
 
@@ -129,12 +139,22 @@ func NewPlatformEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Hand
 
 		changeToken, err := queries.GetPlatformUserEmailChangeTokenByHash(ctx, auth.HashToken(payload.Token))
 		if errors.Is(err, sql.ErrNoRows) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_not_found")
 			return nil
 		}
 		if err != nil {
 			return fmt.Errorf("load platform email change token: %w", err)
 		}
-		if changeToken.ID != tokenID || changeToken.CompletedAt.Valid || !changeToken.ExpiresAt.After(time.Now()) {
+		if changeToken.ID != tokenID {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_id_mismatch")
+			return nil
+		}
+		if changeToken.CompletedAt.Valid {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_completed")
+			return nil
+		}
+		if !changeToken.ExpiresAt.After(time.Now()) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_expired")
 			return nil
 		}
 		recipient := changeToken.CurrentEmail
