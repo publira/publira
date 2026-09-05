@@ -512,6 +512,75 @@ func TestReaderEmailChangedNoticeEmailFailsPermanentlyOnAnIncompleteRequest(t *t
 	}
 }
 
+// The sign-up that produced this event was answered as if the address were
+// free, so the mail is the only report of it, and the account's own address is
+// the only place it may go.
+func TestReaderSignupAttemptNoticeEmailGoesToTheAccountOwner(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	reader := pg.SeedEndUser(t, tenant.ID, "READEROUTB12", "reader@example.com", "Reader")
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{}
+	handler := outbox.NewReaderSignupAttemptNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	attemptID := uuid.Must(uuid.NewV7())
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderSignupAttemptNoticeEmail,
+		outbox.ReaderSignupAttemptNoticeEmailPayload{TenantID: tenant.ID.String(), UserID: reader.ID.String()},
+		"reader_signup_attempt_notice_email:"+attemptID.String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 1 {
+		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
+	}
+	request := renderer.requests[0]
+	if request.Template != "reader_signup_attempt_notice" {
+		t.Fatalf("template = %q, want reader_signup_attempt_notice", request.Template)
+	}
+	// The reset form, with no token: the notice reports an attempt on an
+	// account it must never act on.
+	if url, _ := request.Data["reset_url"].(string); url != "https://"+tenant.Domain+"/reset-password" {
+		t.Fatalf("reset_url = %v", request.Data["reset_url"])
+	}
+	if request.Data["email"] != reader.Email {
+		t.Fatalf("email = %v, want %s", request.Data["email"], reader.Email)
+	}
+	if len(mailer.recipients) != 1 || mailer.recipients[0] != reader.Email {
+		t.Fatalf("recipients = %v, want [%s]", mailer.recipients, reader.Email)
+	}
+}
+
+// The worker reads past RLS, so the account a payload names is not necessarily
+// one of the tenant's readers.
+func TestReaderSignupAttemptNoticeEmailRejectsAnAccountOfAnotherTenant(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	other := pg.SeedTenant(t, "READEROUT002", "other-reader-outbox.example.com", "Other Reader Outbox Tenant")
+	stranger := pg.SeedEndUser(t, other.ID, "READEROUTB13", "stranger@example.com", "Stranger")
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{}
+	handler := outbox.NewReaderSignupAttemptNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	attemptID := uuid.Must(uuid.NewV7())
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderSignupAttemptNoticeEmail,
+		outbox.ReaderSignupAttemptNoticeEmailPayload{TenantID: tenant.ID.String(), UserID: stranger.ID.String()},
+		"reader_signup_attempt_notice_email:"+attemptID.String())
+
+	err := handler(context.Background(), event)
+	if err == nil {
+		t.Fatal("handler returned no error for an account of another tenant")
+	}
+	if !outbox.IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a permanent failure", err)
+	}
+	if len(mailer.recipients) != 0 {
+		t.Fatalf("sent %d, want none", len(mailer.recipients))
+	}
+}
+
 func TestReaderPasswordResetEmailRendersTheStoredRequest(t *testing.T) {
 	pg, tenant, encryptor := newReaderEmailEnv(t)
 	reader := pg.SeedEndUser(t, tenant.ID, "READEROUTB10", "reader@example.com", "Reader")

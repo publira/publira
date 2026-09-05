@@ -33,11 +33,16 @@ const hostUrl = (pathname: string): string =>
 /** The paths the mailed links point at, on the tenant's own domain. */
 const VERIFY_PATH = "/verify";
 const CONFIRM_PASSWORD_PATH = "/confirm-password";
+const RESET_PASSWORD_PATH = "/reset-password";
 
+/**
+ * The pending page says the same thing for a free address and a registered one,
+ * so the copy names no outcome: which mail was sent is what the mailbox says.
+ */
 const SIGNUP_SENT_MESSAGE =
-  "We sent a confirmation email. Open the link in it to finish signing up.";
-const SIGNUP_FAILED_MESSAGE =
-  "Could not create your account. Please check what you entered.";
+  "We sent an email to the address you entered. Open it to continue.";
+/** Subject of the mail a sign-up for a registered address sends its owner. */
+const SIGNUP_ATTEMPT_SUBJECT = "Seed Tenant sign-up attempt";
 const VERIFIED_MESSAGE =
   "Your email address has been confirmed. You can sign in now.";
 const VERIFY_FAILED_MESSAGE =
@@ -255,14 +260,12 @@ test.describe("web-host reader account lifecycle", () => {
   });
 
   /**
-   * The copy gives nothing away, but the outcome still does: a free address
-   * redirects to `/signup/pending` and a registered one stays here with an
-   * error, which is enough to enumerate a tenant's readers — see
-   * https://github.com/publira/publira/issues/1534. This test asserts what the
-   * flow does today; closing that Issue means rewriting it to expect the
-   * pending page for both.
+   * A registered address ends where a free one ends, so the browser says
+   * nothing about which addresses have accounts. The only place the difference
+   * appears is the account owner's mailbox, and what arrives there reports the
+   * attempt rather than acting on the account.
    */
-  test("signing up with a registered address is refused without naming it", async ({
+  test("signing up with a registered address lands on the pending page and tells its owner", async ({
     page,
   }) => {
     await clearMessagesTo(ACCOUNT_LIFECYCLE_MEMBER.email);
@@ -273,19 +276,28 @@ test.describe("web-host reader account lifecycle", () => {
       password: "another-password",
     });
 
-    const flash = page.getByRole("status");
-    await expect(flash).toContainText(SIGNUP_FAILED_MESSAGE);
-    await expect(flash).not.toContainText(ACCOUNT_LIFECYCLE_MEMBER.email);
-    await expect(page).toHaveURL(/\/signup\/?$/u);
+    await page.waitForURL(/\/signup\/pending\/?$/u);
+    await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_MEMBER.email}`)
+    ).toBeVisible();
     expect(await sessionCookie(page)).toBeUndefined();
 
-    // The registered reader learns nothing either: no account was added under
-    // their address, their own record is untouched, and nothing was mailed.
+    // No account was added under the address, and the registered one is as it
+    // was: still its owner's, and still confirmed.
     expect(accountCount(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe("1");
     expect(accountName(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe(
       ACCOUNT_LIFECYCLE_MEMBER.name
     );
-    expect(await countMessagesTo(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe(0);
+    expect(accountStatus(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe("active");
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe(true);
+
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+    expect(message.subject).toBe(SIGNUP_ATTEMPT_SUBJECT);
+    expect(message.text).toContain(RESET_PASSWORD_PATH);
+    // Nothing that confirms an address: whoever submitted the form must not be
+    // able to reach this account through the mail their attempt produced.
+    expect(() => tokenFromLink(message, VERIFY_PATH)).toThrow();
   });
 
   test("an expired verification link reports the failure and leaves the account unconfirmed", async ({

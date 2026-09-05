@@ -82,24 +82,22 @@ export const signupAction = async (
   }
 
   const { email, locale, name, password, tenantId } = parsed.data;
-  const result = await signupPublic(name, email, password, tenantId);
-  if (!result) {
+  const accepted = await signupPublic(name, email, password, tenantId);
+  if (!accepted) {
     return {
       message: getMessage(messages, "host.auth.errors.signup_failed"),
       ok: false,
     };
   }
 
-  if (result.pendingVerification) {
-    await setEmailFlashCookie(SIGNUP_PENDING_EMAIL_COOKIE, email);
-    const pendingPath = await tenantLocalePath(
-      tenantId,
-      locale,
-      "/signup/pending"
-    );
-    redirect(pendingPath);
-  }
-
-  const myPath = await tenantLocalePath(tenantId, locale, "/my");
-  redirect(myPath);
+  // Every accepted sign-up ends here, including one whose address already has
+  // an account: the reader is told to open their mail, and only the mail says
+  // which of the two happened.
+  await setEmailFlashCookie(SIGNUP_PENDING_EMAIL_COOKIE, email);
+  const pendingPath = await tenantLocalePath(
+    tenantId,
+    locale,
+    "/signup/pending"
+  );
+  redirect(pendingPath);
 };

@@ -117,6 +117,18 @@
       "preview": "Set a new password.",
       "subject": "{$tenant_name} password reset"
     },
+    "reader_signup_attempt_notice": {
+      "action": "Reset password",
+      "body": "Your account already exists, so no second account was created and nothing about yours changed.",
+      "email": "Email address: {$email}",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "forgot": "If this was you and you cannot remember your password, use the button above to set a new one.",
+      "heading": "A sign-up used your email address",
+      "ignore": "If it was not you, there is nothing to do. Nobody can sign in without your password.",
+      "intro": "Someone tried to create an account on {$tenant_name} with this email address.",
+      "preview": "A sign-up used your email address.",
+      "subject": "{$tenant_name} sign-up attempt"
+    },
     "sample": {
       "preview": "{$body}",
       "subject": "{$title}"
@@ -1540,8 +1552,8 @@
         "title": "Sign up"
       },
       "signup_pending": {
-        "sent": "We sent a confirmation email. Open the link in it to finish signing up.",
-        "title": "Confirm your email"
+        "sent": "We sent an email to the address you entered. Open it to continue.",
+        "title": "Check your email"
       },
       "verify": {
         "failed": "Could not confirm your email address. The link may have expired or be invalid.",

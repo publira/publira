@@ -297,3 +297,118 @@ func TestDBGetMeRejectsTokenMintedForAnotherTenant(t *testing.T) {
 		t.Fatalf("GetMe with another tenant's token code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
 }
+
+// The state of one account, as far as a sign-up for its address may touch it.
+type storedAccount struct {
+	name               string
+	passwordHash       string
+	credentialsVersion int32
+	verified           bool
+}
+
+func readStoredAccount(t *testing.T, env *publicDBEnv, email string) storedAccount {
+	t.Helper()
+
+	var account storedAccount
+	err := env.PG.DB.QueryRow(`
+		SELECT name, password_hash, credentials_version, email_verified_at IS NOT NULL
+		FROM users
+		WHERE email = $1
+	`, email).Scan(&account.name, &account.passwordHash, &account.credentialsVersion, &account.verified)
+	if err != nil {
+		t.Fatalf("read the account for %s: %v", email, err)
+	}
+	return account
+}
+
+func countRows(t *testing.T, env *publicDBEnv, query string, args ...any) int {
+	t.Helper()
+
+	var count int
+	if err := env.PG.DB.QueryRow(query, args...).Scan(&count); err != nil {
+		t.Fatalf("count rows: %v", err)
+	}
+	return count
+}
+
+// A sign-up must not answer whether the address it names already has an
+// account. Both cases end in the same response, and what separates them is the
+// mail the outbox carries.
+func TestDBCreateUserAnswersARegisteredAddressLikeAFreeOne(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	before := readStoredAccount(t, env, member.Email)
+	client := env.authClient()
+
+	free, err := client.CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+		Tenant:   tenantContext(tenant),
+		Name:     "Newcomer",
+		Email:    "newcomer@tenant-a.example.com",
+		Password: "newcomer-password",
+	}))
+	if err != nil {
+		t.Fatalf("CreateUser with a free address: %v", err)
+	}
+
+	taken, err := client.CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+		Tenant:   tenantContext(tenant),
+		Name:     "Impersonating Signup",
+		Email:    member.Email,
+		Password: "another-password",
+	}))
+	if err != nil {
+		t.Fatalf("CreateUser with a registered address: %v", err)
+	}
+	if !taken.Msg.Accepted || taken.Msg.Accepted != free.Msg.Accepted {
+		t.Fatalf("accepted = %v for the registered address and %v for the free one, want both true",
+			taken.Msg.Accepted, free.Msg.Accepted)
+	}
+
+	if count := countRows(t, env, `SELECT count(*) FROM users WHERE email = $1`, member.Email); count != 1 {
+		t.Fatalf("accounts for %s = %d, want 1", member.Email, count)
+	}
+	if after := readStoredAccount(t, env, member.Email); after != before {
+		t.Fatalf("account after the sign-up = %+v, want %+v", after, before)
+	}
+	if count := countRows(t, env,
+		`SELECT count(*) FROM user_email_verification_tokens WHERE user_id = $1`, member.ID); count != 0 {
+		t.Fatalf("verification tokens for the registered account = %d, want none", count)
+	}
+}
+
+// The account's owner is the one told what happened, because a sign-up they
+// made themselves after forgetting the account would otherwise dead-end.
+func TestDBCreateUserMailsTheOwnerOfARegisteredAddress(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+
+	for attempt := range 2 {
+		if _, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+			Tenant:   tenantContext(tenant),
+			Name:     "Impersonating Signup",
+			Email:    member.Email,
+			Password: "another-password",
+		})); err != nil {
+			t.Fatalf("CreateUser attempt %d: %v", attempt+1, err)
+		}
+	}
+
+	// One notice per attempt: a reader targeted again has to hear about it,
+	// which is why the events are keyed by the attempt and not by the account.
+	notices := countRows(t, env, `
+		SELECT count(*) FROM outbox_events
+		WHERE event_type = 'reader_signup_attempt_notice_email'
+		AND payload ->> 'user_id' = $1
+	`, member.ID.String())
+	if notices != 2 {
+		t.Fatalf("queued notices = %d, want 2", notices)
+	}
+	verifications := countRows(t, env, `
+		SELECT count(*) FROM outbox_events WHERE event_type = 'reader_email_verification_email'
+	`)
+	if verifications != 0 {
+		t.Fatalf("queued verification mails = %d, want none", verifications)
+	}
+}

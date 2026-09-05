@@ -32,12 +32,6 @@ export interface NotificationSettings {
   emailNotificationsEnabled: boolean;
 }
 
-export interface SignupPublicResult {
-  accessToken?: string;
-  expiresAt?: Date;
-  pendingVerification: boolean;
-}
-
 export const loginPublic = async (
   email: string,
   password: string,
@@ -62,12 +56,20 @@ export const loginPublic = async (
   }
 };
 
+/**
+ * Submit a sign-up and report whether the API took it.
+ *
+ * An address that already has an account is accepted like a free one, so a
+ * stranger cannot learn from the answer which addresses are registered. `true`
+ * therefore means the request was accepted and the address was written to — not
+ * that an account was created.
+ */
 export const signupPublic = async (
   name: string,
   email: string,
   password: string,
   tenantId: string
-): Promise<SignupPublicResult | null> => {
+): Promise<boolean> => {
   try {
     const response = await apiClient.auth.createUser({
       email,
@@ -75,18 +77,10 @@ export const signupPublic = async (
       password,
       tenant: { tenantId },
     });
-    const { token: accessToken, expiresAt } = response.accessToken ?? {};
-    if (!accessToken || !expiresAt) {
-      return { pendingVerification: true };
-    }
-    return {
-      accessToken,
-      expiresAt: new Date(expiresAt),
-      pendingVerification: false,
-    };
+    return response.accepted;
   } catch (error) {
     if (isRejectedRequestRpcError(error)) {
-      return null;
+      return false;
     }
     throw error;
   }
