@@ -5,10 +5,11 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/mail"
-	"net/url"
 	"strings"
 	"time"
 
@@ -18,8 +19,8 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
-	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -28,127 +29,87 @@ import (
 const passwordResetTokenTTL = 24 * time.Hour
 const emailChangeTokenTTL = 24 * time.Hour
 
-func adminPasswordResetConfirmationURL(tenant dbmodels.Tenant, token string) (string, error) {
-	domain := strings.TrimSpace(tenant.Domain)
-	if tenant.AdminDomain.Valid && strings.TrimSpace(tenant.AdminDomain.String) != "" {
-		domain = strings.TrimSpace(tenant.AdminDomain.String)
-	}
-	domain = strings.TrimPrefix(domain, "https://")
-	domain = strings.TrimPrefix(domain, "http://")
-	domain = strings.TrimSuffix(domain, "/")
-	if domain == "" {
-		return "", errors.New("tenant domain is not configured")
-	}
-	return "https://" + domain + "/confirm-password?token=" + url.QueryEscape(token), nil
-}
-
-func tenantSMTPSettingsFromRow(config dbmodels.TenantSmtpConfig, password string) emailsettings.SMTPSettings {
-	settings := emailsettings.SMTPSettings{Password: password}
-	if config.Host.Valid {
-		settings.Host = config.Host.String
-	}
-	if config.Port.Valid {
-		settings.Port = config.Port.Int32
-	}
-	if config.Username.Valid {
-		settings.Username = config.Username.String
-	}
-	if config.Encryption.Valid {
-		settings.Encryption = config.Encryption.String
-	}
-	if config.FromName.Valid {
-		settings.FromName = config.FromName.String
-	}
-	if config.FromAddress.Valid {
-		settings.FromAddress = config.FromAddress.String
-	}
-	if config.ReplyTo.Valid {
-		settings.ReplyTo = config.ReplyTo.String
-	}
-	return settings
-}
-
-func platformSMTPSettingsFromRow(config dbmodels.PlatformSmtpConfig, password string) emailsettings.SMTPSettings {
-	settings := emailsettings.SMTPSettings{
-		Host:        config.Host,
-		Port:        config.Port,
-		Username:    config.Username,
-		Password:    password,
-		Encryption:  config.Encryption,
-		FromAddress: config.FromAddress,
-	}
-	if config.ReplyTo.Valid {
-		settings.ReplyTo = config.ReplyTo.String
-	}
-	return settings
-}
-
-func (s *adminServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID uuid.UUID) (emailsettings.SMTPSettings, error) {
-	tenantConfig, err := s.queriesFor(ctx).GetTenantSMTPConfigByTenantID(ctx, tenantID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return emailsettings.SMTPSettings{}, s.internalDBError(ctx, "failed to get tenant smtp config", err, "tenant_id", tenantID.String())
-	}
-	if err == nil && tenantConfig.SmtpOverrideEnabled {
-		password, decryptErr := emailsettings.DecryptPassword(tenantConfig.PasswordEncrypted.String, s.encryptor)
-		if decryptErr != nil {
-			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("tenant smtp settings are not configured"))
-		}
-		settings := tenantSMTPSettingsFromRow(tenantConfig, password)
-		if validateErr := emailsettings.Validate(settings, true); validateErr != nil {
-			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, validateErr)
-		}
-		return settings, nil
-	}
-
-	platformConfig, err := s.queriesFor(ctx).GetPlatformSMTPConfig(ctx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
-		}
-		return emailsettings.SMTPSettings{}, s.internalDBError(ctx, "failed to get platform smtp config", err)
-	}
-	password, decryptErr := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, s.encryptor)
-	if decryptErr != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
-	}
-	settings := platformSMTPSettingsFromRow(platformConfig, password)
-	if validateErr := emailsettings.Validate(settings, true); validateErr != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, validateErr)
-	}
-	return settings, nil
-}
-
-func (s *adminServer) sendPasswordResetEmail(
+func enqueueAdminPasswordResetEmail(
 	ctx context.Context,
-	tenant dbmodels.Tenant,
-	recipientEmail string,
+	queries *dbmodels.Queries,
+	tenantID, tokenID uuid.UUID,
 	token string,
 ) error {
-	if s.mailer == nil {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
-	}
-	settings, err := s.resolveSMTPSettingsForTenant(ctx, tenant.ID)
+	payload, err := json.Marshal(outbox.AdminPasswordResetEmailPayload{
+		TenantID: tenantID.String(),
+		TokenID:  tokenID.String(),
+		Token:    token,
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal admin password reset email event: %w", err)
 	}
-	confirmURL, err := adminPasswordResetConfirmationURL(tenant, token)
+	return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeAdminPasswordResetEmail, payload,
+		"admin_password_reset_email:"+tokenID.String())
+}
+
+// enqueueAdminEmailChangeConfirmationEmail queues the mail for one side of an
+// address change. The key names the side, so the two events of one request
+// stay distinct and each address is retried on its own.
+func enqueueAdminEmailChangeConfirmationEmail(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID, tokenID uuid.UUID,
+	recipientKind, token string,
+) error {
+	payload, err := json.Marshal(outbox.AdminEmailChangeConfirmationEmailPayload{
+		TenantID: tenantID.String(),
+		TokenID:  tokenID.String(),
+		Token:    token,
+	})
 	if err != nil {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return fmt.Errorf("marshal admin email change confirmation email event: %w", err)
 	}
-	subjectPrefix := strings.TrimSpace(tenant.Name)
-	if subjectPrefix == "" {
-		subjectPrefix = "Publira"
+	return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeAdminEmailChangeConfirmationEmail, payload,
+		"admin_email_change_confirmation_email:"+tokenID.String()+":"+recipientKind)
+}
+
+func enqueueAdminEmailChangedNoticeEmail(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID, tokenID uuid.UUID,
+) error {
+	payload, err := json.Marshal(outbox.AdminEmailChangedNoticeEmailPayload{
+		TenantID: tenantID.String(),
+		TokenID:  tokenID.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal admin email changed notice email event: %w", err)
 	}
-	subject := subjectPrefix + " 管理画面パスワード再設定"
-	body := "管理画面アカウントのパスワード再設定リクエストを受け付けました。\r\n" +
-		"以下のリンクを開いて新しいパスワードを設定してください。\r\n\r\n" +
-		confirmURL + "\r\n\r\n" +
-		"このリンクの有効期限は24時間です。\r\n" +
-		"心当たりがない場合、このメールは破棄してください。\r\n"
-	if err := s.mailer.SendEmail(ctx, settings, recipientEmail, subject, body); err != nil {
-		return connect.NewError(connect.CodeInternal, err)
+	return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeAdminEmailChangedNoticeEmail, payload,
+		"admin_email_changed_notice_email:"+tokenID.String())
+}
+
+func insertAdminOutboxEvent(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID uuid.UUID,
+	eventType string,
+	payload []byte,
+	idempotencyKey string,
+) error {
+	eventID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("generate outbox event id: %w", err)
 	}
-	return nil
+	_, err = queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             eventID,
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      eventType,
+		Payload:        payload,
+		IdempotencyKey: idempotencyKey,
+		AvailableAt:    time.Now().UTC(),
+	})
+	// The insert is a no-op when the same key is already queued, and :one then
+	// returns no rows.
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	return err
 }
 
 func (s *adminServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
@@ -286,11 +247,6 @@ func (s *adminServer) RequestPasswordReset(
 		return nil, s.internalDBError(ctx, "failed to get user for password reset", err, "tenant_id", tenant.ID.String())
 	}
 
-	if err := s.queriesFor(ctx).DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
-		return nil, s.internalDBError(ctx, "failed to delete password reset tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-
 	rawToken := make([]byte, 32)
 	if _, err := rand.Read(rawToken); err != nil {
 		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
@@ -302,22 +258,36 @@ func (s *adminServer) RequestPasswordReset(
 		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	_, err = s.queriesFor(ctx).CreateUserPasswordResetToken(ctx, dbmodels.CreateUserPasswordResetTokenParams{
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin password reset transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	if err := txq.DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
+		return nil, s.internalDBError(ctx, "failed to delete password reset tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if _, err := txq.CreateUserPasswordResetToken(ctx, dbmodels.CreateUserPasswordResetTokenParams{
 		ID:        tokenID,
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
 		TokenHash: auth.HashToken(resetToken),
 		ExpiresAt: time.Now().Add(passwordResetTokenTTL),
-	})
-	if err != nil {
+	}); err != nil {
 		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
 		return nil, s.internalDBError(ctx, "failed to create password reset token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-
-	if err := s.sendPasswordResetEmail(ctx, tenant, user.Email, resetToken); err != nil {
-		_ = s.queriesFor(ctx).DeleteUserPasswordResetTokensByUserID(ctx, user.ID)
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "reset_email_send_failed")
-		return nil, err
+	if err := enqueueAdminPasswordResetEmail(ctx, txq, tenant.ID, tokenID, resetToken); err != nil {
+		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "reset_email_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue admin password reset email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit password reset transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	auth.AuditEvent(req.Header(), "admin_password_reset_request", "success", tenant.PublicID, user.PublicID, "requested")
@@ -548,91 +518,6 @@ func (s *adminServer) UpdateTenantConfig(
 	return connect.NewResponse(response), nil
 }
 
-func adminEmailChangeConfirmationURL(tenant dbmodels.Tenant, token string) (string, error) {
-	domain := strings.TrimSpace(tenant.Domain)
-	if tenant.AdminDomain.Valid && strings.TrimSpace(tenant.AdminDomain.String) != "" {
-		domain = strings.TrimSpace(tenant.AdminDomain.String)
-	}
-	domain = strings.TrimPrefix(domain, "https://")
-	domain = strings.TrimPrefix(domain, "http://")
-	domain = strings.TrimSuffix(domain, "/")
-	if domain == "" {
-		return "", errors.New("tenant domain is not configured")
-	}
-	return "https://" + domain + "/confirm-email?token=" + url.QueryEscape(token), nil
-}
-
-func (s *adminServer) sendAdminEmailChangeVerificationEmail(
-	ctx context.Context,
-	tenant dbmodels.Tenant,
-	recipientEmail string,
-	recipientKind string,
-	currentEmail string,
-	newEmail string,
-	token string,
-) error {
-	if s.mailer == nil {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
-	}
-	settings, err := s.resolveSMTPSettingsForTenant(ctx, tenant.ID)
-	if err != nil {
-		return err
-	}
-	confirmURL, err := adminEmailChangeConfirmationURL(tenant, token)
-	if err != nil {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
-	}
-	subjectPrefix := strings.TrimSpace(tenant.Name)
-	if subjectPrefix == "" {
-		subjectPrefix = "Publira"
-	}
-	subject := subjectPrefix + " 管理画面メールアドレス変更確認"
-	body := "管理画面アカウントのメールアドレス変更リクエストを受け付けました。\r\n"
-	if recipientKind == "current_email" {
-		body += "現在のメールアドレス側の確認が必要です。\r\n"
-	} else {
-		body += "新しいメールアドレス側の確認が必要です。\r\n"
-	}
-	body += "以下のリンクを開いて確認を完了してください。\r\n\r\n" +
-		confirmURL + "\r\n\r\n" +
-		"このリンクの有効期限は24時間です。\r\n" +
-		"心当たりがない場合、このメールは破棄してください。\r\n\r\n" +
-		"現在のメールアドレス: " + currentEmail + "\r\n" +
-		"新しいメールアドレス: " + newEmail + "\r\n"
-	if err := s.mailer.SendEmail(ctx, settings, recipientEmail, subject, body); err != nil {
-		return connect.NewError(connect.CodeInternal, err)
-	}
-	return nil
-}
-
-func (s *adminServer) sendAdminEmailChangedNotice(
-	ctx context.Context,
-	tenant dbmodels.Tenant,
-	oldEmail string,
-	newEmail string,
-) error {
-	if s.mailer == nil {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
-	}
-	settings, err := s.resolveSMTPSettingsForTenant(ctx, tenant.ID)
-	if err != nil {
-		return err
-	}
-	subjectPrefix := strings.TrimSpace(tenant.Name)
-	if subjectPrefix == "" {
-		subjectPrefix = "Publira"
-	}
-	subject := subjectPrefix + " 管理画面メールアドレス変更完了"
-	body := "管理画面アカウントのメールアドレスが変更されました。\r\n\r\n" +
-		"変更前: " + oldEmail + "\r\n" +
-		"変更後: " + newEmail + "\r\n\r\n" +
-		"この変更に心当たりがない場合は、すぐにパスワード変更などの対応を行ってください。\r\n"
-	if err := s.mailer.SendEmail(ctx, settings, oldEmail, subject, body); err != nil {
-		return connect.NewError(connect.CodeInternal, err)
-	}
-	return nil
-}
-
 func (s *adminServer) RequestEmailChange(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceRequestEmailChangeRequest],
@@ -684,11 +569,6 @@ func (s *adminServer) RequestEmailChange(
 		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
-	if err := s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
-		return nil, s.internalDBError(ctx, "failed to delete email change tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-
 	rawToken := make([]byte, 32)
 	if _, err := rand.Read(rawToken); err != nil {
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
@@ -706,7 +586,20 @@ func (s *adminServer) RequestEmailChange(
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	_, err = s.queriesFor(ctx).CreateUserEmailChangeToken(ctx, dbmodels.CreateUserEmailChangeTokenParams{
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin email change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	if err := txq.DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
+		return nil, s.internalDBError(ctx, "failed to delete email change tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if _, err := txq.CreateUserEmailChangeToken(ctx, dbmodels.CreateUserEmailChangeTokenParams{
 		ID:                    tokenID,
 		TenantID:              tenant.ID,
 		UserID:                user.ID,
@@ -715,24 +608,24 @@ func (s *adminServer) RequestEmailChange(
 		CurrentEmailTokenHash: auth.HashToken(currentEmailToken),
 		NewEmailTokenHash:     auth.HashToken(newEmailToken),
 		ExpiresAt:             time.Now().Add(emailChangeTokenTTL),
-	})
-	if err != nil {
+	}); err != nil {
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
 		return nil, s.internalDBError(ctx, "failed to create email change token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-
-	if err := s.sendAdminEmailChangeVerificationEmail(ctx, tenant, user.Email, "current_email", user.Email, newEmail, currentEmailToken); err != nil {
-		_ = s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID)
-		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_send_failed")
-		return nil, err
+	if err := enqueueAdminEmailChangeConfirmationEmail(ctx, txq, tenant.ID, tokenID, "current_email", currentEmailToken); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue admin email change confirmation email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	if err := s.sendAdminEmailChangeVerificationEmail(ctx, tenant, newEmail, "new_email", user.Email, newEmail, newEmailToken); err != nil {
-		_ = s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID)
-		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "new_email_send_failed")
-		return nil, err
+	if err := enqueueAdminEmailChangeConfirmationEmail(ctx, txq, tenant.ID, tokenID, "new_email", newEmailToken); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "new_email_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue admin email change confirmation email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit email change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "admin_email_change_request", "success", tenant.PublicID, user.PublicID, "confirmation_emails_sent")
+	auth.AuditEvent(req.Header(), "admin_email_change_request", "success", tenant.PublicID, user.PublicID, "confirmation_emails_enqueued")
 	return connect.NewResponse(&publiraadminv1.AdminAuthServiceRequestEmailChangeResponse{Requested: true}), nil
 }
 
@@ -787,14 +680,22 @@ func (s *adminServer) ConfirmEmailChange(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change request is no longer valid"))
 	}
 
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin email change confirm transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
 	matchedTarget := changeToken.MatchedTarget
 	if matchedTarget == "current_email" {
-		if err := s.queriesFor(ctx).MarkUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
+		if err := txq.MarkUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
 			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "current_email_confirm_failed")
 			return nil, s.internalDBError(ctx, "failed to confirm current email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 		}
 	} else {
-		if err := s.queriesFor(ctx).MarkUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
+		if err := txq.MarkUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
 			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "new_email_confirm_failed")
 			return nil, s.internalDBError(ctx, "failed to confirm new email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 		}
@@ -807,6 +708,10 @@ func (s *adminServer) ConfirmEmailChange(
 		if !newEmailConfirmed {
 			pendingTarget = "new_email"
 		}
+		if err := tx.Commit(); err != nil {
+			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+			return nil, s.internalDBError(ctx, "failed to commit email change confirm transaction", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
+		}
 		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "success", tenant.PublicID, user.PublicID, "waiting_for_"+pendingTarget)
 		return connect.NewResponse(&publiraadminv1.AdminAuthServiceConfirmEmailChangeResponse{
 			Confirmed:              true,
@@ -815,7 +720,7 @@ func (s *adminServer) ConfirmEmailChange(
 		}), nil
 	}
 
-	if _, err := s.queriesFor(ctx).UpdateUserEmailByID(ctx, dbmodels.UpdateUserEmailByIDParams{
+	if _, err := txq.UpdateUserEmailByID(ctx, dbmodels.UpdateUserEmailByIDParams{
 		ID:    user.ID,
 		Email: changeToken.NewEmail,
 	}); err != nil {
@@ -826,13 +731,20 @@ func (s *adminServer) ConfirmEmailChange(
 		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_update_failed")
 		return nil, s.internalDBError(ctx, "failed to update user email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	if err := s.queriesFor(ctx).MarkUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
+	if err := txq.MarkUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
 		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "request_complete_failed")
 		return nil, s.internalDBError(ctx, "failed to complete email change token", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 	}
-	if err := s.sendAdminEmailChangedNotice(ctx, tenant, changeToken.CurrentEmail, changeToken.NewEmail); err != nil {
-		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "old_email_notice_failed")
-		return nil, err
+	// The notice rides the same transaction as the address it announces, so the
+	// old address is never told about a change that did not commit — and never
+	// left untold about one that did.
+	if err := enqueueAdminEmailChangedNoticeEmail(ctx, txq, tenant.ID, changeToken.ID); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "old_email_notice_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue admin email changed notice email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit email change confirm transaction", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 	}
 
 	auth.AuditEvent(req.Header(), "admin_email_change_confirm", "success", tenant.PublicID, user.PublicID, "email_changed")

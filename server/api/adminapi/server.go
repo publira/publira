@@ -45,7 +45,6 @@ type adminServer struct {
 	requestScopedRecorder bool
 	encryptor             emailsettings.SecretManager
 	tester                internalsmtp.Tester
-	mailer                internalsmtp.Sender
 	logger                *slog.Logger
 	reval                 *revalidate.Client
 	tokens                *auth.TokenManager
@@ -228,7 +227,6 @@ func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider st
 }
 
 func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) http.Handler {
-	mailer, _ := tester.(internalsmtp.Sender)
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -251,7 +249,6 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		requestScopedRecorder: requestScopedRecorder,
 		encryptor:             encryptor,
 		tester:                tester,
-		mailer:                mailer,
 		logger:                logger,
 		reval:                 revalidator,
 		tokens:                tokens,
