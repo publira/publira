@@ -1,0 +1,44 @@
+name: Feature request
+description: A capability or outcome the product does not offer yet.
+type: Feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Write in English. Describe the problem before the solution: a request that names only a mechanism is hard to weigh against the alternatives.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What you are trying to do and what stands in the way today. Say who runs into it (a reader, a publisher, a platform operator, a contributor).
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Proposed outcome
+      description: What the product does once this is in place, as the person using it would see it. Include a design when you have one, but the outcome is what gets discussed.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways to reach the same outcome, including doing nothing, and why they fall short.
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: The app or service the feature belongs to. Each option names the `area/*` label it applies; pick every one that fits.
+      multiple: true
+      options:
+        - Web host, the tenant-facing site readers use (area/web-host)
+        - Web admin, the submission and management console for publishers and editors (area/web-admin)
+        - Web platform, the cross-tenant console for platform operators (area/web-platform)
+        - Server, the Go API, batch, and outbox processes (area/server)
+        - Mobile, the Flutter app (area/mobile)
+        - Infrastructure, meaning Docker, CI, the Dev Container, and Compose (area/infra)
+    validations:
+      required: false

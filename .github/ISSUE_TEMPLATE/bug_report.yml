@@ -1,0 +1,65 @@
+name: Bug report
+description: Something behaves differently from what the documentation or the code promises.
+type: Bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Write in English, and quote logs, error messages, and UI strings exactly as they were emitted.
+
+        A security vulnerability does not belong in a public Issue.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw. Paste the exact error message or a screenshot when there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What was expected
+      description: What should have happened instead, and where that expectation comes from when it is written down somewhere.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The shortest sequence that shows the problem, starting from a state another person can reach.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: The app or service the bug is in. Each option names the `area/*` label it applies; pick every one that fits.
+      multiple: true
+      options:
+        - Web host, the tenant-facing site readers use (area/web-host)
+        - Web admin, the submission and management console for publishers and editors (area/web-admin)
+        - Web platform, the cross-tenant console for platform operators (area/web-platform)
+        - Server, the Go API, batch, and outbox processes (area/server)
+        - Mobile, the Flutter app (area/mobile)
+        - Infrastructure, meaning Docker, CI, the Dev Container, and Compose (area/infra)
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The release, the image tag, or the commit hash you were running.
+      placeholder: 1.2.0, or abcecc53
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Where it happened. Browser and OS for a web app, device and OS version for the mobile app, and how the services were run (Dev Container, Docker, host) when it matters.
+    validations:
+      required: false

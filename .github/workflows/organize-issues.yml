@@ -5,7 +5,7 @@ name: Organize issues
 
 on:
   issues:
-    types: [closed]
+    types: [opened, closed]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -18,6 +18,7 @@ permissions: {}
 jobs:
   close-completed-epics:
     name: Close completed epics
+    if: github.event_name != 'issues' || github.event.action == 'closed'
     runs-on: ubicloud-standard-2
     timeout-minutes: 10
     # Close the parent epic and post the completion comment.
@@ -151,3 +152,69 @@ jobs:
               core.info(`Starting from #${number}`);
               await walk(number);
             }
+
+  label-area:
+    name: Label area from issue form
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Apply the area labels the reporter picked
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            // An issue form renders each field as `### <label>` followed by
+            // the answer, and every Area option in .github/ISSUE_TEMPLATE
+            // carries the label it stands for in parentheses, so the answer
+            // is read back from the body rather than from a mapping kept in
+            // step with the forms.
+            const HEADING = '### Area';
+            const AREA_LABEL = /area\/[a-z0-9-]+/g;
+            const { owner, repo } = context.repo;
+            const issue = context.payload.issue;
+
+            function areaSection(body) {
+              const lines = body.split(/\r?\n/);
+              const start = lines.findIndex((line) => line.trim() === HEADING);
+              if (start === -1) {
+                return '';
+              }
+              const rest = lines.slice(start + 1);
+              const end = rest.findIndex((line) => line.startsWith('### '));
+              return (end === -1 ? rest : rest.slice(0, end)).join('\n');
+            }
+
+            const picked = new Set(areaSection(issue.body ?? '').match(AREA_LABEL) ?? []);
+            if (picked.size === 0) {
+              core.info(`#${issue.number}: no area picked`);
+              return;
+            }
+
+            // Adding a label that does not exist would create it, so only
+            // labels the repository already defines are applied.
+            const defined = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const definedNames = new Set(defined.map((label) => label.name));
+            const present = new Set(issue.labels.map((label) => label.name));
+            const labels = [...picked].filter((name) => definedNames.has(name) && !present.has(name));
+            for (const name of picked) {
+              if (!definedNames.has(name)) {
+                core.warning(`#${issue.number}: ${name} is not a label in this repository`);
+              }
+            }
+            if (labels.length === 0) {
+              core.info(`#${issue.number}: nothing to add`);
+              return;
+            }
+            core.info(`#${issue.number}: adding ${labels.join(', ')}`);
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: issue.number,
+              labels,
+            });

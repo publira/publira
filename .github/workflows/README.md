@@ -15,8 +15,11 @@
 | Displayed job | Purpose |
 | --- | --- |
 | `Close completed epics` | Close an `epic` Issue as `completed` when all native sub-issues are closed. |
+| `Label area from issue form` | Give a new Issue the `area/*` labels its reporter picked in the issue form. |
 
 `Close completed epics` is triggered by a closed Issue and manual `workflow_dispatch` (which scans open `epic` Issues if no number is supplied). It considers only `epic` parents with at least one sub-issue, walks nested Epic ancestors in one run, and is serialized to avoid missed simultaneous closures. A `GITHUB_TOKEN` close does not trigger another run.
+
+`Label area from issue form` is triggered by an opened Issue. The forms under [`.github/ISSUE_TEMPLATE/`](../ISSUE_TEMPLATE/) can pre-set the Issue type but not a label chosen from a dropdown, so each **Area** option carries the label it stands for in parentheses, and the job reads those `area/*` names back out of the rendered **Area** section and applies them. Only labels the repository already defines are applied, since adding an unknown label would create it; an Issue with no **Area** section, or one filed without a form, is left alone.
 
 ## Review
 
