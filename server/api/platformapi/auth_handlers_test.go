@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
-	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auth"
+	publirasplatformv1 "github.com/publira/publira/server/internal/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/outbox"
 )
 

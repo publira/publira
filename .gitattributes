@@ -3,7 +3,7 @@
 # https://docs.github.com/en/repositories/working-with-files/managing-files/customizing-how-changed-files-appear-on-github
 
 # buf / protoc (buf.gen.yaml)
-server/gen/** linguist-generated
+server/internal/gen/** linguist-generated
 packages/api-client/src/gen/** linguist-generated
 packages/locales/src/gen/** linguist-generated
 

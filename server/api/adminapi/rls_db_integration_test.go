@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
+	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
 )
 
 // insufficientPrivilege is the SQLSTATE PostgreSQL raises when a row would break

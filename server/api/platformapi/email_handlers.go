@@ -8,10 +8,10 @@ import (
 
 	"connectrpc.com/connect"
 
-	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
+	publirasplatformv1 "github.com/publira/publira/server/internal/gen/publira/platform/v1"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
 

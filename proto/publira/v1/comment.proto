@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package publira.v1;
 
-option go_package = "github.com/publira/publira/server/gen/publira/v1;publirav1";
+option go_package = "github.com/publira/publira/server/internal/gen/publira/v1;publirav1";
 
 import "publira/types/v1/types.proto";
 

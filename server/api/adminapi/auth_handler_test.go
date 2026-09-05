@@ -10,8 +10,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
-	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
-	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
+	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/gen/publira/admin/v1/publiraadminv1connect"
 )
 
 const getAdminTenantByDomainsQuery = "-- name: GetAdminTenantByDomains :one\n"

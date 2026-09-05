@@ -11,9 +11,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	"github.com/publira/publira/server/internal/contentranking"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	publirav1 "github.com/publira/publira/server/internal/gen/publira/v1"
 	"github.com/publira/publira/server/internal/pagination"
 )
 

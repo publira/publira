@@ -9,9 +9,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
-	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	publirasplatformv1 "github.com/publira/publira/server/internal/gen/publira/platform/v1"
+	publirasplatformv1connect "github.com/publira/publira/server/internal/gen/publira/platform/v1/publirasplatformv1connect"
 )
 
 func TestDBPlatformAuditorCannotWritePlatformSettings(t *testing.T) {

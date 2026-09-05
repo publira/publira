@@ -16,9 +16,9 @@ import (
 	"github.com/stripe/stripe-go/v86"
 	"github.com/stripe/stripe-go/v86/webhook"
 
-	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/gen/publira/v1"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/paymentsettings"
 )

@@ -1,6 +1,6 @@
 # proto
 
-This directory contains Protobuf definitions and contract decisions shared by multiple RPCs. As specified in [buf.gen.yaml](../buf.gen.yaml), generated output goes to `server/gen` (Go / Connect) and `packages/api-client/src/gen` (TypeScript); regenerate both with `task gen`.
+This directory contains Protobuf definitions and contract decisions shared by multiple RPCs. As specified in [buf.gen.yaml](../buf.gen.yaml), generated output goes to `server/internal/gen` (Go / Connect) and `packages/api-client/src/gen` (TypeScript); regenerate both with `task gen`.
 
 ## Cursor pagination for list RPCs
 

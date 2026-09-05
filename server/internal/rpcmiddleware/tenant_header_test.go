@@ -7,7 +7,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 

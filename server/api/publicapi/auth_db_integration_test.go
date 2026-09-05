@@ -7,7 +7,7 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	publirav1 "github.com/publira/publira/server/internal/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 

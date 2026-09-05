@@ -7,9 +7,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
-	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
 	"github.com/publira/publira/server/internal/auth"
+	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/gen/publira/admin/v1/publiraadminv1connect"
 )
 
 func (e *adminDBEnv) pagesClient() publiraadminv1connect.AdminPagesServiceClient {

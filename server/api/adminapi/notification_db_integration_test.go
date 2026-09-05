@@ -9,9 +9,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
 )
 
 func TestDBAdminNotificationsListUnreadAndMark(t *testing.T) {

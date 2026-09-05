@@ -15,8 +15,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
-	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	publirasplatformv1 "github.com/publira/publira/server/internal/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/testutil"

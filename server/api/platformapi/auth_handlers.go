@@ -16,11 +16,11 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
-	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	publirasplatformv1 "github.com/publira/publira/server/internal/gen/publira/platform/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tracing"

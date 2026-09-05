@@ -10,7 +10,7 @@ linters:
   default: standard
 
   exclusions:
-    # sqlc output (`internal/db/gen/**`) and buf output (`gen/**`) all carry the
+    # sqlc output (`internal/db/gen/**`) and buf output (`internal/gen/**`) all carry the
     # canonical `Code generated … DO NOT EDIT.` header, so this keeps them out of
     # the report. Preferred over listing those directories in `exclusions.paths`:
     # the header covers a new generator's output the day it is added, while a path

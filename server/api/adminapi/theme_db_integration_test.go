@@ -10,7 +10,7 @@ import (
 	"sync"
 	"testing"
 
-	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
+	publiraadminv1 "github.com/publira/publira/server/internal/gen/publira/admin/v1"
 )
 
 func brandingSourcePNG(t *testing.T, width, height int) []byte {
