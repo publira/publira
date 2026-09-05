@@ -82,7 +82,7 @@ Two things stay Dev Container only.
 - **Traefik.** Its routers are Docker labels on the `app` container, so they cannot reach a process on the host. Open each app on its own port instead (`3000` / `4000` / `4100` for the three Next.js apps, `8000` for the API, `8200` for the image server).
 - **The seeded SMTP host.** `db/seeds/dev` points the platform and tenant SMTP settings at `mailpit`. Change the host to `127.0.0.1` in the console when you want to send mail from a host process.
 
-The per-worktree `dev-env` profiles described in [CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) are Dev Container only for the same reason: they address PostgreSQL and Valkey as `db` / `redis`.
+The per-worktree `dev-env` profiles described in [CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) do not work on the host yet for the same reason: they address PostgreSQL and Valkey as `db` / `redis` ([#1599](https://github.com/publira/publira/issues/1599)).
 
 ## Local database initialization
 

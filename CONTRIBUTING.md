@@ -77,7 +77,7 @@ The shortest path to a green check needs only Task, pnpm, Go, and libvips: `task
 
 ### Working in several worktrees
 
-When you work in several worktrees in parallel, pick a profile per worktree instead of sharing the default development environment. A profile separates the PostgreSQL database, the Valkey logical database, the RustFS bucket, the ports of every service, the cookie names, and the authentication and revalidation secrets. The plain `task setup` / `task dev` keep using the shared environment as before. The profiles are Dev Container only: they address PostgreSQL and Valkey as `db` / `redis`, which resolve only inside the Compose network.
+When you work in several worktrees in parallel, pick a profile per worktree instead of sharing the default development environment. A profile separates the PostgreSQL database, the Valkey logical database, the RustFS bucket, the ports of every service, the cookie names, and the authentication and revalidation secrets. The plain `task setup` / `task dev` keep using the shared environment as before. The profiles do not work outside the Dev Container yet: they address PostgreSQL and Valkey as `db` / `redis`, which resolve only inside the Compose network ([#1599](https://github.com/publira/publira/issues/1599) tracks the host-side support).
 
 ```bash
 # Once per new worktree (the identifier takes lowercase alphanumerics and -)
