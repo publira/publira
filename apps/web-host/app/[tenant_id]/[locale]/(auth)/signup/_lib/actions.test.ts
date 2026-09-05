@@ -59,7 +59,7 @@ describe("signupAction", () => {
   });
 
   it("stores the destination email in a flash cookie and redirects without a query", async () => {
-    mockSignupPublic.mockResolvedValueOnce({ pendingVerification: true });
+    mockSignupPublic.mockResolvedValueOnce(true);
 
     const { signupAction } = await import("./actions");
     await signupAction({ message: "", ok: false }, formData(validSignupFields));
@@ -77,21 +77,8 @@ describe("signupAction", () => {
     expect(mockRedirect).toHaveBeenCalledWith("/signup/pending");
   });
 
-  it("does not set a flash cookie when signup succeeds without pending verification", async () => {
-    mockSignupPublic.mockResolvedValueOnce({
-      accessToken: "tok",
-      pendingVerification: false,
-    });
-
-    const { signupAction } = await import("./actions");
-    await signupAction({ message: "", ok: false }, formData(validSignupFields));
-
-    expect(mockSetEmailFlashCookie).not.toHaveBeenCalled();
-    expect(mockRedirect).toHaveBeenCalledWith("/my");
-  });
-
   it("does not set a flash cookie when signup fails", async () => {
-    mockSignupPublic.mockResolvedValueOnce(null);
+    mockSignupPublic.mockResolvedValueOnce(false);
 
     const { signupAction } = await import("./actions");
     const result = await signupAction(

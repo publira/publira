@@ -51,8 +51,8 @@ DELETE FROM user_password_reset_tokens
 WHERE user_id IN (SELECT id FROM users WHERE public_id = 'AlifMMBRAAA1');
 
 -- The accounts the suite creates through `/signup`. They are created by the
--- flow under test rather than by this file, and that flow is refused when the
--- address is already registered, so a run must start with neither present.
+-- flow under test rather than by this file, and that flow creates nothing when
+-- the address is already registered, so a run must start with neither present.
 DELETE FROM users
 WHERE tenant_id = (SELECT id FROM tenants WHERE domain = 'localhost')
   AND email IN (
