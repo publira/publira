@@ -46,11 +46,11 @@ export const signInAsNotificationInboxMember = async (
 
 /** Open the public site's header account menu. */
 export const openHostUserMenu = async (page: Page): Promise<void> => {
-  await page.getByRole("button", { name: "アカウントメニュー" }).click();
+  await page.getByRole("button", { name: "Account menu" }).click();
 };
 
 export const signOutHost = async (page: Page): Promise<void> => {
   await openHostUserMenu(page);
-  await page.getByRole("menuitem", { name: "ログアウト" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
   await page.waitForURL((url) => url.pathname.endsWith("/login"));
 };

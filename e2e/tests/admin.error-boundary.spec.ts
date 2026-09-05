@@ -61,12 +61,12 @@ test.describe("web-admin console error boundary", () => {
     // fails the layout, not a missing session that would redirect to /login.
     await signInAsSeedAdmin(page, "/");
     await expect(
-      page.getByRole("heading", { level: 1, name: "ダッシュボード" })
+      page.getByRole("heading", { level: 1, name: "Dashboard" })
     ).toBeVisible();
 
     // This operator has chosen no display language, so the document names one
     // only because the proxy published what the tenant saved.
-    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
     try {
       runAdminApiServerScript("stop");
@@ -80,7 +80,7 @@ test.describe("web-admin console error boundary", () => {
       // than from the English this browser asks for.
       await expect(
         page.getByRole("heading", {
-          name: "管理コンソールを表示できませんでした",
+          name: "Could not display the admin console",
         })
       ).toBeVisible();
     } finally {
@@ -89,15 +89,15 @@ test.describe("web-admin console error boundary", () => {
       runAdminApiServerScript("start-wait");
     }
 
-    // "リトライできる" means the retry recovers, not that a button exists.
-    await page.getByRole("button", { name: "再試行" }).click();
+    // "can retry" means the retry recovers, not that a button exists.
+    await page.getByRole("button", { name: "Retry" }).click();
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "ダッシュボード" })
+      page.getByRole("heading", { level: 1, name: "Dashboard" })
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "管理コンソールを表示できませんでした",
+        name: "Could not display the admin console",
       })
     ).toHaveCount(0);
   });

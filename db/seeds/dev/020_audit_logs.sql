@@ -1,6 +1,8 @@
--- 監査ログ（50件）
--- actor: admin@example.com (tenant_admin), member@example.com (member) を交互に使用
--- series / episode / label / creator に対する各種アクション
+-- Audit logs (50 rows)
+-- actor: admin@example.com (tenant_admin), except rows 7, 16, 25, 32 and 43,
+-- which belong to member@example.com (member) — the same rows that record a
+-- failure, so a member acting outside their role is what every failed row is
+-- Assorted actions against series / episode / label / creator
 WITH tenant_scope AS (
     SELECT t.id AS tenant_id
     FROM tenants t
@@ -97,7 +99,7 @@ SELECT
     ad.action,
     ad.target_type,
     FORMAT('seed-target-%s', LPAD(ad.n::text, 3, '0')),
-    -- n=7,16,25,32,43 は失敗、それ以外は成功
+    -- n=7,16,25,32,43 fail; every other row succeeds
     CASE WHEN ad.n IN (7, 16, 25, 32, 43) THEN 'failure' ELSE 'success' END,
     FORMAT('192.168.1.%s', (ad.n % 10) + 1),
     NOW() - make_interval(

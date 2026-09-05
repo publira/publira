@@ -7,21 +7,21 @@ import {
   switchHostLocale,
 } from "../src/locale";
 import {
-  ENGLISH_DEFAULT_TENANT,
+  JAPANESE_DEFAULT_TENANT,
   LOCALE_SWITCHING_SCENARIO,
 } from "../src/scenarios/locale-switching";
 import {
   hostPath,
   localeHostPath,
-  WEB_HOST_ENGLISH_DEFAULT_BASE_URL,
+  WEB_HOST_JAPANESE_DEFAULT_BASE_URL,
 } from "../src/urls";
 
 /** A parameter no route reads, so it can ride along anywhere. */
 const CARRIED_QUERY = "?ref=locale-e2e";
 
-/** Same site, on the Host that resolves to the English-default tenant. */
-const englishDefaultUrl = (pathname: string): string =>
-  `${WEB_HOST_ENGLISH_DEFAULT_BASE_URL}${pathname}`;
+/** Same site, on the Host that resolves to the Japanese-default tenant. */
+const japaneseDefaultUrl = (pathname: string): string =>
+  `${WEB_HOST_JAPANESE_DEFAULT_BASE_URL}${pathname}`;
 
 /**
  * The public site puts the locale in the URL: the tenant's own default is
@@ -43,24 +43,24 @@ test.describe("web-host locale in the URL", () => {
   }) => {
     await page.goto(hostPath("/series"));
     await expect(
-      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
-    ).toBeVisible();
-    await expectDocumentLocale(page, "日本語");
-
-    await switchHostLocale(page, "日本語", "English");
-
-    await expect(page).toHaveURL(
-      (url) => url.pathname === localeHostPath("en", "/series")
-    );
-    await expect(
       page.getByRole("heading", { level: 1, name: "Series" })
     ).toBeVisible();
+    await expectDocumentLocale(page, "English");
 
     await switchHostLocale(page, "English", "日本語");
 
-    await expect(page).toHaveURL((url) => url.pathname === hostPath("/series"));
+    await expect(page).toHaveURL(
+      (url) => url.pathname === localeHostPath("ja", "/series")
+    );
     await expect(
       page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+    ).toBeVisible();
+
+    await switchHostLocale(page, "日本語", "English");
+
+    await expect(page).toHaveURL((url) => url.pathname === hostPath("/series"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Series" })
     ).toBeVisible();
   });
 
@@ -69,16 +69,16 @@ test.describe("web-host locale in the URL", () => {
   }) => {
     await page.goto(hostPath(`/series${CARRIED_QUERY}`));
     await expect(
-      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+      page.getByRole("heading", { level: 1, name: "Series" })
     ).toBeVisible();
 
-    await switchHostLocale(page, "日本語", "English");
+    await switchHostLocale(page, "English", "日本語");
 
     // Documented behaviour: the target is the same page unfiltered, and
     // reading the query would cost the switcher its static shell.
     await expect(page).toHaveURL(
       (url) =>
-        url.pathname === localeHostPath("en", "/series") && url.search === ""
+        url.pathname === localeHostPath("ja", "/series") && url.search === ""
     );
   });
 
@@ -86,7 +86,7 @@ test.describe("web-host locale in the URL", () => {
     page,
   }) => {
     const response = await page.goto(
-      localeHostPath("ja", `/series${CARRIED_QUERY}`)
+      localeHostPath("en", `/series${CARRIED_QUERY}`)
     );
 
     expect(await redirectStatus(response)).toBe(307);
@@ -95,24 +95,24 @@ test.describe("web-host locale in the URL", () => {
         url.pathname === hostPath("/series") && url.search === CARRIED_QUERY
     );
     await expect(
-      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+      page.getByRole("heading", { level: 1, name: "Series" })
     ).toBeVisible();
   });
 
   test("a non-default locale keeps its prefix and renders that language", async ({
     page,
   }) => {
-    const response = await page.goto(localeHostPath("en", "/series"));
+    const response = await page.goto(localeHostPath("ja", "/series"));
 
     expect(response?.status(), await page.content()).toBe(200);
     expect(await redirectStatus(response)).toBeUndefined();
     await expect(
-      page.getByRole("heading", { level: 1, name: "Series" })
+      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { exact: true, name: "Series" })
+      page.getByRole("link", { exact: true, name: "シリーズ" })
     ).toBeVisible();
-    await expectDocumentLocale(page, "English");
+    await expectDocumentLocale(page, "日本語");
   });
 
   test("a locale the site does not serve reaches no page at all", async ({
@@ -125,10 +125,10 @@ test.describe("web-host locale in the URL", () => {
     await page.goto(localeHostPath("fr", "/series"));
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+      page.getByRole("heading", { level: 1, name: "Series" })
     ).toHaveCount(0);
   });
 
@@ -137,31 +137,31 @@ test.describe("web-host locale in the URL", () => {
   }) => {
     await page.goto(hostPath("/privacy"));
     await expect(
-      page.getByRole("heading", { level: 1, name: "プライバシーポリシー" })
+      page.getByRole("heading", { level: 1, name: "Privacy policy" })
     ).toBeVisible();
-    await expect(
-      page.getByRole("link", { exact: true, name: "シリーズ" })
-    ).toBeVisible();
-
-    await page.goto(localeHostPath("en", "/privacy"));
     await expect(
       page.getByRole("link", { exact: true, name: "Series" })
     ).toBeVisible();
-    await expectDocumentLocale(page, "English");
-    // The site chrome is English; what the tenant wrote is not translated, and
+
+    await page.goto(localeHostPath("ja", "/privacy"));
+    await expect(
+      page.getByRole("link", { exact: true, name: "シリーズ" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "日本語");
+    // The site chrome is Japanese; what the tenant wrote is not translated, and
     // a build that started translating it would fail here.
     await expect(
-      page.getByRole("heading", { level: 1, name: "プライバシーポリシー" })
+      page.getByRole("heading", { level: 1, name: "Privacy policy" })
     ).toBeVisible();
   });
 });
 
 /**
- * The mirror image, on a tenant that saved `en`. Nothing about the prefix rules
+ * The mirror image, on a tenant that saved `ja`. Nothing about the prefix rules
  * names a language: the unprefixed URL is whatever the tenant stored, and the
  * redirect and the surviving prefix swap sides with it.
  */
-test.describe("web-host locale on a tenant whose default is English", () => {
+test.describe("web-host locale on a tenant whose default is Japanese", () => {
   test.beforeAll(() => {
     applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
   });
@@ -169,29 +169,29 @@ test.describe("web-host locale on a tenant whose default is English", () => {
   test("the tenant's own default is served without a prefix", async ({
     page,
   }) => {
-    const response = await page.goto(englishDefaultUrl(hostPath("/series")));
+    const response = await page.goto(japaneseDefaultUrl(hostPath("/series")));
 
     expect(response?.status(), await page.content()).toBe(200);
     expect(await redirectStatus(response)).toBeUndefined();
     await expect(
-      page.getByRole("heading", { level: 1, name: "Series" })
+      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
     ).toBeVisible();
     await expect(
-      page.getByText("No series have been registered yet.")
+      page.getByText("シリーズはまだ登録されていません。")
     ).toBeVisible();
-    await expectDocumentLocale(page, "English");
+    await expectDocumentLocale(page, "日本語");
     // The sentence is this build's copy; the name inside it is the tenant's,
     // and it reads the same in either language.
     await expect(
-      page.getByText(`The series published on ${ENGLISH_DEFAULT_TENANT.name}`)
+      page.getByText(`${JAPANESE_DEFAULT_TENANT.name}に登録されている`)
     ).toBeVisible();
   });
 
-  test("spelling out that tenant's default redirects, and Japanese keeps its prefix", async ({
+  test("spelling out that tenant's default redirects, and English keeps its prefix", async ({
     page,
   }) => {
     const redirected = await page.goto(
-      englishDefaultUrl(localeHostPath("en", `/series${CARRIED_QUERY}`))
+      japaneseDefaultUrl(localeHostPath("ja", `/series${CARRIED_QUERY}`))
     );
 
     expect(await redirectStatus(redirected)).toBe(307);
@@ -200,42 +200,42 @@ test.describe("web-host locale on a tenant whose default is English", () => {
         url.pathname === hostPath("/series") && url.search === CARRIED_QUERY
     );
     await expect(
-      page.getByRole("heading", { level: 1, name: "Series" })
+      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
     ).toBeVisible();
 
     const prefixed = await page.goto(
-      englishDefaultUrl(localeHostPath("ja", "/series"))
+      japaneseDefaultUrl(localeHostPath("en", "/series"))
     );
 
     expect(await redirectStatus(prefixed)).toBeUndefined();
     await expect(
-      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+      page.getByRole("heading", { level: 1, name: "Series" })
     ).toBeVisible();
-    await expectDocumentLocale(page, "日本語");
+    await expectDocumentLocale(page, "English");
   });
 
   test("the header switcher swaps to the prefixed locale and back", async ({
     page,
   }) => {
-    await page.goto(englishDefaultUrl(hostPath("/")));
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Catalog" })
-    ).toBeVisible();
-
-    await switchHostLocale(page, "English", "日本語");
-
-    await expect(page).toHaveURL(
-      (url) => url.pathname === localeHostPath("ja", "/")
-    );
+    await page.goto(japaneseDefaultUrl(hostPath("/")));
     await expect(
       page.getByRole("heading", { level: 1, name: "カタログトップ" })
     ).toBeVisible();
 
     await switchHostLocale(page, "日本語", "English");
 
-    await expect(page).toHaveURL((url) => url.pathname === hostPath("/"));
+    await expect(page).toHaveURL(
+      (url) => url.pathname === localeHostPath("en", "/")
+    );
     await expect(
       page.getByRole("heading", { level: 1, name: "Catalog" })
+    ).toBeVisible();
+
+    await switchHostLocale(page, "English", "日本語");
+
+    await expect(page).toHaveURL((url) => url.pathname === hostPath("/"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: "カタログトップ" })
     ).toBeVisible();
   });
 });

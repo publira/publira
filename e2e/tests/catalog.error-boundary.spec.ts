@@ -37,7 +37,7 @@ import { hostPath } from "../src/urls";
  * answers the same plain-text 500 while regenerating (vercel/next.js#96567).
  *
  * The test below therefore covers what a reader can actually hit: a failed read
- * on a direct hit, and 再試行 recovering from it. `catalog.outage.spec.ts` owns
+ * on a direct hit, and the retry recovering from it. `catalog.outage.spec.ts` owns
  * the wider outage matrix (503 on tenant resolution, per-section degradation,
  * the failure not being cached); this file owns the retry affordance.
  */
@@ -54,7 +54,7 @@ test.describe("web-host site error boundary", () => {
 
   /**
    * A series id no run has ever requested, so no `"use cache"` entry can answer
-   * it and the render has to reach the API. Unique per run because 再試行 below
+   * it and the render has to reach the API. Unique per run because the retry below
    * resolves it to "missing", which **is** a cacheable answer.
    */
   const uncachedSeriesId = `RETRY${randomUUID().replaceAll("-", "").slice(0, 11)}`;
@@ -68,7 +68,7 @@ test.describe("web-host site error boundary", () => {
     // lookup without filling a catalog cache entry.
     await page.goto(hostPath("/no-such-page-for-the-error-boundary-spec"));
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
 
     try {
@@ -79,12 +79,10 @@ test.describe("web-host site error boundary", () => {
       // The point of the whole issue: a failing route answers with the site's
       // own error screen, not a bare 500.
       expect(response?.status(), await page.content()).toBe(200);
-      await expect(
-        page.getByText("ページを表示できませんでした")
-      ).toBeVisible();
+      await expect(page.getByText("Could not show this page")).toBeVisible();
       // Site chrome survives — the failure is inside the layout, not above it.
       await expect(
-        page.getByRole("link", { exact: true, name: "シリーズ" })
+        page.getByRole("link", { exact: true, name: "Series" })
       ).toBeVisible();
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
@@ -92,18 +90,18 @@ test.describe("web-host site error boundary", () => {
       startApiServer();
     }
 
-    // "リトライできる" means the retry recovers, not that a button exists: a
+    // "can retry" means the retry recovers, not that a button exists: a
     // no-op retry has to fail this test. The failed read was never stored, so
     // this re-run reaches the healthy API and gets the real answer for an id
     // that does not exist — the 404 UI, still inside the site chrome.
-    await page.getByRole("button", { name: "再試行" }).click();
+    await page.getByRole("button", { name: "Try again" }).click();
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
-    await expect(page.getByText("ページを表示できませんでした")).toHaveCount(0);
+    await expect(page.getByText("Could not show this page")).toHaveCount(0);
     await expect(
-      page.getByRole("link", { exact: true, name: "シリーズ" })
+      page.getByRole("link", { exact: true, name: "Series" })
     ).toBeVisible();
   });
 });

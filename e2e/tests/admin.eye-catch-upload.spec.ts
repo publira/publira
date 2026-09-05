@@ -52,7 +52,7 @@ type AspectDigests = Record<EyeCatchAspect, string>;
  */
 const aspectSlot = (page: Page, aspect: EyeCatchAspect): Locator =>
   page
-    .getByRole("button", { name: `${aspect} の画像を選択` })
+    .getByRole("button", { name: `Select an image for ${aspect}` })
     .locator("xpath=..");
 
 const expectMessage = (scope: Page | Locator, text: string): Promise<void> =>
@@ -74,7 +74,7 @@ const uploadEyeCatchSource = async (
   confirmation: string
 ): Promise<void> => {
   await page.locator(`#${fileInputId}`).setInputFiles(EYE_CATCH_SOURCE_FIXTURE);
-  await page.getByRole("button", { name: "アイキャッチを更新" }).click();
+  await page.getByRole("button", { name: "Update cover image" }).click();
   await expectMessage(page, confirmation);
 };
 
@@ -86,7 +86,7 @@ const uploadAspectImage = async (
 ): Promise<void> => {
   const slot = aspectSlot(page, aspect);
   await slot.locator('input[name="aspect_image"]').setInputFiles(fixture);
-  await slot.getByRole("button", { name: "差し替える" }).click();
+  await slot.getByRole("button", { name: "Replace" }).click();
 };
 
 /**
@@ -176,7 +176,7 @@ const expectOtherAspectsUnchanged = (
 const expectNoEyeCatchYet = (page: Page): Promise<void> =>
   expect(
     page.getByText(
-      "先にアイキャッチ画像を登録してください。比率ごとの差し替えは登録後に行えます。"
+      "Register a cover image first. Individual ratios can be replaced once the cover image exists."
     )
   ).toBeVisible();
 
@@ -201,7 +201,7 @@ const replaceEachAspectInTurn = async (
   await uploadAspectImage(page, aspect, EYE_CATCH_ASPECT_FIXTURES[aspect]);
   await expectMessage(
     aspectSlot(page, aspect),
-    "この比率の画像を差し替えました。"
+    "The image for this ratio was replaced."
   );
 
   const next = await deliveredEyeCatch(page, request);
@@ -250,7 +250,7 @@ test.describe("admin eye-catch upload", () => {
     const title = `E2E Eye-catch Series ${suffix}`;
     const publicId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
-      synopsis: `アイキャッチ検証 ${suffix}`,
+      synopsis: `Cover image check ${suffix}`,
       title,
     });
     createdSeriesIds.push(publicId);
@@ -279,7 +279,7 @@ test.describe("admin eye-catch upload", () => {
     await uploadEyeCatchSource(
       page,
       "series_eye_catch_image",
-      "アイキャッチを更新しました。"
+      "Cover image updated."
     );
 
     const sources = await aspectSources(page);
@@ -299,7 +299,7 @@ test.describe("admin eye-catch upload", () => {
     await uploadEyeCatchSource(
       page,
       "series_eye_catch_image",
-      "アイキャッチを更新しました。"
+      "Cover image updated."
     );
 
     const delivered = await deliveredEyeCatch(page, request);
@@ -314,7 +314,7 @@ test.describe("admin eye-catch upload", () => {
     await uploadEyeCatchSource(
       page,
       "series_eye_catch_image",
-      "アイキャッチを更新しました。"
+      "Cover image updated."
     );
 
     const before = await deliveredEyeCatch(page, request);
@@ -326,7 +326,7 @@ test.describe("admin eye-catch upload", () => {
     );
     await expectMessage(
       aspectSlot(page, EYE_CATCH_UNDERSIZED_ASPECT),
-      "入力内容を確認してください。"
+      "Check the information you entered."
     );
 
     expect(await deliveredEyeCatch(page, request)).toEqual(before);
@@ -339,7 +339,7 @@ test.describe("admin eye-catch upload", () => {
     await uploadEyeCatchSource(
       page,
       "series_eye_catch_image",
-      "アイキャッチを更新しました。"
+      "Cover image updated."
     );
 
     // First host request for this public_id, so nothing was cached back when
@@ -368,11 +368,7 @@ test.describe("admin eye-catch upload", () => {
     await openLabelEyeCatchTab(page);
     await expectNoEyeCatchYet(page);
 
-    await uploadEyeCatchSource(
-      page,
-      "label_eye_catch_image",
-      "レーベルを更新しました。"
-    );
+    await uploadEyeCatchSource(page, "label_eye_catch_image", "Label updated.");
 
     const sources = await aspectSources(page);
     expectAspectPaths(sources, "labels");
@@ -387,7 +383,7 @@ test.describe("admin eye-catch upload", () => {
     );
     await expectMessage(
       aspectSlot(page, "landscape"),
-      "この比率の画像を差し替えました。"
+      "The image for this ratio was replaced."
     );
 
     const after = await deliveredEyeCatch(page, request);

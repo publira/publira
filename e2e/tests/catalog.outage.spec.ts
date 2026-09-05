@@ -83,10 +83,10 @@ test.describe("web-host public API outage", () => {
     startApiServer();
     await page.goto(hostPath("/no-such-page-in-any-spec"));
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { exact: true, name: "シリーズ" })
+      page.getByRole("link", { exact: true, name: "Series" })
     ).toBeVisible();
 
     try {
@@ -96,14 +96,14 @@ test.describe("web-host public API outage", () => {
 
       expect(response?.status(), await page.content()).toBe(200);
       await expect(
-        page.getByRole("link", { exact: true, name: "シリーズ" })
+        page.getByRole("link", { exact: true, name: "Series" })
       ).toBeVisible();
       // `getByRole("alert")` also matches Next.js's route announcer, so assert
       // the failure display by its own copy and its retry affordance.
+      await expect(page.getByText("Could not show this page")).toBeVisible();
       await expect(
-        page.getByText("ページを表示できませんでした")
+        page.getByRole("button", { name: "Try again" })
       ).toBeVisible();
-      await expect(page.getByRole("button", { name: "再試行" })).toBeVisible();
 
       // A list page degrades per section instead: the page heading and the site
       // chrome stay, and only the section that could not load is replaced. The
@@ -113,10 +113,10 @@ test.describe("web-host public API outage", () => {
       // and prove nothing.
       await page.goto(hostPath("/series?token=OUTAGE00"));
       await expect(
-        page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+        page.getByRole("heading", { level: 1, name: "Series" })
       ).toBeVisible();
       await expect(
-        page.getByText("シリーズ一覧を表示できませんでした")
+        page.getByText("Could not show the series list")
       ).toBeVisible();
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
@@ -129,19 +129,19 @@ test.describe("web-host public API outage", () => {
     // this id is "not found", not the failure display.
     await page.goto(hostPath(`/series/${uncachedSeriesId}`));
     await expect(
-      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+      page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
-    await expect(page.getByText("ページを表示できませんでした")).toHaveCount(0);
+    await expect(page.getByText("Could not show this page")).toHaveCount(0);
 
     // The list is checked without the token: a healthy API rejects
     // `OUTAGE00` as a malformed cursor, so that URL shows a section failure by
     // design and says nothing about caching.
     await page.goto(hostPath("/series"));
+    await expect(page.getByText("Could not show the series list")).toHaveCount(
+      0
+    );
     await expect(
-      page.getByText("シリーズ一覧を表示できませんでした")
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+      page.getByRole("heading", { level: 1, name: "Series" })
     ).toBeVisible();
   });
 
@@ -158,7 +158,7 @@ test.describe("web-host public API outage", () => {
     const response = await page.goto(hostPath("/"));
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "カタログトップ" })
+      page.getByRole("heading", { level: 1, name: "Catalog" })
     ).toBeVisible();
   });
 });

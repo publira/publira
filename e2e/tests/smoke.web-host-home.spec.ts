@@ -15,7 +15,7 @@ test.describe("web-host catalog top", () => {
     expect(response?.status(), content).toBe(200);
 
     await expect(
-      page.getByRole("heading", { name: "カタログトップ" })
+      page.getByRole("heading", { exact: true, name: "Catalog" })
     ).toBeVisible();
     // Seed tenant name (db/seeds/dev/001_tenant_users.sql → "Seed Tenant")
     // Exact match: site chrome may also include the name in nav / footer.

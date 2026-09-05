@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
+import type { LocaleLabel } from "./locale";
 import {
   SCENARIO_PLATFORM_OPERATOR,
   SEED_PLATFORM_SUPER_ADMIN,
@@ -38,12 +39,12 @@ export const signInAsScenarioPlatformOperator = async (
 
 /** Open the console header's user menu (avatar). */
 export const openPlatformUserMenu = async (page: Page): Promise<void> => {
-  await page.getByRole("button", { name: "アカウントメニュー" }).click();
+  await page.getByRole("button", { name: "Account menu" }).click();
 };
 
 export const signOutPlatform = async (page: Page): Promise<void> => {
   await openPlatformUserMenu(page);
-  await page.getByRole("menuitem", { name: "ログアウト" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
   await page.waitForURL((url) => url.pathname.endsWith("/login"));
 };
 
@@ -55,13 +56,11 @@ export interface CreateTenantInput {
   /**
    * Label of the option to pick in the default-language selector.
    *
-   * The form opens on whatever `Accept-Language` asks for, which is
-   * `English` under Playwright's Chromium. Every assertion this suite makes on
-   * a tenant-owned screen — the web-host catalog, the tenant's web-admin login
-   * — is written against the Japanese copy, so the helper picks `日本語`
-   * unless a test says otherwise.
+   * Every assertion this suite makes on a tenant-owned screen — the web-host
+   * catalog, the tenant's web-admin login — is written against the English
+   * copy, so the helper picks `English` unless a test says otherwise.
    */
-  defaultLocaleLabel?: "English" | "日本語";
+  defaultLocaleLabel?: LocaleLabel;
 }
 
 /**
@@ -74,27 +73,27 @@ export const createTenantViaUi = async (
 ): Promise<string> => {
   await page.goto(platformUrl("/tenants/new"));
   await expect(
-    page.getByRole("heading", { name: /テナント/u }).first()
+    page.getByRole("heading", { name: /Create tenant/u }).first()
   ).toBeVisible();
 
-  await page.getByRole("textbox", { name: /^テナント名/u }).fill(input.name);
-  await page.getByRole("textbox", { name: /^ドメイン/u }).fill(input.domain);
-  await page.getByRole("combobox", { name: /^既定言語/u }).click();
+  await page.getByRole("textbox", { name: /^Tenant name/u }).fill(input.name);
+  await page.getByRole("textbox", { name: /^Domain/u }).fill(input.domain);
+  await page.getByRole("combobox", { name: /^Default language/u }).click();
   await page
-    .getByRole("option", { name: input.defaultLocaleLabel ?? "日本語" })
+    .getByRole("option", { name: input.defaultLocaleLabel ?? "English" })
     .click();
   if (input.adminDomain !== undefined) {
     await page
-      .getByRole("textbox", { name: /^管理画面ドメイン/u })
+      .getByRole("textbox", { name: /^Admin domain/u })
       .fill(input.adminDomain);
   }
   if (input.initialAdminEmails !== undefined) {
     await page
-      .getByRole("textbox", { name: /^初期管理者メール/u })
+      .getByRole("textbox", { name: /^Initial admin emails/u })
       .fill(input.initialAdminEmails);
   }
 
-  await page.getByRole("button", { name: "作成" }).click();
+  await page.getByRole("button", { name: "Create" }).click();
   await page.waitForURL((url) => {
     const match = url.pathname.match(/^\/tenants\/(?<publicId>[^/]+)(?:\/|$)/u);
     const publicId = match?.groups?.publicId;
@@ -112,7 +111,7 @@ export const createTenantViaUi = async (
 export const formMessage = (page: Page): Locator => page.getByRole("status");
 
 /** Label of the option to pick in an operator role selector. */
-export type OperatorRoleLabel = "オペレーター" | "スーパー管理者" | "監査担当";
+export type OperatorRoleLabel = "Auditor" | "Operator" | "Super admin";
 
 export interface CreateOperatorInput {
   email: string;
@@ -132,24 +131,24 @@ export const createOperatorViaUi = async (
   input: CreateOperatorInput
 ): Promise<void> => {
   await page.goto(platformUrl("/operators/new"));
-  await page.getByRole("textbox", { name: /^名前/u }).fill(input.name);
+  await page.getByRole("textbox", { name: /^Name/u }).fill(input.name);
   await page
-    .getByRole("textbox", { name: /^メールアドレス/u })
+    .getByRole("textbox", { name: /^Email address/u })
     .fill(input.email);
   // Base UI Select trigger is the only combobox on this form.
   await page.getByRole("combobox").click();
   await page
     .getByRole("option", { exact: true, name: input.roleLabel })
     .click();
-  await page.getByRole("button", { name: "追加" }).click();
+  await page.getByRole("button", { name: "Add" }).click();
   await page.waitForURL((url) => url.pathname === "/operators");
 };
 
 /**
  * Open the `ConfirmDialog` a destructive console action sits behind and run it.
  *
- * The trigger and the confirmation carry different labels — 「無効化」 then
- * 「無効化する」 — so both are named by the caller rather than derived.
+ * The trigger and the confirmation do not always carry the same label, so both
+ * are named by the caller rather than derived from one another.
  */
 export const confirmDangerAction = async (
   page: Page,

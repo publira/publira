@@ -27,7 +27,7 @@ DELETE FROM platform_users
 WHERE email = 'setup-operator@example.com';
 
 INSERT INTO platform_config (singleton, default_timezone, default_locale)
-VALUES (TRUE, 'Asia/Tokyo', 'ja')
+VALUES (TRUE, 'Asia/Tokyo', 'en')
 ON CONFLICT (singleton) DO UPDATE
 SET default_timezone = EXCLUDED.default_timezone,
     default_locale = EXCLUDED.default_locale,

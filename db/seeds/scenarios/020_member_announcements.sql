@@ -38,7 +38,7 @@ SELECT
     target.user_id,
     'system',
     'Notice ' || lpad(g::text, 3, '0'),
-    'Notice ' || lpad(g::text, 3, '0') || ' の本文です。',
+    'Body of Notice ' || lpad(g::text, 3, '0') || '.',
     '/series',
     TIMESTAMPTZ '2026-01-01 00:00:00+00' + (g || ' minutes')::interval
 FROM generate_series(1, 45) AS g

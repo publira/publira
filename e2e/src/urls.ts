@@ -123,20 +123,20 @@ export const WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL = envUrl(
 );
 
 /**
- * Public site of the English-default tenant from the scenario seed
+ * Public site of the Japanese-default tenant from the scenario seed
  * `db/seeds/scenarios/080_locale_switching.sql`.
  *
- * Every other seeded tenant saves `ja`, so this is the only host where the
- * unprefixed URL is English and `/ja/...` is the one that keeps its prefix.
+ * Every other seeded tenant saves `en`, so this is the only host where the
+ * unprefixed URL is Japanese and `/en/...` is the one that keeps its prefix.
  */
-export const WEB_HOST_ENGLISH_DEFAULT_BASE_URL = envUrl(
-  "E2E_WEB_HOST_ENGLISH_DEFAULT_BASE_URL",
+export const WEB_HOST_JAPANESE_DEFAULT_BASE_URL = envUrl(
+  "E2E_WEB_HOST_JAPANESE_DEFAULT_BASE_URL",
   withHostname(WEB_HOST_BASE_URL, "locale.localhost")
 );
 
-/** Admin console of the same English-default tenant. */
-export const WEB_ADMIN_ENGLISH_DEFAULT_BASE_URL = envUrl(
-  "E2E_WEB_ADMIN_ENGLISH_DEFAULT_BASE_URL",
+/** Admin console of the same Japanese-default tenant. */
+export const WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL = envUrl(
+  "E2E_WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.locale.localhost")
 );
 

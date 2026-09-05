@@ -15,8 +15,8 @@ import {
   expectSameOriginPath,
   expectSessionRevokedFlash,
   fillLoginForm,
+  HOST_LOGIN_FAILED_MESSAGE,
   HOST_SESSION_COOKIE_NAME,
-  LOGIN_FAILED_MESSAGE,
   plantExpiredAccessTokenCookie,
   plantExpiredSessionCookie,
   sessionCookieValue,
@@ -46,7 +46,7 @@ test.describe("web-host auth", () => {
 
     await expect(page).toHaveURL(/\/my\/?$/u);
     await expect(
-      page.getByRole("heading", { name: "プロフィール" })
+      page.getByRole("heading", { exact: true, name: "Profile" })
     ).toBeVisible();
     expect(await currentSession(page)).toBeTruthy();
   });
@@ -61,7 +61,9 @@ test.describe("web-host auth", () => {
     });
 
     await expectLoginPage(page);
-    await expect(page.getByRole("status")).toContainText(LOGIN_FAILED_MESSAGE);
+    await expect(page.getByRole("status")).toContainText(
+      HOST_LOGIN_FAILED_MESSAGE
+    );
     expect(await currentSession(page)).toBeUndefined();
   });
 
@@ -76,7 +78,11 @@ test.describe("web-host auth", () => {
 
     await expect(page).toHaveURL(/\/announcements\/?$/u);
     await expect(
-      page.getByRole("heading", { exact: true, level: 1, name: "お知らせ" })
+      page.getByRole("heading", {
+        exact: true,
+        level: 1,
+        name: "Announcements",
+      })
     ).toBeVisible();
   });
 
@@ -84,7 +90,7 @@ test.describe("web-host auth", () => {
     await page.goto(hostUrl("/"));
 
     await expect(page).not.toHaveURL(/\/login/u);
-    await expect(page.getByRole("link", { name: "ログイン" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
     expect(await currentSession(page)).toBeUndefined();
   });
 
@@ -178,7 +184,7 @@ test.describe("web-host auth", () => {
     applyScenarioSql(AUTH_E2E_SCENARIO);
     await signInAsMember(page, SCENARIO_AUTH_MEMBER, "/my");
     await expect(
-      page.getByRole("heading", { name: "プロフィール" })
+      page.getByRole("heading", { exact: true, name: "Profile" })
     ).toBeVisible();
 
     bumpUserCredentialsVersion(SCENARIO_AUTH_MEMBER.email);
@@ -204,7 +210,7 @@ test.describe("web-host auth", () => {
 
     await page.goto(hostUrl("/my"));
     await expect(
-      page.getByRole("heading", { name: "プロフィール" })
+      page.getByRole("heading", { exact: true, name: "Profile" })
     ).toBeVisible();
   });
 });

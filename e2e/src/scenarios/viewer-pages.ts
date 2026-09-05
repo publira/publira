@@ -24,7 +24,7 @@ export const VIEWER_EPISODE_PATH = `/series/${SEED_TENANT.series.publicId}/episo
  * `host.episode.viewer.page_title` in the seed tenant's default locale.
  */
 export const viewerPageLabel = (page: number): string =>
-  `${VIEWER_EPISODE_TITLE} ${page}ページ`;
+  `${VIEWER_EPISODE_TITLE}, page ${page}`;
 
 /**
  * The accessible name of the reader's `<progress>`, from
@@ -32,7 +32,7 @@ export const viewerPageLabel = (page: number): string =>
  * screen and its `max` is the page count, so the reader's own report of where
  * it is can be read without depending on the wording of the status text.
  */
-export const VIEWER_PROGRESS_LABEL = "読み進み";
+export const VIEWER_PROGRESS_LABEL = "Reading progress";
 
 /**
  * The `episode_images` id the scenario gives one page, derived the way its SQL

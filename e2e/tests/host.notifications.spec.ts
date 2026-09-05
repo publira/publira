@@ -29,30 +29,47 @@ test.describe("web-host notification bell", () => {
   }) => {
     await signInAsNotificationInboxMember(page, "/notifications");
 
-    const bell = page.getByRole("button", { name: "通知、未読はありません" });
+    const bell = page.getByRole("button", {
+      name: "Notifications, none unread",
+    });
     await expect(bell).toBeVisible();
     await bell.click();
 
     const menu = page.getByRole("dialog");
-    await expect(menu.getByText("通知一覧")).toBeVisible();
-    await expect(menu.getByText("通知はまだありません。")).toBeVisible();
-    await menu.getByRole("link", { name: "もっと見る" }).click();
+    // `exact`: the empty state below it also says "notifications".
+    await expect(
+      menu.getByText("Notifications", { exact: true })
+    ).toBeVisible();
+    await expect(
+      menu.getByText("You have no notifications yet.")
+    ).toBeVisible();
+    await menu.getByRole("link", { name: "View all" }).click();
 
     await expect(page).toHaveURL(/\/notifications\/?$/u);
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
-      page.getByRole("heading", { exact: true, level: 1, name: "通知" })
+      page.getByRole("heading", {
+        exact: true,
+        level: 1,
+        name: "Notifications",
+      })
     ).toBeVisible();
     await expect(
-      page.getByRole("main").getByText("通知はまだありません。")
+      page.getByRole("main").getByText("You have no notifications yet.")
     ).toBeVisible();
 
     await page.goto(inboxUrl("/announcements"));
     await expect(page).toHaveURL(/\/announcements\/?$/u);
     await expect(
-      page.getByRole("heading", { exact: true, level: 1, name: "お知らせ" })
+      page.getByRole("heading", {
+        exact: true,
+        level: 1,
+        name: "Announcements",
+      })
     ).toBeVisible();
-    await expect(page.getByText("通知はまだありません。")).toHaveCount(0);
+    await expect(page.getByText("You have no notifications yet.")).toHaveCount(
+      0
+    );
   });
 
   test("/notifications redirects to login while signed out", async ({
@@ -61,7 +78,7 @@ test.describe("web-host notification bell", () => {
     await page.goto(inboxUrl("/notifications"));
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
     await expect(
-      page.getByRole("link", { name: "通知、未読はありません" })
+      page.getByRole("link", { name: "Notifications, none unread" })
     ).toHaveCount(0);
   });
 });

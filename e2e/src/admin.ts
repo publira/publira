@@ -51,12 +51,12 @@ export const signInAsNotificationInboxAdmin = async (
 
 /** Open the console header's user menu (avatar). */
 export const openAdminUserMenu = async (page: Page): Promise<void> => {
-  await page.getByRole("button", { name: "アカウントメニュー" }).click();
+  await page.getByRole("button", { name: "Account menu" }).click();
 };
 
 export const signOutAdmin = async (page: Page): Promise<void> => {
   await openAdminUserMenu(page);
-  await page.getByRole("menuitem", { name: "ログアウト" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
   await page.waitForURL((url) => url.pathname.endsWith("/login"));
 };
 
@@ -89,13 +89,15 @@ export interface SeriesFormFields {
  * accessibility tree, which pins these to the page in front of the user.
  */
 export const seriesFormFields = (page: Page): SeriesFormFields => ({
-  creatorCombobox: page.getByRole("combobox", { name: /クリエイター/u }),
-  labelCombobox: page.getByRole("combobox", { name: /レーベル/u }),
+  creatorCombobox: page.getByRole("combobox", { name: /Creators/u }),
+  labelCombobox: page.getByRole("combobox", { name: /Label/u }),
   // `datetime-local` has no ARIA role, so this one filters on visibility.
-  publishedAt: page.getByLabel(/公開日時/u).filter({ visible: true }),
-  readingPeriodHours: page.getByRole("spinbutton", { name: /閲覧可能期間/u }),
-  synopsis: page.getByRole("textbox", { name: /概要/u }),
-  title: page.getByRole("textbox", { name: /タイトル/u }),
+  publishedAt: page
+    .getByLabel(/Publication date and time/u)
+    .filter({ visible: true }),
+  readingPeriodHours: page.getByRole("spinbutton", { name: /Reading period/u }),
+  synopsis: page.getByRole("textbox", { name: /Synopsis/u }),
+  title: page.getByRole("textbox", { name: /Title/u }),
 });
 
 export interface CreateSeriesInput {
@@ -120,7 +122,7 @@ export const createSeriesViaUi = async (
 ): Promise<string> => {
   await page.goto(adminUrl("/series/new"));
   await expect(
-    page.getByRole("heading", { name: "シリーズを新規作成" })
+    page.getByRole("heading", { name: "Create series" })
   ).toBeVisible();
 
   const fields = seriesFormFields(page);
@@ -145,7 +147,7 @@ export const createSeriesViaUi = async (
     await fields.publishedAt.fill(toTokyoDateTimeLocal(input.publishedAt));
   }
 
-  await page.getByRole("button", { name: "シリーズを作成" }).click();
+  await page.getByRole("button", { name: "Create series" }).click();
   // Must not match the create path `/series/new` — that already looks like a
   // series detail URL to a naive `/series/[^/]+` pattern.
   await page.waitForURL((url) => {
@@ -187,10 +189,10 @@ export interface EpisodeFormFields {
  * accessibility tree, which pins these to the page in front of the user.
  */
 export const episodeFormFields = (page: Page): EpisodeFormFields => ({
-  price: page.getByRole("spinbutton", { name: /価格/u }),
+  price: page.getByRole("spinbutton", { name: /Price/u }),
   publishAt: page.getByLabel(/publish_at/u).filter({ visible: true }),
-  readingPeriodHours: page.getByRole("spinbutton", { name: /閲覧可能期間/u }),
-  title: page.getByRole("textbox", { name: /タイトル/u }),
+  readingPeriodHours: page.getByRole("spinbutton", { name: /Reading period/u }),
+  title: page.getByRole("textbox", { name: /Title/u }),
 });
 
 /**
@@ -203,7 +205,7 @@ export const createEpisodeViaUi = async (
 ): Promise<string> => {
   await page.goto(adminUrl(`/series/${input.seriesPublicId}/episodes/new`));
   await expect(
-    page.getByRole("heading", { name: /エピソード/u }).first()
+    page.getByRole("heading", { name: /Create episode/u }).first()
   ).toBeVisible();
 
   const fields = episodeFormFields(page);
@@ -215,7 +217,7 @@ export const createEpisodeViaUi = async (
     await fields.publishAt.fill(toTokyoDateTimeLocal(input.publishAt));
   }
 
-  await page.getByRole("button", { name: "エピソードを入稿" }).click();
+  await page.getByRole("button", { name: "Submit episode" }).click();
   await page.waitForURL((url) => {
     const match = url.pathname.match(/\/episodes\/(?<publicId>[^/]+)(?:\/|$)/u);
     const publicId = match?.groups?.publicId;
@@ -243,7 +245,7 @@ export interface LabelFormFields {
  * tree.
  */
 export const labelFormFields = (page: Page): LabelFormFields => ({
-  name: page.getByRole("textbox", { name: /レーベル名/u }),
+  name: page.getByRole("textbox", { name: /Label name/u }),
 });
 
 /**
@@ -256,11 +258,11 @@ export const createLabelViaUi = async (
 ): Promise<string> => {
   await page.goto(adminUrl("/labels/new"));
   await expect(
-    page.getByRole("heading", { name: "レーベル新規作成" })
+    page.getByRole("heading", { name: "Create label" })
   ).toBeVisible();
 
   await labelFormFields(page).name.fill(name);
-  await page.getByRole("button", { name: "レーベルを作成" }).click();
+  await page.getByRole("button", { name: "Create label" }).click();
   // Must not match the create path `/labels/new` — that already looks like a
   // label detail URL to a naive `/labels/[^/]+` pattern.
   await page.waitForURL((url) => {
@@ -311,8 +313,8 @@ export interface CreatorFormFields {
  * tree.
  */
 export const creatorFormFields = (page: Page): CreatorFormFields => ({
-  name: page.getByRole("textbox", { name: /名前/u }),
-  profileText: page.getByRole("textbox", { name: /プロフィール/u }),
+  name: page.getByRole("textbox", { name: /Name/u }),
+  profileText: page.getByRole("textbox", { name: /Profile/u }),
 });
 
 export interface CreateCreatorInput {
@@ -331,7 +333,7 @@ export const createCreatorViaUi = async (
 ): Promise<string> => {
   await page.goto(adminUrl("/creators/new"));
   await expect(
-    page.getByRole("heading", { name: "著者新規作成" })
+    page.getByRole("heading", { name: "Create author" })
   ).toBeVisible();
 
   const fields = creatorFormFields(page);
@@ -340,7 +342,7 @@ export const createCreatorViaUi = async (
     await fillField(fields.profileText, input.profileText);
   }
 
-  await page.getByRole("button", { name: "著者を作成" }).click();
+  await page.getByRole("button", { name: "Create author" }).click();
   // Must not match the create path `/creators/new` — that already looks like a
   // creator detail URL to a naive `/creators/[^/]+` pattern.
   await page.waitForURL((url) => {
@@ -382,9 +384,9 @@ export interface PageFormFields {
  * tree.
  */
 export const pageFormFields = (page: Page): PageFormFields => ({
-  body: page.getByRole("textbox", { name: "本文" }),
+  body: page.getByRole("textbox", { name: "Content" }),
   slug: page.getByRole("textbox", { name: "slug" }),
-  title: page.getByRole("textbox", { name: "タイトル" }),
+  title: page.getByRole("textbox", { name: "Title" }),
 });
 
 /**
@@ -398,7 +400,7 @@ export const createPageViaUi = async (
 ): Promise<string> => {
   await page.goto(adminUrl("/pages/new"));
   await expect(
-    page.getByRole("heading", { name: "ページ新規作成" })
+    page.getByRole("heading", { name: "Create page" })
   ).toBeVisible();
 
   const fields = pageFormFields(page);
@@ -408,7 +410,7 @@ export const createPageViaUi = async (
     await fillField(fields.body, input.contentMarkdown);
   }
 
-  await page.getByRole("button", { name: "ページを作成" }).click();
+  await page.getByRole("button", { name: "Create page" }).click();
   // Must not match the create path `/pages/new` — that already looks like a
   // page detail URL to a naive `/pages/[^/]+` pattern.
   await page.waitForURL((url) => {

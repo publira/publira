@@ -21,8 +21,8 @@ import {
 import {
   expectLoginPage,
   fillLoginForm,
+  HOST_LOGIN_FAILED_MESSAGE,
   HOST_SESSION_COOKIE_NAME,
-  LOGIN_FAILED_MESSAGE,
   sessionCookieValue,
 } from "../src/session";
 import { hostPath, WEB_HOST_BASE_URL } from "../src/urls";
@@ -35,19 +35,19 @@ const VERIFY_PATH = "/verify";
 const CONFIRM_PASSWORD_PATH = "/confirm-password";
 
 const SIGNUP_SENT_MESSAGE =
-  "確認メールを送信しました。メール内のリンクを開いて登録を完了してください。";
+  "We sent a confirmation email. Open the link in it to finish signing up.";
 const SIGNUP_FAILED_MESSAGE =
-  "新規登録に失敗しました。入力内容をご確認ください。";
+  "Could not create your account. Please check what you entered.";
 const VERIFIED_MESSAGE =
-  "メールアドレスの確認が完了しました。ログインしてください。";
+  "Your email address has been confirmed. You can sign in now.";
 const VERIFY_FAILED_MESSAGE =
-  "確認に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。";
+  "Could not confirm your email address. The link may have expired or be invalid.";
 const RESET_SENT_MESSAGE =
-  "再設定メールを送信しました。メール内のリンクを開いて新しいパスワードを設定してください。";
+  "We sent a reset email. Open the link in it to set a new password.";
 const RESET_DONE_MESSAGE =
-  "パスワードを再設定しました。新しいパスワードでログインしてください。";
+  "Your password has been reset. Sign in with your new password.";
 const RESET_CONFIRM_FAILED_MESSAGE =
-  "再設定に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。";
+  "Could not reset your password. The link may have expired or be invalid.";
 
 const accountStatus = (email: string): string =>
   querySql(`SELECT status FROM users WHERE email = '${email}';`);
@@ -127,18 +127,18 @@ const submitSignup = async (
   account: { email: string; name: string; password: string }
 ): Promise<void> => {
   await page.goto(hostUrl("/signup"));
-  await page.getByLabel("お名前").fill(account.name);
-  await page.getByLabel("メールアドレス").fill(account.email);
-  await page.getByLabel("パスワード", { exact: true }).fill(account.password);
-  await page.getByLabel("パスワード（確認）").fill(account.password);
-  await page.getByRole("button", { name: "新規登録" }).click();
+  await page.getByLabel("Name").fill(account.name);
+  await page.getByLabel("Email address").fill(account.email);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
+  await page.getByLabel("Confirm password").fill(account.password);
+  await page.getByRole("button", { name: "Sign up" }).click();
 };
 
 /** Fill `/reset-password` and submit it. */
 const submitResetRequest = async (page: Page, email: string): Promise<void> => {
   await page.goto(hostUrl("/reset-password"));
-  await page.getByLabel("メールアドレス").fill(email);
-  await page.getByRole("button", { name: "再設定メールを送信" }).click();
+  await page.getByLabel("Email address").fill(email);
+  await page.getByRole("button", { name: "Send reset email" }).click();
 };
 
 /**
@@ -160,9 +160,9 @@ const submitNewPassword = async (
   page: Page,
   password: string
 ): Promise<void> => {
-  await page.getByLabel(/^新しいパスワード\s*\*?$/u).fill(password);
-  await page.getByLabel(/^新しいパスワード（確認）\s*\*?$/u).fill(password);
-  await page.getByRole("button", { name: "パスワードを再設定" }).click();
+  await page.getByLabel(/^New password\s*\*?$/u).fill(password);
+  await page.getByLabel(/^Confirm new password\s*\*?$/u).fill(password);
+  await page.getByRole("button", { name: "Reset password" }).click();
 };
 
 /**
@@ -206,7 +206,7 @@ test.describe("web-host reader account lifecycle", () => {
     await page.waitForURL(/\/signup\/pending\/?$/u);
     await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
     await expect(
-      page.getByText(`送信先: ${ACCOUNT_LIFECYCLE_SIGNUP.email}`)
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_SIGNUP.email}`)
     ).toBeVisible();
 
     expect(await sessionCookie(page)).toBeUndefined();
@@ -230,7 +230,7 @@ test.describe("web-host reader account lifecycle", () => {
 
     await expect(page).toHaveURL(/\/my\/?$/u);
     await expect(
-      page.getByRole("heading", { level: 1, name: "マイページ" })
+      page.getByRole("heading", { level: 1, name: "My Page" })
     ).toBeVisible();
     await expect(page.getByText(ACCOUNT_LIFECYCLE_SIGNUP.name)).toBeVisible();
     expect(await sessionCookie(page)).toBeTruthy();
@@ -321,7 +321,7 @@ test.describe("web-host reader account lifecycle", () => {
     await page.waitForURL(/\/reset-password\/requested\/?$/u);
     await expect(page.getByText(RESET_SENT_MESSAGE)).toBeVisible();
     await expect(
-      page.getByText(`送信先: ${ACCOUNT_LIFECYCLE_MEMBER.email}`)
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_MEMBER.email}`)
     ).toBeVisible();
 
     const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
@@ -336,7 +336,7 @@ test.describe("web-host reader account lifecycle", () => {
     await page.waitForURL(/\/reset-password\/requested\/?$/u);
     await expect(page.getByText(RESET_SENT_MESSAGE)).toBeVisible();
     await expect(
-      page.getByText(`送信先: ${ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL}`)
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL}`)
     ).toBeVisible();
 
     expect(accountCount(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL)).toBe("0");
@@ -384,7 +384,9 @@ test.describe("web-host reader account lifecycle", () => {
     await page.goto(hostUrl("/login?returnTo=%2Fmy"));
     await fillLoginForm(page, ACCOUNT_LIFECYCLE_MEMBER);
     await expectLoginPage(page);
-    await expect(page.getByRole("status")).toContainText(LOGIN_FAILED_MESSAGE);
+    await expect(page.getByRole("status")).toContainText(
+      HOST_LOGIN_FAILED_MESSAGE
+    );
 
     await signInAsMember(
       page,
@@ -424,7 +426,9 @@ test.describe("web-host reader account lifecycle", () => {
       password: ACCOUNT_LIFECYCLE_REPLAY_PASSWORD,
     });
     await expectLoginPage(page);
-    await expect(page.getByRole("status")).toContainText(LOGIN_FAILED_MESSAGE);
+    await expect(page.getByRole("status")).toContainText(
+      HOST_LOGIN_FAILED_MESSAGE
+    );
 
     await signInAsMember(
       page,

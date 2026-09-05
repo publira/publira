@@ -1,10 +1,10 @@
--- Scenario: a tenant whose stored default locale is English
+-- Scenario: a tenant whose stored default locale is Japanese
 --
--- Every other seeded tenant saves `ja`, so a suite reading one of them cannot
+-- Every other seeded tenant saves `en`, so a suite reading one of them cannot
 -- tell "the tenant's stored default" apart from "a constant this build falls
--- back to". This tenant saves `en` and nothing else, which is what makes the
--- prefix rules readable in both directions: `locale.localhost` serves English
--- with no prefix and keeps `/ja/...`, while the development seed tenant does
+-- back to". This tenant saves `ja` and nothing else, which is what makes the
+-- prefix rules readable in both directions: `locale.localhost` serves Japanese
+-- with no prefix and keeps `/en/...`, while the development seed tenant does
 -- the mirror image of that.
 --
 -- The public site and the console login screen are both reached without a
@@ -23,7 +23,7 @@ SELECT
     'admin.locale.localhost',
     'Locale Tenant',
     'active',
-    'en'
+    'ja'
 FROM tenant_seed ts
 ON CONFLICT (public_id) DO UPDATE
 SET domain = EXCLUDED.domain,

@@ -1,5 +1,5 @@
--- SMTP 設定（Issue #249）
--- platform 既定値
+-- SMTP settings
+-- Platform defaults
 INSERT INTO platform_smtp_config (
     singleton,
     host,
@@ -30,7 +30,7 @@ SET host = EXCLUDED.host,
     reply_to = EXCLUDED.reply_to,
     updated_at = NOW();
 
--- tenant 上書き設定（上書きは無効だが値は保持）
+-- Tenant override (disabled, but the values are kept)
 INSERT INTO tenant_smtp_config (
     tenant_id,
     smtp_override_enabled,
