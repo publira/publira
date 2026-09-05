@@ -8,9 +8,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/paymentsettings"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 )
 
 // tenantPaymentRevalidateTags lists the cached public tenant response that

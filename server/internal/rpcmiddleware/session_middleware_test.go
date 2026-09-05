@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 

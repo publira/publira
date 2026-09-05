@@ -9,8 +9,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	publiraemailv1 "github.com/publira/publira/server/gen/publira/email/v1"
-	publiraemailv1connect "github.com/publira/publira/server/gen/publira/email/v1/publiraemailv1connect"
+	publiraemailv1 "github.com/publira/publira/server/internal/proto/gen/publira/email/v1"
+	publiraemailv1connect "github.com/publira/publira/server/internal/proto/gen/publira/email/v1/publiraemailv1connect"
 )
 
 type rendererServiceStub struct {

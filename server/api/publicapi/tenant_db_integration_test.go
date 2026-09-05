@@ -8,8 +8,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
 )

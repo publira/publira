@@ -10,12 +10,12 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/publicid"
 )
 

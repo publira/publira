@@ -15,11 +15,11 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
-	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
-	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/pagination"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/testutil"
 )
 

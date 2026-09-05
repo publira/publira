@@ -5,11 +5,11 @@ import (
 
 	"connectrpc.com/connect"
 
-	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 

@@ -9,12 +9,12 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
-	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/platformconfig"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 

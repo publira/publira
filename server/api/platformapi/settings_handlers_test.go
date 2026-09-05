@@ -12,8 +12,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
-	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/locale"
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 

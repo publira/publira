@@ -53,7 +53,7 @@ reviews:
         Go backend. Rules: server/AGENTS.md.
 
         - Schema-first: change proto/ or db/migrations + db/query first, then task gen.
-          Prefer source-side diffs; server/gen/ and sqlc outputs are path-filtered
+          Prefer source-side diffs; server/internal/proto/gen/ and sqlc outputs are path-filtered
           so hand-edits there are not visible to review — flag PRs that change
           generated-looking code without corresponding proto/SQL sources.
         - Keep cmd/ thin; real logic in api/ and internal/.

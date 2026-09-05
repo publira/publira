@@ -24,9 +24,9 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 │   │   ├── api-server/       # ConnectRPC API サーバー
 │   │   ├── batch/            # 全バッチジョブを束ねた単一バイナリ（サブコマンドで選択）
 │   │   └── outbox-worker/    # Outbox + River 常駐ワーカー
-│   ├── gen/            # buf 自動生成コード (Go)
 │   └── internal/
-│       └── db/gen/     # sqlc 自動生成コード (DB/Go)
+│       ├── db/gen/     # sqlc 自動生成コード (DB/Go)
+│       └── proto/gen/  # buf 自動生成コード (Go)
 ├── infra/
 │   └── docker/         # 本番用 Dockerfile（ロール別・ルートからビルド）
 ├── mobile/             # [Flutter] モバイルアプリ (iOS/Android)

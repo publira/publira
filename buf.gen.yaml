@@ -15,11 +15,11 @@ clean: true
 plugins:
   # renovate: datasource=go depName=google.golang.org/protobuf
   - remote: buf.build/protocolbuffers/go:v1.36.12
-    out: server/gen
+    out: server/internal/proto/gen
     opt: paths=source_relative
   # renovate: datasource=go depName=connectrpc.com/connect
   - remote: buf.build/connectrpc/go:v1.20.0
-    out: server/gen
+    out: server/internal/proto/gen
     opt: paths=source_relative
   # renovate: datasource=npm depName=@bufbuild/protobuf
   - remote: buf.build/bufbuild/es:v2.14.1

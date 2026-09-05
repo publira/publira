@@ -195,7 +195,7 @@ Quotes around `'0'` are required: GitHub expressions treat bare `0` as falsy, wh
 
 Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and routing jobs prevent unrelated toolchain setup for a focused PR; `Summary` keeps the required-check count unchanged. `sqlc diff` reads schema and query files and needs no live database, so it remains in `Check`.
 
-`Validate / buf Generated Diff` runs `buf generate`, then compares `server/gen/**` and `packages/api-client/src/gen/**` against the committed tree. `buf.gen.yaml` sets `clean: true` so stale output is visible; when it fails, run `task gen` and commit the result. CI stages before comparing so untracked generated files are included.
+`Validate / buf Generated Diff` runs `buf generate`, then compares `server/internal/proto/gen/**` and `packages/api-client/src/gen/**` against the committed tree. `buf.gen.yaml` sets `clean: true` so stale output is visible; when it fails, run `task gen` and commit the result. CI stages before comparing so untracked generated files are included.
 
 ## Lint, migrations, and Docker
 

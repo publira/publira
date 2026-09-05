@@ -7,8 +7,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/auth"
+	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 )
 
 // platformWriteProcedures is the platform-wide authorization boundary for

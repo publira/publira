@@ -9,8 +9,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
-	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 )
 
 // createDBSeries creates one series for the tenant and returns its public ID.

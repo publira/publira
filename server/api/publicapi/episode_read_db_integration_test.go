@@ -10,7 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 

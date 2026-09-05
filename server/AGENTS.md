@@ -11,7 +11,7 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 | `internal/` | Shared business logic, middleware, storage, auth |
 | `internal/db/` | Hand-written PostgreSQL integration tests for the schema in `db/migrations/` and the queries in `db/query/` |
 | `internal/db/gen/` | **sqlc-generated** — do not hand-edit |
-| `gen/` | **buf-generated** protobuf / Connect stubs — do not hand-edit |
+| `internal/proto/gen/` | **buf-generated** protobuf / Connect stubs — do not hand-edit |
 | `config/` | Runtime config |
 | `internal/testutil/` | Shared test helpers (Testcontainers PostgreSQL, Snapshot/Restore) |
 
@@ -24,7 +24,7 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 2. Keep `cmd/` thin; put real logic in `api/` / `internal/`.
 3. **Every batch job is a subcommand of `cmd/batch`**, one binary and one image, selected by the first argument. A new batch is a new entry in that command's subcommand table, never a new `cmd/` directory: per-batch directories multiply the Docker matrix and the registrations in `infra/docker/Taskfile.yaml` and `scripts/ci-plan-jobs.sh`. Keep each subcommand's own lifecycle — `batch publish-episodes` is a ticker, the rest are one-shot — and resolve `service.name` as `publira-<subcommand>`.
 4. `batch publish-episodes` is a ticker batch, not a job queue. The Outbox worker (`cmd/outbox-worker`) is a long-lived River process, process-separated from the APIs.
-5. Never commit hand-edits to generated output. Regenerate instead. Every generator in this module writes into a directory named `gen/` — buf into `gen/`, sqlc into `internal/db/gen/` — so no file outside one is generated and the rule needs no list of file names.
+5. Never commit hand-edits to generated output. Regenerate instead. Every generator in this module writes into a `gen/` directory under the `internal/` package it belongs to — buf into `internal/proto/gen/`, sqlc into `internal/db/gen/`, the locale registry into `internal/locale/gen/` — so no file outside one is generated and the rule needs no list of file names.
 
 ## UI locale: no default
 

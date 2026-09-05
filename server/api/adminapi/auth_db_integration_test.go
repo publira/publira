@@ -6,8 +6,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/auth"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
