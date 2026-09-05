@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/publira/publira/server/config"
 	"github.com/publira/publira/server/internal/logging"
@@ -39,7 +40,7 @@ var subcommands = []subcommand{
 	},
 	{
 		name:    "aggregate-content-stats",
-		summary: "Rebuild one UTC day of content_daily_stats for every tenant",
+		summary: "Rebuild one calendar day of content_daily_stats for every tenant",
 		run:     runAggregateContentStats,
 	},
 	{
@@ -151,4 +152,26 @@ func resolveDBURL(fallback string, names ...string) string {
 		}
 	}
 	return fallback
+}
+
+// resolveTenantLocalDate reads the calendar date a daily batch covers from the
+// named variable. The date is each tenant's own local one, so an unset variable
+// cannot be answered here with a single day: it yields the zero time, and the
+// batch resolves every tenant's yesterday in that tenant's zone.
+func resolveTenantLocalDate(name string) (time.Time, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return time.Time{}, nil
+	}
+	return time.Parse(time.DateOnly, raw)
+}
+
+// batchDateLogValue words a resolved date for the run's structured log, where
+// the zero time means the run took each tenant's own yesterday rather than one
+// day for all of them.
+func batchDateLogValue(date time.Time) string {
+	if date.IsZero() {
+		return "each tenant's yesterday"
+	}
+	return date.Format(time.DateOnly)
 }

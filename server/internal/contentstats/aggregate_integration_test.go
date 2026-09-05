@@ -49,7 +49,7 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	insertEvent(t, pg.DB, eventSeed{tenantID: otherTenant.ID, eventType: "episode_view", userID: otherViewer.ID, seriesID: otherSeries.ID, episodeID: otherEpisode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
 
 	aggregator := New(pg.OpenPlatformDB(t))
-	result, err := aggregator.Run(context.Background(), statDate)
+	result, err := aggregator.Run(context.Background(), Options{StatDate: statDate})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	assertStat(t, stats, otherTenant.ID, "series", otherSeries.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1})
 
 	// A second full rebuild must replace, not duplicate, the same day's rows.
-	result, err = aggregator.Run(context.Background(), statDate)
+	result, err = aggregator.Run(context.Background(), Options{StatDate: statDate})
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
@@ -81,6 +81,53 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	if got := len(loadStats(t, pg.DB, statDate)); got != 5 {
 		t.Fatalf("daily stats rows after rebuild = %d, want 5", got)
 	}
+}
+
+func TestRunCountsTheDayInEachTenantsTimeZone(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	// One instant, two tenants. 2026-08-28T20:00Z is already the 29th in Tokyo
+	// and still the 28th in Los Angeles, so the same view belongs to a
+	// different calendar day for each of them — and to neither tenant's day
+	// the way a UTC boundary would have filed it.
+	occurredAt := time.Date(2026, time.August, 28, 20, 0, 0, 0, time.UTC)
+	tokyo := pg.SeedTenant(t, "STATSTOKYO01", "tokyo-stats.example.com", "Tokyo Stats Tenant")
+	losAngeles := pg.SeedTenant(t, "STATSLOSAN01", "losangeles-stats.example.com", "Los Angeles Stats Tenant")
+	setTenantTimeZone(t, pg.DB, tokyo.ID, "Asia/Tokyo")
+	setTenantTimeZone(t, pg.DB, losAngeles.ID, "America/Los_Angeles")
+
+	tokyoSeries := pg.SeedSeries(t, tokyo.ID, testutil.SeriesSeed{PublicID: "STATSTKYSER1"})
+	tokyoEpisode := pg.SeedEpisode(t, tokyo.ID, tokyoSeries.ID, testutil.EpisodeSeed{PublicID: "STATSTKYEP01"})
+	tokyoViewer := pg.SeedEndUser(t, tokyo.ID, "STATSTKYVWR1", "viewer@tokyo-stats.example.com", "Tokyo Viewer")
+	losAngelesSeries := pg.SeedSeries(t, losAngeles.ID, testutil.SeriesSeed{PublicID: "STATSLAXSER1"})
+	losAngelesEpisode := pg.SeedEpisode(t, losAngeles.ID, losAngelesSeries.ID, testutil.EpisodeSeed{PublicID: "STATSLAXEP01"})
+	losAngelesViewer := pg.SeedEndUser(t, losAngeles.ID, "STATSLAXVWR1", "viewer@losangeles-stats.example.com", "Los Angeles Viewer")
+
+	insertEvent(t, pg.DB, eventSeed{tenantID: tokyo.ID, eventType: "episode_view", userID: tokyoViewer.ID,
+		seriesID: tokyoSeries.ID, episodeID: tokyoEpisode.ID, debounceBucket: 1, occurredAt: occurredAt})
+	insertEvent(t, pg.DB, eventSeed{tenantID: losAngeles.ID, eventType: "episode_view", userID: losAngelesViewer.ID,
+		seriesID: losAngelesSeries.ID, episodeID: losAngelesEpisode.ID, debounceBucket: 1, occurredAt: occurredAt})
+
+	aggregator := New(pg.OpenPlatformDB(t))
+	viewed := stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1}
+
+	// The 29th: the Tokyo tenant's day holds the view, and the Los Angeles
+	// tenant's has not started yet.
+	if _, err := aggregator.Run(context.Background(), Options{StatDate: time.Date(2026, time.August, 29, 0, 0, 0, 0, time.UTC)}); err != nil {
+		t.Fatalf("Run for the 29th: %v", err)
+	}
+	stats := loadStats(t, pg.DB, time.Date(2026, time.August, 29, 0, 0, 0, 0, time.UTC))
+	assertStat(t, stats, tokyo.ID, "episode", tokyoEpisode.ID, viewed)
+	assertNoStat(t, stats, losAngeles.ID, "episode", losAngelesEpisode.ID)
+
+	// The 28th: the other way round.
+	if _, err := aggregator.Run(context.Background(), Options{StatDate: time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)}); err != nil {
+		t.Fatalf("Run for the 28th: %v", err)
+	}
+	stats = loadStats(t, pg.DB, time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC))
+	assertStat(t, stats, losAngeles.ID, "episode", losAngelesEpisode.ID, viewed)
+	assertNoStat(t, stats, tokyo.ID, "episode", tokyoEpisode.ID)
 }
 
 func TestRunAggregatesTheRemainingTenantsAfterOneFails(t *testing.T) {
@@ -111,7 +158,7 @@ func TestRunAggregatesTheRemainingTenantsAfterOneFails(t *testing.T) {
 
 	rejectDailyStatsForTenants(t, pg.DB, broken.ID)
 
-	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), statDate)
+	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), Options{StatDate: statDate})
 	if err == nil || !strings.Contains(err.Error(), broken.ID.String()) {
 		t.Fatalf("Run error = %v, want a failure naming tenant %s", err, broken.ID)
 	}
@@ -142,7 +189,7 @@ func TestRunReportsEveryFailedTenant(t *testing.T) {
 
 	rejectDailyStatsForTenants(t, pg.DB, firstBroken.ID, secondBroken.ID)
 
-	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), statDate)
+	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), Options{StatDate: statDate})
 	if err == nil {
 		t.Fatal("Run error = nil, want failures for both broken tenants")
 	}
@@ -181,7 +228,7 @@ func TestRunStopsAtACancelledContext(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	result, err := New(pg.OpenPlatformDB(t)).Run(ctx, statDate)
+	result, err := New(pg.OpenPlatformDB(t)).Run(ctx, Options{StatDate: statDate})
 	if err == nil || !strings.Contains(err.Error(), blocked.ID.String()) {
 		t.Fatalf("Run error = %v, want a failure naming tenant %s", err, blocked.ID)
 	}
@@ -213,7 +260,7 @@ func TestRunCountsAPurchaseWhoseBuyerWasDeleted(t *testing.T) {
 	insertPurchase(t, pg.DB, tenant.ID, staying.ID, episode.ID, statDate.Add(11*time.Hour))
 
 	aggregator := New(pg.OpenPlatformDB(t))
-	if _, err := aggregator.Run(context.Background(), statDate); err != nil {
+	if _, err := aggregator.Run(context.Background(), Options{StatDate: statDate}); err != nil {
 		t.Fatalf("Run before the delete: %v", err)
 	}
 	before := loadStats(t, pg.DB, statDate)
@@ -224,7 +271,7 @@ func TestRunCountsAPurchaseWhoseBuyerWasDeleted(t *testing.T) {
 		t.Fatalf("delete the buyer: %v", err)
 	}
 
-	if _, err := aggregator.Run(context.Background(), statDate); err != nil {
+	if _, err := aggregator.Run(context.Background(), Options{StatDate: statDate}); err != nil {
 		t.Fatalf("Run after the delete: %v", err)
 	}
 	after := loadStats(t, pg.DB, statDate)
@@ -243,7 +290,7 @@ func TestRunRejectsTenantScopedRole(t *testing.T) {
 	pg.Reset(t)
 	pg.SeedTenant(t, "STATSRLS001", "rls-stats.example.com", "RLS Stats")
 
-	_, err := New(pg.OpenAdminDB(t)).Run(context.Background(), time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC))
+	_, err := New(pg.OpenAdminDB(t)).Run(context.Background(), Options{StatDate: time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)})
 	if err == nil || !strings.Contains(err.Error(), "BYPASSRLS") {
 		t.Fatalf("Run error = %v, want BYPASSRLS requirement", err)
 	}
@@ -321,6 +368,18 @@ func seedViewedEpisode(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUI
 	viewer := pg.SeedEndUser(t, tenantID, "STATSVWR"+prefix, "viewer-"+prefix+"@stats.example.com", "Viewer "+prefix)
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenantID, eventType: "episode_view", userID: viewer.ID,
 		seriesID: series.ID, episodeID: episode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
+}
+
+// setTenantTimeZone moves a seeded tenant to another zone. SeedTenant writes
+// the platform default, and a day boundary only differs between tenants whose
+// zones do.
+func setTenantTimeZone(t *testing.T, db *sql.DB, tenantID uuid.UUID, timeZone string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := db.ExecContext(ctx, "UPDATE tenants SET timezone = $2 WHERE id = $1", tenantID, timeZone); err != nil {
+		t.Fatalf("set tenant time zone: %v", err)
+	}
 }
 
 // insertStaleStat plants the row a previous run would have left behind, so a
@@ -518,6 +577,14 @@ func loadStats(t *testing.T, db *sql.DB, statDate time.Time) map[statKey]stat {
 		t.Fatalf("iterate stats: %v", err)
 	}
 	return stats
+}
+
+func assertNoStat(t *testing.T, stats map[statKey]stat, tenantID uuid.UUID, entityType string, entityID uuid.UUID) {
+	t.Helper()
+	key := statKey{tenantID: tenantID, entityType: entityType, entityID: entityID}
+	if got, ok := stats[key]; ok {
+		t.Fatalf("stat for tenant=%s type=%s entity=%s = %+v, want no row on this day", tenantID, entityType, entityID, got)
+	}
 }
 
 func assertStat(t *testing.T, stats map[statKey]stat, tenantID uuid.UUID, entityType string, entityID uuid.UUID, want stat) {

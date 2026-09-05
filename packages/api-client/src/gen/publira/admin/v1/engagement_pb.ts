@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/engagement.proto.
  */
 export const file_publira_admin_v1_engagement: GenFile = /*@__PURE__*/
-  fileDesc("CiFwdWJsaXJhL2FkbWluL3YxL2VuZ2FnZW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiqQEKEkVwaXNvZGVSZWFkVGhyb3VnaBIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEhYKDmNvbXBsZXRlX2NvdW50GAUgASgDEhkKEW1lbWJlcl92aWV3X2NvdW50GAYgASgDIm4KHUxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSLtAQoeTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlEjYKCGVwaXNvZGVzGAEgAygLMiQucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUmVhZFRocm91Z2gSFAoMcGVyaW9kX3N0YXJ0GAIgASgJEhIKCnBlcmlvZF9lbmQYAyABKAkSHAoUdG90YWxfY29tcGxldGVfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSFgoOcHJldmlvdXNfdG9rZW4YBiABKAkSEgoKbmV4dF90b2tlbhgHIAEoCTKXAQoWQWRtaW5FbmdhZ2VtZW50U2VydmljZRJ9ChZMaXN0RXBpc29kZVJlYWRUaHJvdWdoEi8ucHVibGlyYS5hZG1pbi52MS5MaXN0RXBpc29kZVJlYWRUaHJvdWdoUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("CiFwdWJsaXJhL2FkbWluL3YxL2VuZ2FnZW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiqQEKEkVwaXNvZGVSZWFkVGhyb3VnaBIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEhYKDmNvbXBsZXRlX2NvdW50GAUgASgDEhkKEW1lbWJlcl92aWV3X2NvdW50GAYgASgDIm4KHUxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSKAAgoeTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlEjYKCGVwaXNvZGVzGAEgAygLMiQucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUmVhZFRocm91Z2gSFAoMcGVyaW9kX3N0YXJ0GAIgASgJEhIKCnBlcmlvZF9lbmQYAyABKAkSHAoUdG90YWxfY29tcGxldGVfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSFgoOcHJldmlvdXNfdG9rZW4YBiABKAkSEgoKbmV4dF90b2tlbhgHIAEoCRIRCgl0aW1lX3pvbmUYCCABKAkylwEKFkFkbWluRW5nYWdlbWVudFNlcnZpY2USfQoWTGlzdEVwaXNvZGVSZWFkVGhyb3VnaBIvLnB1YmxpcmEuYWRtaW4udjEuTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * One episode's read-through over the reported period.
@@ -112,9 +112,10 @@ export type ListEpisodeReadThroughResponse = Message<"publira.admin.v1.ListEpiso
   episodes: EpisodeReadThrough[];
 
   /**
-   * The reported period, as inclusive UTC calendar dates (YYYY-MM-DD). The
-   * aggregate behind this report is a UTC daily one, so the period it covers
-   * is stated in the same days rather than in the console's time zone.
+   * The reported period, as inclusive calendar dates (YYYY-MM-DD) in the
+   * tenant's time zone. A day here is the tenant's own day, the same one the
+   * audit log's date filter means, so the two screens cannot disagree about
+   * where a day begins.
    *
    * @generated from field: string period_start = 2;
    */
@@ -152,6 +153,15 @@ export type ListEpisodeReadThroughResponse = Message<"publira.admin.v1.ListEpiso
    * @generated from field: string next_token = 7;
    */
   nextToken: string;
+
+  /**
+   * The IANA time zone period_start and period_end are calendar days in, so
+   * the screen can name it rather than assume one. It is the tenant's resolved
+   * zone: the counting and the wording come from the same read.
+   *
+   * @generated from field: string time_zone = 8;
+   */
+  timeZone: string;
 };
 
 /**

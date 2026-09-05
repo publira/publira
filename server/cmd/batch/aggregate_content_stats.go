@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/publira/publira/server/config"
@@ -27,10 +25,10 @@ func runAggregateContentStats(ctx context.Context, logger *slog.Logger, cfg *con
 	defer db.Close() //nolint:errcheck
 
 	started := time.Now()
-	result, err := contentstats.New(db).Run(ctx, statDate)
+	result, err := contentstats.New(db).Run(ctx, contentstats.Options{StatDate: statDate})
 	if err != nil {
 		logger.Error("content stats aggregation failed",
-			"stat_date", statDate.Format(time.DateOnly),
+			"stat_date", batchDateLogValue(statDate),
 			"tenant_count", result.TenantCount,
 			"row_count", result.RowCount,
 			"duration", time.Since(started),
@@ -39,7 +37,7 @@ func runAggregateContentStats(ctx context.Context, logger *slog.Logger, cfg *con
 		return err
 	}
 	logger.Info("content stats aggregation completed",
-		"stat_date", statDate.Format(time.DateOnly),
+		"stat_date", batchDateLogValue(statDate),
 		"tenant_count", result.TenantCount,
 		"row_count", result.RowCount,
 		"duration", time.Since(started),
@@ -52,9 +50,5 @@ func resolveContentStatsDBURL(fallback string) string {
 }
 
 func resolveStatDate() (time.Time, error) {
-	raw := strings.TrimSpace(os.Getenv("PUBLIRA_CONTENT_STATS_DATE"))
-	if raw == "" {
-		return time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour), nil
-	}
-	return time.Parse(time.DateOnly, raw)
+	return resolveTenantLocalDate("PUBLIRA_CONTENT_STATS_DATE")
 }

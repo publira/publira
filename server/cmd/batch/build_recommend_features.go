@@ -40,7 +40,7 @@ func runBuildRecommendFeatures(ctx context.Context, logger *slog.Logger, cfg *co
 	})
 	if err != nil {
 		logger.Error("recommend feature build failed",
-			"reference_date", referenceDate.Format(time.DateOnly),
+			"reference_date", batchDateLogValue(referenceDate),
 			"window_days", windowDays,
 			"tenant_count", result.TenantCount,
 			"user_row_count", result.UserRowCount,
@@ -50,7 +50,7 @@ func runBuildRecommendFeatures(ctx context.Context, logger *slog.Logger, cfg *co
 		return err
 	}
 	logger.Info("recommend feature build completed",
-		"reference_date", referenceDate.Format(time.DateOnly),
+		"reference_date", batchDateLogValue(referenceDate),
 		"window_days", windowDays,
 		"feature_version", recommendfeatures.FeatureVersion,
 		"tenant_count", result.TenantCount,
@@ -70,11 +70,7 @@ func resolveRecommendFeaturesDBURL(fallback string) string {
 }
 
 func resolveReferenceDate() (time.Time, error) {
-	raw := strings.TrimSpace(os.Getenv("PUBLIRA_RECOMMEND_FEATURES_DATE"))
-	if raw == "" {
-		return time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour), nil
-	}
-	return time.Parse(time.DateOnly, raw)
+	return resolveTenantLocalDate("PUBLIRA_RECOMMEND_FEATURES_DATE")
 }
 
 func resolveWindowDays() (int, error) {

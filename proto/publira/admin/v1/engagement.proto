@@ -35,9 +35,10 @@ message ListEpisodeReadThroughRequest {
 message ListEpisodeReadThroughResponse {
   // Ordered by complete_count, highest first.
   repeated EpisodeReadThrough episodes = 1;
-  // The reported period, as inclusive UTC calendar dates (YYYY-MM-DD). The
-  // aggregate behind this report is a UTC daily one, so the period it covers
-  // is stated in the same days rather than in the console's time zone.
+  // The reported period, as inclusive calendar dates (YYYY-MM-DD) in the
+  // tenant's time zone. A day here is the tenant's own day, the same one the
+  // audit log's date filter means, so the two screens cannot disagree about
+  // where a day begins.
   string period_start = 2;
   string period_end = 3;
   // The same two counts over every episode in the period. They stay the same
@@ -49,6 +50,10 @@ message ListEpisodeReadThroughResponse {
   string previous_token = 6;
   // Token for the next page. Empty on the last page.
   string next_token = 7;
+  // The IANA time zone period_start and period_end are calendar days in, so
+  // the screen can name it rather than assume one. It is the tenant's resolved
+  // zone: the counting and the wording come from the same read.
+  string time_zone = 8;
 }
 
 service AdminEngagementService {

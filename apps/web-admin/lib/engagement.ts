@@ -21,9 +21,18 @@ export interface EpisodeReadThroughItem {
 }
 
 export interface EpisodeReadThroughPeriod {
-  /** Inclusive UTC calendar days (`YYYY-MM-DD`) the report covers. */
+  /**
+   * Inclusive calendar days (`YYYY-MM-DD`) the report covers, counted in
+   * {@link EpisodeReadThroughPeriod.timeZone}.
+   */
   start: string;
   end: string;
+  /**
+   * The IANA zone those days belong to, as the server resolved it. The screen
+   * names this rather than a zone of its own, so the wording cannot describe a
+   * different period from the one the counts came from.
+   */
+  timeZone: string;
 }
 
 export type ListEpisodeReadThroughResult =
@@ -124,6 +133,7 @@ export const listEpisodeReadThrough = async (
       period: {
         end: response.periodEnd ?? "",
         start: response.periodStart ?? "",
+        timeZone: response.timeZone ?? "",
       },
       previousToken: response.previousToken ?? "",
       totalCompleteCount: Number(response.totalCompleteCount ?? 0),

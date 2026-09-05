@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/batchlock"
+	"github.com/publira/publira/server/internal/tenantday"
 )
 
 const (
@@ -43,7 +44,8 @@ type Builder struct {
 
 // Options describes one build run.
 type Options struct {
-	// ReferenceDate is the last UTC calendar day the window covers.
+	// ReferenceDate is the last calendar day the window covers, read as each
+	// tenant's own local date. Zero means every tenant's own yesterday.
 	ReferenceDate time.Time
 	// WindowDays is the length of the trailing window, ending on
 	// ReferenceDate and including it. Zero means DefaultWindowDays.
@@ -85,9 +87,6 @@ func (b *Builder) Run(ctx context.Context, opts Options) (Result, error) {
 	if b == nil || b.db == nil {
 		return Result{}, errors.New("recommend feature build requires a database")
 	}
-	if opts.ReferenceDate.IsZero() {
-		return Result{}, errors.New("recommend feature build requires a reference date")
-	}
 	windowDays := opts.WindowDays
 	if windowDays <= 0 {
 		windowDays = DefaultWindowDays
@@ -100,18 +99,24 @@ func (b *Builder) Run(ctx context.Context, opts Options) (Result, error) {
 		return Result{}, err
 	}
 
-	referenceDate := opts.ReferenceDate.UTC().Format(time.DateOnly)
-	tenants, err := b.listTenantIDs(ctx)
+	tenants, err := tenantday.List(ctx, b.db)
 	if err != nil {
 		return Result{}, fmt.Errorf("list tenants: %w", err)
 	}
+	now := time.Now()
 
 	var result Result
 	var failures []error
-	for _, tenantID := range tenants {
-		userRows, itemRows, err := b.buildTenant(ctx, tenantID, referenceDate, windowDays, topSeriesLimit)
+	for _, tenant := range tenants {
+		date, err := tenant.Date(opts.ReferenceDate, now)
 		if err != nil {
-			failures = append(failures, fmt.Errorf("build features for tenant %s at %s: %w", tenantID, referenceDate, err))
+			failures = append(failures, fmt.Errorf("resolve the day of tenant %s: %w", tenant.ID, err))
+			continue
+		}
+		referenceDate := date.Format(time.DateOnly)
+		userRows, itemRows, err := b.buildTenant(ctx, tenant, referenceDate, windowDays, topSeriesLimit)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("build features for tenant %s at %s: %w", tenant.ID, referenceDate, err))
 			// A cancelled context fails every remaining tenant the same way,
 			// so there is nothing left to salvage by carrying on.
 			if ctx.Err() != nil {
@@ -142,30 +147,13 @@ func (b *Builder) requireBypassRLS(ctx context.Context) error {
 	return nil
 }
 
-func (b *Builder) listTenantIDs(ctx context.Context) ([]uuid.UUID, error) {
-	rows, err := b.db.QueryContext(ctx, "SELECT id FROM tenants ORDER BY id")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close() //nolint:errcheck
-
-	var tenantIDs []uuid.UUID
-	for rows.Next() {
-		var tenantID uuid.UUID
-		if err := rows.Scan(&tenantID); err != nil {
-			return nil, err
-		}
-		tenantIDs = append(tenantIDs, tenantID)
-	}
-	return tenantIDs, rows.Err()
-}
-
 func (b *Builder) buildTenant(
 	ctx context.Context,
-	tenantID uuid.UUID,
+	tenant tenantday.Tenant,
 	referenceDate string,
 	windowDays, topSeriesLimit int,
 ) (userRows, itemRows int64, err error) {
+	tenantID := tenant.ID
 	tx, err := b.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, 0, err
@@ -180,7 +168,7 @@ func (b *Builder) buildTenant(
 		return 0, 0, err
 	}
 
-	sources, err := countSources(ctx, tx, tenantID, referenceDate, windowDays)
+	sources, err := countSources(ctx, tx, tenantID, referenceDate, windowDays, tenant.TimeZone)
 	if err != nil {
 		return 0, 0, fmt.Errorf("count feature sources: %w", err)
 	}
@@ -191,7 +179,7 @@ func (b *Builder) buildTenant(
 		return 0, 0, fmt.Errorf("rebuild item features: %w", err)
 	}
 	userRows, err = replaceSnapshot(ctx, tx, deleteUserFeaturesSQL, insertUserFeaturesSQL,
-		tenantID, referenceDate, windowDays, FeatureVersion, topSeriesLimit)
+		tenantID, referenceDate, windowDays, FeatureVersion, topSeriesLimit, tenant.TimeZone)
 	if err != nil {
 		return 0, 0, fmt.Errorf("rebuild user features: %w", err)
 	}
@@ -240,7 +228,7 @@ type sourceCounts struct {
 // countSources counts the two inputs separately, because they gate different
 // output tables: daily stats feed the item snapshot, and the events carrying a
 // user_id feed the user snapshot.
-func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, referenceDate string, windowDays int) (sourceCounts, error) {
+func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, referenceDate string, windowDays int, timeZone string) (sourceCounts, error) {
 	var counts sourceCounts
 	err := tx.QueryRowContext(ctx, `
 		SELECT
@@ -253,9 +241,9 @@ func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, reference
 			 FROM content_events
 			 WHERE tenant_id = $1
 			   AND user_id IS NOT NULL
-			   AND occurred_at >= ((($2::date - ($3::int - 1)))::timestamp AT TIME ZONE 'UTC')
-			   AND occurred_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC'))
-	`, tenantID, referenceDate, windowDays).Scan(&counts.dailyStats, &counts.identifiedEvents)
+			   AND occurred_at >= ((($2::date - ($3::int - 1)))::timestamp AT TIME ZONE $4::text)
+			   AND occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $4::text))
+	`, tenantID, referenceDate, windowDays, timeZone).Scan(&counts.dailyStats, &counts.identifiedEvents)
 	return counts, err
 }
 
@@ -305,6 +293,10 @@ GROUP BY cds.entity_type, cds.entity_id, b.window_start, b.window_end
 // Anonymous actors are excluded on purpose: user_recommend_features is keyed by
 // users(tenant_id, id), so a publira_aid actor has nowhere to be stored and
 // stays a fallback case for online inference.
+//
+// The window is bounded by instants rather than by stat_date, so $6 carries the
+// tenant's time zone: its first and last days have to start and end where the
+// daily aggregate's do.
 const insertUserFeaturesSQL = `
 WITH bounds AS (
 	SELECT ($2::date - ($3::int - 1)) AS window_start, $2::date AS window_end
@@ -314,8 +306,8 @@ WITH bounds AS (
 	CROSS JOIN bounds b
 	WHERE ce.tenant_id = $1
 		AND ce.user_id IS NOT NULL
-		AND ce.occurred_at >= (b.window_start::timestamp AT TIME ZONE 'UTC')
-		AND ce.occurred_at < ((b.window_end + 1)::timestamp AT TIME ZONE 'UTC')
+		AND ce.occurred_at >= (b.window_start::timestamp AT TIME ZONE $6::text)
+		AND ce.occurred_at < ((b.window_end + 1)::timestamp AT TIME ZONE $6::text)
 ), per_series AS (
 	SELECT
 		user_id,

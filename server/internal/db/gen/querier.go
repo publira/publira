@@ -428,11 +428,12 @@ type Querier interface {
 	// ListEpisodeReadThroughDesc walked the other way, to build a previous page.
 	// The order it describes is the same one.
 	ListEpisodeReadThroughAsc(ctx context.Context, arg ListEpisodeReadThroughAscParams) ([]ListEpisodeReadThroughAscRow, error)
-	// The read-through report the console shows, over a closed range of UTC stat
-	// dates. Both halves of the rate come from the same cohort: complete_count is
-	// the members who finished the episode in the range, member_view_count the
-	// views those same signed-in members opened it with. view_count is not usable
-	// here — it counts anonymous readers, who cannot produce a completion at all.
+	// The read-through report the console shows, over a closed range of stat
+	// dates, which are the tenant's own calendar days. Both halves of the rate
+	// come from the same cohort: complete_count is the members who finished the
+	// episode in the range, member_view_count the views those same signed-in
+	// members opened it with. view_count is not usable here — it counts anonymous
+	// readers, who cannot produce a completion at all.
 	//
 	// No index can serve this scan: the sort key is an aggregate of the rows the
 	// query itself groups, the way ListRecommendedSeriesIDs sorts by a rank its own

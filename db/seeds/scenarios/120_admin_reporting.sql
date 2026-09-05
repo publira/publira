@@ -24,10 +24,11 @@
 -- The development seed tenant's console must never list them.
 --
 -- Read-through, development seed tenant: content_daily_stats rows for the
--- first 25 seed episodes, dated relative to the UTC day this file is applied
--- on, because the report's window is the 28 UTC days ending yesterday and the
--- rows have to fall inside it whenever the suite runs. Dates near a window edge
--- are avoided so a UTC midnight between applying and asserting moves nothing:
+-- first 25 seed episodes, dated relative to the tenant's own calendar day this
+-- file is applied on, because the report's window is the 28 tenant days ending
+-- yesterday and the rows have to fall inside it whenever the suite runs. Dates
+-- near a window edge are avoided so a local midnight between applying and
+-- asserting moves nothing:
 --   day -2    every episode: `Seed Episode 001-01` 30 / 60, the next 22 an odd
 --             completion count from 45 down to 3 with twice as many member
 --             views, `Seed Episode 003-04` 0 / 40, `Seed Episode 003-05` 40 / 40
@@ -221,18 +222,17 @@ SET tenant_id = EXCLUDED.tenant_id,
     client_ip = EXCLUDED.client_ip,
     created_at = EXCLUDED.created_at;
 
--- Read-through. The dates move with the day the file is applied on, and
--- (tenant_id, stat_date, entity_type, entity_id) is unique, so a row re-dated
--- by a later apply could land on the date another of these rows still holds.
--- Removing this scenario's rows first keeps the apply idempotent on any day.
+-- Read-through. The dates move with the day the file is applied on, taken in
+-- each tenant's own time zone because that is the day the aggregate files a
+-- row under, and (tenant_id, stat_date, entity_type, entity_id) is unique, so
+-- a row re-dated by a later apply could land on the date another of these rows
+-- still holds. Removing this scenario's rows first keeps the apply idempotent
+-- on any day.
 DELETE FROM content_daily_stats
 WHERE id >= '018f0f54-0000-7000-8000-000000000000'::uuid
   AND id <= '018f0f54-ffff-7000-8000-ffffffffffff'::uuid;
 
-WITH today AS (
-    SELECT (NOW() AT TIME ZONE 'UTC')::date AS utc_date
-),
-seed_episode AS (
+WITH seed_episode AS (
     -- Seed episode by sequence number (db/seeds/dev/010_catalog.sql).
     SELECT
         gs.n,
@@ -305,7 +305,7 @@ SELECT
         || LPAD(TO_HEX(ss.n), 12, '0')
     )::uuid,
     t.id,
-    td.utc_date + ss.day_offset,
+    (NOW() AT TIME ZONE t.timezone)::date + ss.day_offset,
     'episode',
     ss.episode_id,
     ss.member_view_count,
@@ -317,5 +317,4 @@ SELECT
     0,
     0
 FROM stats_seed ss
-CROSS JOIN today td
 JOIN tenants t ON t.domain = ss.tenant_domain;

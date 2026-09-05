@@ -11,17 +11,20 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 const (
 	defaultEpisodeReadThroughPageSize = int32(20)
 	maxEpisodeReadThroughPageSize     = int32(100)
 
-	// readThroughWindowDays is how many UTC days the report covers, counted
-	// back from the last day the daily aggregate can have finished. Four whole
-	// weeks so every weekday contributes equally: a window of 30 days weights
-	// two of them twice and makes the number move when the month does.
+	// readThroughWindowDays is how many of the tenant's days the report covers,
+	// counted back from the last day the daily aggregate can have finished.
+	// Four whole weeks so every weekday contributes equally: a window of 30
+	// days weights two of them twice and makes the number move when the month
+	// does.
 	readThroughWindowDays = 28
 )
 
@@ -69,18 +72,26 @@ func mapEpisodeReadThroughAscRows(rows []dbmodels.ListEpisodeReadThroughAscRow) 
 	return mapped
 }
 
-// readThroughPeriod is the closed range of UTC stat dates the report covers.
+// readThroughPeriod is the closed range of stat dates the report covers. The
+// dates are the tenant's calendar days, which is what content_daily_stats
+// stores, so the range is compared against stat_date as written.
 type readThroughPeriod struct {
 	start time.Time
 	end   time.Time
 }
 
-// resolveReadThroughPeriod ends the window on the last UTC day the daily
-// aggregate can have covered. Today is still accumulating, and its stats row
-// does not exist until the batch runs after midnight, so including it would
-// put a partial day beside whole ones and make the rate look like it fell.
-func resolveReadThroughPeriod(now time.Time) readThroughPeriod {
-	end := now.UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour)
+// resolveReadThroughPeriod ends the window on the last day the tenant has
+// finished, read in the tenant's own zone. Today is still accumulating, and
+// its stats row does not exist until the batch runs after that tenant's
+// midnight, so including it would put a partial day beside whole ones and make
+// the rate look like it fell.
+//
+// The dates come back at midnight UTC because they name calendar days rather
+// than instants: the queries bind them to a date column, and UTC keeps the day
+// arithmetic on them exact.
+func resolveReadThroughPeriod(now time.Time, location *time.Location) readThroughPeriod {
+	year, month, day := now.In(location).AddDate(0, 0, -1).Date()
+	end := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
 	return readThroughPeriod{
 		start: end.AddDate(0, 0, -(readThroughWindowDays - 1)),
 		end:   end,
@@ -157,7 +168,16 @@ func (s *adminServer) ListEpisodeReadThrough(
 		}
 	}
 
-	period := resolveReadThroughPeriod(time.Now())
+	timeZone := tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx)))
+	location, err := time.LoadLocation(timeZone)
+	if err != nil {
+		// A stored zone nothing can load leaves no honest day to count in.
+		// Reporting the period in some other zone would be a different report
+		// wearing this one's numbers, so the read fails instead.
+		return nil, s.internalError(ctx, "failed to load the tenant time zone", err,
+			"tenant_id", tenant.ID.String(), "time_zone", timeZone)
+	}
+	period := resolveReadThroughPeriod(time.Now(), location)
 
 	totals, err := s.queriesFor(ctx).GetEpisodeReadThroughTotals(ctx, dbmodels.GetEpisodeReadThroughTotalsParams{
 		TenantID:    tenant.ID,
@@ -192,6 +212,7 @@ func (s *adminServer) ListEpisodeReadThrough(
 		PeriodEnd:            period.end.Format(time.DateOnly),
 		TotalCompleteCount:   totals.CompleteCount,
 		TotalMemberViewCount: totals.MemberViewCount,
+		TimeZone:             timeZone,
 	}
 	switch {
 	case len(rows) > 0:

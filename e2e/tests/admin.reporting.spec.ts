@@ -20,6 +20,7 @@ import {
 import {
   SEED_ADMIN_PUBLIC_ID,
   SEED_MEMBER_PUBLIC_ID,
+  SEED_TENANT_TIME_ZONE,
 } from "../src/scenarios/auth";
 import { MULTI_TENANT_SCENARIO } from "../src/scenarios/multi-tenant";
 import {
@@ -34,8 +35,9 @@ const AUDIT_PAGE_SIZE = 20;
 const READ_THROUGH_PAGE_SIZE = 20;
 
 /**
- * How many UTC days the read-through report covers, ending yesterday. Keep in
- * sync with `readThroughWindowDays` in `server/api/adminapi/engagement_handlers.go`.
+ * How many of the tenant's days the read-through report covers, ending
+ * yesterday. Keep in sync with `readThroughWindowDays` in
+ * `server/api/adminapi/engagement_handlers.go`.
  */
 const READ_THROUGH_WINDOW_DAYS = 28;
 
@@ -138,11 +140,15 @@ const expectReadThroughRow = async (
 };
 
 /**
- * The period the report names: the window's UTC days, worded the way the
- * summary card formats a plain date in English.
+ * The period the report names: the window's days in the seed tenant's own time
+ * zone, worded the way the summary card formats a plain date in English. The
+ * card names that zone too, so this asserts the report counts the tenant's days
+ * rather than UTC ones — the two disagree for nine hours of every day.
  */
 const expectedPeriodText = (): string => {
-  const end = Temporal.Now.plainDateISO("UTC").subtract({ days: 1 });
+  const end = Temporal.Now.plainDateISO(SEED_TENANT_TIME_ZONE).subtract({
+    days: 1,
+  });
   const start = end.subtract({ days: READ_THROUGH_WINDOW_DAYS - 1 });
   const formatter = new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
@@ -151,7 +157,7 @@ const expectedPeriodText = (): string => {
   const format = (date: Temporal.PlainDate): string =>
     formatter.format(date.toZonedDateTime("UTC").epochMilliseconds);
 
-  return `${format(start)} - ${format(end)}, counted in UTC calendar days.`;
+  return `${format(start)} - ${format(end)}, counted in calendar days in the tenant's time zone (${SEED_TENANT_TIME_ZONE}).`;
 };
 
 /**
@@ -438,7 +444,7 @@ test.describe("admin reporting screens", () => {
       page.getByRole("heading", { name: "Read-through" }).first()
     ).toBeVisible();
 
-    // The period is the 28 UTC days ending yesterday. What lies outside it —
+    // The period is the tenant's 28 days ending yesterday. What lies outside it —
     // a row dated tomorrow, a row dated 40 days back, both with figures that
     // would swamp these — is not in the totals, and neither is the Boundary
     // Tenant's episode.
