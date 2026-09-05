@@ -244,6 +244,32 @@ func TestTenantAdminInvitationEmailUsesTheTenantDefaultLocale(t *testing.T) {
 	}
 }
 
+func TestTenantAdminInvitationEmailLogsAnExpiredInvitation(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "INVLOG000001", "outbox-log.example.com", "Outbox Log Tenant")
+	encryptor := newInvitationEncryptor(t)
+	seedPlatformSMTPConfig(t, pg, encryptor)
+	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-expired")
+
+	var payload outbox.TenantAdminInvitationPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		t.Fatalf("decode invitation payload: %v", err)
+	}
+	if _, err := pg.DB.ExecContext(context.Background(), `UPDATE tenant_admin_invitations SET expires_at = NOW() - INTERVAL '1 hour' WHERE id = $1`, payload.InvitationID); err != nil {
+		t.Fatalf("expire invitation: %v", err)
+	}
+
+	logger, logs := newAuthEmailDropLogger(t)
+	handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Logger: logger, Mailer: &recordingInvitationMailer{}, Renderer: &recordingInvitationRenderer{},
+	})
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	assertAuthEmailDropLog(t, logs, event, payload.InvitationID, "token_expired")
+}
+
 // A tenant naming a locale no catalog covers will not start rendering after a
 // retry, and mailing the invitee in another language is not the fallback: the
 // event fails permanently, for an operator to look at.

@@ -91,12 +91,22 @@ func NewReaderEmailVerificationEmailHandler(cfg EmailHandlerConfig) Handler {
 			TokenHash: auth.HashToken(payload.Token),
 		})
 		if errors.Is(err, sql.ErrNoRows) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_not_found")
 			return nil
 		}
 		if err != nil {
 			return fmt.Errorf("load reader email verification token: %w", err)
 		}
-		if verification.ID != tokenID || verification.UsedAt.Valid || !verification.ExpiresAt.After(time.Now()) {
+		if verification.ID != tokenID {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_id_mismatch")
+			return nil
+		}
+		if verification.UsedAt.Valid {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_used")
+			return nil
+		}
+		if !verification.ExpiresAt.After(time.Now()) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_expired")
 			return nil
 		}
 
@@ -162,12 +172,22 @@ func NewReaderEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handle
 			CurrentEmailTokenHash: auth.HashToken(payload.Token),
 		})
 		if errors.Is(err, sql.ErrNoRows) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_not_found")
 			return nil
 		}
 		if err != nil {
 			return fmt.Errorf("load reader email change token: %w", err)
 		}
-		if changeToken.ID != tokenID || changeToken.CompletedAt.Valid || !changeToken.ExpiresAt.After(time.Now()) {
+		if changeToken.ID != tokenID {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_id_mismatch")
+			return nil
+		}
+		if changeToken.CompletedAt.Valid {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_completed")
+			return nil
+		}
+		if !changeToken.ExpiresAt.After(time.Now()) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_expired")
 			return nil
 		}
 		recipient := changeToken.CurrentEmail
@@ -292,12 +312,22 @@ func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 			TokenHash: auth.HashToken(payload.Token),
 		})
 		if errors.Is(err, sql.ErrNoRows) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_not_found")
 			return nil
 		}
 		if err != nil {
 			return fmt.Errorf("load reader password reset token: %w", err)
 		}
-		if resetToken.ID != tokenID || resetToken.CompletedAt.Valid || !resetToken.ExpiresAt.After(time.Now()) {
+		if resetToken.ID != tokenID {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_id_mismatch")
+			return nil
+		}
+		if resetToken.CompletedAt.Valid {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_completed")
+			return nil
+		}
+		if !resetToken.ExpiresAt.After(time.Now()) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_expired")
 			return nil
 		}
 

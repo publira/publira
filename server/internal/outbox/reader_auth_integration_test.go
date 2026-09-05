@@ -222,8 +222,9 @@ func TestReaderEmailVerificationEmailSkipsASpentRequest(t *testing.T) {
 
 			renderer := &recordingReaderRenderer{}
 			mailer := &recordingReaderMailer{}
+			logger, logs := newAuthEmailDropLogger(t)
 			handler := outbox.NewReaderEmailVerificationEmailHandler(outbox.EmailHandlerConfig{
-				DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+				DB: pg.DB, Encryptor: encryptor, Logger: logger, Mailer: mailer, Renderer: renderer,
 			})
 			event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderEmailVerificationEmail,
 				outbox.ReaderEmailVerificationEmailPayload{TenantID: tenant.ID.String(), TokenID: tokenID.String(), Token: "verify-token"},
@@ -235,6 +236,11 @@ func TestReaderEmailVerificationEmailSkipsASpentRequest(t *testing.T) {
 			if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
 				t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
 			}
+			reason := "token_expired"
+			if tc.markUsed {
+				reason = "token_used"
+			}
+			assertAuthEmailDropLog(t, logs, event, tokenID.String(), reason)
 		})
 	}
 }

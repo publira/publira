@@ -1,8 +1,10 @@
 package outbox_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -87,6 +89,37 @@ func newPlatformOutboxEvent(t *testing.T, eventType string, payload any, idempot
 		IdempotencyKey: idempotencyKey,
 		Status:         outbox.StatusPending,
 		AvailableAt:    time.Now(),
+	}
+}
+
+func newAuthEmailDropLogger(t *testing.T) (*slog.Logger, *bytes.Buffer) {
+	t.Helper()
+
+	var logs bytes.Buffer
+	return slog.New(slog.NewJSONHandler(&logs, nil)), &logs
+}
+
+func assertAuthEmailDropLog(t *testing.T, logs *bytes.Buffer, event dbmodels.OutboxEvent, tokenID, reason string) {
+	t.Helper()
+
+	var record map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(logs.Bytes()), &record); err != nil {
+		t.Fatalf("decode drop log %q: %v", logs.String(), err)
+	}
+	if got := record["msg"]; got != "dropped auth email event" {
+		t.Errorf("msg = %v, want dropped auth email event", got)
+	}
+	if got := record["event_id"]; got != event.ID.String() {
+		t.Errorf("event_id = %v, want %s", got, event.ID)
+	}
+	if got := record["event_type"]; got != event.EventType {
+		t.Errorf("event_type = %v, want %s", got, event.EventType)
+	}
+	if got := record["token_id"]; got != tokenID {
+		t.Errorf("token_id = %v, want %s", got, tokenID)
+	}
+	if got := record["reason"]; got != reason {
+		t.Errorf("reason = %v, want %s", got, reason)
 	}
 }
 
@@ -213,6 +246,31 @@ func TestPlatformPasswordResetEmailSkipsASupersededRequest(t *testing.T) {
 	if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
 		t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
 	}
+}
+
+func TestPlatformPasswordResetEmailLogsAMismatchedTokenID(t *testing.T) {
+	pg, encryptor := newPlatformEmailEnv(t)
+	operator := seedPlatformOperator(t, pg, "PLATLOG00001", "operator@example.com")
+	seedPlatformPasswordResetToken(t, pg, operator.ID, "reset-token", time.Now().Add(time.Hour))
+	wantTokenID := uuid.Must(uuid.NewV7())
+
+	renderer := &recordingPlatformRenderer{}
+	mailer := &recordingPlatformMailer{}
+	logger, logs := newAuthEmailDropLogger(t)
+	handler := outbox.NewPlatformPasswordResetEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Logger: logger, Mailer: mailer, Renderer: renderer,
+	})
+	event := newPlatformOutboxEvent(t, outbox.EventTypePlatformPasswordResetEmail,
+		outbox.PlatformPasswordResetEmailPayload{TokenID: wantTokenID.String(), Token: "reset-token"},
+		"platform_password_reset_email:"+wantTokenID.String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
+		t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
+	}
+	assertAuthEmailDropLog(t, logs, event, wantTokenID.String(), "token_id_mismatch")
 }
 
 // A platform default locale no catalog covers will not start rendering after a
