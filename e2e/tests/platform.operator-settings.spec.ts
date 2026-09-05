@@ -29,6 +29,8 @@ const CONFIRM_EMAIL_PATH = "/confirm-email";
 
 const SETTINGS_PATHS = ["/settings/account", "/settings/email"] as const;
 
+const EMAIL_CHANGE_REQUESTED_MESSAGE =
+  "Confirmation emails were sent to both the current and new addresses. Open both links to finish the change.";
 const CHANGED_MESSAGE = "Your email address has been changed.";
 const PENDING_NEW_EMAIL_MESSAGE =
   "This confirmation is done. The change applies once the new email address is confirmed as well.";
@@ -100,9 +102,8 @@ const openConfirmation = (page: Page, token: string): Promise<unknown> =>
 /**
  * Wait until the request has actually issued a token.
  *
- * The platform account form does not render a success flash (`ActionForm`
- * defaults `showSuccess` off), so the row in the database is what reports
- * that the Action landed.
+ * Confirmation opens a token this suite read out of Mailpit, so the row has
+ * to exist before the mailed link is followed.
  */
 const waitForEmailChangeToken = async (newEmail: string): Promise<void> => {
   await expect.poll(() => emailChangeTokenCount(newEmail)).toBe("1");
@@ -195,6 +196,9 @@ test.describe("web-platform operator settings", () => {
       PLATFORM_OPERATOR_SETTINGS_OPERATOR.email,
       PLATFORM_OPERATOR_SETTINGS_EXPIRED_EMAIL
     );
+    await expect(page.getByRole("status")).toContainText(
+      EMAIL_CHANGE_REQUESTED_MESSAGE
+    );
     await waitForEmailChangeToken(PLATFORM_OPERATOR_SETTINGS_EXPIRED_EMAIL);
     const token = await confirmationTokenFor(
       PLATFORM_OPERATOR_SETTINGS_EXPIRED_EMAIL
@@ -226,6 +230,9 @@ test.describe("web-platform operator settings", () => {
       page,
       PLATFORM_OPERATOR_SETTINGS_OPERATOR.email,
       PLATFORM_OPERATOR_SETTINGS_NEW_EMAIL
+    );
+    await expect(page.getByRole("status")).toContainText(
+      EMAIL_CHANGE_REQUESTED_MESSAGE
     );
     await waitForEmailChangeToken(PLATFORM_OPERATOR_SETTINGS_NEW_EMAIL);
     const currentEmailToken = await confirmationTokenFor(

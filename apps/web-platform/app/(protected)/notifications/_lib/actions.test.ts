@@ -62,7 +62,7 @@ describe("notification actions", () => {
       formData({ notification_id: notificationId })
     );
 
-    expect(result).toEqual({ message: "Marked as read.", ok: true });
+    expect(result).toEqual({ ok: true });
     expect(mockMarkNotificationAsRead).toHaveBeenCalledWith(
       { notificationId },
       "en"
@@ -94,10 +94,7 @@ describe("notification actions", () => {
     const { markAllNotificationsAsReadAction } = await import("./actions");
     const result = await markAllNotificationsAsReadAction(null, formData({}));
 
-    expect(result).toEqual({
-      message: "Marked all notifications as read.",
-      ok: true,
-    });
+    expect(result).toEqual({ ok: true });
     expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith("en");
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:notifications");
   });
