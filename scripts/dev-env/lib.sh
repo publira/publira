@@ -128,30 +128,100 @@ dev_env_random_secret() {
   openssl rand -base64 48 | tr -d '\n'
 }
 
+# Prints the host:port of a URL such as postgres://user:pass@host:5432/db?x,
+# redis://host:6379/1, or http://host:9000. A URL without a port gets the
+# default passed as the second argument; a URL without a host, or with a port
+# that is empty or not a number in 1-65535, is rejected so that a malformed
+# value fails here rather than in every psql and server start that follows.
+dev_env_url_authority() {
+  local url="$1" default_port="$2" authority host port
+  authority="${url#*://}"
+  authority="${authority%%/*}"
+  authority="${authority%%\?*}"
+  authority="${authority##*@}"
+  if [[ "${authority}" == *:* ]]; then
+    host="${authority%:*}"
+    port="${authority##*:}"
+    [[ "${port}" =~ ^[0-9]{1,5}$ ]] || return 1
+    ((port >= 1 && port <= 65535)) || return 1
+  else
+    host="${authority}"
+    port="${default_port}"
+  fi
+  [[ -n "${host}" ]] || return 1
+  printf '%s:%s\n' "${host}" "${port}"
+}
+
+# The dependency services are reachable by their Compose service name inside
+# the Dev Container and on loopback on the host, where compose.yaml publishes
+# them. The shared development variables already carry the right host for the
+# place a shell runs in (the Dev Container exports the service names, the host
+# instructions in README.md export loopback), so a profile takes its hosts
+# from them and falls back to the service names when none is exported.
+dev_env_postgres_authority() {
+  if [[ -n "${PUBLIRA_DB_URL:-}" ]]; then
+    dev_env_url_authority "${PUBLIRA_DB_URL}" 5432 \
+      || dev_env_die "cannot derive the PostgreSQL host from PUBLIRA_DB_URL: ${PUBLIRA_DB_URL}"
+    return 0
+  fi
+  printf 'db:5432\n'
+}
+
+dev_env_redis_authority() {
+  if [[ -n "${PUBLIRA_REDIS_URL:-}" ]]; then
+    dev_env_url_authority "${PUBLIRA_REDIS_URL}" 6379 \
+      || dev_env_die "cannot derive the Valkey host from PUBLIRA_REDIS_URL: ${PUBLIRA_REDIS_URL}"
+    return 0
+  fi
+  printf 'redis:6379\n'
+}
+
+dev_env_s3_endpoint() {
+  printf '%s\n' "${PUBLIRA_S3_ENDPOINT:-http://rustfs:9000}"
+}
+
+# Administrator connection for creating and dropping a profile's database.
+# A loaded profile's PUBLIRA_DB_URL is the superuser URL of that database, so
+# the maintenance database on the same server is reached by swapping the path;
+# PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL overrides it for a server with other
+# credentials.
+dev_env_postgres_admin_url() {
+  if [[ -n "${PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL:-}" ]]; then
+    printf '%s\n' "${PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL}"
+    return 0
+  fi
+  local authority
+  authority="$(dev_env_url_authority "${PUBLIRA_DB_URL}" 5432)" \
+    || dev_env_die "cannot derive the PostgreSQL host from PUBLIRA_DB_URL: ${PUBLIRA_DB_URL}"
+  printf 'postgres://postgres:password@%s/postgres?sslmode=disable\n' "${authority}"
+}
+
 dev_env_write_profile() {
   local name="$1"
   local slot="$2"
-  local profile_path tmp_path port_base
+  local profile_path tmp_path port_base postgres redis
   profile_path="$(dev_env_profile_path "${name}")"
   tmp_path="${profile_path}.tmp.$$"
   port_base=$((13000 + slot * 100))
+  postgres="$(dev_env_postgres_authority)"
+  redis="$(dev_env_redis_authority)"
 
   umask 077
   {
     printf 'DEV_ENV_NAME=%s\n' "${name}"
     printf 'DEV_ENV_SLOT=%s\n' "${slot}"
     printf 'DEV_ENV_OWNER_WORKTREE=%s\n' "${REPO_ROOT}"
-    printf 'PUBLIRA_DB_URL=postgres://postgres:password@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
-    printf 'PUBLIRA_PUBLIC_DB_URL=postgres://publira_public:publicpass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
-    printf 'PUBLIRA_ADMIN_DB_URL=postgres://publira_admin:adminpass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
-    printf 'PUBLIRA_PLATFORM_DB_URL=postgres://publira_platform:platformpass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
-    printf 'PUBLIRA_WORKER_DB_URL=postgres://postgres:password@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
-    printf 'PUBLIRA_CONTENT_STATS_DB_URL=postgres://publira_content_stats:contentstatspass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
-    printf 'PUBLIRA_IMAGE_DB_URL=postgres://publira_public:publicpass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
-    printf 'PUBLIRA_ADMIN_IMAGE_DB_URL=postgres://publira_admin:adminpass@db:5432/publira_%s?sslmode=disable\n' "${name//-/_}"
-    printf 'PUBLIRA_REDIS_URL=redis://redis:6379/%s\n' "${slot}"
+    printf 'PUBLIRA_DB_URL=postgres://postgres:password@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
+    printf 'PUBLIRA_PUBLIC_DB_URL=postgres://publira_public:publicpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
+    printf 'PUBLIRA_ADMIN_DB_URL=postgres://publira_admin:adminpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
+    printf 'PUBLIRA_PLATFORM_DB_URL=postgres://publira_platform:platformpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
+    printf 'PUBLIRA_WORKER_DB_URL=postgres://postgres:password@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
+    printf 'PUBLIRA_CONTENT_STATS_DB_URL=postgres://publira_content_stats:contentstatspass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
+    printf 'PUBLIRA_IMAGE_DB_URL=postgres://publira_public:publicpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
+    printf 'PUBLIRA_ADMIN_IMAGE_DB_URL=postgres://publira_admin:adminpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
+    printf 'PUBLIRA_REDIS_URL=redis://%s/%s\n' "${redis}" "${slot}"
     printf 'PUBLIRA_S3_BUCKET=publira-%s\n' "${name}"
-    printf 'PUBLIRA_S3_ENDPOINT=%s\n' "${PUBLIRA_S3_ENDPOINT:-http://rustfs:9000}"
+    printf 'PUBLIRA_S3_ENDPOINT=%s\n' "$(dev_env_s3_endpoint)"
     printf 'PUBLIRA_S3_FORCE_PATH_STYLE=%s\n' "${PUBLIRA_S3_FORCE_PATH_STYLE:-true}"
     printf 'PUBLIRA_COOKIE_SUFFIX=-%s\n' "${name}"
     printf 'PUBLIRA_AUTH_SECRET=%s\n' "$(dev_env_random_secret)"

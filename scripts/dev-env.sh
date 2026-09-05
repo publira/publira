@@ -49,7 +49,8 @@ init_profile() {
   local name="$1"
   dev_env_load_profile "${name}"
   local db_name="publira_${DEV_ENV_NAME//-/_}"
-  local admin_url="${PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL:-postgres://postgres:password@db:5432/postgres?sslmode=disable}"
+  local admin_url
+  admin_url="$(dev_env_postgres_admin_url)"
   if ! psql "${admin_url}" -tAc "SELECT 1 FROM pg_database WHERE datname = '${db_name}'" | grep -qx '1'; then
     psql "${admin_url}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${db_name}\""
   fi
@@ -206,7 +207,7 @@ destroy_profile() {
   read -r -p "Type ${name} to destroy its database, Valkey DB, and bucket: " confirmation
   [[ "${confirmation}" == "${name}" ]] || dev_env_die "confirmation did not match; nothing was destroyed"
   db_name="publira_${DEV_ENV_NAME//-/_}"
-  psql "${PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL:-postgres://postgres:password@db:5432/postgres?sslmode=disable}" \
+  psql "$(dev_env_postgres_admin_url)" \
     -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${db_name}\" WITH (FORCE)"
   redis-cli -u "${PUBLIRA_REDIS_URL}" FLUSHDB
   if [[ -n "${PUBLIRA_S3_ENDPOINT}" ]]; then
