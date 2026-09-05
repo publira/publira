@@ -81,7 +81,7 @@ Coefficients and thresholds live in `scripts/pr-size.ts`; its classification and
 
 The job holds `contents: read` and `pull-requests: write`, and it never checks out the head branch — `pull_request_target` resolves to the base commit, so the scorer that runs is the one that was reviewed and merged. A job's `permissions` block replaces the workflow's `permissions: {}` rather than adding to it, so the read the checkout needs has to be spelled out in the job. It reads per-file patches from `GET /repos/{owner}/{repo}/pulls/{number}/files` and pipes them to that scorer; where the API omits a patch (a binary or oversized file), it stands in one significant line for each addition and deletion the API counted.
 
-A pull request that already carries a `size/*` label is left alone and the run log says so. A label the author set — an agent following `skills/create-pr`, or a human who has judged the review load — wins over the mechanical score.
+A pull request that already carries a `size/*` label is left alone and the run log says so. A label the author set — an agent following `skills/create-pr`, or a human who has judged the review load — wins over the mechanical score. The job asks `GET /repos/{owner}/{repo}/pulls/{number}` for the pull request's current labels rather than reading the list the event payload carries: `gh pr create --label` applies its label in a request of its own once the pull request exists, so the payload can still describe it as unlabelled and the label would be scored over.
 
 ### AI assistance
 
@@ -90,6 +90,8 @@ Every commit written with the help of a coding agent carries an `Assisted-by:` t
 The job reads the commit messages from `GET /repos/{owner}/{repo}/pulls/{number}/commits` and treats the pull request as agent-assisted when any of them carries an `Assisted-by:` trailer, matched case-insensitively as Git itself matches a trailer token. It holds `pull-requests: write` and nothing else, and checks nothing out.
 
 It runs on `synchronize` as well as `opened` and `ready_for_review`, because the label tracks the commits rather than the moment review was requested: an agent commit pushed onto a hand-written branch has to be caught. For the same reason the trailers are the only source of truth, so the job removes the label as readily as it adds it — a branch that lost its agent commits to a force-push loses the label on the next event.
+
+It reads the current labels through the API for the same reason `Label review size` does, and it needs the fresh read more: deciding from a stale list can send a removal for a label that is not on the pull request, which answers `404`. A removal that races someone doing it by hand is tolerated, since it has produced the state the job was asking for.
 
 The label discloses and nothing more. It fails no check and blocks no merge, and there is one label rather than one per agent: the trailer already records the agent and the model, and a label per tool would multiply with every tool anyone uses.
 

@@ -53,10 +53,20 @@ jobs:
             const { owner, repo } = context.repo;
             const pull = context.payload.pull_request;
 
+            // Not `pull.labels`: that list is a snapshot of the instant the
+            // event fired, and `gh pr create --label` applies its label in a
+            // second request a moment after the pull request exists, so the
+            // payload can still read as unlabelled. Ask for the current one.
+            const { data: latest } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: pull.number,
+            });
+
             // A label the author set — an agent following skills/create-pr, or
             // a human who has judged the review load — wins over the
             // mechanical score.
-            const existing = pull.labels
+            const existing = latest.labels
               .map((label) => label.name)
               .find((name) => name.startsWith('size/'));
             if (existing) {
@@ -146,7 +156,17 @@ jobs:
             // to as well: `assisted-by:` is the same disclosure.
             const trailer = /^assisted-by:[ \t]*\S/im;
             const assisted = commits.some(({ commit }) => trailer.test(commit.message));
-            const labelled = pull.labels.some((label) => label.name === LABEL);
+
+            // Not `pull.labels`, for the reason `Label review size` re-reads
+            // them too: a list captured when the event fired can disagree with
+            // the pull request by the time the job runs, and here the
+            // disagreement asks the API to remove a label that is not there.
+            const { data: latest } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: pull.number,
+            });
+            const labelled = latest.labels.some((label) => label.name === LABEL);
 
             if (assisted === labelled) {
               core.info(`#${pull.number} already reads as ${assisted ? '' : 'not '}AI-assisted`);
@@ -165,9 +185,19 @@ jobs:
 
             // The trailer is the only source of truth: a branch that lost its
             // agent commits to a force-push loses the label with them.
-            await github.rest.issues.removeLabel({
-              ...context.repo,
-              issue_number: pull.number,
-              name: LABEL,
-            });
+            try {
+              await github.rest.issues.removeLabel({
+                ...context.repo,
+                issue_number: pull.number,
+                name: LABEL,
+              });
+            } catch (error) {
+              // Someone taking the label off between the read above and this
+              // call has produced the state being asked for.
+              if (error.status !== 404) {
+                throw error;
+              }
+              core.info(`${LABEL} was already gone from #${pull.number}`);
+              return;
+            }
             core.info(`Removed ${LABEL} from #${pull.number}`);
