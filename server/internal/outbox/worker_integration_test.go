@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -156,7 +157,12 @@ func TestWorkerRecoversStaleProcessing(t *testing.T) {
 	}
 
 	startTestWorker(t, pg.DB, outbox.Config{StaleProcessing: 50 * time.Millisecond})
-	waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
+	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
+	// An event whose payload holds no secret pays nothing for someone else's
+	// crash: the reclaim leaves its retry budget alone.
+	if got.Attempts != 0 {
+		t.Fatalf("attempts = %d, want 0", got.Attempts)
+	}
 }
 
 func TestWorkerKeepsNonAuthTokenWhenDone(t *testing.T) {
@@ -343,4 +349,65 @@ func waitStatus(
 	}
 	t.Fatalf("event %s status = %q, want %q (attempts=%d last_error=%q)", id, last.Status, want, last.Attempts, last.LastError.String)
 	return last
+}
+
+// A worker that dies between claiming an auth-mail event and finishing it
+// leaves the raw token in payload with no failure recorded. The reclaim is
+// what ends that: it charges the retry budget, and the reclaim that exhausts
+// it marks the row dead and drops the token.
+func TestWorkerStaleReclaimBoundsAuthMailToken(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXWK001", "outbox-worker.example.com", "Outbox Worker Tenant")
+	queries := dbmodels.New(pg.DB)
+	const rawToken = "raw-stale-auth-token"
+	body, err := json.Marshal(map[string]any{
+		"tenant_id":     tenant.ID.String(),
+		"invitation_id": uuid.Must(uuid.NewV7()).String(),
+		"token":         rawToken,
+	})
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	event, err := queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		EventType:      "tenant_admin_invitation_email",
+		Payload:        body,
+		IdempotencyKey: "test:stale-auth",
+		AvailableAt:    time.Now().UTC().Add(-time.Second),
+	})
+	if err != nil {
+		t.Fatalf("InsertOutboxEvent: %v", err)
+	}
+
+	if _, err := pg.DB.ExecContext(ctx, `
+		UPDATE outbox_events
+		SET status = 'processing', updated_at = NOW() - interval '1 minute'
+		WHERE id = $1
+	`, event.ID); err != nil {
+		t.Fatalf("stick processing: %v", err)
+	}
+
+	// One attempt of budget, so the first reclaim is the one that exhausts it.
+	w := startTestWorker(t, pg.DB, outbox.Config{MaxAttempts: 1, StaleProcessing: 50 * time.Millisecond})
+	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDead)
+	if got.Attempts != 1 {
+		t.Fatalf("attempts = %d, want 1", got.Attempts)
+	}
+	// The event never reached a handler, so only the reclaim can have killed
+	// it; an unknown-event-type death would say so instead.
+	if !strings.Contains(got.LastError.String, "reclaimed from processing") {
+		t.Fatalf("last_error = %q, want the stale reclaim reason", got.LastError.String)
+	}
+	if strings.Contains(string(got.Payload), rawToken) {
+		t.Fatalf("payload still contains the raw token: %s", got.Payload)
+	}
+	if w.Metrics().Dead.Load() < 1 {
+		t.Fatalf("dead metric = %d, want at least 1", w.Metrics().Dead.Load())
+	}
 }

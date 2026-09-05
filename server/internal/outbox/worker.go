@@ -289,19 +289,13 @@ func (w *Worker) drain(ctx context.Context) error {
 
 	qtx := w.queries.WithTx(tx)
 
+	var reclaimed []dbmodels.OutboxEvent
 	if w.cfg.StaleProcessing > 0 {
-		staleBefore := time.Now().UTC().Add(-w.cfg.StaleProcessing)
-		recovered, recErr := qtx.RecoverStaleProcessingOutboxEvents(ctx, staleBefore)
-		if recErr != nil {
-			span.RecordError(recErr)
+		reclaimed, err = w.recoverStale(ctx, qtx)
+		if err != nil {
+			span.RecordError(err)
 			span.SetStatus(codes.Error, "recover")
-			return recErr
-		}
-		if len(recovered) > 0 {
-			w.cfg.Logger.InfoContext(ctx, "recovered stale processing outbox events",
-				"count", len(recovered),
-				"stale_before", staleBefore,
-			)
+			return err
 		}
 	}
 
@@ -312,7 +306,13 @@ func (w *Worker) drain(ctx context.Context) error {
 		return err
 	}
 	if len(events) == 0 {
-		return tx.Commit()
+		if err := tx.Commit(); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "commit")
+			return err
+		}
+		w.reportReclaimed(ctx, reclaimed)
+		return nil
 	}
 
 	enqueued := make([]dbmodels.OutboxEvent, 0, len(events))
@@ -346,6 +346,7 @@ func (w *Worker) drain(ctx context.Context) error {
 		return err
 	}
 
+	w.reportReclaimed(ctx, reclaimed)
 	for _, event := range enqueued {
 		w.metrics.recordClaimed(ctx, event.EventType)
 		attrs := []any{
@@ -361,6 +362,61 @@ func (w *Worker) drain(ctx context.Context) error {
 	}
 	span.SetAttributes(attribute.Int("outbox.claimed", len(enqueued)))
 	return nil
+}
+
+// recoverStale re-queues rows a dead worker left in processing and returns the
+// auth-mail rows it touched. Those go through their own statement: a crash
+// records no failure, so without charging the reclaim to the retry budget an
+// event whose worker dies on every attempt would keep its raw token in payload
+// for as long as the crash loop lasts. The reclaim that exhausts MaxAttempts
+// marks the row dead and strips the token, which bounds the plaintext window at
+// MaxAttempts times StaleProcessing.
+func (w *Worker) recoverStale(ctx context.Context, qtx *dbmodels.Queries) ([]dbmodels.OutboxEvent, error) {
+	staleBefore := time.Now().UTC().Add(-w.cfg.StaleProcessing)
+
+	recovered, err := qtx.RecoverStaleProcessingOutboxEvents(ctx, staleBefore)
+	if err != nil {
+		return nil, err
+	}
+	if len(recovered) > 0 {
+		w.cfg.Logger.InfoContext(ctx, "recovered stale processing outbox events",
+			"count", len(recovered),
+			"stale_before", staleBefore,
+		)
+	}
+
+	authMail, err := qtx.RecoverStaleProcessingAuthMailOutboxEvents(ctx, dbmodels.RecoverStaleProcessingAuthMailOutboxEventsParams{
+		MaxAttempts: int32(w.cfg.MaxAttempts),
+		LastError: sql.NullString{
+			String: fmt.Sprintf("reclaimed from processing after a stall of at least %s", w.cfg.StaleProcessing),
+			Valid:  true,
+		},
+		StaleBefore: staleBefore,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return authMail, nil
+}
+
+// reportReclaimed logs the auth-mail rows the reclaim charged and counts the
+// ones it killed. It runs after the drain transaction commits, so a rolled-back
+// drain does not report deaths that never happened.
+func (w *Worker) reportReclaimed(ctx context.Context, reclaimed []dbmodels.OutboxEvent) {
+	for _, event := range reclaimed {
+		attrs := []any{
+			"event_id", event.ID,
+			"event_type", event.EventType,
+			"idempotency_key", event.IdempotencyKey,
+			"attempts", event.Attempts,
+		}
+		if event.Status != StatusDead {
+			w.cfg.Logger.InfoContext(ctx, "recovered stale processing auth mail outbox event", attrs...)
+			continue
+		}
+		w.metrics.recordDead(ctx, event.EventType)
+		w.cfg.Logger.ErrorContext(ctx, "outbox event dead; stale reclaim exhausted the retry budget", attrs...)
+	}
 }
 
 func (w *Worker) process(ctx context.Context, eventID uuid.UUID) error {
