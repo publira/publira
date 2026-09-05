@@ -19,7 +19,7 @@ jobs:
   close-completed-epics:
     name: Close completed epics
     if: github.event_name != 'issues' || github.event.action == 'closed'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     # Close the parent epic and post the completion comment.
     permissions:
@@ -156,7 +156,7 @@ jobs:
   label-area:
     name: Label area from issue form
     if: github.event_name == 'issues' && github.event.action == 'opened'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       issues: write

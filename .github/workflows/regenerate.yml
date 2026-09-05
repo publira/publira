@@ -31,7 +31,7 @@ jobs:
     # a stacked branch would only ever stack on itself.
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.event.pull_request.head.ref, 'regen/')
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
