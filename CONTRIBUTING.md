@@ -111,17 +111,17 @@ Coding agents use [`skills/dev-env-profile`](skills/dev-env-profile/SKILL.md) wh
 
 ## Verifying a change
 
-Run the commands that match the area you changed, from the repository root. They are the same commands CI runs, and each area's guide explains them in full.
+Run the commands that match the area you changed, from the repository root. They are the same commands CI runs.
 
-| Area | Commands | Guide |
-| --- | --- | --- |
-| `apps/`, `packages/`, `locales/`, `scripts/*.ts` | `pnpm preflight` (locale catalog, `typegen`, `typecheck`, `check`, `test`, `test:scripts`) | [`apps/AGENTS.md`](apps/AGENTS.md) |
-| `server/` | `task server:lint`, `task server:test-short`, and `task server:test` before finishing (it needs Docker for Testcontainers); `task server:build` when `cmd/` changes | [`server/AGENTS.md`](server/AGENTS.md) |
-| `proto/`, `db/migrations/`, `db/query/`, `sqlc.yaml`, `buf.gen.yaml` | `task gen`, then `sqlc diff` must be clean, then the `server/` commands again; commit the regenerated output | [`server/AGENTS.md`](server/AGENTS.md), [`db/AGENTS.md`](db/AGENTS.md), [`proto/README.md`](proto/README.md) |
-| `db/migrations/` | `task db:reset`; the history is append-only, so fix a mistake with a new migration rather than by editing one | [`db/AGENTS.md`](db/AGENTS.md) |
-| `mobile/` | `task mobile:check` | [`mobile/README.md`](mobile/README.md) |
-| Behaviour that spans the web apps and the API | `task e2e` | [`e2e/README.md`](e2e/README.md) |
-| Everything | `pnpm check` formats and lints every file type oxfmt supports, Markdown included | [`AGENTS.md`](AGENTS.md) |
+| Area | Commands |
+| --- | --- |
+| `apps/`, `packages/`, `locales/`, `scripts/*.ts` | `pnpm preflight` (locale catalog, `typegen`, `typecheck`, `check`, `test`, `test:scripts`) |
+| `server/` | `task server:lint`, `task server:test-short`, and `task server:test` before finishing (it needs Docker for Testcontainers); `task server:build` when `cmd/` changes |
+| `proto/`, `db/migrations/`, `db/query/`, `sqlc.yaml`, `buf.gen.yaml` | `task gen`, then `sqlc diff` must be clean, then the `server/` commands again; commit the regenerated output |
+| `db/migrations/` | `task db:reset`; the history is append-only, so fix a mistake with a new migration rather than by editing one |
+| `mobile/` | `task mobile:check` |
+| Behaviour that spans the web apps and the API | `task e2e` |
+| Everything | `pnpm check` formats and lints every file type oxfmt supports, Markdown included |
 
 When a CI run is red, [`.github/workflows/README.md`](.github/workflows/README.md) lists which job checks what and the local command that reproduces each one.
 
