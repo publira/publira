@@ -292,4 +292,123 @@ describe("Redis handlers integration", () => {
     const missed = await handler.get(key, { kind: "IMAGE" });
     expect(missed).toBeNull();
   });
+
+  it("incremental handler indexes a value written after revalidateTag", async ({
+    skip,
+  }) => {
+    if (!available) {
+      skip();
+    }
+
+    const handler = new RedisIncrementalCacheHandler(
+      { _requestHeaders: {}, revalidatedTags: [] },
+      { keyPrefix, redisUrl }
+    );
+    const tag = "tenant:t1:image-index";
+    const cacheKey = "img-index-after";
+
+    await handler.revalidateTag(tag);
+    handler.resetRequestCache();
+    await handler.set(
+      cacheKey,
+      {
+        buffer: Buffer.from([0xff, 0xd8, 0xff]),
+        etag: "e-after",
+        extension: "jpg",
+        kind: "IMAGE",
+        revalidate: 120,
+        upstreamEtag: "u-after",
+      },
+      { tags: [tag] }
+    );
+
+    const hit = await handler.get(cacheKey, { kind: "IMAGE" });
+    expect(hit).not.toBeNull();
+
+    const client = await getRedisClient({
+      defaultTtlSeconds: 60,
+      keyPrefix,
+      maxTtlSeconds: 3600,
+      redisUrl,
+      timeoutMs: 1000,
+    });
+    if (!client) {
+      throw new Error("expected a Redis client");
+    }
+    const members = await client.sMembers(`${keyPrefix}inc:tagkeys:${tag}`);
+    expect(members).toContain(cacheKey);
+  });
+
+  it("incremental handler does not drop a concurrent set from the tag key set", async ({
+    skip,
+  }) => {
+    if (!available) {
+      skip();
+    }
+
+    const client = await getRedisClient({
+      defaultTtlSeconds: 60,
+      keyPrefix,
+      maxTtlSeconds: 3600,
+      redisUrl,
+      timeoutMs: 1000,
+    });
+    if (!client) {
+      throw new Error("expected a Redis client");
+    }
+
+    // Each pass is a fresh tag so leftover keys cannot mask a lost SADD.
+    await Promise.all(
+      Array.from({ length: 20 }, async (_, pass) => {
+        const handler = new RedisIncrementalCacheHandler(
+          { _requestHeaders: {}, revalidatedTags: [] },
+          { keyPrefix, redisUrl }
+        );
+        const tag = `tenant:t1:image-race-${pass}`;
+        const oldKey = `img-race-old-${pass}`;
+        const newKey = `img-race-new-${pass}`;
+
+        await handler.set(
+          oldKey,
+          {
+            buffer: Buffer.from([0xff, 0xd8, 0xff]),
+            etag: `old-${pass}`,
+            extension: "jpg",
+            kind: "IMAGE",
+            revalidate: 120,
+            upstreamEtag: `u-old-${pass}`,
+          },
+          { tags: [tag] }
+        );
+
+        await Promise.all([
+          handler.revalidateTag(tag),
+          handler.set(
+            newKey,
+            {
+              buffer: Buffer.from([0xff, 0xd9, 0xff]),
+              etag: `new-${pass}`,
+              extension: "jpg",
+              kind: "IMAGE",
+              revalidate: 120,
+              upstreamEtag: `u-new-${pass}`,
+            },
+            { tags: [tag] }
+          ),
+        ]);
+
+        handler.resetRequestCache();
+        const oldHit = await handler.get(oldKey, { kind: "IMAGE" });
+        expect(oldHit).toBeNull();
+
+        const stored = await client.get(`${keyPrefix}inc:v:${newKey}`);
+        const members = await client.sMembers(`${keyPrefix}inc:tagkeys:${tag}`);
+        if (stored) {
+          expect(members).toContain(newKey);
+        } else {
+          expect(members).not.toContain(newKey);
+        }
+      })
+    );
+  });
 });
