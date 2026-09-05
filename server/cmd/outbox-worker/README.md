@@ -54,7 +54,7 @@ In production the connection must use `publira_outbox`, the BYPASSRLS login the 
 - `PUBLIRA_OUTBOX_DRAIN_INTERVAL` (optional, a Go duration. Default `2s`)
 - `PUBLIRA_OUTBOX_CLAIM_LIMIT` (optional, the maximum number of rows claimed per drain. Default `100`)
 - `PUBLIRA_OUTBOX_MAX_ATTEMPTS` (optional, default `10`. The failure count at which an entry becomes `dead`)
-- `PUBLIRA_OUTBOX_STALE_PROCESSING` (optional, a Go duration. Default `15m`. A `processing` row older than this is returned to `pending`)
+- `PUBLIRA_OUTBOX_STALE_PROCESSING` (optional, a Go duration. Default `15m`. A `processing` row older than this is returned to `pending`. For the auth mail above the reclaim also counts as a failed attempt, so this duration times `PUBLIRA_OUTBOX_MAX_ATTEMPTS` bounds how long a crash loop can keep the row's raw token)
 - `PUBLIRA_OUTBOX_MAX_WORKERS` (optional, the concurrency of River's default queue. Default `8`)
 - `PUBLIRA_EMAIL_RENDERER_URL` (optional, the URL of the email-renderer that renders the emails above. `http://localhost:8080` when unset)
 - `PUBLIRA_PLATFORM_APP_URL` (optional, the base URL the Platform Console links in the platform auth mail are built from. `http://platform.localhost:3080` when unset)
@@ -83,4 +83,4 @@ They are no-ops when there is no MeterProvider.
 1. Claim due `pending` rows with `FOR UPDATE SKIP LOCKED` and enqueue the River jobs in the same transaction
 2. The job runs the handler: `done` on success, or back to `pending` with exponential backoff on failure
 3. `dead` on reaching the maximum attempt count or on a permanent error
-4. After a process restart, unprocessed `pending` rows and stale `processing` rows are picked up again
+4. After a process restart, unprocessed `pending` rows and stale `processing` rows are picked up again. A crash records no failure, so for the auth mail above the reclaim spends an attempt: a worker dying on every attempt eventually reaches `dead`, where the raw token is dropped from `payload`

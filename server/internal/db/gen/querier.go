@@ -300,8 +300,10 @@ type Querier interface {
 	// as a hash. Terminal updates drop that key on the event types below
 	// so a processed row does not keep a usable secret. Other event types
 	// keep payload.token, if they have one. Keep this list in sync with
-	// MarkOutboxEventDone, MarkOutboxEventDead, and the terminal-token
-	// data migration:
+	// MarkOutboxEventDone, MarkOutboxEventDead, both halves of the stale
+	// reclaim (RecoverStaleProcessingOutboxEvents excludes the list,
+	// RecoverStaleProcessingAuthMailOutboxEvents selects it), and the
+	// terminal-token data migration:
 	//   admin_email_change_confirmation_email
 	//   admin_password_reset_email
 	//   platform_email_change_confirmation_email
@@ -739,9 +741,11 @@ type Querier interface {
 	// dropped and the rest of the payload stays for diagnosis. Other
 	// event types are left alone. The plaintext window is the
 	// pending/processing lifetime. Retries keep the token so a later
-	// attempt can still send the mail. While the worker is running that
-	// window is the retry budget (ten attempts, delays doubling from 1s
-	// and capped at 1h).
+	// attempt can still send the mail, so that window is the retry budget
+	// (ten attempts, delays doubling from 1s and capped at 1h). A worker
+	// that dies mid-attempt records no failure, so
+	// RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
+	// the same budget and every window ends here.
 	MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventRetryParams) (OutboxEvent, error)
 	MarkPlatformNotificationAsRead(ctx context.Context, arg MarkPlatformNotificationAsReadParams) (PlatformNotificationRead, error)
@@ -824,8 +828,20 @@ type Querier interface {
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
 	RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMfaTotpFailureParams) (UserMfaTotp, error)
+	// The same reclaim for the events whose payload holds a raw token. A crash
+	// records no failure, so an event whose worker dies on every attempt would
+	// be re-queued forever and never reach the terminal update that drops the
+	// token. The reclaim therefore counts as a failed attempt, and the one that
+	// exhausts max_attempts marks the row dead and strips the token exactly as
+	// MarkOutboxEventDead does. The plaintext window is bounded by max_attempts
+	// reclaims of the stale-processing grace period.
+	RecoverStaleProcessingAuthMailOutboxEvents(ctx context.Context, arg RecoverStaleProcessingAuthMailOutboxEventsParams) ([]OutboxEvent, error)
 	// Re-queue rows left in processing after a worker crash. updated_at is the
 	// claim time; callers pass now minus the stale-processing grace period.
+	// Auth-mail types are excluded here and reclaimed by
+	// RecoverStaleProcessingAuthMailOutboxEvents instead: they are the ones
+	// holding a secret, and only they pay for the reclaim. A crash loop costs
+	// these rows no retry budget.
 	RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error)
 	ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error
 	// A restored comment returns to the state the removal interrupted, which
