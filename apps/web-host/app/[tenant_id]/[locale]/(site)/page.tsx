@@ -2,7 +2,7 @@ import { getMessage } from "@publira/i18n";
 import { CollectionIcon, ImageIcon } from "@publira/icons";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatDate } from "@publira/utils";
+import { formatDate, formatList } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -231,7 +231,7 @@ const RecommendedSeriesSection = async () => {
             </h3>
             {series.creatorNames.length > 0 && (
               <p className="mb-2 text-sm text-muted-foreground">
-                {series.creatorNames.join("、")}
+                {formatList(series.creatorNames, { locale })}
               </p>
             )}
             {series.synopsis && (
@@ -371,7 +371,7 @@ const UpdatedSeriesSection = async () => {
               </h3>
               {item.creatorNames.length > 0 && (
                 <p className="mb-3 text-sm text-muted-foreground">
-                  {item.creatorNames.join("、")}
+                  {formatList(item.creatorNames, { locale })}
                 </p>
               )}
               <p className="mb-2 text-xs text-muted-foreground">

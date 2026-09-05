@@ -2,6 +2,7 @@ import { getMessage } from "@publira/i18n";
 import { CollectionIcon } from "@publira/icons";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { formatList } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -211,7 +212,7 @@ const SeriesListData = async ({
               </h2>
               {item.creatorNames.length > 0 && (
                 <p className="text-sm text-muted-foreground">
-                  {item.creatorNames.join("、")}
+                  {formatList(item.creatorNames, { locale })}
                 </p>
               )}
               {item.labelName && (
