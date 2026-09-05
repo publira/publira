@@ -33,18 +33,12 @@ const memberField = (column: "email" | "name"): string =>
     `SELECT ${column} FROM users WHERE public_id = '${MEMBER_SETTINGS_MEMBER.publicId}';`
   );
 
-/**
- * Every `/settings` Server Action reports itself by redirecting back with
- * `status` and `message` in the query. The rendered flash is not asserted:
- * `settings/layout.tsx` draws it from a `searchParams` prop the App Router
- * never hands a layout, so nothing reaches the screen — see
- * https://github.com/publira/publira/issues/1489.
- */
-const expectFlashRedirect = (
+const expectFlash = (
   page: Page,
-  status: "error" | "success"
+  role: "alert" | "status",
+  message: string
 ): Promise<void> =>
-  page.waitForURL(new RegExp(`[?&]status=${status}(?:&|$)`, "u"));
+  expect(page.getByRole(role, { name: message })).toBeVisible();
 
 const emailChangeTokenCount = (): string =>
   querySql(`
@@ -107,7 +101,7 @@ test.describe("web-host member settings", () => {
     await nameField.fill(RENAMED_DISPLAY_NAME);
     await page.getByRole("button", { name: "Save" }).click();
 
-    await expectFlashRedirect(page, "success");
+    await expectFlash(page, "status", "Your profile has been updated.");
 
     await page.goto(hostUrl("/settings"));
     await expect(page.getByLabel("Display name")).toHaveValue(
@@ -129,7 +123,11 @@ test.describe("web-host member settings", () => {
     await emailNotifications.uncheck();
     await page.getByRole("button", { name: "Save" }).click();
 
-    await expectFlashRedirect(page, "success");
+    await expectFlash(
+      page,
+      "status",
+      "Your notification settings have been updated."
+    );
 
     await page.goto(hostUrl("/settings/notifications"));
     await expect(page.getByRole("checkbox")).not.toBeChecked();
@@ -155,7 +153,11 @@ test.describe("web-host member settings", () => {
       .getByRole("button", { name: "Send confirmation emails" })
       .click();
 
-    await expectFlashRedirect(page, "error");
+    await expectFlash(
+      page,
+      "alert",
+      "Could not request the email change. Please check what you entered."
+    );
     await expect(page).toHaveURL(/\/settings\/security/u);
     expect(memberField("email")).toBe(MEMBER_SETTINGS_MEMBER.email);
     expect(emailChangeTokenCount()).toBe("0");
