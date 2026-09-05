@@ -463,7 +463,7 @@ The shape a screen takes when its copy moves into the catalog. Worked example: `
 
 That fourth piece is why the chosen cookie is not `httpOnly`, and neither is the resolved one — the scripts and the error boundaries read both from `document.cookie`. `instant = false` is not an option here (see **Never use `instant = false`**).
 
-`global-not-found.tsx` is outside all of this in **all three apps**. It is a static page that never passes through a layout, and an unmatched URL carries neither a cookie the app has read nor a tenant whose saved default could word it, so its body cannot follow a locale either. So the locale is a decision the file states rather than resolves — `web-host` and `web-admin` name it once as a `NOT_FOUND_LOCALE` constant that both `lang` and the catalog lookups read — and it is `ja` because that is the language the copy is written in. Switching the attribute alone would only misreport the text below it.
+`global-not-found.tsx` is outside all of this in **all three apps**. It is a static page that never passes through a layout, and an unmatched URL carries neither a cookie the app has read nor a tenant whose saved default could word it, so its body cannot follow a locale either. So the locale is a decision the file states rather than resolves: each app names it once as a `NOT_FOUND_LOCALE` constant that both `lang` and the `sharedMessage` lookups read. Its copy comes from the shared catalog, which carries every locale, so the constant chooses a language rather than reporting one — it is `en`, the repository's default for a page with no reader-specific answer to give. Change it in one place or not at all: an attribute that disagrees with the lookups misreports the text below it.
 
 ### Switching
 

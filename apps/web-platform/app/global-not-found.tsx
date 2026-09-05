@@ -1,10 +1,12 @@
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { sharedMessage } from "@publira/i18n/catalog";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import ja from "../../../locales/ja.json";
-
 import "./globals.css";
+
+/** The one locale this document renders, named where `lang` is set from it. */
+const NOT_FOUND_LOCALE: Locale = "en";
 
 /**
  * App-wide 404 for URLs that match no route at all. Next.js skips the normal
@@ -16,35 +18,43 @@ import "./globals.css";
  * Requires `experimental.globalNotFound` in `next.config.ts`. Styles and brand
  * tokens are imported here because this file bypasses `app/layout.tsx`.
  *
- * `lang` stays `ja` rather than following the locale cookie the way the console
- * layout does. This document has no layout to resolve a locale in and renders
- * as a static page, so its copy cannot follow the cookie either — pointing the
- * attribute at `en` would only mislabel the Japanese text below.
+ * The locale is a constant rather than the cookie the console layout follows.
+ * This document has no layout to resolve a locale in and renders as a static
+ * page, so nothing here can name the reader's language. The copy comes from the
+ * shared catalog, which carries every locale, so the constant chooses a
+ * language rather than reporting one: `en` is the repository's default for a
+ * page that has no reader-specific answer to give.
  */
 export const metadata: Metadata = {
-  description: getMessage(ja, "platform.not_found.metadata_description"),
-  title: getMessage(ja, "platform.not_found.title"),
+  description: sharedMessage(
+    "platform.not_found.metadata_description",
+    NOT_FOUND_LOCALE
+  ),
+  title: sharedMessage("platform.not_found.title", NOT_FOUND_LOCALE),
 };
 
 const GlobalNotFound = () => (
-  <html lang="ja">
+  <html lang={NOT_FOUND_LOCALE}>
     <body className="min-h-dvh bg-background text-foreground antialiased">
       <main className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
         <p className="text-sm tracking-wide text-muted-foreground uppercase">
           404 Not Found
         </p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">
-          {getMessage(ja, "platform.not_found.title")}
+          {sharedMessage("platform.not_found.title", NOT_FOUND_LOCALE)}
         </h1>
         <p className="mt-4 text-muted-foreground">
-          {getMessage(ja, "platform.not_found.description")}
+          {sharedMessage("platform.not_found.description", NOT_FOUND_LOCALE)}
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
             className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground transition hover:bg-muted"
             href="/"
           >
-            {getMessage(ja, "platform.common.back_to_dashboard")}
+            {sharedMessage(
+              "platform.common.back_to_dashboard",
+              NOT_FOUND_LOCALE
+            )}
           </Link>
         </div>
       </main>
