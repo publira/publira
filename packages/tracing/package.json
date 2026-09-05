@@ -2,7 +2,7 @@
   "name": "@publira/tracing",
   "version": "0.1.0",
   "private": true,
-  "description": "Next.js アプリ共通の OpenTelemetry トレース登録 (instrumentation.ts 用)",
+  "description": "Shared OpenTelemetry trace registration for the Next.js apps (used from instrumentation.ts)",
   "files": [
     "dist"
   ],

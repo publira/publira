@@ -95,11 +95,11 @@ export const isUnauthenticatedError = (error: unknown): boolean =>
  * Let a rejected session leave a `lib/` mutation as a throw.
  *
  * Call it first in a `catch` that turns errors into an Action state message:
- * "セッションが無効です。再ログインしてください。" next to a form control is a
- * dead end, because the operator has no way to act on it from there. The Server
- * Action's `withPlatformSessionReauth()` turns the throw into the login redirect
- * instead. Every other code stays a message — a wrong password or a rejected
- * field must never log the operator out.
+ * "Your session is no longer valid. Please sign in again." next to a form
+ * control is a dead end, because the operator has no way to act on it from
+ * there. The Server Action's `withPlatformSessionReauth()` turns the throw into
+ * the login redirect instead. Every other code stays a message — a wrong
+ * password or a rejected field must never log the operator out.
  */
 export const rethrowUnauthenticatedRpcError = (error: unknown): void => {
   if (isUnauthenticatedRpcError(error)) {

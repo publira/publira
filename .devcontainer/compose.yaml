@@ -107,7 +107,7 @@ services:
       - "traefik.http.middlewares.strip-trace-context.headers.customrequestheaders.tracestate="
       - "traefik.http.middlewares.strip-trace-context.headers.customrequestheaders.baggage="
 
-      # web-host: テナント公開サイト (port 3000)
+      # web-host: the public tenant site (port 3000)
       - "traefik.http.routers.web-host.rule=PathPrefix(`/`)"
       - "traefik.http.routers.web-host.entrypoints=web"
       - "traefik.http.routers.web-host.priority=1"

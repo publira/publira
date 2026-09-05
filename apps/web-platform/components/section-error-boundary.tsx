@@ -8,7 +8,7 @@ import { SectionErrorCatch } from "./section-error-catch";
 
 interface SectionErrorBoundaryProps {
   children: ReactNode;
-  /** Names the section that is missing: 「テナント一覧を表示できませんでした」. */
+  /** Names the section that is missing: "Could not display tenants". */
   title: ReactNode;
 }
 

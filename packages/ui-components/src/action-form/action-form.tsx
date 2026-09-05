@@ -9,13 +9,13 @@ import type { ButtonProps } from "../button/button";
 import { FormMessage } from "../form-message";
 
 /**
- * Server Action が返す状態の型。
+ * The state a Server Action returns.
  *
- * - `null` — 初期状態（未送信）
- * - `{ ok: true, message }` — 成功
- * - `{ ok: false, message }` — エラー
+ * - `null` — the initial state, before the form is submitted
+ * - `{ ok: true, message }` — success
+ * - `{ ok: false, message }` — failure
  *
- * サーバーアクション側でも型をインポートして使える。
+ * The Server Action can import the type too.
  *
  * ```ts
  * // _lib/actions.ts
@@ -65,9 +65,10 @@ export const ActionFormSubmit = ({
 };
 
 /**
- * `useActionState` をカプセル化したフォームコンポーネント。
+ * A form component that encapsulates `useActionState`.
  *
- * **自動モード** — `children` に ReactNode を渡すだけでエラー表示と送信ボタンを自動管理:
+ * **Automatic mode** — pass a ReactNode as `children` and the error message and
+ * the submit button are managed for you:
  *
  * ```tsx
  * <ActionForm
@@ -79,7 +80,7 @@ export const ActionFormSubmit = ({
  * </ActionForm>
  * ```
  *
- * **レンダー関数モード** — ボタン配置やメッセージ表示をカスタマイズ:
+ * **Render-function mode** — place the button and the message yourself:
  *
  * ```tsx
  * <ActionForm action={myAction}>

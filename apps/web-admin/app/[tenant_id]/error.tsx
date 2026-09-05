@@ -28,7 +28,7 @@ import { ErrorScreen } from "#components/error-screen";
  * production build was measured the same way an admin API outage
  * exercises it — `(protected)/layout.tsx` reads session and tenant, so the
  * outage fails that layout and this screen answers a direct hit with HTTP 200,
- * and 再試行 recovers once the API is back
+ * and Retry recovers once the API is back
  * (`e2e/tests/admin.error-boundary.spec.ts`). The limit is the one
  * `(protected)/error.tsx` records: a throw in the first synchronous pass, before
  * the static shell is flushed, aborts the response as a bare 500 that no

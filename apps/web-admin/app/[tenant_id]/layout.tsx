@@ -42,8 +42,8 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const messages = await loadAdminMessages(locale);
 
   // `getTenantName` degrades to `null` when the public API is unavailable, so
-  // an outage leaves the console titled 「管理画面」 instead of failing every
-  // route.
+  // an outage leaves the console titled "Admin console" instead of failing
+  // every route.
   const tenantName = await getTenantName(normalizedTenantId);
   const base = tenantName
     ? getMessage(messages, "admin.shell.tenant_title", { name: tenantName })

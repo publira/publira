@@ -25,7 +25,7 @@ interface ErrorScreenProps {
  *
  * Retry is wired to `retry()` rather than `reset()`: `reset()` only clears the
  * error state, while `retry()` re-fetches and re-renders the boundary's
- * children, which is what a reader means by 再試行.
+ * children, which is what a reader means by Try again.
  */
 export const ErrorScreen = ({
   actions,

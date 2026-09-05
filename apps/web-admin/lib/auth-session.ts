@@ -92,9 +92,9 @@ export const requireAdminSession = async (): Promise<string> => {
  * already gone locally — into the re-authentication flow.
  *
  * The token is resolved first because a missing cookie never reaches the API: a
- * `lib/` mutation that finds no token returns "セッションが無効です。再ログイン
- * してください。" as an Action state, which is the form error this flow exists to
- * replace. `requireAdminSession()` raises the redirect instead.
+ * `lib/` mutation that finds no token returns "Your session is no longer valid.
+ * Please sign in again." as an Action state, which is the form error this flow
+ * exists to replace. `requireAdminSession()` raises the redirect instead.
  *
  * Of the API's own rejections only `Code.Unauthenticated` qualifies. Everything
  * else — a wrong password, a validation failure, an outage — propagates

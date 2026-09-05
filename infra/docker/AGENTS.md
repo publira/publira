@@ -86,7 +86,7 @@ Raw `docker build -f infra/docker/<role>/Dockerfile … .` is fine for debugging
 
 After adding a service/target: update `README.md` examples, `Taskfile.yaml` `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) together. A new **batch job** is not a new target — it is a subcommand of `server/cmd/batch`, so none of those three registrations change.
 
-Docker CI strategy and build triage: [`README.md`](./README.md)（Docker の CI 実行戦略 / ビルド失敗時のトリアージ節）.  
+Docker CI strategy and build triage: [`README.md`](./README.md) (its CI strategy and build-failure triage sections).  
 Host CI as a whole (jobs, path filters, triage): [`.github/workflows/README.md`](../../.github/workflows/README.md).  
 Branch ruleset required check is the final aggregator job name **`Summary`** only (UI: `CI / Summary`).
 

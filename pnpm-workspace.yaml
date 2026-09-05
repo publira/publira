@@ -38,7 +38,8 @@ catalog:
   zod: 4.5.4
 
 catalogMode: strict
-# 同じ organization が出しているパッケージなので、公開直後を避ける待機はいらない。
+# These packages come from this organization, so there is no reason to wait out
+# the window that guards against a freshly published release.
 minimumReleaseAgeExclude:
   - "@publira/*"
 savePrefix: ""
