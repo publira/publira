@@ -17,7 +17,7 @@ import type { AdminMessages } from "./locale";
 
 const VALID_TOKEN = "a".repeat(64);
 const VALID_TENANT_ID = "01234567-89ab-cdef-0123-456789abcdef";
-const JA: AdminMessages = sharedCatalog("ja");
+const JA: AdminMessages = sharedCatalog("en");
 const EN: AdminMessages = sharedCatalog("en");
 
 describe("nextPathSearchParamSchema", () => {
@@ -77,7 +77,7 @@ describe("inviteTokenFormSchema", () => {
   it("rejects a missing or malformed invite token", () => {
     expect(
       inviteTokenFormSchema(JA).safeParse("").error?.issues[0]?.message
-    ).toBe("招待トークンが見つかりません。");
+    ).toBe("The invitation token was not found.");
     expect(inviteTokenFormSchema(JA).parse(VALID_TOKEN)).toBe(VALID_TOKEN);
   });
 });
@@ -94,8 +94,8 @@ describe("emailSearchParamSchema", () => {
 
 describe("errorSearchParamSchema", () => {
   it("trims a message and falls back to empty", () => {
-    expect(errorSearchParamSchema.parse("  失敗しました  ")).toBe(
-      "失敗しました"
+    expect(errorSearchParamSchema.parse("  Something went wrong  ")).toBe(
+      "Something went wrong"
     );
     expect(errorSearchParamSchema.parse(null)).toBe("");
   });

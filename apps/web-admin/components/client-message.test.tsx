@@ -76,21 +76,21 @@ describe("ClientMessage", () => {
     await expect(renderTitle()).resolves.toBe(EN_TITLE);
   });
 
-  it("renders in the saved tenant default when the operator chose nothing", async () => {
+  it("renders in the saved tenant default, so a tenant whose default is ja is Japanese", async () => {
     setCookies("publira_resolved_locale=ja");
     setBrowserLanguages("en-US", "en");
 
     await expect(renderTitle()).resolves.toBe(JA_TITLE);
   });
 
-  it("falls through to the saved default for an unsupported choice", async () => {
+  it("falls through to the saved ja default for an unsupported choice", async () => {
     setCookies("publira_locale=fr", "publira_resolved_locale=ja");
     setBrowserLanguages("en-US", "en");
 
     await expect(renderTitle()).resolves.toBe(JA_TITLE);
   });
 
-  it("reads the document's own language when no cookie names one", async () => {
+  it("reads the document's own lang=ja when no cookie names one", async () => {
     document.documentElement.lang = "ja";
     setBrowserLanguages("en-US", "en");
 

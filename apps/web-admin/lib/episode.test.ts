@@ -62,7 +62,7 @@ describe("listEpisodes", () => {
         tenantId: "TENANT001",
         token: "current-page",
       },
-      "ja"
+      "en"
     );
 
     expect(mockListEpisodes).toHaveBeenCalledWith(
@@ -90,7 +90,7 @@ describe("listEpisodes", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(mockListEpisodes).toHaveBeenCalledWith(
@@ -102,7 +102,8 @@ describe("listEpisodes", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
-    // トークン未指定の応答でも、呼び出し側が分岐せずに済むよう空文字へそろえる。
+    // A response that names no token still answers with empty strings, so the
+    // caller never has to branch on their absence.
     expect(result).toMatchObject({
       nextToken: "",
       ok: true,
@@ -121,7 +122,7 @@ describe("listEpisodes", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.episodes.map((item) => item.publicId)).toEqual([
@@ -142,7 +143,7 @@ describe("listEpisodes", () => {
         tenantId: "TENANT001",
         token: "current-page",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toMatchObject({
@@ -175,7 +176,7 @@ describe("listAllEpisodes", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(mockListEpisodes).toHaveBeenNthCalledWith(
@@ -206,7 +207,7 @@ describe("listAllEpisodes", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(mockListEpisodes).not.toHaveBeenCalled();
@@ -233,7 +234,7 @@ describe("listAllEpisodes", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toMatchObject({
@@ -256,7 +257,7 @@ describe("getEpisode", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(mockGetEpisode).toHaveBeenCalledWith(
@@ -299,7 +300,7 @@ describe("getEpisode", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toMatchObject({
@@ -320,7 +321,7 @@ describe("getEpisode", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({ notFound: true, ok: false });
@@ -349,19 +350,20 @@ describe("mergeEpisodeOrder", () => {
   it("gives up when the page no longer matches the series", async () => {
     const { mergeEpisodeOrder } = await import("./episode");
 
-    // 既に削除されたエピソードを含むページ。
+    // A page holding an episode that has already been deleted.
     expect(mergeEpisodeOrder(["A", "B"], ["B", "Z"], ["B", "Z"])).toBeNull();
-    // 同じエピソードが二重に来たページ。
+    // A page that returned the same episode twice.
     expect(mergeEpisodeOrder(["A", "B"], ["A", "B"], ["B", "B"])).toBeNull();
-    // 表示していた件数と送られてきた件数が合わないページ。
+    // A page whose row count does not match the one that was on screen.
     expect(mergeEpisodeOrder(["A", "B"], ["A"], ["B", "A"])).toBeNull();
   });
 
   it("does not write when another episode has slipped into the page", async () => {
     const { mergeEpisodeOrder } = await import("./episode");
 
-    // 表示は [C, D] だったが、その間へ A と B が移動した。ID だけ見ると揃って
-    // いるので、スロットへ流し込むと [D, A, B, C] になり無関係な行まで動く。
+    // The screen showed [C, D], and A and B then moved in between them. The ids
+    // alone still line up, so pouring them into the slots would give
+    // [D, A, B, C] and move rows the operator never touched.
     expect(
       mergeEpisodeOrder(["C", "A", "B", "D"], ["C", "D"], ["D", "C"])
     ).toBeNull();
@@ -370,7 +372,8 @@ describe("mergeEpisodeOrder", () => {
   it("does not write when the order on screen disagrees with the current one", async () => {
     const { mergeEpisodeOrder } = await import("./episode");
 
-    // 表示は [C, D] だったが、別の操作で [D, C] へ入れ替わっていた。
+    // The screen showed [C, D], but another change had already swapped them to
+    // [D, C].
     expect(
       mergeEpisodeOrder(["A", "B", "D", "C"], ["C", "D"], ["D", "C"])
     ).toBeNull();
@@ -398,7 +401,7 @@ describe("reorderEpisodePage", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(true);
@@ -437,7 +440,7 @@ describe("reorderEpisodePage", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(false);
@@ -445,8 +448,8 @@ describe("reorderEpisodePage", () => {
   });
 
   it("does not call the RPC when another operation changed the order of the page meanwhile", async () => {
-    // 画面が [EPISODE003, EPISODE004] を表示している間に、EPISODE001 と
-    // EPISODE002 がその間へ移動した。
+    // While the screen showed [EPISODE003, EPISODE004], EPISODE001 and
+    // EPISODE002 moved in between them.
     mockListEpisodes.mockResolvedValue({
       episodes: [
         episode("EPISODE003", 1),
@@ -465,7 +468,7 @@ describe("reorderEpisodePage", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(false);
@@ -489,13 +492,13 @@ describe("reorderEpisodePage", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(false);
     expect(result).toMatchObject({
       message:
-        "他の操作でエピソードの構成か並び順が変わったため、並び順を更新できませんでした。画面を再読み込みして再試行してください。",
+        "The episode order could not be updated because another change altered the series. Reload the screen and try again.",
     });
   });
 
@@ -512,7 +515,7 @@ describe("reorderEpisodePage", () => {
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(false);

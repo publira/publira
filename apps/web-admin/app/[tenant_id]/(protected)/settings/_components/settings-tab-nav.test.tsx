@@ -10,7 +10,7 @@ import { SettingsTabNav } from "./settings-tab-nav";
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: string }) =>
-    getMessage(sharedCatalog("ja"), message),
+    getMessage(sharedCatalog("en"), message),
 }));
 
 vi.mock("next/link", () => ({
@@ -30,14 +30,14 @@ describe("SettingsTabNav", () => {
     render(<SettingsTabNav current="basic" />);
 
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
-      ["基本情報", "テーマ", "メール情報", "決済"]
+      ["General", "Theme", "Email", "Payments"]
     );
   });
 
   it("keeps the personal account settings out of the tabs", () => {
     render(<SettingsTabNav current="basic" />);
 
-    expect(screen.queryByRole("link", { name: "アカウント" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Account settings" })).toBeNull();
     expect(
       screen
         .getAllByRole("link")

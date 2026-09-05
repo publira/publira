@@ -11,12 +11,13 @@ import { getLocale } from "../lib/locale";
 import { AdminLayout, AdminUser } from "./admin-layout";
 import { AdminLocaleSwitcher } from "./locale-switcher";
 
-// 代替テキストの解決は `admin-brand-logo.test.tsx` が見る。ここではロゴが
-// ヘッダとサイドバーの両方に置かれることだけを確かめたい。
+// `admin-brand-logo.test.tsx` covers how the alternative text is resolved.
+// All that matters here is that the logo appears in both the header and the
+// sidebar.
 vi.mock("./admin-brand-logo", () => ({
   AdminBrandLogo: ({ tenantName }: { tenantName: string }) => (
     // oxlint-disable-next-line next/no-img-element -- stub for the real logo
-    <img alt={`${tenantName}のロゴ`} src="/images/tenants/logo-1" />
+    <img alt={`${tenantName} logo`} src="/images/tenants/logo-1" />
   ),
 }));
 
@@ -54,7 +55,7 @@ vi.mock("./notification-bell", () => ({
 const tenant = {
   adminDomain: "admin.example.com",
   domain: "example.com",
-  name: "青枝出版",
+  name: "Acme Publishing",
   publicId: "tenant_admin_001",
 };
 
@@ -81,12 +82,12 @@ describe("AdminLayout", () => {
   it("puts the logo in the header and the sidebar and keeps the tenant name", () => {
     render(
       <AdminLayout logo={logo} tenant={tenant} tenantId="tenant-id">
-        <p>本文</p>
+        <p>Body</p>
       </AdminLayout>
     );
 
-    expect(screen.getAllByAltText("青枝出版のロゴ")).toHaveLength(2);
-    expect(screen.getAllByText("青枝出版").length).toBeGreaterThan(0);
+    expect(screen.getAllByAltText("Acme Publishing logo")).toHaveLength(2);
+    expect(screen.getAllByText("Acme Publishing").length).toBeGreaterThan(0);
     expect(screen.queryByText("Publira")).toBeNull();
     expect(screen.queryByText("Admin Console")).toBeNull();
   });
@@ -94,20 +95,20 @@ describe("AdminLayout", () => {
   it("makes the tenant name the brand and hides the product name when there is no logo", () => {
     render(
       <AdminLayout logo={null} tenant={tenant} tenantId="tenant-id">
-        <p>本文</p>
+        <p>Body</p>
       </AdminLayout>
     );
 
-    expect(screen.queryByAltText("青枝出版のロゴ")).toBeNull();
+    expect(screen.queryByAltText("Acme Publishing logo")).toBeNull();
     expect(screen.queryByText("Publira")).toBeNull();
     expect(screen.queryByText("Admin Console")).toBeNull();
-    expect(screen.getAllByText("青枝出版").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Acme Publishing").length).toBeGreaterThan(0);
   });
 
   it("asks the shared stylesheet for the admin console background", () => {
     const { container } = render(
       <AdminLayout logo={null} tenant={tenant} tenantId="tenant-id">
-        <p>本文</p>
+        <p>Body</p>
       </AdminLayout>
     );
 
@@ -120,8 +121,8 @@ describe("AdminLayout", () => {
 
 describe("AdminUser", () => {
   it.each([
-    ["ja", "青枝 花子のアカウントメニュー"],
-    ["en", "Account menu for 青枝 花子"],
+    ["en", "Account menu for Avery Quinn"],
+    ["ja", "Avery Quinnのアカウントメニュー"],
   ] as const)(
     "interpolates the name into the aria-label of the account menu in %s",
     async (locale, expected) => {
@@ -129,7 +130,7 @@ describe("AdminUser", () => {
       vi.mocked(getAdminCurrentUser).mockResolvedValue({
         ok: true,
         user: {
-          name: "青枝 花子",
+          name: "Avery Quinn",
           publicId: "user_admin_001",
           role: "tenant_owner",
         },
@@ -144,8 +145,8 @@ describe("AdminUser", () => {
 
 describe("AdminLocaleSwitcher", () => {
   it.each([
-    ["ja", "表示言語: 日本語"],
     ["en", "Display language: English"],
+    ["ja", "表示言語: 日本語"],
   ] as const)(
     "shows the current display locale on the header trigger in %s",
     async (locale, expected) => {

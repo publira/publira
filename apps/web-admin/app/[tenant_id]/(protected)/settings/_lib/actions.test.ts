@@ -30,8 +30,8 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { sharedCatalog } = await import("@publira/i18n/catalog");
   return {
-    getActionLocale: () => Promise.resolve("ja"),
-    getActionMessages: () => Promise.resolve(sharedCatalog("ja")),
+    getActionLocale: () => Promise.resolve("en"),
+    getActionMessages: () => Promise.resolve(sharedCatalog("en")),
   };
 });
 
@@ -125,14 +125,13 @@ describe("updateTenantThemeSettingsAction", () => {
     );
 
     const message =
-      "プライマリーカラーとプライマリーテキストカラーのコントラスト比は 4.5:1 以上にしてください（現在 1.00:1）。";
+      "The contrast ratio between Primary color and Primary text color must be at least 4.5:1 (currently 1.00:1).";
     expect(result).toEqual({
       fieldErrors: {
         primaryColor: message,
         primaryForegroundColor: message,
       },
-      message:
-        "テキストを読みやすくするため、色の組み合わせを確認してください。",
+      message: "Check these color pairs so the text stays readable.",
       ok: false,
     });
     expect(mockUpdateTenantThemeSettings).not.toHaveBeenCalled();
@@ -152,7 +151,7 @@ describe("updateTenantThemeSettingsAction", () => {
     const result = await updateTenantThemeSettingsAction(null, themeFormData());
 
     expect(result).toEqual({
-      message: "テーマを保存しました。",
+      message: "The theme was saved.",
       ok: true,
       theme: DEFAULT_TENANT_THEME_COLORS,
     });
@@ -161,7 +160,7 @@ describe("updateTenantThemeSettingsAction", () => {
         ...DEFAULT_TENANT_THEME_COLORS,
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
     expect(mockUpdateTag).toHaveBeenCalledWith(
@@ -196,7 +195,7 @@ describe("updateTenantTimezoneAction", () => {
     );
 
     expect(result).toEqual({
-      message: "タイムゾーンを保存しました。",
+      message: "The time zone was saved.",
       ok: true,
       timezone: "America/Los_Angeles",
     });
@@ -205,7 +204,7 @@ describe("updateTenantTimezoneAction", () => {
         tenantId: "TENANT001",
         timezone: "America/Los_Angeles",
       },
-      "ja"
+      "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:timezone");
   });
@@ -224,7 +223,7 @@ describe("updateTenantTimezoneAction", () => {
     );
 
     expect(result).toEqual({
-      message: "タイムゾーンを保存しました。",
+      message: "The time zone was saved.",
       ok: true,
       timezone: "Asia/Calcutta",
     });
@@ -233,14 +232,15 @@ describe("updateTenantTimezoneAction", () => {
         tenantId: "TENANT001",
         timezone: "Asia/Calcutta",
       },
-      "ja"
+      "en"
     );
   });
 
   it.each([
     { label: "an unknown IANA name", timezone: "Asia/Nowhere" },
-    // `Local` は Go の time.LoadLocation では通るが、API プロセス自身のゾーンを
-    // 指すためテナント設定にはならない。オフセット表記は逆に Temporal だけが通す。
+    // Go's time.LoadLocation accepts `Local`, but it names the API process's
+    // own zone rather than anything a tenant could be set to. An offset
+    // notation is the mirror image: only Temporal accepts one.
     {
       label: "Local, which names the zone of the server process",
       timezone: "Local",
@@ -255,7 +255,7 @@ describe("updateTenantTimezoneAction", () => {
     );
 
     expect(result).toEqual({
-      message: "有効なタイムゾーンを選択してください。",
+      message: "Select a valid time zone.",
       ok: false,
     });
     expect(mockUpdateTenantTimezone).not.toHaveBeenCalled();
@@ -271,7 +271,7 @@ describe("updateTenantTimezoneAction", () => {
     );
 
     expect(result).toEqual({
-      message: "タイムゾーンを選択してください。",
+      message: "Select a time zone.",
       ok: false,
     });
     expect(mockUpdateTenantTimezone).not.toHaveBeenCalled();
@@ -286,7 +286,7 @@ describe("updateTenantTimezoneAction", () => {
     );
 
     expect(result).toEqual({
-      message: "テナント ID が見つかりません。",
+      message: "The tenant ID is missing.",
       ok: false,
     });
     expect(mockUpdateTenantTimezone).not.toHaveBeenCalled();
@@ -294,7 +294,7 @@ describe("updateTenantTimezoneAction", () => {
 
   it("returns the message and leaves the cache tag alone when the save fails", async () => {
     mockUpdateTenantTimezone.mockResolvedValueOnce({
-      message: "権限がありません。",
+      message: "You do not have permission.",
       ok: false,
     });
 
@@ -305,7 +305,10 @@ describe("updateTenantTimezoneAction", () => {
       textFormData({ tenant_id: "TENANT001", timezone: "Asia/Tokyo" })
     );
 
-    expect(result).toEqual({ message: "権限がありません。", ok: false });
+    expect(result).toEqual({
+      message: "You do not have permission.",
+      ok: false,
+    });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });
@@ -335,7 +338,7 @@ describe("updateTenantDefaultLocaleAction", () => {
 
     expect(result).toEqual({
       defaultLocale: "en",
-      message: "既定言語を保存しました。",
+      message: "The default language was saved.",
       ok: true,
     });
     expect(mockUpdateTenantDefaultLocale).toHaveBeenCalledWith(
@@ -343,7 +346,7 @@ describe("updateTenantDefaultLocaleAction", () => {
         defaultLocale: "en",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:default-locale"
@@ -364,7 +367,7 @@ describe("updateTenantDefaultLocaleAction", () => {
     );
 
     expect(result).toEqual({
-      message: "言語を選択してください。",
+      message: "Select a language.",
       ok: false,
     });
     expect(mockUpdateTenantDefaultLocale).not.toHaveBeenCalled();
@@ -380,7 +383,7 @@ describe("updateTenantDefaultLocaleAction", () => {
     );
 
     expect(result).toEqual({
-      message: "テナント ID が見つかりません。",
+      message: "The tenant ID is missing.",
       ok: false,
     });
     expect(mockUpdateTenantDefaultLocale).not.toHaveBeenCalled();
@@ -388,7 +391,7 @@ describe("updateTenantDefaultLocaleAction", () => {
 
   it("returns the message and leaves the cache tag alone when the save fails", async () => {
     mockUpdateTenantDefaultLocale.mockResolvedValueOnce({
-      message: "権限がありません。",
+      message: "You do not have permission.",
       ok: false,
     });
 
@@ -399,7 +402,10 @@ describe("updateTenantDefaultLocaleAction", () => {
       textFormData({ default_locale: "en", tenant_id: "TENANT001" })
     );
 
-    expect(result).toEqual({ message: "権限がありません。", ok: false });
+    expect(result).toEqual({
+      message: "You do not have permission.",
+      ok: false,
+    });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });
@@ -440,7 +446,7 @@ describe("updateTenantPaymentSettingsAction", () => {
     );
 
     expect(result).toEqual({
-      message: "決済設定を保存しました。",
+      message: "The payment settings were saved.",
       ok: true,
       settings: storedPaymentSettings,
     });
@@ -453,7 +459,7 @@ describe("updateTenantPaymentSettingsAction", () => {
         webhookSecret: "whsec_NEW",
         webhookSecretUpdateMode: 2,
       },
-      "ja"
+      "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:payment-settings"
@@ -488,7 +494,7 @@ describe("updateTenantPaymentSettingsAction", () => {
         webhookSecret: "",
         webhookSecretUpdateMode: 1,
       },
-      "ja"
+      "en"
     );
   });
 
@@ -505,10 +511,10 @@ describe("updateTenantPaymentSettingsAction", () => {
 
     expect(result).toEqual({
       fieldErrors: {
-        secretKey: "シークレットキーを入力してください。",
-        webhookSecret: "Webhook 署名シークレットを入力してください。",
+        secretKey: "Enter the secret key.",
+        webhookSecret: "Enter the webhook signing secret.",
       },
-      message: "入力内容を確認してください。",
+      message: "Please check the information you entered.",
       ok: false,
     });
     expect(mockUpdateTenantPaymentSettings).not.toHaveBeenCalled();
@@ -525,9 +531,9 @@ describe("updateTenantPaymentSettingsAction", () => {
 
     expect(result).toEqual({
       fieldErrors: {
-        tenantId: "テナント ID が見つかりません。",
+        tenantId: "The tenant ID is missing.",
       },
-      message: "入力内容を確認してください。",
+      message: "Please check the information you entered.",
       ok: false,
     });
     expect(mockUpdateTenantPaymentSettings).not.toHaveBeenCalled();
@@ -535,7 +541,7 @@ describe("updateTenantPaymentSettingsAction", () => {
 
   it("returns the message and leaves the cache tag alone when the save fails", async () => {
     mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       ok: false,
     });
 
@@ -549,7 +555,7 @@ describe("updateTenantPaymentSettingsAction", () => {
     );
 
     expect(result).toEqual({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
@@ -619,7 +625,7 @@ describe("updateTenantIconAction", () => {
 
     expect(result).toEqual({
       icon: storedImage("/images/tenants/icon-1"),
-      message: "アイコンを保存しました。",
+      message: "The icon was saved.",
       ok: true,
     });
     expect(mockUploadTenantIcon).toHaveBeenCalledWith(
@@ -628,7 +634,7 @@ describe("updateTenantIconAction", () => {
         iconData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
     expect(mockUpdateTag).toHaveBeenCalledWith(
@@ -648,10 +654,10 @@ describe("updateTenantIconAction", () => {
 
     expect(result).toEqual({
       icon: null,
-      message: "アイコンを削除しました。",
+      message: "The icon was deleted.",
       ok: true,
     });
-    expect(mockDeleteTenantIcon).toHaveBeenCalledWith("TENANT001", "ja");
+    expect(mockDeleteTenantIcon).toHaveBeenCalledWith("TENANT001", "en");
     expect(mockUploadTenantIcon).not.toHaveBeenCalled();
   });
 
@@ -664,7 +670,7 @@ describe("updateTenantIconAction", () => {
     );
 
     expect(result).toEqual({
-      message: "画像ファイルを選択してください。",
+      message: "Select an image file.",
       ok: false,
     });
     expect(mockUploadTenantIcon).not.toHaveBeenCalled();
@@ -683,7 +689,7 @@ describe("updateTenantIconAction", () => {
     );
 
     expect(result).toEqual({
-      message: "画像は 10MB 以下にしてください。",
+      message: "The image must be 10MB or smaller.",
       ok: false,
     });
     expect(arrayBuffer).not.toHaveBeenCalled();
@@ -703,7 +709,7 @@ describe("updateTenantIconAction", () => {
     );
 
     expect(result).toEqual({
-      message: "JPEG / PNG / WebP の画像を選択してください。",
+      message: "Select a JPEG, PNG, or WebP image.",
       ok: false,
     });
     expect(mockUploadTenantIcon).not.toHaveBeenCalled();
@@ -711,7 +717,7 @@ describe("updateTenantIconAction", () => {
 
   it("leaves the cache alone when the upload fails", async () => {
     mockUploadTenantIcon.mockResolvedValueOnce({
-      message: "アイコンのアップロードに失敗しました。",
+      message: "Could not upload the icon.",
       ok: false,
     });
 
@@ -723,7 +729,7 @@ describe("updateTenantIconAction", () => {
     );
 
     expect(result).toEqual({
-      message: "アイコンのアップロードに失敗しました。",
+      message: "Could not upload the icon.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
@@ -766,7 +772,7 @@ describe("updateTenantLogoAction", () => {
 
     expect(result).toEqual({
       logo: storedImage("/images/tenants/logo-1"),
-      message: "ロゴを保存しました。",
+      message: "The logo was saved.",
       ok: true,
     });
     expect(mockUploadTenantLogo).toHaveBeenCalledWith(
@@ -775,7 +781,7 @@ describe("updateTenantLogoAction", () => {
         logoData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
     expect(mockUpdateTag).toHaveBeenCalledWith(
@@ -795,10 +801,10 @@ describe("updateTenantLogoAction", () => {
 
     expect(result).toEqual({
       logo: null,
-      message: "ロゴを削除しました。",
+      message: "The logo was deleted.",
       ok: true,
     });
-    expect(mockDeleteTenantLogo).toHaveBeenCalledWith("TENANT001", "ja");
+    expect(mockDeleteTenantLogo).toHaveBeenCalledWith("TENANT001", "en");
     expect(mockUploadTenantLogo).not.toHaveBeenCalled();
   });
 
@@ -811,7 +817,7 @@ describe("updateTenantLogoAction", () => {
     );
 
     expect(result).toEqual({
-      message: "画像ファイルを選択してください。",
+      message: "Select an image file.",
       ok: false,
     });
     expect(mockUploadTenantLogo).not.toHaveBeenCalled();
@@ -830,7 +836,7 @@ describe("updateTenantLogoAction", () => {
     );
 
     expect(result).toEqual({
-      message: "画像は 10MB 以下にしてください。",
+      message: "The image must be 10MB or smaller.",
       ok: false,
     });
     expect(arrayBuffer).not.toHaveBeenCalled();
@@ -850,7 +856,7 @@ describe("updateTenantLogoAction", () => {
     );
 
     expect(result).toEqual({
-      message: "JPEG / PNG / WebP の画像を選択してください。",
+      message: "Select a JPEG, PNG, or WebP image.",
       ok: false,
     });
     expect(mockUploadTenantLogo).not.toHaveBeenCalled();
@@ -858,7 +864,7 @@ describe("updateTenantLogoAction", () => {
 
   it("leaves the cache alone when the upload fails", async () => {
     mockUploadTenantLogo.mockResolvedValueOnce({
-      message: "ロゴのアップロードに失敗しました。",
+      message: "Could not upload the logo.",
       ok: false,
     });
 
@@ -870,7 +876,7 @@ describe("updateTenantLogoAction", () => {
     );
 
     expect(result).toEqual({
-      message: "ロゴのアップロードに失敗しました。",
+      message: "Could not upload the logo.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

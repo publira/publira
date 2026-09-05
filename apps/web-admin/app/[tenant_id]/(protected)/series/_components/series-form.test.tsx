@@ -18,26 +18,26 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
-const labels = [{ name: "レーベルA", publicId: "LABEL001" }];
-const creators = [{ name: "クリエイターA", publicId: "CREATOR001" }];
+const labels = [{ name: "Label A", publicId: "LABEL001" }];
+const creators = [{ name: "Creator A", publicId: "CREATOR001" }];
 
 const series: SeriesListItem = {
-  creatorNames: ["クリエイターA"],
+  creatorNames: ["Creator A"],
   creatorPublicIds: ["CREATOR001"],
   eyeCatchImageUpdatedAt: "",
   eyeCatchImageVariants: [],
   isPublished: false,
-  labelName: "レーベルA",
+  labelName: "Label A",
   labelPublicId: "LABEL001",
   publicId: "SERIES001",
   publishedAt: "",
   readingPeriodHours: 72,
-  synopsis: "概要",
-  title: "既存シリーズ",
+  synopsis: "A synopsis",
+  title: "Existing Series",
 };
 
 /**
@@ -86,7 +86,7 @@ it("keeps the ids unique when it is mounted twice", () => {
 it("points each label at its own input when it is mounted twice", () => {
   renderBothForms();
 
-  const titles = screen.getAllByLabelText<HTMLInputElement>(/タイトル/u);
+  const titles = screen.getAllByLabelText<HTMLInputElement>(/Title/u);
 
   expect(titles).toHaveLength(2);
   expect(titles.map((input) => input.value)).toEqual(["", series.title]);
@@ -98,23 +98,24 @@ it("points each label at its own input when it is mounted twice", () => {
 it("finds each input by its role and label", () => {
   renderBothForms();
 
-  expect(screen.getAllByRole("textbox", { name: /タイトル/u })).toHaveLength(2);
-  expect(screen.getAllByRole("textbox", { name: /概要/u })).toHaveLength(2);
+  expect(screen.getAllByRole("textbox", { name: /Title/u })).toHaveLength(2);
+  expect(screen.getAllByRole("textbox", { name: /Synopsis/u })).toHaveLength(2);
   expect(
-    screen.getAllByRole("spinbutton", { name: /閲覧可能期間/u })
+    screen.getAllByRole("spinbutton", { name: /Reading period/u })
   ).toHaveLength(2);
-  expect(screen.getAllByRole("combobox", { name: /レーベル/u })).toHaveLength(
+  expect(screen.getAllByRole("combobox", { name: /Label/u })).toHaveLength(2);
+  expect(screen.getAllByRole("combobox", { name: /Creators/u })).toHaveLength(
     2
   );
-  expect(
-    screen.getAllByRole("combobox", { name: /クリエイター/u })
-  ).toHaveLength(2);
-  expect(screen.getAllByLabelText(/公開日時/u)).toHaveLength(2);
+  expect(screen.getAllByLabelText(/Publication date/u)).toHaveLength(2);
 });
 
-it("renders in the tenant locale handed down by the protected layout", () => {
+// The `ja` mirror of the assertions above, which all run under the `en`
+// provider. Without it a form that ignored the provider and always read the
+// `en` catalog would still pass every one of them.
+it("renders in the tenant locale handed down by the protected layout, so locale=ja is Japanese", () => {
   renderBase(
-    <AdminLocaleProvider locale="en">
+    <AdminLocaleProvider locale="ja">
       <SeriesForm
         action={action}
         creators={creators}
@@ -126,6 +127,6 @@ it("renders in the tenant locale handed down by the protected layout", () => {
     </AdminLocaleProvider>
   );
 
-  expect(screen.getByRole("textbox", { name: /Title/u })).toBeDefined();
-  expect(screen.getByRole("button", { name: "Create series" })).toBeDefined();
+  expect(screen.getByRole("textbox", { name: /タイトル/u })).toBeDefined();
+  expect(screen.getByRole("button", { name: "シリーズを作成" })).toBeDefined();
 });

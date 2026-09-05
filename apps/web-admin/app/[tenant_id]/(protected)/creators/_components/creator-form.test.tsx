@@ -18,7 +18,7 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -26,8 +26,8 @@ const creator: CreatorListItem = {
   iconImageFileSizeBytes: 0,
   iconImageUpdatedAt: "",
   iconImageUrl: "",
-  name: "既存著者",
-  profileText: "プロフィール",
+  name: "Existing Creator",
+  profileText: "Creator profile",
   publicId: "CREATOR001",
 };
 
@@ -62,7 +62,7 @@ it("keeps the ids unique when it is mounted twice", () => {
 it("points each label at its own input when it is mounted twice", () => {
   renderBothForms();
 
-  const names = screen.getAllByLabelText<HTMLInputElement>(/^名前/u);
+  const names = screen.getAllByLabelText<HTMLInputElement>(/^Name/u);
 
   expect(names).toHaveLength(2);
   expect(names.map((input) => input.value)).toEqual(["", creator.name]);

@@ -12,7 +12,7 @@ import { TicketManager } from "./ticket-manager";
 
 vi.mock("#components/message", () => ({
   Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(sharedCatalog("ja"), message, values),
+    getMessage(sharedCatalog("en"), message, values),
 }));
 
 vi.mock("next/link", () => ({
@@ -21,24 +21,24 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-// 失効ボタンは Server Action と useRouter を抱えたクライアント側の部品なので、
-// ここでは一覧が行ごとに描画していることだけを見る。
+// The revoke button is a client component carrying a Server Action and
+// useRouter, so all that is checked here is that the list renders one per row.
 vi.mock("./revoke-ticket-button", () => ({
   RevokeTicketButton: ({ publicId }: { publicId: string }) => (
-    <button type="button">{`失効 ${publicId}`}</button>
+    <button type="button">{`Revoke ${publicId}`}</button>
   ),
 }));
 
 const ticket = (publicId: string): AccessTicketItem => ({
   createdAt: "2026-06-01T00:00:00Z",
   episodePublicId: "EPISODE001",
-  episodeTitle: "第1話",
+  episodeTitle: "Episode 1",
   expiresAt: "",
   note: "",
   publicId,
   revokedAt: "",
   seriesPublicId: "SERIES001",
-  seriesTitle: "シリーズ",
+  seriesTitle: "Series A",
   status: "active",
   userEmail: "reader@example.com",
   userName: "Reader",
@@ -53,23 +53,21 @@ describe("TicketManager", () => {
   it("says nothing is registered yet when the first page is empty", () => {
     render(
       <TicketManager
-        locale="ja"
+        locale="en"
         pageSize={20}
         tickets={[]}
         timeZone="Asia/Tokyo"
       />
     );
 
-    expect(screen.getByText("チケットがまだありません。")).toBeDefined();
-    expect(
-      screen.queryByLabelText("アクセスチケット一覧のページ送り")
-    ).toBeNull();
+    expect(screen.getByText("There are no tickets yet.")).toBeDefined();
+    expect(screen.queryByLabelText("Access tickets pagination")).toBeNull();
   });
 
   it("does not say the whole list is empty when a later page is empty", () => {
     render(
       <TicketManager
-        locale="ja"
+        locale="en"
         pageSize={20}
         previousHref="?token=previous"
         tickets={[]}
@@ -77,24 +75,22 @@ describe("TicketManager", () => {
       />
     );
 
-    expect(
-      screen.getByText("このページに表示できるチケットはありません。")
-    ).toBeDefined();
-    // 復旧用のリンクは残す。ここを隠すと一覧へ戻る手段が無くなる。
-    const previous = screen.getByRole("link", { name: "前へ" });
+    expect(screen.getByText("No tickets to show on this page.")).toBeDefined();
+    // The recovery links stay. Hiding them would leave no way back to the list.
+    const previous = screen.getByRole("link", { name: "Previous" });
     expect(previous.getAttribute("href")).toBe("?token=previous");
-    expect(screen.queryByRole("link", { name: "次へ" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Next" })).toBeNull();
   });
 
   it("lists the status and the note of an active ticket", () => {
     render(
       <TicketManager
-        locale="ja"
+        locale="en"
         pageSize={20}
         tickets={[
           {
             ...ticket("TICKET001"),
-            note: "レビュー用",
+            note: "For review",
             status: "active",
           },
         ]}
@@ -102,15 +98,15 @@ describe("TicketManager", () => {
       />
     );
 
-    expect(screen.getByText("有効")).toBeDefined();
-    expect(screen.getByText("レビュー用")).toBeDefined();
-    expect(screen.getByText("失効 TICKET001")).toBeDefined();
+    expect(screen.getByText("Active")).toBeDefined();
+    expect(screen.getByText("For review")).toBeDefined();
+    expect(screen.getByText("Revoke TICKET001")).toBeDefined();
   });
 
   it("renders the per-row actions and the pager on a later page", () => {
     render(
       <TicketManager
-        locale="ja"
+        locale="en"
         nextHref="?token=next"
         pageSize={20}
         previousHref="?token=previous"
@@ -119,20 +115,20 @@ describe("TicketManager", () => {
       />
     );
 
-    expect(screen.getByText("失効 TICKET001")).toBeDefined();
+    expect(screen.getByText("Revoke TICKET001")).toBeDefined();
     expect(
-      screen.getByRole("link", { name: "前へ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Previous" }).getAttribute("href")
     ).toBe("?token=previous");
     expect(
-      screen.getByRole("link", { name: "次へ" }).getAttribute("href")
+      screen.getByRole("link", { name: "Next" }).getAttribute("href")
     ).toBe("?token=next");
   });
 
   it("shows only the error and does not call the list empty when the fetch fails", () => {
     render(
       <TicketManager
-        locale="ja"
-        listErrorMessage="チケット一覧を取得できませんでした。"
+        locale="en"
+        listErrorMessage="Could not load the tickets."
         nextHref="?token=next"
         pageSize={20}
         previousHref="?token=previous"
@@ -141,21 +137,16 @@ describe("TicketManager", () => {
       />
     );
 
-    // 取得失敗はセクションの失敗なので、他画面と同じ `SectionError`
-    // （role="alert" と「〇〇一覧を表示できませんでした」）で出す。
+    // A failed read is a failed section, so it is reported the way every other
+    // screen reports one: `SectionError`, with role="alert" and a title naming
+    // the list that is missing.
     const sectionError = screen.getByRole("alert");
     expect(sectionError.textContent).toContain(
-      "アクセスチケット一覧を表示できませんでした"
+      "Could not display the access tickets"
     );
-    expect(sectionError.textContent).toContain(
-      "チケット一覧を取得できませんでした。"
-    );
-    expect(screen.queryByText("チケットがまだありません。")).toBeNull();
-    expect(
-      screen.queryByText("このページに表示できるチケットはありません。")
-    ).toBeNull();
-    expect(
-      screen.queryByLabelText("アクセスチケット一覧のページ送り")
-    ).toBeNull();
+    expect(sectionError.textContent).toContain("Could not load the tickets.");
+    expect(screen.queryByText("There are no tickets yet.")).toBeNull();
+    expect(screen.queryByText("No tickets to show on this page.")).toBeNull();
+    expect(screen.queryByLabelText("Access tickets pagination")).toBeNull();
   });
 });

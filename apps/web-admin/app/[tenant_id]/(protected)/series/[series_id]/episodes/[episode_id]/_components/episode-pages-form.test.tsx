@@ -16,7 +16,7 @@ import { EpisodePagesForm } from "./episode-pages-form";
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -61,9 +61,7 @@ const renderBothForms = () =>
   );
 
 const fileInput = (): HTMLInputElement =>
-  screen.getByLabelText<HTMLInputElement>(
-    /ページ画像|ZIP ファイル|ePub ファイル/u
-  );
+  screen.getByLabelText<HTMLInputElement>(/Page images|ZIP file|ePub file/u);
 
 describe("EpisodePagesForm", () => {
   it("starts in pages mode with the file input set for images", () => {
@@ -79,29 +77,29 @@ describe("EpisodePagesForm", () => {
     expect(input.multiple).toBe(true);
     expect(input.accept).toBe("image/*");
     expect(
-      screen.getByRole("button", { name: "ページ画像を追加" })
+      screen.getByRole("button", { name: "Add page images" })
     ).toBeTruthy();
   });
 
   it("changes the input attributes and the wording when switching between ZIP and ePub", () => {
     renderForm();
 
-    fireEvent.click(screen.getByRole("button", { name: "ZIP で入稿" }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit a ZIP" }));
 
     const fileInputAfterZip = fileInput();
 
     expect(fileInputAfterZip.name).toBe("archive");
     expect(fileInputAfterZip.multiple).toBe(false);
     expect(fileInputAfterZip.accept).toBe(".zip,application/zip");
-    expect(screen.getByRole("button", { name: "ZIP を入稿" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Submit ZIP" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "ePub で入稿" }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit an ePub" }));
 
     const fileInputAfterEpub = fileInput();
 
     expect(fileInputAfterEpub.name).toBe("archive");
     expect(fileInputAfterEpub.accept).toBe(".epub,application/epub+zip");
-    expect(screen.getByRole("button", { name: "ePub を入稿" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Submit ePub" })).toBeTruthy();
   });
 
   it("shows the file name after a file is chosen and clears it when the mode changes", () => {
@@ -120,7 +118,7 @@ describe("EpisodePagesForm", () => {
     expect(screen.getByText("page-1.png")).toBeTruthy();
     expect(screen.getByText("page-2.png")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "ZIP で入稿" }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit a ZIP" }));
 
     expect(screen.queryByText("page-1.png")).toBeNull();
     expect(screen.queryByText("page-2.png")).toBeNull();
@@ -140,7 +138,7 @@ describe("EpisodePagesForm", () => {
   it("points each label at its own input when it is mounted twice", () => {
     renderBothForms();
 
-    const inputs = screen.getAllByLabelText<HTMLInputElement>(/ページ画像/u);
+    const inputs = screen.getAllByLabelText<HTMLInputElement>(/Page images/u);
 
     expect(inputs).toHaveLength(2);
     expect(inputs.map((input) => input.name)).toEqual(["pages", "pages"]);

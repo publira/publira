@@ -50,7 +50,7 @@ describe("listPages", () => {
     });
 
     const { listPages } = await import("./page");
-    const result = await listPages("TENANT001", "ja", {
+    const result = await listPages("TENANT001", "en", {
       limit: 20,
       token: "current-page",
     });
@@ -74,7 +74,7 @@ describe("listPages", () => {
     mockListPages.mockResolvedValue({ pages: [] });
 
     const { listPages } = await import("./page");
-    const result = await listPages("TENANT001", "ja", {});
+    const result = await listPages("TENANT001", "en", {});
 
     expect(mockListPages).toHaveBeenCalledWith(
       {
@@ -84,7 +84,8 @@ describe("listPages", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
-    // トークン未指定の応答でも、呼び出し側が分岐せずに済むよう空文字へそろえる。
+    // A response that names no token still answers with empty strings, so the
+    // caller never has to branch on their absence.
     expect(result).toMatchObject({
       nextToken: "",
       ok: true,
@@ -94,11 +95,11 @@ describe("listPages", () => {
 
   it("returns the keyset order of the server without re-sorting it", async () => {
     mockListPages.mockResolvedValue({
-      pages: [page("PAGE002", "ぬ"), page("PAGE001", "あ")],
+      pages: [page("PAGE002", "Zulu"), page("PAGE001", "Alpha")],
     });
 
     const { listPages } = await import("./page");
-    const result = await listPages("TENANT001", "ja", {});
+    const result = await listPages("TENANT001", "en", {});
 
     expect(result.pages.map((item) => item.id)).toEqual(["PAGE002", "PAGE001"]);
   });
@@ -107,7 +108,7 @@ describe("listPages", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listPages } = await import("./page");
-    const result = await listPages("TENANT001", "ja", {
+    const result = await listPages("TENANT001", "en", {
       token: "current-page",
     });
 
@@ -126,7 +127,7 @@ describe("listPages", () => {
     );
 
     const { listPages } = await import("./page");
-    const result = await listPages("TENANT001", "ja", {
+    const result = await listPages("TENANT001", "en", {
       token: "current-page",
     });
 

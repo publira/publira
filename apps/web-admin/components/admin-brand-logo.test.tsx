@@ -7,8 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminBrandLogo } from "./admin-brand-logo";
 
 vi.mock("#lib/locale", () => ({
-  getLocale: () => Promise.resolve("ja"),
-  loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
+  getLocale: () => Promise.resolve("en"),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
 }));
 
 vi.mock("#lib/tenant-id", () => ({
@@ -44,8 +44,8 @@ afterEach(() => {
 
 describe("AdminBrandLogo", () => {
   it("builds the alternative text from the catalog", async () => {
-    render(await AdminBrandLogo({ tenantName: "青枝出版", variant }));
+    render(await AdminBrandLogo({ tenantName: "Acme Publishing", variant }));
 
-    expect(screen.getByAltText("青枝出版のロゴ")).toBeDefined();
+    expect(screen.getByAltText("Acme Publishing logo")).toBeDefined();
   });
 });

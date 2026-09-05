@@ -14,15 +14,18 @@ vi.mock("next/navigation", () => ({
 
 const noopAction = vi.fn();
 
+// The labels are the autonyms `getLocaleLabel` returns, which are the same
+// string in every locale — so Japanese is listed as 日本語 on an English
+// console too.
 const options = [
   { label: "日本語", locale: "ja" as const },
-  { label: "英語", locale: "en" as const },
+  { label: "English", locale: "en" as const },
 ];
 
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -41,9 +44,9 @@ describe("TenantDefaultLocaleForm", () => {
       />
     );
 
-    const trigger = screen.getByLabelText("既定言語");
+    const trigger = screen.getByLabelText("Default language");
 
-    expect(trigger.textContent).toContain("英語");
+    expect(trigger.textContent).toContain("English");
     expect(trigger).toHaveProperty("disabled", false);
   });
 
@@ -57,15 +60,18 @@ describe("TenantDefaultLocaleForm", () => {
       />
     );
 
-    expect(screen.getByLabelText("既定言語")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Default language")).toHaveProperty(
+      "disabled",
+      true
+    );
     expect(
       screen.getByRole<HTMLButtonElement>("button", {
-        name: "既定言語を保存",
+        name: "Save the default language",
       }).disabled
     ).toBe(true);
     expect(
       screen.getByText(
-        "この設定はテナント管理者のみ編集できます。現在は閲覧専用です。"
+        "Only a tenant administrator can change this setting. You have read-only access."
       )
     ).toBeDefined();
   });
@@ -76,20 +82,25 @@ describe("TenantDefaultLocaleForm", () => {
         action={noopAction}
         canEdit
         initialDefaultLocale="ja"
-        loadErrorMessage="既定言語の取得に失敗しました。"
+        loadErrorMessage="Could not load the default language."
         options={options}
       />
     );
 
-    expect(screen.getByLabelText("既定言語")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Default language")).toHaveProperty(
+      "disabled",
+      true
+    );
     expect(
       screen.getByRole<HTMLButtonElement>("button", {
-        name: "既定言語を保存",
+        name: "Save the default language",
       }).disabled
     ).toBe(true);
-    expect(screen.getByText(/既定言語の取得に失敗しました。/u)).toBeDefined();
     expect(
-      screen.getByText(/保存すると現在の設定を上書きしてしまうため/u)
+      screen.getByText(/Could not load the default language./u)
+    ).toBeDefined();
+    expect(
+      screen.getByText(/Saving now would overwrite the stored setting/u)
     ).toBeDefined();
   });
 });

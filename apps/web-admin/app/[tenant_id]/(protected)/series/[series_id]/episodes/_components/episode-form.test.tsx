@@ -17,7 +17,7 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -60,7 +60,7 @@ it("keeps the ids unique when it is mounted twice", () => {
 it("points each label at its own input when it is mounted twice", () => {
   renderBothForms();
 
-  const titles = screen.getAllByLabelText<HTMLInputElement>(/タイトル/u);
+  const titles = screen.getAllByLabelText<HTMLInputElement>(/Title/u);
 
   expect(titles).toHaveLength(2);
   expect(titles.map((input) => input.value)).toEqual(["", ""]);
@@ -69,10 +69,10 @@ it("points each label at its own input when it is mounted twice", () => {
 it("finds each input by its role and label", () => {
   renderBothForms();
 
-  expect(screen.getAllByRole("textbox", { name: /タイトル/u })).toHaveLength(2);
-  expect(screen.getAllByRole("spinbutton", { name: /価格/u })).toHaveLength(2);
+  expect(screen.getAllByRole("textbox", { name: /Title/u })).toHaveLength(2);
+  expect(screen.getAllByRole("spinbutton", { name: /Price/u })).toHaveLength(2);
   expect(
-    screen.getAllByRole("spinbutton", { name: /閲覧可能期間/u })
+    screen.getAllByRole("spinbutton", { name: /Reading period/u })
   ).toHaveLength(2);
   expect(screen.getAllByLabelText(/publish_at/u)).toHaveLength(2);
 });

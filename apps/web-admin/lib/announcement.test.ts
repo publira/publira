@@ -38,13 +38,13 @@ vi.mock("next/cache", () => ({
 
 const announcement = (id: string, createdAt: string) => ({
   audienceType: 1,
-  body: "本文",
+  body: "Announcement body",
   createdAt,
   id,
   linkUrl: "",
   targetUserName: "",
   targetUserPublicId: "",
-  title: "タイトル",
+  title: "Announcement title",
 });
 
 describe("announcement lib", () => {
@@ -63,7 +63,7 @@ describe("announcement lib", () => {
     });
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001", "ja", {
+    const result = await listAnnouncements("TENANT001", "en", {
       limit: 20,
       token: "current-page",
     });
@@ -87,7 +87,7 @@ describe("announcement lib", () => {
     mockListAnnouncementsApi.mockResolvedValue({ announcements: [] });
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001", "ja", {});
+    const result = await listAnnouncements("TENANT001", "en", {});
 
     expect(mockListAnnouncementsApi).toHaveBeenCalledWith(
       {
@@ -97,7 +97,8 @@ describe("announcement lib", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
-    // トークン未指定の応答でも、呼び出し側が分岐せずに済むよう空文字へそろえる。
+    // A response that names no token still answers with empty strings, so the
+    // caller never has to branch on their absence.
     expect(result).toMatchObject({
       nextToken: "",
       ok: true,
@@ -110,31 +111,31 @@ describe("announcement lib", () => {
       announcements: [
         {
           audienceType: 2,
-          body: "本文",
+          body: "Announcement body",
           createdAt: "2026-04-04T00:00:00Z",
           id: "n1",
           linkUrl: "/series/S001",
           targetUserName: "User One",
           targetUserPublicId: "USER001",
-          title: "タイトル",
+          title: "Announcement title",
         },
       ],
     });
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001", "ja", {});
+    const result = await listAnnouncements("TENANT001", "en", {});
 
     expect(result.ok).toBe(true);
     expect(result.announcements).toEqual([
       {
         audienceType: "selected",
-        body: "本文",
+        body: "Announcement body",
         createdAt: "2026-04-04T00:00:00Z",
         id: "n1",
         linkUrl: "/series/S001",
         targetUserName: "User One",
         targetUserPublicId: "USER001",
-        title: "タイトル",
+        title: "Announcement title",
       },
     ]);
   });
@@ -148,7 +149,7 @@ describe("announcement lib", () => {
     });
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001", "ja", {});
+    const result = await listAnnouncements("TENANT001", "en", {});
 
     expect(result.announcements.map((item) => item.id)).toEqual(["n2", "n1"]);
   });
@@ -159,11 +160,11 @@ describe("announcement lib", () => {
     );
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001", "ja", {});
+    const result = await listAnnouncements("TENANT001", "en", {});
 
     expect(result).toEqual({
       announcements: [],
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -175,7 +176,7 @@ describe("announcement lib", () => {
     mockGetSessionId.mockResolvedValue("");
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001", "ja", {
+    const result = await listAnnouncements("TENANT001", "en", {
       token: "current-page",
     });
 
@@ -194,7 +195,7 @@ describe("announcement lib", () => {
     );
 
     const { listAnnouncements } = await import("./announcement");
-    const result = await listAnnouncements("TENANT001", "ja", {
+    const result = await listAnnouncements("TENANT001", "en", {
       token: "current-page",
     });
 
@@ -210,9 +211,10 @@ describe("announcement lib", () => {
     mockListAnnouncementsApi.mockResolvedValue({ announcements: [] });
 
     const { listAnnouncements } = await import("./announcement");
-    await listAnnouncements("TENANT001", "ja", {});
+    await listAnnouncements("TENANT001", "en", {});
 
-    // 対象ユーザーは作成画面だけが要るので、一覧のたびに引かない。
+    // Only the creation screen needs the target users, so they are not fetched
+    // alongside every listing.
     expect(mockListTenantUsersApi).not.toHaveBeenCalled();
   });
 
@@ -220,15 +222,15 @@ describe("announcement lib", () => {
     mockListTenantUsersApi
       .mockResolvedValueOnce({
         nextToken: "page-2",
-        users: [{ name: "ヤマダ", publicId: "USER001" }],
+        users: [{ name: "Zoe Bell", publicId: "USER001" }],
       })
       .mockResolvedValueOnce({
         nextToken: "",
-        users: [{ name: "アオキ", publicId: "USER002" }],
+        users: [{ name: "Ada Clark", publicId: "USER002" }],
       });
 
     const { listAllAnnouncementTargetUsers } = await import("./announcement");
-    const result = await listAllAnnouncementTargetUsers("TENANT001", "ja");
+    const result = await listAllAnnouncementTargetUsers("TENANT001", "en");
 
     expect(mockListTenantUsersApi).toHaveBeenNthCalledWith(
       1,
@@ -250,29 +252,31 @@ describe("announcement lib", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
-    // 2 ページ目の候補まで選択肢に載り、全体を名前順に並べ替える。
+    // The second page's candidates join the choices too, and the whole set is
+    // sorted by name.
     expect(result).toEqual({
       ok: true,
       users: [
-        { name: "アオキ", publicId: "USER002" },
-        { name: "ヤマダ", publicId: "USER001" },
+        { name: "Ada Clark", publicId: "USER002" },
+        { name: "Zoe Bell", publicId: "USER001" },
       ],
     });
   });
 
   it("offers no choices when the target users cannot be read to the last page", async () => {
-    // 同じ token が返り続ける壊れた応答。途中まで集めた候補を「全員」として
-    // 見せると、載っていない相手を選べないことに気付けない。
+    // A broken response that keeps returning the same token. Presenting the
+    // candidates gathered so far as "everyone" would hide that the people
+    // missing from the list cannot be chosen at all.
     mockListTenantUsersApi.mockResolvedValue({
       nextToken: "same-token",
-      users: [{ name: "ヤマダ", publicId: "USER001" }],
+      users: [{ name: "Zoe Bell", publicId: "USER001" }],
     });
 
     const { listAllAnnouncementTargetUsers } = await import("./announcement");
-    const result = await listAllAnnouncementTargetUsers("TENANT001", "ja");
+    const result = await listAllAnnouncementTargetUsers("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "対象ユーザー一覧の取得に失敗しました。",
+      message: "Could not load the list of target users.",
       ok: false,
       requiresSignIn: false,
       users: [],
@@ -285,11 +289,10 @@ describe("announcement lib", () => {
     );
 
     const { listAllAnnouncementTargetUsers } = await import("./announcement");
-    const result = await listAllAnnouncementTargetUsers("TENANT001", "ja");
+    const result = await listAllAnnouncementTargetUsers("TENANT001", "en");
 
     expect(result).toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
       requiresSignIn: false,
       users: [],
@@ -305,13 +308,13 @@ describe("announcement lib", () => {
     const result = await createAnnouncement(
       {
         audienceType: "all",
-        body: "本文",
+        body: "Announcement body",
         linkUrl: "",
         targetUserPublicIds: [],
         tenantId: "TENANT001",
-        title: "タイトル",
+        title: "Announcement title",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({ createdCount: 2, ok: true });

@@ -10,7 +10,7 @@ import { CursorPageEmptyState } from "./cursor-page-empty-state";
 
 vi.mock("#components/message", () => ({
   Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(sharedCatalog("ja"), message, values),
+    getMessage(sharedCatalog("en"), message, values),
 }));
 
 afterEach(() => {
@@ -21,35 +21,32 @@ describe("CursorPageEmptyState", () => {
   it("says nothing is registered yet and offers the create link when there is no pager", () => {
     render(
       <CursorPageEmptyState
-        actions={<button type="button">エピソードを新規作成</button>}
-        description="まだエピソードがありません。"
+        actions={<button type="button">Create an episode</button>}
+        description="There are no episodes yet."
         hasPageLinks={false}
-        itemLabel="エピソード"
-        title="このシリーズのエピソードは未登録です。"
+        itemLabel="Episodes"
+        title="This series has no episodes yet."
       />
     );
 
-    expect(
-      screen.getByText("このシリーズのエピソードは未登録です。")
-    ).toBeDefined();
+    expect(screen.getByText("This series has no episodes yet.")).toBeDefined();
     expect(screen.getByRole("button")).toBeDefined();
   });
 
   it("does not say the whole list is empty when there is a pager", () => {
     render(
       <CursorPageEmptyState
-        actions={<button type="button">エピソードを新規作成</button>}
-        description="まだエピソードがありません。"
+        actions={<button type="button">Create an episode</button>}
+        description="There are no episodes yet."
         hasPageLinks
-        itemLabel="エピソード"
-        title="このシリーズのエピソードは未登録です。"
+        itemLabel="Episodes"
+        title="This series has no episodes yet."
       />
     );
 
-    expect(
-      screen.getByText("このページに表示できるエピソードはありません。")
-    ).toBeDefined();
-    // このページの行が消えただけなので、次の一手は新規作成ではなくページ送り。
+    expect(screen.getByText("No Episodes to show on this page.")).toBeDefined();
+    // Only this page's rows are gone, so the way out is the pager rather than
+    // creating a new record.
     expect(screen.queryByRole("button")).toBeNull();
   });
 });

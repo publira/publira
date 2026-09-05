@@ -38,7 +38,7 @@ const brandingImage = (url: string) => ({
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -56,17 +56,19 @@ describe("TenantLogoForm", () => {
     );
 
     expect(
-      screen.getByAltText<HTMLImageElement>("現在のロゴ").src.includes("logo-1")
+      screen
+        .getByAltText<HTMLImageElement>("Current logo")
+        .src.includes("logo-1")
     ).toBe(true);
-    expect(screen.getByRole("button", { name: "削除" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDefined();
   });
 
   it("shows neither the preview nor the remove action when nothing is set", () => {
     render(<TenantLogoForm action={noopAction} initialLogo={null} />);
 
-    expect(screen.queryByAltText("現在のロゴ")).toBeNull();
-    expect(screen.queryByRole("button", { name: "削除" })).toBeNull();
-    expect(screen.getByText("ロゴは設定されていません。")).toBeDefined();
+    expect(screen.queryByAltText("Current logo")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(screen.getByText("No logo is set.")).toBeDefined();
   });
 
   it("tells upload and removal apart by the intent of the same form", () => {
@@ -78,14 +80,14 @@ describe("TenantLogoForm", () => {
     );
 
     const submit = screen.getByRole<HTMLButtonElement>("button", {
-      name: "ロゴを保存",
+      name: "Save the logo",
     });
 
     expect(submit.name).toBe("intent");
     expect(submit.value).toBe("upload");
 
     const remove = screen.getByRole<HTMLButtonElement>("button", {
-      name: "ロゴを削除",
+      name: "Delete the logo",
     });
 
     expect(remove.name).toBe("intent");
@@ -95,7 +97,7 @@ describe("TenantLogoForm", () => {
   it("reflects the saved logo in the preview once the save succeeds", async () => {
     const action = vi.fn().mockResolvedValue({
       logo: brandingImage("/images/tenants/logo-2"),
-      message: "ロゴを保存しました。",
+      message: "The logo was saved.",
       ok: true,
     });
 
@@ -106,29 +108,30 @@ describe("TenantLogoForm", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "ロゴを保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save the logo" }));
 
     await waitFor(() => {
       expect(
         screen
-          .getByAltText<HTMLImageElement>("現在のロゴ")
+          .getByAltText<HTMLImageElement>("Current logo")
           .src.includes("logo-2")
       ).toBe(true);
     });
   });
 
   it("keeps the last saved logo when the submission fails", async () => {
-    // 失敗した Action state は logo を持たないので、表示をそこから導くと
-    // 保存済みの画像が消える。保持しているのは最後に成功した画像である。
+    // A failed Action state carries no logo, so deriving the preview from it
+    // would blank out an image that is still stored. What the form holds on to
+    // is the last image that saved.
     const action = vi
       .fn()
       .mockResolvedValueOnce({
         logo: brandingImage("/images/tenants/logo-2"),
-        message: "ロゴを保存しました。",
+        message: "The logo was saved.",
         ok: true,
       })
       .mockResolvedValueOnce({
-        message: "ロゴの保存に失敗しました。",
+        message: "Could not save the logo.",
         ok: false,
       });
 
@@ -139,29 +142,33 @@ describe("TenantLogoForm", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "ロゴを保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save the logo" }));
 
     await waitFor(() => {
       expect(
         screen
-          .getByAltText<HTMLImageElement>("現在のロゴ")
+          .getByAltText<HTMLImageElement>("Current logo")
           .src.includes("logo-2")
       ).toBe(true);
     });
     // The preview adopts the saved image as soon as the Action resolves, which
     // is before the submission itself settles. Retry for the submit button
     // instead of reading it synchronously, or the second click races the
-    // pending render that still labels it 保存中....
-    fireEvent.click(await screen.findByRole("button", { name: "ロゴを保存" }));
+    // pending render that still labels it "Saving...".
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Save the logo" })
+    );
 
     await waitFor(() => {
-      expect(screen.getByText("ロゴの保存に失敗しました。")).toBeDefined();
+      expect(screen.getByText("Could not save the logo.")).toBeDefined();
     });
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: "保存中..." })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Saving..." })).toBeNull();
     });
     expect(
-      screen.getByAltText<HTMLImageElement>("現在のロゴ").src.includes("logo-2")
+      screen
+        .getByAltText<HTMLImageElement>("Current logo")
+        .src.includes("logo-2")
     ).toBe(true);
   });
 
@@ -181,7 +188,9 @@ describe("TenantLogoForm", () => {
     );
 
     expect(
-      screen.getByAltText<HTMLImageElement>("現在のロゴ").src.includes("logo-2")
+      screen
+        .getByAltText<HTMLImageElement>("Current logo")
+        .src.includes("logo-2")
     ).toBe(true);
   });
 });

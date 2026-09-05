@@ -63,7 +63,7 @@ describe("loginAdmin", () => {
       accessToken: { expiresAt: "2026-09-03T00:00:00Z", token: "session" },
     });
 
-    const result = await loginAdmin(...credentials, "ja");
+    const result = await loginAdmin(...credentials, "en");
 
     expect(result).toEqual({
       accessToken: "session",
@@ -82,7 +82,7 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "ja");
+    const result = await loginAdmin(...credentials, "en");
 
     expect(result).toEqual({
       challengeKind: "verify",
@@ -102,7 +102,7 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "ja");
+    const result = await loginAdmin(...credentials, "en");
 
     expect(result).toMatchObject({
       challengeKind: "enroll",
@@ -119,7 +119,7 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "ja");
+    const result = await loginAdmin(...credentials, "en");
 
     expect(result).toMatchObject({ ok: false });
   });
@@ -133,7 +133,7 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "ja");
+    const result = await loginAdmin(...credentials, "en");
 
     expect(result).toMatchObject({ ok: false });
   });
@@ -143,7 +143,7 @@ describe("loginAdmin", () => {
       accessToken: { expiresAt: "not-a-date", token: "session" },
     });
 
-    const result = await loginAdmin(...credentials, "ja");
+    const result = await loginAdmin(...credentials, "en");
 
     expect(result).toMatchObject({ ok: false });
   });
@@ -157,11 +157,11 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "ja");
+    const result = await loginAdmin(...credentials, "en");
 
     // Signing in on the password alone would make the second factor optional.
     expect(result).toEqual({
-      message: "ログイン処理に失敗しました。時間をおいて再試行してください。",
+      message: "Could not sign you in. Please try again later.",
       ok: false,
     });
   });
@@ -176,7 +176,8 @@ describe("getAdminCurrentUser", () => {
   });
 
   it("asks for a fresh login for a whitespace-only accessToken", async () => {
-    // getAccessToken は常にトリム済みの値を返すため、空白のみのケースは空文字と同等
+    // getAccessToken always returns a trimmed value, so a whitespace-only token
+    // is the same case as an empty one.
     mockGetAccessToken.mockResolvedValueOnce("");
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: true });
@@ -191,7 +192,7 @@ describe("getAdminCurrentUser", () => {
 
   it("does not ask for a fresh login when the API returns a user with an empty publicId", async () => {
     mockGetMe.mockResolvedValueOnce({
-      user: { name: "テスト", publicId: "", role: "admin" },
+      user: { name: "Test User", publicId: "", role: "admin" },
     });
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: false });
@@ -199,19 +200,19 @@ describe("getAdminCurrentUser", () => {
 
   it("returns the user read from a valid response", async () => {
     mockGetMe.mockResolvedValueOnce({
-      user: { name: "山田太郎", publicId: "user-001", role: "admin" },
+      user: { name: "Jane Doe", publicId: "user-001", role: "admin" },
     });
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({
       ok: true,
-      user: { name: "山田太郎", publicId: "user-001", role: "admin" },
+      user: { name: "Jane Doe", publicId: "user-001", role: "admin" },
     });
   });
 
   it("passes the access token from getAccessToken straight to the API", async () => {
     mockGetAccessToken.mockResolvedValueOnce("valid-token");
     mockGetMe.mockResolvedValueOnce({
-      user: { name: "テスト", publicId: "user-001", role: "admin" },
+      user: { name: "Test User", publicId: "user-001", role: "admin" },
     });
     await getAdminCurrentUser("tenant_001");
     expect(mockGetMe).toHaveBeenCalledWith(
@@ -266,7 +267,7 @@ describe("isAdminSessionValid", () => {
 
   it("returns true when a valid user comes back", async () => {
     mockGetMe.mockResolvedValueOnce({
-      user: { name: "テスト", publicId: "user-001", role: "admin" },
+      user: { name: "Test User", publicId: "user-001", role: "admin" },
     });
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(true);
@@ -335,8 +336,8 @@ describe("tenant admin invitation", () => {
       acceptTenantAdminInvitation(
         "tenant_001",
         "token_001",
-        "ja",
-        "山田",
+        "en",
+        "Jane Doe",
         "password"
       )
     ).resolves.toEqual({
@@ -352,9 +353,9 @@ describe("tenant admin invitation", () => {
     );
 
     await expect(
-      acceptTenantAdminInvitation("tenant_001", "token_001", "ja")
+      acceptTenantAdminInvitation("tenant_001", "token_001", "en")
     ).resolves.toEqual({
-      message: "招待リンクの有効期限が切れています。",
+      message: "This invitation link has expired.",
       ok: false,
     });
   });
@@ -365,7 +366,7 @@ describe("admin password reset", () => {
     mockRequestPasswordReset.mockResolvedValueOnce({ requested: true });
 
     await expect(
-      requestAdminPasswordReset("tenant_001", "admin@example.com", "ja")
+      requestAdminPasswordReset("tenant_001", "admin@example.com", "en")
     ).resolves.toEqual({ ok: true, requested: true });
   });
 
@@ -375,9 +376,9 @@ describe("admin password reset", () => {
     );
 
     await expect(
-      requestAdminPasswordReset("tenant_001", "invalid", "ja")
+      requestAdminPasswordReset("tenant_001", "invalid", "en")
     ).resolves.toEqual({
-      message: "メールアドレスを確認してください。",
+      message: "Check the email address.",
       ok: false,
     });
   });
@@ -386,7 +387,7 @@ describe("admin password reset", () => {
     mockConfirmPasswordReset.mockResolvedValueOnce({ confirmed: true });
 
     await expect(
-      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "ja")
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "en")
     ).resolves.toEqual({ confirmed: true, ok: true });
   });
 
@@ -396,10 +397,9 @@ describe("admin password reset", () => {
     );
 
     await expect(
-      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "ja")
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "en")
     ).resolves.toEqual({
-      message:
-        "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
+      message: "This reset link has expired. Request the reset email again.",
       ok: false,
       reason: "expired",
     });
@@ -411,10 +411,9 @@ describe("admin password reset", () => {
     );
 
     await expect(
-      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "ja")
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "en")
     ).resolves.toEqual({
-      message:
-        "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+      message: "This reset link is invalid. Request the reset email again.",
       ok: false,
       reason: "invalid",
     });

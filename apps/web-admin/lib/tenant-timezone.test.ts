@@ -47,7 +47,7 @@ describe("tenant-timezone", () => {
 
     const { getTenantTimezone } = await import("./tenant-timezone");
 
-    const result = await getTenantTimezone("TENANT001", "ja");
+    const result = await getTenantTimezone("TENANT001", "en");
 
     expect(result).toEqual({ ok: true, timezone: "America/Los_Angeles" });
     expect(mockGetTenantTimezoneApi).toHaveBeenCalledWith(
@@ -62,10 +62,10 @@ describe("tenant-timezone", () => {
 
     const { getTenantTimezone } = await import("./tenant-timezone");
 
-    const result = await getTenantTimezone("TENANT001", "ja");
+    const result = await getTenantTimezone("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
       timezone: "Asia/Tokyo",
@@ -80,7 +80,7 @@ describe("tenant-timezone", () => {
 
     const { getTenantTimezone } = await import("./tenant-timezone");
 
-    const result = await getTenantTimezone("TENANT001", "ja");
+    const result = await getTenantTimezone("TENANT001", "en");
 
     expect(result.ok).toBe(false);
     expect(result.timezone).toBe("Asia/Tokyo");
@@ -98,7 +98,7 @@ describe("tenant-timezone", () => {
         tenantId: "TENANT001",
         timezone: "Europe/Paris",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({ ok: true, timezone: "Europe/Paris" });
@@ -123,7 +123,7 @@ describe("tenant-timezone", () => {
         tenantId: "TENANT001",
         timezone: "Asia/Nowhere",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
@@ -144,7 +144,7 @@ describe("tenant-timezone", () => {
         tenantId: "TENANT001",
         timezone: "Europe/Paris",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(false);

@@ -7,12 +7,12 @@ describe("parseForgotPasswordSearchParams", () => {
     expect(
       parseForgotPasswordSearchParams({
         email: "admin@example.com",
-        error: "  失敗しました  ",
+        error: "  Something went wrong  ",
         requested: "done",
       })
     ).toEqual({
       defaultEmail: "admin@example.com",
-      errorMessage: "失敗しました",
+      errorMessage: "Something went wrong",
       requested: true,
     });
   });

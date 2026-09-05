@@ -11,8 +11,8 @@ const countUnreadNotifications = vi.fn();
 const listNotifications = vi.fn();
 
 vi.mock("#lib/locale", () => ({
-  getLocale: () => Promise.resolve("ja"),
-  loadAdminMessages: () => Promise.resolve(sharedCatalog("ja")),
+  getLocale: () => Promise.resolve("en"),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
 }));
 
 vi.mock("#lib/notification", () => ({
@@ -72,18 +72,20 @@ describe("NotificationBell", () => {
     await renderBell();
 
     const trigger = screen.getByRole("button", {
-      name: "通知、未読はありません",
+      name: "Notifications, none unread",
     });
     expect(trigger.textContent).not.toContain("0");
-    expect(listNotifications).toHaveBeenCalledWith("tenant-1", "ja", {
+    expect(listNotifications).toHaveBeenCalledWith("tenant-1", "en", {
       limit: 5,
     });
 
     fireEvent.click(trigger);
-    expect(screen.getByText("通知はまだありません。")).toBeDefined();
-    expect(screen.getByText(/予約公開などの業務イベント/u)).toBeDefined();
+    expect(screen.getByText("You have no notifications yet.")).toBeDefined();
     expect(
-      screen.getByRole("link", { name: "もっと見る" }).getAttribute("href")
+      screen.getByText(/operational events such as scheduled publication/u)
+    ).toBeDefined();
+    expect(
+      screen.getByRole("link", { name: "View all" }).getAttribute("href")
     ).toBe("/notifications");
   });
 
@@ -92,34 +94,36 @@ describe("NotificationBell", () => {
       notifications: [
         {
           createdAt: "2026-08-30T00:00:00Z",
-          description: "公開設定を確認してください。",
+          description: "Check the publication settings.",
           href: "/series/SR01",
           id: "notification-1",
           isRead: false,
           notificationType: "episode_publish_failed",
-          title: "予約公開に失敗しました",
+          title: "An episode could not be published",
         },
       ],
       unreadCount: 3,
     });
 
-    const trigger = screen.getByRole("button", { name: "通知、未読3件" });
+    const trigger = screen.getByRole("button", {
+      name: "Notifications, 3 unread",
+    });
     expect(screen.getByText("3")).toBeDefined();
 
     fireEvent.click(trigger);
     expect(
       screen
-        .getByRole("link", { name: /予約公開に失敗しました/u })
+        .getByRole("link", { name: /An episode could not be published/u })
         .getAttribute("href")
     ).toBe("/series/SR01");
-    expect(screen.getByText("未読")).toBeDefined();
+    expect(screen.getByText("Unread")).toBeDefined();
   });
 
   it("shows 99+ beyond ninety-nine", async () => {
     await renderBell({ unreadCount: 120 });
 
     expect(
-      screen.getByRole("button", { name: "通知、未読120件" })
+      screen.getByRole("button", { name: "Notifications, 120 unread" })
     ).toBeDefined();
     expect(screen.getByText("99+")).toBeDefined();
   });
@@ -127,7 +131,7 @@ describe("NotificationBell", () => {
   it("keeps the menu and the link to all notifications when the fetch fails", async () => {
     countUnreadNotifications.mockResolvedValue({ ok: true, unreadCount: 0 });
     listNotifications.mockResolvedValue({
-      message: "通知一覧の取得に失敗しました。時間をおいて再試行してください。",
+      message: "Could not load your notifications. Please try again later.",
       nextToken: "",
       notifications: [],
       ok: false,
@@ -137,11 +141,11 @@ describe("NotificationBell", () => {
     render(await NotificationBell());
 
     fireEvent.click(
-      screen.getByRole("button", { name: "通知、未読はありません" })
+      screen.getByRole("button", { name: "Notifications, none unread" })
     );
     expect(screen.getByRole("alert").textContent).toBe(
-      "通知一覧の取得に失敗しました。時間をおいて再試行してください。"
+      "Could not load your notifications. Please try again later."
     );
-    expect(screen.getByRole("link", { name: "もっと見る" })).toBeDefined();
+    expect(screen.getByRole("link", { name: "View all" })).toBeDefined();
   });
 });

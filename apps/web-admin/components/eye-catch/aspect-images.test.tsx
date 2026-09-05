@@ -27,7 +27,7 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -89,7 +89,7 @@ it("marks a ratio the eye-catch holds no image for", () => {
   );
 
   // portrait is filled, so the other three report an empty slot.
-  expect(screen.getAllByText("画像がありません")).toHaveLength(3);
+  expect(screen.getAllByText("No image yet")).toHaveLength(3);
 });
 
 it("asks for a cover image before opening the ratio slots", () => {
@@ -102,9 +102,7 @@ it("asks for a cover image before opening the ratio slots", () => {
   );
 
   expect(screen.queryByText("portrait")).toBeNull();
-  expect(
-    screen.getByText(/先にアイキャッチ画像を登録してください/u)
-  ).toBeTruthy();
+  expect(screen.getByText(/Register a cover image first/u)).toBeTruthy();
 });
 
 it("stops showing the picked file once the form is submitted", () => {
@@ -124,7 +122,9 @@ it("stops showing the picked file once the form is submitted", () => {
 
   const stored = "/images/series/img/landscape/1600";
   const image = () =>
-    container.querySelector<HTMLImageElement>('img[alt="生成画像 landscape"]');
+    container.querySelector<HTMLImageElement>(
+      'img[alt="Generated image landscape"]'
+    );
 
   expect(image()?.getAttribute("src")).toBe(stored);
 

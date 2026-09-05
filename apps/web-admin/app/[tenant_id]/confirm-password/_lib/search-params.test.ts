@@ -8,11 +8,11 @@ describe("parseConfirmPasswordSearchParams", () => {
   it("reads a valid token and an error message", () => {
     expect(
       parseConfirmPasswordSearchParams({
-        error: "  失敗しました  ",
+        error: "  Something went wrong  ",
         token: VALID_TOKEN,
       })
     ).toEqual({
-      errorMessage: "失敗しました",
+      errorMessage: "Something went wrong",
       status: "",
       token: VALID_TOKEN,
     });

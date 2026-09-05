@@ -7,7 +7,7 @@ import {
   parseNotificationPayload,
 } from "./notification-copy";
 
-const ja = sharedCatalog("ja");
+const en = sharedCatalog("en");
 
 describe("parseNotificationPayload", () => {
   it("picks out only the fields it knows", () => {
@@ -15,17 +15,17 @@ describe("parseNotificationPayload", () => {
       parseNotificationPayload(
         JSON.stringify({
           episode_id: "EP01",
-          episode_title: "第1話",
+          episode_title: "Episode 1",
           extra: "ignored",
           series_id: "SR01",
-          series_title: "作品A",
+          series_title: "Series A",
         })
       )
     ).toEqual({
       episode_id: "EP01",
-      episode_title: "第1話",
+      episode_title: "Episode 1",
       series_id: "SR01",
-      series_title: "作品A",
+      series_title: "Series A",
     });
   });
 
@@ -61,16 +61,16 @@ describe("notificationDisplay", () => {
       notificationDisplay(
         "episode_published",
         {
-          episode_title: "第1話",
+          episode_title: "Episode 1",
           series_id: "SR01",
-          series_title: "作品A",
+          series_title: "Series A",
         },
-        ja
+        en
       )
     ).toEqual({
-      description: "「第1話」（作品A）を公開しました。",
+      description: "“Episode 1” (Series A) was published.",
       href: "/series/SR01",
-      title: "エピソードが公開されました",
+      title: "An episode was published",
     });
 
     expect(
@@ -80,36 +80,39 @@ describe("notificationDisplay", () => {
           episode_id: "EP01",
           series_id: "SR01",
         },
-        ja
+        en
       )
     ).toEqual({
-      description: "予約していたエピソードを公開できませんでした。",
+      description: "the scheduled episode could not be published.",
       href: "/series/SR01/episodes/EP01",
-      title: "エピソードの公開に失敗しました",
+      title: "An episode could not be published",
     });
   });
 
-  it("resolves its copy from the catalog it is given", () => {
+  // The `ja` mirror of the case above. Without it a builder that ignored the
+  // catalog it was handed and returned English unconditionally would still pass
+  // every other assertion in this file.
+  it("resolves its copy from the catalog it is given, so a ja catalog is Japanese", () => {
     expect(
       notificationDisplay(
         "episode_published",
         { episode_title: "Episode 1", series_title: "Series A" },
-        sharedCatalog("en")
+        sharedCatalog("ja")
       )
     ).toEqual({
-      description: "“Episode 1” (Series A) was published.",
+      description: "「Episode 1」（Series A）を公開しました。",
       href: undefined,
-      title: "An episode was published",
+      title: "エピソードが公開されました",
     });
   });
 
   it("keeps an unknown type as generic instead of dropping it", () => {
     expect(
-      notificationDisplay("invite_accepted", { series_id: "SR01" }, ja)
+      notificationDisplay("invite_accepted", { series_id: "SR01" }, en)
     ).toEqual({
-      description: "内容の詳細はありません。",
+      description: "No further details are available.",
       href: "/series/SR01",
-      title: "通知",
+      title: "Notification",
     });
   });
 });

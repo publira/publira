@@ -21,20 +21,20 @@ afterEach(() => {
 
 describe("TenantBrandLogo", () => {
   it("shows the logo image", () => {
-    render(<TenantBrandLogo alt="青枝出版のロゴ" variant={variant} />);
+    render(<TenantBrandLogo alt="Acme Publishing logo" variant={variant} />);
 
     expect(
       screen
-        .getByAltText<HTMLImageElement>("青枝出版のロゴ")
+        .getByAltText<HTMLImageElement>("Acme Publishing logo")
         .src.includes("logo-1")
     ).toBe(true);
   });
 
   it("renders nothing when the image fails to load", () => {
-    render(<TenantBrandLogo alt="青枝出版のロゴ" variant={variant} />);
+    render(<TenantBrandLogo alt="Acme Publishing logo" variant={variant} />);
 
-    fireEvent.error(screen.getByAltText("青枝出版のロゴ"));
+    fireEvent.error(screen.getByAltText("Acme Publishing logo"));
 
-    expect(screen.queryByAltText("青枝出版のロゴ")).toBeNull();
+    expect(screen.queryByAltText("Acme Publishing logo")).toBeNull();
   });
 });

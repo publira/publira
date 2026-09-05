@@ -60,7 +60,7 @@ describe("payment-settings", () => {
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
 
-    const result = await getTenantPaymentSettings("TENANT001", "ja");
+    const result = await getTenantPaymentSettings("TENANT001", "en");
 
     expect(result).toEqual({ ok: true, settings: publicSettings });
     expect(mockGetTenantPaymentSettingsApi).toHaveBeenCalledWith(
@@ -83,7 +83,7 @@ describe("payment-settings", () => {
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
 
-    const result = await getTenantPaymentSettings("TENANT001", "ja");
+    const result = await getTenantPaymentSettings("TENANT001", "en");
 
     expect(result.ok).toBe(true);
     expect(JSON.stringify(result)).not.toContain(leakedSecretKey);
@@ -100,10 +100,10 @@ describe("payment-settings", () => {
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
 
-    const result = await getTenantPaymentSettings("TENANT001", "ja");
+    const result = await getTenantPaymentSettings("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
     });
@@ -117,10 +117,10 @@ describe("payment-settings", () => {
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
 
-    const result = await getTenantPaymentSettings("TENANT001", "ja");
+    const result = await getTenantPaymentSettings("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       ok: false,
       requiresSignIn: false,
     });
@@ -133,7 +133,7 @@ describe("payment-settings", () => {
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
 
-    await expect(getTenantPaymentSettings("TENANT001", "ja")).rejects.toThrow(
+    await expect(getTenantPaymentSettings("TENANT001", "en")).rejects.toThrow(
       /boom/u
     );
   });
@@ -155,7 +155,7 @@ describe("payment-settings", () => {
         webhookSecret: leakedWebhookSecret,
         webhookSecretUpdateMode: SECRET_UPDATE_MODE_REPLACE,
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({ ok: true, settings: publicSettings });
@@ -195,7 +195,7 @@ describe("payment-settings", () => {
         webhookSecret: "",
         webhookSecretUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
@@ -222,11 +222,11 @@ describe("payment-settings", () => {
         webhookSecret: "",
         webhookSecretUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
-      message: "この操作を行う権限がありません。",
+      message: "You do not have permission to perform this action.",
       ok: false,
     });
   });

@@ -21,8 +21,8 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { sharedCatalog } = await import("@publira/i18n/catalog");
   return {
-    getActionLocale: () => Promise.resolve("ja"),
-    getActionMessages: () => Promise.resolve(sharedCatalog("ja")),
+    getActionLocale: () => Promise.resolve("en"),
+    getActionMessages: () => Promise.resolve(sharedCatalog("en")),
   };
 });
 
@@ -74,8 +74,8 @@ describe("series actions", () => {
         labelPublicId: "LABEL001",
         publicId: "SERIES001",
         readingPeriodHours: 24,
-        synopsis: "Synopsis",
-        title: "Title",
+        synopsis: "A synopsis",
+        title: "Series title",
       },
     });
 
@@ -83,8 +83,8 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
-    formData.set("title", "Title");
-    formData.set("synopsis", "Synopsis");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
     formData.set("label_public_id", "LABEL001");
     formData.set("published_at", "2030-01-01T10:00");
@@ -104,11 +104,11 @@ describe("series actions", () => {
         // (Asia/Tokyo here) — never as the server process's local zone.
         publishedAt: "2030-01-01T01:00:00Z",
         readingPeriodHours: 24,
-        synopsis: "Synopsis",
+        synopsis: "A synopsis",
         tenantId: "TENANT001",
-        title: "Title",
+        title: "Series title",
       },
-      "ja"
+      "en"
     );
     expect(mockRedirect).toHaveBeenCalledWith("/series/SERIES001?updated=1");
   });
@@ -126,8 +126,8 @@ describe("series actions", () => {
         labelPublicId: "LABEL001",
         publicId: "SERIES001",
         readingPeriodHours: 24,
-        synopsis: "Synopsis",
-        title: "Title",
+        synopsis: "A synopsis",
+        title: "Series title",
       },
     });
 
@@ -135,8 +135,8 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
-    formData.set("title", "Title");
-    formData.set("synopsis", "Synopsis");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
     formData.set("label_public_id", "LABEL001");
     formData.set("published_at", "2030-01-01T10:00:00-08:00");
@@ -145,7 +145,7 @@ describe("series actions", () => {
 
     expect(mockUpdateSeries).toHaveBeenCalledWith(
       expect.objectContaining({ publishedAt: "2030-01-01T18:00:00Z" }),
-      "ja"
+      "en"
     );
   });
 
@@ -163,8 +163,8 @@ describe("series actions", () => {
         labelPublicId: "LABEL001",
         publicId: "SERIES001",
         readingPeriodHours: 24,
-        synopsis: "Synopsis",
-        title: "Title",
+        synopsis: "A synopsis",
+        title: "Series title",
       },
     });
 
@@ -172,8 +172,8 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
-    formData.set("title", "Title");
-    formData.set("synopsis", "Synopsis");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
     formData.set("label_public_id", "LABEL001");
     formData.set("published_at", "2030-01-01T10:00");
@@ -183,7 +183,7 @@ describe("series actions", () => {
     // PST (UTC-8) in January — 10:00 in Los Angeles is 18:00Z.
     expect(mockUpdateSeries).toHaveBeenCalledWith(
       expect.objectContaining({ publishedAt: "2030-01-01T18:00:00Z" }),
-      "ja"
+      "en"
     );
     expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
     // The screen has no client-side refresh of its own, so clearing this tag is
@@ -196,8 +196,8 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
-    formData.set("title", "Title");
-    formData.set("synopsis", "Synopsis");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
     formData.set("label_public_id", "LABEL001");
     formData.set("published_at", "2030-01-01");
@@ -205,7 +205,7 @@ describe("series actions", () => {
     const result = await updateSeriesAction(null, formData);
 
     expect(result).toEqual({
-      message: "公開日時の形式が正しくありません。",
+      message: "The publication date and time is invalid.",
       mode: "update",
       ok: false,
     });
@@ -217,8 +217,8 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
-    formData.set("title", "Title");
-    formData.set("synopsis", "Synopsis");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
     formData.set("label_public_id", "LABEL001");
     formData.set("clear_eye_catch_image", "0");
@@ -226,7 +226,7 @@ describe("series actions", () => {
     const result = await updateSeriesEyeCatchAction(null, formData);
 
     expect(result).toEqual({
-      message: "画像を選択するか、削除チェックを選んでください。",
+      message: "Select an image or choose to remove it.",
       mode: "update",
       ok: false,
     });

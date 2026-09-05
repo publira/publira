@@ -38,7 +38,7 @@ const brandingImage = (url: string) => ({
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="ja">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
     ),
   });
 
@@ -57,18 +57,18 @@ describe("TenantIconForm", () => {
 
     expect(
       screen
-        .getByAltText<HTMLImageElement>("現在のアイコン")
+        .getByAltText<HTMLImageElement>("Current icon")
         .src.includes("icon-1")
     ).toBe(true);
-    expect(screen.getByRole("button", { name: "削除" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDefined();
   });
 
   it("shows neither the preview nor the remove action when nothing is set", () => {
     render(<TenantIconForm action={noopAction} initialIcon={null} />);
 
-    expect(screen.queryByAltText("現在のアイコン")).toBeNull();
-    expect(screen.queryByRole("button", { name: "削除" })).toBeNull();
-    expect(screen.getByText("アイコンは設定されていません。")).toBeDefined();
+    expect(screen.queryByAltText("Current icon")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(screen.getByText("No icon is set.")).toBeDefined();
   });
 
   it("tells upload and removal apart by the intent of the same form", () => {
@@ -80,14 +80,14 @@ describe("TenantIconForm", () => {
     );
 
     const submit = screen.getByRole<HTMLButtonElement>("button", {
-      name: "アイコンを保存",
+      name: "Save the icon",
     });
 
     expect(submit.name).toBe("intent");
     expect(submit.value).toBe("upload");
 
     const remove = screen.getByRole<HTMLButtonElement>("button", {
-      name: "アイコンを削除",
+      name: "Delete the icon",
     });
 
     expect(remove.name).toBe("intent");
@@ -97,7 +97,7 @@ describe("TenantIconForm", () => {
   it("reflects the saved icon in the preview once the save succeeds", async () => {
     const action = vi.fn().mockResolvedValue({
       icon: brandingImage("/images/tenants/icon-2"),
-      message: "アイコンを保存しました。",
+      message: "The icon was saved.",
       ok: true,
     });
 
@@ -108,29 +108,30 @@ describe("TenantIconForm", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "アイコンを保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save the icon" }));
 
     await waitFor(() => {
       expect(
         screen
-          .getByAltText<HTMLImageElement>("現在のアイコン")
+          .getByAltText<HTMLImageElement>("Current icon")
           .src.includes("icon-2")
       ).toBe(true);
     });
   });
 
   it("keeps the last saved icon when the submission fails", async () => {
-    // 失敗した Action state は icon を持たないので、表示をそこから導くと
-    // 保存済みの画像が消える。保持しているのは最後に成功した画像である。
+    // A failed Action state carries no icon, so deriving the preview from it
+    // would blank out an image that is still stored. What the form holds on to
+    // is the last image that saved.
     const action = vi
       .fn()
       .mockResolvedValueOnce({
         icon: brandingImage("/images/tenants/icon-2"),
-        message: "アイコンを保存しました。",
+        message: "The icon was saved.",
         ok: true,
       })
       .mockResolvedValueOnce({
-        message: "アイコンの保存に失敗しました。",
+        message: "Could not save the icon.",
         ok: false,
       });
 
@@ -141,32 +142,32 @@ describe("TenantIconForm", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "アイコンを保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save the icon" }));
 
     await waitFor(() => {
       expect(
         screen
-          .getByAltText<HTMLImageElement>("現在のアイコン")
+          .getByAltText<HTMLImageElement>("Current icon")
           .src.includes("icon-2")
       ).toBe(true);
     });
     // The preview adopts the saved image as soon as the Action resolves, which
     // is before the submission itself settles. Retry for the submit button
     // instead of reading it synchronously, or the second click races the
-    // pending render that still labels it 保存中....
+    // pending render that still labels it "Saving...".
     fireEvent.click(
-      await screen.findByRole("button", { name: "アイコンを保存" })
+      await screen.findByRole("button", { name: "Save the icon" })
     );
 
     await waitFor(() => {
-      expect(screen.getByText("アイコンの保存に失敗しました。")).toBeDefined();
+      expect(screen.getByText("Could not save the icon.")).toBeDefined();
     });
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: "保存中..." })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Saving..." })).toBeNull();
     });
     expect(
       screen
-        .getByAltText<HTMLImageElement>("現在のアイコン")
+        .getByAltText<HTMLImageElement>("Current icon")
         .src.includes("icon-2")
     ).toBe(true);
   });
@@ -188,7 +189,7 @@ describe("TenantIconForm", () => {
 
     expect(
       screen
-        .getByAltText<HTMLImageElement>("現在のアイコン")
+        .getByAltText<HTMLImageElement>("Current icon")
         .src.includes("icon-2")
     ).toBe(true);
   });

@@ -7,14 +7,14 @@ describe("parseLoginSearchParams", () => {
     expect(
       parseLoginSearchParams({
         email: "  admin@example.com  ",
-        error: "  失敗しました  ",
+        error: "  Something went wrong  ",
         invited: "done",
         next: "/series",
         reset: "done",
       })
     ).toEqual({
       defaultEmail: "admin@example.com",
-      errorMessage: "失敗しました",
+      errorMessage: "Something went wrong",
       invitedDone: true,
       nextPath: "/series",
       passwordResetDone: true,

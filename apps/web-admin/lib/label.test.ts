@@ -50,7 +50,7 @@ describe("listLabels", () => {
     });
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", "ja", {
+    const result = await listLabels("TENANT001", "en", {
       limit: 20,
       token: "current-page",
     });
@@ -74,7 +74,7 @@ describe("listLabels", () => {
     mockListLabels.mockResolvedValue({ labels: [] });
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", "ja", {});
+    const result = await listLabels("TENANT001", "en", {});
 
     expect(mockListLabels).toHaveBeenCalledWith(
       {
@@ -84,7 +84,8 @@ describe("listLabels", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
-    // トークン未指定の応答でも、呼び出し側が分岐せずに済むよう空文字へそろえる。
+    // A response that names no token still answers with empty strings, so the
+    // caller never has to branch on their absence.
     expect(result).toMatchObject({
       nextToken: "",
       ok: true,
@@ -95,13 +96,13 @@ describe("listLabels", () => {
   it("returns the keyset order of the server without re-sorting it", async () => {
     mockListLabels.mockResolvedValue({
       labels: [
-        { name: "ぬ", publicId: "LABEL002" },
-        { name: "あ", publicId: "LABEL001" },
+        { name: "Zulu", publicId: "LABEL002" },
+        { name: "Alpha", publicId: "LABEL001" },
       ],
     });
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", "ja", {});
+    const result = await listLabels("TENANT001", "en", {});
 
     expect(result.labels.map((item) => item.publicId)).toEqual([
       "LABEL002",
@@ -116,7 +117,7 @@ describe("listLabels", () => {
     );
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", "ja", {
+    const result = await listLabels("TENANT001", "en", {
       token: "current-page",
     });
 
@@ -162,7 +163,7 @@ describe("getLabel", () => {
         publicId: "LABEL101",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(mockGetLabel).toHaveBeenCalledExactlyOnceWith(
@@ -201,7 +202,7 @@ describe("getLabel", () => {
         publicId: "   ",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(mockGetLabel).not.toHaveBeenCalled();
@@ -218,19 +219,20 @@ describe("getLabel", () => {
         publicId: "LABEL001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(mockGetLabel).not.toHaveBeenCalled();
     expect(result).toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
     });
   });
 
-  // 不在とテナント外はサーバーがどちらも not_found で返すため、区別せず
-  // notFound へ落とす。
+  // The server answers not_found both for a record that does not exist and
+  // for one outside the tenant, so neither is distinguished here: both fall
+  // through to notFound.
   it("returns notFound when the RPC answers not_found", async () => {
     const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetLabel.mockRejectedValue(
@@ -243,7 +245,7 @@ describe("getLabel", () => {
         publicId: "MISSING",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({ notFound: true, ok: false });
@@ -261,7 +263,7 @@ describe("getLabel", () => {
         publicId: "LABEL001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result.ok).toBe(false);
@@ -277,12 +279,11 @@ describe("getLabel", () => {
         publicId: "LABEL001",
         tenantId: "TENANT001",
       },
-      "ja"
+      "en"
     );
 
     expect(result).toEqual({
-      message:
-        "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。",
+      message: "Could not load the labels. Please try again later.",
       ok: false,
     });
   });
@@ -314,7 +315,7 @@ describe("listAllLabels", () => {
       });
 
     const { listAllLabels } = await import("./label");
-    const result = await listAllLabels("TENANT001", "ja");
+    const result = await listAllLabels("TENANT001", "en");
 
     expect(mockListLabels).toHaveBeenNthCalledWith(
       1,
@@ -350,12 +351,12 @@ describe("listAllLabels", () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { listAllLabels } = await import("./label");
-    const result = await listAllLabels("TENANT001", "ja");
+    const result = await listAllLabels("TENANT001", "en");
 
     expect(mockListLabels).not.toHaveBeenCalled();
     expect(result).toEqual({
       labels: [],
-      message: "セッションが無効です。再ログインしてください。",
+      message: "Your session is no longer valid. Please sign in again.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -378,13 +379,12 @@ describe("listAllLabels", () => {
       });
 
     const { listAllLabels } = await import("./label");
-    const result = await listAllLabels("TENANT001", "ja");
+    const result = await listAllLabels("TENANT001", "en");
 
     expect(mockListLabels).toHaveBeenCalledTimes(2);
     expect(result).toEqual({
       labels: [],
-      message:
-        "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。",
+      message: "Could not load the labels. Please try again later.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -430,7 +430,7 @@ describe("label eye-catch aspect images", () => {
         tenantId: "TENANT001",
         variantType: "landscape",
       },
-      "ja"
+      "en"
     );
 
     expect(mockUploadAspectImage).toHaveBeenCalledExactlyOnceWith(
@@ -462,7 +462,7 @@ describe("label eye-catch aspect images", () => {
         tenantId: "TENANT001",
         variantType: "landscape",
       },
-      "ja"
+      "en"
     );
 
     expect(mockUploadAspectImage).not.toHaveBeenCalled();
