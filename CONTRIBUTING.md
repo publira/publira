@@ -18,9 +18,9 @@ This page answers three questions for a first-time contributor: what to install,
 │   │   ├── api-server/       # ConnectRPC API server
 │   │   ├── batch/            # Single binary bundling every batch job (selected by subcommand)
 │   │   └── outbox-worker/    # Outbox + River resident worker
-│   ├── gen/            # buf generated code (Go)
 │   └── internal/
-│       └── db/gen/     # sqlc generated code (DB/Go)
+│       ├── db/gen/     # sqlc generated code (DB/Go)
+│       └── proto/gen/  # buf generated code (Go)
 ├── infra/
 │   └── docker/         # Production Dockerfiles (per role, built from the repository root)
 ├── mobile/             # [Flutter] Mobile app (iOS/Android)
@@ -47,24 +47,24 @@ The dependency services — PostgreSQL, Valkey, RustFS, Mailpit, Jaeger, and a T
 
 ### On the host
 
-Outside the Dev Container you install the toolchain yourself. The versions below are the ones CI runs, taken from the same files CI reads; Renovate raises those pins, so when this table and the file disagree, the file is right.
+Outside the Dev Container you install the toolchain yourself. Install the version each pin names: the pins are the ones CI runs, Renovate keeps them current, and this page deliberately does not repeat their values, so it never disagrees with them.
 
-| Tool | Version | Where the pin lives | Needed for |
-| --- | --- | --- | --- |
-| [Task](https://taskfile.dev/) | 3.53.1 | `TASK_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Every `task` command |
-| Docker Engine with Compose v2 | Any current release | Not pinned | The dependency services, the Testcontainers tests in `task server:test`, E2E |
-| [pnpm](https://pnpm.io/) | 11.25.0 | `packageManager` in [`package.json`](package.json) | The web apps and shared packages |
-| Node.js | 24.20.0 | `devEngines.runtime` in [`package.json`](package.json) | Downloaded by pnpm on demand (`onFail: download`); nothing to install by hand |
-| Go | 1.27.1 | `go-version` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml); [`server/go.mod`](server/go.mod) states the minimum the module accepts | The Go backend |
-| libvips | The distribution's `libvips-dev` and `pkg-config` | Not pinned; installed by the Go jobs in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Building and testing the Go backend, whose image servers link libvips through Manael |
-| [golangci-lint](https://golangci-lint.run/) | 2.13.2 | `GOLANGCI_LINT_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task server:lint` |
-| [sqlc](https://sqlc.dev/) | 1.31.1 | `SQLC_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task gen` and `sqlc diff` |
-| [buf](https://buf.build/) | 1.72.0 | `BUF_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task gen` |
-| [golang-migrate](https://github.com/golang-migrate/migrate) | 4.19.1 | `MIGRATE_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task db:*` |
-| PostgreSQL client (`psql`) | Any current release | Not pinned | `task db:setup` (the seeds) and `task db:console` |
-| AWS CLI | Any current release | Not pinned | `task storage:init` |
-| [Flutter](https://docs.flutter.dev/get-started/install) | 3.47.2 | `FLUTTER_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml); [`mobile/pubspec.yaml`](mobile/pubspec.yaml) states the Dart SDK constraint | The mobile app; [`scripts/setup-flutter.sh`](scripts/setup-flutter.sh) installs the pinned SDK on a workstation as it does in CI |
-| [wait4x](https://github.com/wait4x/wait4x) | 3.7.1 | `WAIT4X_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task e2e` and `task e2e:bootstrap` |
+| Tool | Where the pin lives | Needed for |
+| --- | --- | --- |
+| [Task](https://taskfile.dev/) | `TASK_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Every `task` command |
+| Docker Engine with Compose v2 | Not pinned | The dependency services, the Testcontainers tests in `task server:test`, E2E |
+| [pnpm](https://pnpm.io/) | `packageManager` in [`package.json`](package.json) | The web apps and shared packages |
+| Node.js | `devEngines.runtime` in [`package.json`](package.json) | Downloaded by pnpm on demand (`onFail: download`); nothing to install by hand |
+| Go | `go-version` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml); [`server/go.mod`](server/go.mod) states the minimum the module accepts | The Go backend |
+| libvips (`libvips-dev` and `pkg-config`) | Not pinned; installed by the Go jobs in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Building and testing the Go backend, whose image servers link libvips through Manael |
+| [golangci-lint](https://golangci-lint.run/) | `GOLANGCI_LINT_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task server:lint` |
+| [sqlc](https://sqlc.dev/) | `SQLC_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task gen` and `sqlc diff` |
+| [buf](https://buf.build/) | `BUF_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task gen` |
+| [golang-migrate](https://github.com/golang-migrate/migrate) | `MIGRATE_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task db:*` |
+| PostgreSQL client (`psql`) | Not pinned | `task db:setup` (the seeds) and `task db:console` |
+| AWS CLI | Not pinned | `task storage:init` |
+| [Flutter](https://docs.flutter.dev/get-started/install) | `FLUTTER_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml); [`mobile/pubspec.yaml`](mobile/pubspec.yaml) states the Dart SDK constraint | The mobile app; [`scripts/setup-flutter.sh`](scripts/setup-flutter.sh) installs the pinned SDK on a workstation as it does in CI |
+| [wait4x](https://github.com/wait4x/wait4x) | `WAIT4X_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task e2e` and `task e2e:bootstrap` |
 
 With the tools installed:
 
