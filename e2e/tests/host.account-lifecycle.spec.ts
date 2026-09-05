@@ -35,8 +35,12 @@ const VERIFY_PATH = "/verify";
 const CONFIRM_PASSWORD_PATH = "/confirm-password";
 const RESET_PASSWORD_PATH = "/reset-password";
 
+/**
+ * The pending page says the same thing for a free address and a registered one,
+ * so the copy names no outcome: which mail was sent is what the mailbox says.
+ */
 const SIGNUP_SENT_MESSAGE =
-  "We sent a confirmation email. Open the link in it to finish signing up.";
+  "We sent an email to the address you entered. Open it to continue.";
 /** Subject of the mail a sign-up for a registered address sends its owner. */
 const SIGNUP_ATTEMPT_SUBJECT = "Seed Tenant sign-up attempt";
 const VERIFIED_MESSAGE =

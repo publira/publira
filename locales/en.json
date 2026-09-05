@@ -1552,8 +1552,8 @@
         "title": "Sign up"
       },
       "signup_pending": {
-        "sent": "We sent a confirmation email. Open the link in it to finish signing up.",
-        "title": "Confirm your email"
+        "sent": "We sent an email to the address you entered. Open it to continue.",
+        "title": "Check your email"
       },
       "verify": {
         "failed": "Could not confirm your email address. The link may have expired or be invalid.",
