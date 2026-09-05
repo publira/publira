@@ -5,8 +5,8 @@ import { getRedisClient, resetRedisClientsForTests } from "./redis-client";
 import { streamToBuffer } from "./serialize";
 import { createUseCacheHandler } from "./use-cache-handler";
 
-const redisUrl =
-  process.env.PUBLIRA_REDIS_URL?.trim() || "redis://localhost:6379";
+const configuredRedisUrl = process.env.PUBLIRA_REDIS_URL?.trim();
+const redisUrl = configuredRedisUrl || "redis://localhost:6379";
 const keyPrefix = `publira:test-${process.pid}:`;
 
 const canConnect = async (): Promise<boolean> => {
@@ -28,6 +28,16 @@ describe("Redis handlers integration", () => {
 
   beforeAll(async () => {
     available = await canConnect();
+    // Skip only when Redis was never configured (a host without the
+    // service). A configured URL or CI means these cases are expected to run.
+    if (
+      !available &&
+      (Boolean(configuredRedisUrl) || Boolean(process.env.CI))
+    ) {
+      throw new Error(
+        `Redis handlers integration tests could not reach ${redisUrl}`
+      );
+    }
   });
 
   afterAll(async () => {
