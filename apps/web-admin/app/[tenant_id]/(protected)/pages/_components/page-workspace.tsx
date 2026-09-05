@@ -57,6 +57,7 @@ interface PageWorkspaceProps {
   publishAction: (formData: FormData) => Promise<void>;
   rollbackAction: (formData: FormData) => Promise<void>;
   timeZone: string;
+  unpublishAction: (formData: FormData) => Promise<void>;
   updatePageAction: (
     prevState: PageFormState,
     formData: FormData
@@ -84,6 +85,62 @@ const getVersionStatus = (
     label: getMessage(messages, "admin.pages.workspace.draft"),
     tone: "muted",
   };
+};
+
+interface PublicationStatusProps {
+  page: PageListItem;
+  timeZone: string;
+  unpublishAction: (formData: FormData) => Promise<void>;
+}
+
+/**
+ * The page's public state, and the control that leaves it. Its own component
+ * because the unpublish control belongs beside the badge it acts on, while the
+ * form around the title fields cannot contain a second form.
+ */
+const PublicationStatus = ({
+  page,
+  timeZone,
+  unpublishAction,
+}: PublicationStatusProps) => {
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const messages = sharedCatalog(locale);
+  const tenantId = useTenantId();
+  const isPublished = Boolean(page.publishedVersionId);
+
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <Badge tone={isPublished ? "info" : "muted"}>
+          {isPublished
+            ? getMessage(messages, "admin.pages.workspace.published")
+            : getMessage(messages, "admin.pages.workspace.draft")}
+        </Badge>
+        <span className="text-sm text-muted-foreground">
+          {getMessage(messages, "admin.pages.workspace.updated_at", {
+            date: formatPageDateTime(page.updatedAt, locale, timeZone),
+          })}
+        </span>
+        {isPublished ? (
+          <form action={unpublishAction}>
+            <input name="tenant_id" type="hidden" value={tenantId} />
+            <input name="page_id" type="hidden" value={page.id} />
+            <Button type="submit" variant="outline">
+              {getMessage(messages, "admin.pages.workspace.unpublish")}
+            </Button>
+          </form>
+        ) : null}
+      </div>
+      {isPublished ? (
+        <p className="text-sm text-muted-foreground">
+          {getMessage(messages, "admin.pages.workspace.unpublish_description")}
+        </p>
+      ) : null}
+    </div>
+  );
 };
 
 const getDiffLineDisplay = (line: {
@@ -116,6 +173,7 @@ export const PageWorkspace = ({
   publishAction,
   rollbackAction,
   timeZone,
+  unpublishAction,
   updatePageAction,
 }: PageWorkspaceProps) => {
   const locale = useContext(AdminLocaleContext);
@@ -245,7 +303,13 @@ export const PageWorkspace = ({
             {getMessage(messages, "admin.pages.workspace.basic_description")}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid gap-4">
+          <PublicationStatus
+            page={initialPage}
+            timeZone={timeZone}
+            unpublishAction={unpublishAction}
+          />
+
           <form action={titleFormAction} className="grid gap-4">
             <input name="tenant_id" type="hidden" value={tenantId} />
             <input name="page_id" type="hidden" value={initialPage.id} />
@@ -277,23 +341,6 @@ export const PageWorkspace = ({
                   />
                 </FieldContent>
               </Field>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge tone={initialPage.publishedVersionId ? "info" : "muted"}>
-                {initialPage.publishedVersionId
-                  ? getMessage(messages, "admin.pages.workspace.published")
-                  : getMessage(messages, "admin.pages.workspace.draft")}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                {getMessage(messages, "admin.pages.workspace.updated_at", {
-                  date: formatPageDateTime(
-                    initialPage.updatedAt,
-                    locale,
-                    timeZone
-                  ),
-                })}
-              </span>
             </div>
 
             {titleState ? (

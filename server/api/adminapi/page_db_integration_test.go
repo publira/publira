@@ -169,6 +169,104 @@ func TestDBPublishPageVersionUpdatesPublishedVersion(t *testing.T) {
 	}
 }
 
+func TestDBUnpublishPageClearsPublishedVersionAndKeepsVersions(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.pagesClient()
+
+	page, err := client.CreatePage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreatePageRequest{
+		Tenant: tenant.tenantContext(),
+		Slug:   "/privacy",
+		Title:  "Privacy",
+	}))
+	if err != nil {
+		t.Fatalf("CreatePage: %v", err)
+	}
+	pageID := page.Msg.Page.Id
+
+	version, err := client.CreateVersion(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateVersionRequest{
+		Tenant:          tenant.tenantContext(),
+		PageId:          pageID,
+		ContentMarkdown: "# Privacy\n\nOnly revision.",
+	}))
+	if err != nil {
+		t.Fatalf("CreateVersion: %v", err)
+	}
+	versionID := version.Msg.Version.Id
+
+	if _, err := client.PublishVersion(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.PublishVersionRequest{
+		Tenant:    tenant.tenantContext(),
+		PageId:    pageID,
+		VersionId: versionID,
+	})); err != nil {
+		t.Fatalf("PublishVersion: %v", err)
+	}
+
+	unpublished, err := client.UnpublishPage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UnpublishPageRequest{
+		Tenant: tenant.tenantContext(),
+		PageId: pageID,
+	}))
+	if err != nil {
+		t.Fatalf("UnpublishPage: %v", err)
+	}
+	if unpublished.Msg.Page.PublishedVersionId != "" {
+		t.Fatalf("published_version_id = %q, want empty", unpublished.Msg.Page.PublishedVersionId)
+	}
+
+	versions, err := client.ListVersions(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListVersionsRequest{
+		Tenant: tenant.tenantContext(),
+		PageId: pageID,
+	}))
+	if err != nil {
+		t.Fatalf("ListVersions: %v", err)
+	}
+	if len(versions.Msg.Versions) != 1 || versions.Msg.Versions[0].Id != versionID {
+		t.Fatalf("versions = %v, want the published one kept", versions.Msg.Versions)
+	}
+
+	// The same version goes back up: nothing about the body had to be re-entered.
+	if _, err := client.PublishVersion(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.PublishVersionRequest{
+		Tenant:    tenant.tenantContext(),
+		PageId:    pageID,
+		VersionId: versionID,
+	})); err != nil {
+		t.Fatalf("PublishVersion after unpublish: %v", err)
+	}
+	reloaded, err := client.GetPage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetPageRequest{
+		Tenant: tenant.tenantContext(),
+		PageId: pageID,
+	}))
+	if err != nil {
+		t.Fatalf("GetPage: %v", err)
+	}
+	if reloaded.Msg.Page.PublishedVersionId != versionID {
+		t.Fatalf("published_version_id = %q, want %q", reloaded.Msg.Page.PublishedVersionId, versionID)
+	}
+}
+
+func TestDBUnpublishAnotherTenantsPageReturnsNotFound(t *testing.T) {
+	env := newAdminDBEnv(t)
+	first, second := seedTwoTenants(t, env)
+	client := env.pagesClient()
+
+	theirs, err := client.CreatePage(context.Background(), newAdminDBRequest(second, &publiraadminv1.CreatePageRequest{
+		Tenant: second.tenantContext(),
+		Slug:   "/tenant-b",
+		Title:  "Tenant B Page",
+	}))
+	if err != nil {
+		t.Fatalf("CreatePage for tenant B: %v", err)
+	}
+
+	_, err = client.UnpublishPage(context.Background(), newAdminDBRequest(first, &publiraadminv1.UnpublishPageRequest{
+		Tenant: first.tenantContext(),
+		PageId: theirs.Msg.Page.Id,
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("UnpublishPage across tenants code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
 func TestDBCreateVersionForAnotherTenantsPageReturnsNotFound(t *testing.T) {
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
