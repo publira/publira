@@ -17,6 +17,13 @@
 
 name: publira-e2e
 
+# Which run directory owns the stack. `scripts/lib.sh` reads it back off the
+# containers to refuse a run that would otherwise migrate and re-seed another
+# one's database: the compose-project lease disappears with its holder process,
+# while this label lives exactly as long as the container carrying it.
+x-run-dir-label: &run-dir-label
+  com.publira.e2e.run-dir: "${E2E_RUN_DIR:-}"
+
 services:
   # SMTP sink for the mail the flows under test send, and the only way a spec
   # can read a token the database keeps as a hash: the confirmation link is in
@@ -28,6 +35,7 @@ services:
   # No volume, unlike the dev stack's: a run starts from an empty mailbox.
   mailpit:
     image: axllent/mailpit:v1.31.0@sha256:c96991d9bef73594c246d89ca81411d4e916f03e76a7d2d72fa2ab5dd3c9ce24
+    labels: *run-dir-label
     ports:
       # SMTP intake and the web UI / API.
       - "127.0.0.1:${E2E_MAILPIT_SMTP_PORT:-1026}:1025"
@@ -41,6 +49,7 @@ services:
 
   postgres:
     image: postgres:18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f
+    labels: *run-dir-label
     environment:
       POSTGRES_DB: publira
       POSTGRES_PASSWORD: password
@@ -59,6 +68,7 @@ services:
   redis:
     # Valkey is Redis-protocol compatible; keep PUBLIRA_REDIS_URL as redis://...
     image: valkey/valkey:9.1.2-alpine@sha256:ccfa19b0d743e48927e1c8c14e39e0acb97b5cea347fef0bfe340247fea920cd
+    labels: *run-dir-label
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
       - "127.0.0.1:${E2E_REDIS_PORT:-6380}:6379"
@@ -71,6 +81,7 @@ services:
 
   rustfs:
     image: rustfs/rustfs:1.0.0-rc.2@sha256:7d6d361c49c08d427250fb59aae5d78df83d644c3405d9ccf4b21cda0b0692d0
+    labels: *run-dir-label
     environment:
       RUSTFS_ACCESS_KEY: publira
       RUSTFS_SECRET_KEY: publirapass
@@ -97,6 +108,7 @@ services:
   # goes through here; every other suite keeps talking to web-host directly.
   traefik:
     image: traefik:v3.7.13@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
+    labels: *run-dir-label
     network_mode: host
     command:
       # Loopback, like every published port above: a bare `:port` would listen

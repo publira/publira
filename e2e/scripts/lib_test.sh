@@ -440,8 +440,114 @@ else
   rm -f "${E2E_DIR}/.run/locks/${link_project}.lock" "${E2E_DIR}/.run/locks/${link_project}.lease"
 fi
 
+# A stack outlives its lease holder: kill the holder and the containers stay up,
+# the ports stay bound, and Postgres keeps answering. Ownership is therefore read
+# off the containers too, which a `docker` stand-in on PATH answers for here so
+# the check still needs no daemon.
+stack_project="${lock_project}-stack"
+stub_dir="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-docker.XXXXXX")"
+cat >"${stub_dir}/docker" <<'STUB'
+#!/usr/bin/env bash
+# Answers the two `docker ps` queries lib.sh makes. STUB_STACK_PRESENT=1 gives
+# the compose project containers, whose run-directory label is
+# STUB_STACK_RUN_DIR — empty for containers these scripts did not create.
+# STUB_PORT_PROJECT is the compose project publishing the queried port.
+set -euo pipefail
+for arg in "$@"; do
+  if [[ "${arg}" == publish=* ]]; then
+    if [[ -n "${STUB_PORT_PROJECT:-}" ]]; then
+      printf '%s\n' "${STUB_PORT_PROJECT}"
+    fi
+    exit 0
+  fi
+done
+if [[ "${STUB_STACK_PRESENT:-0}" == "1" ]]; then
+  printf '%s\n' "${STUB_STACK_RUN_DIR:-}"
+fi
+STUB
+chmod +x "${stub_dir}/docker"
+
+cleanup_stack_checks() {
+  cleanup_lease
+  rm -rf "${stub_dir}"
+  rm -f "${E2E_DIR}/.run/locks/${stack_project}.lock" "${E2E_DIR}/.run/locks/${stack_project}.lease"
+}
+trap cleanup_stack_checks EXIT
+
+# acquire_e2e_lock as `task e2e:up` and `task e2e:db` reach it, with the stub
+# describing what is up. Extra NAME=value arguments configure that stub.
+acquire_with_stub() {
+  local run_dir="$1"
+  shift
+  stack_env \
+    PATH="${stub_dir}:${PATH}" \
+    E2E_RUN_DIR="${run_dir}" \
+    COMPOSE_PROJECT_NAME="${stack_project}" \
+    "$@" \
+    bash -c '
+      source "$1"
+      acquire_e2e_lock
+    ' bash "${LIB}"
+}
+
+release_stack_lease() {
+  stack_env \
+    PATH="${stub_dir}:${PATH}" \
+    E2E_RUN_DIR="$1" \
+    COMPOSE_PROJECT_NAME="${stack_project}" \
+    bash -c '
+      source "$1"
+      release_e2e_lease
+    ' bash "${LIB}" >/dev/null 2>&1 || true
+}
+
+if acquire_with_stub "${lease_b}" STUB_STACK_PRESENT=1 STUB_STACK_RUN_DIR="${lease_a}" \
+  >"${lock_err}" 2>&1; then
+  fail "acquire took the project while another run's stack was up"
+  release_stack_lease "${lease_b}"
+elif grep -q "stack owned by ${lease_a}" "${lock_err}" &&
+  grep -q "COMPOSE_PROJECT_NAME and E2E_\*_PORT" "${lock_err}"; then
+  pass "a running stack with no lease holder refuses a foreign run"
+else
+  fail "foreign stack refusal does not name the owner and the way out: $(cat "${lock_err}")"
+fi
+
+if acquire_with_stub "${lease_b}" STUB_STACK_PRESENT=1 >"${lock_err}" 2>&1; then
+  fail "acquire took the project while unlabelled containers were up"
+  release_stack_lease "${lease_b}"
+elif grep -q "did not create" "${lock_err}" && grep -q "task e2e:down" "${lock_err}"; then
+  pass "containers with no run-directory label refuse the run and name the recovery"
+else
+  fail "unlabelled stack refusal does not point at teardown: $(cat "${lock_err}")"
+fi
+
+if acquire_with_stub "${lease_b}" STUB_PORT_PROJECT="${stack_project}-other" \
+  >"${lock_err}" 2>&1; then
+  fail "acquire took the project while another one published its Postgres port"
+  release_stack_lease "${lease_b}"
+elif grep -q "port 5433 is published by compose project ${stack_project}-other" "${lock_err}"; then
+  pass "a data port published by another compose project refuses the run"
+else
+  fail "port refusal does not name the port and its project: $(cat "${lock_err}")"
+fi
+
+if acquire_with_stub "${lease_a}" STUB_STACK_PRESENT=1 STUB_STACK_RUN_DIR="${lease_a}" \
+  >"${lock_err}" 2>&1; then
+  pass "the run that owns the stack acquires after its lease holder is gone"
+  release_stack_lease "${lease_a}"
+else
+  fail "owner was refused its own stack: $(cat "${lock_err}")"
+fi
+
+if acquire_with_stub "${lease_a}" >"${lock_err}" 2>&1; then
+  pass "a run on a project with no stack is unaffected"
+  release_stack_lease "${lease_a}"
+else
+  fail "acquire was refused with no stack up: $(cat "${lock_err}")"
+fi
+
 trap - EXIT
-cleanup_lease
+cleanup_stack_checks
 
 if ((failures > 0)); then
   printf '[e2e] ERROR: lib_test failed (%s)\n' "${failures}" >&2

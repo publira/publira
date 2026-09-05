@@ -227,6 +227,92 @@ e2e_refuse_foreign_lease() {
   exit 1
 }
 
+# Ownership that outlives the lease holder.
+#
+# The lease names its owner only while its holder process is alive, and a stack
+# outlives that process easily: kill the holder, or lose it with the terminal it
+# was started from, and the containers stay up with Postgres still answering on
+# E2E_POSTGRES_PORT. A run that finds no lease therefore asks the stack itself
+# whose it is — compose.yaml stamps E2E_RUN_DIR on every container it creates,
+# and a label lives exactly as long as the container carrying it.
+E2E_STACK_OWNER=""
+E2E_STACK_PORT=""
+E2E_STACK_PORT_PROJECT=""
+
+# Sets E2E_STACK_OWNER to the run directory of another run's stack under this
+# compose project and returns 0. The owner is empty when the containers carry no
+# label at all, which is a stack these scripts did not create. Returns 1 when the
+# project has no containers, or every one of them is this run's.
+e2e_find_foreign_stack() {
+  local run_dir
+  E2E_STACK_OWNER=""
+  if ! command -v docker >/dev/null 2>&1; then
+    return 1
+  fi
+  while read -r run_dir; do
+    if [[ "${run_dir}" == "${E2E_RUN_DIR}" ]]; then
+      continue
+    fi
+    E2E_STACK_OWNER="${run_dir}"
+    return 0
+  done < <(docker ps --all \
+    --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}" \
+    --format '{{.Label "com.publira.e2e.run-dir"}}' 2>/dev/null | sort -u)
+  return 1
+}
+
+# Sets E2E_STACK_PORT and E2E_STACK_PORT_PROJECT to a data port of this run that
+# another compose project already publishes, and returns 0. Such a stack touches
+# neither this project's lease nor its containers, yet `task e2e:db` would still
+# migrate and re-seed the Postgres behind E2E_POSTGRES_PORT. Only the
+# containerized services are covered; the app ports belong to host processes
+# docker cannot see, and start-apps.sh checks those against the listening
+# sockets.
+e2e_find_foreign_port_publisher() {
+  local port project
+  E2E_STACK_PORT=""
+  E2E_STACK_PORT_PROJECT=""
+  if ! command -v docker >/dev/null 2>&1; then
+    return 1
+  fi
+  for port in \
+    "${E2E_POSTGRES_PORT}" \
+    "${E2E_REDIS_PORT}" \
+    "${E2E_RUSTFS_PORT}" \
+    "${E2E_MAILPIT_SMTP_PORT}" \
+    "${E2E_MAILPIT_HTTP_PORT}"; do
+    while read -r project; do
+      if [[ -z "${project}" || "${project}" == "${COMPOSE_PROJECT_NAME}" ]]; then
+        continue
+      fi
+      E2E_STACK_PORT="${port}"
+      E2E_STACK_PORT_PROJECT="${project}"
+      return 0
+    done < <(docker ps \
+      --filter "publish=${port}" \
+      --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null | sort -u)
+  done
+  return 1
+}
+
+# Refuse before anything writes: up.sh would find the other run's containers
+# healthy and report success, and db-setup.sh would migrate and re-seed its
+# database.
+require_no_foreign_stack() {
+  if e2e_find_foreign_stack; then
+    if [[ -n "${E2E_STACK_OWNER}" ]]; then
+      e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use (stack owned by ${E2E_STACK_OWNER}); wait or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+    else
+      e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use (containers these scripts did not create); remove them with 'task e2e:down', or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+    fi
+    exit 1
+  fi
+  if e2e_find_foreign_port_publisher; then
+    e2e_err "port ${E2E_STACK_PORT} is published by compose project ${E2E_STACK_PORT_PROJECT}; wait or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+    exit 1
+  fi
+}
+
 # True while nothing holds the compose-project lock.
 e2e_lock_is_free() {
   if ! command -v flock >/dev/null 2>&1; then
@@ -395,6 +481,9 @@ acquire_e2e_lock() {
     fi
     e2e_refuse_foreign_lease
   fi
+  # No live lease holder says nothing about whether a stack is up, so ask the
+  # containers before taking the project over for this run.
+  require_no_foreign_stack
   rm -f "${E2E_LEASE_FILE}"
   e2e_spawn_lease_holder
   export E2E_LOCK_HELD=1
