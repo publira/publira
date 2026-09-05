@@ -1,6 +1,5 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
 import { validationErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -17,7 +16,6 @@ import {
   localeFormSchema,
   requireFormLocale,
 } from "#lib/locale-form";
-import { loadHostMessages } from "#lib/messages";
 import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
@@ -77,11 +75,7 @@ export const markNotificationAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
-  const messages = await loadHostMessages(locale);
-  return {
-    message: getMessage(messages, "host.notifications.marked_read"),
-    ok: true,
-  };
+  return { ok: true };
 };
 
 export const markAllNotificationsAsReadAction = async (
@@ -119,9 +113,5 @@ export const markAllNotificationsAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
-  const messages = await loadHostMessages(locale);
-  return {
-    message: getMessage(messages, "host.notifications.marked_all_read"),
-    ok: true,
-  };
+  return { ok: true };
 };

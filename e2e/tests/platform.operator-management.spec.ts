@@ -62,14 +62,8 @@ const onlyVisible = (locator: Locator): Locator =>
 const ROLE_LABELS = /^(?:Auditor|Operator|Super admin)$/u;
 
 /**
- * The `Current role` value on an operator detail screen.
- *
- * Saving a role shows no confirmation, because `ActionForm` renders the message
- * the Action returns only for a caller that passes `showSuccess` and the role
- * form does not ([#1564](https://github.com/publira/publira/issues/1564)), so
- * this field — which the Action revalidates — is what reports that a save
- * landed. Each value in the profile card is a paragraph of its own, and the role
- * badge holds nothing but the label.
+ * The role shown in the operator profile card. Each value in that card is a
+ * paragraph of its own, and the role badge holds nothing but the label.
  */
 const currentRoleValue = (page: Page): Locator =>
   onlyVisible(page.getByRole("paragraph").filter({ hasText: ROLE_LABELS }));
@@ -103,7 +97,7 @@ const changeRoleTo = async (page: Page, roleLabel: string): Promise<void> => {
   await form.getByRole("combobox").click();
   await page.getByRole("option", { exact: true, name: roleLabel }).click();
   await form.getByRole("button", { name: "Save" }).click();
-  await expect(currentRoleValue(page)).toHaveText(roleLabel);
+  await expect(form.getByRole("status")).toContainText("Role updated.");
 };
 
 /**

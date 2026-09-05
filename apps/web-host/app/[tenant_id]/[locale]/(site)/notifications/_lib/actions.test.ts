@@ -67,7 +67,7 @@ describe("notification actions", () => {
       })
     );
 
-    expect(result).toEqual({ message: "Marked as read.", ok: true });
+    expect(result).toEqual({ ok: true });
     expect(mockMarkNotificationAsRead).toHaveBeenCalledWith({
       locale: "en",
       notificationId,
@@ -114,10 +114,7 @@ describe("notification actions", () => {
       formData({ locale: "en", tenantId })
     );
 
-    expect(result).toEqual({
-      message: "Marked every unread notification as read.",
-      ok: true,
-    });
+    expect(result).toEqual({ ok: true });
     expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(tenantId, "en");
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
       "en",

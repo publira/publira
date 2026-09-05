@@ -35,7 +35,12 @@ export type CountUnreadNotificationsResult =
       unreadCount: number;
     };
 
+/**
+ * Success carries no message: the mark-as-read control unmounts once the item
+ * (or the unread set) is read, so copy returned here would never reach the
+ * screen.
+ */
 export type MarkNotificationActionState =
   | { message: string; ok: false }
-  | { message: string; ok: true }
+  | { ok: true }
   | null;

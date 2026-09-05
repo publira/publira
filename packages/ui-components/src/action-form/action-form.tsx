@@ -67,14 +67,14 @@ export const ActionFormSubmit = ({
 /**
  * A form component that encapsulates `useActionState`.
  *
- * **Automatic mode** — pass a ReactNode as `children` and the error message and
- * the submit button are managed for you:
+ * **Automatic mode** — pass a ReactNode as `children` and the returned message
+ * and the submit button are managed for you:
  *
  * ```tsx
  * <ActionForm
  *   action={myAction}
- *   submitLabel="送信"
- *   pendingLabel="送信中..."
+ *   submitLabel="Save"
+ *   pendingLabel="Saving..."
  * >
  *   <Field>...</Field>
  * </ActionForm>
@@ -87,10 +87,12 @@ export const ActionFormSubmit = ({
  *   {({ isPending, state }) => (
  *     <>
  *       <Field>...</Field>
- *       {state && !state.ok && (
- *         <FormMessage variant="destructive">{state.message}</FormMessage>
- *       )}
- *       <Button disabled={isPending} type="submit">送信</Button>
+ *       {state ? (
+ *         <FormMessage variant={state.ok ? "success" : "destructive"}>
+ *           {state.message}
+ *         </FormMessage>
+ *       ) : null}
+ *       <Button disabled={isPending} type="submit">Save</Button>
  *     </>
  *   )}
  * </ActionForm>
@@ -106,6 +108,11 @@ export interface ActionFormProps {
   className?: string;
   disabled?: boolean;
   pendingLabel?: ReactNode;
+  /**
+   * Show the message when the Action returns `{ ok: true }`. Defaults to true:
+   * a returned success message is meant to be shown. Callers that redirect
+   * never produce this state; pass `false` to suppress one.
+   */
   showSuccess?: boolean;
   submitClassName?: string;
   submitLabel?: ReactNode;
@@ -118,7 +125,7 @@ export const ActionForm = ({
   className,
   disabled,
   pendingLabel,
-  showSuccess = false,
+  showSuccess = true,
   submitClassName,
   submitLabel,
   submitVariant,

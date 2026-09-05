@@ -23,7 +23,6 @@ export const TenantUpdateForm = ({
   <ActionForm
     action={action}
     pendingLabel={pendingLabel}
-    showSuccess
     submitClassName="mt-4 ml-auto block"
     submitLabel={submitLabel}
     submitVariant="outline"
