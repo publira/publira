@@ -1,0 +1,47 @@
+name: Task
+description: Maintenance, documentation, migration, or testing work that is neither a bug nor a new capability.
+type: Task
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing this. Write in English, and describe the work in terms of what is different once it is done, so the Issue can be closed against something.
+  - type: textarea
+    id: purpose
+    attributes:
+      label: Purpose
+      description: Why this work is worth doing, and what is wrong or missing until it is done.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What the work covers. Name what it deliberately leaves out when that is not obvious.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: The observable conditions that mean the work is complete, one per line.
+      placeholder: |
+        -
+        -
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: The app or service the work touches. Each option names the `area/*` label it applies; pick every one that fits.
+      multiple: true
+      options:
+        - Web host, the tenant-facing site readers use (area/web-host)
+        - Web admin, the submission and management console for publishers and editors (area/web-admin)
+        - Web platform, the cross-tenant console for platform operators (area/web-platform)
+        - Server, the Go API, batch, and outbox processes (area/server)
+        - Mobile, the Flutter app (area/mobile)
+        - Infrastructure, meaning Docker, CI, the Dev Container, and Compose (area/infra)
+    validations:
+      required: false
