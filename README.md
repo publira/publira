@@ -8,55 +8,9 @@ Publira is a multi-tenant SaaS that gives publishers with limited IT resources a
 
 As an OSS project, it values portability, ease of operation, and freedom from vendor lock-in.
 
-## Directory structure
+## Contributing
 
-```text
-.
-├── apps/               # [Node.js] Web apps (Turborepo)
-│   ├── web-host/       # Tenant-facing site (catalog / auth / my page)
-│   ├── web-admin/      # Submission and management console for publishers and editors
-│   ├── web-platform/   # Cross-tenant operations console for platform operators
-│   └── email-renderer/ # Node service that renders React Email over ConnectRPC
-├── packages/           # [Node.js] Shared UI and utilities
-├── e2e/                # [Playwright] Cross-app E2E foundation
-├── server/             # [Go] Backend system (single module)
-│   ├── cmd/
-│   │   ├── api-server/       # ConnectRPC API server
-│   │   ├── batch/            # Single binary bundling every batch job (selected by subcommand)
-│   │   └── outbox-worker/    # Outbox + River resident worker
-│   └── internal/
-│       ├── db/gen/     # sqlc generated code (DB/Go)
-│       └── proto/gen/  # buf generated code (Go)
-├── infra/
-│   └── docker/         # Production Dockerfiles (per role, built from the repository root)
-├── mobile/             # [Flutter] Mobile app (iOS/Android)
-├── proto/              # Protocol Buffers schema definitions
-├── locales/            # Shared UI messages (JSON, read by Go / Web / Flutter alike)
-└── db/                 # PostgreSQL migrations and queries
-```
-
-## Tech stack
-
-- Frontend: Next.js (App Router), React, TypeScript, Tailwind CSS
-- Backend: Go 1.26, ConnectRPC (HTTP/2), sqlc
-- Mobile: Flutter
-- Database: PostgreSQL, golang-migrate
-- Cache: Redis (shared store for the Next.js `cacheHandler` / `cacheHandlers`)
-- Storage/Image: S3-compatible storage
-- Infrastructure: Dev Containers, Docker, Make
-
-## Documentation map
-
-- Conventions for agents (Effects, lint, and so on): [AGENTS.md](AGENTS.md)
-- Web apps: [apps/README.md](apps/README.md)
-- Shared packages: [packages/README.md](packages/README.md)
-- Go backend: [server/README.md](server/README.md)
-- Mobile: [mobile/README.md](mobile/README.md)
-- CI workflows as a whole (job layout, path filters, triage): [.github/workflows/README.md](.github/workflows/README.md)
-- Dockerfile layout conventions and build verification (production images): [infra/docker/README.md](infra/docker/README.md)
-- E2E (Playwright foundation, CI): [e2e/README.md](e2e/README.md)
-- Development environment bootstrap check (`task setup` / `task dev` from an empty DB volume): [e2e/bootstrap/README.md](e2e/bootstrap/README.md)
-- Traefik routing connectivity in the development environment (host, `/api`, `/images`): [e2e/routing/README.md](e2e/routing/README.md)
+The repository layout, the toolchain, the verification commands, and the pull request conventions are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Setup
 
@@ -118,41 +72,7 @@ Two things stay Dev Container only.
 - **Traefik.** Its routers are Docker labels on the `app` container, so they cannot reach a process on the host. Open each app on its own port instead (`3000` / `4000` / `4100` for the three Next.js apps, `8000` for the API, `8200` for the image server).
 - **The seeded SMTP host.** `db/seeds/dev` points the platform and tenant SMTP settings at `mailpit`. Change the host to `127.0.0.1` in the console when you want to send mail from a host process.
 
-The `dev-env` profiles below are Dev Container only for the same reason: they address PostgreSQL and Valkey as `db` / `redis`.
-
-## Per-worktree development environment profile
-
-When you work in several worktrees in parallel, pick a profile per worktree instead of sharing the default development environment. A profile separates the PostgreSQL database, the Valkey logical database, the RustFS bucket, the ports of every service, the cookie names, and the authentication and revalidation secrets. The plain `task setup` / `task dev` keep using the shared environment as before.
-
-```bash
-# Once per new worktree (the identifier takes lowercase alphanumerics and -)
-task dev-env:create NAME=issue-1178
-
-# Database migration/seed and creation of the dedicated bucket. Safe to re-run.
-task dev-env:init
-
-# Start the API, image server, worker, email-renderer, and the three Next.js apps together
-task dev-env:start
-
-# Show the URLs, the logs, and the assigned DB/Redis/bucket
-task dev-env:show
-
-# When you are done. Data is kept.
-task dev-env:stop
-```
-
-Load the same environment variables first when starting a single app as well. `pnpm dev` in each Next.js app honors `PORT`, so you do not have to resolve default port collisions by hand.
-
-```bash
-eval "$(task --silent dev-env:env)"
-pnpm --dir apps/web-host dev
-```
-
-`task dev-env:list` shows every profile and the worktree that selected it. To discard one, run `task dev-env:destroy NAME=<name>`. It checks that no worktree has the target selected and that it is stopped, then deletes only that profile's database, Redis DB, and bucket after you retype the name. It does not touch the shared development environment, E2E, or other profiles.
-
-A profile's secrets and run logs are stored under `~/.publira/dev-env` by default. Override the location with `PUBLIRA_DEV_ENV_HOME` and the PostgreSQL admin connection with `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` only when you need to. Both are read solely by the development environment scripts.
-
-Coding agents use [`skills/dev-env-profile`](skills/dev-env-profile/SKILL.md) when they start development.
+The per-worktree `dev-env` profiles described in [CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) do not work on the host yet for the same reason: they address PostgreSQL and Valkey as `db` / `redis` ([#1599](https://github.com/publira/publira/issues/1599)).
 
 ## Local database initialization
 
