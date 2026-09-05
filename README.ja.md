@@ -47,6 +47,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 
 ## ドキュメント案内
 
+- コントリビューション（ツールチェーン・検証コマンド・Pull Request の規約）: [CONTRIBUTING.md](CONTRIBUTING.md)
 - エージェント向け規約（Effect / lint など）: [AGENTS.md](AGENTS.md)
 - Web アプリ: [apps/README.md](apps/README.md)
 - 共有パッケージ: [packages/README.md](packages/README.md)

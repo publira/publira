@@ -47,6 +47,7 @@ As an OSS project, it values portability, ease of operation, and freedom from ve
 
 ## Documentation map
 
+- Contributing (toolchain, verification commands, pull request conventions): [CONTRIBUTING.md](CONTRIBUTING.md)
 - Conventions for agents (Effects, lint, and so on): [AGENTS.md](AGENTS.md)
 - Web apps: [apps/README.md](apps/README.md)
 - Shared packages: [packages/README.md](packages/README.md)
