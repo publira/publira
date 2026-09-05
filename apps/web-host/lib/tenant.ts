@@ -1,4 +1,5 @@
 import { isExpectedNullableRpcError } from "@publira/api-client/errors";
+import { CommentMode } from "@publira/api-client/public/types";
 import type { TenantImageVariant as TenantImageVariantMessage } from "@publira/api-client/public/types";
 import { getMessage, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
@@ -28,6 +29,36 @@ const requireSupportedLocale = (value: string): Locale => {
 };
 
 /**
+ * How this tenant publishes reader comments, in the site's own words rather
+ * than the generated enum's. `disabled` is what a tenant that never chose
+ * gets, and it is the answer an episode page reads as "no comment section".
+ */
+export type TenantCommentMode = "approval_required" | "disabled" | "immediate";
+
+/**
+ * The generated enum, mapped onto the three modes the site branches on.
+ *
+ * `COMMENT_MODE_UNSPECIFIED` only reaches a client whose response predates the
+ * field — `GetTenant` fails rather than answering with it — and the site reads
+ * it the way it reads a tenant that has chosen nothing: commenting is off.
+ */
+const toTenantCommentMode = (
+  mode: CommentMode | undefined
+): TenantCommentMode => {
+  switch (mode) {
+    case CommentMode.IMMEDIATE: {
+      return "immediate";
+    }
+    case CommentMode.APPROVAL_REQUIRED: {
+      return "approval_required";
+    }
+    default: {
+      return "disabled";
+    }
+  }
+};
+
+/**
  * A stored tenant branding image, carried the way the eye-catch variants are
  * (`catalog.ts`). Absent while the tenant has not uploaded one.
  */
@@ -44,6 +75,8 @@ export interface TenantImageVariant {
 export interface TenantSiteInfo {
   /** Whether the public API verified that Checkout can be offered safely. */
   acceptsPayments: boolean;
+  /** Whether episode pages offer a comment section, and how a post reaches it. */
+  commentMode: TenantCommentMode;
   copyrightText?: string;
   /** UI locale a reader gets when the URL does not name one. */
   defaultLocale: Locale;
@@ -154,6 +187,7 @@ export const getTenantSiteInfo = async (
 
     return {
       acceptsPayments: response.acceptsPayments === true,
+      commentMode: toTenantCommentMode(response.commentMode),
       copyrightText: trimmed(response.copyrightText),
       // The server resolves the tenant value against the platform default
       // before answering (`locale.Resolve`), so a code that fails to parse here
@@ -293,4 +327,23 @@ export const getTenantDefaultLocale = async (
   }
 
   return tenant.defaultLocale;
+};
+
+/**
+ * How the tenant publishes reader comments. One entry point, the way
+ * {@link getTenantDisplayTimeZone} is, so no episode page decides on its own
+ * whether a comment section belongs there.
+ *
+ * An unavailable tenant read degrades to `disabled`. The setting rides on site
+ * chrome, whose failure already renders the page with the tenant's defaults,
+ * and a comment box whose every submission the API would refuse is worse for
+ * the reader than a section that is briefly missing. The read carries
+ * `tenant:<id>:site`, so a saved change reaches the site without waiting for
+ * the cache to age out.
+ */
+export const getTenantCommentMode = async (
+  tenantId: string
+): Promise<TenantCommentMode> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return tenant?.commentMode ?? "disabled";
 };

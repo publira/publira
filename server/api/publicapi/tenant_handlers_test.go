@@ -451,3 +451,115 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 	}
 	assertPublicExpectations(t, env.mock)
 }
+
+// The public site reads the mode to decide whether an episode page offers a
+// comment section at all, so every stored value has to arrive as the enum the
+// site branches on rather than as the column's text.
+func TestGetTenantReportsTheTenantCommentMode(t *testing.T) {
+	cases := []struct {
+		name string
+		mode string
+		want publirattypesv1.CommentMode
+	}{
+		{name: "disabled", mode: "disabled", want: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED},
+		{name: "immediate", mode: "immediate", want: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE},
+		{name: "approval required", mode: "approval_required", want: publirattypesv1.CommentMode_COMMENT_MODE_APPROVAL_REQUIRED},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now()
+			expectTenantLookup(mock, tenantID, "TENANT001", now)
+			expectTenantConfigWithCommentMode(mock, tenantID, now, tc.mode)
+			expectPaymentsUnavailable(mock, tenantID)
+			mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+				WithArgs(tenantID).
+				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+
+			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			}))
+			if err != nil {
+				t.Fatalf("GetTenant: %v", err)
+			}
+			if resp.Msg.CommentMode != tc.want {
+				t.Fatalf("comment_mode = %v, want %v", resp.Msg.CommentMode, tc.want)
+			}
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+// A tenant that has saved nothing at all has chosen nothing about commenting,
+// which is the same answer the column's own default carries.
+func TestGetTenantReportsCommentingOffWithoutAConfigRow(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	expectPaymentsUnavailable(mock, tenantID)
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+
+	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if resp.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
+		t.Fatalf("comment_mode = %v, want COMMENT_MODE_DISABLED", resp.Msg.CommentMode)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+// A stored mode this build cannot act on fails the read instead of being
+// answered with a stand-in: PostEpisodeComment refuses the same value, so a
+// guess would put a comment box on screen that no submission can pass.
+func TestGetTenantFailsOnAnUnsupportedCommentMode(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectTenantConfigWithCommentMode(mock, tenantID, now, "members_only")
+
+	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetTenant error = %v, want CodeInternal", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func expectTenantConfigWithCommentMode(
+	mock sqlmock.Sqlmock,
+	tenantID uuid.UUID,
+	now time.Time,
+	mode string,
+) {
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline", "comment_mode",
+		}).AddRow(
+			tenantID,
+			sql.NullString{},
+			sql.NullString{},
+			now,
+			now,
+			sql.NullString{},
+			mode,
+		))
+}

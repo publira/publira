@@ -21,6 +21,11 @@ import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { EpisodeBody } from "./_components/episode-body";
+import { EpisodeComments } from "./_components/episode-comments";
+import {
+  COMMENT_TOKEN_PARAM,
+  parseCommentSearchParams,
+} from "./_lib/comment-search-params";
 import { parsePurchaseSearchParams } from "./_lib/purchase-search-params";
 import { VIEWER_HEIGHT_CLASS } from "./_lib/viewer-layout";
 
@@ -31,6 +36,10 @@ const episodeDetailParamsSchema = z.object({
   episode_id: routeParamString(),
   series_id: routeParamString(),
 });
+
+const CommentsSkeleton = () => (
+  <div className="h-64 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
+);
 
 const EpisodeBodySkeleton = () => (
   <div
@@ -69,6 +78,7 @@ const EpisodeContent = async (
   }
   const { episode_id, series_id } = parsedParams;
   const purchaseSearchParams = parsePurchaseSearchParams(searchParams);
+  const commentSearchParams = parseCommentSearchParams(searchParams);
 
   // Missing / unpublished / other-series / other-tenant episodes resolve to
   // `null`, and the public site must not tell those apart. A failed read is a
@@ -299,6 +309,29 @@ const EpisodeContent = async (
               </dl>
             </section>
           </aside>
+        </div>
+
+        <div className="mt-8">
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.episode.comments.list_error" />
+              </Suspense>
+            }
+          >
+            {/* Its own boundary, so the pages and the episode metadata above
+                reach the reader without waiting on the comment reads. The
+                section renders nothing at all where the tenant has commenting
+                turned off. */}
+            <Suspense fallback={<CommentsSkeleton />}>
+              <EpisodeComments
+                episodePublicId={episode.publicId}
+                seriesPublicId={series.publicId}
+                tenantId={tenantId}
+                token={commentSearchParams[COMMENT_TOKEN_PARAM]}
+              />
+            </Suspense>
+          </SectionErrorBoundary>
         </div>
       </div>
     </main>

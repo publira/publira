@@ -43,6 +43,19 @@ export const tenantFollowsTag = (tenantId: string) =>
 export const tenantAnnouncementsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:announcements`;
 
+/**
+ * The cached public comment list of one episode. Posting and withdrawing both
+ * change what it answers, so the Actions behind those controls drop it.
+ *
+ * The viewer's own comments are read uncached and carry no tag: nothing holds
+ * them, so there is nothing to invalidate.
+ */
+export const tenantEpisodeCommentsTag = (
+  tenantId: string,
+  episodePublicId: string
+) =>
+  `tenant:${normalized(tenantId)}:episode:${episodePublicId.trim()}:comments`;
+
 export const applyCacheTag = (tag: string) => {
   try {
     cacheTag(tag);

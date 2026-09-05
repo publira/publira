@@ -170,3 +170,17 @@ message PageVersion {
   string created_at = 8;
   string published_at = 9;
 }
+// How a tenant publishes the comments its readers write on an episode. It is
+// one tenant-wide setting (tenant_config.comment_mode), so a storefront reads
+// it once to decide whether the episode page offers commenting at all.
+enum CommentMode {
+  COMMENT_MODE_UNSPECIFIED = 0;
+  // Commenting is off: the storefront shows no comment section, and posting is
+  // refused. This is what a tenant that has never chosen gets.
+  COMMENT_MODE_DISABLED = 1;
+  // A posted comment is readable by everyone as soon as it is stored.
+  COMMENT_MODE_IMMEDIATE = 2;
+  // A posted comment waits for a staff approval before anyone but its author
+  // can read it.
+  COMMENT_MODE_APPROVAL_REQUIRED = 3;
+}

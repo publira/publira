@@ -29,6 +29,10 @@ message GetTenantResponse {
   // Whether the tenant can currently accept episode payments. This never
   // exposes payment-provider credentials or their configuration details.
   bool accepts_payments = 10;
+  // How reader comments on this tenant's episodes are published. The public
+  // site reads it to decide whether an episode page offers a comment section
+  // at all, so it is answered here rather than only where a comment is posted.
+  publira.types.v1.CommentMode comment_mode = 11;
 }
 
 service TenantService {

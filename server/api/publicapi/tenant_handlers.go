@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -42,6 +43,9 @@ func (s *apiServer) GetTenant(
 	copyrightText := ""
 	siteDescription := ""
 	siteTagline := ""
+	// A tenant with no config row, and one whose config could not be read, have
+	// chosen nothing about commenting. That is the column's own default too.
+	commentMode := publirattypesv1.CommentMode_COMMENT_MODE_DISABLED
 
 	if err == nil {
 		if config.CopyrightText.Valid {
@@ -52,6 +56,10 @@ func (s *apiServer) GetTenant(
 		}
 		if config.SiteTagline.Valid {
 			siteTagline = config.SiteTagline.String
+		}
+		commentMode, err = commentModeFromConfig(config.CommentMode)
+		if err != nil {
+			return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", err, "tenant_id", tenant.ID.String())
 		}
 	} else if err != sql.ErrNoRows {
 		// Log error but don't fail the request
@@ -80,7 +88,28 @@ func (s *apiServer) GetTenant(
 		Timezone:        tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 		DefaultLocale:   defaultLocale,
 		AcceptsPayments: acceptsPayments,
+		CommentMode:     commentMode,
 	}), nil
+}
+
+// commentModeFromConfig maps the stored tenant_config.comment_mode onto the
+// value the public site branches on.
+//
+// An unrecognised mode is reported rather than answered with a stand-in, the
+// way an unsupported default_locale is. PostEpisodeComment refuses that same
+// value outright, so guessing one here would put a comment box on screen that
+// every submission is guaranteed to reject.
+func commentModeFromConfig(mode string) (publirattypesv1.CommentMode, error) {
+	switch mode {
+	case commentModeDisabled:
+		return publirattypesv1.CommentMode_COMMENT_MODE_DISABLED, nil
+	case commentModeImmediate:
+		return publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE, nil
+	case commentModeApprovalRequired:
+		return publirattypesv1.CommentMode_COMMENT_MODE_APPROVAL_REQUIRED, nil
+	default:
+		return publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED, fmt.Errorf("unsupported comment mode %q", mode)
+	}
 }
 
 // tenantAcceptsPayments deliberately fails closed. The public response only

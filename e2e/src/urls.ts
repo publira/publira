@@ -78,6 +78,18 @@ export const MAILPIT_BASE_URL = envUrl(
   "http://127.0.0.1:8026"
 );
 
+/**
+ * web-host on loopback, the way the Go servers reach it.
+ *
+ * `WEB_HOST_BASE_URL` is a Host header the browser resolves; this is the
+ * address a Node-side request can actually connect to, and it is what
+ * `src/revalidate.ts` posts cache tags to.
+ */
+export const WEB_HOST_INTERNAL_URL = envUrl(
+  "PUBLIRA_WEB_HOST_INTERNAL_URL",
+  WEB_HOST_BASE_URL
+);
+
 /** Public API gRPC/Connect origin used by web-host (readyz probe target). */
 export const PUBLIC_API_BASE_URL = envUrl(
   "E2E_PUBLIC_API_BASE_URL",
@@ -143,6 +155,18 @@ export const WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL = envUrl(
 export const WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL = envUrl(
   "E2E_WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.aset.localhost")
+);
+
+/**
+ * Public site of the commenting tenant from the scenario seed
+ * `db/seeds/scenarios/140_episode_comments.sql`.
+ *
+ * `tenant_config.comment_mode` is tenant-wide, so the one tenant that takes
+ * comments is not a tenant any other suite reads episode pages on.
+ */
+export const WEB_HOST_EPISODE_COMMENTS_BASE_URL = envUrl(
+  "E2E_WEB_HOST_EPISODE_COMMENTS_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "comment.localhost")
 );
 
 /**

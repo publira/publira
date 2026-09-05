@@ -21,6 +21,66 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// How a tenant publishes the comments its readers write on an episode. It is
+// one tenant-wide setting (tenant_config.comment_mode), so a storefront reads
+// it once to decide whether the episode page offers commenting at all.
+type CommentMode int32
+
+const (
+	CommentMode_COMMENT_MODE_UNSPECIFIED CommentMode = 0
+	// Commenting is off: the storefront shows no comment section, and posting is
+	// refused. This is what a tenant that has never chosen gets.
+	CommentMode_COMMENT_MODE_DISABLED CommentMode = 1
+	// A posted comment is readable by everyone as soon as it is stored.
+	CommentMode_COMMENT_MODE_IMMEDIATE CommentMode = 2
+	// A posted comment waits for a staff approval before anyone but its author
+	// can read it.
+	CommentMode_COMMENT_MODE_APPROVAL_REQUIRED CommentMode = 3
+)
+
+// Enum value maps for CommentMode.
+var (
+	CommentMode_name = map[int32]string{
+		0: "COMMENT_MODE_UNSPECIFIED",
+		1: "COMMENT_MODE_DISABLED",
+		2: "COMMENT_MODE_IMMEDIATE",
+		3: "COMMENT_MODE_APPROVAL_REQUIRED",
+	}
+	CommentMode_value = map[string]int32{
+		"COMMENT_MODE_UNSPECIFIED":       0,
+		"COMMENT_MODE_DISABLED":          1,
+		"COMMENT_MODE_IMMEDIATE":         2,
+		"COMMENT_MODE_APPROVAL_REQUIRED": 3,
+	}
+)
+
+func (x CommentMode) Enum() *CommentMode {
+	p := new(CommentMode)
+	*p = x
+	return p
+}
+
+func (x CommentMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CommentMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[0].Descriptor()
+}
+
+func (CommentMode) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[0]
+}
+
+func (x CommentMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CommentMode.Descriptor instead.
+func (CommentMode) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{0}
+}
+
 // TenantContext identifies a tenant for internal RPC wiring.
 // tenant_id is the primary key (UUID), not the public-facing short code.
 type TenantContext struct {
@@ -1459,7 +1519,12 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"publish_at\x18\a \x01(\tR\tpublishAt\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12!\n" +
-	"\fpublished_at\x18\t \x01(\tR\vpublishedAtBWZUgithub.com/publira/publira/server/internal/proto/gen/publira/types/v1;publirattypesv1b\x06proto3"
+	"\fpublished_at\x18\t \x01(\tR\vpublishedAt*\x86\x01\n" +
+	"\vCommentMode\x12\x1c\n" +
+	"\x18COMMENT_MODE_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15COMMENT_MODE_DISABLED\x10\x01\x12\x1a\n" +
+	"\x16COMMENT_MODE_IMMEDIATE\x10\x02\x12\"\n" +
+	"\x1eCOMMENT_MODE_APPROVAL_REQUIRED\x10\x03BWZUgithub.com/publira/publira/server/internal/proto/gen/publira/types/v1;publirattypesv1b\x06proto3"
 
 var (
 	file_publira_types_v1_types_proto_rawDescOnce sync.Once
@@ -1473,34 +1538,36 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
+var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_publira_types_v1_types_proto_goTypes = []any{
-	(*TenantContext)(nil),         // 0: publira.types.v1.TenantContext
-	(*User)(nil),                  // 1: publira.types.v1.User
-	(*AccessToken)(nil),           // 2: publira.types.v1.AccessToken
-	(*Creator)(nil),               // 3: publira.types.v1.Creator
-	(*Label)(nil),                 // 4: publira.types.v1.Label
-	(*SeriesEyeCatchVariant)(nil), // 5: publira.types.v1.SeriesEyeCatchVariant
-	(*Series)(nil),                // 6: publira.types.v1.Series
-	(*Episode)(nil),               // 7: publira.types.v1.Episode
-	(*EpisodeImage)(nil),          // 8: publira.types.v1.EpisodeImage
-	(*TenantImageVariant)(nil),    // 9: publira.types.v1.TenantImageVariant
-	(*TenantTheme)(nil),           // 10: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 11: publira.types.v1.Page
-	(*PageVersion)(nil),           // 12: publira.types.v1.PageVersion
+	(CommentMode)(0),              // 0: publira.types.v1.CommentMode
+	(*TenantContext)(nil),         // 1: publira.types.v1.TenantContext
+	(*User)(nil),                  // 2: publira.types.v1.User
+	(*AccessToken)(nil),           // 3: publira.types.v1.AccessToken
+	(*Creator)(nil),               // 4: publira.types.v1.Creator
+	(*Label)(nil),                 // 5: publira.types.v1.Label
+	(*SeriesEyeCatchVariant)(nil), // 6: publira.types.v1.SeriesEyeCatchVariant
+	(*Series)(nil),                // 7: publira.types.v1.Series
+	(*Episode)(nil),               // 8: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 9: publira.types.v1.EpisodeImage
+	(*TenantImageVariant)(nil),    // 10: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 11: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 12: publira.types.v1.Page
+	(*PageVersion)(nil),           // 13: publira.types.v1.PageVersion
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
-	5, // 0: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	4, // 1: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	3, // 2: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	5, // 3: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	9, // 4: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	9, // 5: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	6,  // 0: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	5,  // 1: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	4,  // 2: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	6,  // 3: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	10, // 4: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	10, // 5: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	6,  // [6:6] is the sub-list for method output_type
+	6,  // [6:6] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }
@@ -1513,13 +1580,14 @@ func file_publira_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_publira_types_v1_types_proto_goTypes,
 		DependencyIndexes: file_publira_types_v1_types_proto_depIdxs,
+		EnumInfos:         file_publira_types_v1_types_proto_enumTypes,
 		MessageInfos:      file_publira_types_v1_types_proto_msgTypes,
 	}.Build()
 	File_publira_types_v1_types_proto = out.File
