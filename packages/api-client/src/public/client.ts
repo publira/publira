@@ -13,6 +13,7 @@ import {
   PurchaseService,
   RatingService,
 } from "../gen/publira/v1/catalog_pb.js";
+import { CommentService } from "../gen/publira/v1/comment_pb.js";
 import { DomainService } from "../gen/publira/v1/domain_pb.js";
 import { NotificationService } from "../gen/publira/v1/notification_pb.js";
 import { PublicPagesService } from "../gen/publira/v1/page_pb.js";
@@ -33,6 +34,7 @@ export type PublicApiClientOptions = {
 export interface PublicApiClient {
   auth: Client<typeof AuthService>;
   catalog: Client<typeof CatalogService>;
+  comment: Client<typeof CommentService>;
   contentView: Client<typeof ContentViewService>;
   episodeRead: Client<typeof EpisodeReadService>;
   follow: Client<typeof FollowService>;
@@ -79,6 +81,7 @@ export const createPublicApiClient = (
   return {
     auth: createClient(AuthService, transportInstance),
     catalog: createClient(CatalogService, transportInstance),
+    comment: createClient(CommentService, transportInstance),
     contentView: createClient(ContentViewService, transportInstance),
     domain: createClient(DomainService, transportInstance),
     episodeRead: createClient(EpisodeReadService, transportInstance),
