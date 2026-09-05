@@ -1,3 +1,4 @@
+import { createClient } from "redis";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { RedisIncrementalCacheHandler } from "./incremental-cache-handler";
@@ -8,6 +9,15 @@ import { createUseCacheHandler } from "./use-cache-handler";
 const configuredRedisUrl = process.env.PUBLIRA_REDIS_URL?.trim();
 const redisUrl = configuredRedisUrl || "redis://localhost:6379";
 const keyPrefix = `publira:test-${process.pid}:`;
+
+const imageData = (etag: string) => ({
+  buffer: Buffer.from([0xff, 0xd8, 0xff]),
+  etag,
+  extension: "jpg",
+  kind: "IMAGE",
+  revalidate: 120,
+  upstreamEtag: `u-${etag}`,
+});
 
 const canConnect = async (): Promise<boolean> => {
   resetRedisClientsForTests();
@@ -291,5 +301,128 @@ describe("Redis handlers integration", () => {
     await handler.revalidateTag("tenant:t1:image");
     const missed = await handler.get(key, { kind: "IMAGE" });
     expect(missed).toBeNull();
+  });
+
+  it("incremental handler indexes a value written after revalidateTag", async ({
+    skip,
+  }) => {
+    if (!available) {
+      skip();
+    }
+
+    const handler = new RedisIncrementalCacheHandler(
+      { _requestHeaders: {}, revalidatedTags: [] },
+      { keyPrefix, redisUrl }
+    );
+    const tag = "tenant:t1:image-index";
+    const cacheKey = "img-index-after";
+
+    await handler.revalidateTag(tag);
+    handler.resetRequestCache();
+    await handler.set(
+      cacheKey,
+      {
+        buffer: Buffer.from([0xff, 0xd8, 0xff]),
+        etag: "e-after",
+        extension: "jpg",
+        kind: "IMAGE",
+        revalidate: 120,
+        upstreamEtag: "u-after",
+      },
+      { tags: [tag] }
+    );
+
+    const hit = await handler.get(cacheKey, { kind: "IMAGE" });
+    expect(hit).not.toBeNull();
+
+    const client = await getRedisClient({
+      defaultTtlSeconds: 60,
+      keyPrefix,
+      maxTtlSeconds: 3600,
+      redisUrl,
+      timeoutMs: 1000,
+    });
+    if (!client) {
+      throw new Error("expected a Redis client");
+    }
+    const members = await client.sMembers(`${keyPrefix}inc:tagkeys:${tag}`);
+    expect(members).toContain(cacheKey);
+  });
+
+  it("EVAL keeps a set that split round trips drop from the tag key set", async ({
+    onTestFinished,
+    skip,
+  }) => {
+    if (!available) {
+      skip();
+    }
+
+    // A second TCP connection, like another Next.js instance. The handler
+    // uses the pooled client; this one drives the split revalidation steps.
+    const control = createClient({ url: redisUrl });
+    await control.connect();
+    onTestFinished(async () => {
+      if (control.isOpen) {
+        await control.quit();
+      }
+    });
+
+    const splitHandler = new RedisIncrementalCacheHandler(
+      { _requestHeaders: {}, revalidatedTags: [] },
+      { keyPrefix, redisUrl }
+    );
+    const splitTag = "tenant:t1:image-split-gap";
+    const splitOldKey = "img-split-old";
+    const splitNewKey = "img-split-new";
+    const splitTagKeys = `${keyPrefix}inc:tagkeys:${splitTag}`;
+
+    await splitHandler.set(splitOldKey, imageData("split-old"), {
+      tags: [splitTag],
+    });
+
+    // Previous revalidateTag: SET timestamp, SMEMBERS, then DEL. A set from
+    // the other connection lands in that gap and its SADD is wiped with the
+    // key set.
+    await control.set(`${keyPrefix}inc:tag:${splitTag}`, String(Date.now()));
+    const membersBeforeSet = await control.sMembers(splitTagKeys);
+    await splitHandler.set(splitNewKey, imageData("split-new"), {
+      tags: [splitTag],
+    });
+    const staleValueKeys = membersBeforeSet.map(
+      (member) => `${keyPrefix}inc:v:${member}`
+    );
+    if (staleValueKeys.length > 0) {
+      await control.del(staleValueKeys);
+    }
+    await control.del(splitTagKeys);
+
+    expect(
+      await control.get(`${keyPrefix}inc:v:${splitNewKey}`)
+    ).not.toBeNull();
+    expect(await control.sMembers(splitTagKeys)).not.toContain(splitNewKey);
+
+    const evalHandler = new RedisIncrementalCacheHandler(
+      { _requestHeaders: {}, revalidatedTags: [] },
+      { keyPrefix, redisUrl }
+    );
+    const evalTag = "tenant:t1:image-eval-after";
+    const evalOldKey = "img-eval-old";
+    const evalNewKey = "img-eval-new";
+    const evalTagKeys = `${keyPrefix}inc:tagkeys:${evalTag}`;
+
+    await evalHandler.set(evalOldKey, imageData("eval-old"), {
+      tags: [evalTag],
+    });
+    await evalHandler.revalidateTag(evalTag);
+    evalHandler.resetRequestCache();
+    // Same interleaving, now closed: a set issued after the script returns
+    // stays indexed, because Redis cannot run it between SMEMBERS and DEL.
+    await evalHandler.set(evalNewKey, imageData("eval-new"), {
+      tags: [evalTag],
+    });
+
+    expect(await evalHandler.get(evalOldKey, { kind: "IMAGE" })).toBeNull();
+    expect(await evalHandler.get(evalNewKey, { kind: "IMAGE" })).not.toBeNull();
+    expect(await control.sMembers(evalTagKeys)).toContain(evalNewKey);
   });
 });

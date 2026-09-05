@@ -58,6 +58,32 @@ const tagTimestampKey = (prefix: string, tag: string): string =>
 const tagKeysKey = (prefix: string, tag: string): string =>
   `${prefix}inc:tagkeys:${tag}`;
 
+/**
+ * KEYS[1..n] = tag timestamp keys, KEYS[n+1..2n] = tag key-set keys.
+ * ARGV[1] = revalidation timestamp, ARGV[2] = value-key prefix (`inc:v:`).
+ *
+ * One EVAL so a concurrent `set` (SET + SADD in MULTI) is ordered wholly
+ * before or wholly after this revalidation. Split across round trips, a set
+ * that landed in between would write an entry the later DEL then removed, or
+ * lose its SADD when the tag key set itself was deleted.
+ */
+const REVALIDATE_TAG_SCRIPT = `
+local n = math.floor(#KEYS / 2)
+local revalidated_at = ARGV[1]
+local value_prefix = ARGV[2]
+for i = 1, n do
+  local ts_key = KEYS[i]
+  local set_key = KEYS[n + i]
+  redis.call('SET', ts_key, revalidated_at)
+  local members = redis.call('SMEMBERS', set_key)
+  for _, member in ipairs(members) do
+    redis.call('DEL', value_prefix .. member)
+  end
+  redis.call('DEL', set_key)
+end
+return n
+`;
+
 const extractTagsFromValue = (
   data: unknown,
   ctx: IncrementalSetContext
@@ -288,32 +314,13 @@ export class RedisIncrementalCacheHandler {
     }
 
     await withRedis(this.config, undefined, async (client) => {
-      const multi = client.multi();
-      for (const tag of list) {
-        multi.set(
-          tagTimestampKey(this.config.keyPrefix, tag),
-          String(revalidatedAt)
-        );
-      }
-      await multi.exec();
-
-      const membersByTag = await Promise.all(
-        list.map(async (tag) => {
-          const keys = await client.sMembers(
-            tagKeysKey(this.config.keyPrefix, tag)
-          );
-          return { keys, tag };
-        })
-      );
-
-      const delMulti = client.multi();
-      for (const { keys, tag } of membersByTag) {
-        for (const k of keys) {
-          delMulti.del(valueKey(this.config.keyPrefix, k));
-        }
-        delMulti.del(tagKeysKey(this.config.keyPrefix, tag));
-      }
-      await delMulti.exec();
+      await client.eval(REVALIDATE_TAG_SCRIPT, {
+        arguments: [String(revalidatedAt), valueKey(this.config.keyPrefix, "")],
+        keys: [
+          ...list.map((tag) => tagTimestampKey(this.config.keyPrefix, tag)),
+          ...list.map((tag) => tagKeysKey(this.config.keyPrefix, tag)),
+        ],
+      });
     });
   }
 
