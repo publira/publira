@@ -78,7 +78,7 @@ func NewReaderEmailVerificationEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return Permanent(fmt.Errorf("decode reader email verification email payload: %w", err))
 		}
-		tenantID, tokenID, err := readerAuthEventIDs(event, payload.TenantID, payload.TokenID)
+		tenantID, tokenID, err := tenantAuthEventIDs(event, payload.TenantID, payload.TokenID)
 		if err != nil {
 			return Permanent(err)
 		}
@@ -100,7 +100,7 @@ func NewReaderEmailVerificationEmailHandler(cfg EmailHandlerConfig) Handler {
 			return nil
 		}
 
-		delivery, err := resolveReaderDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
 		if err != nil {
 			return err
 		}
@@ -149,7 +149,7 @@ func NewReaderEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handle
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return Permanent(fmt.Errorf("decode reader email change confirmation email payload: %w", err))
 		}
-		tenantID, tokenID, err := readerAuthEventIDs(event, payload.TenantID, payload.TokenID)
+		tenantID, tokenID, err := tenantAuthEventIDs(event, payload.TenantID, payload.TokenID)
 		if err != nil {
 			return Permanent(err)
 		}
@@ -175,7 +175,7 @@ func NewReaderEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handle
 			recipient = changeToken.NewEmail
 		}
 
-		delivery, err := resolveReaderDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
 		if err != nil {
 			return err
 		}
@@ -220,7 +220,7 @@ func NewReaderEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return Permanent(fmt.Errorf("decode reader email changed notice email payload: %w", err))
 		}
-		tenantID, tokenID, err := readerAuthEventIDs(event, payload.TenantID, payload.TokenID)
+		tenantID, tokenID, err := tenantAuthEventIDs(event, payload.TenantID, payload.TokenID)
 		if err != nil {
 			return Permanent(err)
 		}
@@ -241,7 +241,7 @@ func NewReaderEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			return Permanent(fmt.Errorf("reader email change request %s is not completed", tokenID))
 		}
 
-		delivery, err := resolveReaderDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
 		if err != nil {
 			return err
 		}
@@ -279,7 +279,7 @@ func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return Permanent(fmt.Errorf("decode reader password reset email payload: %w", err))
 		}
-		tenantID, tokenID, err := readerAuthEventIDs(event, payload.TenantID, payload.TokenID)
+		tenantID, tokenID, err := tenantAuthEventIDs(event, payload.TenantID, payload.TokenID)
 		if err != nil {
 			return Permanent(err)
 		}
@@ -301,7 +301,7 @@ func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 			return nil
 		}
 
-		delivery, err := resolveReaderDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
 		if err != nil {
 			return err
 		}
@@ -337,11 +337,11 @@ func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 	}
 }
 
-// readerAuthEventIDs checks what every reader auth event shares: the tenant the
-// row belongs to is named by both the event and its payload — the table's own
-// check constraint requires them to agree — and its token_id points at a row the
-// handler can reload.
-func readerAuthEventIDs(event dbmodels.OutboxEvent, tenantID, tokenID string) (uuid.UUID, uuid.UUID, error) {
+// tenantAuthEventIDs checks what every tenant-scoped auth event shares, the
+// reader's and the admin console's alike: the tenant the row belongs to is named
+// by both the event and its payload — the table's own check constraint requires
+// them to agree — and its token_id points at a row the handler can reload.
+func tenantAuthEventIDs(event dbmodels.OutboxEvent, tenantID, tokenID string) (uuid.UUID, uuid.UUID, error) {
 	parsedTenant, err := uuid.Parse(tenantID)
 	if err != nil || !event.TenantID.Valid || parsedTenant != event.TenantID.UUID {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("%s payload has an invalid tenant_id", event.EventType)
@@ -353,10 +353,10 @@ func readerAuthEventIDs(event dbmodels.OutboxEvent, tenantID, tokenID string) (u
 	return parsedTenant, parsedToken, nil
 }
 
-// readerDelivery is what every reader auth mail needs beyond its own row: the
-// storefront the link points at, the language and zone it is written in, and
-// where to hand the message to.
-type readerDelivery struct {
+// tenantDelivery is what every tenant-scoped auth mail needs beyond its own
+// row: the tenant the link points into, the language and zone the mail is
+// written in, and where to hand the message to.
+type tenantDelivery struct {
 	locale     string
 	settings   emailsettings.SMTPSettings
 	tenant     dbmodels.Tenant
@@ -364,35 +364,35 @@ type readerDelivery struct {
 	timeZone   string
 }
 
-// resolveReaderDelivery reads the locale before the SMTP settings on purpose. A
+// resolveTenantDelivery reads the locale before the SMTP settings on purpose. A
 // tenant locale no catalog covers will not start rendering after a retry, and an
 // SMTP outage must not disguise it as a failure that can.
-func resolveReaderDelivery(
+func resolveTenantDelivery(
 	ctx context.Context,
 	queries *dbmodels.Queries,
 	tenantID uuid.UUID,
 	encryptor emailsettings.SecretManager,
-) (readerDelivery, error) {
+) (tenantDelivery, error) {
 	tenant, err := queries.GetTenantByID(ctx, tenantID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return readerDelivery{}, Permanent(fmt.Errorf("tenant %s no longer exists", tenantID))
+		return tenantDelivery{}, Permanent(fmt.Errorf("tenant %s no longer exists", tenantID))
 	}
 	if err != nil {
-		return readerDelivery{}, fmt.Errorf("load tenant: %w", err)
+		return tenantDelivery{}, fmt.Errorf("load tenant: %w", err)
 	}
 	tenantLocale, err := locale.Resolve(tenant.DefaultLocale)
 	if err != nil {
-		return readerDelivery{}, Permanent(fmt.Errorf("resolve default locale of tenant %s: %w", tenantID, err))
+		return tenantDelivery{}, Permanent(fmt.Errorf("resolve default locale of tenant %s: %w", tenantID, err))
 	}
 	settings, err := resolveSMTPSettings(ctx, queries, tenantID, encryptor)
 	if err != nil {
-		return readerDelivery{}, fmt.Errorf("resolve smtp settings: %w", err)
+		return tenantDelivery{}, fmt.Errorf("resolve smtp settings: %w", err)
 	}
 	tenantName := strings.TrimSpace(tenant.Name)
 	if tenantName == "" {
 		tenantName = "Publira"
 	}
-	return readerDelivery{
+	return tenantDelivery{
 		locale:     tenantLocale,
 		settings:   settings,
 		tenant:     tenant,

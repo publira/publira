@@ -186,7 +186,7 @@ func platformSMTPSettings(config dbmodels.PlatformSmtpConfig, password string) e
 // is the tenant's saved language and no other: mailing the invitee in a
 // language their tenant never chose is not a fallback.
 func renderTenantAdminInvitation(ctx context.Context, queries *dbmodels.Queries, renderer emailrenderer.Renderer, tenant dbmodels.Tenant, invitation dbmodels.TenantAdminInvitation, token, tenantLocale string) (emailrenderer.Email, error) {
-	inviteURL, err := tenantAdminInvitationURL(tenant, token)
+	inviteURL, err := tenantAdminConsoleURL(tenant, "/accept-invite", token)
 	if err != nil {
 		return emailrenderer.Email{}, err
 	}
@@ -202,7 +202,12 @@ func renderTenantAdminInvitation(ctx context.Context, queries *dbmodels.Queries,
 	})
 }
 
-func tenantAdminInvitationURL(tenant dbmodels.Tenant, token string) (string, error) {
+// tenantAdminConsoleURL builds a link into the tenant's admin console. The
+// worker runs outside the request that produced the event, so the origin comes
+// from the tenant's configured admin domain — or, when none is saved, the
+// `admin.` host under its storefront domain — rather than from an incoming Host
+// header.
+func tenantAdminConsoleURL(tenant dbmodels.Tenant, path, token string) (string, error) {
 	domain := strings.TrimSpace(tenant.Domain)
 	if tenant.AdminDomain.Valid && strings.TrimSpace(tenant.AdminDomain.String) != "" {
 		domain = strings.TrimSpace(tenant.AdminDomain.String)
@@ -213,5 +218,5 @@ func tenantAdminInvitationURL(tenant dbmodels.Tenant, token string) (string, err
 	if domain == "" {
 		return "", errors.New("tenant admin domain is not configured")
 	}
-	return "https://" + domain + "/accept-invite?token=" + url.QueryEscape(token), nil
+	return "https://" + domain + path + "?token=" + url.QueryEscape(token), nil
 }

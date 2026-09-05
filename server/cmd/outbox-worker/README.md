@@ -12,8 +12,11 @@ A long-lived worker that drains the Outbox and processes the entries as River jo
 | `reader_email_change_confirmation_email` | Reader email change confirmation, one event per address to confirm |
 | `reader_email_changed_notice_email` | Reader notice to the previous address once the change completes |
 | `reader_password_reset_email` | Reader password reset |
+| `admin_password_reset_email` | Admin console password reset |
+| `admin_email_change_confirmation_email` | Admin console email change confirmation, one event per address to confirm |
+| `admin_email_changed_notice_email` | Admin console notice to the previous address once the change completes |
 
-The platform console rows carry no `tenant_id`: their handlers resolve the platform SMTP settings and the platform default locale and time zone rather than a tenant's. The reader rows name a tenant, and their links point at that tenant's own domain.
+The platform console rows carry no `tenant_id`: their handlers resolve the platform SMTP settings and the platform default locale and time zone rather than a tenant's. The reader and admin console rows name a tenant: the reader links point at that tenant's own domain, and the admin console links at its admin domain.
 
 ## Running
 
