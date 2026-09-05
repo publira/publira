@@ -49,7 +49,7 @@ type TenantEntry struct {
 	TargetType  string // e.g. "series", "episode", "creator", "label"
 	TargetID    string // ID of the affected resource
 	Outcome     string // "success" or "failure"
-	Reason      string // populated on failure
+	Reason      string // why the action was taken, or why it failed
 	ClientIP    string
 }
 
@@ -112,9 +112,10 @@ func (r *syncRecorder) RecordPlatform(ctx context.Context, e PlatformEntry) {
 	}
 }
 
-// RecordTenant writes a tenant audit entry. A DB error is logged but does not propagate.
-func (r *syncRecorder) RecordTenant(ctx context.Context, e TenantEntry) {
-	r.logger.InfoContext(ctx, "audit",
+// logTenantEntry emits the structured line every tenant entry gets, whether or
+// not the row behind it lands.
+func logTenantEntry(ctx context.Context, logger *slog.Logger, e TenantEntry) {
+	logger.InfoContext(ctx, "audit",
 		"tenant_id", e.TenantID,
 		"actor_user_id", e.ActorUserID,
 		"actor_role", e.ActorRole,
@@ -125,14 +126,15 @@ func (r *syncRecorder) RecordTenant(ctx context.Context, e TenantEntry) {
 		"reason", e.Reason,
 		"client_ip", e.ClientIP,
 	)
+}
 
+// tenantEntryParams is the row one tenant entry becomes.
+func tenantEntryParams(e TenantEntry) (dbmodels.InsertAuditLogParams, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "auditlog: failed to generate id", "error", err)
-		return
+		return dbmodels.InsertAuditLogParams{}, err
 	}
-
-	err = r.queries.InsertAuditLog(ctx, dbmodels.InsertAuditLogParams{
+	return dbmodels.InsertAuditLogParams{
 		ID:          id,
 		TenantID:    e.TenantID,
 		ActorUserID: e.ActorUserID,
@@ -143,8 +145,32 @@ func (r *syncRecorder) RecordTenant(ctx context.Context, e TenantEntry) {
 		Outcome:     e.Outcome,
 		Reason:      sql.NullString{String: e.Reason, Valid: e.Reason != ""},
 		ClientIp:    sql.NullString{String: e.ClientIP, Valid: e.ClientIP != ""},
-	})
+	}, nil
+}
+
+// WriteTenant persists one tenant entry on the supplied querier and reports
+// whether it landed.
+//
+// Recorder is best-effort by design: an audit write must never fail the action
+// it describes. This is the opposite case — an action whose entry is the only
+// record of what it destroyed. Passing a transaction's querier here commits the
+// action and its entry together, so neither of the two survives alone.
+func WriteTenant(ctx context.Context, queries Querier, logger *slog.Logger, e TenantEntry) error {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	logTenantEntry(ctx, logger, e)
+
+	params, err := tenantEntryParams(e)
 	if err != nil {
+		return err
+	}
+	return queries.InsertAuditLog(ctx, params)
+}
+
+// RecordTenant writes a tenant audit entry. A DB error is logged but does not propagate.
+func (r *syncRecorder) RecordTenant(ctx context.Context, e TenantEntry) {
+	if err := WriteTenant(ctx, r.queries, r.logger, e); err != nil {
 		r.logger.ErrorContext(ctx, "auditlog: failed to persist", "error", err, "action", e.Action)
 	}
 }
@@ -332,19 +358,9 @@ func (r *AsyncRecorder) RecordPlatform(ctx context.Context, e PlatformEntry) {
 
 // RecordTenant enqueues a tenant audit entry without blocking on the DB.
 func (r *AsyncRecorder) RecordTenant(ctx context.Context, e TenantEntry) {
-	r.logger.InfoContext(ctx, "audit",
-		"tenant_id", e.TenantID,
-		"actor_user_id", e.ActorUserID,
-		"actor_role", e.ActorRole,
-		"action", e.Action,
-		"target_type", e.TargetType,
-		"target_id", e.TargetID,
-		"outcome", e.Outcome,
-		"reason", e.Reason,
-		"client_ip", e.ClientIP,
-	)
+	logTenantEntry(ctx, r.logger, e)
 
-	id, err := uuid.NewV7()
+	params, err := tenantEntryParams(e)
 	if err != nil {
 		r.logger.ErrorContext(ctx, "auditlog: failed to generate id", "error", err)
 		return
@@ -353,18 +369,7 @@ func (r *AsyncRecorder) RecordTenant(ctx context.Context, e TenantEntry) {
 		ctx:    ctx,
 		action: e.Action,
 		kind:   "tenant",
-		tenant: &dbmodels.InsertAuditLogParams{
-			ID:          id,
-			TenantID:    e.TenantID,
-			ActorUserID: e.ActorUserID,
-			ActorRole:   e.ActorRole,
-			Action:      e.Action,
-			TargetType:  sql.NullString{String: e.TargetType, Valid: e.TargetType != ""},
-			TargetID:    sql.NullString{String: e.TargetID, Valid: e.TargetID != ""},
-			Outcome:     e.Outcome,
-			Reason:      sql.NullString{String: e.Reason, Valid: e.Reason != ""},
-			ClientIp:    sql.NullString{String: e.ClientIP, Valid: e.ClientIP != ""},
-		},
+		tenant: &params,
 	})
 }
 

@@ -93,7 +93,11 @@ func main() {
 	}
 
 	recorder := auditlog.NewAsync(dbmodels.New(db), db, logger)
-	handler := adminapi.NewHandlerWithAsyncRecorder(db, dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient(), tokens, recorder)
+	handler, err := adminapi.NewHandlerWithAsyncRecorder(db, dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient(), tokens, recorder)
+	if err != nil {
+		logger.Error("failed to initialize admin api handler", "error", err)
+		os.Exit(1)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

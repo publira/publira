@@ -219,18 +219,18 @@ func (s *adminServer) authenticateSession(
 // NewHandler returns the HTTP handler for the admin API alone. It serves only
 // AdminSeriesService and AdminAuthService, and none of the public API
 // (CatalogService, AuthService).
-func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) http.Handler {
+func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (http.Handler, error) {
 	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, nil)
 }
 
 // NewHandlerWithAsyncRecorder creates an admin API handler with an
 // AsyncRecorder. The asynchronous writer acquires a fresh tenant-scoped
 // connection for every tenant audit entry.
-func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) http.Handler {
+func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (http.Handler, error) {
 	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, recorder)
 }
 
-func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) http.Handler {
+func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) (http.Handler, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -245,17 +245,13 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 	} else if revalidator == nil {
 		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
 	}
-	commentRetentionDays, retentionErr := commentretention.WithdrawnDays()
-	if retentionErr != nil {
-		// The purge batch refuses to run on the same value, so nothing is deleted
-		// early; only the deadline the console shows is affected. Refusing to
-		// serve the whole admin API over it would cost far more than the wrong
-		// date does.
-		logger.Error("withdrawn comment retention window is invalid; falling back to the default",
-			"error", retentionErr,
-			"default_days", commentretention.DefaultWithdrawnDays,
-		)
-		commentRetentionDays = commentretention.DefaultWithdrawnDays
+	// The purge batch refuses to run on a window it cannot parse, so falling
+	// back to the default here would have the console count down to a deadline
+	// nothing enforces. Both processes read the same variable and both refuse
+	// the same values, which is what keeps the promise and the deletion in step.
+	commentRetentionDays, err := commentretention.WithdrawnDays()
+	if err != nil {
+		return nil, err
 	}
 	server := &adminServer{
 		db:                    db,
@@ -460,7 +456,7 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(commentPath, commentHandler)
-	return mux
+	return mux, nil
 }
 
 func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {

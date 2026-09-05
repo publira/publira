@@ -49,7 +49,7 @@ func (e *publicDBEnv) hideComment(t *testing.T, tenant testutil.Tenant, staff te
 	t.Helper()
 
 	adminDB := e.PG.OpenAdminDB(t)
-	adminServer := httptest.NewServer(adminapi.NewHandler(
+	adminHandler, err := adminapi.NewHandler(
 		adminDB,
 		dbmodels.New(adminDB),
 		&testStorageProvider{},
@@ -57,7 +57,11 @@ func (e *publicDBEnv) hideComment(t *testing.T, tenant testutil.Tenant, staff te
 		nil,
 		nil,
 		testutil.TokenManager(),
-	))
+	)
+	if err != nil {
+		t.Fatalf("new admin handler: %v", err)
+	}
+	adminServer := httptest.NewServer(adminHandler)
 	t.Cleanup(adminServer.Close)
 
 	token, _, err := testutil.TokenManager().Issue(

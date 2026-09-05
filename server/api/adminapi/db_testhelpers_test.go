@@ -36,7 +36,11 @@ func newAdminDBEnv(t *testing.T) *adminDBEnv {
 	pg.Reset(t)
 	db := pg.OpenAdminDB(t)
 
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager()))
+	handler, err := NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager())
+	if err != nil {
+		t.Fatalf("new admin handler: %v", err)
+	}
+	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 	return &adminDBEnv{Server: server, PG: pg}
 }

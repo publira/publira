@@ -183,17 +183,16 @@ func commentPublicIDArg(raw string) (string, error) {
 	return publicID, nil
 }
 
-// recordCommentAction writes the audit row a moderation action owes.
+// commentAuditEntry is the audit row a moderation action owes.
 //
 // The reason travels with it because a tenant may have to hand the author a
 // statement of reasons for the removal, and this row is where it reads one back.
-func (s *adminServer) recordCommentAction(
-	ctx context.Context,
+func commentAuditEntry(
 	headers http.Header,
 	sessionCtx rpcmiddleware.SessionContext,
 	action, commentPublicID, reason string,
-) {
-	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+) auditlog.TenantEntry {
+	return auditlog.TenantEntry{
 		TenantID:    sessionCtx.Tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -203,7 +202,19 @@ func (s *adminServer) recordCommentAction(
 		Outcome:     auditlog.OutcomeSuccess,
 		Reason:      reason,
 		ClientIP:    auditlog.ClientIPFromHeader(headers),
-	})
+	}
+}
+
+// recordCommentAction writes that row the ordinary way: best-effort, so a
+// failing audit write never fails a reversible action whose own effect is still
+// readable in the comment row afterwards.
+func (s *adminServer) recordCommentAction(
+	ctx context.Context,
+	headers http.Header,
+	sessionCtx rpcmiddleware.SessionContext,
+	action, commentPublicID, reason string,
+) {
+	s.recorderFor(ctx).RecordTenant(ctx, commentAuditEntry(headers, sessionCtx, action, commentPublicID, reason))
 }
 
 // ListComments returns the tenant's comments for moderation, newest first.
@@ -422,7 +433,8 @@ func (s *adminServer) RestoreComment(
 // PurgeComment deletes one comment for good, whatever state it is in.
 //
 // The audit row it leaves behind is the only record that the comment ever
-// existed, which is why the reason is required rather than optional.
+// existed, which is why the reason is required rather than optional and why the
+// row and the deletion are committed together.
 func (s *adminServer) PurgeComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.PurgeCommentRequest],
@@ -440,16 +452,32 @@ func (s *adminServer) PurgeComment(
 		return nil, err
 	}
 
+	// The delete and its audit row are one transaction, unlike every other
+	// action here. Those leave the comment behind, so a dropped audit write
+	// loses only the note; this one leaves nothing, and a purge whose entry
+	// failed to land would be a deletion nobody can account for.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin comment purge transaction", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	qtx := dbmodels.New(tx)
 	// A zero row count is another moderator having purged the same comment in
 	// between, which is the outcome this call asked for either way.
-	if _, err := s.queriesFor(ctx).DeleteEpisodeCommentByPublicIDForTenant(ctx, dbmodels.DeleteEpisodeCommentByPublicIDForTenantParams{
+	if _, err := qtx.DeleteEpisodeCommentByPublicIDForTenant(ctx, dbmodels.DeleteEpisodeCommentByPublicIDForTenantParams{
 		TenantID: tenant.ID,
 		PublicID: publicID,
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to purge comment", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
 	}
-
-	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_purged", publicID, reason)
+	entry := commentAuditEntry(req.Header(), sessionCtx, "comment_purged", publicID, reason)
+	if err := auditlog.WriteTenant(ctx, qtx, s.logger, entry); err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the comment purge", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit the comment purge", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
 
 	return connect.NewResponse(&publiraadminv1.PurgeCommentResponse{}), nil
 }
