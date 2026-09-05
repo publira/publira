@@ -133,6 +133,19 @@ export const WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the operator-settings tenant from
+ * `db/seeds/scenarios/130_admin_operator_settings.sql`.
+ *
+ * That suite rewrites the tenant admin's address and this tenant's SMTP
+ * override, so it cannot share `admin.localhost` with the suites that sign in
+ * as the development seed admin or send mail through the seed tenant.
+ */
+export const WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL = envUrl(
+  "E2E_WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.aset.localhost")
+);
+
+/**
  * Public site of the Japanese-default tenant from the scenario seed
  * `db/seeds/scenarios/080_locale_switching.sql`.
  *
