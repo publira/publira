@@ -128,18 +128,28 @@ dev_env_random_secret() {
   openssl rand -base64 48 | tr -d '\n'
 }
 
-# Prints the host[:port] of a URL such as postgres://user:pass@host:5432/db?x,
+# Prints the host:port of a URL such as postgres://user:pass@host:5432/db?x,
 # redis://host:6379/1, or http://host:9000. A URL without a port gets the
-# default passed as the second argument.
+# default passed as the second argument; a URL without a host, or with a port
+# that is empty or not a number in 1-65535, is rejected so that a malformed
+# value fails here rather than in every psql and server start that follows.
 dev_env_url_authority() {
-  local url="$1" default_port="$2" authority
+  local url="$1" default_port="$2" authority host port
   authority="${url#*://}"
   authority="${authority%%/*}"
   authority="${authority%%\?*}"
   authority="${authority##*@}"
-  [[ -n "${authority}" ]] || return 1
-  [[ "${authority}" == *:* ]] || authority="${authority}:${default_port}"
-  printf '%s\n' "${authority}"
+  if [[ "${authority}" == *:* ]]; then
+    host="${authority%:*}"
+    port="${authority##*:}"
+    [[ "${port}" =~ ^[0-9]{1,5}$ ]] || return 1
+    ((port >= 1 && port <= 65535)) || return 1
+  else
+    host="${authority}"
+    port="${default_port}"
+  fi
+  [[ -n "${host}" ]] || return 1
+  printf '%s:%s\n' "${host}" "${port}"
 }
 
 # The dependency services are reachable by their Compose service name inside

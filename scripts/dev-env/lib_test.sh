@@ -78,10 +78,13 @@ pass "a profile created with the host loopback variables addresses the services 
 
 [[ "$(dev_env_url_authority "redis://127.0.0.1" 6379)" == "127.0.0.1:6379" ]] || fail "default port was not appended"
 [[ "$(dev_env_url_authority "postgres://u:p@db/publira?sslmode=disable" 5432)" == "db:5432" ]] || fail "userinfo or query was not stripped"
-if dev_env_url_authority "postgres://" 5432 >/dev/null; then
-  fail "a URL without a host was accepted"
-fi
-pass "URL authority extraction strips userinfo and path and applies the default port"
+for malformed in "postgres://" "postgres://:5432/publira" "postgres://127.0.0.1:/publira" \
+  "postgres://127.0.0.1:not-a-port/publira" "redis://127.0.0.1:0" "redis://127.0.0.1:65536"; do
+  if dev_env_url_authority "${malformed}" 5432 >/dev/null; then
+    fail "a URL without a host or with a malformed port was accepted: ${malformed}"
+  fi
+done
+pass "URL authority extraction strips userinfo and path, applies the default port, and rejects malformed ports"
 
 expect_admin_url() {
   local profile_path="$1" expected="$2" actual
