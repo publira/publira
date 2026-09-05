@@ -2,6 +2,35 @@
 
 This page answers three questions for a first-time contributor: what to install, how to check a change, and what a mergeable pull request looks like. It names each rule in a sentence and links to the document that holds it, so there is one copy of every rule to maintain. [`README.md`](README.md) covers how to run the product itself.
 
+## Repository layout
+
+```text
+.
+├── apps/               # [Node.js] Web apps (Turborepo)
+│   ├── web-host/       # Tenant-facing site (catalog / auth / my page)
+│   ├── web-admin/      # Submission and management console for publishers and editors
+│   ├── web-platform/   # Cross-tenant operations console for platform operators
+│   └── email-renderer/ # Node service that renders React Email over ConnectRPC
+├── packages/           # [Node.js] Shared UI and utilities
+├── e2e/                # [Playwright] Cross-app E2E foundation
+├── server/             # [Go] Backend system (single module)
+│   ├── cmd/
+│   │   ├── api-server/       # ConnectRPC API server
+│   │   ├── batch/            # Single binary bundling every batch job (selected by subcommand)
+│   │   └── outbox-worker/    # Outbox + River resident worker
+│   ├── gen/            # buf generated code (Go)
+│   └── internal/
+│       └── db/gen/     # sqlc generated code (DB/Go)
+├── infra/
+│   └── docker/         # Production Dockerfiles (per role, built from the repository root)
+├── mobile/             # [Flutter] Mobile app (iOS/Android)
+├── proto/              # Protocol Buffers schema definitions
+├── locales/            # Shared UI messages (JSON, read by Go / Web / Flutter alike)
+└── db/                 # PostgreSQL migrations and queries
+```
+
+Each area carries its own documentation: the `README.md` of a directory is the reference for what it holds and how to run it, and an `AGENTS.md` states the conventions a change there must follow. There is no central index of them; [Where the conventions live](#where-the-conventions-live) says how to find the ones that apply to a change.
+
 ## Ways to contribute
 
 - **Issues.** Open one on GitHub for a bug, a feature, or a task. Write the title and body in English, say what happened and what you expected, and name the app or service it concerns.
@@ -46,6 +75,40 @@ With the tools installed:
 
 The shortest path to a green check needs only Task, pnpm, Go, and libvips: `task deps` followed by the commands in the next section.
 
+### Working in several worktrees
+
+When you work in several worktrees in parallel, pick a profile per worktree instead of sharing the default development environment. A profile separates the PostgreSQL database, the Valkey logical database, the RustFS bucket, the ports of every service, the cookie names, and the authentication and revalidation secrets. The plain `task setup` / `task dev` keep using the shared environment as before. The profiles are Dev Container only: they address PostgreSQL and Valkey as `db` / `redis`, which resolve only inside the Compose network.
+
+```bash
+# Once per new worktree (the identifier takes lowercase alphanumerics and -)
+task dev-env:create NAME=issue-1178
+
+# Database migration/seed and creation of the dedicated bucket. Safe to re-run.
+task dev-env:init
+
+# Start the API, image server, worker, email-renderer, and the three Next.js apps together
+task dev-env:start
+
+# Show the URLs, the logs, and the assigned DB/Redis/bucket
+task dev-env:show
+
+# When you are done. Data is kept.
+task dev-env:stop
+```
+
+Load the same environment variables first when starting a single app as well. `pnpm dev` in each Next.js app honors `PORT`, so you do not have to resolve default port collisions by hand.
+
+```bash
+eval "$(task --silent dev-env:env)"
+pnpm --dir apps/web-host dev
+```
+
+`task dev-env:list` shows every profile and the worktree that selected it. To discard one, run `task dev-env:destroy NAME=<name>`. It checks that no worktree has the target selected and that it is stopped, then deletes only that profile's database, Redis DB, and bucket after you retype the name. It does not touch the shared development environment, E2E, or other profiles.
+
+A profile's secrets and run logs are stored under `~/.publira/dev-env` by default. Override the location with `PUBLIRA_DEV_ENV_HOME` and the PostgreSQL admin connection with `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` only when you need to. Both are read solely by the development environment scripts.
+
+Coding agents use [`skills/dev-env-profile`](skills/dev-env-profile/SKILL.md) when they start development.
+
 ## Verifying a change
 
 Run the commands that match the area you changed, from the repository root. They are the same commands CI runs, and each area's guide explains them in full.
@@ -84,15 +147,22 @@ Everything this repository publishes is English: the Markdown documents, GitHub 
 
 ## Where the conventions live
 
-The rules are written for coding agents and humans alike, and they are kept next to the code they govern. This page links to them rather than restating them.
+The rules are kept next to the code they govern, in two kinds of file, and there is deliberately no index of them: an index has to be edited every time a directory gains or loses one, and the copy that is forgotten is the one a reader trusts.
 
-| Document | What it governs |
-| --- | --- |
-| [`AGENTS.md`](AGENTS.md) | Repository-wide policy: language, commit trailers, environment variable names, TypeScript on Node.js, React Effects, `Temporal`, the Next.js cache, and the map of the guides below |
-| [`apps/AGENTS.md`](apps/AGENTS.md) | The Next.js apps and shared packages; each app's own `AGENTS.md` holds only its Next.js-generated rules |
-| [`server/AGENTS.md`](server/AGENTS.md) | The Go backend and its verification checklist |
-| [`db/AGENTS.md`](db/AGENTS.md) | Migrations, sqlc queries, and seeds |
-| [`proto/README.md`](proto/README.md) | Cross-RPC contract decisions such as cursor pagination |
-| [`.github/workflows/README.md`](.github/workflows/README.md) | CI job layout, path filters, and failure triage |
-| [`infra/docker/README.md`](infra/docker/README.md) | Production Dockerfiles and their build verification |
-| [`skills/`](skills/) | Repository-owned skills for coding agents: the coding standards in full, how to open a pull request, the isolated development profile, and Issue organization |
+- An **`AGENTS.md`** states the conventions a change under its directory must follow and the commands that verify it. The root [`AGENTS.md`](AGENTS.md) holds the repository-wide policy — the language rule, the commit trailer, environment variable names, the coding standards — and each domain's file holds what is specific to that domain.
+- A **`README.md`** is the reference for what a directory holds, what it exports or serves, the environment variables it reads, and how to run it.
+
+Before changing a file, read the `AGENTS.md` and the `README.md` in its directory and in every directory above it, up to the repository root. Every one of them applies, and the nearest one is the most specific. The same walk lists them for you:
+
+```bash
+git diff --name-only origin/main...HEAD | while read -r file; do
+  dir=$(dirname "$file")
+  while :; do
+    for doc in AGENTS.md README.md; do [ -f "$dir/$doc" ] && echo "$dir/$doc"; done
+    [ "$dir" = "." ] && break
+    dir=$(dirname "$dir")
+  done
+done | sort -u
+```
+
+The rules are written for coding agents and human contributors alike. The skills under [`skills/`](skills/) are the agent-facing companions: the coding standards in full, the pull request procedure, the isolated development profile, and Issue organization.

@@ -8,32 +8,9 @@ IT リソースが限られる出版社向けに、自社ブランドで運用�
 
 OSSとして、ポータビリティ・運用のしやすさ・ベンダーロックイン回避を重視します。
 
-## ディレクトリ構造
+## コントリビューション
 
-```text
-.
-├── apps/               # [Node.js] Web アプリ (Turborepo)
-│   ├── web-host/       # テナント公開サイト (カタログ/認証/マイページ)
-│   ├── web-admin/      # 出版社・編集者向け入稿/管理画面
-│   ├── web-platform/   # プラットフォーム運営者向け横断運用画面
-│   └── email-renderer/ # React Email を ConnectRPC で描画する Node サービス
-├── packages/           # [Node.js] 共有 UI / ユーティリティ
-├── e2e/                # [Playwright] Web 横断 E2E 基盤
-├── server/             # [Go] バックエンドシステム (単一モジュール)
-│   ├── cmd/
-│   │   ├── api-server/       # ConnectRPC API サーバー
-│   │   ├── batch/            # 全バッチジョブを束ねた単一バイナリ（サブコマンドで選択）
-│   │   └── outbox-worker/    # Outbox + River 常駐ワーカー
-│   └── internal/
-│       ├── db/gen/     # sqlc 自動生成コード (DB/Go)
-│       └── proto/gen/  # buf 自動生成コード (Go)
-├── infra/
-│   └── docker/         # 本番用 Dockerfile（ロール別・ルートからビルド）
-├── mobile/             # [Flutter] モバイルアプリ (iOS/Android)
-├── proto/              # Protocol Buffers スキーマ定義
-├── locales/            # 共有 UI メッセージ（JSON。Go / Web / Flutter が同じファイルを読む）
-└── db/                 # PostgreSQL migration/クエリ
-```
+リポジトリの構成、ツールチェーン、検証コマンド、Pull Request の規約は [CONTRIBUTING.md](CONTRIBUTING.md) にあります。
 
 ## 技術スタック
 
@@ -44,20 +21,6 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 - Cache: Redis（Next.js `cacheHandler` / `cacheHandlers` の共有ストア）
 - Storage/Image: S3 互換ストレージ
 - Infrastructure: Dev Containers, Docker, Make
-
-## ドキュメント案内
-
-- コントリビューション（ツールチェーン・検証コマンド・Pull Request の規約）: [CONTRIBUTING.md](CONTRIBUTING.md)
-- エージェント向け規約（Effect / lint など）: [AGENTS.md](AGENTS.md)
-- Web アプリ: [apps/README.md](apps/README.md)
-- 共有パッケージ: [packages/README.md](packages/README.md)
-- Go バックエンド: [server/README.md](server/README.md)
-- モバイル: [mobile/README.md](mobile/README.md)
-- CI ワークフロー全体（ジョブ構成・path filter・トリアージ）: [.github/workflows/README.md](.github/workflows/README.md)
-- Dockerfile 配置規約・ビルド検証（本番イメージ）: [infra/docker/README.md](infra/docker/README.md)
-- E2E（Playwright 基盤・CI）: [e2e/README.md](e2e/README.md)
-- 開発環境 bootstrap チェック（空 DB volume からの `task setup` / `task dev` 検証）: [e2e/bootstrap/README.md](e2e/bootstrap/README.md)
-- 開発環境 Traefik ルーティング疎通（ホスト / `/api` / `/images`）: [e2e/routing/README.md](e2e/routing/README.md)
 
 ## セットアップ
 
@@ -119,41 +82,7 @@ Dev Container 専用のままになるものが 2 つあります。
 - **Traefik**。ルーターは `app` コンテナに付いた Docker ラベルなので、ホスト上のプロセスには届きません。各アプリのポート（Next.js 3 つが `3000` / `4000` / `4100`、API が `8000`、image-server が `8200`）へ直接アクセスしてください。
 - **seed の SMTP ホスト**。`db/seeds/dev` は platform / tenant の SMTP 設定を `mailpit` に向けます。ホストのプロセスからメールを送るときは、コンソールでホストを `127.0.0.1` に変えてください。
 
-後述の `dev-env` プロファイルも同じ理由で Dev Container 専用です。PostgreSQL と Valkey を `db` / `redis` として指しています。
-
-## worktree ごとの開発環境プロファイル
-
-複数の worktree を並行利用するときは、共有の既定開発環境を使わず、worktree ごとにプロファイルを選びます。プロファイルは PostgreSQL database、Valkey logical database、RustFS bucket、全サービスのポート、Cookie 名、認証／再検証 secret をまとめて分離します。既定の `task setup` / `task dev` は従来どおり共有環境を使います。
-
-```bash
-# 新しい worktree で一度だけ（識別子は小文字英数字と -）
-task dev-env:create NAME=issue-1178
-
-# database migration/seed と専用 bucket の作成。再実行しても安全です。
-task dev-env:init
-
-# API、image server、worker、email-renderer、3 つの Next.js app をまとめて起動
-task dev-env:start
-
-# 表示した URL、ログ、割り当て済み DB/Redis/bucket を確認
-task dev-env:show
-
-# 終了時。データは保持します。
-task dev-env:stop
-```
-
-単独アプリを起動する場合も、同じ環境変数を先に読み込みます。各 Next.js app の `pnpm dev` は `PORT` を尊重するため、手で既定ポートの衝突を解消する必要はありません。
-
-```bash
-eval "$(task --silent dev-env:env)"
-pnpm --dir apps/web-host dev
-```
-
-`task dev-env:list` は全プロファイルと選択中 worktree を表示します。破棄は `task dev-env:destroy NAME=<name>` です。対象がどの worktree からも選択されておらず停止済みであることを確認し、名前の再入力後にその profile の database、Redis DB、bucket だけを削除します。共有開発環境、E2E、他 profile は操作しません。
-
-プロファイルの秘密情報と実行ログは既定で `~/.publira/dev-env` に保存されます。保存場所は `PUBLIRA_DEV_ENV_HOME`、PostgreSQL の管理接続は `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` で必要な場合だけ上書きできます。どちらも開発環境スクリプトだけが読む変数です。
-
-コーディングエージェントは [`skills/dev-env-profile`](skills/dev-env-profile/SKILL.md) を開発開始時に使用します。
+[CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) の worktree ごとの `dev-env` プロファイルも同じ理由で Dev Container 専用です。PostgreSQL と Valkey を `db` / `redis` として指しています。
 
 ## ローカル DB 初期化
 
