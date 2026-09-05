@@ -1,4 +1,7 @@
-import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  rpcErrorMessage,
+  smtpTestFailureErrorMessage,
+} from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
@@ -97,6 +100,22 @@ const parseErrorMessage = (
       precondition: serverMessage,
     },
   });
+};
+
+const parseSmtpTestErrorMessage = (
+  error: unknown,
+  messages: PlatformMessages,
+  locale: Locale
+): string => {
+  const fallback = getMessage(messages, "platform.common.generic_failed");
+
+  return (
+    smtpTestFailureErrorMessage(error, locale) ??
+    rpcErrorMessage(error, fallback, {
+      locale,
+      overrides: { precondition: fallback },
+    })
+  );
 };
 
 /**
@@ -241,7 +260,7 @@ export const sendPlatformSmtpTestEmail = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, messages, input.locale),
+      message: parseSmtpTestErrorMessage(error, messages, input.locale),
       ok: false,
     };
   }

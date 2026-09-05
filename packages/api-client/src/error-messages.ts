@@ -1,8 +1,62 @@
 import type { Locale } from "@publira/i18n";
-import { sharedRpcErrorMessage } from "@publira/i18n/catalog";
+import { sharedMessage, sharedRpcErrorMessage } from "@publira/i18n/catalog";
 
 import type { RpcErrorDisposition } from "./errors.js";
-import { rpcErrorDisposition } from "./errors.js";
+import {
+  RPC_ERROR_REASON,
+  rpcErrorDisposition,
+  rpcErrorHasReason,
+} from "./errors.js";
+
+const smtpTestFailureReasons = [
+  RPC_ERROR_REASON.smtpTestAuthentication,
+  RPC_ERROR_REASON.smtpTestConnection,
+  RPC_ERROR_REASON.smtpTestRecipient,
+  RPC_ERROR_REASON.smtpTestStartTLS,
+  RPC_ERROR_REASON.smtpTestTLS,
+  RPC_ERROR_REASON.smtpTestTimeout,
+  RPC_ERROR_REASON.smtpTestUnknown,
+] as const;
+
+const smtpTestFailureMessageKeys = {
+  [RPC_ERROR_REASON.smtpTestAuthentication]: "errors.smtp_test.authentication",
+  [RPC_ERROR_REASON.smtpTestConnection]: "errors.smtp_test.connection",
+  [RPC_ERROR_REASON.smtpTestRecipient]: "errors.smtp_test.recipient",
+  [RPC_ERROR_REASON.smtpTestStartTLS]: "errors.smtp_test.starttls",
+  [RPC_ERROR_REASON.smtpTestTLS]: "errors.smtp_test.tls",
+  [RPC_ERROR_REASON.smtpTestTimeout]: "errors.smtp_test.timeout",
+  [RPC_ERROR_REASON.smtpTestUnknown]: "errors.smtp_test.unknown",
+} as const;
+
+type SmtpTestFailureReason = keyof typeof smtpTestFailureMessageKeys;
+
+/** Returns localized SMTP test failure copy for a server-stored reason code. */
+export const smtpTestFailureMessage = (
+  reason: string,
+  locale: Locale
+): string | undefined => {
+  if (!Object.hasOwn(smtpTestFailureMessageKeys, reason)) {
+    return undefined;
+  }
+
+  return sharedMessage(
+    smtpTestFailureMessageKeys[reason as SmtpTestFailureReason],
+    locale
+  );
+};
+
+/** Returns localized SMTP test failure copy from a Connect ErrorInfo detail. */
+export const smtpTestFailureErrorMessage = (
+  error: unknown,
+  locale: Locale
+): string | undefined => {
+  for (const reason of smtpTestFailureReasons) {
+    if (rpcErrorHasReason(error, reason)) {
+      return smtpTestFailureMessage(reason, locale);
+    }
+  }
+  return undefined;
+};
 
 /**
  * Per-category replacements for the shared RPC wording.

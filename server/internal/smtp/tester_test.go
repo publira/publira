@@ -1,6 +1,8 @@
 package smtp
 
 import (
+	"context"
+	"errors"
 	"io"
 	"mime"
 	"mime/quotedprintable"
@@ -9,7 +11,32 @@ import (
 	"testing"
 
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
+
+func TestTestFailureReasonClassifiesSMTPFailures(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{name: "timeout", err: context.DeadlineExceeded, want: rpcerrors.ReasonSMTPTestTimeout},
+		{name: "authentication", err: errors.New("535 authentication failed"), want: rpcerrors.ReasonSMTPTestAuthentication},
+		{name: "starttls", err: errors.New("STARTTLS is not available"), want: rpcerrors.ReasonSMTPTestStartTLS},
+		{name: "tls", err: errors.New("TLS certificate is invalid"), want: rpcerrors.ReasonSMTPTestTLS},
+		{name: "connection", err: errors.New("connection refused"), want: rpcerrors.ReasonSMTPTestConnection},
+		{name: "recipient", err: errors.New("recipient mailbox rejected"), want: rpcerrors.ReasonSMTPTestRecipient},
+		{name: "unknown", err: errors.New("unexpected failure"), want: rpcerrors.ReasonSMTPTestUnknown},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := TestFailureReason(test.err); got != test.want {
+				t.Fatalf("TestFailureReason() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
 
 func TestBuildMessageWithHTMLEncodesJapaneseAlternatives(t *testing.T) {
 	message, err := buildMessage(emailsettings.SMTPSettings{FromAddress: "from@example.com"}, "to@example.com", RenderedEmail{

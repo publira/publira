@@ -14,6 +14,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
@@ -258,7 +259,7 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 	}
 
 	if err := s.tester.SendTestEmail(ctx, settings, recipientEmail); err != nil {
-		reason := internalsmtp.UserFacingError(err)
+		reason := internalsmtp.TestFailureReason(err)
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 			TenantID:    tenant.ID,
 			ActorUserID: sessionCtx.User.ID,
@@ -270,7 +271,11 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 			Reason:      reason,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New(reason))
+		return nil, rpcerrors.NewErrorInfoError(
+			connect.CodeFailedPrecondition,
+			errors.New("smtp connection test failed"),
+			reason,
+		)
 	}
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
