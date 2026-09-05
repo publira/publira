@@ -1,13 +1,13 @@
 -- name: GetPlatformConfig :one
--- プラットフォーム全体設定の singleton 行を取得する
 SELECT *
 FROM platform_config
 WHERE singleton = TRUE
 LIMIT 1;
 
 -- name: UpsertPlatformSettings :one
--- プラットフォーム既定タイムゾーンと既定ロケールを原子的に作成または更新する。
--- default_locale は列 DEFAULT を持たないため、呼び出し側が必ず明示する。
+-- Creates or updates the platform default time zone and default locale in one
+-- statement. default_locale has no column DEFAULT, so the caller always states
+-- a value for it.
 INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
 VALUES (
         TRUE,
@@ -22,8 +22,9 @@ SET default_timezone = EXCLUDED.default_timezone,
 RETURNING *;
 
 -- name: UpsertPlatformDefaultLocale :one
--- 初期セットアップで選ばれた既定ロケールだけを保存する。タイムゾーンはまだ
--- 選ばれていないので、行を作るときは列 DEFAULT に任せ、既存行のものは残す。
+-- Stores only the default locale chosen during initial setup. No time zone has
+-- been chosen at that point, so a new row leaves it to the column DEFAULT and
+-- an existing row keeps the value it already has.
 INSERT INTO platform_config (singleton, default_locale, updated_at)
 VALUES (TRUE, sqlc.arg('default_locale'), NOW()) ON CONFLICT (singleton) DO
 UPDATE

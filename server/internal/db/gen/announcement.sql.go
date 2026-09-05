@@ -40,7 +40,6 @@ type CreateAnnouncementParams struct {
 	Metadata         json.RawMessage `json:"metadata"`
 }
 
-// お知らせを作成
 func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error) {
 	row := q.db.QueryRowContext(ctx, createAnnouncement,
 		arg.ID,
@@ -100,8 +99,9 @@ type GetAnnouncementForUserRow struct {
 	ReadAt           sql.NullTime    `json:"read_at"`
 }
 
-// お知らせ 1 件を取得（既読状態付き）。inbox に属する行だけを返す。
-// 他人・他テナントの行は 0 件になり、存在の有無は区別しない。
+// Returns the announcement with the caller's read state, and only when the row
+// belongs to that caller's inbox. A row addressed to another user or owned by
+// another tenant comes back as no rows, so its existence is not disclosed.
 func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error) {
 	row := q.db.QueryRowContext(ctx, getAnnouncementForUser, arg.UserID, arg.ID, arg.TenantID)
 	var i GetAnnouncementForUserRow
@@ -174,7 +174,6 @@ type ListAnnouncementsForTenantAscRow struct {
 	TargetUserName     sql.NullString  `json:"target_user_name"`
 }
 
-// テナント管理画面向けお知らせ一覧（前ページ方向）
 func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAnnouncementsForTenantAsc,
 		arg.TenantID,
@@ -269,12 +268,12 @@ type ListAnnouncementsForTenantDescRow struct {
 	TargetUserName     sql.NullString  `json:"target_user_name"`
 }
 
-// Admin ListAnnouncements は (created_at, id) の降順で表示する。
-// 次ページは降順、前ページは昇順のクエリで idx_announcements_tenant_created_at を
-// 走査し、前ページだけ handler で表示順へ戻す。ORDER BY をパラメータで分岐させると
-// 索引順に読めないため、走査方向ごとにクエリを分ける。
-// cursor の共通仕様は proto/README.md を参照。
-// テナント管理画面向けお知らせ一覧（次ページ方向）
+// Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
+// query; backward uses ASC so idx_announcements_tenant_created_at can be
+// scanned in reverse. The handler flips ASC rows back into display order.
+// A parameterized ORDER BY cannot be read in index order, so each scan
+// direction gets its own query.
+// cursor rules: proto/README.md.
 func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]ListAnnouncementsForTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAnnouncementsForTenantDesc,
 		arg.TenantID,
@@ -364,7 +363,6 @@ type ListAnnouncementsForUserAscRow struct {
 	ReadAt           sql.NullTime    `json:"read_at"`
 }
 
-// お知らせ一覧を取得（既読状態付き・前ページ方向）
 func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnouncementsForUserAscParams) ([]ListAnnouncementsForUserAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAnnouncementsForUserAsc,
 		arg.UserID,
@@ -455,12 +453,12 @@ type ListAnnouncementsForUserDescRow struct {
 	ReadAt           sql.NullTime    `json:"read_at"`
 }
 
-// 公開サイトの ListAnnouncements は (created_at, id) の降順で表示する。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
-// 読めないため、走査方向ごとにクエリを分ける。
-// cursor の共通仕様は proto/README.md を参照。
-// お知らせ一覧を取得（既読状態付き・次ページ方向）
+// The public site's ListAnnouncements is (created_at, id) DESC. Forward uses
+// the DESC query; backward uses ASC so the index can be scanned in reverse.
+// The handler flips ASC rows back into display order. A parameterized
+// ORDER BY cannot be read in index order, so each scan direction gets its own
+// query. Every row carries the calling user's read state.
+// cursor rules: proto/README.md.
 func (q *Queries) ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnnouncementsForUserDescParams) ([]ListAnnouncementsForUserDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAnnouncementsForUserDesc,
 		arg.UserID,
@@ -523,7 +521,8 @@ type MarkAllAnnouncementsAsReadParams struct {
 	UserID   uuid.UUID `json:"user_id"`
 }
 
-// 指定ユーザーの未読お知らせを一括既読化
+// Inserts a read row for every announcement in the caller's inbox that lacks
+// one: the tenant-wide announcements plus the ones addressed to that user.
 func (q *Queries) MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, markAllAnnouncementsAsRead, arg.TenantID, arg.UserID)
 	if err != nil {
@@ -550,7 +549,8 @@ type MarkAnnouncementAsReadParams struct {
 	UserID   uuid.UUID `json:"user_id"`
 }
 
-// 指定したお知らせを既読にする（未読時は新規作成、既読済みなら時刻更新）
+// Upserts, so marking an already-read announcement refreshes read_at instead
+// of failing. The SELECT confines the insert to the caller's own inbox.
 func (q *Queries) MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error) {
 	row := q.db.QueryRowContext(ctx, markAnnouncementAsRead, arg.ID, arg.TenantID, arg.UserID)
 	var i AnnouncementRead

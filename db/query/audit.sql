@@ -1,5 +1,4 @@
 -- name: InsertPlatformAuditLog :exec
--- 管理操作監査ログを記録する
 INSERT INTO platform_audit_logs (
     id,
     actor_platform_user_id,
@@ -13,7 +12,6 @@ INSERT INTO platform_audit_logs (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: InsertAuditLog :exec
--- テナント操作監査ログを記録する
 INSERT INTO audit_logs (
     id,
     tenant_id,
@@ -27,11 +25,11 @@ INSERT INTO audit_logs (
     client_ip
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 
--- Platform ListAuditLogs は (created_at, id) の降順で表示する。
--- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
--- handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
--- 読めないため、走査方向ごとにクエリを分ける。
--- cursor の共通仕様は proto/README.md を参照。
+-- Platform ListAuditLogs is (created_at, id) DESC. Forward uses the DESC
+-- query; backward uses ASC so the index can be scanned in reverse. The handler
+-- flips ASC rows back into display order. A parameterized ORDER BY cannot be
+-- read in index order, so each scan direction gets its own query.
+-- cursor rules: proto/README.md.
 -- name: ListPlatformAuditLogsDesc :many
 SELECT a.id,
     a.actor_platform_user_id,
@@ -136,11 +134,11 @@ WHERE (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_pu.public
 ORDER BY a.created_at ASC, a.id ASC
 LIMIT sqlc.arg('limit');
 
--- ListAuditLogs は (created_at, id) の降順で表示する。
--- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
--- handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
--- 読めないため、走査方向ごとにクエリを分ける。
--- cursor の共通仕様は proto/README.md を参照。
+-- Admin ListAuditLogs is (created_at, id) DESC. Forward uses the DESC query;
+-- backward uses ASC so the index can be scanned in reverse. The handler flips
+-- ASC rows back into display order. A parameterized ORDER BY cannot be read in
+-- index order, so each scan direction gets its own query.
+-- cursor rules: proto/README.md.
 -- name: ListAuditLogsByTenantDesc :many
 SELECT a.id,
     a.tenant_id,

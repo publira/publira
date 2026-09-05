@@ -41,7 +41,6 @@ type InsertAuditLogParams struct {
 	ClientIp    sql.NullString `json:"client_ip"`
 }
 
-// テナント操作監査ログを記録する
 func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error {
 	_, err := q.db.ExecContext(ctx, insertAuditLog,
 		arg.ID,
@@ -84,7 +83,6 @@ type InsertPlatformAuditLogParams struct {
 	ClientIp            sql.NullString `json:"client_ip"`
 }
 
-// 管理操作監査ログを記録する
 func (q *Queries) InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error {
 	_, err := q.db.ExecContext(ctx, insertPlatformAuditLog,
 		arg.ID,
@@ -275,11 +273,11 @@ type ListAuditLogsByTenantDescRow struct {
 	ActorName     string         `json:"actor_name"`
 }
 
-// ListAuditLogs は (created_at, id) の降順で表示する。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
-// 読めないため、走査方向ごとにクエリを分ける。
-// cursor の共通仕様は proto/README.md を参照。
+// Admin ListAuditLogs is (created_at, id) DESC. Forward uses the DESC query;
+// backward uses ASC so the index can be scanned in reverse. The handler flips
+// ASC rows back into display order. A parameterized ORDER BY cannot be read in
+// index order, so each scan direction gets its own query.
+// cursor rules: proto/README.md.
 func (q *Queries) ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAuditLogsByTenantDesc,
 		arg.TenantID,
@@ -539,11 +537,11 @@ type ListPlatformAuditLogsDescRow struct {
 	TargetName          string         `json:"target_name"`
 }
 
-// Platform ListAuditLogs は (created_at, id) の降順で表示する。
-// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
-// 読めないため、走査方向ごとにクエリを分ける。
-// cursor の共通仕様は proto/README.md を参照。
+// Platform ListAuditLogs is (created_at, id) DESC. Forward uses the DESC
+// query; backward uses ASC so the index can be scanned in reverse. The handler
+// flips ASC rows back into display order. A parameterized ORDER BY cannot be
+// read in index order, so each scan direction gets its own query.
+// cursor rules: proto/README.md.
 func (q *Queries) ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatformAuditLogsDescParams) ([]ListPlatformAuditLogsDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPlatformAuditLogsDesc,
 		arg.FilterActorUserPublicID,

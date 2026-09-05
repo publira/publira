@@ -40,7 +40,6 @@ type Querier interface {
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
 	CountUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) (int64, error)
 	CreateAccessTicket(ctx context.Context, arg CreateAccessTicketParams) (AccessTicket, error)
-	// お知らせを作成
 	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
 	CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error)
 	CreateCreatorFollow(ctx context.Context, arg CreateCreatorFollowParams) (CreatorFollow, error)
@@ -77,9 +76,7 @@ type Querier interface {
 	// Worker insert. Same recipient / type / subject is a no-op so retries
 	// do not create a second row. :one returns no rows on conflict.
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
-	// ページを新規作成する
 	CreatePage(ctx context.Context, arg CreatePageParams) (Page, error)
-	// ページバージョンを新規作成する
 	CreatePageVersion(ctx context.Context, arg CreatePageVersionParams) (PageVersion, error)
 	CreatePlatformNotification(ctx context.Context, arg CreatePlatformNotificationParams) (PlatformNotification, error)
 	CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (PlatformUser, error)
@@ -149,8 +146,9 @@ type Querier interface {
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
-	// お知らせ 1 件を取得（既読状態付き）。inbox に属する行だけを返す。
-	// 他人・他テナントの行は 0 件になり、存在の有無は区別しない。
+	// Returns the announcement with the caller's read state, and only when the row
+	// belongs to that caller's inbox. A row addressed to another user or owned by
+	// another tenant comes back as no rows, so its existence is not disclosed.
 	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
 	GetContentDailyStatsByEntity(ctx context.Context, arg GetContentDailyStatsByEntityParams) (ContentDailyStat, error)
 	GetContentEventByID(ctx context.Context, id uuid.UUID) (ContentEvent, error)
@@ -184,18 +182,16 @@ type Querier interface {
 	GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
 	GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error)
-	// ページの最大バージョン番号を取得する（次バージョン番号算出用）
+	// The caller adds one to this to number the version it is about to create;
+	// COALESCE makes the first version of a page number 1.
 	GetMaxPageVersionNumberByPageID(ctx context.Context, pageID uuid.UUID) (int32, error)
 	// Non-revoked ticket for a user+episode pair (may already be expired).
 	// Used for idempotent issue under the unique partial index on non-revoked rows.
 	GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error)
 	GetOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	GetOutboxEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (OutboxEvent, error)
-	// テナントのページをIDで取得する
 	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (Page, error)
-	// ページバージョンをIDで取得する
 	GetPageVersionByIDForPage(ctx context.Context, arg GetPageVersionByIDForPageParams) (PageVersion, error)
-	// プラットフォーム全体設定の singleton 行を取得する
 	GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)
 	GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
@@ -214,7 +210,6 @@ type Querier interface {
 	// no published series, because a label has no unpublished state of its own. A
 	// label that does not exist, or one of another tenant, returns no row.
 	GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error)
-	// テナントの公開中ページをslugで取得する
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
 	// Resolves a currently public series to its internal ID and nothing else.
 	// Shared by every member-facing RPC that acts on a series (follow, rating), so
@@ -254,7 +249,6 @@ type Querier interface {
 	// hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 	// has no staff actor to name.
 	HideEpisodeCommentByPublicIDForTenant(ctx context.Context, arg HideEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
-	// テナント操作監査ログを記録する
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	// Engagement / recommend query skeleton.
 	// Later issues fill handlers and batches; these queries pin the index-backed
@@ -302,7 +296,6 @@ type Querier interface {
 	// producing transaction do not create a second row. :one returns no
 	// rows on conflict.
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) (OutboxEvent, error)
-	// 管理操作監査ログを記録する
 	InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error
 	// Idempotent projection from a SoT row (purchases.id, access_tickets.id).
 	InsertProjectedSourceEvent(ctx context.Context, arg InsertProjectedSourceEventParams) (ContentEvent, error)
@@ -318,10 +311,11 @@ type Querier interface {
 	// server from the catalog row, never taken from client input.
 	InsertRatingEvent(ctx context.Context, arg InsertRatingEventParams) (ContentEvent, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
-	// Admin ListAccessTickets は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで idx_access_tickets_tenant_created_at
-	// を走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
-	// が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
+	// Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
+	// query; backward uses ASC so idx_access_tickets_tenant_created_at can be
+	// scanned in reverse. The handler flips ASC rows back into display order.
+	// id is a UUIDv7, so the order stays unique even when created_at ties.
+	// cursor rules: proto/README.md.
 	ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAccessTicketsForTenantDescParams) ([]ListAccessTicketsForTenantDescRow, error)
 	// Display data for the published series, narrowed by tenant id.
 	// No ORDER BY: the caller sorts the rows into the id order stage one settled
@@ -347,30 +341,28 @@ type Querier interface {
 	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error)
-	// テナント管理画面向けお知らせ一覧（前ページ方向）
 	ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error)
-	// Admin ListAnnouncements は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで idx_announcements_tenant_created_at を
-	// 走査し、前ページだけ handler で表示順へ戻す。ORDER BY をパラメータで分岐させると
-	// 索引順に読めないため、走査方向ごとにクエリを分ける。
-	// cursor の共通仕様は proto/README.md を参照。
-	// テナント管理画面向けお知らせ一覧（次ページ方向）
+	// Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
+	// query; backward uses ASC so idx_announcements_tenant_created_at can be
+	// scanned in reverse. The handler flips ASC rows back into display order.
+	// A parameterized ORDER BY cannot be read in index order, so each scan
+	// direction gets its own query.
+	// cursor rules: proto/README.md.
 	ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]ListAnnouncementsForTenantDescRow, error)
-	// お知らせ一覧を取得（既読状態付き・前ページ方向）
 	ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnouncementsForUserAscParams) ([]ListAnnouncementsForUserAscRow, error)
-	// 公開サイトの ListAnnouncements は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
-	// 読めないため、走査方向ごとにクエリを分ける。
-	// cursor の共通仕様は proto/README.md を参照。
-	// お知らせ一覧を取得（既読状態付き・次ページ方向）
+	// The public site's ListAnnouncements is (created_at, id) DESC. Forward uses
+	// the DESC query; backward uses ASC so the index can be scanned in reverse.
+	// The handler flips ASC rows back into display order. A parameterized
+	// ORDER BY cannot be read in index order, so each scan direction gets its own
+	// query. Every row carries the calling user's read state.
+	// cursor rules: proto/README.md.
 	ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnnouncementsForUserDescParams) ([]ListAnnouncementsForUserDescRow, error)
 	ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLogsByTenantAscParams) ([]ListAuditLogsByTenantAscRow, error)
-	// ListAuditLogs は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
-	// 読めないため、走査方向ごとにクエリを分ける。
-	// cursor の共通仕様は proto/README.md を参照。
+	// Admin ListAuditLogs is (created_at, id) DESC. Forward uses the DESC query;
+	// backward uses ASC so the index can be scanned in reverse. The handler flips
+	// ASC rows back into display order. A parameterized ORDER BY cannot be read in
+	// index order, so each scan direction gets its own query.
+	// cursor rules: proto/README.md.
 	ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error)
 	ListContentDailyStatsByTenantDate(ctx context.Context, arg ListContentDailyStatsByTenantDateParams) ([]ContentDailyStat, error)
 	// Representative tenant timeline. EXPLAIN: idx_content_events_tenant_occurred_at.
@@ -461,19 +453,19 @@ type Querier interface {
 	// flips ASC rows back into display order. Do not parameterize ORDER BY.
 	// cursor rules: proto/README.md.
 	ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error)
-	// ページのバージョン一覧を新しい順に取得する
 	ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageVersion, error)
-	// Admin ListPages は (created_at, id) の昇順で表示する。
-	// 次ページは昇順、前ページは降順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	// Admin ListPages is (created_at, id) ASC. Forward uses the ASC query;
+	// backward uses DESC so the index can be scanned in reverse. The handler
+	// flips DESC rows back into display order.
+	// cursor rules: proto/README.md.
 	ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]Page, error)
 	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]Page, error)
 	ListPlatformAuditLogsAsc(ctx context.Context, arg ListPlatformAuditLogsAscParams) ([]ListPlatformAuditLogsAscRow, error)
-	// Platform ListAuditLogs は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
-	// 読めないため、走査方向ごとにクエリを分ける。
-	// cursor の共通仕様は proto/README.md を参照。
+	// Platform ListAuditLogs is (created_at, id) DESC. Forward uses the DESC
+	// query; backward uses ASC so the index can be scanned in reverse. The handler
+	// flips ASC rows back into display order. A parameterized ORDER BY cannot be
+	// read in index order, so each scan direction gets its own query.
+	// cursor rules: proto/README.md.
 	ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatformAuditLogsDescParams) ([]ListPlatformAuditLogsDescRow, error)
 	ListPlatformNotificationsForUserAsc(ctx context.Context, arg ListPlatformNotificationsForUserAscParams) ([]ListPlatformNotificationsForUserAscRow, error)
 	ListPlatformNotificationsForUserDesc(ctx context.Context, arg ListPlatformNotificationsForUserDescParams) ([]ListPlatformNotificationsForUserDescRow, error)
@@ -526,7 +518,8 @@ type Querier interface {
 	// response. The follow relations and their cursor queries remain UUID-only.
 	ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedEpisodeFollowTargetPublicIDsByIDsParams) ([]ListPublishedEpisodeFollowTargetPublicIDsByIDsRow, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
-	// テナントの公開中かつフッター表示対象のページ一覧を取得する
+	// Restricted to the pages flagged for the footer, which is the only place a
+	// reader navigates to them from.
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
 	ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedSeriesFollowTargetPublicIDsByIDsParams) ([]ListPublishedSeriesFollowTargetPublicIDsByIDsRow, error)
 	// The related series of a creator detail page. A keyset scan on title + id.
@@ -696,11 +689,13 @@ type Querier interface {
 	// so waiting for the lock in the same statement would still see the pre-wait
 	// row.
 	LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
-	// 指定ユーザーの未読お知らせを一括既読化
+	// Inserts a read row for every announcement in the caller's inbox that lacks
+	// one: the tenant-wide announcements plus the ones addressed to that user.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
 	MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error)
 	MarkAllPlatformNotificationsAsRead(ctx context.Context, platformUserID uuid.UUID) (int64, error)
-	// 指定したお知らせを既読にする（未読時は新規作成、既読済みなら時刻更新）
+	// Upserts, so marking an already-read announcement refreshes read_at instead
+	// of failing. The SELECT confines the insert to the caller's own inbox.
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
 	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error)
@@ -779,7 +774,6 @@ type Querier interface {
 	// this projection into that aggregate until its source contract moves to
 	// content_events, or purchases will be counted twice.
 	ProjectPurchaseContentEvent(ctx context.Context, arg ProjectPurchaseContentEventParams) (ContentEvent, error)
-	// ページバージョンを公開状態にする
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
 	// The end of the retention window for a comment its author deleted. The inner
 	// select bounds one chunk, so a tenant with a long backlog is drained over
@@ -797,7 +791,6 @@ type Querier interface {
 	// one removed while still awaiting approval goes back into that queue.
 	RestoreEpisodeCommentByPublicIDForTenant(ctx context.Context, arg RestoreEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
 	RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error)
-	// ページの公開バージョンIDを更新する
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
 	// The theme row is created on demand: a tenant can upload a icon before it
 	// has ever saved a color, and the colors then keep their column defaults.
@@ -819,8 +812,8 @@ type Querier interface {
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
-	// ページのタイトルとフッター表示設定を更新する
-	// display_in_footer は省略時 (NULL) に既存値を保持する
+	// display_in_footer keeps the stored value when the argument is omitted (NULL),
+	// so a title-only edit does not have to restate the footer flag.
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, error)
 	UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePlatformUserEmailByIDParams) (PlatformUser, error)
 	UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error)
@@ -854,12 +847,14 @@ type Querier interface {
 	UpsertContentRankingSnapshot(ctx context.Context, arg UpsertContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
 	UpsertItemRecommendFeatures(ctx context.Context, arg UpsertItemRecommendFeaturesParams) (ItemRecommendFeature, error)
-	// 初期セットアップで選ばれた既定ロケールだけを保存する。タイムゾーンはまだ
-	// 選ばれていないので、行を作るときは列 DEFAULT に任せ、既存行のものは残す。
+	// Stores only the default locale chosen during initial setup. No time zone has
+	// been chosen at that point, so a new row leaves it to the column DEFAULT and
+	// an existing row keeps the value it already has.
 	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
-	// プラットフォーム既定タイムゾーンと既定ロケールを原子的に作成または更新する。
-	// default_locale は列 DEFAULT を持たないため、呼び出し側が必ず明示する。
+	// Creates or updates the platform default time zone and default locale in one
+	// statement. default_locale has no column DEFAULT, so the caller always states
+	// a value for it.
 	UpsertPlatformSettings(ctx context.Context, arg UpsertPlatformSettingsParams) (PlatformConfig, error)
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
