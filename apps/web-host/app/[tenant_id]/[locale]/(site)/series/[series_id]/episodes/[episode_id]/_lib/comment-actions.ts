@@ -7,7 +7,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
-import { tenantIdSchema } from "#lib/auth-input";
+import { returnToFormSchema, tenantIdSchema } from "#lib/auth-input";
 import {
   requirePublicSession,
   withPublicSessionReauth,
@@ -52,7 +52,7 @@ const postCommentSchema = (messages: HostMessages) =>
       }),
     episodePublicId: publicIdFormSchema,
     locale: localeFormSchema,
-    returnTo: z.string().trim().min(1).max(2048),
+    returnTo: returnToFormSchema,
     tenantId: tenantIdSchema,
   });
 
@@ -60,7 +60,7 @@ const withdrawCommentSchema = z.object({
   commentPublicId: publicIdFormSchema,
   episodePublicId: publicIdFormSchema,
   locale: localeFormSchema,
-  returnTo: z.string().trim().min(1).max(2048),
+  returnTo: returnToFormSchema,
   tenantId: tenantIdSchema,
 });
 

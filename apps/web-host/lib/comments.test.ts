@@ -249,6 +249,31 @@ describe("mergeOwnEpisodeComments", () => {
       mergeOwnEpisodeComments(page([], { previousToken: "previous" }), own)
     ).toHaveLength(0);
   });
+
+  // The API keeps the two lists apart, but the public one is cached and the
+  // caller's own is not, so a comment staff removed a moment ago is briefly in
+  // both. The bodies differ only so the assertion can name which row survived.
+  it("renders a comment held by both lists once, from the public row", () => {
+    const merged = mergeOwnEpisodeComments(
+      page([
+        comment({
+          body: "the cached copy",
+          createdAt: "2026-09-02T00:00:00Z",
+          publicId: "P2",
+        }),
+      ]),
+      [
+        comment({
+          body: "the caller's own copy",
+          createdAt: "2026-09-02T00:00:00Z",
+          publicId: "P2",
+        }),
+      ]
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.body).toBe("the cached copy");
+  });
 });
 
 describe("postEpisodeComment", () => {

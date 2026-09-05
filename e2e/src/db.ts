@@ -83,7 +83,12 @@ export const querySql = (sql: string): string => {
   ).trim();
 };
 
-const quoteSqlLiteral = (value: string): string =>
+/**
+ * One value as a quoted SQL literal. {@link runSql} hands psql a whole
+ * statement rather than bound parameters, so a fixture that interpolates text
+ * it did not write itself — a comment body, a title — quotes it through this.
+ */
+export const quoteSqlLiteral = (value: string): string =>
   `'${value.replaceAll("'", "''")}'`;
 
 /**

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { applyScenarioSql, runSql } from "../src/db";
+import { applyScenarioSql, quoteSqlLiteral, runSql } from "../src/db";
 import { signInAsMember } from "../src/host";
 import { episodeCommentsTag, revalidateHostTags } from "../src/revalidate";
 import {
@@ -51,7 +51,7 @@ const hideComment = (body: string): void => {
         hidden_reason = 'staff',
         updated_at = NOW()
     WHERE episode_id = '${EPISODE_COMMENTS_EPISODE.id}'::uuid
-      AND body = '${body}';
+      AND body = ${quoteSqlLiteral(body)};
   `);
 };
 
@@ -210,8 +210,9 @@ test.describe("web-host episode comments", () => {
     // without the comment, so the control and the message beside it leave with
     // it.
     await expect(comment).toHaveCount(0);
-    await page.goto(episodeUrl);
-    await expect(commentsSection(page)).toBeVisible();
-    await expect(page.getByText(body)).toHaveCount(0);
+    // The comment was published the moment it was posted, so the cached public
+    // list holds it too. Poll for the reload, the way the reader-side
+    // assertion above does.
+    await pollEpisodePage(page, () => page.getByText(body).count()).toBe(0);
   });
 });

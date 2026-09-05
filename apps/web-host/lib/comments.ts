@@ -302,6 +302,13 @@ const withinPageWindow = (
  * and only page. A `?token=` that lands past the end of the list has no window
  * to place anything in, and showing the reader's own comments there would make
  * that empty page look like a page of theirs.
+ *
+ * The two lists are disjoint at the API — the caller's list carries only what
+ * the public one omits — but the public half is cached and the private half is
+ * not. In the moment between staff removing a published comment and the cached
+ * page catching up, its author holds both copies of it, and rendering the row
+ * twice is exactly the kind of change a removal is not allowed to make to it.
+ * The public row wins, because it is the one the author was already reading.
  */
 export const mergeOwnEpisodeComments = (
   page: EpisodeCommentPage,
@@ -310,18 +317,26 @@ export const mergeOwnEpisodeComments = (
   if (ownComments.length === 0) {
     return page.comments;
   }
+
+  const published = new Set(page.comments.map((comment) => comment.publicId));
+  const unpublished = ownComments.filter(
+    (comment) => !published.has(comment.publicId)
+  );
+  if (unpublished.length === 0) {
+    return page.comments;
+  }
   if (page.comments.length === 0) {
     if (page.nextToken || page.previousToken) {
       return page.comments;
     }
-    return ownComments.toSorted(compareNewestFirst);
+    return unpublished.toSorted(compareNewestFirst);
   }
 
   const bounds = {
     newest: page.previousToken ? page.comments[0]?.createdAt : undefined,
     oldest: page.nextToken ? page.comments.at(-1)?.createdAt : undefined,
   };
-  const placed = ownComments.filter((comment) =>
+  const placed = unpublished.filter((comment) =>
     withinPageWindow(comment.createdAt, bounds)
   );
 
