@@ -19,7 +19,7 @@ That test — who performs the lookup — is the whole rule. It is not about whe
 
 ## Adding a variable
 
-`turbo.json`'s `dev` task declares `"passThroughEnv": ["PUBLIRA_*"]`, and turbo defaults to strict env mode. A conforming name reaches the dev servers with no further edit; a non-conforming one needs a hand-written exception in `turbo.json`, `.devcontainer/compose.yaml`, `e2e/scripts/*`, `e2e/bootstrap/scripts/*`, and CI — and wherever that exception is missed, the variable silently does nothing while everything still starts.
+`turbo.jsonc`'s `dev` task declares `"passThroughEnv": ["PUBLIRA_*"]`, and turbo defaults to strict env mode. A conforming name reaches the dev servers with no further edit; a non-conforming one needs a hand-written exception in `turbo.jsonc`, `.devcontainer/compose.yaml`, `e2e/scripts/*`, `e2e/bootstrap/scripts/*`, and CI — and wherever that exception is missed, the variable silently does nothing while everything still starts.
 
 - **Do not add an entry to `passThroughEnv`** to make a non-`PUBLIRA_*` name reach an app. Rename the variable.
 - Add the variable to the owning README (`server/README.md`, `server/cmd/*/README.md`, `apps/*/README.md`, `packages/*/README.md`) in the same change.

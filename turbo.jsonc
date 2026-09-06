@@ -21,7 +21,7 @@
   "tasks": {
     "//#check": {},
     "//#fix": {
-      "cache": false
+      "cache": false,
     },
     "build": {
       "dependsOn": ["^build"],
@@ -30,7 +30,7 @@
       // made an entry several times larger than the build inside it, and
       // restoring one drops another branch's dev state onto a running dev
       // server.
-      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"],
     },
     "dev": {
       "dependsOn": ["^build"],
@@ -47,13 +47,13 @@
       // patterns are listed as well; without them the dev servers export
       // spans nowhere while the Dev Container thinks it configured Jaeger.
       "passThroughEnv": ["NEXT_OTEL_*", "OTEL_*", "PUBLIRA_*"],
-      "persistent": true
+      "persistent": true,
     },
     "generate:api": {
-      "outputs": ["packages/api-client/src/gen/**"]
+      "outputs": ["packages/api-client/src/gen/**"],
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^lint"],
     },
     "test": {
       // Do not pass PUBLIRA_* here. The Dev Container exports a full
@@ -61,13 +61,13 @@
       // values would couple them to ambient Redis, secrets, and API origins.
       // @publira/next-cache-handlers declares PUBLIRA_REDIS_URL on its own
       // test task so the Redis integration cases can see a configured URL.
-      "inputs": ["**/*.test.{ts,tsx}"]
+      "inputs": ["**/*.test.{ts,tsx}"],
     },
     "typegen": {
-      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"],
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
-    }
-  }
+      "dependsOn": ["^typecheck"],
+    },
+  },
 }
