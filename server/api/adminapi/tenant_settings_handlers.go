@@ -9,10 +9,12 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -149,5 +151,91 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 
 	return connect.NewResponse(&publiraadminv1.UpdateTenantDefaultLocaleResponse{
 		DefaultLocale: savedLocale,
+	}), nil
+}
+
+// tenantCommentModeRevalidateTags names the public site cache that decides
+// whether an episode page offers commenting at all. The mode rides on the
+// storefront's tenant read, so dropping the site entry is what carries a saved
+// change through to the reader.
+func tenantCommentModeRevalidateTags(tenantID string) []string {
+	return []string{fmt.Sprintf("tenant:%s:site", strings.TrimSpace(tenantID))}
+}
+
+func (s *adminServer) GetTenantCommentMode(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.GetTenantCommentModeRequest],
+) (*connect.Response[publiraadminv1.GetTenantCommentModeResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := s.queriesFor(ctx).GetTenantConfigByTenantID(ctx, tenant.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// A tenant with no config row has chosen nothing about commenting,
+			// which is the answer the column's own default gives too.
+			return connect.NewResponse(&publiraadminv1.GetTenantCommentModeResponse{
+				CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED,
+			}), nil
+		}
+		return nil, s.internalDBError(ctx, "failed to get tenant comment mode", err, "tenant_id", tenant.ID.String())
+	}
+
+	mode, err := protomapper.CommentModeFromStored(config.CommentMode)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", err, "tenant_id", tenant.ID.String())
+	}
+
+	return connect.NewResponse(&publiraadminv1.GetTenantCommentModeResponse{
+		CommentMode: mode,
+	}), nil
+}
+
+func (s *adminServer) UpdateTenantCommentMode(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UpdateTenantCommentModeRequest],
+) (*connect.Response[publiraadminv1.UpdateTenantCommentModeResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	stored, err := protomapper.CommentModeToStored(req.Msg.CommentMode)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	// An upsert rather than an update: commenting can be the first thing a
+	// tenant saves about itself, and a console that refused to turn it on until
+	// the site copy had been filled in would be tying together two decisions
+	// that have nothing to do with each other.
+	updated, err := s.queriesFor(ctx).UpsertTenantCommentMode(ctx, dbmodels.UpsertTenantCommentModeParams{
+		TenantID:    tenant.ID,
+		CommentMode: stored,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to update tenant comment mode", err, "tenant_id", tenant.ID.String())
+	}
+
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, tenantCommentModeRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after tenant comment mode update", "tenant_public_id", tenant.PublicID, "error", err)
+		}
+	}
+
+	// The stored row rather than the request: what the console renders next is
+	// what the update actually persisted.
+	saved, err := protomapper.CommentModeFromStored(updated.CommentMode)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", err, "tenant_id", tenant.ID.String())
+	}
+
+	return connect.NewResponse(&publiraadminv1.UpdateTenantCommentModeResponse{
+		CommentMode: saved,
 	}), nil
 }

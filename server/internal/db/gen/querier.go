@@ -944,6 +944,10 @@ type Querier interface {
 	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
+	// The settings screen can save the comment mode for a tenant whose config row
+	// does not exist yet, so the mode is written without disturbing the site copy
+	// columns UpdateTenantConfig owns.
+	UpsertTenantCommentMode(ctx context.Context, arg UpsertTenantCommentModeParams) (TenantConfig, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)

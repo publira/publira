@@ -45,6 +45,12 @@ const (
 	// TenantSettingsServiceUpdateTenantDefaultLocaleProcedure is the fully-qualified name of the
 	// TenantSettingsService's UpdateTenantDefaultLocale RPC.
 	TenantSettingsServiceUpdateTenantDefaultLocaleProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantDefaultLocale"
+	// TenantSettingsServiceGetTenantCommentModeProcedure is the fully-qualified name of the
+	// TenantSettingsService's GetTenantCommentMode RPC.
+	TenantSettingsServiceGetTenantCommentModeProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantCommentMode"
+	// TenantSettingsServiceUpdateTenantCommentModeProcedure is the fully-qualified name of the
+	// TenantSettingsService's UpdateTenantCommentMode RPC.
+	TenantSettingsServiceUpdateTenantCommentModeProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantCommentMode"
 )
 
 // TenantSettingsServiceClient is a client for the publira.admin.v1.TenantSettingsService service.
@@ -53,6 +59,8 @@ type TenantSettingsServiceClient interface {
 	UpdateTenantTimezone(context.Context, *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error)
 	GetTenantDefaultLocale(context.Context, *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error)
 	UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error)
+	GetTenantCommentMode(context.Context, *connect.Request[v1.GetTenantCommentModeRequest]) (*connect.Response[v1.GetTenantCommentModeResponse], error)
+	UpdateTenantCommentMode(context.Context, *connect.Request[v1.UpdateTenantCommentModeRequest]) (*connect.Response[v1.UpdateTenantCommentModeResponse], error)
 }
 
 // NewTenantSettingsServiceClient constructs a client for the publira.admin.v1.TenantSettingsService
@@ -90,6 +98,18 @@ func NewTenantSettingsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantDefaultLocale")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantCommentMode: connect.NewClient[v1.GetTenantCommentModeRequest, v1.GetTenantCommentModeResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceGetTenantCommentModeProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantCommentMode")),
+			connect.WithClientOptions(opts...),
+		),
+		updateTenantCommentMode: connect.NewClient[v1.UpdateTenantCommentModeRequest, v1.UpdateTenantCommentModeResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceUpdateTenantCommentModeProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantCommentMode")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -99,6 +119,8 @@ type tenantSettingsServiceClient struct {
 	updateTenantTimezone      *connect.Client[v1.UpdateTenantTimezoneRequest, v1.UpdateTenantTimezoneResponse]
 	getTenantDefaultLocale    *connect.Client[v1.GetTenantDefaultLocaleRequest, v1.GetTenantDefaultLocaleResponse]
 	updateTenantDefaultLocale *connect.Client[v1.UpdateTenantDefaultLocaleRequest, v1.UpdateTenantDefaultLocaleResponse]
+	getTenantCommentMode      *connect.Client[v1.GetTenantCommentModeRequest, v1.GetTenantCommentModeResponse]
+	updateTenantCommentMode   *connect.Client[v1.UpdateTenantCommentModeRequest, v1.UpdateTenantCommentModeResponse]
 }
 
 // GetTenantTimezone calls publira.admin.v1.TenantSettingsService.GetTenantTimezone.
@@ -121,6 +143,16 @@ func (c *tenantSettingsServiceClient) UpdateTenantDefaultLocale(ctx context.Cont
 	return c.updateTenantDefaultLocale.CallUnary(ctx, req)
 }
 
+// GetTenantCommentMode calls publira.admin.v1.TenantSettingsService.GetTenantCommentMode.
+func (c *tenantSettingsServiceClient) GetTenantCommentMode(ctx context.Context, req *connect.Request[v1.GetTenantCommentModeRequest]) (*connect.Response[v1.GetTenantCommentModeResponse], error) {
+	return c.getTenantCommentMode.CallUnary(ctx, req)
+}
+
+// UpdateTenantCommentMode calls publira.admin.v1.TenantSettingsService.UpdateTenantCommentMode.
+func (c *tenantSettingsServiceClient) UpdateTenantCommentMode(ctx context.Context, req *connect.Request[v1.UpdateTenantCommentModeRequest]) (*connect.Response[v1.UpdateTenantCommentModeResponse], error) {
+	return c.updateTenantCommentMode.CallUnary(ctx, req)
+}
+
 // TenantSettingsServiceHandler is an implementation of the publira.admin.v1.TenantSettingsService
 // service.
 type TenantSettingsServiceHandler interface {
@@ -128,6 +160,8 @@ type TenantSettingsServiceHandler interface {
 	UpdateTenantTimezone(context.Context, *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error)
 	GetTenantDefaultLocale(context.Context, *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error)
 	UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error)
+	GetTenantCommentMode(context.Context, *connect.Request[v1.GetTenantCommentModeRequest]) (*connect.Response[v1.GetTenantCommentModeResponse], error)
+	UpdateTenantCommentMode(context.Context, *connect.Request[v1.UpdateTenantCommentModeRequest]) (*connect.Response[v1.UpdateTenantCommentModeResponse], error)
 }
 
 // NewTenantSettingsServiceHandler builds an HTTP handler from the service implementation. It
@@ -161,6 +195,18 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantDefaultLocale")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tenantSettingsServiceGetTenantCommentModeHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceGetTenantCommentModeProcedure,
+		svc.GetTenantCommentMode,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantCommentMode")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tenantSettingsServiceUpdateTenantCommentModeHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceUpdateTenantCommentModeProcedure,
+		svc.UpdateTenantCommentMode,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantCommentMode")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.TenantSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TenantSettingsServiceGetTenantTimezoneProcedure:
@@ -171,6 +217,10 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 			tenantSettingsServiceGetTenantDefaultLocaleHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantDefaultLocaleProcedure:
 			tenantSettingsServiceUpdateTenantDefaultLocaleHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceGetTenantCommentModeProcedure:
+			tenantSettingsServiceGetTenantCommentModeHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceUpdateTenantCommentModeProcedure:
+			tenantSettingsServiceUpdateTenantCommentModeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -194,4 +244,12 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantDefaultLocale(context.
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantCommentMode(context.Context, *connect.Request[v1.GetTenantCommentModeRequest]) (*connect.Response[v1.GetTenantCommentModeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantCommentMode is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCommentMode(context.Context, *connect.Request[v1.UpdateTenantCommentModeRequest]) (*connect.Response[v1.UpdateTenantCommentModeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantCommentMode is not implemented"))
 }

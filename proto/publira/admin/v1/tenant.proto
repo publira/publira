@@ -46,6 +46,27 @@ message UpdateTenantDefaultLocaleResponse {
   string default_locale = 1;
 }
 
+message GetTenantCommentModeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantCommentModeResponse {
+  // Never COMMENT_MODE_UNSPECIFIED: a tenant that has saved nothing is
+  // disabled, and a stored value naming no mode fails this RPC.
+  publira.types.v1.CommentMode comment_mode = 1;
+}
+
+message UpdateTenantCommentModeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // COMMENT_MODE_UNSPECIFIED is rejected. Turning commenting off is
+  // COMMENT_MODE_DISABLED, which is a choice rather than the absence of one.
+  publira.types.v1.CommentMode comment_mode = 2;
+}
+
+message UpdateTenantCommentModeResponse {
+  publira.types.v1.CommentMode comment_mode = 1;
+}
+
 // Per-tenant operational settings, separate from TenantConfig (site copy) and
 // TenantTheme (colors).
 service TenantSettingsService {
@@ -53,4 +74,6 @@ service TenantSettingsService {
   rpc UpdateTenantTimezone(UpdateTenantTimezoneRequest) returns (UpdateTenantTimezoneResponse) {}
   rpc GetTenantDefaultLocale(GetTenantDefaultLocaleRequest) returns (GetTenantDefaultLocaleResponse) {}
   rpc UpdateTenantDefaultLocale(UpdateTenantDefaultLocaleRequest) returns (UpdateTenantDefaultLocaleResponse) {}
+  rpc GetTenantCommentMode(GetTenantCommentModeRequest) returns (GetTenantCommentModeResponse) {}
+  rpc UpdateTenantCommentMode(UpdateTenantCommentModeRequest) returns (UpdateTenantCommentModeResponse) {}
 }

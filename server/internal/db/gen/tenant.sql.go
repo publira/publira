@@ -626,3 +626,34 @@ func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTime
 	)
 	return i, err
 }
+
+const upsertTenantCommentMode = `-- name: UpsertTenantCommentMode :one
+INSERT INTO tenant_config (tenant_id, comment_mode)
+VALUES ($1, $2)
+ON CONFLICT (tenant_id) DO UPDATE
+SET comment_mode = EXCLUDED.comment_mode, updated_at = NOW()
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode
+`
+
+type UpsertTenantCommentModeParams struct {
+	TenantID    uuid.UUID `json:"tenant_id"`
+	CommentMode string    `json:"comment_mode"`
+}
+
+// The settings screen can save the comment mode for a tenant whose config row
+// does not exist yet, so the mode is written without disturbing the site copy
+// columns UpdateTenantConfig owns.
+func (q *Queries) UpsertTenantCommentMode(ctx context.Context, arg UpsertTenantCommentModeParams) (TenantConfig, error) {
+	row := q.db.QueryRowContext(ctx, upsertTenantCommentMode, arg.TenantID, arg.CommentMode)
+	var i TenantConfig
+	err := row.Scan(
+		&i.TenantID,
+		&i.CopyrightText,
+		&i.SiteDescription,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SiteTagline,
+		&i.CommentMode,
+	)
+	return i, err
+}

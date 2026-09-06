@@ -3,7 +3,6 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -57,7 +56,7 @@ func (s *apiServer) GetTenant(
 		if config.SiteTagline.Valid {
 			siteTagline = config.SiteTagline.String
 		}
-		commentMode, err = commentModeFromConfig(config.CommentMode)
+		commentMode, err = protomapper.CommentModeFromStored(config.CommentMode)
 		if err != nil {
 			return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", err, "tenant_id", tenant.ID.String())
 		}
@@ -90,26 +89,6 @@ func (s *apiServer) GetTenant(
 		AcceptsPayments: acceptsPayments,
 		CommentMode:     commentMode,
 	}), nil
-}
-
-// commentModeFromConfig maps the stored tenant_config.comment_mode onto the
-// value the public site branches on.
-//
-// An unrecognised mode is reported rather than answered with a stand-in, the
-// way an unsupported default_locale is. PostEpisodeComment refuses that same
-// value outright, so guessing one here would put a comment box on screen that
-// every submission is guaranteed to reject.
-func commentModeFromConfig(mode string) (publirattypesv1.CommentMode, error) {
-	switch mode {
-	case commentModeDisabled:
-		return publirattypesv1.CommentMode_COMMENT_MODE_DISABLED, nil
-	case commentModeImmediate:
-		return publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE, nil
-	case commentModeApprovalRequired:
-		return publirattypesv1.CommentMode_COMMENT_MODE_APPROVAL_REQUIRED, nil
-	default:
-		return publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED, fmt.Errorf("unsupported comment mode %q", mode)
-	}
 }
 
 // tenantAcceptsPayments deliberately fails closed. The public response only

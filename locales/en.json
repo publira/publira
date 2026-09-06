@@ -1240,6 +1240,33 @@
           "required": "Select a language."
         }
       },
+      "comment_mode": {
+        "title": "Reader comments",
+        "description": "Whether readers can comment on your published episodes, and what happens to a comment once it is posted.",
+        "label": "How comments are published",
+        "options": {
+          "disabled": {
+            "label": "Do not accept comments",
+            "description": "Episode pages show no comment section, and a comment cannot be posted."
+          },
+          "immediate": {
+            "label": "Publish straight away",
+            "description": "A comment is readable by everyone from the moment it is posted."
+          },
+          "approval_required": {
+            "label": "Publish after approval",
+            "description": "Only its author sees a comment until a moderator approves it."
+          }
+        },
+        "load_error_hint": "Saving now would overwrite the stored setting, so reload the page before changing it.",
+        "submit": "Save how comments are published",
+        "saved": "How comments are published was saved.",
+        "load_failed": "Could not load how comments are published. Please try again later.",
+        "save_failed": "Could not save how comments are published. Please try again later.",
+        "validation": {
+          "required": "Select how comments are published."
+        }
+      },
       "icon": {
         "title": "Icon",
         "description": "The icon the public site shows in a browser tab and in the address bar.",

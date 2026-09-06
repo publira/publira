@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { TenantContext } from "../../types/v1/types_pb";
+import type { CommentMode, TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/tenant.proto.
  */
 export const file_publira_admin_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3RlbmFudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJLChhHZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii0KGUdldFRlbmFudFRpbWV6b25lUmVzcG9uc2USEAoIdGltZXpvbmUYASABKAkiYAobVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCgh0aW1lem9uZRgCIAEoCSIwChxVcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlEhAKCHRpbWV6b25lGAEgASgJIlAKHUdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI4Ch5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2USFgoOZGVmYXVsdF9sb2NhbGUYASABKAkiawogVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJIjsKIVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZRIWCg5kZWZhdWx0X2xvY2FsZRgBIAEoCTKIBAoVVGVuYW50U2V0dGluZ3NTZXJ2aWNlEm4KEUdldFRlbmFudFRpbWV6b25lEioucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRpbWV6b25lUmVzcG9uc2UiABJ3ChRVcGRhdGVUZW5hbnRUaW1lem9uZRItLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Gi4ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlIgASfQoWR2V0VGVuYW50RGVmYXVsdExvY2FsZRIvLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZSIAEoYBChlVcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlEjIucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlUmVxdWVzdBozLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3RlbmFudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJLChhHZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii0KGUdldFRlbmFudFRpbWV6b25lUmVzcG9uc2USEAoIdGltZXpvbmUYASABKAkiYAobVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCgh0aW1lem9uZRgCIAEoCSIwChxVcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlEhAKCHRpbWV6b25lGAEgASgJIlAKHUdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI4Ch5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2USFgoOZGVmYXVsdF9sb2NhbGUYASABKAkiawogVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJIjsKIVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZRIWCg5kZWZhdWx0X2xvY2FsZRgBIAEoCSJOChtHZXRUZW5hbnRDb21tZW50TW9kZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IlMKHEdldFRlbmFudENvbW1lbnRNb2RlUmVzcG9uc2USMwoMY29tbWVudF9tb2RlGAEgASgOMh0ucHVibGlyYS50eXBlcy52MS5Db21tZW50TW9kZSKGAQoeVXBkYXRlVGVuYW50Q29tbWVudE1vZGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIzCgxjb21tZW50X21vZGUYAiABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlIlYKH1VwZGF0ZVRlbmFudENvbW1lbnRNb2RlUmVzcG9uc2USMwoMY29tbWVudF9tb2RlGAEgASgOMh0ucHVibGlyYS50eXBlcy52MS5Db21tZW50TW9kZTKEBgoVVGVuYW50U2V0dGluZ3NTZXJ2aWNlEm4KEUdldFRlbmFudFRpbWV6b25lEioucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRpbWV6b25lUmVzcG9uc2UiABJ3ChRVcGRhdGVUZW5hbnRUaW1lem9uZRItLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Gi4ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlIgASfQoWR2V0VGVuYW50RGVmYXVsdExvY2FsZRIvLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZSIAEoYBChlVcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlEjIucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlUmVxdWVzdBozLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlc3BvbnNlIgASdwoUR2V0VGVuYW50Q29tbWVudE1vZGUSLS5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudENvbW1lbnRNb2RlUmVxdWVzdBouLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50Q29tbWVudE1vZGVSZXNwb25zZSIAEoABChdVcGRhdGVUZW5hbnRDb21tZW50TW9kZRIwLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50Q29tbWVudE1vZGVSZXF1ZXN0GjEucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRDb21tZW50TW9kZVJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.GetTenantTimezoneRequest
@@ -171,6 +171,85 @@ export const UpdateTenantDefaultLocaleResponseSchema: GenMessage<UpdateTenantDef
   messageDesc(file_publira_admin_v1_tenant, 7);
 
 /**
+ * @generated from message publira.admin.v1.GetTenantCommentModeRequest
+ */
+export type GetTenantCommentModeRequest = Message<"publira.admin.v1.GetTenantCommentModeRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantCommentModeRequest.
+ * Use `create(GetTenantCommentModeRequestSchema)` to create a new message.
+ */
+export const GetTenantCommentModeRequestSchema: GenMessage<GetTenantCommentModeRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 8);
+
+/**
+ * @generated from message publira.admin.v1.GetTenantCommentModeResponse
+ */
+export type GetTenantCommentModeResponse = Message<"publira.admin.v1.GetTenantCommentModeResponse"> & {
+  /**
+   * Never COMMENT_MODE_UNSPECIFIED: a tenant that has saved nothing is
+   * disabled, and a stored value naming no mode fails this RPC.
+   *
+   * @generated from field: publira.types.v1.CommentMode comment_mode = 1;
+   */
+  commentMode: CommentMode;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantCommentModeResponse.
+ * Use `create(GetTenantCommentModeResponseSchema)` to create a new message.
+ */
+export const GetTenantCommentModeResponseSchema: GenMessage<GetTenantCommentModeResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 9);
+
+/**
+ * @generated from message publira.admin.v1.UpdateTenantCommentModeRequest
+ */
+export type UpdateTenantCommentModeRequest = Message<"publira.admin.v1.UpdateTenantCommentModeRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * COMMENT_MODE_UNSPECIFIED is rejected. Turning commenting off is
+   * COMMENT_MODE_DISABLED, which is a choice rather than the absence of one.
+   *
+   * @generated from field: publira.types.v1.CommentMode comment_mode = 2;
+   */
+  commentMode: CommentMode;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateTenantCommentModeRequest.
+ * Use `create(UpdateTenantCommentModeRequestSchema)` to create a new message.
+ */
+export const UpdateTenantCommentModeRequestSchema: GenMessage<UpdateTenantCommentModeRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 10);
+
+/**
+ * @generated from message publira.admin.v1.UpdateTenantCommentModeResponse
+ */
+export type UpdateTenantCommentModeResponse = Message<"publira.admin.v1.UpdateTenantCommentModeResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.CommentMode comment_mode = 1;
+   */
+  commentMode: CommentMode;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateTenantCommentModeResponse.
+ * Use `create(UpdateTenantCommentModeResponseSchema)` to create a new message.
+ */
+export const UpdateTenantCommentModeResponseSchema: GenMessage<UpdateTenantCommentModeResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 11);
+
+/**
  * Per-tenant operational settings, separate from TenantConfig (site copy) and
  * TenantTheme (colors).
  *
@@ -208,6 +287,22 @@ export const TenantSettingsService: GenService<{
     methodKind: "unary";
     input: typeof UpdateTenantDefaultLocaleRequestSchema;
     output: typeof UpdateTenantDefaultLocaleResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantCommentMode
+   */
+  getTenantCommentMode: {
+    methodKind: "unary";
+    input: typeof GetTenantCommentModeRequestSchema;
+    output: typeof GetTenantCommentModeResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantCommentMode
+   */
+  updateTenantCommentMode: {
+    methodKind: "unary";
+    input: typeof UpdateTenantCommentModeRequestSchema;
+    output: typeof UpdateTenantCommentModeResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_tenant, 0);
