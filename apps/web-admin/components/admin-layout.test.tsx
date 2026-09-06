@@ -52,6 +52,10 @@ vi.mock("./notification-bell", () => ({
   NotificationBellSkeleton: () => null,
 }));
 
+vi.mock("./pending-comment-badge", () => ({
+  PendingCommentBadge: () => null,
+}));
+
 const tenant = {
   adminDomain: "admin.example.com",
   domain: "example.com",

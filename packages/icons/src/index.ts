@@ -6,6 +6,7 @@ export { ChevronLeftIcon } from "./chevron-left-icon";
 export { ChevronRightIcon } from "./chevron-right-icon";
 export { CloseIcon } from "./close-icon";
 export { CollectionIcon } from "./collection-icon";
+export { CommentIcon } from "./comment-icon";
 export { DashboardIcon } from "./dashboard-icon";
 export { ImageIcon } from "./image-icon";
 export { LogoutIcon } from "./logout-icon";

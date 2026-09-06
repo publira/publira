@@ -1,6 +1,7 @@
 import {
   ChartIcon,
   CollectionIcon,
+  CommentIcon,
   DashboardIcon,
   SettingsIcon,
 } from "@publira/icons";
@@ -9,6 +10,8 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "./message";
+import { PendingCommentBadge } from "./pending-comment-badge";
+import { PendingCommentBadgeErrorCatch } from "./pending-comment-badge-error-catch";
 
 export const navigation: NavSection[] = [
   {
@@ -109,6 +112,29 @@ export const navigation: NavSection[] = [
         label: (
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="admin.nav.access_tickets_label" />
+          </Suspense>
+        ),
+      },
+      {
+        // The queue size rides on the entry itself so a backlog is visible from
+        // whichever screen the operator happens to be on.
+        badge: (
+          <PendingCommentBadgeErrorCatch>
+            <Suspense fallback={null}>
+              <PendingCommentBadge />
+            </Suspense>
+          </PendingCommentBadgeErrorCatch>
+        ),
+        description: (
+          <Suspense fallback={<SkeletonLine className="h-3 w-44" />}>
+            <Message message="admin.nav.comments_description" />
+          </Suspense>
+        ),
+        href: "/comments",
+        icon: CommentIcon,
+        label: (
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="admin.nav.comments_label" />
           </Suspense>
         ),
       },

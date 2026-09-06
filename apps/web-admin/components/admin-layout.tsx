@@ -22,6 +22,7 @@ import {
   ConsoleSidebarNavigationIcon,
   ConsoleSidebarNavigationItem,
   ConsoleSidebarNavigationItemDescription,
+  ConsoleSidebarNavigationItemHeading,
   ConsoleSidebarNavigationItemLabel,
   ConsoleSidebarNavigationItems,
   ConsoleSidebarNavigationSection,
@@ -221,9 +222,12 @@ export const AdminLayout = ({
                       <item.icon className="size-5" />
                     </ConsoleSidebarNavigationIcon>
                     <ConsoleSidebarNavigationContent>
-                      <ConsoleSidebarNavigationItemLabel>
-                        {item.label}
-                      </ConsoleSidebarNavigationItemLabel>
+                      <ConsoleSidebarNavigationItemHeading>
+                        <ConsoleSidebarNavigationItemLabel>
+                          {item.label}
+                        </ConsoleSidebarNavigationItemLabel>
+                        {item.badge}
+                      </ConsoleSidebarNavigationItemHeading>
                       <ConsoleSidebarNavigationItemDescription>
                         {item.description}
                       </ConsoleSidebarNavigationItemDescription>

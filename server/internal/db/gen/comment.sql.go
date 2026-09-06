@@ -56,6 +56,24 @@ func (q *Queries) ApproveEpisodeCommentByPublicIDForTenant(ctx context.Context, 
 	return i, err
 }
 
+const countPendingEpisodeCommentsForTenant = `-- name: CountPendingEpisodeCommentsForTenant :one
+SELECT COUNT(*)::int AS pending_count
+FROM episode_comments
+WHERE tenant_id = $1
+    AND status = 'pending'
+`
+
+// The size of the approval queue, for the console navigation that carries it on
+// every screen. Counting is a query of its own rather than the length of a
+// list page: the badge needs the whole queue, and a page bounded by a limit
+// cannot report it.
+func (q *Queries) CountPendingEpisodeCommentsForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countPendingEpisodeCommentsForTenant, tenantID)
+	var pending_count int32
+	err := row.Scan(&pending_count)
+	return pending_count, err
+}
+
 const createEpisodeComment = `-- name: CreateEpisodeComment :one
 
 INSERT INTO episode_comments (
@@ -107,6 +125,8 @@ type CreateEpisodeCommentParams struct {
 //	ListEpisodeCommentsForModerationByCreatedAt*
 //	  -> idx_episode_comments_tenant_status_created_at with a status filter,
 //	     idx_episode_comments_tenant_created_at without one
+//	CountPendingEpisodeCommentsForTenant
+//	  -> idx_episode_comments_tenant_status_created_at
 //	PurgeWithdrawnEpisodeComments
 //	  -> idx_episode_comments_tenant_withdrawn_at
 //

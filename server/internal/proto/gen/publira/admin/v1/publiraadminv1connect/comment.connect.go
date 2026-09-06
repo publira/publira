@@ -36,6 +36,9 @@ const (
 	// AdminCommentServiceListCommentsProcedure is the fully-qualified name of the AdminCommentService's
 	// ListComments RPC.
 	AdminCommentServiceListCommentsProcedure = "/publira.admin.v1.AdminCommentService/ListComments"
+	// AdminCommentServiceCountPendingCommentsProcedure is the fully-qualified name of the
+	// AdminCommentService's CountPendingComments RPC.
+	AdminCommentServiceCountPendingCommentsProcedure = "/publira.admin.v1.AdminCommentService/CountPendingComments"
 	// AdminCommentServiceApproveCommentProcedure is the fully-qualified name of the
 	// AdminCommentService's ApproveComment RPC.
 	AdminCommentServiceApproveCommentProcedure = "/publira.admin.v1.AdminCommentService/ApproveComment"
@@ -58,6 +61,13 @@ type AdminCommentServiceClient interface {
 	// away from every reader, but staff keep reading it for the retention window
 	// so a report or a dispute raised before the deletion can still be settled.
 	ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error)
+	// Counts the comments waiting for approval across the tenant.
+	//
+	// Separate from ListComments so the console's navigation can carry the size
+	// of the queue without reading a page of it: the badge is on every screen,
+	// and a page of rows fetched to be counted and thrown away would be the most
+	// expensive thing the console does per navigation.
+	CountPendingComments(context.Context, *connect.Request[v1.CountPendingCommentsRequest]) (*connect.Response[v1.CountPendingCommentsResponse], error)
 	// Publishes one comment that was posted under approval_required.
 	//
 	// failed_precondition for a comment in any other state, because approving is
@@ -102,6 +112,12 @@ func NewAdminCommentServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(adminCommentServiceMethods.ByName("ListComments")),
 			connect.WithClientOptions(opts...),
 		),
+		countPendingComments: connect.NewClient[v1.CountPendingCommentsRequest, v1.CountPendingCommentsResponse](
+			httpClient,
+			baseURL+AdminCommentServiceCountPendingCommentsProcedure,
+			connect.WithSchema(adminCommentServiceMethods.ByName("CountPendingComments")),
+			connect.WithClientOptions(opts...),
+		),
 		approveComment: connect.NewClient[v1.ApproveCommentRequest, v1.ApproveCommentResponse](
 			httpClient,
 			baseURL+AdminCommentServiceApproveCommentProcedure,
@@ -131,16 +147,22 @@ func NewAdminCommentServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // adminCommentServiceClient implements AdminCommentServiceClient.
 type adminCommentServiceClient struct {
-	listComments   *connect.Client[v1.ListCommentsRequest, v1.ListCommentsResponse]
-	approveComment *connect.Client[v1.ApproveCommentRequest, v1.ApproveCommentResponse]
-	hideComment    *connect.Client[v1.HideCommentRequest, v1.HideCommentResponse]
-	restoreComment *connect.Client[v1.RestoreCommentRequest, v1.RestoreCommentResponse]
-	purgeComment   *connect.Client[v1.PurgeCommentRequest, v1.PurgeCommentResponse]
+	listComments         *connect.Client[v1.ListCommentsRequest, v1.ListCommentsResponse]
+	countPendingComments *connect.Client[v1.CountPendingCommentsRequest, v1.CountPendingCommentsResponse]
+	approveComment       *connect.Client[v1.ApproveCommentRequest, v1.ApproveCommentResponse]
+	hideComment          *connect.Client[v1.HideCommentRequest, v1.HideCommentResponse]
+	restoreComment       *connect.Client[v1.RestoreCommentRequest, v1.RestoreCommentResponse]
+	purgeComment         *connect.Client[v1.PurgeCommentRequest, v1.PurgeCommentResponse]
 }
 
 // ListComments calls publira.admin.v1.AdminCommentService.ListComments.
 func (c *adminCommentServiceClient) ListComments(ctx context.Context, req *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error) {
 	return c.listComments.CallUnary(ctx, req)
+}
+
+// CountPendingComments calls publira.admin.v1.AdminCommentService.CountPendingComments.
+func (c *adminCommentServiceClient) CountPendingComments(ctx context.Context, req *connect.Request[v1.CountPendingCommentsRequest]) (*connect.Response[v1.CountPendingCommentsResponse], error) {
+	return c.countPendingComments.CallUnary(ctx, req)
 }
 
 // ApproveComment calls publira.admin.v1.AdminCommentService.ApproveComment.
@@ -172,6 +194,13 @@ type AdminCommentServiceHandler interface {
 	// away from every reader, but staff keep reading it for the retention window
 	// so a report or a dispute raised before the deletion can still be settled.
 	ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error)
+	// Counts the comments waiting for approval across the tenant.
+	//
+	// Separate from ListComments so the console's navigation can carry the size
+	// of the queue without reading a page of it: the badge is on every screen,
+	// and a page of rows fetched to be counted and thrown away would be the most
+	// expensive thing the console does per navigation.
+	CountPendingComments(context.Context, *connect.Request[v1.CountPendingCommentsRequest]) (*connect.Response[v1.CountPendingCommentsResponse], error)
 	// Publishes one comment that was posted under approval_required.
 	//
 	// failed_precondition for a comment in any other state, because approving is
@@ -212,6 +241,12 @@ func NewAdminCommentServiceHandler(svc AdminCommentServiceHandler, opts ...conne
 		connect.WithSchema(adminCommentServiceMethods.ByName("ListComments")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminCommentServiceCountPendingCommentsHandler := connect.NewUnaryHandler(
+		AdminCommentServiceCountPendingCommentsProcedure,
+		svc.CountPendingComments,
+		connect.WithSchema(adminCommentServiceMethods.ByName("CountPendingComments")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminCommentServiceApproveCommentHandler := connect.NewUnaryHandler(
 		AdminCommentServiceApproveCommentProcedure,
 		svc.ApproveComment,
@@ -240,6 +275,8 @@ func NewAdminCommentServiceHandler(svc AdminCommentServiceHandler, opts ...conne
 		switch r.URL.Path {
 		case AdminCommentServiceListCommentsProcedure:
 			adminCommentServiceListCommentsHandler.ServeHTTP(w, r)
+		case AdminCommentServiceCountPendingCommentsProcedure:
+			adminCommentServiceCountPendingCommentsHandler.ServeHTTP(w, r)
 		case AdminCommentServiceApproveCommentProcedure:
 			adminCommentServiceApproveCommentHandler.ServeHTTP(w, r)
 		case AdminCommentServiceHideCommentProcedure:
@@ -259,6 +296,10 @@ type UnimplementedAdminCommentServiceHandler struct{}
 
 func (UnimplementedAdminCommentServiceHandler) ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.ListComments is not implemented"))
+}
+
+func (UnimplementedAdminCommentServiceHandler) CountPendingComments(context.Context, *connect.Request[v1.CountPendingCommentsRequest]) (*connect.Response[v1.CountPendingCommentsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.CountPendingComments is not implemented"))
 }
 
 func (UnimplementedAdminCommentServiceHandler) ApproveComment(context.Context, *connect.Request[v1.ApproveCommentRequest]) (*connect.Response[v1.ApproveCommentResponse], error) {

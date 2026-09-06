@@ -25,6 +25,7 @@ export {
   ConsoleSidebarNavigationIcon,
   ConsoleSidebarNavigationItem,
   ConsoleSidebarNavigationItemDescription,
+  ConsoleSidebarNavigationItemHeading,
   ConsoleSidebarNavigationItemLabel,
   ConsoleSidebarNavigationItems,
   ConsoleSidebarNavigationSection,

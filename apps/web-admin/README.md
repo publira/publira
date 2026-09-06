@@ -9,6 +9,7 @@ The console where publishers and editors enter and operate their content.
 - Per-tenant brand settings (theme, logo, and so on)
 - Per-tenant Stripe payment settings (registering, updating, and disabling the secret)
 - Read-through reporting: how many members finished each episode, over the member views of the same period
+- Comment moderation: approving, removing, restoring, and purging the comments readers leave on episodes
 
 ## UI locale
 

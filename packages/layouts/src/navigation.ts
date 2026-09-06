@@ -7,6 +7,13 @@ export interface NavItem {
   label: ReactNode;
   description: ReactNode;
   icon: IconComponent;
+  /**
+   * Optional marker beside the label — a queue size, say. A node rather than a
+   * number, so the console that owns the item decides what it counts, how the
+   * count is worded for a screen reader, and which `<Suspense>` it resolves
+   * behind.
+   */
+  badge?: ReactNode;
 }
 
 export interface NavSection {

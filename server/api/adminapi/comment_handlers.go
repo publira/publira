@@ -205,6 +205,25 @@ func commentAuditEntry(
 	}
 }
 
+// revalidateCommentList drops the storefront's cached comment list for one
+// episode.
+//
+// Every moderation action changes what that list answers — an approval adds a
+// comment to it, a removal or a purge takes one out — and the console cannot
+// reach web-host's cache itself, so the invalidation is made here, beside the
+// write. Best-effort like the audit row: a stale list catches up when the
+// entry expires, and failing the action the moderator already performed would
+// be worse.
+func (s *adminServer) revalidateCommentList(ctx context.Context, tenantID uuid.UUID, episodePublicID string) {
+	if s.reval == nil {
+		return
+	}
+	tag := fmt.Sprintf("tenant:%s:episode:%s:comments", tenantID.String(), episodePublicID)
+	if err := s.reval.RevalidateTags(ctx, []string{tag}); err != nil {
+		s.logger.Warn("failed to request next revalidate after a comment moderation action", "tenant_id", tenantID.String(), "episode_public_id", episodePublicID, "error", err)
+	}
+}
+
 // recordCommentAction writes that row the ordinary way: best-effort, so a
 // failing audit write never fails a reversible action whose own effect is still
 // readable in the comment row afterwards.
@@ -320,6 +339,32 @@ func (s *adminServer) ListComments(
 	return connect.NewResponse(res), nil
 }
 
+// CountPendingComments answers how many comments are waiting for approval.
+//
+// The console navigation shows this on every screen, so it is a COUNT rather
+// than the length of a ListComments page: a page is bounded by its limit and
+// could only ever report "20 or more", and fetching rows to discard them would
+// put the list query in front of every navigation.
+func (s *adminServer) CountPendingComments(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.CountPendingCommentsRequest],
+) (*connect.Response[publiraadminv1.CountPendingCommentsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	pending, err := s.queriesFor(ctx).CountPendingEpisodeCommentsForTenant(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to count pending comments", err, "tenant_id", tenant.ID.String())
+	}
+
+	return connect.NewResponse(&publiraadminv1.CountPendingCommentsResponse{PendingCount: pending}), nil
+}
+
 // ApproveComment publishes one comment that was waiting for staff approval.
 func (s *adminServer) ApproveComment(
 	ctx context.Context,
@@ -351,6 +396,7 @@ func (s *adminServer) ApproveComment(
 		return nil, err
 	}
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_approved", publicID, strings.TrimSpace(req.Msg.Reason))
+	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
 	return connect.NewResponse(&publiraadminv1.ApproveCommentResponse{Comment: s.adminComment(updated)}), nil
 }
@@ -388,6 +434,7 @@ func (s *adminServer) HideComment(
 		return nil, err
 	}
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_hidden", publicID, strings.TrimSpace(req.Msg.Reason))
+	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
 	return connect.NewResponse(&publiraadminv1.HideCommentResponse{Comment: s.adminComment(updated)}), nil
 }
@@ -426,6 +473,7 @@ func (s *adminServer) RestoreComment(
 		return nil, err
 	}
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_restored", publicID, strings.TrimSpace(req.Msg.Reason))
+	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
 	return connect.NewResponse(&publiraadminv1.RestoreCommentResponse{Comment: s.adminComment(updated)}), nil
 }
@@ -448,7 +496,10 @@ func (s *adminServer) PurgeComment(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("reason is required"), "reason")
 	}
 
-	if _, err := s.loadCommentForModeration(ctx, tenant.ID, publicID); err != nil {
+	// Read before the delete: the episode the list belongs to is on the row
+	// that is about to stop existing.
+	current, err := s.loadCommentForModeration(ctx, tenant.ID, publicID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -478,6 +529,7 @@ func (s *adminServer) PurgeComment(
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit the comment purge", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
 	}
+	s.revalidateCommentList(ctx, tenant.ID, current.EpisodePublicID)
 
 	return connect.NewResponse(&publiraadminv1.PurgeCommentResponse{}), nil
 }
