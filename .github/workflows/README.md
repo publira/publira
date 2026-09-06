@@ -134,7 +134,7 @@ Implementation:
 | `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E` | `task e2e:run`: build, readiness, Playwright, teardown. | [`e2e/README.md`](../../e2e/README.md) |
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
-| `Test / Routing` | `task e2e:routing`: Dev Container Traefik host, `/api`, and `/images` connectivity. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
+| `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
 | `Build` | `pnpm build` for Web and `task server:build` for Go. | This file |
 | `Docker / <target>` | `task docker:build:*`, then web/node smoke tests. | [`infra/docker/README.md`](../../infra/docker/README.md) |
 | `Summary` | Final aggregation of every job result. | This file |
@@ -167,9 +167,9 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
 | `Test / Mobile E2E` | mobile, E2E lifecycle scripts and page fixtures, domain proto, server, migrations/seeds, Taskfile, storage init, `scripts/setup-flutter.sh` |
-| `Test / E2E` | E2E except routing, web apps, email-renderer, packages, server, db, and build inputs |
+| `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, server, db, and build inputs |
 | `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init |
-| `Test / Routing` | `compose.yaml`, `.devcontainer/**`, `e2e/routing/**` |
+| `Test / Routing` | `compose.yaml`, `.devcontainer/**`, `infra/proxy/**`, `e2e/routing/**` |
 | `Build` | apps, packages, server, and build inputs |
 | `Docker` | The role mapping in [Docker CI execution strategy](../../infra/docker/README.md#docker-ci-execution-strategy) |
 

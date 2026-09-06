@@ -9,22 +9,22 @@ vars:
 
 tasks:
   default:
-    desc: Verify Dev Container Traefik routing (hosts, /api strip, /images)
+    desc: Verify the edge routing contract on Traefik, nginx, and Caddy
     cmds:
       - task: run
 
   run:
-    desc: Full routing check (up → probe → down), always tears down
+    desc: Full routing check per proxy (up → probe → down), always tears down
     cmds:
       - bash "{{.ROUTING_DIR}}/scripts/run.sh"
 
   up:
-    desc: Start Traefik + echo app from .devcontainer/compose.yaml
+    desc: "Start one proxy + the echo backends (ROUTING_PROXY, default traefik)"
     cmds:
       - bash "{{.ROUTING_DIR}}/scripts/up.sh"
 
   wait-ready:
-    desc: "Poll Traefik until every labeled router is advertised"
+    desc: Wait until that edge serves the contract
     cmds:
       - bash "{{.ROUTING_DIR}}/scripts/wait-ready.sh"
 
@@ -34,6 +34,6 @@ tasks:
       - bash "{{.ROUTING_DIR}}/scripts/test.sh"
 
   down:
-    desc: Remove the routing compose project + volumes
+    desc: Remove that proxy's compose project + volumes
     cmds:
       - bash "{{.ROUTING_DIR}}/scripts/down.sh"

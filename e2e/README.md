@@ -2,7 +2,7 @@
 
 This directory provides shared Playwright infrastructure and scenarios spanning the public catalogue and admin publishing flows. It also standardizes startup, readiness, CI, and artifacts.
 
-Development bootstrap, from empty database volumes through `task setup` and all `task dev` services, uses a separate lifecycle without Playwright; [`bootstrap/README.md`](./bootstrap/README.md) is its source of truth (`task e2e:bootstrap`). Dev Container Traefik host-based routing also uses a separate non-Playwright lifecycle, exercising `.devcontainer/compose.yaml` labels against echo backends; [`routing/README.md`](./routing/README.md) is its source of truth (`task e2e:routing`).
+Development bootstrap, from empty database volumes through `task setup` and all `task dev` services, uses a separate lifecycle without Playwright; [`bootstrap/README.md`](./bootstrap/README.md) is its source of truth (`task e2e:bootstrap`). Edge routing also uses a separate non-Playwright lifecycle, exercising the reverse proxy configuration under `infra/proxy/` against echo backends; [`routing/README.md`](./routing/README.md) is its source of truth (`task e2e:routing`).
 
 ## Prerequisites
 
@@ -67,7 +67,7 @@ For Next.js HMR during development, use `E2E_WEB_MODE=dev task e2e`; CI does not
 ```text
 e2e/
 ├── bootstrap/             # Development bootstrap check (separate lifecycle, no Playwright)
-├── routing/               # Dev Container Traefik check (separate lifecycle, no Playwright)
+├── routing/               # Edge routing check (separate lifecycle, no Playwright)
 ├── compose.yaml           # postgres + redis + rustfs + mailpit + traefik (project: publira-e2e)
 ├── fixtures/              # binary test data (viewer page images, eye-catch sources)
 ├── playwright.config.ts
@@ -90,11 +90,11 @@ The `email-renderer` service turns a template into the subject, HTML, and text t
 
 ### The edge
 
-Almost every suite talks to `web-host` directly on `:3000`. An episode body image, however, is `/images/episodes/{id}` on the reader's own origin, and only image-server can answer it, so one origin has to serve both. That is what the `traefik` service is for: it listens on `E2E_EDGE_PORT` (default `3080`), sends `/images` to image-server and everything else to web-host, and is the `baseURL` of the `viewer-performance` project alone. A suite that reads a body without being timed — `host.episode-reading.spec.ts` — stays in the ordinary `web-host` project and navigates to the edge by absolute URL, so it never shares the runner with the timing suite. It runs with `network_mode: host` because its backends are host processes on loopback, and its routers are written to `$E2E_RUN_DIR/traefik/routes.yaml` by `up.sh` — a file provider substitutes no variables, and the backend ports are overridable.
+Almost every suite talks to `web-host` directly on `:3000`. An episode body image, however, is `/images/episodes/{id}` on the reader's own origin, and only image-server can answer it, so one origin has to serve both. That is what the `traefik` service is for: it listens on `E2E_EDGE_PORT` (default `3080`), sends `/images` to image-server and everything else to web-host, and is the `baseURL` of the `viewer-performance` project alone. A suite that reads a body without being timed — `host.episode-reading.spec.ts` — stays in the ordinary `web-host` project and navigates to the edge by absolute URL, so it never shares the runner with the timing suite. It runs with `network_mode: host` because its backends are host processes on loopback. Its routing is the repository's own `infra/proxy/traefik/dynamic`, mounted straight in, with only its `services.yaml` replaced by one `up.sh` writes to `$E2E_RUN_DIR/traefik/` for this run, because a file provider substitutes no variables and the ports are overridable.
 
 An eye-catch is delivered the same way, as `/images/series/{id}/{ratio}/{width}` on the reader's origin. `admin.eye-catch-upload.spec.ts` therefore drives the console on the web-admin origin, where `/images` resolves to nothing, and reads the uploaded bytes back from the edge by absolute URL.
 
-This mirrors the Dev Container's Traefik labels but does not verify them; [`routing/`](./routing/README.md) remains the source of truth for the real routing.
+This runs the same routing contract as the Dev Container but does not verify it; [`infra/proxy/README.md`](../infra/proxy/README.md) states the contract and [`routing/`](./routing/README.md) is what checks it.
 
 Host-based URL constants are in `src/urls.ts`. web-host accepts one port and resolves the tenant through `Host` / `x-forwarded-host`; Chromium resolves `*.localhost` to loopback under RFC 6761, so neither DNS registration nor a hosts-file entry is needed. Use non-`localhost` hosts only through the browser (`page.goto`), because Node's `request` fixture uses OS name resolution.
 
@@ -143,7 +143,7 @@ Each measurement is attached to the test result as a `viewer-performance:<metric
 1. Optionally add fixture SQL under `db/seeds/scenarios/<name>.sql` and apply it with `applyScenarioSql('name')` from `src/db.ts`.
 2. Add `e2e/tests/<area>.spec.ts` using `test` / `expect` from `@playwright/test`. `admin.*.spec.ts` runs under the web-admin project; `platform.*.spec.ts` under web-platform. Specs that stop shared processes must include `.outage.` or `.error-boundary.` and use the corresponding dependency chain; a spec that rewrites state the parallel specs read gets an isolated project named after its own file, the way `platform-locale-switching`, `platform-operator-management`, and `platform-setup` do.
 3. For a new host, add a project `baseURL` in `playwright.config.ts` or use an absolute `page.goto` URL; centralize constants in `src/urls.ts`.
-4. When starting another process, add it and its probe to `scripts/start-apps.sh`, `wait-ready.sh`, and `stop-apps.sh`. Verify Traefik labels in [`routing/`](./routing/README.md), not here.
+4. When starting another process, add it and its probe to `scripts/start-apps.sh`, `wait-ready.sh`, and `stop-apps.sh`. Verify edge routing in [`routing/`](./routing/README.md), not here.
 5. Run `task e2e`, or keep the stack running and use `task e2e:test`.
 6. Changes to relevant paths run **Test / E2E**. Changes only in `e2e/routing/**` run **Test / Routing** (`task e2e:routing`) without Playwright.
 

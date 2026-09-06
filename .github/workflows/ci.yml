@@ -192,6 +192,8 @@ jobs:
               # Traefik routing has its own job; a probe-only change must
               # not start the Playwright suite.
               - '!e2e/routing/**'
+              # The E2E edge mounts the same routers every environment runs.
+              - 'infra/proxy/traefik/**'
               - 'apps/web-host/**'
               - 'apps/web-admin/**'
               - 'apps/web-platform/**'
@@ -232,6 +234,7 @@ jobs:
               - *docs_excluded
               - 'compose.yaml'
               - '.devcontainer/**'
+              - 'infra/proxy/**'
               - 'e2e/routing/**'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
@@ -908,7 +911,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.test_routing == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -920,8 +923,9 @@ jobs:
         with:
           version: ${{ env.TASK_VERSION }}
 
-      # Overlay on compose.yaml + .devcontainer/compose.yaml; echo backends, no apps.
-      # Always tears the compose project down (trap).
+      # One stack per proxy under infra/proxy — Traefik, nginx, Caddy — each in
+      # front of echo backends, no apps. Always tears the compose project down
+      # (trap).
       - name: Routing check
         run: task e2e:routing
         env:

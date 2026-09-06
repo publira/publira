@@ -1,0 +1,98 @@
+# The routing contract for Caddy.
+#
+# Backend addresses come from the environment rather than from a second file:
+# a Caddyfile substitutes {$VAR}, and the value after the first colon is the
+# default. The defaults are the Dev Container's, where every backend is a
+# process inside the one `app` container.
+#
+# Caddy has no equivalent of Traefik's numeric router priorities. `route`
+# evaluates the handle blocks inside it in the order they are written, and
+# they are mutually exclusive, so that order is the precedence.
+
+{
+	# The site below listens on plain HTTP. A deployment terminates TLS by
+	# giving the site block its host names instead of `:80`, at which point
+	# Caddy obtains certificates on its own; `tls <email>` or `tls <cert>
+	# <key>` chooses another source.
+	auto_https off
+}
+
+# Applied to every proxied request. Caddy forwards the original Host header
+# untouched, so only the rest is set here.
+(publira_forwarded) {
+	header_up X-Forwarded-Host {http.request.hostport}
+	header_up X-Forwarded-Proto {http.request.scheme}
+	# The peer address, replacing whatever arrived: this is the trust
+	# boundary, and the client IP an access token and an audit log entry
+	# record is the first address in this header.
+	header_up X-Forwarded-For {http.request.remote.host}
+	# W3C Trace Context ends here, so each backend opens a fresh root span
+	# instead of adopting a trace the caller chose.
+	header_up -traceparent
+	header_up -tracestate
+	header_up -baggage
+}
+
+:80 {
+	# `\d*` is zero or more digits, so admin.example.com and
+	# admin2.example.com are both consoles while administrator.example.com is
+	# a tenant site. The Host header carries a port that the trailing `.*`
+	# absorbs.
+	@admin header_regexp Host ^admin\d*\..*$
+	@platform header_regexp Host ^platform\..*$
+
+	@admin_images {
+		header_regexp Host ^admin\d*\..*$
+		path /images*
+	}
+	@images path /images*
+
+	# Everything under /api except the Next.js Route Handlers on /api/v1:
+	# /api/v1/revalidate on every app, plus the view beacon, the read beacon,
+	# and the Stripe webhook on the public site.
+	@api {
+		path /api /api/*
+		not path /api/v1 /api/v1/*
+	}
+
+	route {
+		handle @admin_images {
+			reverse_proxy {$PUBLIRA_UPSTREAM_ADMIN_IMAGE_SERVER:app:8201} {
+				import publira_forwarded
+			}
+		}
+
+		handle @images {
+			reverse_proxy {$PUBLIRA_UPSTREAM_IMAGE_SERVER:app:8200} {
+				import publira_forwarded
+			}
+		}
+
+		# The public API, reached with the prefix removed: /api/readyz arrives
+		# as /readyz and a bare /api arrives as /.
+		handle @api {
+			uri strip_prefix /api
+			reverse_proxy {$PUBLIRA_UPSTREAM_API:app:8000} {
+				import publira_forwarded
+			}
+		}
+
+		handle @admin {
+			reverse_proxy {$PUBLIRA_UPSTREAM_WEB_ADMIN:app:4000} {
+				import publira_forwarded
+			}
+		}
+
+		handle @platform {
+			reverse_proxy {$PUBLIRA_UPSTREAM_WEB_PLATFORM:app:4100} {
+				import publira_forwarded
+			}
+		}
+
+		handle {
+			reverse_proxy {$PUBLIRA_UPSTREAM_WEB_HOST:app:3000} {
+				import publira_forwarded
+			}
+		}
+	}
+}

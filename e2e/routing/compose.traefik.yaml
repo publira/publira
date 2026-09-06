@@ -1,10 +1,13 @@
 # Overlay on ../../compose.yaml + ../../.devcontainer/compose.yaml for the
-# Traefik routing check.
+# Traefik half of the routing check.
 #
-# The check must exercise the *real* Docker labels on `app` (routers, priorities,
-# strip-prefix, host regexes). Only the process behind those ports is replaced:
-# a small echo server answers on 3000 / 4000 / 4100 / 8000 / 8200 / 8201 so a
-# probe can tell which backend Traefik chose and which path that backend saw.
+# The check must exercise the *real* Dev Container edge: the same Traefik, the
+# same static flags, and the same bind mount of
+# infra/proxy/traefik/dynamic. Only the process behind the backend ports is
+# replaced: a small echo server answers on 3000 / 4000 / 4100 / 8000 / 8200 /
+# 8201 so a probe can tell which backend the edge chose and which path that
+# backend saw. The container is still named `app`, which is the host name
+# services.yaml gives every backend.
 #
 # `db` / `redis` / `mailpit` stay down. The Dev Container file is itself an
 # overlay, so the root compose file has to come first for the project to be
@@ -18,13 +21,13 @@
 services:
   traefik:
     ports:
-      - "127.0.0.1:${ROUTING_TRAEFIK_PORT:-13080}:3080"
+      - "127.0.0.1:${ROUTING_EDGE_PORT:-13080}:3080"
       - "127.0.0.1:${ROUTING_TRAEFIK_API_PORT:-18080}:8080"
 
   app:
     # Pin the tag + digest the same way .devcontainer/compose.yaml does.
     image: python:3.14-alpine@sha256:c6ead215bfd31f1e433d968853b7a769989117115b728874824e6c0a27cb96fc
-    # Drop the Dev Container build; we only need the labels from the base file.
+    # Drop the Dev Container build; the edge is what this check is about.
     build: !reset
     command: ["python", "/echo.py"]
     volumes: !override

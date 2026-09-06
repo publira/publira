@@ -22,7 +22,8 @@ This page answers three questions for a first-time contributor: what to install,
 │       ├── db/gen/     # sqlc generated code (DB/Go)
 │       └── proto/gen/  # buf generated code (Go)
 ├── infra/
-│   └── docker/         # Production Dockerfiles (per role, built from the repository root)
+│   ├── docker/         # Production Dockerfiles (per role, built from the repository root)
+│   └── proxy/          # Edge routing, written for Traefik, nginx, and Caddy
 ├── mobile/             # [Flutter] Mobile app (iOS/Android)
 ├── proto/              # Protocol Buffers schema definitions
 ├── locales/            # Shared UI messages (JSON, read by Go / Web / Flutter alike)
