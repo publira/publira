@@ -1588,6 +1588,7 @@
         "password_confirm_required": "パスワード確認を入力してください。",
         "password_confirm_too_long": "パスワード確認は1024文字以内で入力してください。",
         "password_mismatch": "パスワード確認が一致しません。",
+        "resend_verification_failed": "確認メールの送信に失敗しました。入力内容をご確認ください。",
         "reset_confirm_failed": "再設定に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。",
         "reset_request_failed": "再設定メールの送信に失敗しました。入力内容をご確認ください。",
         "signup_failed": "新規登録に失敗しました。入力内容をご確認ください。"
@@ -1613,6 +1614,16 @@
         "submit": "ログイン",
         "title": "ログイン"
       },
+      "resend_verification": {
+        "description": "登録したメールアドレスを入力してください。確認が済んでいないアドレスであれば、新しいリンクを送ります。",
+        "submit": "確認メールを送信",
+        "submitting": "送信中...",
+        "title": "確認メールの再送"
+      },
+      "resend_verification_requested": {
+        "sent": "確認メールを送信しました。メール内のリンクを開いて登録を完了してください。",
+        "title": "確認メール送信"
+      },
       "reset_password": {
         "submit": "再設定メールを送信",
         "submitting": "送信中...",
@@ -1634,13 +1645,14 @@
       },
       "signup_pending": {
         "sent": "入力されたメールアドレス宛にメールを送信しました。続きはメールをご確認ください。",
-        "title": "メールの確認"
+        "title": "メールの確認",
+        "to_resend_verification": "メールが届きませんか?"
       },
       "verify": {
         "failed": "確認に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。",
         "title": "メール確認",
         "to_login": "ログイン画面へ",
-        "to_signup": "新規登録へ戻る",
+        "to_resend_verification": "確認メールを再送する",
         "verified": "メールアドレスの確認が完了しました。ログインしてください。"
       }
     },

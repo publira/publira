@@ -13,6 +13,7 @@ describe("isReservedTopLevelSegment", () => {
     expect(isReservedTopLevelSegment("announcements")).toBe(true);
     expect(isReservedTopLevelSegment("notifications")).toBe(true);
     expect(isReservedTopLevelSegment("login")).toBe(true);
+    expect(isReservedTopLevelSegment("resend-verification")).toBe(true);
     expect(isReservedTopLevelSegment("logout")).toBe(false);
     expect(isReservedTopLevelSegment("page")).toBe(true);
   });

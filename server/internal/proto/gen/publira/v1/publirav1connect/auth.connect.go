@@ -40,6 +40,9 @@ const (
 	// AuthServiceVerifyUserEmailProcedure is the fully-qualified name of the AuthService's
 	// VerifyUserEmail RPC.
 	AuthServiceVerifyUserEmailProcedure = "/publira.v1.AuthService/VerifyUserEmail"
+	// AuthServiceRequestEmailVerificationProcedure is the fully-qualified name of the AuthService's
+	// RequestEmailVerification RPC.
+	AuthServiceRequestEmailVerificationProcedure = "/publira.v1.AuthService/RequestEmailVerification"
 	// AuthServiceRequestEmailChangeProcedure is the fully-qualified name of the AuthService's
 	// RequestEmailChange RPC.
 	AuthServiceRequestEmailChangeProcedure = "/publira.v1.AuthService/RequestEmailChange"
@@ -85,6 +88,7 @@ type AuthServiceClient interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
+	RequestEmailVerification(context.Context, *connect.Request[v1.RequestEmailVerificationRequest]) (*connect.Response[v1.RequestEmailVerificationResponse], error)
 	RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error)
 	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
 	RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error)
@@ -128,6 +132,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+AuthServiceVerifyUserEmailProcedure,
 			connect.WithSchema(authServiceMethods.ByName("VerifyUserEmail")),
+			connect.WithClientOptions(opts...),
+		),
+		requestEmailVerification: connect.NewClient[v1.RequestEmailVerificationRequest, v1.RequestEmailVerificationResponse](
+			httpClient,
+			baseURL+AuthServiceRequestEmailVerificationProcedure,
+			connect.WithSchema(authServiceMethods.ByName("RequestEmailVerification")),
 			connect.WithClientOptions(opts...),
 		),
 		requestEmailChange: connect.NewClient[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse](
@@ -222,6 +232,7 @@ type authServiceClient struct {
 	login                      *connect.Client[v1.LoginRequest, v1.LoginResponse]
 	createUser                 *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
 	verifyUserEmail            *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
+	requestEmailVerification   *connect.Client[v1.RequestEmailVerificationRequest, v1.RequestEmailVerificationResponse]
 	requestEmailChange         *connect.Client[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse]
 	confirmEmailChange         *connect.Client[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse]
 	requestPasswordReset       *connect.Client[v1.RequestPasswordResetRequest, v1.RequestPasswordResetResponse]
@@ -251,6 +262,11 @@ func (c *authServiceClient) CreateUser(ctx context.Context, req *connect.Request
 // VerifyUserEmail calls publira.v1.AuthService.VerifyUserEmail.
 func (c *authServiceClient) VerifyUserEmail(ctx context.Context, req *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error) {
 	return c.verifyUserEmail.CallUnary(ctx, req)
+}
+
+// RequestEmailVerification calls publira.v1.AuthService.RequestEmailVerification.
+func (c *authServiceClient) RequestEmailVerification(ctx context.Context, req *connect.Request[v1.RequestEmailVerificationRequest]) (*connect.Response[v1.RequestEmailVerificationResponse], error) {
+	return c.requestEmailVerification.CallUnary(ctx, req)
 }
 
 // RequestEmailChange calls publira.v1.AuthService.RequestEmailChange.
@@ -328,6 +344,7 @@ type AuthServiceHandler interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
+	RequestEmailVerification(context.Context, *connect.Request[v1.RequestEmailVerificationRequest]) (*connect.Response[v1.RequestEmailVerificationResponse], error)
 	RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error)
 	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
 	RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error)
@@ -367,6 +384,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		AuthServiceVerifyUserEmailProcedure,
 		svc.VerifyUserEmail,
 		connect.WithSchema(authServiceMethods.ByName("VerifyUserEmail")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceRequestEmailVerificationHandler := connect.NewUnaryHandler(
+		AuthServiceRequestEmailVerificationProcedure,
+		svc.RequestEmailVerification,
+		connect.WithSchema(authServiceMethods.ByName("RequestEmailVerification")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceRequestEmailChangeHandler := connect.NewUnaryHandler(
@@ -461,6 +484,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceCreateUserHandler.ServeHTTP(w, r)
 		case AuthServiceVerifyUserEmailProcedure:
 			authServiceVerifyUserEmailHandler.ServeHTTP(w, r)
+		case AuthServiceRequestEmailVerificationProcedure:
+			authServiceRequestEmailVerificationHandler.ServeHTTP(w, r)
 		case AuthServiceRequestEmailChangeProcedure:
 			authServiceRequestEmailChangeHandler.ServeHTTP(w, r)
 		case AuthServiceConfirmEmailChangeProcedure:
@@ -508,6 +533,10 @@ func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *connect.Requ
 
 func (UnimplementedAuthServiceHandler) VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.VerifyUserEmail is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) RequestEmailVerification(context.Context, *connect.Request[v1.RequestEmailVerificationRequest]) (*connect.Response[v1.RequestEmailVerificationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.RequestEmailVerification is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error) {

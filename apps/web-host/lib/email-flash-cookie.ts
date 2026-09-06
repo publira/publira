@@ -3,8 +3,9 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 
 /**
- * Destination email after password reset / signup. Carried as a short-lived
- * cookie so the address never appears in the URL (logs, history, Referer).
+ * Destination email after password reset, signup, or a resend of the signup
+ * confirmation link. Carried as a short-lived cookie so the address never
+ * appears in the URL (logs, history, Referer).
  *
  * The destination page can only read the cookie: Server Components cannot
  * delete it. `maxAge` is the consume window. Attributes follow this app's
@@ -16,8 +17,12 @@ export const RESET_PASSWORD_REQUESTED_EMAIL_COOKIE = profileCookieName(
 export const SIGNUP_PENDING_EMAIL_COOKIE = profileCookieName(
   "publira_web_host_signup_pending_email"
 );
+export const RESEND_VERIFICATION_REQUESTED_EMAIL_COOKIE = profileCookieName(
+  "publira_web_host_resend_verification_email"
+);
 
 export type EmailFlashCookieName =
+  | typeof RESEND_VERIFICATION_REQUESTED_EMAIL_COOKIE
   | typeof RESET_PASSWORD_REQUESTED_EMAIL_COOKIE
   | typeof SIGNUP_PENDING_EMAIL_COOKIE;
 

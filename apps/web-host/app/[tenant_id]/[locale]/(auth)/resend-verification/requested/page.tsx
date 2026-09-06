@@ -8,7 +8,7 @@ import { Message } from "#components/message";
 import { TenantDocumentTitle } from "#components/tenant-document-title";
 import {
   readEmailFlashCookie,
-  SIGNUP_PENDING_EMAIL_COOKIE,
+  RESEND_VERIFICATION_REQUESTED_EMAIL_COOKIE,
 } from "#lib/email-flash-cookie";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
@@ -18,10 +18,15 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
-  return { title: getMessage(messages, "host.auth.signup_pending.title") };
+  return {
+    title: getMessage(
+      messages,
+      "host.auth.resend_verification_requested.title"
+    ),
+  };
 };
 
-const SignupPendingHeader = async () => {
+const ResendVerificationRequestedHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [info, siteLabel, messages] = await Promise.all([
     getTenantSiteInfo(tenantId),
@@ -33,7 +38,10 @@ const SignupPendingHeader = async () => {
   return (
     <>
       <TenantDocumentTitle
-        pageTitle={getMessage(messages, "host.auth.signup_pending.title")}
+        pageTitle={getMessage(
+          messages,
+          "host.auth.resend_verification_requested.title"
+        )}
         siteLabel={siteLabel}
       />
       <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
@@ -45,10 +53,10 @@ const SignupPendingHeader = async () => {
 };
 
 /** The address is only known once the flash cookie is read, so it blocks. */
-const SignupPendingRecipient = async () => {
+const ResendVerificationRequestedRecipient = async () => {
   const locale = await getLocale();
   const [email, messages] = await Promise.all([
-    readEmailFlashCookie(SIGNUP_PENDING_EMAIL_COOKIE),
+    readEmailFlashCookie(RESEND_VERIFICATION_REQUESTED_EMAIL_COOKIE),
     loadHostMessages(locale),
   ]);
 
@@ -63,7 +71,7 @@ const SignupPendingRecipient = async () => {
   );
 };
 
-const SignupPendingPage = () => (
+const ResendVerificationRequestedPage = () => (
   <main className="flex min-h-dvh items-center justify-center px-4 py-10">
     <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
       <header className="text-center">
@@ -74,18 +82,18 @@ const SignupPendingPage = () => (
             </div>
           }
         >
-          <SignupPendingHeader />
+          <ResendVerificationRequestedHeader />
         </Suspense>
       </header>
 
       <section className="space-y-3 text-sm leading-6">
         <p>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="host.auth.signup_pending.sent" />
+            <Message message="host.auth.resend_verification_requested.sent" />
           </Suspense>
         </p>
         <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-          <SignupPendingRecipient />
+          <ResendVerificationRequestedRecipient />
         </Suspense>
         <p className="text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
@@ -94,30 +102,18 @@ const SignupPendingPage = () => (
         </p>
       </section>
 
-      <div className="space-y-2 text-center text-sm">
-        <p>
-          <LocaleLink
-            href="/resend-verification"
-            className="font-medium text-primary hover:underline"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <Message message="host.auth.signup_pending.to_resend_verification" />
-            </Suspense>
-          </LocaleLink>
-        </p>
-        <p>
-          <LocaleLink
-            href="/login"
-            className="font-medium text-primary hover:underline"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="host.auth.fields.to_login" />
-            </Suspense>
-          </LocaleLink>
-        </p>
+      <div className="text-center text-sm">
+        <LocaleLink
+          href="/login"
+          className="font-medium text-primary hover:underline"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="host.auth.fields.to_login" />
+          </Suspense>
+        </LocaleLink>
       </div>
     </div>
   </main>
 );
 
-export default SignupPendingPage;
+export default ResendVerificationRequestedPage;

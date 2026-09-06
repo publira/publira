@@ -1588,6 +1588,7 @@
         "password_confirm_required": "Confirm your password.",
         "password_confirm_too_long": "Use 1024 characters or fewer to confirm your password.",
         "password_mismatch": "The passwords do not match.",
+        "resend_verification_failed": "Could not send the confirmation email. Please check what you entered.",
         "reset_confirm_failed": "Could not reset your password. The link may have expired or be invalid.",
         "reset_request_failed": "Could not send the reset email. Please check what you entered.",
         "signup_failed": "Could not create your account. Please check what you entered."
@@ -1613,6 +1614,16 @@
         "submit": "Sign in",
         "title": "Sign in"
       },
+      "resend_verification": {
+        "description": "Enter the address you signed up with. If it is still waiting to be confirmed, a new link goes out to it.",
+        "submit": "Send confirmation email",
+        "submitting": "Sending...",
+        "title": "Resend the confirmation email"
+      },
+      "resend_verification_requested": {
+        "sent": "We sent a confirmation email. Open the link in it to finish signing up.",
+        "title": "Confirmation email sent"
+      },
       "reset_password": {
         "submit": "Send reset email",
         "submitting": "Sending...",
@@ -1634,13 +1645,14 @@
       },
       "signup_pending": {
         "sent": "We sent an email to the address you entered. Open it to continue.",
-        "title": "Check your email"
+        "title": "Check your email",
+        "to_resend_verification": "Didn't get the email?"
       },
       "verify": {
         "failed": "Could not confirm your email address. The link may have expired or be invalid.",
         "title": "Email confirmation",
         "to_login": "Go to sign in",
-        "to_signup": "Back to sign up",
+        "to_resend_verification": "Send a new confirmation email",
         "verified": "Your email address has been confirmed. You can sign in now."
       }
     },

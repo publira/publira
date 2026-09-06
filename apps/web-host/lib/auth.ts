@@ -102,6 +102,31 @@ export const verifyPublicEmail = async (
   }
 };
 
+/**
+ * Ask for a fresh confirmation link for an address whose account was never
+ * activated, and report whether the API took the request.
+ *
+ * An unverified account, a confirmed one, and an address with no account at all
+ * are all accepted, so the answer says nothing about which addresses are
+ * registered. `true` therefore means the request was taken — not that anything
+ * was mailed.
+ */
+export const requestPublicEmailVerification = async (
+  email: string,
+  tenantId: string
+): Promise<boolean> => {
+  try {
+    const response = await apiClient.auth.requestEmailVerification({
+      email,
+      tenant: { tenantId },
+    });
+    return Boolean(response.requested);
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return false;
+  }
+};
+
 export const confirmPublicEmailChange = async (
   token: string,
   tenantId: string

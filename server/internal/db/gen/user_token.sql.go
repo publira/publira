@@ -161,6 +161,17 @@ func (q *Queries) DeleteUserEmailChangeTokensByUserID(ctx context.Context, userI
 	return err
 }
 
+const deleteUserEmailVerificationTokensByUserID = `-- name: DeleteUserEmailVerificationTokensByUserID :exec
+DELETE FROM user_email_verification_tokens
+WHERE user_id = $1
+    AND used_at IS NULL
+`
+
+func (q *Queries) DeleteUserEmailVerificationTokensByUserID(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteUserEmailVerificationTokensByUserID, userID)
+	return err
+}
+
 const deleteUserPasswordResetTokensByUserID = `-- name: DeleteUserPasswordResetTokensByUserID :exec
 DELETE FROM user_password_reset_tokens
 WHERE user_id = $1
