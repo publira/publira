@@ -128,6 +128,21 @@ dev_env_random_secret() {
   openssl rand -base64 48 | tr -d '\n'
 }
 
+# Secret decryption for the SMTP password a profile's outbox worker reads. A
+# worker started without keys reports an unusable secret manager, and every mail
+# handler stops there before it reaches Mailpit, so the mailbox stays empty while
+# the event retries until it is dead. The seeded password is not an encrypted
+# envelope and the manager hands such a value back unchanged, so the key itself
+# is never used — one only has to exist. 32 bytes, base64url, as the parser
+# requires.
+#
+# Development-only, and deliberately the same for every profile rather than a
+# per-profile random value: nothing a profile stores is encrypted with it, so a
+# profile-scoped key would only make older profiles fail to decrypt what a newer
+# one wrote.
+DEV_ENV_SECRET_ENCRYPTION_PRIMARY_KEY_ID='dev'
+DEV_ENV_SECRET_ENCRYPTION_KEYS="${DEV_ENV_SECRET_ENCRYPTION_PRIMARY_KEY_ID}:ZGV2LW9ubHktaW5zZWN1cmUtc2VjcmV0LWtleS0zMmI"
+
 # Prints the host:port of a URL such as postgres://user:pass@host:5432/db?x,
 # redis://host:6379/1, or http://host:9000. A URL without a port gets the
 # default passed as the second argument; a URL without a host, or with a port
