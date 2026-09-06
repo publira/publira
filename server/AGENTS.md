@@ -38,6 +38,16 @@ The one empty answer is `CheckSetupStatus` on a platform whose settings row does
 
 No lint covers this. The read paths are in `api/*/`, `internal/outbox/`, and `internal/platformconfig/`; the frontend half of the same rule is the **UI locale** section of [`apps/AGENTS.md`](../apps/AGENTS.md).
 
+## A process resolves its own role variable, and no one else's
+
+Each server and worker connects with the dedicated PostgreSQL login named for it, read from its own `PUBLIRA_*_DB_URL` and falling back to that role's development URL. `PUBLIRA_DB_URL` is not a link in that chain: it is the migration tooling's connection and the superuser locally, so a process that falls back to it runs with more privilege than the role it was given, in exactly the deployment where the variable was forgotten. Failing to authenticate on a development password is the better outcome, and it is what every server already does.
+
+Neither may one process's chain reach into another's variable. A shared fallback looks harmless while both processes happen to run on the same connection and turns into a silent role change the day either one is repointed. The `cmd/batch` subcommands are the one place a chain runs several variables deep, and it stays inside the batches' own names before ending at `PUBLIRA_DB_URL`.
+
+Adding a role means adding it to `db/seeds/baseline/000_rls_bypass_role.sql` with the grants that process needs, pointing local development at it (`scripts/dev-env/lib.sh`, `e2e/scripts/lib.sh`, `e2e/bootstrap/scripts/lib.sh`), and updating the **Database users** table in [README.md](README.md). A role that only production uses is a role whose grants are first exercised on a deploy.
+
+No lint covers this — the variable names are strings in each `cmd/` entrypoint.
+
 ## Stored objects must be named by a row the sweep knows
 
 `batch purge-orphan-images` treats the database as the authority over the bucket: it walks every object under `tenants/` and deletes the ones no `*_image_variants` row names. A new upload path that writes under that prefix without a row in one of those tables therefore has its objects deleted a day later, silently.

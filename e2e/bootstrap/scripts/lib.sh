@@ -42,6 +42,7 @@ export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:${BOOTSTRAP_POSTGR
 export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
+export PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:outboxpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export PUBLIRA_REDIS_URL="redis://127.0.0.1:${BOOTSTRAP_REDIS_PORT}"
 # Session cookie (JWE) key for the three Next.js apps, required and without a
 # fallback. `task dev` runs on the host, so the value the Dev Container's

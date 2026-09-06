@@ -10,7 +10,7 @@ Initial data for local development and UI checks is managed as SQL.
 
 ## Directory layout
 
-- `prod.sql`: **Production** entry point — database users and roles only
+- `prod.sql`: **Production** entry point — database users, roles, and object ownership only
 - `dev.sql`: **Development** entry point — `prod.sql` plus development sample data
 - `baseline/`: Minimal files shared between environments (referenced by both prod and dev)
 - `dev/`: Data used only in development (referenced only by dev.sql)
@@ -24,7 +24,7 @@ Initial data for local development and UI checks is managed as SQL.
 
 ```bash
 task db:seed             # Development seeds (default: ENV=dev)
-task db:seed ENV=prod    # Production seeds (database users and roles only)
+task db:seed ENV=prod    # Production seeds (database users, roles, and object ownership only)
 ```
 
 `task db:setup` runs `db:migrate` and `db:seed` (dev).
@@ -63,6 +63,8 @@ task db:seed ENV=prod    # Production seeds (database users and roles only)
 | `publira_public` | LOGIN | Login user for the public API; RLS enabled (tenant-scoped) |
 
 `publira_outbox` is the only one of them with `CREATE` on the `public` schema: outbox-worker applies River's own schema (`river_job` and the rest) with `rivermigrate` at startup.
+
+`baseline/010_river_object_owner.sql` follows it and hands any existing `river_*` table, sequence, enum, or function to `publira_outbox`. On a database the worker has always connected to as that role there is nothing to move; on one whose River schema another role created, the transfer is what keeps `rivermigrate` able to alter those objects on the next River release.
 
 The development passwords are `platformpass`, `contentstatspass`, `outboxpass`, `adminpass`, and `publicpass`. After seeding a production environment, change them to secure values with `ALTER ROLE ... PASSWORD`.
 

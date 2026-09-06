@@ -73,7 +73,6 @@ func resolveContentEventsDBURL(fallback string) string {
 	return resolveDBURL(fallback,
 		"PUBLIRA_CONTENT_EVENTS_DB_URL",
 		"PUBLIRA_CONTENT_STATS_DB_URL",
-		"PUBLIRA_WORKER_DB_URL",
 	)
 }
 

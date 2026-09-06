@@ -54,7 +54,6 @@ func resolveEpisodeReadProjectionDBURL(fallback string) string {
 		"PUBLIRA_EPISODE_READ_PROJECTION_DB_URL",
 		"PUBLIRA_CONTENT_EVENTS_DB_URL",
 		"PUBLIRA_CONTENT_STATS_DB_URL",
-		"PUBLIRA_WORKER_DB_URL",
 	)
 }
 
