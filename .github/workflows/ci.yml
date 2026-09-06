@@ -657,6 +657,21 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # The wrapper fetches gradle-*-all.zip from services.gradle.org, the only
+      # third-party host this job still depends on at build time; restoring it
+      # removes the request instead of retrying it. `restore-keys` keeps the
+      # distribution and most dependencies across a build-file edit, since the
+      # exact key only survives while none of the hashed inputs change.
+      - name: Cache / Gradle
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/wrapper/dists
+            ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('mobile/android/gradle/wrapper/gradle-wrapper.properties', 'mobile/android/**/*.gradle.kts', 'mobile/android/gradle.properties', 'mobile/pubspec.lock') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-
+
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
         with:
