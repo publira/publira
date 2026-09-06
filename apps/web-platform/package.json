@@ -44,6 +44,7 @@
   "devDependencies": {
     "@buf/googleapis_googleapis.bufbuild_es": "catalog:",
     "@publira/tsconfig": "workspace:*",
+    "@publira/vitest-config": "workspace:*",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/dom": "catalog:",
     "@testing-library/react": "catalog:",

@@ -110,6 +110,7 @@
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
+    "@publira/vitest-config": "workspace:*",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

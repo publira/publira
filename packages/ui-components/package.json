@@ -114,6 +114,7 @@
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
+    "@publira/vitest-config": "workspace:*",
     "@testing-library/dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",

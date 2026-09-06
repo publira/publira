@@ -79,6 +79,7 @@
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
+    "@publira/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "next": "catalog:",
     "temporal-polyfill": "catalog:",
