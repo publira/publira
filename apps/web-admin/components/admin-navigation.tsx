@@ -11,6 +11,7 @@ import { Suspense } from "react";
 
 import { Message } from "./message";
 import { PendingCommentBadge } from "./pending-comment-badge";
+import { PendingCommentBadgeErrorCatch } from "./pending-comment-badge-error-catch";
 
 export const navigation: NavSection[] = [
   {
@@ -118,9 +119,11 @@ export const navigation: NavSection[] = [
         // The queue size rides on the entry itself so a backlog is visible from
         // whichever screen the operator happens to be on.
         badge: (
-          <Suspense fallback={null}>
-            <PendingCommentBadge />
-          </Suspense>
+          <PendingCommentBadgeErrorCatch>
+            <Suspense fallback={null}>
+              <PendingCommentBadge />
+            </Suspense>
+          </PendingCommentBadgeErrorCatch>
         ),
         description: (
           <Suspense fallback={<SkeletonLine className="h-3 w-44" />}>
