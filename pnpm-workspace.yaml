@@ -19,7 +19,7 @@ catalog:
   "@testing-library/react": 16.3.3
   "@types/node": 24.13.3
   "@types/react": 19.2.18
-  "@types/react-dom": 19.2.5
+  "@types/react-dom": 19.2.6
   jose: 6.2.10
   jsdom: 30.0.1
   lru-cache: 11.5.2
