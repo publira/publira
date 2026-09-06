@@ -111,6 +111,12 @@ export const LOCALE_LANG_SCRIPT = `(function(){try{var s=${JSON.stringify(getLoc
  * `suppressHydrationWarning`, which is what lets the DOM this script produces
  * win over what React rendered.
  *
+ * The same caveat applies as to {@link LOCALE_LANG_SCRIPT}, and for the same
+ * reason: this runs on a full page load only. Moving between locales is a
+ * client-side navigation there, which re-renders that attribute-less element,
+ * so the app has to write `document.documentElement.lang` itself once the
+ * navigation has committed.
+ *
  * Everything interpolated below is a constant of this module, so no
  * request-derived value reaches the script source.
  */

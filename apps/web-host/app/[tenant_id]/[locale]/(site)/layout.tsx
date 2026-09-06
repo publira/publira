@@ -34,6 +34,7 @@ import {
   CatalogSearchForm,
   CatalogSearchFormSkeleton,
 } from "#components/catalog-search-form";
+import { DocumentLocale } from "#components/document-locale";
 import {
   LocaleProvider,
   TenantDefaultLocaleProvider,
@@ -392,6 +393,7 @@ const TenantLayout = async ({
 
   return (
     <LocaleProvider locale={locale}>
+      <DocumentLocale locale={locale} />
       <TenantDefaultLocaleProvider defaultLocale={defaultLocale}>
         <SiteLayout>
           <SiteLayoutHeader>

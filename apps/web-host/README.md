@@ -22,6 +22,7 @@ A public URL carries no locale prefix in the tenant's default locale (`/series/S
 | Server Action | An argument bound by the Server Component, or the `<LocaleField />` hidden field in `components/locale-field.tsx` |
 | Server-side, the tenant's stored default | `getTenantDefaultLocale()` in `lib/tenant.ts` |
 | The browser, where no provider is above the render | `readClientLocale()` in `lib/client-locale.ts` |
+| The document element (`<html lang>`) | `PATH_LOCALE_LANG_SCRIPT` from `@publira/i18n` on a document load, then `<DocumentLocale>` in `components/document-locale.tsx` across client-side navigations |
 
 The tenant id travels the same way: `getTenantId()` in `lib/tenant-id.ts`, `useTenantId()` in `lib/use-tenant-id.ts`, and `<TenantIdField />` in `components/tenant-id-field.tsx`.
 

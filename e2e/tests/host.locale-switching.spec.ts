@@ -33,9 +33,9 @@ const japaneseDefaultUrl = (pathname: string): string =>
  * decides which locale goes unprefixed — which is why the suite reads two
  * tenants with different saved defaults rather than one.
  *
- * `<html lang>` is asserted on the navigations that carry a document of their
- * own. Across a switch it is not, because the attribute goes missing there:
- * https://github.com/publira/publira/issues/1508.
+ * `<html lang>` is asserted on every navigation, not only the ones that carry a
+ * document of their own: the attribute is written by a script that runs once
+ * per document, so a client-side move is exactly where it can go missing.
  */
 test.describe("web-host locale in the URL", () => {
   test("the header switcher lands on the same page in the other language", async ({
@@ -55,6 +55,7 @@ test.describe("web-host locale in the URL", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
     ).toBeVisible();
+    await expectDocumentLocale(page, "日本語");
 
     await switchHostLocale(page, "日本語", "English");
 
@@ -62,6 +63,32 @@ test.describe("web-host locale in the URL", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Series" })
     ).toBeVisible();
+    await expectDocumentLocale(page, "English");
+  });
+
+  test("the document language survives a move between pages in one language", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/series"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Series" })
+    ).toBeVisible();
+
+    // Through the switcher, so what follows starts from a header that is
+    // hydrated: an unhydrated `next/link` is a plain anchor, and the fresh
+    // document it fetches would run the script that writes the attribute.
+    await switchHostLocale(page, "English", "日本語");
+    await expect(page).toHaveURL(
+      (url) => url.pathname === localeHostPath("ja", "/series")
+    );
+    await expectDocumentLocale(page, "日本語");
+
+    await page.getByRole("link", { exact: true, name: "レーベル" }).click();
+
+    await expect(page).toHaveURL(
+      (url) => url.pathname === localeHostPath("ja", "/labels")
+    );
+    await expectDocumentLocale(page, "日本語");
   });
 
   test("the header switcher does not carry the query string over", async ({
@@ -134,6 +161,7 @@ test.describe("web-host locale in the URL", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "시리즈 목록" })
     ).toBeVisible();
+    await expectDocumentLocale(page, "한국어");
   });
 
   test("a locale the site does not serve reaches no page at all", async ({
@@ -251,6 +279,7 @@ test.describe("web-host locale on a tenant whose default is Japanese", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Catalog" })
     ).toBeVisible();
+    await expectDocumentLocale(page, "English");
 
     await switchHostLocale(page, "English", "日本語");
 
@@ -258,5 +287,6 @@ test.describe("web-host locale on a tenant whose default is Japanese", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "カタログトップ" })
     ).toBeVisible();
+    await expectDocumentLocale(page, "日本語");
   });
 });
