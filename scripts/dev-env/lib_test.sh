@@ -105,3 +105,20 @@ override="$(
 )"
 [[ "${override}" == "postgres://admin:secret@10.0.0.1:5433/postgres" ]] || fail "PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL was not honoured"
 pass "the administrator connection follows the profile's PostgreSQL host unless overridden"
+
+# The outbox worker rejects key material config.parseEncryption cannot read, and
+# a profile that starts with an unusable one only says so in a retry log, long
+# after the mail it dropped. Decode it here the way that parser does instead.
+[[ "${DEV_ENV_SECRET_ENCRYPTION_KEYS}" == *:* ]] || fail "the development encryption key is not id:key"
+encryption_key_id="${DEV_ENV_SECRET_ENCRYPTION_KEYS%%:*}"
+encryption_key="${DEV_ENV_SECRET_ENCRYPTION_KEYS#*:}"
+[[ "${encryption_key_id}" == "${DEV_ENV_SECRET_ENCRYPTION_PRIMARY_KEY_ID}" ]] ||
+  fail "the primary key id names no entry of the development encryption keys"
+padded="${encryption_key//-/+}"
+padded="${padded//_//}"
+while ((${#padded} % 4 != 0)); do
+  padded+="="
+done
+decoded_length="$(printf '%s' "${padded}" | base64 -d 2>/dev/null | wc -c)"
+[[ "${decoded_length}" == "32" ]] || fail "the development encryption key decodes to ${decoded_length} bytes, expected 32"
+pass "the development encryption key is one AES-256 key named by the primary key id"
