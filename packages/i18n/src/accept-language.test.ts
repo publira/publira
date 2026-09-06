@@ -1,9 +1,74 @@
 import { describe, expect, it } from "vitest";
 
 import localeIndex from "../../../locales/index.json" with { type: "json" };
-import { negotiateInitialLocale } from "./accept-language";
+import {
+  matchSupportedLocale,
+  negotiateInitialLocale,
+} from "./accept-language";
 
 const missing: unknown = undefined;
+
+/**
+ * A locale set of the shape the script rules exist for: two locales that share
+ * a language and differ only in the script they are written in. The rules show
+ * nothing on a set where every language has one locale, which is what
+ * `locales/index.json` holds.
+ */
+const chinese = ["ja", "en", "zh-Hans", "zh-Hant", "ko"] as const;
+
+describe("matchSupportedLocale", () => {
+  it("takes the code the range names outright", () => {
+    expect(matchSupportedLocale("zh-Hant", chinese)).toBe("zh-Hant");
+    expect(matchSupportedLocale("ZH-hans", chinese)).toBe("zh-Hans");
+    expect(matchSupportedLocale("ja", chinese)).toBe("ja");
+  });
+
+  it("matches a range that spells out its script", () => {
+    expect(matchSupportedLocale("zh-Hant-TW", chinese)).toBe("zh-Hant");
+    expect(matchSupportedLocale("zh-Hans-CN", chinese)).toBe("zh-Hans");
+  });
+
+  it("derives the script of a range that names only a region", () => {
+    expect(matchSupportedLocale("zh-TW", chinese)).toBe("zh-Hant");
+    expect(matchSupportedLocale("zh-HK", chinese)).toBe("zh-Hant");
+    expect(matchSupportedLocale("zh-CN", chinese)).toBe("zh-Hans");
+    expect(matchSupportedLocale("zh-SG", chinese)).toBe("zh-Hans");
+  });
+
+  it("reads a language on its own as the script it is likeliest written in", () => {
+    expect(matchSupportedLocale("zh", chinese)).toBe("zh-Hans");
+  });
+
+  it("answers the same whichever order the locales are listed in", () => {
+    const reversed = ["ko", "zh-Hant", "zh-Hans", "en", "ja"] as const;
+
+    expect(matchSupportedLocale("zh-TW", reversed)).toBe("zh-Hant");
+    expect(matchSupportedLocale("zh-CN", reversed)).toBe("zh-Hans");
+    expect(matchSupportedLocale("zh", reversed)).toBe("zh-Hans");
+  });
+
+  it("matches a regional range against the language it belongs to", () => {
+    expect(matchSupportedLocale("ko-KR", chinese)).toBe("ko");
+    expect(matchSupportedLocale("en-GB", chinese)).toBe("en");
+    expect(matchSupportedLocale("ja-JP", chinese)).toBe("ja");
+  });
+
+  it("falls back to the language when no locale carries the script", () => {
+    // Chinese written in the Latin alphabet: neither catalog is, so the first
+    // Chinese one listed answers.
+    expect(matchSupportedLocale("zh-Latn-PY", chinese)).toBe("zh-Hans");
+    expect(matchSupportedLocale("zh-Latn-PY", ["zh-Hant", "zh-Hans"])).toBe(
+      "zh-Hant"
+    );
+  });
+
+  it("answers undefined for a range no locale covers", () => {
+    expect(matchSupportedLocale("fr-FR", chinese)).toBeUndefined();
+    expect(matchSupportedLocale("de", chinese)).toBeUndefined();
+    // A range RFC 9110 allows and BCP 47 does not.
+    expect(matchSupportedLocale("abcd", chinese)).toBeUndefined();
+  });
+});
 
 describe("negotiateInitialLocale", () => {
   it("returns a supported locale the header names outright", () => {

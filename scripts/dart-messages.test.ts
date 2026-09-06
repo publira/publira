@@ -176,6 +176,34 @@ describe("renderDartMessages", () => {
     assert.ok(output.includes("    return '$page / $total';"));
   });
 
+  it("derives the script a language, and each region, is written in", () => {
+    const chinese = [
+      { code: "en", intl: "en-US" },
+      { code: "zh-Hans", intl: "zh-Hans-CN" },
+      { code: "zh-Hant", intl: "zh-Hant-TW" },
+    ];
+    const catalog = {
+      errors: { validation: "Check your input." },
+      mobile: { series: { title: "Series" } },
+    };
+    const output = renderDartMessages(
+      chinese,
+      new Map(chinese.map(({ code }) => [code, catalog]))
+    );
+
+    assert.ok(
+      output.includes("  static const likelyScripts = <String, String>{\n")
+    );
+    assert.ok(output.includes("    'en': 'Latn',\n"));
+    assert.ok(output.includes("    'zh': 'Hans',\n"));
+    assert.ok(output.includes("    'zh-TW': 'Hant',\n"));
+    assert.ok(output.includes("    'zh-HK': 'Hant',\n"));
+    // A region written in the language's own script is left out, and a
+    // language two catalogs share is still named once.
+    assert.ok(!output.includes("'zh-CN'"));
+    assert.equal(output.match(/'zh': /gu)?.length, 1);
+  });
+
   it("orders members by key, whatever order the catalog lists them in", () => {
     const output = renderDartMessages(
       locales,

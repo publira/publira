@@ -19,6 +19,19 @@ abstract class AppMessages {
     Locale('ko'),
   ];
 
+  /// The script a locale that names none is likeliest written in, keyed
+  /// by its language and, where that answer differs, by its language and
+  /// region.
+  ///
+  /// `matchDeviceLocale` reads it, so a device asking for a language two
+  /// catalogs share reaches the one written in the script the device
+  /// implies.
+  static const likelyScripts = <String, String>{
+    'ja': 'Jpan',
+    'en': 'Latn',
+    'ko': 'Kore',
+  };
+
   /// The catalog whose code is [locale]'s language tag, or `null` when
   /// no catalog carries it.
   static AppMessages? forLocale(Locale locale) {
