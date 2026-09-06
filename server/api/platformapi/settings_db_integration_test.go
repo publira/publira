@@ -435,12 +435,19 @@ func TestDBUpdatePlatformSettingsConcurrentSavesOneWins(t *testing.T) {
 		{timezone: "Asia/Tokyo", defaultLocale: "en"},
 	}
 	outcomes := make(chan outcome, len(candidates))
+	// Both requests carry a deadline. The whole point of the test is that one of
+	// them waits on the other's row lock, and the handler passes this context
+	// down to the FOR UPDATE query: without a deadline, a lock that is never
+	// released leaves a goroutine parked at wg.Wait() until the suite's own
+	// timeout kills everything, which reports the fault as an unrelated hang.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	var wg sync.WaitGroup
 	for _, candidate := range candidates {
 		wg.Add(1)
 		go func(timezone, defaultLocale string) {
 			defer wg.Done()
-			resp, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
+			resp, err := client.UpdatePlatformSettings(ctx, newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
 				DefaultTimezone:  timezone,
 				DefaultLocale:    defaultLocale,
 				ExpectedRevision: shared,
