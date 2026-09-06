@@ -298,6 +298,22 @@ dev_env_load_profile() {
     dev_env_load_required_profile_value "${profile_path}" "${key}"
   done
 
+  # A profile written before outbox-worker had a role of its own stored the
+  # superuser connection as the worker URL. Loading it unchanged would keep
+  # running the worker as the superuser, which is the whole defect the dedicated
+  # role removes, so the stored value is replaced with the login this profile
+  # would be given today. The comparison is against the exact string the old
+  # dev_env_write_profile emitted for this profile's own database, so a worker
+  # URL a developer pointed somewhere else is left alone.
+  local postgres database
+  postgres="$(dev_env_url_authority "${PUBLIRA_DB_URL}" 5432)" \
+    || dev_env_die "cannot derive the PostgreSQL host from PUBLIRA_DB_URL: ${profile_path}"
+  database="publira_${DEV_ENV_NAME//-/_}"
+  if [[ "${PUBLIRA_WORKER_DB_URL}" == "postgres://postgres:password@${postgres}/${database}?sslmode=disable" ]]; then
+    PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:outboxpass@${postgres}/${database}?sslmode=disable"
+    export PUBLIRA_WORKER_DB_URL
+  fi
+
   # Profiles created before the stats batch have no key of their own. They fall
   # back to the superuser connection, which is what their worker URL was when
   # they were written; reading PUBLIRA_WORKER_DB_URL here instead would move the
