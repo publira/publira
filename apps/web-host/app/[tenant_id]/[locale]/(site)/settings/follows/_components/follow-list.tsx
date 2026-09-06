@@ -1,5 +1,10 @@
 import { getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { formatDateTime } from "@publira/utils";
 
 import { LocaleLink } from "#components/locale-link";
@@ -130,10 +135,16 @@ export const FollowList = async ({
       </div>
 
       {listErrorMessage ? (
-        <SectionError
-          description={listErrorMessage}
-          title={getMessage(messages, "host.settings.follows_error")}
-        />
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              {getMessage(messages, "host.settings.follows_error")}
+            </SectionErrorTitle>
+            <SectionErrorDescription>
+              {listErrorMessage}
+            </SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
       ) : null}
 
       {!listErrorMessage && items.length === 0 ? emptyState : null}

@@ -12,5 +12,14 @@ export {
   DialogViewport,
 } from "./dialog";
 
-export { ConfirmDialog } from "./confirm-dialog";
-export type { ConfirmDialogProps } from "./confirm-dialog";
+export {
+  ConfirmDialog,
+  ConfirmDialogAction,
+  ConfirmDialogCancel,
+  ConfirmDialogContent,
+  ConfirmDialogDescription,
+  ConfirmDialogFooter,
+  ConfirmDialogHeader,
+  ConfirmDialogTitle,
+  ConfirmDialogTrigger,
+} from "./confirm-dialog";

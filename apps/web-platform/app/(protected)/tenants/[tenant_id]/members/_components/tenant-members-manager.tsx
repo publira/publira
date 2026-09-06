@@ -14,6 +14,14 @@ import {
 } from "@publira/ui-components/card";
 import {
   ConfirmDialog,
+  ConfirmDialogAction,
+  ConfirmDialogCancel,
+  ConfirmDialogContent,
+  ConfirmDialogDescription,
+  ConfirmDialogFooter,
+  ConfirmDialogHeader,
+  ConfirmDialogTitle,
+  ConfirmDialogTrigger,
   Dialog,
   DialogBackdrop,
   DialogClose,
@@ -29,7 +37,12 @@ import {
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import {
   Table,
@@ -423,26 +436,34 @@ const TenantMemberDeleteButton = ({
   }, [removeAction, setDeleteState, tenantId, userPublicId]);
 
   return (
-    <ConfirmDialog
-      actionText={
-        isPending ? copy.deleteMemberPending : copy.deleteMemberAction
-      }
-      actionVariant="destructive"
-      cancelText={copy.cancel}
-      description={copy.deleteMemberDescription}
-      onAction={handleDelete}
-      title={copy.deleteMemberTitle}
-      trigger={
-        <Button
-          disabled={isPending}
-          size="sm"
-          type="button"
-          variant="destructive"
-        >
-          {copy.deleteMember}
-        </Button>
-      }
-    />
+    <ConfirmDialog>
+      <ConfirmDialogTrigger
+        render={
+          <Button
+            disabled={isPending}
+            size="sm"
+            type="button"
+            variant="destructive"
+          >
+            {copy.deleteMember}
+          </Button>
+        }
+      />
+      <ConfirmDialogContent>
+        <ConfirmDialogHeader>
+          <ConfirmDialogTitle>{copy.deleteMemberTitle}</ConfirmDialogTitle>
+          <ConfirmDialogDescription>
+            {copy.deleteMemberDescription}
+          </ConfirmDialogDescription>
+        </ConfirmDialogHeader>
+        <ConfirmDialogFooter>
+          <ConfirmDialogCancel>{copy.cancel}</ConfirmDialogCancel>
+          <ConfirmDialogAction onClick={handleDelete} variant="destructive">
+            {isPending ? copy.deleteMemberPending : copy.deleteMemberAction}
+          </ConfirmDialogAction>
+        </ConfirmDialogFooter>
+      </ConfirmDialogContent>
+    </ConfirmDialog>
   );
 };
 
@@ -674,28 +695,41 @@ const TenantInvitationRow = ({
           >
             {copy.resendInvite}
           </Button>
-          <ConfirmDialog
-            actionText={
-              isCancelPending
-                ? copy.cancelInvitePending
-                : copy.cancelInviteAction
-            }
-            actionVariant="destructive"
-            cancelText={copy.cancel}
-            description={copy.cancelInviteDescription}
-            onAction={handleCancelAction}
-            title={copy.cancelInviteTitle}
-            trigger={
-              <Button
-                disabled={!canOperate || isCancelPending || isResendPending}
-                size="sm"
-                type="button"
-                variant="destructive"
-              >
-                {copy.cancelInvite}
-              </Button>
-            }
-          />
+          <ConfirmDialog>
+            <ConfirmDialogTrigger
+              render={
+                <Button
+                  disabled={!canOperate || isCancelPending || isResendPending}
+                  size="sm"
+                  type="button"
+                  variant="destructive"
+                >
+                  {copy.cancelInvite}
+                </Button>
+              }
+            />
+            <ConfirmDialogContent>
+              <ConfirmDialogHeader>
+                <ConfirmDialogTitle>
+                  {copy.cancelInviteTitle}
+                </ConfirmDialogTitle>
+                <ConfirmDialogDescription>
+                  {copy.cancelInviteDescription}
+                </ConfirmDialogDescription>
+              </ConfirmDialogHeader>
+              <ConfirmDialogFooter>
+                <ConfirmDialogCancel>{copy.cancel}</ConfirmDialogCancel>
+                <ConfirmDialogAction
+                  onClick={handleCancelAction}
+                  variant="destructive"
+                >
+                  {isCancelPending
+                    ? copy.cancelInvitePending
+                    : copy.cancelInviteAction}
+                </ConfirmDialogAction>
+              </ConfirmDialogFooter>
+            </ConfirmDialogContent>
+          </ConfirmDialog>
         </div>
       </TableCell>
     </TableRow>
@@ -720,10 +754,14 @@ const TenantInvitationsSection = ({
   // so the error replaces the whole list instead of sitting on top of it.
   if (invitationErrorMessage) {
     return (
-      <SectionError
-        description={invitationErrorMessage}
-        title={copy.invitationsLoadFailed}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>{copy.invitationsLoadFailed}</SectionErrorTitle>
+          <SectionErrorDescription>
+            {invitationErrorMessage}
+          </SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
@@ -892,10 +930,16 @@ export const TenantMembersManager = ({
               </FormMessage>
             ) : null}
             {membersErrorMessage ? (
-              <SectionError
-                description={membersErrorMessage}
-                title={copy.membersListFailed}
-              />
+              <SectionError>
+                <SectionErrorHeading>
+                  <SectionErrorTitle>
+                    {copy.membersListFailed}
+                  </SectionErrorTitle>
+                  <SectionErrorDescription>
+                    {membersErrorMessage}
+                  </SectionErrorDescription>
+                </SectionErrorHeading>
+              </SectionError>
             ) : (
               <>
                 <Table>

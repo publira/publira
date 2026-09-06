@@ -1,6 +1,12 @@
 import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -125,15 +131,19 @@ const EditSeriesTabs = async ({
 };
 
 const SeriesLoadError = ({ message }: { message: string }) => (
-  <SectionError
-    actions={
+  <SectionError>
+    <SectionErrorHeading>
+      <SectionErrorTitle>
+        <Message message="admin.series.detail_error" />
+      </SectionErrorTitle>
+      <SectionErrorDescription>{message}</SectionErrorDescription>
+    </SectionErrorHeading>
+    <SectionErrorActions>
       <LinkButton render={<Link href="/series" />} variant="outline">
         <Message message="admin.series.back_to_list" />
       </LinkButton>
-    }
-    description={message}
-    title={<Message message="admin.series.detail_error" />}
-  />
+    </SectionErrorActions>
+  </SectionError>
 );
 
 const EditSeriesFormData = async ({

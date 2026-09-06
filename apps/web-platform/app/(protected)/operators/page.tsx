@@ -8,7 +8,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
@@ -113,10 +118,16 @@ const OperatorsContent = async ({
       </CardHeader>
       <CardContent className="grid gap-4">
         {result.ok ? null : (
-          <SectionError
-            description={result.message}
-            title={getMessage(messages, "platform.operators.load_failed")}
-          />
+          <SectionError>
+            <SectionErrorHeading>
+              <SectionErrorTitle>
+                {getMessage(messages, "platform.operators.load_failed")}
+              </SectionErrorTitle>
+              <SectionErrorDescription>
+                {result.message}
+              </SectionErrorDescription>
+            </SectionErrorHeading>
+          </SectionError>
         )}
 
         <Table>

@@ -1,5 +1,10 @@
 import { getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 
 import { buildLoginPath } from "#lib/auth-shared";
 import type { FollowTargetKind } from "#lib/follow";
@@ -36,11 +41,14 @@ export const FollowControl = async ({
 
   if (!result.ok) {
     return (
-      <SectionError
-        className="max-w-sm"
-        description={result.message}
-        title={getMessage(messages, "host.follow.status_error")}
-      />
+      <SectionError className="max-w-sm">
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            {getMessage(messages, "host.follow.status_error")}
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

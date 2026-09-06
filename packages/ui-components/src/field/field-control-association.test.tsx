@@ -5,8 +5,21 @@ import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { Checkbox } from "../checkbox/checkbox";
-import { Combobox } from "../combobox/combobox";
-import { MultiCombobox } from "../combobox/multi-combobox";
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItems,
+  ComboboxPopup,
+} from "../combobox/combobox";
+import {
+  MultiCombobox,
+  MultiComboboxChip,
+  MultiComboboxChipRemove,
+  MultiComboboxChips,
+  MultiComboboxInput,
+  MultiComboboxInputGroup,
+} from "../combobox/multi-combobox";
 import { Input } from "../input/input";
 import { RadioGroup } from "../radio-group/radio-group";
 import { Select } from "../select/select";
@@ -48,13 +61,13 @@ const StatefulCombobox = ({ id }: { id?: string }) => {
   const [value, setValue] = useState("");
 
   return (
-    <Combobox
-      emptyMessage="No matching items."
-      id={id}
-      items={comboItems}
-      onValueChange={setValue}
-      value={value}
-    />
+    <Combobox id={id} items={comboItems} onValueChange={setValue} value={value}>
+      <ComboboxInput />
+      <ComboboxPopup>
+        <ComboboxEmpty>No matching items.</ComboboxEmpty>
+        <ComboboxItems />
+      </ComboboxPopup>
+    </Combobox>
   );
 };
 
@@ -63,13 +76,31 @@ const StatefulMultiCombobox = ({ id }: { id?: string }) => {
 
   return (
     <MultiCombobox
-      emptyMessage="No matching items."
       id={id}
       items={comboItems}
       onValueChange={setValue}
-      removeLabel="Remove"
       value={value}
-    />
+    >
+      <MultiComboboxInputGroup>
+        <MultiComboboxChips>
+          {(selected) => (
+            <>
+              {selected.map((item) => (
+                <MultiComboboxChip item={item} key={item.value}>
+                  {item.label}
+                  <MultiComboboxChipRemove aria-label="Remove" />
+                </MultiComboboxChip>
+              ))}
+              <MultiComboboxInput />
+            </>
+          )}
+        </MultiComboboxChips>
+      </MultiComboboxInputGroup>
+      <ComboboxPopup>
+        <ComboboxEmpty>No matching items.</ComboboxEmpty>
+        <ComboboxItems />
+      </ComboboxPopup>
+    </MultiCombobox>
   );
 };
 

@@ -1,5 +1,11 @@
 import { LinkButton } from "@publira/ui-components/button";
-import { EmptyState } from "@publira/ui-components/empty-state";
+import {
+  EmptyState,
+  EmptyStateActions,
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -60,8 +66,20 @@ export const EpisodeAccessGate = ({
   }
 
   return (
-    <EmptyState
-      actions={
+    <EmptyState>
+      <EmptyStateHeading>
+        <EmptyStateTitle>
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message={copy.title} />
+          </Suspense>
+        </EmptyStateTitle>
+        <EmptyStateDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full max-w-md" />}>
+            <Message message={copy.description} />
+          </Suspense>
+        </EmptyStateDescription>
+      </EmptyStateHeading>
+      <EmptyStateActions>
         <div className="flex flex-wrap justify-center gap-3">
           {accessAction}
           <LinkButton
@@ -73,17 +91,7 @@ export const EpisodeAccessGate = ({
             </Suspense>
           </LinkButton>
         </div>
-      }
-      description={
-        <Suspense fallback={<SkeletonLine className="h-4 w-full max-w-md" />}>
-          <Message message={copy.description} />
-        </Suspense>
-      }
-      title={
-        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-          <Message message={copy.title} />
-        </Suspense>
-      }
-    />
+      </EmptyStateActions>
+    </EmptyState>
   );
 };

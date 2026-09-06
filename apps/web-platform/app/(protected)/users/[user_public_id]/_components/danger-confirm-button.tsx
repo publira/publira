@@ -2,7 +2,17 @@
 
 import { Button } from "@publira/ui-components/button";
 import type { ButtonProps } from "@publira/ui-components/button";
-import { ConfirmDialog } from "@publira/ui-components/dialog";
+import {
+  ConfirmDialog,
+  ConfirmDialogAction,
+  ConfirmDialogCancel,
+  ConfirmDialogContent,
+  ConfirmDialogDescription,
+  ConfirmDialogFooter,
+  ConfirmDialogHeader,
+  ConfirmDialogTitle,
+  ConfirmDialogTrigger,
+} from "@publira/ui-components/dialog";
 import { useCallback, useTransition } from "react";
 
 interface DangerConfirmButtonProps<T> {
@@ -37,18 +47,28 @@ export const DangerConfirmButton = ({
   }, [actionArg, actionCreator]);
 
   return (
-    <ConfirmDialog
-      actionText={actionText}
-      actionVariant={actionVariant}
-      cancelText={cancelText}
-      description={description}
-      onAction={handleAction}
-      title={title}
-      trigger={
-        <Button disabled={isPending} variant={triggerVariant}>
-          {triggerLabel}
-        </Button>
-      }
-    />
+    <ConfirmDialog>
+      <ConfirmDialogTrigger
+        render={
+          <Button disabled={isPending} variant={triggerVariant}>
+            {triggerLabel}
+          </Button>
+        }
+      />
+      <ConfirmDialogContent>
+        <ConfirmDialogHeader>
+          <ConfirmDialogTitle>{title}</ConfirmDialogTitle>
+          {description ? (
+            <ConfirmDialogDescription>{description}</ConfirmDialogDescription>
+          ) : null}
+        </ConfirmDialogHeader>
+        <ConfirmDialogFooter>
+          <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+          <ConfirmDialogAction onClick={handleAction} variant={actionVariant}>
+            {actionText}
+          </ConfirmDialogAction>
+        </ConfirmDialogFooter>
+      </ConfirmDialogContent>
+    </ConfirmDialog>
   );
 };

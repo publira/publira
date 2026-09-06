@@ -10,7 +10,12 @@ import {
 } from "@publira/ui-components/card";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
@@ -330,10 +335,16 @@ const AuditLogsContent = async ({
               </div>
             </>
           ) : (
-            <SectionError
-              description={result.message}
-              title={getMessage(messages, "admin.audit.section_error")}
-            />
+            <SectionError>
+              <SectionErrorHeading>
+                <SectionErrorTitle>
+                  {getMessage(messages, "admin.audit.section_error")}
+                </SectionErrorTitle>
+                <SectionErrorDescription>
+                  {result.message}
+                </SectionErrorDescription>
+              </SectionErrorHeading>
+            </SectionError>
           )}
         </CardContent>
       </Card>

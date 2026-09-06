@@ -3,7 +3,12 @@ import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ActionForm } from "#components/action-form";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "#components/action-form";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -20,21 +25,7 @@ export const ResendVerificationForm = () => (
         </Suspense>
       </p>
 
-      <ActionForm
-        action={requestEmailVerificationAction}
-        className="space-y-4"
-        pendingLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="host.auth.resend_verification.submitting" />
-          </Suspense>
-        }
-        submitClassName="mt-2 w-full"
-        submitLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <Message message="host.auth.resend_verification.submit" />
-          </Suspense>
-        }
-      >
+      <ActionForm action={requestEmailVerificationAction} className="space-y-4">
         <LocaleField />
         <TenantIdField />
 
@@ -55,6 +46,18 @@ export const ResendVerificationForm = () => (
             />
           </FieldContent>
         </Field>
+        <ActionFormSubmit className="mt-2 w-full">
+          <ActionFormIdle>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="host.auth.resend_verification.submit" />
+            </Suspense>
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="host.auth.resend_verification.submitting" />
+            </Suspense>
+          </ActionFormPending>
+        </ActionFormSubmit>
       </ActionForm>
     </div>
 

@@ -1,6 +1,11 @@
 import { getMessage } from "@publira/i18n";
 import { CollectionIcon } from "@publira/icons";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatList } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -139,10 +144,14 @@ const SeriesListData = async ({
 
   if (!result.ok) {
     return (
-      <SectionError
-        description={result.message}
-        title={getMessage(messages, "host.series.list_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            {getMessage(messages, "host.series.list_error")}
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

@@ -3,7 +3,12 @@ import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ActionForm } from "#components/action-form";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "#components/action-form";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -14,21 +19,7 @@ import { requestPasswordResetAction } from "../_lib/actions";
 export const ResetPasswordForm = () => (
   <>
     <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <ActionForm
-        action={requestPasswordResetAction}
-        className="space-y-4"
-        pendingLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="host.auth.reset_password.submitting" />
-          </Suspense>
-        }
-        submitClassName="mt-2 w-full"
-        submitLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <Message message="host.auth.reset_password.submit" />
-          </Suspense>
-        }
-      >
+      <ActionForm action={requestPasswordResetAction} className="space-y-4">
         <LocaleField />
         <TenantIdField />
 
@@ -49,6 +40,18 @@ export const ResetPasswordForm = () => (
             />
           </FieldContent>
         </Field>
+        <ActionFormSubmit className="mt-2 w-full">
+          <ActionFormIdle>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="host.auth.reset_password.submit" />
+            </Suspense>
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="host.auth.reset_password.submitting" />
+            </Suspense>
+          </ActionFormPending>
+        </ActionFormSubmit>
       </ActionForm>
     </div>
 

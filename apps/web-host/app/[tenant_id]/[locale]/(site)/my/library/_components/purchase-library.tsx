@@ -1,5 +1,10 @@
 import { getMessage, toIntlLocale } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { formatDateTime } from "@publira/utils";
 
 import { LocaleLink } from "#components/locale-link";
@@ -153,10 +158,16 @@ export const PurchaseLibrary = async ({
   return (
     <div className="space-y-6">
       {listErrorMessage ? (
-        <SectionError
-          description={listErrorMessage}
-          title={getMessage(messages, "host.library.list_error")}
-        />
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              {getMessage(messages, "host.library.list_error")}
+            </SectionErrorTitle>
+            <SectionErrorDescription>
+              {listErrorMessage}
+            </SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
       ) : null}
       {!listErrorMessage && purchases.length === 0 ? (
         <section className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-6">

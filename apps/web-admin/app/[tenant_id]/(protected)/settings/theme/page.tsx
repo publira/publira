@@ -1,5 +1,10 @@
 import { getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -70,10 +75,16 @@ const SettingsThemeForms = async () => {
 
   if (!themeResult.ok) {
     return (
-      <SectionError
-        description={themeResult.message}
-        title={getMessage(messages, "admin.settings.theme_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            {getMessage(messages, "admin.settings.theme_error")}
+          </SectionErrorTitle>
+          <SectionErrorDescription>
+            {themeResult.message}
+          </SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

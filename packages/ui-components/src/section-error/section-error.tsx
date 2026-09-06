@@ -3,39 +3,7 @@
 import { cn } from "@publira/utils";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
-type DivProps = Omit<ComponentPropsWithoutRef<"div">, "title">;
-
-/**
- * The digest and the label that introduces it, as one prop.
- *
- * They travel together because this package holds no copy of its own: a caller
- * that has a digest to show is the only one that can word the prefix in the
- * reader's language, so the type makes showing one without its label
- * impossible rather than falling back to a fixed language.
- */
-export interface SectionErrorDigest {
-  /** Prefix shown before `value`, such as "Error ID:". */
-  label: ReactNode;
-  /**
-   * `error.digest` from the boundary that caught the failure. Server Component
-   * errors are stripped of their message before they reach the client, so the
-   * digest is the only handle a reader can quote to match the server log.
-   */
-  value: string;
-}
-
-export type SectionErrorProps = DivProps & {
-  /** Recovery affordance — a retry button from an error boundary, a link out. */
-  actions?: ReactNode;
-  /**
-   * Why the section is missing, in the reader's terms. An error boundary passes
-   * fixed copy; a screen holding a classified RPC failure passes the message
-   * `rpcErrorMessage` produced for it.
-   */
-  description?: ReactNode;
-  digest?: SectionErrorDigest;
-  title: ReactNode;
-};
+type DivProps = ComponentPropsWithoutRef<"div">;
 
 /**
  * The failure state of one section of a page: the section is gone, the rest of
@@ -48,19 +16,29 @@ export type SectionErrorProps = DivProps & {
  * every such screen hand-rolled its own destructive-toned block and its own
  * wording.
  *
+ * Composed rather than prop-driven, so every piece of copy is written on the
+ * element that carries it and can stream from the caller's catalog behind its
+ * own `<Suspense>`.
+ *
+ * ```tsx
+ * <SectionError>
+ *   <SectionErrorHeading>
+ *     <SectionErrorTitle>Could not display the operators</SectionErrorTitle>
+ *     <SectionErrorDescription>Try again in a moment.</SectionErrorDescription>
+ *   </SectionErrorHeading>
+ *   <SectionErrorActions>
+ *     <SectionErrorRetry>Try again</SectionErrorRetry>
+ *   </SectionErrorActions>
+ *   <SectionErrorDigest>Error ID:</SectionErrorDigest>
+ * </SectionError>
+ * ```
+ *
  * Sibling components, so a screen picks the one that matches what happened:
  * `EmptyState` for "nothing to show yet", `FormMessage` for a submission the
  * server rejected, and the per-app `ErrorScreen` for a failure that takes the
  * whole route down.
  */
-export const SectionError = ({
-  actions,
-  className,
-  description,
-  digest,
-  title,
-  ...props
-}: SectionErrorProps) => (
+export const SectionError = ({ className, ...props }: DivProps) => (
   <div
     {...props}
     className={cn(
@@ -68,18 +46,52 @@ export const SectionError = ({
       className
     )}
     role="alert"
-  >
-    <div className="grid gap-1">
-      <p className="text-base font-medium text-destructive">{title}</p>
-      {description ? (
-        <p className="text-sm text-muted-foreground">{description}</p>
-      ) : null}
-    </div>
-    {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
-    {digest ? (
-      <p className="text-xs text-muted-foreground">
-        {digest.label} <code className="font-mono">{digest.value}</code>
-      </p>
-    ) : null}
-  </div>
+  />
 );
+
+/** Title and description stack. */
+export const SectionErrorHeading = ({ children }: { children: ReactNode }) => (
+  <div className="grid gap-1">{children}</div>
+);
+
+/** Names the section that is missing: "Could not display the recommendations". */
+export const SectionErrorTitle = ({ children }: { children: ReactNode }) => (
+  <p className="text-base font-medium text-destructive">{children}</p>
+);
+
+/**
+ * Why the section is missing, in the reader's terms. An error boundary renders
+ * fixed copy; a screen holding a classified RPC failure renders the message
+ * `rpcErrorMessage` produced for it.
+ */
+export const SectionErrorDescription = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <p className="text-sm text-muted-foreground">{children}</p>;
+
+/** Recovery affordance — a retry button from an error boundary, a link out. */
+export const SectionErrorActions = ({ children }: { children: ReactNode }) => (
+  <div className="flex flex-wrap gap-3">{children}</div>
+);
+
+/**
+ * The paragraph that carries the digest. `SectionErrorDigest` composes it with
+ * the identifier the boundary caught; nothing else renders one.
+ */
+export const SectionErrorDigestLine = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <p className="text-xs text-muted-foreground">{children}</p>;
+
+/**
+ * `error.digest` from the boundary that caught the failure. Server Component
+ * errors are stripped of their message before they reach the client, so the
+ * digest is the only handle a reader can quote to match the server log.
+ */
+export const SectionErrorDigestValue = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <code className="font-mono">{children}</code>;

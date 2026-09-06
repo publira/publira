@@ -1,5 +1,10 @@
 import { getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { notFound } from "next/navigation";
 
 import { resolveAccessToken } from "#lib/api-client";
@@ -67,10 +72,14 @@ export const EpisodeBody = async ({
     const messages = await loadHostMessages(locale);
     return (
       <EpisodeBodyNotice>
-        <SectionError
-          description={viewer.message}
-          title={getMessage(messages, "host.episode.body_error")}
-        />
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              {getMessage(messages, "host.episode.body_error")}
+            </SectionErrorTitle>
+            <SectionErrorDescription>{viewer.message}</SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
       </EpisodeBodyNotice>
     );
   }

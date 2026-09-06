@@ -10,7 +10,13 @@ import {
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import {
@@ -23,6 +29,12 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "#components/action-form";
 import { AdminDomainPreview } from "#components/admin-domain-preview";
 import { Message } from "#components/message";
 import {
@@ -43,7 +55,6 @@ import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { getPlatformTenant } from "#lib/tenants";
 
 import { TenantSectionNav } from "./_components/tenant-section-nav";
-import { TenantUpdateForm } from "./_components/tenant-update-form";
 import {
   resumeTenantAction,
   suspendTenantAction,
@@ -120,21 +131,23 @@ const TenantDetailSkeleton = () => (
  * still there, so an outage keeps the console's own wording and a way back.
  */
 const TenantLoadError = ({ message }: { message: string }) => (
-  <SectionError
-    actions={
+  <SectionError>
+    <SectionErrorHeading>
+      <SectionErrorTitle>
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="platform.tenants.load_one_failed" />
+        </Suspense>
+      </SectionErrorTitle>
+      <SectionErrorDescription>{message}</SectionErrorDescription>
+    </SectionErrorHeading>
+    <SectionErrorActions>
       <LinkButton render={<Link href="/tenants" />} variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="platform.common.back_to_list" />
         </Suspense>
       </LinkButton>
-    }
-    description={message}
-    title={
-      <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-        <Message message="platform.tenants.load_one_failed" />
-      </Suspense>
-    }
-  />
+    </SectionErrorActions>
+  </SectionError>
 );
 
 const TenantDetailContent = async ({
@@ -230,11 +243,7 @@ const TenantDetailContent = async ({
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
-                <TenantUpdateForm
-                  action={updateTenantNameAction}
-                  pendingLabel={savingLabel}
-                  submitLabel={saveLabel}
-                >
+                <ActionForm action={updateTenantNameAction}>
                   <input
                     name="tenant_id"
                     type="hidden"
@@ -284,7 +293,14 @@ const TenantDetailContent = async ({
                       </p>
                     </Field>
                   </div>
-                </TenantUpdateForm>
+                  <ActionFormSubmit
+                    className="mt-4 ml-auto block"
+                    variant="outline"
+                  >
+                    <ActionFormIdle>{saveLabel}</ActionFormIdle>
+                    <ActionFormPending>{savingLabel}</ActionFormPending>
+                  </ActionFormSubmit>
+                </ActionForm>
               </CardContent>
             </Card>
 
@@ -305,11 +321,7 @@ const TenantDetailContent = async ({
               </CardHeader>
               <CardContent className="grid gap-4">
                 <TenantDomainCautions showUpdateCaution />
-                <TenantUpdateForm
-                  action={updateTenantDomainAction}
-                  pendingLabel={savingLabel}
-                  submitLabel={saveLabel}
-                >
+                <ActionForm action={updateTenantDomainAction}>
                   <input
                     name="tenant_id"
                     type="hidden"
@@ -352,7 +364,14 @@ const TenantDetailContent = async ({
                       />
                     </Field>
                   </div>
-                </TenantUpdateForm>
+                  <ActionFormSubmit
+                    className="mt-4 ml-auto block"
+                    variant="outline"
+                  >
+                    <ActionFormIdle>{saveLabel}</ActionFormIdle>
+                    <ActionFormPending>{savingLabel}</ActionFormPending>
+                  </ActionFormSubmit>
+                </ActionForm>
               </CardContent>
             </Card>
           </div>

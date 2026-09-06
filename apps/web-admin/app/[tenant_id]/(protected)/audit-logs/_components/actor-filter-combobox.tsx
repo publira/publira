@@ -2,7 +2,17 @@
 
 import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
-import { MultiCombobox } from "@publira/ui-components/combobox";
+import {
+  ComboboxEmpty,
+  ComboboxItems,
+  ComboboxPopup,
+  MultiCombobox,
+  MultiComboboxChip,
+  MultiComboboxChipRemove,
+  MultiComboboxChips,
+  MultiComboboxInput,
+  MultiComboboxInputGroup,
+} from "@publira/ui-components/combobox";
 import type { MultiComboboxItem } from "@publira/ui-components/combobox";
 import { useCallback, useContext, useMemo, useState } from "react";
 
@@ -47,16 +57,46 @@ export const ActorFilterCombobox = ({
   return (
     <>
       <MultiCombobox
-        emptyMessage={getMessage(messages, "admin.audit.filter.actor_empty")}
         items={normalizedItems}
         onValueChange={handleValueChange}
-        removeLabel={getMessage(messages, "admin.audit.filter.actor_remove")}
-        searchPlaceholder={getMessage(
-          messages,
-          "admin.audit.filter.actor_placeholder"
-        )}
         value={selectedValues}
-      />
+      >
+        <MultiComboboxInputGroup>
+          <MultiComboboxChips>
+            {(selected) => (
+              <>
+                {selected.map((item) => (
+                  <MultiComboboxChip item={item} key={item.value}>
+                    {item.label}
+                    <MultiComboboxChipRemove
+                      aria-label={getMessage(
+                        messages,
+                        "admin.audit.filter.actor_remove"
+                      )}
+                    />
+                  </MultiComboboxChip>
+                ))}
+                <MultiComboboxInput
+                  placeholder={
+                    selected.length > 0
+                      ? ""
+                      : getMessage(
+                          messages,
+                          "admin.audit.filter.actor_placeholder"
+                        )
+                  }
+                />
+              </>
+            )}
+          </MultiComboboxChips>
+        </MultiComboboxInputGroup>
+        <ComboboxPopup>
+          <ComboboxEmpty>
+            {getMessage(messages, "admin.audit.filter.actor_empty")}
+          </ComboboxEmpty>
+          <ComboboxItems />
+        </ComboboxPopup>
+      </MultiCombobox>
       <input name="actor" type="hidden" value={selectedValues[0] ?? ""} />
     </>
   );

@@ -4,25 +4,36 @@ A form component that encapsulates `useActionState`. It gives Server Action erro
 
 ## Usage
 
-### Automatic mode
+### Node mode
 
-Pass a ReactNode as `children` and the component manages the returned message and the submit button for you. A success message is shown when the Action returns `{ ok: true, message }`. Pass `showSuccess={false}` to hide it.
+Pass a ReactNode as `children`. The message the Action returns is rendered for you; the submit control is one of the children, so its wording, its classes, and its variant sit on the element itself. A success message is shown when the Action returns `{ ok: true, message }` — pass `showSuccess={false}` to hide it.
 
 ```tsx
-import { ActionForm } from "@publira/ui-components/action-form";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 
 export default function Example() {
   return (
-    <ActionForm action={myAction} submitLabel="Save" pendingLabel="Saving...">
+    <ActionForm action={myAction}>
       <input name="email" type="email" />
+      <ActionFormSubmit className="w-full">
+        <ActionFormIdle>Save</ActionFormIdle>
+        <ActionFormPending>Saving...</ActionFormPending>
+      </ActionFormSubmit>
     </ActionForm>
   );
 }
 ```
 
+`ActionFormIdle` and `ActionFormPending` render only while the form is idle and only while its Action is in flight. A control whose wording does not change while submitting takes plain children instead.
+
 ### Render function mode
 
-Pass a function as `children` when you want to customize button placement or message display.
+Pass a function as `children` when you want to place the message yourself or read the state the Action returned.
 
 ```tsx
 import { ActionForm } from "@publira/ui-components/action-form";
@@ -83,10 +94,7 @@ import type { FormActionState } from "@publira/ui-components/action-form";
 | --- | --- | --- | --- |
 | `action` | `(prevState, formData) => Promise<FormActionState>` | Required | The Server Action |
 | `children` | `ReactNode \| (props) => ReactNode` | Required | Form content. Passing a function switches to render function mode |
-| `submitLabel` | `string` | — | Submit button text in automatic mode |
-| `pendingLabel` | `string` | `submitLabel` | Button text while the submission is pending |
 | `showSuccess` | `boolean` | `true` | Show a success message when the state is `{ ok: true }`. Pass `false` to suppress it |
 | `className` | `string` | — | className of the `<form>` |
-| `submitClassName` | `string` | — | className of the submit button |
-| `submitVariant` | `ButtonProps["variant"]` | — | variant of the submit button |
-| `disabled` | `boolean` | — | Disable the submit button |
+
+`ActionFormSubmit` takes the submit button's own `children`, `className`, `variant`, and `disabled`.

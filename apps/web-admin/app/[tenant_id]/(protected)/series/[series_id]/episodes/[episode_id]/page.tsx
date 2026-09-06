@@ -1,6 +1,11 @@
 import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -153,13 +158,16 @@ const EditEpisodePage = async ({
               timeZone={timeZone}
             />
           ) : (
-            <SectionError
-              description={episodeResult.message}
-              title={getMessage(
-                messages,
-                "admin.series.episodes.schedule_error"
-              )}
-            />
+            <SectionError>
+              <SectionErrorHeading>
+                <SectionErrorTitle>
+                  {getMessage(messages, "admin.series.episodes.schedule_error")}
+                </SectionErrorTitle>
+                <SectionErrorDescription>
+                  {episodeResult.message}
+                </SectionErrorDescription>
+              </SectionErrorHeading>
+            </SectionError>
           )}
           <EpisodePagesForm
             action={uploadEpisodePagesAction}
@@ -185,13 +193,19 @@ const EditEpisodePage = async ({
               were never uploaded, in the same breath.
             */}
             {imagesResult.ok ? null : (
-              <SectionError
-                description={imagesResult.message}
-                title={getMessage(
-                  messages,
-                  "admin.series.episodes.image_list_error"
-                )}
-              />
+              <SectionError>
+                <SectionErrorHeading>
+                  <SectionErrorTitle>
+                    {getMessage(
+                      messages,
+                      "admin.series.episodes.image_list_error"
+                    )}
+                  </SectionErrorTitle>
+                  <SectionErrorDescription>
+                    {imagesResult.message}
+                  </SectionErrorDescription>
+                </SectionErrorHeading>
+              </SectionError>
             )}
 
             {imagesResult.ok && imagesResult.images.length === 0 ? (

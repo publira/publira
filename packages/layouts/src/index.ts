@@ -26,6 +26,7 @@ export {
   SiteLayoutUserMenu,
   SiteLayoutUserMenuContent,
   SiteLayoutUserMenuLogout,
+  SiteLayoutUserMenuLogoutButton,
   SiteLayoutUserMenuMyPageLink,
   SiteLayoutUserMenuSeparator,
   SiteLayoutUserMenuTrigger,

@@ -2,15 +2,26 @@
 
 A searchable single-select and multi-select component, implemented on top of [Base UI Combobox](https://base-ui.com/r/components/combobox).
 
+Both are composed: the root owns the selection state and the parts the caller writes own everything a reader sees. Copy therefore reaches the element it belongs to as `children`, a `placeholder`, or an `aria-label`, and this package words nothing itself — it is shared by apps that resolve their locale in different ways.
+
 ## Usage
 
 ```tsx
 import {
   Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItems,
+  ComboboxPopup,
   Field,
   FieldContent,
   FieldLabel,
   MultiCombobox,
+  MultiComboboxChip,
+  MultiComboboxChipRemove,
+  MultiComboboxChips,
+  MultiComboboxInput,
+  MultiComboboxInputGroup,
 } from "@publira/ui-components";
 import { useState } from "react";
 
@@ -28,12 +39,13 @@ export default function Example() {
       <Field>
         <FieldLabel>Label</FieldLabel>
         <FieldContent>
-          <Combobox
-            emptyMessage="No matching items."
-            items={items}
-            onValueChange={setLabel}
-            value={label}
-          />
+          <Combobox items={items} onValueChange={setLabel} value={label}>
+            <ComboboxInput placeholder="Search labels" />
+            <ComboboxPopup>
+              <ComboboxEmpty>No matching items.</ComboboxEmpty>
+              <ComboboxItems />
+            </ComboboxPopup>
+          </Combobox>
         </FieldContent>
       </Field>
 
@@ -41,12 +53,32 @@ export default function Example() {
         <FieldLabel>Creators</FieldLabel>
         <FieldContent>
           <MultiCombobox
-            emptyMessage="No matching items."
             items={items}
             onValueChange={setCreators}
-            removeLabel="Remove"
             value={creators}
-          />
+          >
+            <MultiComboboxInputGroup>
+              <MultiComboboxChips>
+                {(selected) => (
+                  <>
+                    {selected.map((item) => (
+                      <MultiComboboxChip item={item} key={item.value}>
+                        {item.label}
+                        <MultiComboboxChipRemove aria-label="Remove" />
+                      </MultiComboboxChip>
+                    ))}
+                    <MultiComboboxInput
+                      placeholder={selected.length > 0 ? "" : "Search creators"}
+                    />
+                  </>
+                )}
+              </MultiComboboxChips>
+            </MultiComboboxInputGroup>
+            <ComboboxPopup>
+              <ComboboxEmpty>No matching items.</ComboboxEmpty>
+              <ComboboxItems />
+            </ComboboxPopup>
+          </MultiCombobox>
         </FieldContent>
       </Field>
     </>
@@ -54,7 +86,7 @@ export default function Example() {
 }
 ```
 
-The copy props are required and hold no default: this package is shared by apps that resolve their locale in different ways, so it cannot read one itself and a default here would word part of the control in a fixed language. Resolve each string from the caller's catalog.
+`ComboboxPopup`, `ComboboxEmpty`, and `ComboboxItems` serve both roots — the popup is the same in either mode.
 
 ## Subpath import
 
@@ -69,9 +101,7 @@ import { Combobox, MultiCombobox } from "@publira/ui-components/combobox";
 | `items` | `{ label: string; value: string }[]` | Required | The available options |
 | `value` | `string` / `string[]` | Required | The selected value. `MultiCombobox` takes an array |
 | `onValueChange` | `(next) => void` | Required | Called when the selection changes |
-| `emptyMessage` | `string` | Required | Shown when nothing matches |
-| `removeLabel` | `string` | Required (`MultiCombobox`) | Accessible name of the button that drops one selected chip |
 | `id` | `string` | Generated | The id of the input. When omitted, it is associated with `FieldLabel` automatically |
-| `placeholder` / `searchPlaceholder` | `string` | — | Placeholder shown while nothing is selected |
 | `disabled` | `boolean` | — | Disable the control |
-| `className` | `string` | — | className of the input (of the input group for `MultiCombobox`) |
+
+`ComboboxInput` takes the input's own `placeholder` and `className`; `MultiComboboxInputGroup` takes the `className` of the box that holds the chips.

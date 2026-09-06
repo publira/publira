@@ -41,6 +41,7 @@ export {
   ConsoleUserMenuIdentity,
   ConsoleUserMenuInitial,
   ConsoleUserMenuLogout,
+  ConsoleUserMenuLogoutButton,
   ConsoleUserMenuName,
   ConsoleUserMenuPublicId,
   ConsoleUserMenuRole,

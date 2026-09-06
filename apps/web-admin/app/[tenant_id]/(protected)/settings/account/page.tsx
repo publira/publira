@@ -1,5 +1,10 @@
 import { getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -54,10 +59,16 @@ const MfaSection = async () => {
     await redirectToLoginIfSessionRejected(result);
     const messages = await loadAdminMessages(locale);
     return (
-      <SectionError
-        description={getMessage(messages, "admin.settings.mfa.load_failed")}
-        title={getMessage(messages, "admin.settings.section_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            {getMessage(messages, "admin.settings.section_error")}
+          </SectionErrorTitle>
+          <SectionErrorDescription>
+            {getMessage(messages, "admin.settings.mfa.load_failed")}
+          </SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

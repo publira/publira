@@ -11,6 +11,7 @@ import {
   ConsoleUserMenuIdentity,
   ConsoleUserMenuInitial,
   ConsoleUserMenuLogout,
+  ConsoleUserMenuLogoutButton,
   ConsoleUserMenuName,
   ConsoleUserMenuPublicId,
   ConsoleUserMenuRole,
@@ -32,7 +33,7 @@ vi.mock("next/link", () => ({
 const renderMenu = (logoutAction = () => {}) =>
   render(
     <ConsoleHeaderUser>
-      <ConsoleUserMenuTrigger ariaLabel="Account menu for Taylor Morgan">
+      <ConsoleUserMenuTrigger aria-label="Account menu for Taylor Morgan">
         <ConsoleUserMenuInitial>Taylor Morgan</ConsoleUserMenuInitial>
       </ConsoleUserMenuTrigger>
       <ConsoleUserMenuContent>
@@ -45,8 +46,8 @@ const renderMenu = (logoutAction = () => {}) =>
         <ConsoleUserMenuAccountLink href="/settings/account">
           Account settings
         </ConsoleUserMenuAccountLink>
-        <ConsoleUserMenuLogout action={logoutAction} ariaLabel="Sign out">
-          Sign out
+        <ConsoleUserMenuLogout action={logoutAction}>
+          <ConsoleUserMenuLogoutButton>Sign out</ConsoleUserMenuLogoutButton>
         </ConsoleUserMenuLogout>
       </ConsoleUserMenuContent>
     </ConsoleHeaderUser>

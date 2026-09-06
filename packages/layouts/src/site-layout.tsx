@@ -79,11 +79,11 @@ export const SiteLayoutFooter = ({ children }: { children: ReactNode }) => (
 );
 
 export const SiteLayoutFooterLinks = ({
-  ariaLabel,
+  "aria-label": ariaLabel,
   children,
 }: {
-  /** Already-resolved `aria-label` for the footer link list. */
-  ariaLabel: string;
+  /** Names the footer link list for a screen reader. */
+  "aria-label": string;
   children: ReactNode;
 }) => (
   <nav

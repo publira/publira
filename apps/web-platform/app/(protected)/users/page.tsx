@@ -11,7 +11,12 @@ import {
 } from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
@@ -561,10 +566,16 @@ const UsersContent = async ({
         />
 
         {result.ok ? null : (
-          <SectionError
-            description={result.message}
-            title={getMessage(messages, "platform.users.load_failed")}
-          />
+          <SectionError>
+            <SectionErrorHeading>
+              <SectionErrorTitle>
+                {getMessage(messages, "platform.users.load_failed")}
+              </SectionErrorTitle>
+              <SectionErrorDescription>
+                {result.message}
+              </SectionErrorDescription>
+            </SectionErrorHeading>
+          </SectionError>
         )}
 
         <UsersTableSection

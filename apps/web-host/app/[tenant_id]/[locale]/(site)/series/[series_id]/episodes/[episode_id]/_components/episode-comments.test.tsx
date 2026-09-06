@@ -64,6 +64,11 @@ vi.mock("#components/action-form", () => ({
   ActionForm: ({ children }: { children: React.ReactNode }) => (
     <form>{children}</form>
   ),
+  ActionFormIdle: ({ children }: { children: React.ReactNode }) => children,
+  ActionFormPending: () => null,
+  ActionFormSubmit: ({ children }: { children: React.ReactNode }) => (
+    <button type="submit">{children}</button>
+  ),
 }));
 
 vi.mock("./comment-delete-button", () => ({

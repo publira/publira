@@ -6,7 +6,13 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { Card, CardContent } from "@publira/ui-components/card";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
-import { Combobox } from "@publira/ui-components/combobox";
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItems,
+  ComboboxPopup,
+} from "@publira/ui-components/combobox";
 import {
   Field,
   FieldContent,
@@ -239,18 +245,26 @@ export const TicketForm = ({
                 </FieldLabel>
                 <FieldContent>
                   <Combobox
-                    emptyMessage={getMessage(
-                      messages,
-                      "admin.access_tickets.form.series_empty"
-                    )}
                     items={seriesItems}
                     onValueChange={handleSeriesChange}
-                    placeholder={getMessage(
-                      messages,
-                      "admin.access_tickets.form.series_placeholder"
-                    )}
                     value={seriesPublicId}
-                  />
+                  >
+                    <ComboboxInput
+                      placeholder={getMessage(
+                        messages,
+                        "admin.access_tickets.form.series_placeholder"
+                      )}
+                    />
+                    <ComboboxPopup>
+                      <ComboboxEmpty>
+                        {getMessage(
+                          messages,
+                          "admin.access_tickets.form.series_empty"
+                        )}
+                      </ComboboxEmpty>
+                      <ComboboxItems />
+                    </ComboboxPopup>
+                  </Combobox>
                   <FieldDescription>
                     {getMessage(
                       messages,
@@ -267,20 +281,28 @@ export const TicketForm = ({
                 <FieldContent>
                   <Combobox
                     disabled={isEpisodePending || seriesPublicId === ""}
-                    emptyMessage={getMessage(
-                      messages,
-                      "admin.access_tickets.form.episode_empty"
-                    )}
                     items={episodeItems}
                     onValueChange={setEpisodePublicId}
-                    placeholder={getMessage(
-                      messages,
-                      isEpisodePending
-                        ? "admin.access_tickets.form.episode_loading"
-                        : "admin.access_tickets.form.episode_placeholder"
-                    )}
                     value={episodePublicId}
-                  />
+                  >
+                    <ComboboxInput
+                      placeholder={getMessage(
+                        messages,
+                        isEpisodePending
+                          ? "admin.access_tickets.form.episode_loading"
+                          : "admin.access_tickets.form.episode_placeholder"
+                      )}
+                    />
+                    <ComboboxPopup>
+                      <ComboboxEmpty>
+                        {getMessage(
+                          messages,
+                          "admin.access_tickets.form.episode_empty"
+                        )}
+                      </ComboboxEmpty>
+                      <ComboboxItems />
+                    </ComboboxPopup>
+                  </Combobox>
                   <input
                     name="episode_public_id"
                     type="hidden"

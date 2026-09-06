@@ -1,10 +1,21 @@
+import {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
 
-import { SectionErrorCatch } from "./section-error-catch";
+import {
+  SectionErrorCatch,
+  SectionErrorDigest,
+  SectionErrorRetry,
+} from "./section-error-catch";
 
 interface SectionErrorBoundaryProps {
   children: ReactNode;
@@ -39,22 +50,30 @@ export const SectionErrorBoundary = ({
   title,
 }: SectionErrorBoundaryProps) => (
   <SectionErrorCatch
-    description={
-      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-        <Message message="host.errors.page_description" />
-      </Suspense>
+    fallback={
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>{title}</SectionErrorTitle>
+          <SectionErrorDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.errors.page_description" />
+            </Suspense>
+          </SectionErrorDescription>
+        </SectionErrorHeading>
+        <SectionErrorActions>
+          <SectionErrorRetry>
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="host.common.retry" />
+            </Suspense>
+          </SectionErrorRetry>
+        </SectionErrorActions>
+        <SectionErrorDigest>
+          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+            <Message message="host.common.error_id" />
+          </Suspense>
+        </SectionErrorDigest>
+      </SectionError>
     }
-    digestLabel={
-      <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-        <Message message="host.common.error_id" />
-      </Suspense>
-    }
-    retryLabel={
-      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <Message message="host.common.retry" />
-      </Suspense>
-    }
-    title={title}
   >
     {children}
   </SectionErrorCatch>

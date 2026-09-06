@@ -20,6 +20,7 @@ export default defineConfig({
     "src/popover/index.ts",
     "src/radio-group/index.ts",
     "src/section-error/index.ts",
+    "src/section-error-fallback/index.ts",
     "src/select/index.ts",
     "src/skeleton/index.ts",
     "src/switch/index.ts",

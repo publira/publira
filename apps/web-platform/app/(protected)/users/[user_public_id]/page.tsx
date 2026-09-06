@@ -9,7 +9,13 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { formatDate } from "@publira/utils";
 import {
   parseRouteParams,
@@ -105,15 +111,17 @@ const UserLoadError = ({
   message: string;
   title: string;
 }) => (
-  <SectionError
-    actions={
+  <SectionError>
+    <SectionErrorHeading>
+      <SectionErrorTitle>{title}</SectionErrorTitle>
+      <SectionErrorDescription>{message}</SectionErrorDescription>
+    </SectionErrorHeading>
+    <SectionErrorActions>
       <LinkButton render={<Link href="/users" />} variant="outline">
         {backLabel}
       </LinkButton>
-    }
-    description={message}
-    title={title}
-  />
+    </SectionErrorActions>
+  </SectionError>
 );
 
 const UserDetailContent = async ({

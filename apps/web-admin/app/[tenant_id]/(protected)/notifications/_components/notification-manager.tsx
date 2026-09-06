@@ -9,7 +9,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -81,10 +86,14 @@ const NotificationListBody = ({
   const messages = sharedCatalog(locale);
   if (listErrorMessage) {
     return (
-      <SectionError
-        description={listErrorMessage}
-        title={getMessage(messages, "admin.notifications.list_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            {getMessage(messages, "admin.notifications.list_error")}
+          </SectionErrorTitle>
+          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

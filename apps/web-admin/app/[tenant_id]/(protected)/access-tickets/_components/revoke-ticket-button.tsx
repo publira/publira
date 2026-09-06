@@ -4,7 +4,17 @@ import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
-import { ConfirmDialog } from "@publira/ui-components/dialog";
+import {
+  ConfirmDialog,
+  ConfirmDialogAction,
+  ConfirmDialogCancel,
+  ConfirmDialogContent,
+  ConfirmDialogDescription,
+  ConfirmDialogFooter,
+  ConfirmDialogHeader,
+  ConfirmDialogTitle,
+  ConfirmDialogTrigger,
+} from "@publira/ui-components/dialog";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState, useContext, useRef } from "react";
 
@@ -52,37 +62,54 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="public_id" type="hidden" value={publicId} />
       </form>
-      <ConfirmDialog
-        actionText={getMessage(
-          messages,
-          "admin.access_tickets.revoke_confirm_action"
-        )}
-        actionVariant="destructive"
-        cancelText={getMessage(messages, "admin.common.cancel")}
-        description={getMessage(
-          messages,
-          "admin.access_tickets.revoke_confirm_description"
-        )}
-        onAction={() => {
-          formRef.current?.requestSubmit();
-        }}
-        title={getMessage(
-          messages,
-          "admin.access_tickets.revoke_confirm_title"
-        )}
-        trigger={
-          <Button
-            disabled={isPending}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            {isPending
-              ? getMessage(messages, "admin.access_tickets.revoking")
-              : getMessage(messages, "admin.access_tickets.revoke")}
-          </Button>
-        }
-      />
+      <ConfirmDialog>
+        <ConfirmDialogTrigger
+          render={
+            <Button
+              disabled={isPending}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              {isPending
+                ? getMessage(messages, "admin.access_tickets.revoking")
+                : getMessage(messages, "admin.access_tickets.revoke")}
+            </Button>
+          }
+        />
+        <ConfirmDialogContent>
+          <ConfirmDialogHeader>
+            <ConfirmDialogTitle>
+              {getMessage(
+                messages,
+                "admin.access_tickets.revoke_confirm_title"
+              )}
+            </ConfirmDialogTitle>
+            <ConfirmDialogDescription>
+              {getMessage(
+                messages,
+                "admin.access_tickets.revoke_confirm_description"
+              )}
+            </ConfirmDialogDescription>
+          </ConfirmDialogHeader>
+          <ConfirmDialogFooter>
+            <ConfirmDialogCancel>
+              {getMessage(messages, "admin.common.cancel")}
+            </ConfirmDialogCancel>
+            <ConfirmDialogAction
+              onClick={() => {
+                formRef.current?.requestSubmit();
+              }}
+              variant="destructive"
+            >
+              {getMessage(
+                messages,
+                "admin.access_tickets.revoke_confirm_action"
+              )}
+            </ConfirmDialogAction>
+          </ConfirmDialogFooter>
+        </ConfirmDialogContent>
+      </ConfirmDialog>
       {state && !state.ok && state.publicId === publicId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}

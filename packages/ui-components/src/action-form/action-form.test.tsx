@@ -9,7 +9,12 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ActionForm, ActionFormSubmit } from "./action-form";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "./action-form";
 import type { FormActionState } from "./action-form";
 
 afterEach(cleanup);
@@ -29,21 +34,8 @@ const fail = (): Promise<FormActionState> =>
 describe("ActionForm", () => {
   it("shows the success message a Server Action returns", async () => {
     render(
-      <ActionForm action={succeed} submitLabel="Save">
-        <input name="role" />
-      </ActionForm>
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Role updated.")).toBeTruthy();
-    });
-  });
-
-  it("shows the success message when the submit control is ActionFormSubmit", async () => {
-    render(
       <ActionForm action={succeed}>
+        <input name="role" />
         <ActionFormSubmit>Save</ActionFormSubmit>
       </ActionForm>
     );
@@ -55,10 +47,25 @@ describe("ActionForm", () => {
     });
   });
 
+  it("the submit control shows its idle wording until the Action is in flight", () => {
+    render(
+      <ActionForm action={succeed}>
+        <ActionFormSubmit>
+          <ActionFormIdle>Save</ActionFormIdle>
+          <ActionFormPending>Saving...</ActionFormPending>
+        </ActionFormSubmit>
+      </ActionForm>
+    );
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
+    expect(screen.queryByText("Saving...")).toBeNull();
+  });
+
   it("hides the success message when showSuccess is false", async () => {
     render(
-      <ActionForm action={succeed} showSuccess={false} submitLabel="Save">
+      <ActionForm action={succeed} showSuccess={false}>
         <input name="role" />
+        <ActionFormSubmit>Save</ActionFormSubmit>
       </ActionForm>
     );
 
@@ -75,8 +82,9 @@ describe("ActionForm", () => {
 
   it("shows a failure message when showSuccess is false", async () => {
     render(
-      <ActionForm action={fail} showSuccess={false} submitLabel="Save">
+      <ActionForm action={fail} showSuccess={false}>
         <input name="role" />
+        <ActionFormSubmit>Save</ActionFormSubmit>
       </ActionForm>
     );
 

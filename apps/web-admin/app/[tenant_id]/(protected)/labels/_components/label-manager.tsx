@@ -9,7 +9,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -50,10 +55,14 @@ const LabelListBody = ({
   // list state alongside the error or operators will read it as "no labels".
   if (listErrorMessage) {
     return (
-      <SectionError
-        description={listErrorMessage}
-        title={getMessage(messages, "admin.labels.list_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            {getMessage(messages, "admin.labels.list_error")}
+          </SectionErrorTitle>
+          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

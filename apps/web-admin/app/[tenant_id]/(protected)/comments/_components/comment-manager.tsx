@@ -10,7 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -190,10 +195,14 @@ const CommentListBody = ({
   const messages = sharedCatalog(locale);
   if (listErrorMessage) {
     return (
-      <SectionError
-        description={listErrorMessage}
-        title={getMessage(messages, "admin.comments.list_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            {getMessage(messages, "admin.comments.list_error")}
+          </SectionErrorTitle>
+          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

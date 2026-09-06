@@ -2,7 +2,12 @@ import { getMessage } from "@publira/i18n";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ActionForm } from "#components/action-form";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "#components/action-form";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -38,21 +43,7 @@ const NameField = async () => {
 export const SignupForm = () => (
   <>
     <div className="space-y-6 rounded-lg border border-border/70 bg-card p-8">
-      <ActionForm
-        action={signupAction}
-        className="space-y-4"
-        pendingLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="host.auth.signup.submitting" />
-          </Suspense>
-        }
-        submitClassName="mt-6 w-full"
-        submitLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="host.auth.signup.submit" />
-          </Suspense>
-        }
-      >
+      <ActionForm action={signupAction} className="space-y-4">
         <LocaleField />
         <TenantIdField />
 
@@ -104,6 +95,18 @@ export const SignupForm = () => (
             className={fieldClassName}
           />
         </div>
+        <ActionFormSubmit className="mt-6 w-full">
+          <ActionFormIdle>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="host.auth.signup.submit" />
+            </Suspense>
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="host.auth.signup.submitting" />
+            </Suspense>
+          </ActionFormPending>
+        </ActionFormSubmit>
       </ActionForm>
     </div>
 

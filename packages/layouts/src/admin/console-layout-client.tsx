@@ -51,9 +51,10 @@ export const ConsoleMobileNavigation = ({
 );
 
 export const ConsoleMobileNavigationCloseButton = ({
-  ariaLabel,
+  "aria-label": ariaLabel,
 }: {
-  ariaLabel: string;
+  /** Names the button that closes the mobile navigation drawer. */
+  "aria-label": string;
 }) => {
   const { close } = useConsoleMobileNavigation();
 
@@ -70,9 +71,10 @@ export const ConsoleMobileNavigationCloseButton = ({
 };
 
 export const ConsoleMobileNavigationOpenButton = ({
-  ariaLabel,
+  "aria-label": ariaLabel,
 }: {
-  ariaLabel: string;
+  /** Names the button that opens the mobile navigation drawer. */
+  "aria-label": string;
 }) => {
   const { open } = useConsoleMobileNavigation();
 

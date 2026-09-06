@@ -9,7 +9,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -60,10 +65,14 @@ const CreatorListBody = ({
   // list state alongside the error or operators will read it as "no creators".
   if (listErrorMessage) {
     return (
-      <SectionError
-        description={listErrorMessage}
-        title={getMessage(messages, "admin.creators.list_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            {getMessage(messages, "admin.creators.list_error")}
+          </SectionErrorTitle>
+          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

@@ -14,10 +14,10 @@ export const SiteLayoutUserMenu = ({ children }: { children: ReactNode }) => (
 );
 
 export const SiteLayoutUserMenuTrigger = ({
-  ariaLabel,
+  "aria-label": ariaLabel,
 }: {
-  /** Already-resolved `aria-label` for the account menu trigger. */
-  ariaLabel: string;
+  /** Names the account menu trigger, which shows only an icon. */
+  "aria-label": string;
 }) => (
   <Menu.Trigger
     aria-label={ariaLabel}
@@ -64,24 +64,31 @@ export const SiteLayoutUserMenuSeparator = () => (
 
 export const SiteLayoutUserMenuLogout = ({
   action,
-  ariaLabel,
   children,
 }: {
   action: (formData: FormData) => void | Promise<void>;
-  /** Already-resolved `aria-label` for the sign-out control. */
-  ariaLabel: string;
+  children: ReactNode;
+}) => <form action={action}>{children}</form>;
+
+/**
+ * The sign-out control itself, so the caller writes its accessible name and its
+ * visible label on the button rather than handing them to the form around it.
+ */
+export const SiteLayoutUserMenuLogoutButton = ({
+  "aria-label": ariaLabel,
+  children,
+}: {
+  "aria-label"?: string;
   children: ReactNode;
 }) => (
-  <form action={action}>
-    {/* The item stays mounted through submit so its Server Action can run. */}
-    <Menu.Item
-      className={itemClassName}
-      closeOnClick={false}
-      nativeButton
-      render={<button aria-label={ariaLabel} type="submit" />}
-    >
-      <LogoutIcon aria-hidden="true" className="size-4 text-muted-foreground" />
-      {children}
-    </Menu.Item>
-  </form>
+  // The item stays mounted through submit so its Server Action can run.
+  <Menu.Item
+    className={itemClassName}
+    closeOnClick={false}
+    nativeButton
+    render={<button aria-label={ariaLabel} type="submit" />}
+  >
+    <LogoutIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+    {children}
+  </Menu.Item>
 );

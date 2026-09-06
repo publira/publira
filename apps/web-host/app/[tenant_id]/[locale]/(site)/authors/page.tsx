@@ -1,6 +1,11 @@
 import { getMessage } from "@publira/i18n";
 import { UserIcon } from "@publira/icons";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -131,10 +136,14 @@ const AuthorsListData = async ({
 
   if (!result.ok) {
     return (
-      <SectionError
-        description={result.message}
-        title={getMessage(messages, "host.authors.list_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            {getMessage(messages, "host.authors.list_error")}
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
