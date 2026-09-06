@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 
-import { cleanup, render as renderBase, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render as renderBase,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
+import type { TenantCommentModeActionState } from "../settings-types";
 import { TenantCommentModeForm } from "./tenant-comment-mode-form";
 
 vi.mock("next/navigation", () => ({
@@ -122,5 +129,35 @@ describe("TenantCommentModeForm", () => {
     expect(
       screen.getByText(/Saving now would overwrite the stored setting/u)
     ).toBeDefined();
+  });
+
+  // The Action carries the mode the form held when it was submitted, so an
+  // option picked while it is in flight would sit selected under the success
+  // message while the tenant is still on the other one.
+  it("closes the options while the save is in flight", async () => {
+    // Never resolved: the assertions are about the window the save is open in.
+    const save = Promise.withResolvers<TenantCommentModeActionState>();
+    const pendingAction = vi.fn(() => save.promise);
+
+    render(
+      <TenantCommentModeForm
+        action={pendingAction}
+        canEdit
+        initialCommentMode="disabled"
+      />
+    );
+
+    // An enabled radio carries no `aria-disabled` at all rather than "false".
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio.getAttribute("aria-disabled")).toBeNull();
+    }
+
+    fireEvent.click(submitButton());
+
+    await waitFor(() => {
+      for (const radio of screen.getAllByRole("radio")) {
+        expect(radio.getAttribute("aria-disabled")).toBe("true");
+      }
+    });
   });
 });

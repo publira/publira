@@ -100,6 +100,12 @@ export const TenantCommentModeForm = ({
   const hasLoadError = Boolean(loadErrorMessage);
   const fieldsDisabled = !canEdit || hasLoadError;
 
+  // The options close while the save is in flight as well. The Action carries
+  // the mode the form held when it was submitted, so a pick made in the
+  // meantime would sit selected under "How comments are published was saved."
+  // while the tenant is on the other one.
+  const optionsDisabled = fieldsDisabled || isPending;
+
   return (
     <Card>
       <CardHeader>
@@ -122,7 +128,7 @@ export const TenantCommentModeForm = ({
             <FieldContent>
               <RadioGroup
                 id="tenant_comment_mode"
-                items={commentModeItems(messages, fieldsDisabled)}
+                items={commentModeItems(messages, optionsDisabled)}
                 onValueChange={(value) => {
                   if (isTenantCommentMode(value)) {
                     setCommentMode(value);
