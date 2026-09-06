@@ -34,6 +34,10 @@ type PlatformSettings struct {
 	// resolves the tenant's. Never empty in a response — a settings row that
 	// names no supported locale fails the read instead.
 	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
+	// Version of the settings row these values were read at. It moves with every
+	// write, so a caller can state which version its save is based on. Never zero
+	// in a response: a row that cannot be read fails the read instead.
+	Revision      int64 `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -80,6 +84,13 @@ func (x *PlatformSettings) GetDefaultLocale() string {
 		return x.DefaultLocale
 	}
 	return ""
+}
+
+func (x *PlatformSettings) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
 }
 
 type GetPlatformSettingsRequest struct {
@@ -170,8 +181,14 @@ type UpdatePlatformSettingsRequest struct {
 	// sends back the locale it read. Unknown or blank codes are rejected before
 	// any write.
 	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Required: the revision the values in this request were derived from, as
+	// read from PlatformSettings.revision. Zero states that no settings row is
+	// expected to exist yet. The write is refused with FAILED_PRECONDITION when
+	// the stored row moved on, so a save that read one field before another
+	// session changed it cannot roll that change back.
+	ExpectedRevision int64 `protobuf:"varint,3,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UpdatePlatformSettingsRequest) Reset() {
@@ -216,6 +233,13 @@ func (x *UpdatePlatformSettingsRequest) GetDefaultLocale() string {
 		return x.DefaultLocale
 	}
 	return ""
+}
+
+func (x *UpdatePlatformSettingsRequest) GetExpectedRevision() int64 {
+	if x != nil {
+		return x.ExpectedRevision
+	}
+	return 0
 }
 
 type UpdatePlatformSettingsResponse struct {
@@ -266,16 +290,18 @@ var File_publira_platform_v1_settings_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_settings_proto_rawDesc = "" +
 	"\n" +
-	"\"publira/platform/v1/settings.proto\x12\x13publira.platform.v1\"d\n" +
+	"\"publira/platform/v1/settings.proto\x12\x13publira.platform.v1\"\x80\x01\n" +
 	"\x10PlatformSettings\x12)\n" +
 	"\x10default_timezone\x18\x01 \x01(\tR\x0fdefaultTimezone\x12%\n" +
-	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"\x1c\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\x12\x1a\n" +
+	"\brevision\x18\x03 \x01(\x03R\brevision\"\x1c\n" +
 	"\x1aGetPlatformSettingsRequest\"`\n" +
 	"\x1bGetPlatformSettingsResponse\x12A\n" +
-	"\bsettings\x18\x01 \x01(\v2%.publira.platform.v1.PlatformSettingsR\bsettings\"q\n" +
+	"\bsettings\x18\x01 \x01(\v2%.publira.platform.v1.PlatformSettingsR\bsettings\"\x9e\x01\n" +
 	"\x1dUpdatePlatformSettingsRequest\x12)\n" +
 	"\x10default_timezone\x18\x01 \x01(\tR\x0fdefaultTimezone\x12%\n" +
-	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"c\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\x12+\n" +
+	"\x11expected_revision\x18\x03 \x01(\x03R\x10expectedRevision\"c\n" +
 	"\x1eUpdatePlatformSettingsResponse\x12A\n" +
 	"\bsettings\x18\x01 \x01(\v2%.publira.platform.v1.PlatformSettingsR\bsettings2\x9b\x02\n" +
 	"\x17PlatformSettingsService\x12z\n" +

@@ -62,7 +62,9 @@ const (
 
 	// Platform-wide settings.
 	testGetPlatformConfigQuery           = "-- name: GetPlatformConfig :one\n"
-	testUpsertPlatformSettingsQuery      = "-- name: UpsertPlatformSettings :one\n"
+	testLockPlatformConfigQuery          = "-- name: LockPlatformConfig :one\n"
+	testInsertPlatformSettingsQuery      = "-- name: InsertPlatformSettings :one\n"
+	testUpdatePlatformSettingsQuery      = "-- name: UpdatePlatformSettings :one\n"
 	testUpsertPlatformDefaultLocaleQuery = "-- name: UpsertPlatformDefaultLocale :one\n"
 
 	// End users.
@@ -170,14 +172,20 @@ func integrationTenantColumns() []string {
 }
 
 func platformConfigColumns() []string {
-	return []string{"singleton", "default_timezone", "default_locale", "created_at", "updated_at"}
+	return []string{"singleton", "default_timezone", "default_locale", "created_at", "updated_at", "revision"}
+}
+
+// platformConfigRow answers a settings row read with the given values. The
+// revision is the version a save states it is based on.
+func platformConfigRow(defaultTimezone, defaultLocale string, revision int64, now time.Time) *sqlmock.Rows {
+	return sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now, revision)
 }
 
 // expectPlatformConfigLookup expects the read of the platform settings row and
 // answers it with the given default time zone and locale.
 func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLocale string, now time.Time) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now))
+		WillReturnRows(platformConfigRow(defaultTimezone, defaultLocale, 1, now))
 }
 
 func integrationOperatorColumns() []string {

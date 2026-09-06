@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -97,7 +96,7 @@ func TestPlatformAuditorCanReadPlatformSettings(t *testing.T) {
 	now := time.Now()
 	expectIntegrationAuth(mock, uuid.Nil, uuid.Must(uuid.NewV7()), auth.RolePlatformAuditor, now)
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "Asia/Tokyo", "ja", now, now))
+		WillReturnRows(platformConfigRow("Asia/Tokyo", "ja", 1, now))
 
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
 	resp, err := client.GetPlatformSettings(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetPlatformSettingsRequest{}))

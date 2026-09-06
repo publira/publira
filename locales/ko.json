@@ -2484,6 +2484,7 @@
       "port": "포트",
       "port_invalid": "포트는 1~65535 사이의 정수로 입력해 주세요.",
       "reply_to": "회신 주소(선택)",
+      "save_conflict": "다른 세션에서 플랫폼 설정을 변경해 저장되지 않았습니다. 화면을 새로 고친 뒤 다시 시도해 주세요.",
       "smtp_card_description": "플랫폼 기본 SMTP 설정을 관리합니다. 연결 테스트는 저장과 별도로 실행합니다.",
       "smtp_card_title": "메일 설정",
       "smtp_encryption": "암호화 방식",

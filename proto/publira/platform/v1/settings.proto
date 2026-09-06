@@ -16,6 +16,10 @@ message PlatformSettings {
   // resolves the tenant's. Never empty in a response — a settings row that
   // names no supported locale fails the read instead.
   string default_locale = 2;
+  // Version of the settings row these values were read at. It moves with every
+  // write, so a caller can state which version its save is based on. Never zero
+  // in a response: a row that cannot be read fails the read instead.
+  int64 revision = 3;
 }
 
 message GetPlatformSettingsRequest {}
@@ -31,6 +35,12 @@ message UpdatePlatformSettingsRequest {
   // sends back the locale it read. Unknown or blank codes are rejected before
   // any write.
   string default_locale = 2;
+  // Required: the revision the values in this request were derived from, as
+  // read from PlatformSettings.revision. Zero states that no settings row is
+  // expected to exist yet. The write is refused with FAILED_PRECONDITION when
+  // the stored row moved on, so a save that read one field before another
+  // session changed it cannot roll that change back.
+  int64 expected_revision = 3;
 }
 
 message UpdatePlatformSettingsResponse {

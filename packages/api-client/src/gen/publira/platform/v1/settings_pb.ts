@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/settings.proto.
  */
 export const file_publira_platform_v1_settings: GenFile = /*@__PURE__*/
-  fileDesc("CiJwdWJsaXJhL3BsYXRmb3JtL3YxL3NldHRpbmdzLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIkQKEFBsYXRmb3JtU2V0dGluZ3MSGAoQZGVmYXVsdF90aW1lem9uZRgBIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgCIAEoCSIcChpHZXRQbGF0Zm9ybVNldHRpbmdzUmVxdWVzdCJWChtHZXRQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2USNwoIc2V0dGluZ3MYASABKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2V0dGluZ3MiUQodVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QSGAoQZGVmYXVsdF90aW1lem9uZRgBIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgCIAEoCSJZCh5VcGRhdGVQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2USNwoIc2V0dGluZ3MYASABKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2V0dGluZ3MymwIKF1BsYXRmb3JtU2V0dGluZ3NTZXJ2aWNlEnoKE0dldFBsYXRmb3JtU2V0dGluZ3MSLy5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldFBsYXRmb3JtU2V0dGluZ3NSZXF1ZXN0GjAucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2UiABKDAQoWVXBkYXRlUGxhdGZvcm1TZXR0aW5ncxIyLnB1YmxpcmEucGxhdGZvcm0udjEuVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QaMy5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZVBsYXRmb3JtU2V0dGluZ3NSZXNwb25zZSIAQl1aW2dpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
+  fileDesc("CiJwdWJsaXJhL3BsYXRmb3JtL3YxL3NldHRpbmdzLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIlYKEFBsYXRmb3JtU2V0dGluZ3MSGAoQZGVmYXVsdF90aW1lem9uZRgBIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgCIAEoCRIQCghyZXZpc2lvbhgDIAEoAyIcChpHZXRQbGF0Zm9ybVNldHRpbmdzUmVxdWVzdCJWChtHZXRQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2USNwoIc2V0dGluZ3MYASABKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2V0dGluZ3MibAodVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QSGAoQZGVmYXVsdF90aW1lem9uZRgBIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgCIAEoCRIZChFleHBlY3RlZF9yZXZpc2lvbhgDIAEoAyJZCh5VcGRhdGVQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2USNwoIc2V0dGluZ3MYASABKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2V0dGluZ3MymwIKF1BsYXRmb3JtU2V0dGluZ3NTZXJ2aWNlEnoKE0dldFBsYXRmb3JtU2V0dGluZ3MSLy5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldFBsYXRmb3JtU2V0dGluZ3NSZXF1ZXN0GjAucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2UiABKDAQoWVXBkYXRlUGxhdGZvcm1TZXR0aW5ncxIyLnB1YmxpcmEucGxhdGZvcm0udjEuVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QaMy5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZVBsYXRmb3JtU2V0dGluZ3NSZXNwb25zZSIAQl1aW2dpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
 
 /**
  * Platform-wide settings that are not tied to a single tenant. Email/SMTP has its
@@ -37,6 +37,15 @@ export type PlatformSettings = Message<"publira.platform.v1.PlatformSettings"> &
    * @generated from field: string default_locale = 2;
    */
   defaultLocale: string;
+
+  /**
+   * Version of the settings row these values were read at. It moves with every
+   * write, so a caller can state which version its save is based on. Never zero
+   * in a response: a row that cannot be read fails the read instead.
+   *
+   * @generated from field: int64 revision = 3;
+   */
+  revision: bigint;
 };
 
 /**
@@ -94,6 +103,17 @@ export type UpdatePlatformSettingsRequest = Message<"publira.platform.v1.UpdateP
    * @generated from field: string default_locale = 2;
    */
   defaultLocale: string;
+
+  /**
+   * Required: the revision the values in this request were derived from, as
+   * read from PlatformSettings.revision. Zero states that no settings row is
+   * expected to exist yet. The write is refused with FAILED_PRECONDITION when
+   * the stored row moved on, so a save that read one field before another
+   * session changed it cannot roll that change back.
+   *
+   * @generated from field: int64 expected_revision = 3;
+   */
+  expectedRevision: bigint;
 };
 
 /**

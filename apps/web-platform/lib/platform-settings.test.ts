@@ -41,6 +41,15 @@ vi.mock("./api-client", () => ({
   resolveAccessToken: mockResolveAccessToken,
 }));
 
+/**
+ * `revision` is an int64, so the generated client hands it over as a `bigint`.
+ * A save states the revision its read answered, and the write moves the row on
+ * to the next one. (`BigInt(...)` rather than `3n`: the app's TypeScript target
+ * is ES2017, which has no bigint literal.)
+ */
+const storedRevision = 3;
+const savedRevision = 4;
+
 describe("platform-settings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -144,10 +153,18 @@ describe("platform-settings", () => {
 
   it("returns the saved default time zone when updating succeeds", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "en", defaultTimezone: "Asia/Tokyo" },
+      settings: {
+        defaultLocale: "en",
+        defaultTimezone: "Asia/Tokyo",
+        revision: BigInt(storedRevision),
+      },
     });
     mockUpdatePlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
+      settings: {
+        defaultLocale: "en",
+        defaultTimezone: "Europe/Paris",
+        revision: BigInt(savedRevision),
+      },
     });
 
     const { updatePlatformDefaultTimezone } =
@@ -158,11 +175,44 @@ describe("platform-settings", () => {
     expect(result).toEqual({ defaultTimezone: "Europe/Paris", ok: true });
     // `default_locale` is required now, so a zone-only save reads the stored
     // language back and sends it along. Posting back the value the screen holds
-    // would revert a language saved from another session.
+    // would revert a language saved from another session. The revision that
+    // read answered goes with it, so the server refuses the save outright if
+    // the language moved on again in between.
     expect(mockUpdatePlatformSettingsApi).toHaveBeenCalledWith(
-      { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
+      {
+        defaultLocale: "en",
+        defaultTimezone: "Europe/Paris",
+        expectedRevision: BigInt(storedRevision),
+      },
       { headers: { Authorization: "Bearer session-token" } }
     );
+  });
+
+  it("asks for a reload when the server refuses a time zone save as stale", async () => {
+    mockGetPlatformSettingsApi.mockResolvedValueOnce({
+      settings: {
+        defaultLocale: "en",
+        defaultTimezone: "Asia/Tokyo",
+        revision: BigInt(storedRevision),
+      },
+    });
+    mockUpdatePlatformSettingsApi.mockRejectedValueOnce(
+      new ConnectError(
+        "platform settings have changed since they were read",
+        Code.FailedPrecondition
+      )
+    );
+
+    const { updatePlatformDefaultTimezone } =
+      await import("./platform-settings");
+
+    const result = await updatePlatformDefaultTimezone("Europe/Paris", "en");
+
+    expect(result).toEqual({
+      message:
+        "Another session changed the platform settings, so nothing was saved. Reload the screen and try again.",
+      ok: false,
+    });
   });
 
   it("saves nothing when the read before a time zone save fails", async () => {
@@ -181,7 +231,11 @@ describe("platform-settings", () => {
 
   it("returns the server message for invalid_argument during updates", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "ja", defaultTimezone: "Asia/Tokyo" },
+      settings: {
+        defaultLocale: "ja",
+        defaultTimezone: "Asia/Tokyo",
+        revision: BigInt(storedRevision),
+      },
     });
     mockUpdatePlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError(
@@ -203,7 +257,11 @@ describe("platform-settings", () => {
 
   it("returns a shared error message when permission is denied", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "ja", defaultTimezone: "Asia/Tokyo" },
+      settings: {
+        defaultLocale: "ja",
+        defaultTimezone: "Asia/Tokyo",
+        revision: BigInt(storedRevision),
+      },
     });
     mockUpdatePlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError("platform owner required", Code.PermissionDenied)
@@ -218,10 +276,18 @@ describe("platform-settings", () => {
   });
   it("reloads and sends the current time zone when updating the default locale", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "ja", defaultTimezone: "Europe/Paris" },
+      settings: {
+        defaultLocale: "ja",
+        defaultTimezone: "Europe/Paris",
+        revision: BigInt(storedRevision),
+      },
     });
     mockUpdatePlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
+      settings: {
+        defaultLocale: "en",
+        defaultTimezone: "Europe/Paris",
+        revision: BigInt(savedRevision),
+      },
     });
 
     const { updatePlatformDefaultLocale } = await import("./platform-settings");
@@ -230,11 +296,42 @@ describe("platform-settings", () => {
 
     expect(result).toEqual({ defaultLocale: "en", ok: true });
     // The server's current value is sent rather than the one the screen holds,
-    // so a time zone saved in another session is not rolled back.
+    // so a time zone saved in another session is not rolled back, and the
+    // revision it came with lets the server refuse the save if it moved again.
     expect(mockUpdatePlatformSettingsApi).toHaveBeenCalledWith(
-      { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
+      {
+        defaultLocale: "en",
+        defaultTimezone: "Europe/Paris",
+        expectedRevision: BigInt(storedRevision),
+      },
       { headers: { Authorization: "Bearer session-token" } }
     );
+  });
+
+  it("asks for a reload when the server refuses a default locale save as stale", async () => {
+    mockGetPlatformSettingsApi.mockResolvedValueOnce({
+      settings: {
+        defaultLocale: "ja",
+        defaultTimezone: "Europe/Paris",
+        revision: BigInt(storedRevision),
+      },
+    });
+    mockUpdatePlatformSettingsApi.mockRejectedValueOnce(
+      new ConnectError(
+        "platform settings have changed since they were read",
+        Code.FailedPrecondition
+      )
+    );
+
+    const { updatePlatformDefaultLocale } = await import("./platform-settings");
+
+    const result = await updatePlatformDefaultLocale("en", "en");
+
+    expect(result).toEqual({
+      message:
+        "Another session changed the platform settings, so nothing was saved. Reload the screen and try again.",
+      ok: false,
+    });
   });
 
   it("does not save when reading before a default locale update fails", async () => {
@@ -252,7 +349,11 @@ describe("platform-settings", () => {
 
   it("returns a shared error message when updating the default locale fails", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "ja", defaultTimezone: "Asia/Tokyo" },
+      settings: {
+        defaultLocale: "ja",
+        defaultTimezone: "Asia/Tokyo",
+        revision: BigInt(storedRevision),
+      },
     });
     mockUpdatePlatformSettingsApi.mockRejectedValueOnce(
       new ConnectError(
