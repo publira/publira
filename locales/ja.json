@@ -599,6 +599,7 @@
         "uploading": "入稿中...",
         "uploaded": "この比率の画像を差し替えました。",
         "image_required": "入稿する画像を選択してください。",
+        "image_invalid": "画像を確認してください。この比率には JPEG/PNG/WebP・10MB以下・{$width}x{$height}px 以上の画像を選び、もう一度お試しください。",
         "variant_type_missing": "対象の比率が指定されていません。"
       }
     },

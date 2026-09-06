@@ -599,6 +599,7 @@
         "uploading": "Uploading...",
         "uploaded": "The image for this ratio was replaced.",
         "image_required": "Select an image to upload.",
+        "image_invalid": "Check the image. For this ratio, choose a JPEG, PNG, or WebP image no larger than 10MB and at least {$width}x{$height}px, then try again.",
         "variant_type_missing": "The aspect ratio is missing."
       }
     },

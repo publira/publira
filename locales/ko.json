@@ -599,6 +599,7 @@
         "uploading": "업로드 중...",
         "uploaded": "이 비율의 이미지를 교체했습니다.",
         "image_required": "업로드할 이미지를 선택해 주세요.",
+        "image_invalid": "이미지를 확인해 주세요. 이 비율에는 JPEG, PNG, WebP 형식으로 10MB 이하, {$width}x{$height}px 이상인 이미지를 선택한 뒤 다시 시도해 주세요.",
         "variant_type_missing": "대상 비율이 지정되지 않았습니다."
       }
     },

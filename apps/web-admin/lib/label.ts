@@ -23,7 +23,10 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
-import { mentionsImageRejection } from "./image-rejection";
+import {
+  mentionsAspectImageRejection,
+  mentionsImageRejection,
+} from "./image-rejection";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {
@@ -448,6 +451,12 @@ export const getLabel = async (
 
 export type LabelEyeCatchAspectResult =
   | { ok: true; label: LabelItem }
+  /**
+   * The API refused the image itself. It carries no message: the minimum to
+   * name is the one of the ratio that was refused, and only the slot that
+   * submitted knows which ratio that is and what size it asks for.
+   */
+  | { ok: false; imageRejected: true }
   | { ok: false; message: string };
 
 /**
@@ -497,6 +506,9 @@ export const uploadLabelEyeCatchAspectImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+    if (mentionsAspectImageRejection(error)) {
+      return { imageRejected: true, ok: false };
+    }
     return {
       message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
       ok: false,

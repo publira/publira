@@ -324,9 +324,11 @@ test.describe("admin eye-catch upload", () => {
       EYE_CATCH_UNDERSIZED_ASPECT,
       EYE_CATCH_UNDERSIZED_FIXTURE
     );
+    // The refusal names the minimum of the ratio it was refused for, not the
+    // 2400x3200px a whole eye-catch asks for.
     await expectMessage(
       aspectSlot(page, EYE_CATCH_UNDERSIZED_ASPECT),
-      "Check the information you entered."
+      "For this ratio, choose a JPEG, PNG, or WebP image no larger than 10MB and at least 1200x1600px"
     );
 
     expect(await deliveredEyeCatch(page, request)).toEqual(before);
