@@ -18,6 +18,13 @@ const notificationMessages = {
   "platform.notifications.columns.at": "Date and time",
   "platform.notifications.columns.content": "Details",
   "platform.notifications.columns.status": "Status",
+  "platform.notifications.empty_description":
+    "Notifications for operational events, such as failed scheduled publishing, will appear here.",
+  "platform.notifications.empty_page_description":
+    "It may have been deleted in another operation. Move to the previous or next page.",
+  "platform.notifications.empty_page_title":
+    "There are no notifications to show on this page.",
+  "platform.notifications.empty_title": "No notifications yet.",
   "platform.notifications.list_error": "Could not display notifications",
   "platform.notifications.mark_all_read": "Mark all as read",
   "platform.notifications.mark_read": "Mark as read",
