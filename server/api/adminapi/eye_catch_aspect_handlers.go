@@ -48,6 +48,33 @@ func resolveEyeCatchAspect(variantType string) (imageproc.EyeCatchAspect, error)
 	)
 }
 
+// eyeCatchCropRect carries the requested rectangle into imageproc. A nil
+// message keeps the centre crop, which is what every upload did before the
+// rectangle existed.
+func eyeCatchCropRect(crop *publirattypesv1.ImageCropRect) *imageproc.CropRect {
+	if crop == nil {
+		return nil
+	}
+	return &imageproc.CropRect{
+		X:      int(crop.GetX()),
+		Y:      int(crop.GetY()),
+		Width:  int(crop.GetWidth()),
+		Height: int(crop.GetHeight()),
+	}
+}
+
+// eyeCatchAspectBuildError reports a rejected upload against the field that
+// caused it: the rectangle when the rectangle is at fault, and the image
+// otherwise. Blaming image_data for a bad selection would ask an editor to
+// replace a file that is fine.
+func eyeCatchAspectBuildError(err error) error {
+	field := "image_data"
+	if errors.Is(err, imageproc.ErrInvalidCrop) {
+		field = "crop"
+	}
+	return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, field)
+}
+
 // aspectImageObjectKey names the object of one delivered size of a ratio.
 // `uploadID` is new on every upload, so replacing a ratio writes new objects
 // instead of overwriting the ones the previous rows still name — those rows
@@ -102,9 +129,9 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("series has no eye catch image yet"))
 	}
 
-	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType)
+	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, eyeCatchCropRect(req.Msg.Crop))
 	if err != nil {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "image_data")
+		return nil, eyeCatchAspectBuildError(err)
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -253,9 +280,9 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("label has no eye catch image yet"))
 	}
 
-	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType)
+	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, eyeCatchCropRect(req.Msg.Crop))
 	if err != nil {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "image_data")
+		return nil, eyeCatchAspectBuildError(err)
 	}
 
 	tx, err := s.beginTenantTx(ctx)

@@ -3,6 +3,7 @@ package imageproc_test
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"hash/crc32"
 	"image"
 	"image/color"
@@ -40,6 +41,40 @@ func makePNG(t *testing.T, width, height int) []byte {
 		t.Fatalf("png.Encode: %v", err)
 	}
 	return buf.Bytes()
+}
+
+// makeHalvedPNG encodes a PNG whose left half is red and right half blue, so
+// a test can tell which part of it a crop kept.
+func makeHalvedPNG(t *testing.T, width, height int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := range height {
+		for x := range width {
+			if x < width/2 {
+				img.Set(x, y, color.RGBA{R: 255, A: 255})
+				continue
+			}
+			img.Set(x, y, color.RGBA{B: 255, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("png.Encode: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// sampleCenter decodes an encoded image and reports the 8-bit color at its
+// centre.
+func sampleCenter(t *testing.T, encoded []byte) (r, g, b uint32) {
+	t.Helper()
+	img, _, err := image.Decode(bytes.NewReader(encoded))
+	if err != nil {
+		t.Fatalf("image.Decode: %v", err)
+	}
+	bounds := img.Bounds()
+	cr, cg, cb, _ := img.At(bounds.Min.X+bounds.Dx()/2, bounds.Min.Y+bounds.Dy()/2).RGBA()
+	return cr >> 8, cg >> 8, cb >> 8
 }
 
 // --- TestBuildVariants ---
@@ -226,7 +261,7 @@ func TestBuildEyeCatchVariants_RejectsTooSmallImage(t *testing.T) {
 
 func TestBuildEyeCatchAspectVariants_GeneratesOneRatioOnly(t *testing.T) {
 	raw := makeJPEG(t, 3200, 1800)
-	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "landscape")
+	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "landscape", nil)
 	if err != nil {
 		t.Fatalf("BuildEyeCatchAspectVariants: %v", err)
 	}
@@ -260,7 +295,7 @@ func TestBuildEyeCatchAspectVariants_CropsSourceToTheRequestedRatio(t *testing.T
 	// A 1:1 source asked for as og (1200:630) has to come back at that ratio,
 	// or delivery would hand the OG slot a square image.
 	raw := makeJPEG(t, 2000, 2000)
-	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "og")
+	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "og", nil)
 	if err != nil {
 		t.Fatalf("BuildEyeCatchAspectVariants: %v", err)
 	}
@@ -276,7 +311,7 @@ func TestBuildEyeCatchAspectVariants_RejectsSourceBelowTheRatioMinimum(t *testin
 	// Tall enough for portrait, one pixel short of the width its largest
 	// delivered size needs.
 	raw := makeJPEG(t, 1199, 3200)
-	_, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "portrait")
+	_, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "portrait", nil)
 	if err == nil {
 		t.Fatal("want error for a source below the portrait minimum, got nil")
 	}
@@ -287,7 +322,7 @@ func TestBuildEyeCatchAspectVariants_AcceptsSourceBelowTheWholeEyeCatchMinimum(t
 	// out of that one image. A portrait upload only has to cover the portrait
 	// sizes.
 	raw := makeJPEG(t, 1200, 1600)
-	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "portrait")
+	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "portrait", nil)
 	if err != nil {
 		t.Fatalf("BuildEyeCatchAspectVariants: %v", err)
 	}
@@ -298,9 +333,92 @@ func TestBuildEyeCatchAspectVariants_AcceptsSourceBelowTheWholeEyeCatchMinimum(t
 
 func TestBuildEyeCatchAspectVariants_RejectsUnknownRatio(t *testing.T) {
 	raw := makeJPEG(t, 2400, 3200)
-	_, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "banner")
+	_, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "banner", nil)
 	if err == nil {
 		t.Fatal("want error for an unknown ratio, got nil")
+	}
+}
+
+func TestBuildEyeCatchAspectVariants_CutsAtTheGivenRectangle(t *testing.T) {
+	// The source is red on the left and blue on the right, and the rectangle
+	// names the red half. A centre crop of this 2.5:1 source lands its own
+	// centre just inside the blue half, so red here can only have come from
+	// the rectangle.
+	raw := makeHalvedPNG(t, 4000, 1600)
+	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/png", "landscape", &imageproc.CropRect{
+		X:      0,
+		Y:      0,
+		Width:  2000,
+		Height: 1600,
+	})
+	if err != nil {
+		t.Fatalf("BuildEyeCatchAspectVariants: %v", err)
+	}
+	for _, variant := range variants {
+		r, _, b := sampleCenter(t, variant.Data)
+		if r < 200 || b > 40 {
+			t.Fatalf("variant %q centre is r=%d b=%d, want the red left half", variant.Label, r, b)
+		}
+	}
+}
+
+func TestBuildEyeCatchAspectVariants_RectangleCoveringTheWholeSourceMatchesTheCentreCrop(t *testing.T) {
+	// A rectangle naming the whole upload has nothing left to choose, so it
+	// has to deliver exactly what an upload with no rectangle delivers.
+	raw := makeHalvedPNG(t, 4000, 1600)
+	centre, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/png", "landscape", nil)
+	if err != nil {
+		t.Fatalf("BuildEyeCatchAspectVariants without a rectangle: %v", err)
+	}
+	whole, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/png", "landscape", &imageproc.CropRect{
+		X:      0,
+		Y:      0,
+		Width:  4000,
+		Height: 1600,
+	})
+	if err != nil {
+		t.Fatalf("BuildEyeCatchAspectVariants with a whole-source rectangle: %v", err)
+	}
+	if len(whole) != len(centre) {
+		t.Fatalf("got %d variants, want %d", len(whole), len(centre))
+	}
+	for i, variant := range whole {
+		if variant.Label != centre[i].Label || !bytes.Equal(variant.Data, centre[i].Data) {
+			t.Fatalf("variant %d (%q) differs from the centre crop %q", i, variant.Label, centre[i].Label)
+		}
+	}
+}
+
+func TestBuildEyeCatchAspectVariants_RejectsARectangleOutsideTheSource(t *testing.T) {
+	raw := makeJPEG(t, 3200, 1800)
+	for _, tt := range []struct {
+		name string
+		crop imageproc.CropRect
+	}{
+		{"past the right edge", imageproc.CropRect{X: 1600, Y: 0, Width: 1601, Height: 900}},
+		{"past the bottom edge", imageproc.CropRect{X: 0, Y: 900, Width: 1600, Height: 901}},
+		{"negative origin", imageproc.CropRect{X: -1, Y: 0, Width: 1600, Height: 900}},
+		{"empty", imageproc.CropRect{X: 0, Y: 0, Width: 0, Height: 0}},
+	} {
+		_, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "landscape", &tt.crop)
+		if !errors.Is(err, imageproc.ErrInvalidCrop) {
+			t.Fatalf("%s: error = %v, want ErrInvalidCrop", tt.name, err)
+		}
+	}
+}
+
+func TestBuildEyeCatchAspectVariants_RejectsARectangleBelowTheRatioMinimum(t *testing.T) {
+	// The upload is large enough on its own; the selection taken out of it is
+	// not, so the rectangle is what the error is about.
+	raw := makeJPEG(t, 3200, 1800)
+	_, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", "landscape", &imageproc.CropRect{
+		X:      0,
+		Y:      0,
+		Width:  1599,
+		Height: 900,
+	})
+	if !errors.Is(err, imageproc.ErrInvalidCrop) {
+		t.Fatalf("error = %v, want ErrInvalidCrop", err)
 	}
 }
 
