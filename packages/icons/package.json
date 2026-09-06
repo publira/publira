@@ -43,6 +43,10 @@
       "types": "./dist/collection-icon.d.mts",
       "default": "./dist/collection-icon.mjs"
     },
+    "./comment-icon": {
+      "types": "./dist/comment-icon.d.mts",
+      "default": "./dist/comment-icon.mjs"
+    },
     "./dashboard-icon": {
       "types": "./dist/dashboard-icon.d.mts",
       "default": "./dist/dashboard-icon.mjs"

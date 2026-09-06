@@ -231,6 +231,17 @@ export const ConsoleSidebarNavigationContent = ({
   children: ReactNode;
 }) => <span className="grid gap-1">{children}</span>;
 
+/**
+ * The label row of a navigation item: the label itself, plus whatever the
+ * console puts beside it. A slot rather than a `badge` prop on the item, so an
+ * item with nothing to show renders exactly the markup it did before.
+ */
+export const ConsoleSidebarNavigationItemHeading = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <span className="flex items-center gap-2">{children}</span>;
+
 export const ConsoleSidebarNavigationItemLabel = ({
   children,
 }: {
