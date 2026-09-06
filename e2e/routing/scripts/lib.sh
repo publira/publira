@@ -130,6 +130,17 @@ ROUTING_TRACE_CONTEXT_HEADERS=(
   "baggage: publira=forged"
 )
 
+# Forwarded headers a caller could send ahead of the edge. echo.py reports
+# each of them back, so a probe can assert the edge replaced the value rather
+# than passing the caller's through: the client IP a backend records is the
+# first address in X-Forwarded-For, and the CSRF origin check reads the other
+# two.
+ROUTING_FORGED_FORWARDED_HEADERS=(
+  "X-Forwarded-For: 203.0.113.9"
+  "X-Forwarded-Host: forged.example.test"
+  "X-Forwarded-Proto: https"
+)
+
 routing_log() {
   printf '[routing:%s] %s\n' "${ROUTING_PROXY}" "$*"
 }
@@ -283,6 +294,57 @@ assert_trace_context_stripped() {
   done
 
   routing_log "ok: ${name} → ${want_backend}${want_path} without trace context"
+}
+
+# The headers a backend is promised, on a request that forges all of them.
+# `Host` arrives as the browser sent it, `X-Forwarded-Host` and
+# `X-Forwarded-Proto` describe this request rather than the caller's claim,
+# and `X-Forwarded-For` is the peer address alone — appending would leave the
+# forged address in front of the real one, where the backend reads it.
+assert_forwarded_headers() {
+  local name="$1" method="$2" host="$3" path="$4" want_backend="$5"
+  local out code body actual_backend value
+
+  out="$(http_probe "${method}" "${host}" "${path}" "${ROUTING_FORGED_FORWARDED_HEADERS[@]}")"
+  code="$(printf '%s' "${out}" | sed -n '1p')"
+  body="$(printf '%s' "${out}" | tail -n +2)"
+
+  if [[ "${code}" != "200" ]]; then
+    routing_fail "${name}: HTTP ${code} (want 200) host=${host} ${method} ${path} body=${body}"
+  fi
+
+  actual_backend="$(json_string_field "${body}" backend)"
+  if [[ "${actual_backend}" != "${want_backend}" ]]; then
+    routing_fail "${name}: backend '${actual_backend}' (want '${want_backend}') host=${host} ${method} ${path} body=${body}"
+  fi
+
+  value="$(json_string_field "${body}" host)"
+  if [[ "${value}" != "${host}" ]]; then
+    routing_fail "${name}: Host '${value}' (want '${host}' unrewritten) ${method} ${path} body=${body}"
+  fi
+
+  value="$(json_string_field "${body}" x-forwarded-host)"
+  if [[ "${value}" != "${host}" ]]; then
+    routing_fail "${name}: X-Forwarded-Host '${value}' (want '${host}') ${method} ${path} body=${body}"
+  fi
+
+  value="$(json_string_field "${body}" x-forwarded-proto)"
+  if [[ "${value}" != "http" ]]; then
+    routing_fail "${name}: X-Forwarded-Proto '${value}' (want 'http') ${method} ${path} body=${body}"
+  fi
+
+  value="$(json_string_field "${body}" x-forwarded-for)"
+  if [[ -z "${value}" ]]; then
+    routing_fail "${name}: X-Forwarded-For is empty (want the peer address) ${method} ${path} body=${body}"
+  fi
+  if [[ "${value}" == *"203.0.113.9"* ]]; then
+    routing_fail "${name}: X-Forwarded-For '${value}' kept the forged address ${method} ${path} body=${body}"
+  fi
+  if [[ "${value}" == *,* ]]; then
+    routing_fail "${name}: X-Forwarded-For '${value}' is a list (want the peer address alone) ${method} ${path} body=${body}"
+  fi
+
+  routing_log "ok: ${name} → ${want_backend} with the edge's own forwarded headers"
 }
 
 # The edge answers and the catch-all reaches web-host. Readiness for the

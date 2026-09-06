@@ -53,9 +53,9 @@ Readiness differs by proxy. Traefik is asked through its insecure API for the si
 
 ## What it verifies
 
-The echo server responds with `{"backend","port","path","host","method"}` and the received `traceparent`, `tracestate`, and `baggage` values, so every probe can assert both **which backend received a request** and **the path it saw** after prefix removal.
+The echo server responds with `{"backend","port","path","host","method"}`, the received `traceparent`, `tracestate`, and `baggage` values, and the received `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`, so every probe can assert **which backend received a request**, **the path it saw** after prefix removal, and **the headers it was given**.
 
-`scripts/test.sh` is the list of probes, one per row of the contract: host routing including a numbered admin host and a `Host` carrying a port, `/api` prefix removal, the `/api/v1` exception that keeps the Next.js Route Handlers on their own app, the `/images` routes on the public and the admin host, and — against every one of the six backends — forged `traceparent`, `tracestate`, and `baggage` values that must be gone by the time the request arrives.
+`scripts/test.sh` is the list of probes, one per row of the contract: host routing including a numbered admin host and a `Host` carrying a port, `/api` prefix removal, the `/api/v1` exception that keeps the Next.js Route Handlers on their own app, and the `/images` routes on the public and the admin host. Two probe sets then run against every one of the six backends: forged `traceparent`, `tracestate`, and `baggage` values that must be gone by the time the request arrives, and forged `X-Forwarded-For` / `X-Forwarded-Host` / `X-Forwarded-Proto` values that the edge must have replaced with its own — the client IP a backend records is the first address in `X-Forwarded-For`, and the CSRF origin check reads the other two.
 
 ## Layout
 
@@ -86,6 +86,7 @@ The failing `[routing:<proxy>] ERROR: …` message identifies the probe and the 
 3. **readiness failed: the … edge did not serve web-host** — the proxy exited or refused its configuration. `compose.log` in the run directory carries its startup errors.
 4. **backend / path mismatch** — one proxy no longer agrees with the contract. Compare that proxy's files against the table in [`infra/proxy/README.md`](../../infra/proxy/README.md); a mismatch on one proxy only is in that proxy's configuration, and a mismatch on all three is the contract itself.
 5. **backend saw traceparent … (want it stripped)** — Traefik: `--entrypoints.web.http.middlewares=strip-trace-context@file` and the middleware in `routes.yaml`. nginx: `snippets/proxy-headers.conf` and the `include` in each server block. Caddy: the `publira_forwarded` snippet and its `import` in each `reverse_proxy`.
+6. **X-Forwarded-For … kept the forged address**, or **is a list** — the edge appended to the caller's header instead of replacing it. nginx wants `$remote_addr`, not `$proxy_add_x_forwarded_for`; Caddy wants the explicit `header_up X-Forwarded-For`; Traefik replaces untrusted forwarded headers on its own unless `forwardedHeaders` has been given trusted addresses.
 
 Teardown leaves these files in `.run/<proxy>/logs/`: `compose-ps.log` / `compose.log` (on failure), and for Traefik `traefik-routers.json` / `traefik-middlewares.json` (on failure).
 

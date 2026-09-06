@@ -69,4 +69,17 @@ assert_trace_context_stripped "revalidate drops trace context" POST localhost /a
 assert_trace_context_stripped "image-server drops trace context" GET localhost /images/cover image-server /images/cover
 assert_trace_context_stripped "admin-image-server drops trace context" GET admin.localhost /images/cover admin-image-server /images/cover
 
+# The headers the edge sets for the backend, on requests that forge all of
+# them. Tenant resolution reads `Host` and `X-Forwarded-Host`, the CSRF origin
+# check reads `X-Forwarded-Host` and `X-Forwarded-Proto`, and an access token
+# and an audit log entry record the first address in `X-Forwarded-For`, so a
+# caller that could plant any of them would choose what a backend believes
+# about its own request.
+assert_forwarded_headers "web-host is given the edge's forwarded headers" GET localhost / web-host
+assert_forwarded_headers "web-admin is given the edge's forwarded headers" GET admin.localhost / web-admin
+assert_forwarded_headers "web-platform is given the edge's forwarded headers" GET platform.localhost / web-platform
+assert_forwarded_headers "api is given the edge's forwarded headers" GET localhost /api/readyz api
+assert_forwarded_headers "image-server is given the edge's forwarded headers" GET localhost /images/cover image-server
+assert_forwarded_headers "admin-image-server is given the edge's forwarded headers" GET admin.localhost /images/cover admin-image-server
+
 routing_log "=== route probes passed ==="

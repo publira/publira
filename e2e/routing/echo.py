@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Identify which backend port received the request.
 
-The routing check overlays .devcontainer/compose.yaml so Traefik still
-routes to the `app` container's labeled ports. This process listens on
-those ports and echoes the path it actually saw — that is how the suite
-asserts strip-prefix and host matching.
+The routing check puts one proxy in front of this process, which listens on
+every backend port the contract names and echoes what arrived — the path,
+and the headers the edge is supposed to have removed or set. That is how the
+suite asserts prefix removal, host matching, and the request headers each
+backend is promised.
 """
 
 from __future__ import annotations
@@ -13,12 +14,21 @@ import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-# W3C Trace Context headers the entrypoint middleware drops. Echoing what
-# the backend actually received is how the suite asserts they are gone.
+# W3C Trace Context headers the edge drops. Echoing what the backend actually
+# received is how the suite asserts they are gone.
 TRACE_CONTEXT_HEADERS: tuple[str, ...] = ("traceparent", "tracestate", "baggage")
 
-# Port -> backend name. Must match loadbalancer.server.port on the
-# Traefik labels in .devcontainer/compose.yaml.
+# The headers the edge sets for the backend. A caller can send all three, so
+# echoing them is how the suite asserts the edge replaced rather than kept
+# what arrived.
+FORWARDED_HEADERS: tuple[str, ...] = (
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "x-forwarded-for",
+)
+
+# Port -> backend name. Must match the addresses the proxy under test is
+# given, which are the ports every backend listens on.
 BACKENDS: dict[int, str] = {
     3000: "web-host",
     4000: "web-admin",
@@ -56,7 +66,7 @@ def make_handler(backend: str, port: int) -> type[BaseHTTPRequestHandler]:
                 "method": self.command,
                 **{
                     name: self.headers.get(name, "")
-                    for name in TRACE_CONTEXT_HEADERS
+                    for name in TRACE_CONTEXT_HEADERS + FORWARDED_HEADERS
                 },
             }
             raw = json.dumps(payload, separators=(",", ":")).encode()
