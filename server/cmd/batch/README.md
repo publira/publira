@@ -40,7 +40,7 @@ go run ./server/cmd/batch publish-episodes
 
 Environment variables:
 
-- `PUBLIRA_DB_URL`: connection string. Defaults to the local development database.
+- `PUBLIRA_DB_URL`: connection string. Defaults to the local development database. This is the one subcommand with no dedicated role variable, so it runs as whatever that connection names; giving it a login of its own is [#1688](https://github.com/publira/publira/issues/1688).
 - `PUBLIRA_PUBLISH_INTERVAL_SECONDS`: seconds between passes. Defaults to `60`; a non-numeric or non-positive value falls back to the default.
 - `PUBLIRA_PUBLISH_MAX_RETRIES`: retries per episode. Defaults to `3`.
 
@@ -59,7 +59,7 @@ go run ./server/cmd/batch project-episode-reads
 
 Environment variables:
 
-- `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_EVENTS_DB_URL`, then `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_EVENTS_DB_URL`, then `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_EPISODE_READ_PROJECTION_BATCH_SIZE`: rows per statement. Defaults to `1000`; anything that is not a positive 32-bit integer is rejected, because the value becomes a PostgreSQL `LIMIT`.
 
 Run it before `aggregate-content-stats` for the same day. A late projection still files the event on the day the member finished, but only a rebuild of that day picks it up.
@@ -79,7 +79,7 @@ PUBLIRA_CONTENT_STATS_DATE=2026-08-28 go run ./server/cmd/batch aggregate-conten
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_DB_URL`.
 - `PUBLIRA_CONTENT_STATS_DATE`: the calendar date to rebuild as `YYYY-MM-DD`, read as each tenant's own local date. Unset rebuilds every tenant's own yesterday, which is not the same day for all of them.
 
 The structured log records the target date, how many tenants the run finished, the rows created, and the elapsed time — on failure too, since each tenant commits on its own.
@@ -97,7 +97,7 @@ PUBLIRA_CONTENT_RANKING_DATE=2026-08-28 go run ./server/cmd/batch aggregate-rank
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_CONTENT_RANKING_DATE`: last day of every window, as `YYYY-MM-DD`, read as each tenant's own local date. Unset ends every tenant's windows on its own yesterday.
 - `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT`: how many entities one snapshot carries. Defaults to 50, and must be at least 1.
 
@@ -166,7 +166,7 @@ PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-conten
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_EVENTS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`. The two batches that touch `content_events` run as the same `publira_content_stats` role.
+- `PUBLIRA_CONTENT_EVENTS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`. The two batches that touch `content_events` run as the same `publira_content_stats` role.
 - `PUBLIRA_CONTENT_EVENTS_RETENTION_DAYS`: retention in days. Defaults to `90`. Anything below `1` fails at startup, because the cutoff would land at or after now and take the whole table.
 - `PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `10000`.
 - `PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
@@ -197,7 +197,7 @@ PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-ranki
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated BYPASSRLS connection URL, shared with `aggregate-rankings`. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated BYPASSRLS connection URL, shared with `aggregate-rankings`. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_CONTENT_RANKING_DAILY_RETENTION_DAYS`: retention for `daily` snapshots. Defaults to `90`. Anything below `1` fails at startup.
 - `PUBLIRA_CONTENT_RANKING_WEEKLY_RETENTION_DAYS`: retention for `weekly` snapshots. Defaults to `400`. Anything below `1` fails at startup.
 - `PUBLIRA_CONTENT_RANKING_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `1000`, an order of magnitude below the `content_events` chunk because a snapshot row carries a whole leaderboard.
@@ -222,7 +222,7 @@ PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-mfa-cha
 
 Environment variables:
 
-- `PUBLIRA_MFA_CHALLENGE_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_MFA_CHALLENGE_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_MFA_CHALLENGE_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `10000`.
 - `PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
 
@@ -243,7 +243,7 @@ PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-orphan-
 
 Environment variables:
 
-- `PUBLIRA_ORPHAN_IMAGES_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_ORPHAN_IMAGES_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_S3_BUCKET`, `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, `AWS_REGION`: the bucket to sweep, read the same way every uploading process reads them. A missing bucket fails at startup.
 - `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS`: how old an object or image row must be to become a candidate. Defaults to `24`. Anything below `1` fails at startup, because the cutoff would land at or after now and put every upload in flight in range.
 - `PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE`: objects per listing page, and with it the keys per reference lookup and per batch delete. Defaults to `1000`, which is S3's own page ceiling; a smaller value only adds round trips.
@@ -266,7 +266,7 @@ PUBLIRA_RECOMMEND_FEATURES_DATE=2026-08-28 go run ./server/cmd/batch build-recom
 
 Environment variables:
 
-- `PUBLIRA_RECOMMEND_FEATURES_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_WORKER_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_RECOMMEND_FEATURES_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_RECOMMEND_FEATURES_DATE`: last day of the window, as `YYYY-MM-DD`, read as each tenant's own local date. Unset ends every tenant's window on its own yesterday.
 - `PUBLIRA_RECOMMEND_FEATURES_WINDOW_DAYS`: window length in days, ending on that date and including it. Defaults to 28, and must be at least 1.
 

@@ -67,7 +67,6 @@ func resolveRankingDBURL(fallback string) string {
 	return resolveDBURL(fallback,
 		"PUBLIRA_CONTENT_RANKING_DB_URL",
 		"PUBLIRA_CONTENT_STATS_DB_URL",
-		"PUBLIRA_WORKER_DB_URL",
 	)
 }
 

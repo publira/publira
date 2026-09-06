@@ -75,12 +75,10 @@ func TestResolveContentEventsDBURL(t *testing.T) {
 		t.Fatalf("content stats URL = %q, want content-stats-url", got)
 	}
 
+	// PUBLIRA_WORKER_DB_URL stays set. It names outbox-worker's own role, which
+	// owns River's schema, so this batch must fall through it to the shared
+	// connection rather than adopt it.
 	t.Setenv("PUBLIRA_CONTENT_STATS_DB_URL", "")
-	if got := resolveContentEventsDBURL("fallback-url"); got != "worker-url" {
-		t.Fatalf("worker URL = %q, want worker-url", got)
-	}
-
-	t.Setenv("PUBLIRA_WORKER_DB_URL", "")
 	if got := resolveContentEventsDBURL("fallback-url"); got != "fallback-url" {
 		t.Fatalf("fallback URL = %q, want fallback-url", got)
 	}

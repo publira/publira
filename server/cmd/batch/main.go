@@ -145,6 +145,12 @@ func usage() string {
 // resolveDBURL returns the first non-empty environment variable in names, so a
 // batch can be pointed at the role it needs without disturbing the other
 // processes, and falls back to the shared connection string when none is set.
+//
+// PUBLIRA_WORKER_DB_URL belongs to no chain here. The batches once shared it
+// with outbox-worker because both ran on the same connection, but it now names
+// publira_outbox, a role that owns River's schema and that the daily batches
+// must not be able to alter. A batch left unconfigured falls through to
+// PUBLIRA_DB_URL, which is where it ran before the dedicated stats role existed.
 func resolveDBURL(fallback string, names ...string) string {
 	for _, name := range names {
 		if url := strings.TrimSpace(os.Getenv(name)); url != "" {

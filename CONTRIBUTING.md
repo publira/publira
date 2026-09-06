@@ -104,6 +104,8 @@ eval "$(task --silent dev-env:env)"
 pnpm --dir apps/web-host dev
 ```
 
+A profile is written once and read unchanged afterwards, so the login each process connects with is the one that was current when the profile was created. A profile older than a process's dedicated PostgreSQL role therefore keeps running that process on the connection it had then; recreating the profile is what picks the newer role up.
+
 `task dev-env:list` shows every profile and the worktree that selected it. To discard one, run `task dev-env:destroy NAME=<name>`. It checks that no worktree has the target selected and that it is stopped, then deletes only that profile's database, Redis DB, and bucket after you retype the name. It does not touch the shared development environment, E2E, or other profiles.
 
 A profile's secrets and run logs are stored under `~/.publira/dev-env` by default. Override the location with `PUBLIRA_DEV_ENV_HOME` only when you need to. The scripts create and drop a profile's database as the `postgres` superuser of `compose.yaml` on the profile's PostgreSQL host; `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` replaces that connection for a server with other credentials. Both variables are read solely by the development environment scripts.

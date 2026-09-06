@@ -56,9 +56,9 @@ task docker:build:api CMD_NAME=outbox-worker PORT=8003
 
 ## Main environment variables
 
-In production the connection must use `publira_outbox`, the BYPASSRLS login the baseline seed creates for this process; locally the fallbacks below land on the superuser connection, which bypasses RLS as well.
+The connection uses `publira_outbox`, the BYPASSRLS login the baseline seed creates for this process, in every environment. `PUBLIRA_DB_URL` is not a fallback: it is the superuser connection locally and the migration tooling's connection in production, so an unset variable fails to authenticate rather than quietly granting the worker more privilege.
 
-- `PUBLIRA_WORKER_DB_URL` (optional; falls back to `PUBLIRA_DB_URL`, and otherwise to the development default `postgres://postgres:password@db:5432/publira?sslmode=disable`)
+- `PUBLIRA_WORKER_DB_URL` (optional; falls back to the development default `postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable`)
 - `PUBLIRA_WORKER_ADDR` (optional, default `:8003`. Serves `/livez` and `/readyz`)
 - `PUBLIRA_OUTBOX_DRAIN_INTERVAL` (optional, a Go duration. Default `2s`)
 - `PUBLIRA_OUTBOX_CLAIM_LIMIT` (optional, the maximum number of rows claimed per drain. Default `100`)

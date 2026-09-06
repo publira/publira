@@ -46,7 +46,7 @@ func runAggregateContentStats(ctx context.Context, logger *slog.Logger, cfg *con
 }
 
 func resolveContentStatsDBURL(fallback string) string {
-	return resolveDBURL(fallback, "PUBLIRA_CONTENT_STATS_DB_URL", "PUBLIRA_WORKER_DB_URL")
+	return resolveDBURL(fallback, "PUBLIRA_CONTENT_STATS_DB_URL")
 }
 
 func resolveStatDate() (time.Time, error) {

@@ -230,7 +230,7 @@ dev_env_write_profile() {
     printf 'PUBLIRA_PUBLIC_DB_URL=postgres://publira_public:publicpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_ADMIN_DB_URL=postgres://publira_admin:adminpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_PLATFORM_DB_URL=postgres://publira_platform:platformpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
-    printf 'PUBLIRA_WORKER_DB_URL=postgres://postgres:password@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
+    printf 'PUBLIRA_WORKER_DB_URL=postgres://publira_outbox:outboxpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_CONTENT_STATS_DB_URL=postgres://publira_content_stats:contentstatspass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_IMAGE_DB_URL=postgres://publira_public:publicpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_ADMIN_IMAGE_DB_URL=postgres://publira_admin:adminpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
@@ -298,12 +298,13 @@ dev_env_load_profile() {
     dev_env_load_required_profile_value "${profile_path}" "${key}"
   done
 
-  # Profiles created before the stats batch used the superuser worker URL for
-  # all workers. Keep them usable while new profiles receive the narrower
-  # dedicated BYPASSRLS login above.
+  # Profiles created before the stats batch have no key of their own. They fall
+  # back to the superuser connection, which is what their worker URL was when
+  # they were written; reading PUBLIRA_WORKER_DB_URL here instead would move the
+  # stats batches onto publira_outbox the moment that value was repointed.
   local content_stats_url
   if ! content_stats_url="$(dev_env_profile_value "${profile_path}" PUBLIRA_CONTENT_STATS_DB_URL)"; then
-    PUBLIRA_CONTENT_STATS_DB_URL="${PUBLIRA_WORKER_DB_URL}"
+    PUBLIRA_CONTENT_STATS_DB_URL="${PUBLIRA_DB_URL}"
   elif [[ -z "${content_stats_url}" ]]; then
     dev_env_die "profile has an empty PUBLIRA_CONTENT_STATS_DB_URL: ${profile_path}"
   else

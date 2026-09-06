@@ -29,7 +29,7 @@ const (
 	serviceName = "publira-outbox-worker"
 
 	defaultWorkerAddr  = ":8003"
-	defaultWorkerDBURL = "postgres://postgres:password@db:5432/publira?sslmode=disable"
+	defaultWorkerDBURL = "postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable"
 )
 
 func main() {
@@ -47,7 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := sqldb.Open(resolveWorkerDBURL(cfg.DB.URL))
+	db, err := sqldb.Open(resolveWorkerDBURL())
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
 		os.Exit(1)
@@ -124,12 +124,16 @@ func main() {
 	}
 }
 
-func resolveWorkerDBURL(fallback string) string {
+// PUBLIRA_DB_URL is deliberately not a fallback here. It is the connection the
+// migration tooling uses — the superuser locally — so falling back to it would
+// hand the worker more privilege than publira_outbox wherever the variable is
+// left unset, which is exactly the mistake production must not make. Every
+// other server resolves its own role variable the same way, so an unset
+// variable lands on this role's development password and fails to authenticate
+// instead.
+func resolveWorkerDBURL() string {
 	if url := strings.TrimSpace(os.Getenv("PUBLIRA_WORKER_DB_URL")); url != "" {
 		return url
-	}
-	if strings.TrimSpace(fallback) != "" {
-		return fallback
 	}
 	return defaultWorkerDBURL
 }

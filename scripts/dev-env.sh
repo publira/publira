@@ -163,15 +163,17 @@ start_profile() {
     PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
     "${REPO_ROOT}/server/bin/admin-image-server"
   start_background "${run_dir}" outbox-worker env \
-    PUBLIRA_DB_URL="${PUBLIRA_WORKER_DB_URL}" \
     PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL}" \
     PUBLIRA_WORKER_ADDR=":${PUBLIRA_OUTBOX_WORKER_PORT}" \
     PUBLIRA_EMAIL_RENDERER_URL="${PUBLIRA_EMAIL_RENDERER_URL}" \
     PUBLIRA_SECRET_ENCRYPTION_KEYS="${DEV_ENV_SECRET_ENCRYPTION_KEYS}" \
     PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${DEV_ENV_SECRET_ENCRYPTION_PRIMARY_KEY_ID}" \
     "${REPO_ROOT}/server/bin/outbox-worker"
+  # publish-episodes has no role variable of its own and reads PUBLIRA_DB_URL,
+  # so it stays on the profile's superuser connection. Passing the worker URL
+  # here would move it onto publira_outbox along with the worker.
   start_background "${run_dir}" publish-episodes env \
-    PUBLIRA_DB_URL="${PUBLIRA_WORKER_DB_URL}" \
+    PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \

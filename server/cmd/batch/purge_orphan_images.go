@@ -94,7 +94,6 @@ func resolveOrphanImagesDBURL(fallback string) string {
 	return resolveDBURL(fallback,
 		"PUBLIRA_ORPHAN_IMAGES_DB_URL",
 		"PUBLIRA_CONTENT_STATS_DB_URL",
-		"PUBLIRA_WORKER_DB_URL",
 	)
 }
 
