@@ -14,7 +14,11 @@ services:
     image: traefik:v3.7.13@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
     restart: unless-stopped
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # The routing contract (routes.yaml) and this environment's backend
+      # addresses (services.yaml), merged by the file provider. Read-only:
+      # edits arrive through the `..:/workspaces` mount on `app`, so nothing
+      # writes from this side.
+      - ./infra/proxy/traefik/dynamic:/etc/traefik/dynamic:ro
     command:
       - "--api.insecure=true"
       - "--api.dashboard=true"
@@ -23,9 +27,10 @@ services:
       # loses its W3C Trace Context here. Entrypoint middlewares run before
       # the ones a router declares, and a new router inherits this one
       # without having to remember it.
-      - "--entrypoints.web.http.middlewares=strip-trace-context@docker"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.http.middlewares=strip-trace-context@file"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      # An edit to either file takes effect without restarting the stack.
+      - "--providers.file.watch=true"
     depends_on:
       - app
 
@@ -89,69 +94,6 @@ services:
       PUBLIRA_S3_FORCE_PATH_STYLE: "true"
       # Tracing is off unless a deployment asks for it; the dev stack asks.
       PUBLIRA_TRACING_ENABLED: "true"
-    labels:
-      - "traefik.enable=true"
-
-      # The trust boundary for W3C Trace Context. The Go servers adopt an
-      # inbound `traceparent` as the parent span, so a caller who can set the
-      # header picks the trace ID and the sampled flag: it could graft spans
-      # onto someone else's trace, or force export past the production
-      # sampling ratio. Dropping the three headers here leaves the servers a
-      # request with no trace context, and they open a fresh root span.
-      #
-      # First-party server-to-server traffic keeps its trace context because
-      # none of it passes through Traefik: the SSR clients dial the gRPC
-      # ports directly and the Go APIs call the Next.js revalidate endpoints
-      # over PUBLIRA_WEB_*_INTERNAL_URL.
-      - "traefik.http.middlewares.strip-trace-context.headers.customrequestheaders.traceparent="
-      - "traefik.http.middlewares.strip-trace-context.headers.customrequestheaders.tracestate="
-      - "traefik.http.middlewares.strip-trace-context.headers.customrequestheaders.baggage="
-
-      # web-host: the public tenant site (port 3000)
-      - "traefik.http.routers.web-host.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.web-host.entrypoints=web"
-      - "traefik.http.routers.web-host.priority=1"
-      - "traefik.http.routers.web-host.service=web-host"
-      - "traefik.http.services.web-host.loadbalancer.server.port=3000"
-
-      # web-admin on dedicated host: admin.*:3080
-      - "traefik.http.routers.web-admin.rule=HostRegexp(`^admin\\d*\\..*$`)"
-      - "traefik.http.routers.web-admin.entrypoints=web"
-      - "traefik.http.routers.web-admin.priority=100"
-      - "traefik.http.routers.web-admin.service=web-admin"
-      - "traefik.http.services.web-admin.loadbalancer.server.port=4000"
-
-      # web-platform on dedicated host: platform.*:3080
-      - "traefik.http.routers.web-platform.rule=HostRegexp(`^platform\\..*$`)"
-      - "traefik.http.routers.web-platform.entrypoints=web"
-      - "traefik.http.routers.web-platform.priority=100"
-      - "traefik.http.routers.web-platform.service=web-platform"
-      - "traefik.http.services.web-platform.loadbalancer.server.port=4100"
-
-      # api-server on /api -> app:8000 (strip /api before forwarding).
-      # Priority 105 beats admin/platform hosts (100) so /api is host-agnostic;
-      # /images (110) and admin /images (130) stay above it.
-      - "traefik.http.routers.api.rule=PathRegexp(`^/api(/.*)?$`) && !PathRegexp(`^/api/v1/revalidate/?$`)"
-      - "traefik.http.routers.api.entrypoints=web"
-      - "traefik.http.routers.api.priority=105"
-      - "traefik.http.routers.api.middlewares=api-strip"
-      - "traefik.http.routers.api.service=api"
-      - "traefik.http.middlewares.api-strip.stripprefix.prefixes=/api"
-      - "traefik.http.services.api.loadbalancer.server.port=8000"
-
-      # public image-server on /images -> app:8200
-      - "traefik.http.routers.image-server.rule=PathPrefix(`/images`)"
-      - "traefik.http.routers.image-server.entrypoints=web"
-      - "traefik.http.routers.image-server.priority=110"
-      - "traefik.http.routers.image-server.service=image-server"
-      - "traefik.http.services.image-server.loadbalancer.server.port=8200"
-
-      # admin image-server on admin.* + /images -> app:8201
-      - "traefik.http.routers.admin-image-server.rule=HostRegexp(`^admin\\d*\\..*$`) && PathPrefix(`/images`)"
-      - "traefik.http.routers.admin-image-server.entrypoints=web"
-      - "traefik.http.routers.admin-image-server.priority=130"
-      - "traefik.http.routers.admin-image-server.service=admin-image-server"
-      - "traefik.http.services.admin-image-server.loadbalancer.server.port=8201"
 
   # The dependency services come from the root compose file, which publishes
   # each of them on 127.0.0.1 for a host-side `task dev`. Inside the Dev

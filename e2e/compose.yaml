@@ -102,10 +102,14 @@ services:
   # port the browser cannot reach a page at all.
   #
   # `network_mode: host` because every backend is a host process on loopback,
-  # which a bridged container has no route to. Routers come from a file the
-  # run directory owns (scripts/up.sh writes it) rather than Docker labels,
-  # because the backends are not containers. Only the viewer performance suite
-  # goes through here; every other suite keeps talking to web-host directly.
+  # which a bridged container has no route to. Only the viewer performance
+  # suite goes through here; every other suite keeps talking to web-host
+  # directly.
+  #
+  # The routing is the repository's own: infra/proxy/traefik/dynamic is mounted
+  # as it stands, and only its services.yaml is replaced by one naming this
+  # run's host ports (scripts/up.sh writes it). The file provider merges what
+  # it finds in the directory.
   traefik:
     image: traefik:v3.7.13@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
     labels: *run-dir-label
@@ -114,10 +118,18 @@ services:
       # Loopback, like every published port above: a bare `:port` would listen
       # on every interface, which host networking makes the real ones.
       - "--entrypoints.web.address=127.0.0.1:${E2E_EDGE_PORT:-3080}"
+      # Inbound W3C Trace Context is dropped before any router runs, the same
+      # way the Dev Container edge does it.
+      - "--entrypoints.web.http.middlewares=strip-trace-context@file"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
     volumes:
-      - ${E2E_TRAEFIK_DYNAMIC_DIR:-./.run/traefik}:/etc/traefik/dynamic:ro
+      # The repository's own dynamic directory, with this run's addresses laid
+      # over the services.yaml in it. The order matters: a file mount can only
+      # land on a path that already exists inside a read-only directory mount,
+      # and services.yaml is committed, so it does.
+      - ../infra/proxy/traefik/dynamic:/etc/traefik/dynamic:ro
+      - ${E2E_TRAEFIK_DYNAMIC_DIR:-./.run/traefik}/services.yaml:/etc/traefik/dynamic/services.yaml:ro
 
 volumes:
   e2e-postgres-data:

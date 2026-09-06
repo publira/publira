@@ -1,0 +1,32 @@
+# The six backends, for the proxies that do not come with a compose file of
+# their own. The Traefik half of the check overlays the Dev Container files
+# instead and gets its `app` from there; nginx and Caddy pair this file with
+# compose.nginx.yaml / compose.caddy.yaml.
+#
+# The service is named `app` because that is the host name the committed
+# backend addresses use — infra/proxy/nginx/upstreams.conf and the Caddyfile
+# defaults alike.
+#
+# `ROUTING_ECHO_PY` is exported by scripts/lib.sh; the path is absolute so it
+# resolves the same way here as it does under the Dev Container overlay, where
+# relative paths belong to the repository root.
+
+services:
+  app:
+    # Pin the tag + digest the same way .devcontainer/compose.yaml does.
+    image: python:3.14-alpine@sha256:c6ead215bfd31f1e433d968853b7a769989117115b728874824e6c0a27cb96fc
+    command: ["python", "/echo.py"]
+    volumes:
+      - ${ROUTING_ECHO_PY}:/echo.py:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/')",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 2s

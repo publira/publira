@@ -8,8 +8,8 @@ includes:
   # project, no Playwright.
   bootstrap:
     taskfile: ./bootstrap/Taskfile.yaml
-  # Dev Container Traefik routing check. Same compose labels, echo
-  # backends, no Playwright.
+  # Edge routing check: the configuration under infra/proxy on each proxy
+  # that implements it, in front of echo backends, no Playwright.
   routing:
     taskfile: ./routing/Taskfile.yaml
 

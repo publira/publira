@@ -30,7 +30,7 @@ The repository-root `compose.yaml` defines every dependency service — PostgreS
 docker compose up -d
 ```
 
-The Dev Container starts the same file. `dockerComposeFile` in `.devcontainer/devcontainer.json` is `["../compose.yaml", "compose.yaml"]`, and the second file is an overlay that adds the `app` container and Traefik and resets the published ports, because everything inside the container reaches these services by service name.
+The Dev Container starts the same file. `dockerComposeFile` in `.devcontainer/devcontainer.json` is `["../compose.yaml", "compose.yaml"]`, and the second file is an overlay that adds the `app` container and Traefik and resets the published ports, because everything inside the container reaches these services by service name. That Traefik reads its routing from [`infra/proxy/traefik/dynamic/`](infra/proxy/README.md), the same contract every other environment runs.
 
 | Service   | Host port        | Purpose                                |
 | --------- | ---------------- | -------------------------------------- |
@@ -69,7 +69,7 @@ The role users and their development passwords come from `db/seeds/baseline`; `P
 
 Two things stay Dev Container only.
 
-- **Traefik.** Its routers are Docker labels on the `app` container, so they cannot reach a process on the host. Open each app on its own port instead (`3000` / `4000` / `4100` for the three Next.js apps, `8000` for the API, `8200` for the image server).
+- **Traefik.** The backend addresses it is given name the `app` container, so they do not reach a process on the host. Open each app on its own port instead (`3000` / `4000` / `4100` for the three Next.js apps, `8000` for the API, `8200` for the image server), or point `infra/proxy/traefik/dynamic/services.yaml` at loopback.
 - **The seeded SMTP host.** `db/seeds/dev` points the platform and tenant SMTP settings at `mailpit`. Change the host to `127.0.0.1` in the console when you want to send mail from a host process.
 
 The per-worktree `dev-env` profiles described in [CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) take their PostgreSQL, Valkey, and RustFS hosts from `PUBLIRA_DB_URL`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_S3_ENDPOINT` when a profile is created, so export the values above before `task dev-env:create` as well.

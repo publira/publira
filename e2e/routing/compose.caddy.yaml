@@ -1,0 +1,18 @@
+# Caddy in front of the echo backends from compose.echo.yaml.
+#
+# No PUBLIRA_UPSTREAM_* variables: the Caddyfile's defaults already name
+# `app`, so this run exercises the committed file as it stands.
+#
+# Relative paths resolve against this directory, which is the project
+# directory: compose.echo.yaml is passed first and lives here too.
+
+services:
+  proxy:
+    image: caddy:2.11.2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${ROUTING_EDGE_PORT:-13080}:80"
+    volumes:
+      - ../../infra/proxy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro

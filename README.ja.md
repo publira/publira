@@ -30,7 +30,7 @@ Dev Container では `migrate` CLI (golang-migrate) と `wait4x`（E2E / bootstr
 docker compose up -d
 ```
 
-Dev Container も同じファイルを起動します。`.devcontainer/devcontainer.json` の `dockerComposeFile` は `["../compose.yaml", "compose.yaml"]` で、2 つめは `app` コンテナと Traefik を足し、公開ポートを打ち消す overlay です。コンテナ内からはサービス名で届くため、ホストへの公開は不要だからです。
+Dev Container も同じファイルを起動します。`.devcontainer/devcontainer.json` の `dockerComposeFile` は `["../compose.yaml", "compose.yaml"]` で、2 つめは `app` コンテナと Traefik を足し、公開ポートを打ち消す overlay です。コンテナ内からはサービス名で届くため、ホストへの公開は不要だからです。この Traefik は [`infra/proxy/traefik/dynamic/`](infra/proxy/README.md) からルーティングを読み込みます。ほかの環境が動かすのと同じ契約です。
 
 | サービス  | ホストポート     | 用途                                  |
 | --------- | ---------------- | ------------------------------------- |
@@ -69,7 +69,7 @@ export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
 
 Dev Container 専用のままになるものが 2 つあります。
 
-- **Traefik**。ルーターは `app` コンテナに付いた Docker ラベルなので、ホスト上のプロセスには届きません。各アプリのポート（Next.js 3 つが `3000` / `4000` / `4100`、API が `8000`、image-server が `8200`）へ直接アクセスしてください。
+- **Traefik**。渡してあるバックエンドのアドレスが `app` コンテナを指すので、ホスト上のプロセスには届きません。各アプリのポート（Next.js 3 つが `3000` / `4000` / `4100`、API が `8000`、image-server が `8200`）へ直接アクセスするか、`infra/proxy/traefik/dynamic/services.yaml` をループバックへ向けてください。
 - **seed の SMTP ホスト**。`db/seeds/dev` は platform / tenant の SMTP 設定を `mailpit` に向けます。ホストのプロセスからメールを送るときは、コンソールでホストを `127.0.0.1` に変えてください。
 
 [CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) の worktree ごとの `dev-env` プロファイルも同じ理由で、まだホストでは動きません。PostgreSQL と Valkey を `db` / `redis` として指しています（[#1599](https://github.com/publira/publira/issues/1599)）。
