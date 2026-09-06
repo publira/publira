@@ -44,7 +44,7 @@ Loopback only: none of these services authenticates a caller, so they are never 
 
 ### Running `task setup` / `task dev` on the host
 
-The defaults in `server/config`, `server/cmd/*`, and `db/Taskfile.yaml` name the Compose service (`db:5432`, `redis:6379`, `http://rustfs:9000`), which resolves only inside the Compose network. Outside the Dev Container, point them at loopback instead. `turbo.json` passes `PUBLIRA_*` through, so exported values reach `task dev` as is.
+The defaults in `server/config`, `server/cmd/*`, and `db/Taskfile.yaml` name the Compose service (`db:5432`, `redis:6379`, `http://rustfs:9000`), which resolves only inside the Compose network. Outside the Dev Container, point them at loopback instead. `turbo.jsonc` passes `PUBLIRA_*` through, so exported values reach `task dev` as is.
 
 ```bash
 export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
@@ -112,7 +112,7 @@ The three Next.js apps (web-host / web-admin / web-platform) seal the login sess
 
 - It is **required**. There is no fallback in the code, and encryption and decryption throw when it is unset or shorter than 32 bytes (`resolveAuthSecret()`)
 - The cookie payload carries the API access token, so leaking the key allows both forging and decrypting a session. Issue one per environment (for example, `openssl rand -base64 32`)
-- In the Dev Container, `.devcontainer/compose.yaml` passes a development-only value to the app container. `dev` in `turbo.json` sets `passThroughEnv: ["PUBLIRA_*"]`, so it reaches `task dev` as is
+- In the Dev Container, `.devcontainer/compose.yaml` passes a development-only value to the app container. `dev` in `turbo.jsonc` sets `passThroughEnv: ["PUBLIRA_*"]`, so it reaches `task dev` as is
 - E2E exports its own value for its stack from `e2e/scripts/lib.sh`, and the bootstrap check from `e2e/bootstrap/scripts/lib.sh`
 
 The values written in this repository are **for local development and testing only**. Do not carry them into production.

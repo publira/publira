@@ -7,7 +7,7 @@
       // Dev Container's PUBLIRA_REDIS_URL never reaches the Redis
       // integration tests and every case skips. Listed under env (not
       // passThroughEnv) so a missing vs present URL is a different cache key.
-      "env": ["PUBLIRA_REDIS_URL"]
-    }
-  }
+      "env": ["PUBLIRA_REDIS_URL"],
+    },
+  },
 }

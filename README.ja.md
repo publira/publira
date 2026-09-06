@@ -44,7 +44,7 @@ Dev Container も同じファイルを起動します。`.devcontainer/devcontai
 
 ### ホストで `task setup` / `task dev` を動かす
 
-`server/config` / `server/cmd/*` / `db/Taskfile.yaml` の既定値は Compose のサービス名（`db:5432`、`redis:6379`、`http://rustfs:9000`）を指しており、これは Compose ネットワークの中でしか解決できません。Dev Container の外ではループバックへ向け直してください。`turbo.json` が `PUBLIRA_*` を通すので、export した値はそのまま `task dev` に届きます。
+`server/config` / `server/cmd/*` / `db/Taskfile.yaml` の既定値は Compose のサービス名（`db:5432`、`redis:6379`、`http://rustfs:9000`）を指しており、これは Compose ネットワークの中でしか解決できません。Dev Container の外ではループバックへ向け直してください。`turbo.jsonc` が `PUBLIRA_*` を通すので、export した値はそのまま `task dev` に届きます。
 
 ```bash
 export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
@@ -112,7 +112,7 @@ Mailpit コンテナは依存サービス（`compose.yaml`）の一員です。
 
 - **必須**です。コード側にフォールバックは無く、未設定または 32 バイト未満なら暗号化・復号が例外になります（`resolveAuthSecret()`）
 - Cookie の payload には API のアクセストークンが入るため、鍵が漏れるとセッションの偽造と復号ができます。環境ごとに払い出してください（例: `openssl rand -base64 32`）
-- Dev Container では `.devcontainer/compose.yaml` が開発専用の値を app コンテナに渡します。`turbo.json` の `dev` は `passThroughEnv: ["PUBLIRA_*"]` なので `task dev` にそのまま届きます
+- Dev Container では `.devcontainer/compose.yaml` が開発専用の値を app コンテナに渡します。`turbo.jsonc` の `dev` は `passThroughEnv: ["PUBLIRA_*"]` なので `task dev` にそのまま届きます
 - E2E は `e2e/scripts/lib.sh`、bootstrap チェックは `e2e/bootstrap/scripts/lib.sh` がそれぞれのスタック用の値を export します
 
 リポジトリに書いてある値は **ローカル開発・テスト専用**です。本番へ持ち込まないでください。
