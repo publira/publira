@@ -192,6 +192,9 @@ message UploadSeriesEyeCatchAspectImageRequest {
   string variant_type = 3;
   bytes image_data = 4;
   string image_content_type = 5;
+  // Where in the upload the cut is taken. Omitted, the image is cut from its
+  // centre as it always has been.
+  publira.types.v1.ImageCropRect crop = 6;
 }
 
 message UploadSeriesEyeCatchAspectImageResponse {

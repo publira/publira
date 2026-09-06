@@ -54,6 +54,22 @@ message SeriesEyeCatchVariant {
   int64 file_size_bytes = 6;
 }
 
+// ImageCropRect names the part of an uploaded image a caller wants kept. It
+// is stated in pixels of that upload, with the origin at its top-left corner,
+// and it stands on its own: nothing records the image it was measured
+// against, so a rectangle only means anything alongside the bytes it came
+// with.
+//
+// The rectangle says where the cut is taken, not what shape comes out. The
+// server still fits it to the target aspect ratio, so a selection that is a
+// few pixels off that ratio delivers the ratio delivery expects.
+message ImageCropRect {
+  int32 x = 1;
+  int32 y = 2;
+  int32 width = 3;
+  int32 height = 4;
+}
+
 message Series {
   string public_id = 1;
   string title = 2;

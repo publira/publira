@@ -493,8 +493,11 @@ type UploadLabelEyeCatchAspectImageRequest struct {
 	VariantType      string `protobuf:"bytes,3,opt,name=variant_type,json=variantType,proto3" json:"variant_type,omitempty"`
 	ImageData        []byte `protobuf:"bytes,4,opt,name=image_data,json=imageData,proto3" json:"image_data,omitempty"`
 	ImageContentType string `protobuf:"bytes,5,opt,name=image_content_type,json=imageContentType,proto3" json:"image_content_type,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Where in the upload the cut is taken. Omitted, the image is cut from its
+	// centre as it always has been.
+	Crop          *v1.ImageCropRect `protobuf:"bytes,6,opt,name=crop,proto3" json:"crop,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UploadLabelEyeCatchAspectImageRequest) Reset() {
@@ -560,6 +563,13 @@ func (x *UploadLabelEyeCatchAspectImageRequest) GetImageContentType() string {
 		return x.ImageContentType
 	}
 	return ""
+}
+
+func (x *UploadLabelEyeCatchAspectImageRequest) GetCrop() *v1.ImageCropRect {
+	if x != nil {
+		return x.Crop
+	}
+	return nil
 }
 
 type UploadLabelEyeCatchAspectImageResponse struct {
@@ -640,14 +650,15 @@ const file_publira_admin_v1_label_proto_rawDesc = "" +
 	"\x1ceye_catch_image_content_type\x18\x05 \x01(\tR\x18eyeCatchImageContentType\x121\n" +
 	"\x15clear_eye_catch_image\x18\x06 \x01(\bR\x12clearEyeCatchImage\"D\n" +
 	"\x13UpdateLabelResponse\x12-\n" +
-	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label\"\xed\x01\n" +
+	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label\"\xa2\x02\n" +
 	"%UploadLabelEyeCatchAspectImageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12!\n" +
 	"\fvariant_type\x18\x03 \x01(\tR\vvariantType\x12\x1d\n" +
 	"\n" +
 	"image_data\x18\x04 \x01(\fR\timageData\x12,\n" +
-	"\x12image_content_type\x18\x05 \x01(\tR\x10imageContentType\"W\n" +
+	"\x12image_content_type\x18\x05 \x01(\tR\x10imageContentType\x123\n" +
+	"\x04crop\x18\x06 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\x04crop\"W\n" +
 	"&UploadLabelEyeCatchAspectImageResponse\x12-\n" +
 	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label2\x97\x04\n" +
 	"\x11AdminLabelService\x12Y\n" +
@@ -684,6 +695,7 @@ var file_publira_admin_v1_label_proto_goTypes = []any{
 	(*UploadLabelEyeCatchAspectImageResponse)(nil), // 9: publira.admin.v1.UploadLabelEyeCatchAspectImageResponse
 	(*v1.TenantContext)(nil),                       // 10: publira.types.v1.TenantContext
 	(*v1.Label)(nil),                               // 11: publira.types.v1.Label
+	(*v1.ImageCropRect)(nil),                       // 12: publira.types.v1.ImageCropRect
 }
 var file_publira_admin_v1_label_proto_depIdxs = []int32{
 	10, // 0: publira.admin.v1.ListLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
@@ -695,22 +707,23 @@ var file_publira_admin_v1_label_proto_depIdxs = []int32{
 	10, // 6: publira.admin.v1.UpdateLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
 	11, // 7: publira.admin.v1.UpdateLabelResponse.label:type_name -> publira.types.v1.Label
 	10, // 8: publira.admin.v1.UploadLabelEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	11, // 9: publira.admin.v1.UploadLabelEyeCatchAspectImageResponse.label:type_name -> publira.types.v1.Label
-	0,  // 10: publira.admin.v1.AdminLabelService.ListLabels:input_type -> publira.admin.v1.ListLabelsRequest
-	2,  // 11: publira.admin.v1.AdminLabelService.GetLabel:input_type -> publira.admin.v1.GetLabelRequest
-	4,  // 12: publira.admin.v1.AdminLabelService.CreateLabel:input_type -> publira.admin.v1.CreateLabelRequest
-	6,  // 13: publira.admin.v1.AdminLabelService.UpdateLabel:input_type -> publira.admin.v1.UpdateLabelRequest
-	8,  // 14: publira.admin.v1.AdminLabelService.UploadLabelEyeCatchAspectImage:input_type -> publira.admin.v1.UploadLabelEyeCatchAspectImageRequest
-	1,  // 15: publira.admin.v1.AdminLabelService.ListLabels:output_type -> publira.admin.v1.ListLabelsResponse
-	3,  // 16: publira.admin.v1.AdminLabelService.GetLabel:output_type -> publira.admin.v1.GetLabelResponse
-	5,  // 17: publira.admin.v1.AdminLabelService.CreateLabel:output_type -> publira.admin.v1.CreateLabelResponse
-	7,  // 18: publira.admin.v1.AdminLabelService.UpdateLabel:output_type -> publira.admin.v1.UpdateLabelResponse
-	9,  // 19: publira.admin.v1.AdminLabelService.UploadLabelEyeCatchAspectImage:output_type -> publira.admin.v1.UploadLabelEyeCatchAspectImageResponse
-	15, // [15:20] is the sub-list for method output_type
-	10, // [10:15] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	12, // 9: publira.admin.v1.UploadLabelEyeCatchAspectImageRequest.crop:type_name -> publira.types.v1.ImageCropRect
+	11, // 10: publira.admin.v1.UploadLabelEyeCatchAspectImageResponse.label:type_name -> publira.types.v1.Label
+	0,  // 11: publira.admin.v1.AdminLabelService.ListLabels:input_type -> publira.admin.v1.ListLabelsRequest
+	2,  // 12: publira.admin.v1.AdminLabelService.GetLabel:input_type -> publira.admin.v1.GetLabelRequest
+	4,  // 13: publira.admin.v1.AdminLabelService.CreateLabel:input_type -> publira.admin.v1.CreateLabelRequest
+	6,  // 14: publira.admin.v1.AdminLabelService.UpdateLabel:input_type -> publira.admin.v1.UpdateLabelRequest
+	8,  // 15: publira.admin.v1.AdminLabelService.UploadLabelEyeCatchAspectImage:input_type -> publira.admin.v1.UploadLabelEyeCatchAspectImageRequest
+	1,  // 16: publira.admin.v1.AdminLabelService.ListLabels:output_type -> publira.admin.v1.ListLabelsResponse
+	3,  // 17: publira.admin.v1.AdminLabelService.GetLabel:output_type -> publira.admin.v1.GetLabelResponse
+	5,  // 18: publira.admin.v1.AdminLabelService.CreateLabel:output_type -> publira.admin.v1.CreateLabelResponse
+	7,  // 19: publira.admin.v1.AdminLabelService.UpdateLabel:output_type -> publira.admin.v1.UpdateLabelResponse
+	9,  // 20: publira.admin.v1.AdminLabelService.UploadLabelEyeCatchAspectImage:output_type -> publira.admin.v1.UploadLabelEyeCatchAspectImageResponse
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_label_proto_init() }

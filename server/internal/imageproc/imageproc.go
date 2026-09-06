@@ -292,19 +292,40 @@ func LookupEyeCatchAspect(variantType string) (EyeCatchAspect, bool) {
 	return EyeCatchAspect{}, false
 }
 
+// CropRect names the part of an uploaded image to keep, in pixels of that
+// upload with the origin at its top-left corner. It says where the cut is
+// taken and not what shape comes out: the region is still fitted to the
+// target ratio afterwards, the way a whole image is.
+type CropRect struct {
+	X      int
+	Y      int
+	Width  int
+	Height int
+}
+
+// ErrInvalidCrop marks a failure the crop rectangle caused rather than the
+// upload itself: a rectangle outside the image, or one too small to cover the
+// ratio's delivered sizes once it is fitted. A caller reporting a field
+// violation names the rectangle's field for it, so an editor is pointed at
+// the selection it made instead of at an image that is perfectly usable.
+var ErrInvalidCrop = errors.New("invalid crop rectangle")
+
 // BuildEyeCatchAspectVariants builds the delivery sizes of a single aspect
 // ratio from an image uploaded for that ratio alone.
 //
 // Unlike BuildEyeCatchVariants, which fills a whole eye-catch by cropping all
 // four ratios out of one image, this validates and crops against the named
-// ratio only. The source is still centre-cropped: an upload that is a few
-// pixels off the ratio must not change the shape delivery relies on.
+// ratio only. A nil crop takes the cut from the centre of the upload; a crop
+// takes it from the named rectangle instead. Either way the region is fitted
+// to the ratio: an upload, or a selection, that is a few pixels off the ratio
+// must not change the shape delivery relies on.
 //
 // Input validation:
 //   - within EyeCatchMaxBytes, image/* content_type
 //   - variantType names one of the delivered ratios
+//   - crop, when given, lies within the upload
 //   - at least the ratio's MinWidth x MinHeight after cropping
-func BuildEyeCatchAspectVariants(raw []byte, contentType string, variantType string) ([]Variant, error) {
+func BuildEyeCatchAspectVariants(raw []byte, contentType string, variantType string, crop *CropRect) ([]Variant, error) {
 	spec, ok := lookupEyeCatchAspectSpec(variantType)
 	if !ok {
 		return nil, fmt.Errorf("unknown eye_catch aspect ratio %q", variantType)
@@ -343,12 +364,23 @@ func BuildEyeCatchAspectVariants(raw []byte, contentType string, variantType str
 		return nil, errors.New("image is not decodable")
 	}
 
+	region := src
+	if crop != nil {
+		region, err = cropRegion(src, *crop)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	aspect := spec.aspect()
-	cropped := centerCropToAspect(src, spec.aspectW, spec.aspectH)
+	cropped := centerCropToAspect(region, spec.aspectW, spec.aspectH)
 	cropBounds := cropped.Bounds()
 	cropW := cropBounds.Dx()
 	cropH := cropBounds.Dy()
 	if cropW < aspect.MinWidth || cropH < aspect.MinHeight {
+		if crop != nil {
+			return nil, fmt.Errorf("%w: %s crop must be at least %dx%d after fitting to %d:%d", ErrInvalidCrop, spec.ratio, aspect.MinWidth, aspect.MinHeight, spec.aspectW, spec.aspectH)
+		}
 		return nil, fmt.Errorf("%s image must be at least %dx%d after cropping to %d:%d", spec.ratio, aspect.MinWidth, aspect.MinHeight, spec.aspectW, spec.aspectH)
 	}
 
@@ -416,13 +448,36 @@ func centerCropToAspect(src image.Image, aspectW, aspectH int) image.Image {
 	offsetX := (srcW - cropW) / 2
 	offsetY := (srcH - cropH) / 2
 
-	rect := image.Rect(
+	return subImage(src, image.Rect(
 		bounds.Min.X+offsetX,
 		bounds.Min.Y+offsetY,
 		bounds.Min.X+offsetX+cropW,
 		bounds.Min.Y+offsetY+cropH,
-	)
+	))
+}
 
+// cropRegion cuts rect out of src. rect is stated in pixels of the uploaded
+// image, so it is offset by the source bounds rather than taken as it stands:
+// src can be a sub-image whose bounds do not start at the origin.
+func cropRegion(src image.Image, rect CropRect) (image.Image, error) {
+	bounds := src.Bounds()
+	if rect.Width <= 0 || rect.Height <= 0 {
+		return nil, fmt.Errorf("%w: crop size must be positive, got %dx%d", ErrInvalidCrop, rect.Width, rect.Height)
+	}
+	if rect.X < 0 || rect.Y < 0 || rect.X+rect.Width > bounds.Dx() || rect.Y+rect.Height > bounds.Dy() {
+		return nil, fmt.Errorf("%w: crop %dx%d at (%d,%d) falls outside the %dx%d image", ErrInvalidCrop, rect.Width, rect.Height, rect.X, rect.Y, bounds.Dx(), bounds.Dy())
+	}
+	return subImage(src, image.Rect(
+		bounds.Min.X+rect.X,
+		bounds.Min.Y+rect.Y,
+		bounds.Min.X+rect.X+rect.Width,
+		bounds.Min.Y+rect.Y+rect.Height,
+	)), nil
+}
+
+// subImage returns the part of src inside rect, sharing its pixels when the
+// concrete image type allows it and copying them when it does not.
+func subImage(src image.Image, rect image.Rectangle) image.Image {
 	type subImager interface {
 		SubImage(r image.Rectangle) image.Image
 	}
@@ -430,9 +485,9 @@ func centerCropToAspect(src image.Image, aspectW, aspectH int) image.Image {
 		return si.SubImage(rect)
 	}
 
-	dst := image.NewRGBA(image.Rect(0, 0, cropW, cropH))
-	for y := 0; y < cropH; y++ {
-		for x := 0; x < cropW; x++ {
+	dst := image.NewRGBA(image.Rect(0, 0, rect.Dx(), rect.Dy()))
+	for y := range rect.Dy() {
+		for x := range rect.Dx() {
 			dst.Set(x, y, src.At(rect.Min.X+x, rect.Min.Y+y))
 		}
 	}
