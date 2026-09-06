@@ -15,6 +15,7 @@ type Config struct {
 	DB         DB
 	Storage    Storage
 	Encryption Encryption
+	Push       Push
 }
 
 type DB struct {
@@ -44,6 +45,36 @@ type Encryption struct {
 	Keys         map[string][]byte
 }
 
+// Push is the Firebase Cloud Messaging credential the outbox worker sends
+// member notifications to devices with.
+type Push struct {
+	// FCMProjectID names the Firebase project. Empty takes the project the
+	// credentials themselves name.
+	FCMProjectID string
+	// FCMCredentialsJSON is a service account key supplied inline. Empty
+	// leaves the credential to Application Default Credentials, which is the
+	// name GOOGLE_APPLICATION_CREDENTIALS keeps because the Google library
+	// performs that lookup itself.
+	FCMCredentialsJSON []byte
+	// ADCPathConfigured records that GOOGLE_APPLICATION_CREDENTIALS was set.
+	ADCPathConfigured bool
+}
+
+// Configured reports whether this deployment means to send push notifications.
+// A process that gets false leaves the push handler unregistered, so a local
+// stack without Firebase still runs — and, because an event with no handler
+// goes dead, a deployment that does mean to send has to be recognized here.
+//
+// The project id counts on its own, and not only the two credential names,
+// because Application Default Credentials resolves more than an explicit key
+// file: a well-known gcloud file, and the metadata server of an instance with
+// an attached service account, both leave every credential variable empty.
+// Naming the project is what such a deployment can still say, so it is what
+// turns push on; the credential is then whatever the Google library finds.
+func (p Push) Configured() bool {
+	return p.FCMProjectID != "" || len(p.FCMCredentialsJSON) > 0 || p.ADCPathConfigured
+}
+
 func New() (*Config, error) {
 	storageCfg, err := parseStorage()
 	if err != nil {
@@ -57,7 +88,17 @@ func New() (*Config, error) {
 		DB:         parseDB(),
 		Storage:    storageCfg,
 		Encryption: encryptionCfg,
+		Push:       parsePush(),
 	}, nil
+}
+
+func parsePush() Push {
+	credentials := strings.TrimSpace(os.Getenv("PUBLIRA_FCM_CREDENTIALS_JSON"))
+	return Push{
+		FCMProjectID:       strings.TrimSpace(os.Getenv("PUBLIRA_FCM_PROJECT_ID")),
+		FCMCredentialsJSON: []byte(credentials),
+		ADCPathConfigured:  strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")) != "",
+	}
 }
 
 func parseDB() DB {

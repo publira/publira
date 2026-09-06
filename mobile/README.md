@@ -128,6 +128,7 @@ mobile/
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
 │   ├── models/                   # Series / episode body
+│   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
 │   ├── screens/                  # Catalog / series detail / viewer / sign-in / account
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
@@ -217,6 +218,32 @@ A reader signs in with an email address and a password, which `AuthService/Login
 - Creating an account and resetting a password stay on the website
 
 `web-host` holds its own session in the `@publira/web-session` JWE cookie. The app has no cookie jar, which is why the token lives in the platform credential store instead.
+
+## Push notifications
+
+A member is told on the device when a tenant publishes a new episode, and a tap opens that episode's viewer with the series behind it. The message comes from the server through Firebase Cloud Messaging, which relays to APNs for iOS, so one integration carries both platforms.
+
+- Permission is never asked for at launch. The account screen carries a switch for new-episode notifications, and the OS prompt — iOS authorization, and `POST_NOTIFICATIONS` on Android 13 and later — is requested the first time a reader turns it on. A reader who denies it sees the switch settle back to off with a line pointing at system settings, and the app does not ask again on its own
+- Turning the switch on registers the device's FCM token against the signed-in reader with `RegisterPushDevice`, and the app re-registers on every token refresh. The token is the identity on the server, so registering one another reader left on the same phone moves it rather than adding a second registration
+- Signing out unregisters, and stops this install's token, so a message already on its way finds nothing to deliver to
+- A message that arrives while the app is in front is drawn by the app, because FCM does not display one then. A payload naming no route the app can open sends the reader to the catalog
+
+FCM does not deliver to the iOS simulator, so verifying iOS needs a physical device.
+
+### Firebase configuration
+
+The Firebase project is configured with `--dart-define`, the way every other connection setting is, rather than with a `google-services.json` / `GoogleService-Info.plist` in the repository: a build serves one tenant and one Firebase project, and which project that is belongs to whoever builds it. The values are the ones the Firebase console shows for the project's Android and iOS apps.
+
+| Definition | Meaning |
+| --- | --- |
+| `PUBLIRA_FIREBASE_PROJECT_ID` | Firebase project id |
+| `PUBLIRA_FIREBASE_MESSAGING_SENDER_ID` | The project's sender id |
+| `PUBLIRA_FIREBASE_ANDROID_API_KEY` / `PUBLIRA_FIREBASE_ANDROID_APP_ID` | The Android app in that project |
+| `PUBLIRA_FIREBASE_IOS_API_KEY` / `PUBLIRA_FIREBASE_IOS_APP_ID` / `PUBLIRA_FIREBASE_IOS_BUNDLE_ID` | The iOS app in that project |
+
+A build given none of them starts with no Firebase project, so push is off and the account screen leaves the switch out. That is what `flutter test`, the integration tests, and a local `task dev` stack run as.
+
+An iOS build also needs the APNs auth key uploaded to the Firebase project; without it Firebase has nothing to relay through. The push capability itself is in the repository: `ios/Runner/Runner.entitlements` carries the development APNs environment for the Debug and Profile configurations, and `ios/Runner/RunnerRelease.entitlements` the production one for Release.
 
 ## Connecting to the public API
 

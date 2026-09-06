@@ -88,6 +88,18 @@ abstract class AppMessages {
   /// `mobile.account.name_unset`
   String get accountNameUnset;
 
+  /// `mobile.account.notifications`
+  String get accountNotifications;
+
+  /// `mobile.account.notifications_denied`
+  String get accountNotificationsDenied;
+
+  /// `mobile.account.notifications_description`
+  String get accountNotificationsDescription;
+
+  /// `mobile.account.notifications_unavailable`
+  String get accountNotificationsUnavailable;
+
   /// `mobile.account.sign_out`
   String get accountSignOut;
 
@@ -120,6 +132,9 @@ abstract class AppMessages {
 
   /// `mobile.not_found.title`
   String get notFoundTitle;
+
+  /// `mobile.push.open`
+  String get pushOpen;
 
   /// `mobile.series.episode_count`
   String seriesEpisodeCount({required String count});
@@ -306,6 +321,26 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get accountNotifications {
+    return '新着エピソードの通知';
+  }
+
+  @override
+  String get accountNotificationsDenied {
+    return 'このアプリの通知がオフになっています。端末の設定でオンにしてください。';
+  }
+
+  @override
+  String get accountNotificationsDescription {
+    return '新しいエピソードが公開されたときにお知らせします。';
+  }
+
+  @override
+  String get accountNotificationsUnavailable {
+    return '通知をオンにできませんでした。もう一度お試しください。';
+  }
+
+  @override
   String get accountSignOut {
     return 'サインアウト';
   }
@@ -358,6 +393,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get notFoundTitle {
     return 'ページが見つかりません';
+  }
+
+  @override
+  String get pushOpen {
+    return '開く';
   }
 
   @override
@@ -605,6 +645,26 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get accountNotifications {
+    return 'New episode notifications';
+  }
+
+  @override
+  String get accountNotificationsDenied {
+    return 'Notifications are turned off for this app. Turn them on in your device settings.';
+  }
+
+  @override
+  String get accountNotificationsDescription {
+    return 'Be told when a new episode is published.';
+  }
+
+  @override
+  String get accountNotificationsUnavailable {
+    return 'Could not turn notifications on. Try again.';
+  }
+
+  @override
   String get accountSignOut {
     return 'Sign out';
   }
@@ -657,6 +717,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get notFoundTitle {
     return 'Page not found';
+  }
+
+  @override
+  String get pushOpen {
+    return 'Open';
   }
 
   @override
@@ -904,6 +969,26 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get accountNotifications {
+    return '새 에피소드 알림';
+  }
+
+  @override
+  String get accountNotificationsDenied {
+    return '이 앱의 알림이 꺼져 있습니다. 기기 설정에서 켜 주세요.';
+  }
+
+  @override
+  String get accountNotificationsDescription {
+    return '새 에피소드가 공개되면 알려 드립니다.';
+  }
+
+  @override
+  String get accountNotificationsUnavailable {
+    return '알림을 켜지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
   String get accountSignOut {
     return '로그아웃';
   }
@@ -956,6 +1041,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get notFoundTitle {
     return '페이지를 찾을 수 없습니다';
+  }
+
+  @override
+  String get pushOpen {
+    return '열기';
   }
 
   @override

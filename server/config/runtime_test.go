@@ -129,3 +129,62 @@ func TestNew_InvalidEncryptionKeyLength(t *testing.T) {
 		t.Fatalf("err = %v, want invalid key length", err)
 	}
 }
+
+func TestNew_PushIsOffWithoutAnySetting(t *testing.T) {
+	setenv(t, "PUBLIRA_FCM_PROJECT_ID", "")
+	setenv(t, "PUBLIRA_FCM_CREDENTIALS_JSON", "")
+	setenv(t, "GOOGLE_APPLICATION_CREDENTIALS", "")
+
+	cfg, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if cfg.Push.Configured() {
+		t.Fatal("Push.Configured() = true, want false")
+	}
+}
+
+func TestNew_PushIsOnFromAnyOfItsSettings(t *testing.T) {
+	tests := []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{
+			// The metadata server of an instance with an attached service
+			// account, and the well-known gcloud file, leave every credential
+			// variable empty. Naming the project is what such a deployment can
+			// still say, and the handler has to be registered for it.
+			name:  "project id alone",
+			key:   "PUBLIRA_FCM_PROJECT_ID",
+			value: "publira-test",
+		},
+		{
+			name:  "inline service account key",
+			key:   "PUBLIRA_FCM_CREDENTIALS_JSON",
+			value: `{"type":"service_account"}`,
+		},
+		{
+			name:  "application default credentials path",
+			key:   "GOOGLE_APPLICATION_CREDENTIALS",
+			value: "/etc/publira/fcm.json",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setenv(t, "PUBLIRA_FCM_PROJECT_ID", "")
+			setenv(t, "PUBLIRA_FCM_CREDENTIALS_JSON", "")
+			setenv(t, "GOOGLE_APPLICATION_CREDENTIALS", "")
+			setenv(t, tt.key, tt.value)
+
+			cfg, err := New()
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			if !cfg.Push.Configured() {
+				t.Fatalf("Push.Configured() = false with %s set, want true", tt.key)
+			}
+		})
+	}
+}

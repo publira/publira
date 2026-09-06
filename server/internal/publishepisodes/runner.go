@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/revalidate"
 )
 
@@ -214,6 +215,54 @@ func (r *Runner) notifyMembersOfPublish(ctx context.Context, q *dbmodels.Queries
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("insert notification for %s: %w", memberID, err)
 		}
+	}
+	if len(members) == 0 {
+		return nil
+	}
+	return r.enqueueMemberPush(ctx, q, row, subjectKey)
+}
+
+// enqueueMemberPush schedules the mobile push for the notification rows above,
+// in the same transaction that wrote them. The Outbox worker owns the send, so
+// a Firebase outage retries there instead of failing or slowing this run.
+//
+// One row per episode carries every recipient: the handler resolves the
+// devices from the notification rows when it drains the event. The idempotency
+// key is the notification's own identity, so a re-run over the same episode
+// finds the row already there and pushes nothing a second time.
+func (r *Runner) enqueueMemberPush(
+	ctx context.Context,
+	q *dbmodels.Queries,
+	row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow,
+	subjectKey string,
+) error {
+	payload, err := json.Marshal(outbox.MemberPushNotificationPayload{
+		TenantID:         row.TenantID.String(),
+		NotificationType: notificationTypeEpisodePublished,
+		SubjectKey:       subjectKey,
+		SeriesID:         row.SeriesPublicID,
+		SeriesTitle:      row.SeriesTitle,
+		EpisodeID:        row.EpisodePublicID,
+		EpisodeTitle:     row.EpisodeTitle,
+	})
+	if err != nil {
+		return fmt.Errorf("encode member push payload: %w", err)
+	}
+
+	eventID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("allocate outbox event id: %w", err)
+	}
+	_, err = q.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             eventID,
+		TenantID:       uuid.NullUUID{UUID: row.TenantID, Valid: true},
+		EventType:      outbox.EventTypeMemberPushNotification,
+		Payload:        payload,
+		IdempotencyKey: fmt.Sprintf("push:%s:%s", notificationTypeEpisodePublished, subjectKey),
+		AvailableAt:    time.Now().UTC(),
+	})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("insert member push outbox event: %w", err)
 	}
 	return nil
 }

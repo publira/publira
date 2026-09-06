@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/push"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
@@ -68,12 +69,32 @@ func main() {
 		encryptor = manager
 	}
 
+	// No Firebase credential means no push handler, so a local stack without
+	// one still drains everything else. An event whose handler is missing goes
+	// dead, which is the honest answer for a deployment that writes push events
+	// it cannot send.
+	pushHandlers := outbox.PushHandlerConfig{DB: db, Logger: logger}
+	if cfg.Push.Configured() {
+		sender, senderErr := push.New(context.Background(), push.Config{
+			ProjectID:       cfg.Push.FCMProjectID,
+			CredentialsJSON: cfg.Push.FCMCredentialsJSON,
+		})
+		if senderErr != nil {
+			logger.Error("failed to initialize FCM client", "error", senderErr)
+			os.Exit(1)
+		}
+		pushHandlers.Sender = sender
+		logger.Info("mobile push is enabled", "fcm_project_id", sender.ProjectID())
+	} else {
+		logger.Info("mobile push is disabled", "reason", "no FCM credential is configured")
+	}
+
 	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, outbox.EmailHandlerConfig{
 		DB:        db,
 		Encryptor: encryptor,
 		Mailer:    internalsmtp.NewClient(),
 		Renderer:  emailrenderer.NewClient(resolveEmailRendererURL()),
-	}))
+	}, pushHandlers))
 	if err != nil {
 		logger.Error("failed to start outbox worker", "error", err)
 		os.Exit(1)
@@ -113,7 +134,11 @@ func resolveWorkerDBURL(fallback string) string {
 	return defaultWorkerDBURL
 }
 
-func workerConfig(logger *slog.Logger, emailHandlers outbox.EmailHandlerConfig) outbox.Config {
+func workerConfig(
+	logger *slog.Logger,
+	emailHandlers outbox.EmailHandlerConfig,
+	pushHandlers outbox.PushHandlerConfig,
+) outbox.Config {
 	emailHandlers.Logger = logger
 	handlers := outbox.DefaultRegistry()
 	handlers.Register(outbox.EventTypeTenantAdminInvitationEmail, outbox.NewTenantAdminInvitationHandler(emailHandlers))
@@ -128,6 +153,9 @@ func workerConfig(logger *slog.Logger, emailHandlers outbox.EmailHandlerConfig) 
 	handlers.Register(outbox.EventTypeAdminPasswordResetEmail, outbox.NewAdminPasswordResetEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypeAdminEmailChangeConfirmationEmail, outbox.NewAdminEmailChangeConfirmationEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypeAdminEmailChangedNoticeEmail, outbox.NewAdminEmailChangedNoticeEmailHandler(emailHandlers))
+	if pushHandlers.Sender != nil {
+		handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
+	}
 	return outbox.Config{
 		Logger:            logger,
 		Handlers:          handlers,

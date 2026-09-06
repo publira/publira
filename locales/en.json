@@ -2001,6 +2001,10 @@
     "account": {
       "name": "Name",
       "name_unset": "Not set",
+      "notifications": "New episode notifications",
+      "notifications_denied": "Notifications are turned off for this app. Turn them on in your device settings.",
+      "notifications_description": "Be told when a new episode is published.",
+      "notifications_unavailable": "Could not turn notifications on. Try again.",
       "sign_out": "Sign out",
       "signed_out": "You are not signed in.",
       "title": "Account"
@@ -2018,6 +2022,9 @@
     "not_found": {
       "message": "“{$uri}” does not exist.",
       "title": "Page not found"
+    },
+    "push": {
+      "open": "Open"
     },
     "series": {
       "episode_count": "{$count} episodes",

@@ -22,6 +22,57 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Which store issued the registration token, so a message can carry the
+// platform-specific block its delivery needs.
+type PushPlatform int32
+
+const (
+	PushPlatform_PUSH_PLATFORM_UNSPECIFIED PushPlatform = 0
+	PushPlatform_PUSH_PLATFORM_ANDROID     PushPlatform = 1
+	PushPlatform_PUSH_PLATFORM_IOS         PushPlatform = 2
+)
+
+// Enum value maps for PushPlatform.
+var (
+	PushPlatform_name = map[int32]string{
+		0: "PUSH_PLATFORM_UNSPECIFIED",
+		1: "PUSH_PLATFORM_ANDROID",
+		2: "PUSH_PLATFORM_IOS",
+	}
+	PushPlatform_value = map[string]int32{
+		"PUSH_PLATFORM_UNSPECIFIED": 0,
+		"PUSH_PLATFORM_ANDROID":     1,
+		"PUSH_PLATFORM_IOS":         2,
+	}
+)
+
+func (x PushPlatform) Enum() *PushPlatform {
+	p := new(PushPlatform)
+	*p = x
+	return p
+}
+
+func (x PushPlatform) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PushPlatform) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_v1_notification_proto_enumTypes[0].Descriptor()
+}
+
+func (PushPlatform) Type() protoreflect.EnumType {
+	return &file_publira_v1_notification_proto_enumTypes[0]
+}
+
+func (x PushPlatform) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PushPlatform.Descriptor instead.
+func (PushPlatform) EnumDescriptor() ([]byte, []int) {
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{0}
+}
+
 type NotificationItem struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -232,6 +283,211 @@ func (x *ListNotificationsResponse) GetNextToken() string {
 	return ""
 }
 
+// A device registers the FCM token it holds right now. The token is the
+// identity, so registering one that another reader left behind moves it to the
+// caller rather than adding a second row.
+type RegisterPushDeviceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	Platform      PushPlatform           `protobuf:"varint,3,opt,name=platform,proto3,enum=publira.v1.PushPlatform" json:"platform,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterPushDeviceRequest) Reset() {
+	*x = RegisterPushDeviceRequest{}
+	mi := &file_publira_v1_notification_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterPushDeviceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterPushDeviceRequest) ProtoMessage() {}
+
+func (x *RegisterPushDeviceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_notification_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterPushDeviceRequest.ProtoReflect.Descriptor instead.
+func (*RegisterPushDeviceRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RegisterPushDeviceRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *RegisterPushDeviceRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *RegisterPushDeviceRequest) GetPlatform() PushPlatform {
+	if x != nil {
+		return x.Platform
+	}
+	return PushPlatform_PUSH_PLATFORM_UNSPECIFIED
+}
+
+type RegisterPushDeviceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Registered    bool                   `protobuf:"varint,1,opt,name=registered,proto3" json:"registered,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterPushDeviceResponse) Reset() {
+	*x = RegisterPushDeviceResponse{}
+	mi := &file_publira_v1_notification_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterPushDeviceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterPushDeviceResponse) ProtoMessage() {}
+
+func (x *RegisterPushDeviceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_notification_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterPushDeviceResponse.ProtoReflect.Descriptor instead.
+func (*RegisterPushDeviceResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RegisterPushDeviceResponse) GetRegistered() bool {
+	if x != nil {
+		return x.Registered
+	}
+	return false
+}
+
+// Signing out, and turning the account switch off, take the device back off
+// the delivery list of every notification the reader would have been sent.
+type UnregisterPushDeviceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnregisterPushDeviceRequest) Reset() {
+	*x = UnregisterPushDeviceRequest{}
+	mi := &file_publira_v1_notification_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnregisterPushDeviceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnregisterPushDeviceRequest) ProtoMessage() {}
+
+func (x *UnregisterPushDeviceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_notification_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnregisterPushDeviceRequest.ProtoReflect.Descriptor instead.
+func (*UnregisterPushDeviceRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UnregisterPushDeviceRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UnregisterPushDeviceRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type UnregisterPushDeviceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Unregistered  bool                   `protobuf:"varint,1,opt,name=unregistered,proto3" json:"unregistered,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnregisterPushDeviceResponse) Reset() {
+	*x = UnregisterPushDeviceResponse{}
+	mi := &file_publira_v1_notification_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnregisterPushDeviceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnregisterPushDeviceResponse) ProtoMessage() {}
+
+func (x *UnregisterPushDeviceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_notification_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnregisterPushDeviceResponse.ProtoReflect.Descriptor instead.
+func (*UnregisterPushDeviceResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *UnregisterPushDeviceResponse) GetUnregistered() bool {
+	if x != nil {
+		return x.Unregistered
+	}
+	return false
+}
+
 type CountUnreadNotificationsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -241,7 +497,7 @@ type CountUnreadNotificationsRequest struct {
 
 func (x *CountUnreadNotificationsRequest) Reset() {
 	*x = CountUnreadNotificationsRequest{}
-	mi := &file_publira_v1_notification_proto_msgTypes[3]
+	mi := &file_publira_v1_notification_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -253,7 +509,7 @@ func (x *CountUnreadNotificationsRequest) String() string {
 func (*CountUnreadNotificationsRequest) ProtoMessage() {}
 
 func (x *CountUnreadNotificationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_notification_proto_msgTypes[3]
+	mi := &file_publira_v1_notification_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -266,7 +522,7 @@ func (x *CountUnreadNotificationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountUnreadNotificationsRequest.ProtoReflect.Descriptor instead.
 func (*CountUnreadNotificationsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_notification_proto_rawDescGZIP(), []int{3}
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CountUnreadNotificationsRequest) GetTenant() *v1.TenantContext {
@@ -285,7 +541,7 @@ type CountUnreadNotificationsResponse struct {
 
 func (x *CountUnreadNotificationsResponse) Reset() {
 	*x = CountUnreadNotificationsResponse{}
-	mi := &file_publira_v1_notification_proto_msgTypes[4]
+	mi := &file_publira_v1_notification_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -297,7 +553,7 @@ func (x *CountUnreadNotificationsResponse) String() string {
 func (*CountUnreadNotificationsResponse) ProtoMessage() {}
 
 func (x *CountUnreadNotificationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_notification_proto_msgTypes[4]
+	mi := &file_publira_v1_notification_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -310,7 +566,7 @@ func (x *CountUnreadNotificationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountUnreadNotificationsResponse.ProtoReflect.Descriptor instead.
 func (*CountUnreadNotificationsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_notification_proto_rawDescGZIP(), []int{4}
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CountUnreadNotificationsResponse) GetUnreadCount() int32 {
@@ -330,7 +586,7 @@ type MarkNotificationAsReadRequest struct {
 
 func (x *MarkNotificationAsReadRequest) Reset() {
 	*x = MarkNotificationAsReadRequest{}
-	mi := &file_publira_v1_notification_proto_msgTypes[5]
+	mi := &file_publira_v1_notification_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -342,7 +598,7 @@ func (x *MarkNotificationAsReadRequest) String() string {
 func (*MarkNotificationAsReadRequest) ProtoMessage() {}
 
 func (x *MarkNotificationAsReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_notification_proto_msgTypes[5]
+	mi := &file_publira_v1_notification_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -355,7 +611,7 @@ func (x *MarkNotificationAsReadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkNotificationAsReadRequest.ProtoReflect.Descriptor instead.
 func (*MarkNotificationAsReadRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_notification_proto_rawDescGZIP(), []int{5}
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *MarkNotificationAsReadRequest) GetTenant() *v1.TenantContext {
@@ -381,7 +637,7 @@ type MarkNotificationAsReadResponse struct {
 
 func (x *MarkNotificationAsReadResponse) Reset() {
 	*x = MarkNotificationAsReadResponse{}
-	mi := &file_publira_v1_notification_proto_msgTypes[6]
+	mi := &file_publira_v1_notification_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -393,7 +649,7 @@ func (x *MarkNotificationAsReadResponse) String() string {
 func (*MarkNotificationAsReadResponse) ProtoMessage() {}
 
 func (x *MarkNotificationAsReadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_notification_proto_msgTypes[6]
+	mi := &file_publira_v1_notification_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -406,7 +662,7 @@ func (x *MarkNotificationAsReadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkNotificationAsReadResponse.ProtoReflect.Descriptor instead.
 func (*MarkNotificationAsReadResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_notification_proto_rawDescGZIP(), []int{6}
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *MarkNotificationAsReadResponse) GetMarked() bool {
@@ -425,7 +681,7 @@ type MarkAllNotificationsAsReadRequest struct {
 
 func (x *MarkAllNotificationsAsReadRequest) Reset() {
 	*x = MarkAllNotificationsAsReadRequest{}
-	mi := &file_publira_v1_notification_proto_msgTypes[7]
+	mi := &file_publira_v1_notification_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -437,7 +693,7 @@ func (x *MarkAllNotificationsAsReadRequest) String() string {
 func (*MarkAllNotificationsAsReadRequest) ProtoMessage() {}
 
 func (x *MarkAllNotificationsAsReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_notification_proto_msgTypes[7]
+	mi := &file_publira_v1_notification_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -450,7 +706,7 @@ func (x *MarkAllNotificationsAsReadRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use MarkAllNotificationsAsReadRequest.ProtoReflect.Descriptor instead.
 func (*MarkAllNotificationsAsReadRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_notification_proto_rawDescGZIP(), []int{7}
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *MarkAllNotificationsAsReadRequest) GetTenant() *v1.TenantContext {
@@ -469,7 +725,7 @@ type MarkAllNotificationsAsReadResponse struct {
 
 func (x *MarkAllNotificationsAsReadResponse) Reset() {
 	*x = MarkAllNotificationsAsReadResponse{}
-	mi := &file_publira_v1_notification_proto_msgTypes[8]
+	mi := &file_publira_v1_notification_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -481,7 +737,7 @@ func (x *MarkAllNotificationsAsReadResponse) String() string {
 func (*MarkAllNotificationsAsReadResponse) ProtoMessage() {}
 
 func (x *MarkAllNotificationsAsReadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_notification_proto_msgTypes[8]
+	mi := &file_publira_v1_notification_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -494,7 +750,7 @@ func (x *MarkAllNotificationsAsReadResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use MarkAllNotificationsAsReadResponse.ProtoReflect.Descriptor instead.
 func (*MarkAllNotificationsAsReadResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_notification_proto_rawDescGZIP(), []int{8}
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *MarkAllNotificationsAsReadResponse) GetMarkedCount() int32 {
@@ -526,7 +782,20 @@ const file_publira_v1_notification_proto_rawDesc = "" +
 	"\rnotifications\x18\x01 \x03(\v2\x1c.publira.v1.NotificationItemR\rnotifications\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"Z\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xa0\x01\n" +
+	"\x19RegisterPushDeviceRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x124\n" +
+	"\bplatform\x18\x03 \x01(\x0e2\x18.publira.v1.PushPlatformR\bplatform\"<\n" +
+	"\x1aRegisterPushDeviceResponse\x12\x1e\n" +
+	"\n" +
+	"registered\x18\x01 \x01(\bR\n" +
+	"registered\"l\n" +
+	"\x1bUnregisterPushDeviceRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"B\n" +
+	"\x1cUnregisterPushDeviceResponse\x12\"\n" +
+	"\funregistered\x18\x01 \x01(\bR\funregistered\"Z\n" +
 	"\x1fCountUnreadNotificationsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"E\n" +
 	" CountUnreadNotificationsResponse\x12!\n" +
@@ -539,12 +808,18 @@ const file_publira_v1_notification_proto_rawDesc = "" +
 	"!MarkAllNotificationsAsReadRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"G\n" +
 	"\"MarkAllNotificationsAsReadResponse\x12!\n" +
-	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount2\xe4\x03\n" +
+	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount*_\n" +
+	"\fPushPlatform\x12\x1d\n" +
+	"\x19PUSH_PLATFORM_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15PUSH_PLATFORM_ANDROID\x10\x01\x12\x15\n" +
+	"\x11PUSH_PLATFORM_IOS\x10\x022\xb8\x05\n" +
 	"\x13NotificationService\x12b\n" +
 	"\x11ListNotifications\x12$.publira.v1.ListNotificationsRequest\x1a%.publira.v1.ListNotificationsResponse\"\x00\x12w\n" +
 	"\x18CountUnreadNotifications\x12+.publira.v1.CountUnreadNotificationsRequest\x1a,.publira.v1.CountUnreadNotificationsResponse\"\x00\x12q\n" +
 	"\x16MarkNotificationAsRead\x12).publira.v1.MarkNotificationAsReadRequest\x1a*.publira.v1.MarkNotificationAsReadResponse\"\x00\x12}\n" +
-	"\x1aMarkAllNotificationsAsRead\x12-.publira.v1.MarkAllNotificationsAsReadRequest\x1a..publira.v1.MarkAllNotificationsAsReadResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
+	"\x1aMarkAllNotificationsAsRead\x12-.publira.v1.MarkAllNotificationsAsReadRequest\x1a..publira.v1.MarkAllNotificationsAsReadResponse\"\x00\x12e\n" +
+	"\x12RegisterPushDevice\x12%.publira.v1.RegisterPushDeviceRequest\x1a&.publira.v1.RegisterPushDeviceResponse\"\x00\x12k\n" +
+	"\x14UnregisterPushDevice\x12'.publira.v1.UnregisterPushDeviceRequest\x1a(.publira.v1.UnregisterPushDeviceResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
 var (
 	file_publira_v1_notification_proto_rawDescOnce sync.Once
@@ -558,38 +833,51 @@ func file_publira_v1_notification_proto_rawDescGZIP() []byte {
 	return file_publira_v1_notification_proto_rawDescData
 }
 
-var file_publira_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_publira_v1_notification_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_publira_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_publira_v1_notification_proto_goTypes = []any{
-	(*NotificationItem)(nil),                   // 0: publira.v1.NotificationItem
-	(*ListNotificationsRequest)(nil),           // 1: publira.v1.ListNotificationsRequest
-	(*ListNotificationsResponse)(nil),          // 2: publira.v1.ListNotificationsResponse
-	(*CountUnreadNotificationsRequest)(nil),    // 3: publira.v1.CountUnreadNotificationsRequest
-	(*CountUnreadNotificationsResponse)(nil),   // 4: publira.v1.CountUnreadNotificationsResponse
-	(*MarkNotificationAsReadRequest)(nil),      // 5: publira.v1.MarkNotificationAsReadRequest
-	(*MarkNotificationAsReadResponse)(nil),     // 6: publira.v1.MarkNotificationAsReadResponse
-	(*MarkAllNotificationsAsReadRequest)(nil),  // 7: publira.v1.MarkAllNotificationsAsReadRequest
-	(*MarkAllNotificationsAsReadResponse)(nil), // 8: publira.v1.MarkAllNotificationsAsReadResponse
-	(*v1.TenantContext)(nil),                   // 9: publira.types.v1.TenantContext
+	(PushPlatform)(0),                          // 0: publira.v1.PushPlatform
+	(*NotificationItem)(nil),                   // 1: publira.v1.NotificationItem
+	(*ListNotificationsRequest)(nil),           // 2: publira.v1.ListNotificationsRequest
+	(*ListNotificationsResponse)(nil),          // 3: publira.v1.ListNotificationsResponse
+	(*RegisterPushDeviceRequest)(nil),          // 4: publira.v1.RegisterPushDeviceRequest
+	(*RegisterPushDeviceResponse)(nil),         // 5: publira.v1.RegisterPushDeviceResponse
+	(*UnregisterPushDeviceRequest)(nil),        // 6: publira.v1.UnregisterPushDeviceRequest
+	(*UnregisterPushDeviceResponse)(nil),       // 7: publira.v1.UnregisterPushDeviceResponse
+	(*CountUnreadNotificationsRequest)(nil),    // 8: publira.v1.CountUnreadNotificationsRequest
+	(*CountUnreadNotificationsResponse)(nil),   // 9: publira.v1.CountUnreadNotificationsResponse
+	(*MarkNotificationAsReadRequest)(nil),      // 10: publira.v1.MarkNotificationAsReadRequest
+	(*MarkNotificationAsReadResponse)(nil),     // 11: publira.v1.MarkNotificationAsReadResponse
+	(*MarkAllNotificationsAsReadRequest)(nil),  // 12: publira.v1.MarkAllNotificationsAsReadRequest
+	(*MarkAllNotificationsAsReadResponse)(nil), // 13: publira.v1.MarkAllNotificationsAsReadResponse
+	(*v1.TenantContext)(nil),                   // 14: publira.types.v1.TenantContext
 }
 var file_publira_v1_notification_proto_depIdxs = []int32{
-	9, // 0: publira.v1.ListNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 1: publira.v1.ListNotificationsResponse.notifications:type_name -> publira.v1.NotificationItem
-	9, // 2: publira.v1.CountUnreadNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9, // 3: publira.v1.MarkNotificationAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9, // 4: publira.v1.MarkAllNotificationsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1, // 5: publira.v1.NotificationService.ListNotifications:input_type -> publira.v1.ListNotificationsRequest
-	3, // 6: publira.v1.NotificationService.CountUnreadNotifications:input_type -> publira.v1.CountUnreadNotificationsRequest
-	5, // 7: publira.v1.NotificationService.MarkNotificationAsRead:input_type -> publira.v1.MarkNotificationAsReadRequest
-	7, // 8: publira.v1.NotificationService.MarkAllNotificationsAsRead:input_type -> publira.v1.MarkAllNotificationsAsReadRequest
-	2, // 9: publira.v1.NotificationService.ListNotifications:output_type -> publira.v1.ListNotificationsResponse
-	4, // 10: publira.v1.NotificationService.CountUnreadNotifications:output_type -> publira.v1.CountUnreadNotificationsResponse
-	6, // 11: publira.v1.NotificationService.MarkNotificationAsRead:output_type -> publira.v1.MarkNotificationAsReadResponse
-	8, // 12: publira.v1.NotificationService.MarkAllNotificationsAsRead:output_type -> publira.v1.MarkAllNotificationsAsReadResponse
-	9, // [9:13] is the sub-list for method output_type
-	5, // [5:9] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	14, // 0: publira.v1.ListNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 1: publira.v1.ListNotificationsResponse.notifications:type_name -> publira.v1.NotificationItem
+	14, // 2: publira.v1.RegisterPushDeviceRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 3: publira.v1.RegisterPushDeviceRequest.platform:type_name -> publira.v1.PushPlatform
+	14, // 4: publira.v1.UnregisterPushDeviceRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 5: publira.v1.CountUnreadNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 6: publira.v1.MarkNotificationAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 7: publira.v1.MarkAllNotificationsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	2,  // 8: publira.v1.NotificationService.ListNotifications:input_type -> publira.v1.ListNotificationsRequest
+	8,  // 9: publira.v1.NotificationService.CountUnreadNotifications:input_type -> publira.v1.CountUnreadNotificationsRequest
+	10, // 10: publira.v1.NotificationService.MarkNotificationAsRead:input_type -> publira.v1.MarkNotificationAsReadRequest
+	12, // 11: publira.v1.NotificationService.MarkAllNotificationsAsRead:input_type -> publira.v1.MarkAllNotificationsAsReadRequest
+	4,  // 12: publira.v1.NotificationService.RegisterPushDevice:input_type -> publira.v1.RegisterPushDeviceRequest
+	6,  // 13: publira.v1.NotificationService.UnregisterPushDevice:input_type -> publira.v1.UnregisterPushDeviceRequest
+	3,  // 14: publira.v1.NotificationService.ListNotifications:output_type -> publira.v1.ListNotificationsResponse
+	9,  // 15: publira.v1.NotificationService.CountUnreadNotifications:output_type -> publira.v1.CountUnreadNotificationsResponse
+	11, // 16: publira.v1.NotificationService.MarkNotificationAsRead:output_type -> publira.v1.MarkNotificationAsReadResponse
+	13, // 17: publira.v1.NotificationService.MarkAllNotificationsAsRead:output_type -> publira.v1.MarkAllNotificationsAsReadResponse
+	5,  // 18: publira.v1.NotificationService.RegisterPushDevice:output_type -> publira.v1.RegisterPushDeviceResponse
+	7,  // 19: publira.v1.NotificationService.UnregisterPushDevice:output_type -> publira.v1.UnregisterPushDeviceResponse
+	14, // [14:20] is the sub-list for method output_type
+	8,  // [8:14] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_notification_proto_init() }
@@ -602,13 +890,14 @@ func file_publira_v1_notification_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_notification_proto_rawDesc), len(file_publira_v1_notification_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   9,
+			NumEnums:      1,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_publira_v1_notification_proto_goTypes,
 		DependencyIndexes: file_publira_v1_notification_proto_depIdxs,
+		EnumInfos:         file_publira_v1_notification_proto_enumTypes,
 		MessageInfos:      file_publira_v1_notification_proto_msgTypes,
 	}.Build()
 	File_publira_v1_notification_proto = out.File

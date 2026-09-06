@@ -1,5 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 13 and later gate notifications on this permission. The app
+         asks for it the first time the reader turns new-episode notifications
+         on from the account screen, never at launch. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
@@ -24,6 +28,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- The action every push carries as its click_action, so a tap on
+                 a notification the OS drew reaches the app rather than only
+                 resuming it. -->
+            <intent-filter>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK"/>
+                <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
