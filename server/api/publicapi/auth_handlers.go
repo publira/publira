@@ -538,6 +538,130 @@ func (s *apiServer) VerifyUserEmail(
 	return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil
 }
 
+// RequestEmailVerification mails a fresh activation link to an address whose
+// account has never been confirmed, which is the only way back for a reader
+// whose first link expired or never arrived: Login refuses an unverified
+// account, and a password reset sets a password that account still cannot sign
+// in with.
+//
+// Every address is answered the same way — an unverified account, a confirmed
+// one, and one that does not exist all end in requested: true — so the form
+// reports nothing about who is registered. What separates them is the mailbox:
+// only the first receives anything.
+func (s *apiServer) RequestEmailVerification(
+	ctx context.Context,
+	req *connect.Request[publirav1.RequestEmailVerificationRequest],
+) (*connect.Response[publirav1.RequestEmailVerificationResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+
+	email := strings.TrimSpace(req.Msg.Email)
+	if email == "" {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email is required"))
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+
+	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		Email:    email,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, "", "requested")
+			return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
+		}
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "user_lookup_failed")
+		return nil, s.internalDBError(ctx, "failed to get user for email verification request", err, "tenant_id", tenant.ID.String())
+	}
+	if user.EmailVerifiedAt.Valid {
+		// Nothing left to activate, so nothing is sent. The answer is the same
+		// either way; the audit trail is where the outcomes are told apart.
+		auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, user.PublicID, "already_verified")
+		return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
+	}
+
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	verificationToken := hex.EncodeToString(rawToken)
+	verificationID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin email verification request transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	// Two requests for the same address arrive as often as a reader submits the
+	// form twice, and the delete below cannot serialize them on its own: it
+	// locks the rows it finds, so a request whose snapshot predates the other's
+	// insert deletes nothing and leaves two live links behind. The account row
+	// is what both requests have in common, so locking it is what puts them in
+	// order — the second one's statements then run on a snapshot that includes
+	// the first one's token, and the account keeps a single live link.
+	//
+	// It is a lock, not a write. The account itself is never modified here — no
+	// password, no name, no credentials_version — so a request made by anyone
+	// but its owner leaves nothing behind but a link only its owner receives.
+	locked, err := txq.GetUserByIDForUpdate(ctx, user.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// The account was deleted while this request waited. There is
+			// nothing to activate, and the answer still says nothing about that.
+			auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, user.PublicID, "account_gone")
+			return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
+		}
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
+		return nil, s.internalDBError(ctx, "failed to lock the account for an email verification request", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if locked.EmailVerifiedAt.Valid {
+		// The link from an earlier request was opened while this one waited.
+		auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, user.PublicID, "already_verified")
+		return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
+	}
+
+	if err := txq.DeleteUserEmailVerificationTokensByUserID(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
+		return nil, s.internalDBError(ctx, "failed to delete email verification tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if _, err := txq.CreateUserEmailVerificationToken(ctx, dbmodels.CreateUserEmailVerificationTokenParams{
+		ID:        verificationID,
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		TokenHash: auth.HashToken(verificationToken),
+		ExpiresAt: time.Now().Add(emailVerificationTokenTTL),
+	}); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
+		return nil, s.internalDBError(ctx, "failed to create email verification token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := enqueueReaderEmailVerificationEmail(ctx, txq, tenant.ID, verificationID, verificationToken); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "verification_email_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader email verification email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit email verification request transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, user.PublicID, "requested")
+	return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
+}
+
 func (s *apiServer) RequestEmailChange(
 	ctx context.Context,
 	req *connect.Request[publirav1.RequestEmailChangeRequest],

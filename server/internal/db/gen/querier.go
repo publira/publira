@@ -147,6 +147,7 @@ type Querier interface {
 	// Hard delete. Related rows go with the user wherever the foreign key cascades.
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error
+	DeleteUserEmailVerificationTokensByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserMfaRecoveryCodesByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserPasswordResetTokensByUserID(ctx context.Context, userID uuid.UUID) error
@@ -257,6 +258,7 @@ type Querier interface {
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByPublicID(ctx context.Context, publicID string) (GetUserByPublicIDRow, error)
 	GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByPublicIDForTenantParams) (GetUserByPublicIDForTenantRow, error)
 	GetUserEmailChangeTokenByHashForTenant(ctx context.Context, arg GetUserEmailChangeTokenByHashForTenantParams) (GetUserEmailChangeTokenByHashForTenantRow, error)

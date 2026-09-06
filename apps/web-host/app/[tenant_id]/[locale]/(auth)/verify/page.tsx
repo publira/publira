@@ -20,6 +20,14 @@ export const generateMetadata = async (): Promise<Metadata> => {
   return { title: getMessage(messages, "host.auth.verify.title") };
 };
 
+/**
+ * What a confirmation link did, and where it leaves the reader.
+ *
+ * A link that did not work sends them to `/resend-verification` rather than
+ * back to sign-up: the account behind an expired link already exists, so
+ * signing up again creates nothing, and it cannot be signed into or reset
+ * until the address is confirmed.
+ */
 const VerificationResult = async ({ token }: { token: string }) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const messages = await loadHostMessages(locale);
@@ -32,10 +40,10 @@ const VerificationResult = async ({ token }: { token: string }) => {
         </section>
         <div className="text-center text-sm">
           <LocaleLink
-            href="/signup"
+            href="/resend-verification"
             className="font-medium text-primary hover:underline"
           >
-            {getMessage(messages, "host.auth.verify.to_signup")}
+            {getMessage(messages, "host.auth.verify.to_resend_verification")}
           </LocaleLink>
         </div>
       </>
@@ -56,14 +64,14 @@ const VerificationResult = async ({ token }: { token: string }) => {
       </section>
       <div className="text-center text-sm">
         <LocaleLink
-          href={verified ? "/login" : "/signup"}
+          href={verified ? "/login" : "/resend-verification"}
           className="font-medium text-primary hover:underline"
         >
           {getMessage(
             messages,
             verified
               ? "host.auth.verify.to_login"
-              : "host.auth.verify.to_signup"
+              : "host.auth.verify.to_resend_verification"
           )}
         </LocaleLink>
       </div>

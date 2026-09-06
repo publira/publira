@@ -2,11 +2,16 @@ package publicapi
 
 import (
 	"context"
+	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
+	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -410,5 +415,204 @@ func TestDBCreateUserMailsTheOwnerOfARegisteredAddress(t *testing.T) {
 	`)
 	if verifications != 0 {
 		t.Fatalf("queued verification mails = %d, want none", verifications)
+	}
+}
+
+// seedEmailVerificationToken puts the row a sign-up leaves behind on an account
+// the helpers seed without one, so a resend has an earlier link to supersede.
+func (e *publicDBEnv) seedEmailVerificationToken(
+	t *testing.T,
+	tenantID, userID uuid.UUID,
+	token string,
+	expiresAt time.Time,
+) uuid.UUID {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	id, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("generate verification token id: %v", err)
+	}
+	if _, err := dbmodels.New(e.PG.DB).CreateUserEmailVerificationToken(ctx, dbmodels.CreateUserEmailVerificationTokenParams{
+		ID:        id,
+		TenantID:  tenantID,
+		UserID:    userID,
+		TokenHash: auth.HashToken(token),
+		ExpiresAt: expiresAt,
+	}); err != nil {
+		t.Fatalf("CreateUserEmailVerificationToken %s: %v", userID, err)
+	}
+	return id
+}
+
+// A reader whose first link expired asks for another one and gets it. The
+// expired row is replaced rather than joined, so the account keeps a single
+// live link, and nothing on the account itself is written to.
+func TestDBRequestEmailVerificationReplacesAnExpiredLink(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
+	expired := env.seedEmailVerificationToken(t, tenant.ID, pending.ID, "expired-token", time.Now().Add(-time.Hour))
+	before := readStoredAccount(t, env, pending.Email)
+
+	resp, err := env.authClient().RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+		Tenant: tenantContext(tenant),
+		Email:  pending.Email,
+	}))
+	if err != nil {
+		t.Fatalf("RequestEmailVerification: %v", err)
+	}
+	if !resp.Msg.Requested {
+		t.Fatal("requested = false, want true")
+	}
+
+	if count := countRows(t, env,
+		`SELECT count(*) FROM user_email_verification_tokens WHERE id = $1`, expired); count != 0 {
+		t.Fatalf("the expired token still exists (%d rows), want it replaced", count)
+	}
+	live := countRows(t, env, `
+		SELECT count(*) FROM user_email_verification_tokens
+		WHERE user_id = $1 AND used_at IS NULL AND expires_at > NOW()
+	`, pending.ID)
+	if live != 1 {
+		t.Fatalf("live verification tokens = %d, want 1", live)
+	}
+	mails := countRows(t, env, `
+		SELECT count(*) FROM outbox_events WHERE event_type = 'reader_email_verification_email'
+	`)
+	if mails != 1 {
+		t.Fatalf("queued verification mails = %d, want 1", mails)
+	}
+	if after := readStoredAccount(t, env, pending.Email); after != before {
+		t.Fatalf("account after the request = %+v, want %+v", after, before)
+	}
+}
+
+// The form says nothing about who is registered: an unverified account, a
+// confirmed one, and an address with no account at all are answered alike, and
+// only the first is mailed anything.
+func TestDBRequestEmailVerificationAnswersEveryAddressAlike(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
+	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0002", "member@tenant-a.example.com", "Member")
+	client := env.authClient()
+
+	for _, email := range []string{pending.Email, member.Email, "stranger@tenant-a.example.com"} {
+		resp, err := client.RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+			Tenant: tenantContext(tenant),
+			Email:  email,
+		}))
+		if err != nil {
+			t.Fatalf("RequestEmailVerification for %s: %v", email, err)
+		}
+		if !resp.Msg.Requested {
+			t.Fatalf("requested = false for %s, want true", email)
+		}
+	}
+
+	if count := countRows(t, env,
+		`SELECT count(*) FROM user_email_verification_tokens WHERE user_id = $1`, member.ID); count != 0 {
+		t.Fatalf("verification tokens for the confirmed account = %d, want none", count)
+	}
+	mails := countRows(t, env, `
+		SELECT count(*) FROM outbox_events WHERE event_type = 'reader_email_verification_email'
+	`)
+	if mails != 1 {
+		t.Fatalf("queued verification mails = %d, want only the one for the unverified address", mails)
+	}
+}
+
+// The link the resend mails activates the account, which is the whole point of
+// asking for one: the reader who lost the first mail reaches a working link.
+func TestDBRequestEmailVerificationIssuesALinkThatActivatesTheAccount(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
+	env.seedEmailVerificationToken(t, tenant.ID, pending.ID, "expired-token", time.Now().Add(-time.Hour))
+	client := env.authClient()
+
+	if _, err := client.RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+		Tenant: tenantContext(tenant),
+		Email:  pending.Email,
+	})); err != nil {
+		t.Fatalf("RequestEmailVerification: %v", err)
+	}
+
+	// The row stores only the hash, so the mail's payload is the one readable
+	// form of the link — the same place the outbox worker reads it from.
+	var token string
+	if err := env.PG.DB.QueryRow(`
+		SELECT payload ->> 'token' FROM outbox_events
+		WHERE event_type = 'reader_email_verification_email'
+	`).Scan(&token); err != nil {
+		t.Fatalf("read the queued verification link: %v", err)
+	}
+
+	verified, err := client.VerifyUserEmail(context.Background(), connect.NewRequest(&publirav1.VerifyUserEmailRequest{
+		Tenant: tenantContext(tenant),
+		Token:  token,
+	}))
+	if err != nil {
+		t.Fatalf("VerifyUserEmail with the resent link: %v", err)
+	}
+	if !verified.Msg.Verified {
+		t.Fatal("verified = false, want true")
+	}
+	if account := readStoredAccount(t, env, pending.Email); !account.verified {
+		t.Fatal("the account is still unconfirmed after its resent link was opened")
+	}
+
+	// The expired link the resend replaced cannot be spent afterwards.
+	if _, err := client.VerifyUserEmail(context.Background(), connect.NewRequest(&publirav1.VerifyUserEmailRequest{
+		Tenant: tenantContext(tenant),
+		Token:  "expired-token",
+	})); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("VerifyUserEmail with the replaced link = %v, want not_found", err)
+	}
+}
+
+// Two requests for the same address at once still leave one live link. A reader
+// who submits the form twice is the ordinary way this happens, and without the
+// lock on the account row the two transactions cannot see each other's token:
+// both would insert one, and both links would stay valid.
+func TestDBRequestEmailVerificationKeepsOneLinkUnderConcurrentRequests(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
+	client := env.authClient()
+
+	const requests = 2
+	start := make(chan struct{})
+	errs := make(chan error, requests)
+	var wg sync.WaitGroup
+	for range requests {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			_, err := client.RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+				Tenant: tenantContext(tenant),
+				Email:  pending.Email,
+			}))
+			errs <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("RequestEmailVerification: %v", err)
+		}
+	}
+
+	live := countRows(t, env, `
+		SELECT count(*) FROM user_email_verification_tokens
+		WHERE user_id = $1 AND used_at IS NULL
+	`, pending.ID)
+	if live != 1 {
+		t.Fatalf("live verification tokens = %d, want 1", live)
 	}
 }

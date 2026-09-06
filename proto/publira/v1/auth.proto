@@ -42,6 +42,18 @@ message VerifyUserEmailResponse {
   bool verified = 1;
 }
 
+message RequestEmailVerificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+}
+
+message RequestEmailVerificationResponse {
+  // Every request answers the same way, whether the address has an unverified
+  // account, a verified one, or no account at all. Reporting which of the three
+  // it was would tell a stranger who is registered.
+  bool requested = 1;
+}
+
 message RequestEmailChangeRequest {
   publira.types.v1.TenantContext tenant = 1;
   string current_email = 2;
@@ -194,6 +206,7 @@ service AuthService {
   rpc Login(LoginRequest) returns (LoginResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
   rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse) {}
+  rpc RequestEmailVerification(RequestEmailVerificationRequest) returns (RequestEmailVerificationResponse) {}
   rpc RequestEmailChange(RequestEmailChangeRequest) returns (RequestEmailChangeResponse) {}
   rpc ConfirmEmailChange(ConfirmEmailChangeRequest) returns (ConfirmEmailChangeResponse) {}
   rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse) {}

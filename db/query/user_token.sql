@@ -39,6 +39,11 @@ DELETE FROM user_email_change_tokens
 WHERE user_id = $1
     AND completed_at IS NULL;
 
+-- name: DeleteUserEmailVerificationTokensByUserID :exec
+DELETE FROM user_email_verification_tokens
+WHERE user_id = $1
+    AND used_at IS NULL;
+
 -- name: DeleteUserPasswordResetTokensByUserID :exec
 DELETE FROM user_password_reset_tokens
 WHERE user_id = $1

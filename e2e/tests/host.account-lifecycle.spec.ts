@@ -53,6 +53,15 @@ const RESET_DONE_MESSAGE =
   "Your password has been reset. Sign in with your new password.";
 const RESET_CONFIRM_FAILED_MESSAGE =
   "Could not reset your password. The link may have expired or be invalid.";
+/**
+ * The resend page says the same thing for every address, the way the reset
+ * request does: a sign-up waiting to be confirmed, one already confirmed, and
+ * an address with no account at all all end here.
+ */
+const RESEND_SENT_MESSAGE =
+  "We sent a confirmation email. Open the link in it to finish signing up.";
+/** What a failed confirmation offers instead of a dead end. */
+const RESEND_VERIFICATION_LINK = "Send a new confirmation email";
 
 const accountStatus = (email: string): string =>
   querySql(`SELECT status FROM users WHERE email = '${email}';`);
@@ -137,6 +146,16 @@ const submitSignup = async (
   await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByLabel("Confirm password").fill(account.password);
   await page.getByRole("button", { name: "Sign up" }).click();
+};
+
+/** Fill `/resend-verification` and submit it. */
+const submitResendVerification = async (
+  page: Page,
+  email: string
+): Promise<void> => {
+  await page.goto(hostUrl("/resend-verification"));
+  await page.getByLabel("Email address").fill(email);
+  await page.getByRole("button", { name: "Send confirmation email" }).click();
 };
 
 /** Fill `/reset-password` and submit it. */
@@ -315,12 +334,71 @@ test.describe("web-host reader account lifecycle", () => {
     await openWithToken(page, VERIFY_PATH, token);
 
     await expect(page.getByText(VERIFY_FAILED_MESSAGE)).toBeVisible();
+    // The account cannot be signed into or reset while it is unconfirmed, so
+    // the failure has to offer the one thing that still works on it.
+    await expect(
+      page.getByRole("link", { name: RESEND_VERIFICATION_LINK })
+    ).toBeVisible();
     expect(accountStatus(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email)).toBe(
       "inactive"
     );
     expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email)).toBe(
       false
     );
+  });
+
+  /**
+   * The way out of the expiry above, and the reason this suite runs in order:
+   * the account it confirms is the one the test before it left unconfirmed.
+   */
+  test("a resend confirms the address whose first link expired", async ({
+    page,
+  }) => {
+    // The expired link's mail is still in the sink, and both carry a `/verify`
+    // link, so the one this test spends has to be the only one there.
+    await clearMessagesTo(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email);
+
+    await submitResendVerification(
+      page,
+      ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email
+    );
+
+    await page.waitForURL(/\/resend-verification\/requested\/?$/u);
+    await expect(page.getByText(RESEND_SENT_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email}`)
+    ).toBeVisible();
+
+    const message = await waitForMessageTo(
+      ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email
+    );
+    await openWithToken(page, VERIFY_PATH, tokenFromLink(message, VERIFY_PATH));
+
+    await expect(page.getByText(VERIFIED_MESSAGE)).toBeVisible();
+    expect(accountStatus(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email)).toBe(
+      "active"
+    );
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email)).toBe(true);
+
+    // The resend left the account alone, so the password from the sign-up is
+    // still the one that signs in.
+    await signInAsMember(page, ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP, "/my");
+    await expect(page).toHaveURL(/\/my\/?$/u);
+  });
+
+  test("a resend for an unregistered address lands on the same page and mails nothing", async ({
+    page,
+  }) => {
+    await submitResendVerification(page, ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL);
+
+    await page.waitForURL(/\/resend-verification\/requested\/?$/u);
+    await expect(page.getByText(RESEND_SENT_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL}`)
+    ).toBeVisible();
+
+    expect(accountCount(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL)).toBe("0");
+    expect(await countMessagesTo(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL)).toBe(0);
   });
 
   test("a reset request for a registered address lands on the requested page", async ({
