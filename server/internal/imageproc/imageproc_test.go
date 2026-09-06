@@ -340,12 +340,13 @@ func TestBuildEyeCatchAspectVariants_RejectsUnknownRatio(t *testing.T) {
 }
 
 func TestBuildEyeCatchAspectVariants_CutsAtTheGivenRectangle(t *testing.T) {
-	// The source is red on the left and blue on the right. A centre crop of
-	// this 2.5:1 image reaches into both halves, so a purely blue result can
-	// only have come from the rectangle.
+	// The source is red on the left and blue on the right, and the rectangle
+	// names the red half. A centre crop of this 2.5:1 source lands its own
+	// centre just inside the blue half, so red here can only have come from
+	// the rectangle.
 	raw := makeHalvedPNG(t, 4000, 1600)
 	variants, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/png", "landscape", &imageproc.CropRect{
-		X:      2000,
+		X:      0,
 		Y:      0,
 		Width:  2000,
 		Height: 1600,
@@ -355,8 +356,8 @@ func TestBuildEyeCatchAspectVariants_CutsAtTheGivenRectangle(t *testing.T) {
 	}
 	for _, variant := range variants {
 		r, _, b := sampleCenter(t, variant.Data)
-		if b <= r {
-			t.Fatalf("variant %q centre is r=%d b=%d, want the blue right half", variant.Label, r, b)
+		if r < 200 || b > 40 {
+			t.Fatalf("variant %q centre is r=%d b=%d, want the red left half", variant.Label, r, b)
 		}
 	}
 }

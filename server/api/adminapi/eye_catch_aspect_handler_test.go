@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
 	"regexp"
 	"testing"
 	"time"
@@ -45,6 +46,40 @@ func aspectJPEG(t *testing.T, width, height int) []byte {
 		t.Fatalf("jpeg.Encode: %v", err)
 	}
 	return buf.Bytes()
+}
+
+// halvedAspectPNG encodes a lossless PNG whose left half is red and right
+// half blue, so a test can tell which part of it the handler kept.
+func halvedAspectPNG(t *testing.T, width, height int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := range height {
+		for x := range width {
+			if x < width/2 {
+				img.Set(x, y, color.RGBA{R: 0xff, A: 0xff})
+				continue
+			}
+			img.Set(x, y, color.RGBA{B: 0xff, A: 0xff})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("png.Encode: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// decodeUploadedImage decodes one uploaded object and reports its size and the
+// 8-bit color at its centre.
+func decodeUploadedImage(t *testing.T, encoded []byte) (width, height int, r, b uint32) {
+	t.Helper()
+	img, _, err := image.Decode(bytes.NewReader(encoded))
+	if err != nil {
+		t.Fatalf("image.Decode: %v", err)
+	}
+	bounds := img.Bounds()
+	cr, _, cb, _ := img.At(bounds.Min.X+bounds.Dx()/2, bounds.Min.Y+bounds.Dy()/2).RGBA()
+	return bounds.Dx(), bounds.Dy(), cr >> 8, cb >> 8
 }
 
 func seriesRowColumns() []string {
@@ -250,7 +285,8 @@ func TestUploadSeriesEyeCatchAspectImageRejectsASourceBelowTheRatioMinimum(t *te
 }
 
 func TestUploadSeriesEyeCatchAspectImageStoresTheRatioCutFromTheCrop(t *testing.T) {
-	testServer, mock := newTestAdminServer(t)
+	storageProvider := &recordingStorageProvider{}
+	testServer, mock := newTestAdminServerWithStorage(t, storageProvider)
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
@@ -300,20 +336,45 @@ func TestUploadSeriesEyeCatchAspectImageStoresTheRatioCutFromTheCrop(t *testing.
 			AddRow(imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	// The right half of the upload. It is exactly the landscape minimum, so
-	// the ratio is still delivered at all three of its widths.
+	// The red left half of the upload, which is exactly the landscape
+	// minimum, so the ratio is still delivered at all three of its widths.
+	// The source is already 16:9, so ignoring the rectangle would centre the
+	// crop on the red/blue seam and deliver something that is not red.
 	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId:         "SERIES001",
 		VariantType:      "landscape",
-		ImageData:        aspectJPEG(t, 3200, 1800),
-		ImageContentType: "image/jpeg",
-		Crop:             &publirattypesv1.ImageCropRect{X: 1600, Y: 0, Width: 1600, Height: 900},
+		ImageData:        halvedAspectPNG(t, 3200, 1800),
+		ImageContentType: "image/png",
+		Crop:             &publirattypesv1.ImageCropRect{X: 0, Y: 0, Width: 1600, Height: 900},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	if _, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req); err != nil {
 		t.Fatalf("UploadSeriesEyeCatchAspectImage: %v", err)
+	}
+
+	uploads := storageProvider.recorded()
+	if len(uploads) != 3 {
+		t.Fatalf("uploaded %d objects, want 3", len(uploads))
+	}
+	wantSizes := map[int]int{800: 450, 1200: 675, 1600: 900}
+	for _, upload := range uploads {
+		width, height, r, b := decodeUploadedImage(t, upload.Data)
+		wantHeight, ok := wantSizes[width]
+		if !ok {
+			t.Fatalf("upload %q is %d px wide, want one of the landscape widths", upload.ObjectKey, width)
+		}
+		if height != wantHeight {
+			t.Fatalf("upload %q is %dx%d, want %dx%d", upload.ObjectKey, width, height, width, wantHeight)
+		}
+		delete(wantSizes, width)
+		if r < 200 || b > 40 {
+			t.Fatalf("upload %q centre is r=%d b=%d, want the red left half", upload.ObjectKey, r, b)
+		}
+	}
+	if len(wantSizes) != 0 {
+		t.Fatalf("missing uploads for widths %v", wantSizes)
 	}
 	assertExpectations(t, mock)
 }

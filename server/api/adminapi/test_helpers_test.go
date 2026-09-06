@@ -73,6 +73,14 @@ const (
 
 func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Helper()
+	return newTestAdminServerWithStorage(t, &testStorageProvider{})
+}
+
+// newTestAdminServerWithStorage builds the same server against a chosen
+// storage provider, so a test that cares what was uploaded can pass one that
+// keeps the bytes.
+func newTestAdminServerWithStorage(t *testing.T, provider storage.Provider) (*httptest.Server, sqlmock.Sqlmock) {
+	t.Helper()
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
@@ -80,7 +88,7 @@ func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	handler, err := NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager())
+	handler, err := NewHandler(db, dbmodels.New(db), provider, slog.Default(), nil, nil, testutil.TokenManager())
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
@@ -142,6 +150,33 @@ func (p *testStorageProvider) Upload(_ context.Context, req storage.UploadReques
 		URL:       "s3://" + req.ObjectKey,
 		SizeBytes: int64(len(req.Data)),
 	}, nil
+}
+
+// recordingStorageProvider keeps every uploaded object, so a test can assert
+// on the bytes a handler actually produced rather than only on the fact that
+// it uploaded something.
+type recordingStorageProvider struct {
+	mu      sync.Mutex
+	uploads []storage.UploadRequest
+}
+
+func (p *recordingStorageProvider) Upload(_ context.Context, req storage.UploadRequest) (storage.UploadResult, error) {
+	p.mu.Lock()
+	p.uploads = append(p.uploads, req)
+	p.mu.Unlock()
+	return storage.UploadResult{
+		Provider:  "s3",
+		ObjectKey: req.ObjectKey,
+		URL:       "s3://" + req.ObjectKey,
+		SizeBytes: int64(len(req.Data)),
+	}, nil
+}
+
+// recorded returns the uploads seen so far, in the order they arrived.
+func (p *recordingStorageProvider) recorded() []storage.UploadRequest {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return slices.Clone(p.uploads)
 }
 
 var oneByOnePNG = []byte{
