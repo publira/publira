@@ -78,17 +78,23 @@ let lastConfirmedDisplayLocale: Locale | undefined;
  * field ("default_timezone must be a valid IANA time zone name"), which is more
  * useful to the operator than the generic wording. Everything else takes the
  * shared copy. Same rule as `apps/web-admin/lib/tenant-timezone.ts`.
+ *
+ * `conflictMessage` replaces the `precondition` wording for a save the server
+ * refused because the settings row moved on. A read has no such category, so it
+ * passes none.
  */
 const parseErrorMessage = (
   error: unknown,
   fallback: string,
-  locale: Locale
+  locale: Locale,
+  conflictMessage?: string
 ): string => {
   const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
   return rpcErrorMessage(error, fallback, {
     locale,
     overrides: {
       "invalid-argument": serverMessage,
+      ...(conflictMessage ? { precondition: conflictMessage } : {}),
     },
   });
 };
@@ -257,6 +263,8 @@ export const getPlatformDisplayLocale = async (): Promise<Locale> => {
 interface StoredPlatformSettings {
   defaultLocale: Locale;
   defaultTimezone: string;
+  /** Version of the row these values came from, sent back with the save. */
+  revision: bigint;
 }
 
 /**
@@ -267,6 +275,11 @@ interface StoredPlatformSettings {
  * save that changes one of them has to name the other. The stored value is the
  * one to send back: the settings screen's copy can be minutes old, and posting
  * that back would revert what another session saved in the meantime.
+ *
+ * The revision comes along for the window this read cannot close by itself —
+ * another session saving between it and the write. The server compares it
+ * against the locked row and refuses the save instead of writing the value read
+ * here over the newer one.
  */
 const readStoredPlatformSettings = async (
   sessionId: string
@@ -277,7 +290,8 @@ const readStoredPlatformSettings = async (
   );
   const defaultTimezone = current.settings?.defaultTimezone.trim();
   const defaultLocale = current.settings?.defaultLocale.trim();
-  if (!(defaultTimezone && defaultLocale)) {
+  const revision = current.settings?.revision;
+  if (!(defaultTimezone && defaultLocale && revision)) {
     return null;
   }
 
@@ -286,7 +300,7 @@ const readStoredPlatformSettings = async (
     return null;
   }
 
-  return { defaultLocale: parsedLocale, defaultTimezone };
+  return { defaultLocale: parsedLocale, defaultTimezone, revision };
 };
 
 export const updatePlatformDefaultTimezone = async (
@@ -314,7 +328,11 @@ export const updatePlatformDefaultTimezone = async (
     }
 
     const response = await apiClient.settings.updatePlatformSettings(
-      { defaultLocale: stored.defaultLocale, defaultTimezone },
+      {
+        defaultLocale: stored.defaultLocale,
+        defaultTimezone,
+        expectedRevision: stored.revision,
+      },
       buildSessionHeaders(sessionId)
     );
 
@@ -330,7 +348,8 @@ export const updatePlatformDefaultTimezone = async (
       message: parseErrorMessage(
         error,
         getMessage(messages, "platform.settings.timezone_save_failed"),
-        locale
+        locale,
+        getMessage(messages, "platform.settings.save_conflict")
       ),
       ok: false,
     };
@@ -369,7 +388,11 @@ export const updatePlatformDefaultLocale = async (
     }
 
     const response = await apiClient.settings.updatePlatformSettings(
-      { defaultLocale, defaultTimezone: stored.defaultTimezone },
+      {
+        defaultLocale,
+        defaultTimezone: stored.defaultTimezone,
+        expectedRevision: stored.revision,
+      },
       buildSessionHeaders(sessionId)
     );
 
@@ -392,7 +415,15 @@ export const updatePlatformDefaultLocale = async (
       message: rpcErrorMessage(
         error,
         getMessage(messages, "platform.settings.locale_save_failed"),
-        { locale }
+        {
+          locale,
+          overrides: {
+            precondition: getMessage(
+              messages,
+              "platform.settings.save_conflict"
+            ),
+          },
+        }
       ),
       ok: false,
     };

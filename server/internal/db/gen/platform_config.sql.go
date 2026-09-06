@@ -10,7 +10,7 @@ import (
 )
 
 const getPlatformConfig = `-- name: GetPlatformConfig :one
-SELECT singleton, default_timezone, default_locale, created_at, updated_at
+SELECT singleton, default_timezone, default_locale, created_at, updated_at, revision
 FROM platform_config
 WHERE singleton = TRUE
 LIMIT 1
@@ -25,6 +25,97 @@ func (q *Queries) GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 		&i.DefaultLocale,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Revision,
+	)
+	return i, err
+}
+
+const insertPlatformSettings = `-- name: InsertPlatformSettings :one
+INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
+VALUES (
+        TRUE,
+        $1,
+        $2,
+        NOW()
+    )
+RETURNING singleton, default_timezone, default_locale, created_at, updated_at, revision
+`
+
+type InsertPlatformSettingsParams struct {
+	DefaultTimezone string `json:"default_timezone"`
+	DefaultLocale   string `json:"default_locale"`
+}
+
+// Creates the settings row with the platform default time zone and locale.
+// No ON CONFLICT clause: LockPlatformConfig has nothing to lock when the row is
+// absent, so a losing racer must fail on the primary key rather than overwrite
+// the row the winner just created.
+func (q *Queries) InsertPlatformSettings(ctx context.Context, arg InsertPlatformSettingsParams) (PlatformConfig, error) {
+	row := q.db.QueryRowContext(ctx, insertPlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
+	var i PlatformConfig
+	err := row.Scan(
+		&i.Singleton,
+		&i.DefaultTimezone,
+		&i.DefaultLocale,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Revision,
+	)
+	return i, err
+}
+
+const lockPlatformConfig = `-- name: LockPlatformConfig :one
+SELECT singleton, default_timezone, default_locale, created_at, updated_at, revision
+FROM platform_config
+WHERE singleton = TRUE
+FOR UPDATE
+`
+
+// Reads the settings row for update. A save takes this lock first, so the
+// revision it compares against cannot change between the comparison and the
+// write. Returns no rows when the platform has never saved any settings.
+func (q *Queries) LockPlatformConfig(ctx context.Context) (PlatformConfig, error) {
+	row := q.db.QueryRowContext(ctx, lockPlatformConfig)
+	var i PlatformConfig
+	err := row.Scan(
+		&i.Singleton,
+		&i.DefaultTimezone,
+		&i.DefaultLocale,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Revision,
+	)
+	return i, err
+}
+
+const updatePlatformSettings = `-- name: UpdatePlatformSettings :one
+UPDATE platform_config
+SET default_timezone = $1,
+    default_locale = $2,
+    revision = revision + 1,
+    updated_at = NOW()
+WHERE singleton = TRUE
+RETURNING singleton, default_timezone, default_locale, created_at, updated_at, revision
+`
+
+type UpdatePlatformSettingsParams struct {
+	DefaultTimezone string `json:"default_timezone"`
+	DefaultLocale   string `json:"default_locale"`
+}
+
+// Writes the platform default time zone and locale over the existing row. The
+// revision moves with every write, which is what makes a save based on an
+// earlier read detectable.
+func (q *Queries) UpdatePlatformSettings(ctx context.Context, arg UpdatePlatformSettingsParams) (PlatformConfig, error) {
+	row := q.db.QueryRowContext(ctx, updatePlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
+	var i PlatformConfig
+	err := row.Scan(
+		&i.Singleton,
+		&i.DefaultTimezone,
+		&i.DefaultLocale,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Revision,
 	)
 	return i, err
 }
@@ -34,8 +125,9 @@ INSERT INTO platform_config (singleton, default_locale, updated_at)
 VALUES (TRUE, $1, NOW()) ON CONFLICT (singleton) DO
 UPDATE
 SET default_locale = EXCLUDED.default_locale,
+    revision = platform_config.revision + 1,
     updated_at = NOW()
-RETURNING singleton, default_timezone, default_locale, created_at, updated_at
+RETURNING singleton, default_timezone, default_locale, created_at, updated_at, revision
 `
 
 // Stores only the default locale chosen during initial setup. No time zone has
@@ -50,42 +142,7 @@ func (q *Queries) UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale
 		&i.DefaultLocale,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const upsertPlatformSettings = `-- name: UpsertPlatformSettings :one
-INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
-VALUES (
-        TRUE,
-        $1,
-        $2,
-        NOW()
-    ) ON CONFLICT (singleton) DO
-UPDATE
-SET default_timezone = EXCLUDED.default_timezone,
-    default_locale = EXCLUDED.default_locale,
-    updated_at = NOW()
-RETURNING singleton, default_timezone, default_locale, created_at, updated_at
-`
-
-type UpsertPlatformSettingsParams struct {
-	DefaultTimezone string `json:"default_timezone"`
-	DefaultLocale   string `json:"default_locale"`
-}
-
-// Creates or updates the platform default time zone and default locale in one
-// statement. default_locale has no column DEFAULT, so the caller always states
-// a value for it.
-func (q *Queries) UpsertPlatformSettings(ctx context.Context, arg UpsertPlatformSettingsParams) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertPlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
-	var i PlatformConfig
-	err := row.Scan(
-		&i.Singleton,
-		&i.DefaultTimezone,
-		&i.DefaultLocale,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.Revision,
 	)
 	return i, err
 }

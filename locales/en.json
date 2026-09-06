@@ -2484,6 +2484,7 @@
       "port": "Port",
       "port_invalid": "Enter an integer port between 1 and 65535.",
       "reply_to": "Reply-to address (optional)",
+      "save_conflict": "Another session changed the platform settings, so nothing was saved. Reload the screen and try again.",
       "smtp_card_description": "Manage the platform default SMTP settings. Connection tests run separately from save.",
       "smtp_card_title": "Email settings",
       "smtp_encryption": "Encryption",

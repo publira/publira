@@ -332,6 +332,7 @@ type PlatformConfig struct {
 	DefaultLocale   string    `json:"default_locale"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
+	Revision        int64     `json:"revision"`
 }
 
 type PlatformNotification struct {

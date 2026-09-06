@@ -339,6 +339,11 @@ type Querier interface {
 	// rows on conflict.
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) (OutboxEvent, error)
 	InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error
+	// Creates the settings row with the platform default time zone and locale.
+	// No ON CONFLICT clause: LockPlatformConfig has nothing to lock when the row is
+	// absent, so a losing racer must fail on the primary key rather than overwrite
+	// the row the winner just created.
+	InsertPlatformSettings(ctx context.Context, arg InsertPlatformSettingsParams) (PlatformConfig, error)
 	// Idempotent projection from a SoT row (purchases.id, access_tickets.id).
 	InsertProjectedSourceEvent(ctx context.Context, arg InsertProjectedSourceEventParams) (ContentEvent, error)
 	// Ratings are append-only, like every other content_events row: a member who
@@ -728,6 +733,10 @@ type Querier interface {
 	// current eye_catch_image_id has to be a separate statement: READ COMMITTED
 	// freezes this statement's snapshot before it waits for the lock.
 	LockLabelByPublicIDForTenant(ctx context.Context, arg LockLabelByPublicIDForTenantParams) (uuid.UUID, error)
+	// Reads the settings row for update. A save takes this lock first, so the
+	// revision it compares against cannot change between the comparison and the
+	// write. Returns no rows when the platform has never saved any settings.
+	LockPlatformConfig(ctx context.Context) (PlatformConfig, error)
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
 	// calls serialize. The following read of the current order (or
 	// MAX(order_index)) must be a separate statement: READ COMMITTED
@@ -893,6 +902,10 @@ type Querier interface {
 	// display_in_footer keeps the stored value when the argument is omitted (NULL),
 	// so a title-only edit does not have to restate the footer flag.
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, error)
+	// Writes the platform default time zone and locale over the existing row. The
+	// revision moves with every write, which is what makes a save based on an
+	// earlier read detectable.
+	UpdatePlatformSettings(ctx context.Context, arg UpdatePlatformSettingsParams) (PlatformConfig, error)
 	UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePlatformUserEmailByIDParams) (PlatformUser, error)
 	UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error)
 	UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error)
@@ -930,10 +943,6 @@ type Querier interface {
 	// an existing row keeps the value it already has.
 	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
-	// Creates or updates the platform default time zone and default locale in one
-	// statement. default_locale has no column DEFAULT, so the caller always states
-	// a value for it.
-	UpsertPlatformSettings(ctx context.Context, arg UpsertPlatformSettingsParams) (PlatformConfig, error)
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
