@@ -4,7 +4,11 @@ import type { Page } from "@playwright/test";
 import { signInAsAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import { signInAsMember } from "../src/host";
-import { episodeCommentsTag, revalidateHostTags } from "../src/revalidate";
+import {
+  episodeCommentsTag,
+  revalidateHostTags,
+  tenantSiteTag,
+} from "../src/revalidate";
 import {
   COMMENT_MODERATION_ADMIN,
   COMMENT_MODERATION_EPISODE,
@@ -47,6 +51,14 @@ const postComment = async (page: Page, body: string): Promise<void> => {
   await page.getByRole("button", { name: "Post comment" }).click();
 };
 
+/** Choose one mode on the settings card and submit it. */
+const saveCommentMode = async (page: Page, option: string): Promise<void> => {
+  await page.getByRole("radio", { exact: true, name: option }).click();
+  await page
+    .getByRole("button", { name: "Save how comments are published" })
+    .click();
+};
+
 /** The console row for one comment, found by the text of the comment itself. */
 const consoleRow = (page: Page, body: string) =>
   page.getByRole("row").filter({ hasText: body });
@@ -82,11 +94,32 @@ const pollEpisodePage = <T>(page: Page, read: () => Promise<T>) =>
   );
 
 /**
- * Empty the queue and tell web-host about it.
+ * Read the episode page again and again until the comment section itself comes
+ * or goes. Separate from {@link pollEpisodePage}, which waits for that section
+ * before it reads: here the section's absence is the answer.
+ */
+const pollCommentsSection = (page: Page) =>
+  expect.poll(
+    async () => {
+      // `goto` settles on the document's load event, and the section is
+      // streamed into that same response, so what it holds by then is final.
+      await page.goto(episodeUrl);
+      return await commentsSection(page).count();
+    },
+    {
+      message: "the episode page never caught up with the saved comment mode",
+      timeout: 30_000,
+    }
+  );
+
+/**
+ * Put the tenant back the way the suite needs it and tell web-host about it.
  *
- * The scenario file deletes the comments a previous run wrote, which is a
- * write no app saw: without the tag the cached public list would still be
- * serving that run's approved comments to this one.
+ * The scenario file deletes the comments a previous run wrote and writes the
+ * tenant's comment mode back to `approval_required`, both of them writes no app
+ * saw: without the tags the cached public list would still be serving that
+ * run's approved comments, and the site chrome would still be carrying the mode
+ * the last run left behind.
  */
 const resetComments = async (): Promise<void> => {
   applyScenarioSql(COMMENT_MODERATION_SCENARIO);
@@ -95,6 +128,7 @@ const resetComments = async (): Promise<void> => {
       COMMENT_MODERATION_TENANT.id,
       COMMENT_MODERATION_EPISODE.publicId
     ),
+    tenantSiteTag(COMMENT_MODERATION_TENANT.id),
   ]);
 };
 
@@ -300,6 +334,47 @@ test.describe("web-admin comment moderation", () => {
       await expect(consoleRow(consolePage, body)).toHaveCount(0);
     } finally {
       await consoleContext.close();
+    }
+  });
+
+  // The setting is the one thing that decides whether the storefront offers
+  // commenting at all, so it is measured where a reader would see it rather
+  // than by reading the console back.
+  test("turning comments off in the settings takes the section off the public page", async ({
+    browser,
+    page,
+  }) => {
+    await signInAsAdmin(
+      page,
+      COMMENT_MODERATION_ADMIN,
+      "/settings",
+      WEB_ADMIN_COMMENT_MODERATION_BASE_URL
+    );
+
+    const readerContext = await browser.newContext();
+    const readerPage = await readerContext.newPage();
+    try {
+      await readerPage.goto(episodeUrl);
+      await expect(commentsSection(readerPage)).toBeVisible();
+
+      await saveCommentMode(page, "Do not accept comments");
+      await expect(
+        page.getByText("How comments are published was saved.")
+      ).toBeVisible();
+      await pollCommentsSection(readerPage).toBe(0);
+
+      // Back to what the rest of the suite runs on. The poll is what says this
+      // save landed: both saves report the same sentence, so the message left
+      // over from the first one would satisfy an assertion about this one.
+      await saveCommentMode(page, "Publish after approval");
+      await pollCommentsSection(readerPage).toBe(1);
+      await expect(
+        readerPage.getByText(
+          "A comment appears here once a moderator approves it."
+        )
+      ).toBeVisible();
+    } finally {
+      await readerContext.close();
     }
   });
 });

@@ -4,6 +4,7 @@ import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantSmtpSettings } from "#lib/email-settings";
 import type { TenantPaymentSettings } from "#lib/payment-settings";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
+import type { TenantCommentMode } from "#lib/tenant-comment-mode-shared";
 
 export type SiteSettingsActionState =
   | {
@@ -103,6 +104,18 @@ export type TenantDefaultLocaleActionState =
       ok: true;
       message: string;
       defaultLocale: Locale;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;
+
+export type TenantCommentModeActionState =
+  | {
+      ok: true;
+      message: string;
+      commentMode: TenantCommentMode;
     }
   | {
       ok: false;

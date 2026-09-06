@@ -39,6 +39,14 @@ export const revalidateHostTags = async (
   }
 };
 
+/**
+ * The tag web-host holds the tenant's site chrome under. The comment mode
+ * rides on that read, so a scenario seed that writes `tenant_config` directly
+ * has to drop it.
+ */
+export const tenantSiteTag = (tenantId: string): string =>
+  `tenant:${tenantId}:site`;
+
 /** The tag web-host holds one episode's public comment list under. */
 export const episodeCommentsTag = (
   tenantId: string,

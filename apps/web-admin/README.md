@@ -10,6 +10,7 @@ The console where publishers and editors enter and operate their content.
 - Per-tenant Stripe payment settings (registering, updating, and disabling the secret)
 - Read-through reporting: how many members finished each episode, over the member views of the same period
 - Comment moderation: approving, removing, restoring, and purging the comments readers leave on episodes
+- The tenant's comment publishing policy: whether episodes take comments at all, and whether a comment appears at once or waits for approval
 
 ## UI locale
 

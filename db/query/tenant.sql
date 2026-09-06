@@ -164,3 +164,13 @@ UPDATE tenant_config
 SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
 WHERE tenant_id = $1
 RETURNING *;
+
+-- name: UpsertTenantCommentMode :one
+-- The settings screen can save the comment mode for a tenant whose config row
+-- does not exist yet, so the mode is written without disturbing the site copy
+-- columns UpdateTenantConfig owns.
+INSERT INTO tenant_config (tenant_id, comment_mode)
+VALUES ($1, $2)
+ON CONFLICT (tenant_id) DO UPDATE
+SET comment_mode = EXCLUDED.comment_mode, updated_at = NOW()
+RETURNING *;

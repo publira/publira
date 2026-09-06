@@ -39,6 +39,11 @@ import {
 } from "#lib/payment-settings";
 import { updateTenantSiteSettings } from "#lib/site-settings";
 import {
+  tenantCommentModeCacheTag,
+  updateTenantCommentMode,
+} from "#lib/tenant-comment-mode";
+import { TENANT_COMMENT_MODES } from "#lib/tenant-comment-mode-shared";
+import {
   tenantDefaultLocaleCacheTag,
   updateTenantDefaultLocale,
 } from "#lib/tenant-default-locale";
@@ -58,6 +63,7 @@ import {
 import type {
   EmailChangeActionState,
   SiteSettingsActionState,
+  TenantCommentModeActionState,
   TenantDefaultLocaleActionState,
   TenantEmailSettingsFormState,
   TenantIconActionState,
@@ -274,6 +280,20 @@ const tenantDefaultLocaleSchema = (messages: SharedMessages) =>
       error: getMessage(
         messages,
         "admin.settings.default_locale.validation.required"
+      ),
+    }),
+  });
+
+/**
+ * The Go server validates the mode it is sent and stays the authority; this
+ * only gives the operator immediate feedback instead of a round trip.
+ */
+const tenantCommentModeSchema = (messages: SharedMessages) =>
+  z.object({
+    commentMode: z.enum(TENANT_COMMENT_MODES, {
+      error: getMessage(
+        messages,
+        "admin.settings.comment_mode.validation.required"
       ),
     }),
   });
@@ -749,6 +769,63 @@ export const updateTenantDefaultLocaleAction = async (
   return {
     defaultLocale: result.defaultLocale,
     message: getMessage(messages, "admin.settings.default_locale.saved"),
+    ok: true,
+  };
+};
+
+export const updateTenantCommentModeAction = async (
+  _prevState: TenantCommentModeActionState,
+  formData: FormData
+): Promise<TenantCommentModeActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  if (!tenantId) {
+    return {
+      message: getMessage(messages, "admin.settings.tenant_missing"),
+      ok: false,
+    };
+  }
+
+  const parsed = tenantCommentModeSchema(messages).safeParse(
+    toFormDataInput(formData, {
+      commentMode: { kind: "value", name: "comment_mode" },
+    })
+  );
+  if (!parsed.success) {
+    // One control, so the field message is the form message.
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantCommentMode(
+      {
+        commentMode: parsed.data.commentMode,
+        tenantId,
+      },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen reads the mode through a private cache, so without this
+  // the operator would keep seeing the previous choice in the same session. The
+  // storefront's own cached copy is dropped by the API as the update lands.
+  updateTag(tenantCommentModeCacheTag(tenantId));
+
+  return {
+    commentMode: result.commentMode,
+    message: getMessage(messages, "admin.settings.comment_mode.saved"),
     ok: true,
   };
 };

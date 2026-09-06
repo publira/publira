@@ -20,17 +20,20 @@ import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantSiteSettings } from "#lib/site-settings";
+import { getTenantCommentMode } from "#lib/tenant-comment-mode";
 import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantTimezone } from "#lib/tenant-timezone";
 
 import { SettingsTabNav } from "./_components/settings-tab-nav";
 import { SiteSettingsForm } from "./_components/site-settings-form";
+import { TenantCommentModeForm } from "./_components/tenant-comment-mode-form";
 import { TenantDefaultLocaleForm } from "./_components/tenant-default-locale-form";
 import type { TenantDefaultLocaleFormOption } from "./_components/tenant-default-locale-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
 import {
   updateSiteSettingsAction,
+  updateTenantCommentModeAction,
   updateTenantDefaultLocaleAction,
   updateTenantTimezoneAction,
 } from "./_lib/actions";
@@ -64,6 +67,14 @@ const SettingsFormsSkeleton = () => (
       <div className="mb-4 h-6 w-32 animate-pulse rounded bg-muted" />
       <div className="h-10 animate-pulse rounded bg-muted/70" />
     </div>
+    <div className="rounded-2xl border border-border/70 bg-card p-6">
+      <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
+      <div className="grid gap-2">
+        <div className="h-12 animate-pulse rounded bg-muted/70" />
+        <div className="h-12 animate-pulse rounded bg-muted/70" />
+        <div className="h-12 animate-pulse rounded bg-muted/70" />
+      </div>
+    </div>
   </div>
 );
 
@@ -82,12 +93,14 @@ const SettingsForms = async () => {
     settingsResult,
     timezoneResult,
     defaultLocaleResult,
+    commentModeResult,
     currentUserResult,
     options,
   ] = await Promise.all([
     getTenantSiteSettings(tenantId, locale),
     getTenantTimezone(tenantId, locale),
     getTenantDefaultLocale(tenantId, locale),
+    getTenantCommentMode(tenantId, locale),
     getAdminCurrentUser(tenantId),
     tenantDefaultLocaleOptions(),
   ]);
@@ -96,6 +109,7 @@ const SettingsForms = async () => {
     settingsResult,
     timezoneResult,
     defaultLocaleResult,
+    commentModeResult,
     currentUserResult
   );
 
@@ -136,6 +150,17 @@ const SettingsForms = async () => {
           defaultLocaleResult.ok ? undefined : defaultLocaleResult.message
         }
         options={options}
+      />
+
+      <TenantCommentModeForm
+        action={updateTenantCommentModeAction}
+        canEdit={canEdit}
+        initialCommentMode={
+          commentModeResult.ok ? commentModeResult.commentMode : undefined
+        }
+        loadErrorMessage={
+          commentModeResult.ok ? undefined : commentModeResult.message
+        }
       />
     </>
   );

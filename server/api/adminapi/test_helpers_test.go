@@ -40,6 +40,8 @@ const (
 	upsertTenantThemeQuery                                   = "-- name: UpsertTenantTheme :one\n"
 	updateTenantTimezoneQuery                                = "-- name: UpdateTenantTimezone :one\n"
 	updateTenantDefaultLocaleQuery                           = "-- name: UpdateTenantDefaultLocale :one\n"
+	getTenantConfigByTenantIDQuery                           = "-- name: GetTenantConfigByTenantID :one\n"
+	upsertTenantCommentModeQuery                             = "-- name: UpsertTenantCommentMode :one\n"
 	listAccessTicketsForTenantAscQuery                       = "-- name: ListAccessTicketsForTenantAsc :many\n"
 	listAccessTicketsForTenantDescQuery                      = "-- name: ListAccessTicketsForTenantDesc :many\n"
 	listSeriesByTenantAscQuery                               = "-- name: ListSeriesByTenantAsc :many\n"

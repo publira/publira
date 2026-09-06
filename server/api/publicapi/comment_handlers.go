@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/commentmode"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -25,11 +26,6 @@ const (
 	// maxCommentBodyRunes counts Unicode code points rather than bytes, so the
 	// same text costs a reader the same length whatever script it is written in.
 	maxCommentBodyRunes = 1000
-
-	// The values of tenant_config.comment_mode.
-	commentModeDisabled         = "disabled"
-	commentModeImmediate        = "immediate"
-	commentModeApprovalRequired = "approval_required"
 
 	// The episode_comments.status values this service writes. The removed states
 	// belong to moderation and to the author's own withdrawal.
@@ -69,7 +65,7 @@ func (s *apiServer) resolvePublicEpisode(
 func (s *apiServer) tenantCommentMode(ctx context.Context, tenantID uuid.UUID) (string, error) {
 	config, err := s.queriesFor(ctx).GetTenantConfigByTenantID(ctx, tenantID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return commentModeDisabled, nil
+		return commentmode.Disabled, nil
 	}
 	if err != nil {
 		return "", s.internalDBError(ctx, "failed to get tenant comment mode", err, "tenant_id", tenantID.String())
@@ -388,12 +384,12 @@ func (s *apiServer) PostEpisodeComment(
 	var status string
 	var publishedAt sql.NullTime
 	switch mode {
-	case commentModeImmediate:
+	case commentmode.Immediate:
 		status = commentStatusPublished
 		publishedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
-	case commentModeApprovalRequired:
+	case commentmode.ApprovalRequired:
 		status = commentStatusPending
-	case commentModeDisabled:
+	case commentmode.Disabled:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("comments are disabled"))
 	default:
 		// The column has a CHECK constraint listing the three modes, so any other
