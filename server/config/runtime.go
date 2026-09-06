@@ -15,6 +15,7 @@ type Config struct {
 	DB         DB
 	Storage    Storage
 	Encryption Encryption
+	Push       Push
 }
 
 type DB struct {
@@ -44,6 +45,30 @@ type Encryption struct {
 	Keys         map[string][]byte
 }
 
+// Push is the Firebase Cloud Messaging credential the outbox worker sends
+// member notifications to devices with.
+type Push struct {
+	// FCMProjectID names the Firebase project. Empty takes the project the
+	// credentials themselves name.
+	FCMProjectID string
+	// FCMCredentialsJSON is a service account key supplied inline. Empty
+	// leaves the credential to Application Default Credentials, which is the
+	// name GOOGLE_APPLICATION_CREDENTIALS keeps because the Google library
+	// performs that lookup itself.
+	FCMCredentialsJSON []byte
+	// ADCConfigured records that GOOGLE_APPLICATION_CREDENTIALS was set, so
+	// [Push.Configured] can tell a deployment that meant to send from one that
+	// never configured push at all.
+	ADCConfigured bool
+}
+
+// Configured reports whether any credential was supplied. A process that gets
+// false leaves the push handler unregistered, so a local stack without
+// Firebase still runs.
+func (p Push) Configured() bool {
+	return len(p.FCMCredentialsJSON) > 0 || p.ADCConfigured
+}
+
 func New() (*Config, error) {
 	storageCfg, err := parseStorage()
 	if err != nil {
@@ -57,7 +82,17 @@ func New() (*Config, error) {
 		DB:         parseDB(),
 		Storage:    storageCfg,
 		Encryption: encryptionCfg,
+		Push:       parsePush(),
 	}, nil
+}
+
+func parsePush() Push {
+	credentials := strings.TrimSpace(os.Getenv("PUBLIRA_FCM_CREDENTIALS_JSON"))
+	return Push{
+		FCMProjectID:       strings.TrimSpace(os.Getenv("PUBLIRA_FCM_PROJECT_ID")),
+		FCMCredentialsJSON: []byte(credentials),
+		ADCConfigured:      strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")) != "",
+	}
 }
 
 func parseDB() DB {

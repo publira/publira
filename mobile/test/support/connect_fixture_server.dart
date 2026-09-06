@@ -21,6 +21,7 @@ class ConnectFixtureServer {
     this.detailStatus = HttpStatus.ok,
     this.episodeStatus = HttpStatus.ok,
     this.tenantStatus = HttpStatus.ok,
+    this.pushDeviceStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
     this.encryptImages = true,
     this.listResponse,
@@ -222,6 +223,10 @@ class ConnectFixtureServer {
   int episodeStatus;
   int tenantStatus;
 
+  /// What `RegisterPushDevice` and `UnregisterPushDevice` answer with, so a
+  /// test can act out an API that turns the registration down.
+  int pushDeviceStatus;
+
   /// The bearer `GetMe` accepts and `GetEpisodeDetail` unlocks for. Set it to
   /// another value to act out a token the API has stopped accepting.
   String? activeAccessToken;
@@ -414,6 +419,20 @@ class ConnectFixtureServer {
         return;
       }
       await _write(request, HttpStatus.ok, episodeResponse ?? episode);
+      return;
+    }
+
+    if (path.endsWith('/RegisterPushDevice') ||
+        path.endsWith('/UnregisterPushDevice')) {
+      final registering = path.endsWith('/RegisterPushDevice');
+      await _write(request, pushDeviceStatus, {
+        if (pushDeviceStatus == HttpStatus.ok && registering)
+          'registered': true,
+        if (pushDeviceStatus == HttpStatus.ok && !registering)
+          'unregistered': true,
+        if (pushDeviceStatus != HttpStatus.ok) 'code': 'unavailable',
+        if (pushDeviceStatus != HttpStatus.ok) 'message': 'unavailable',
+      });
       return;
     }
 

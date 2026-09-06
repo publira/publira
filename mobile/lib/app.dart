@@ -19,6 +19,11 @@ import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/offline/offline_catalog_repository.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
+import 'package:publira/push/http_push_repository.dart';
+import 'package:publira/push/push_controller.dart';
+import 'package:publira/push/push_device_store.dart';
+import 'package:publira/push/push_messaging.dart';
+import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
 
 /// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
@@ -31,6 +36,7 @@ class PubliraApp extends StatefulWidget {
     required this.catalog,
     required this.auth,
     this.offline,
+    this.push,
     this.tenantDefaultLocale,
   });
 
@@ -45,12 +51,18 @@ class PubliraApp extends StatefulWidget {
   /// [offline] is what the device keeps for reading without a network, which
   /// an on-device test replaces so it does not carry saved episodes from one
   /// test to the next.
+  ///
+  /// [messaging] is the device's notification service, which `main` resolves
+  /// before the first frame because initializing Firebase is asynchronous. It
+  /// is `null` for a build carrying no Firebase project, and push is off then.
   factory PubliraApp.fromConfig({
     Key? key,
     AppConfig? config,
     GoRouter? router,
     SessionStore store = const SecureSessionStore(),
     OfflineLibrary? offline,
+    PushMessaging? messaging,
+    PushDeviceStore pushDevices = const SecurePushDeviceStore(),
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
     final library = offline ?? FileOfflineLibrary();
@@ -85,6 +97,11 @@ class PubliraApp extends StatefulWidget {
       ),
       auth: auth,
       offline: library,
+      push: PushController(
+        messaging: messaging,
+        repository: HttpPushRepository(client: client, tenants: tenants),
+        store: pushDevices,
+      ),
       tenantDefaultLocale: tenants.defaultLocale,
     );
   }
@@ -101,6 +118,14 @@ class PubliraApp extends StatefulWidget {
   /// with no offline behaviour at all.
   final OfflineLibrary? offline;
 
+  /// The new-episode notifications the reader can turn on.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one, and the controller itself
+  /// decides whether this build can deliver anything. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// notification behaviour at all.
+  final PushController? push;
+
   /// The tenant's default locale code, once the tenant lookup has learnt it.
   ///
   /// [PubliraApp.fromConfig] hands over what its [TenantResolver] reports; a
@@ -115,13 +140,21 @@ class PubliraApp extends StatefulWidget {
 class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
 
+  /// What the reader's session was the last time [_onAuthChanged] looked, so a
+  /// sign-in and a sign-out can be told apart from the other changes the
+  /// controller reports.
+  late bool _wasSignedIn;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _wasSignedIn = widget.auth.isSignedIn;
     widget.auth.addListener(_onAuthChanged);
+    widget.push?.addListener(_onPushChanged);
     widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
     unawaited(widget.auth.restore());
+    unawaited(widget.push?.start());
   }
 
   @override
@@ -138,6 +171,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     widget.tenantDefaultLocale?.removeListener(_onTenantDefaultLocaleChanged);
+    widget.push?.removeListener(_onPushChanged);
     widget.auth.removeListener(_onAuthChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -161,9 +195,21 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     tenantDefaultLocale: widget.tenantDefaultLocale?.value,
   );
 
-  /// Tells the reader once when a session the app had stored turned out to be
-  /// gone, and offers the way back in rather than signing them in silently.
+  /// Keeps the device's notification registration in step with the reader who
+  /// holds the session, and tells the reader once when a session the app had
+  /// stored turned out to be gone, offering the way back in rather than
+  /// signing them in silently.
   void _onAuthChanged() {
+    final signedIn = widget.auth.isSignedIn;
+    if (signedIn != _wasSignedIn) {
+      _wasSignedIn = signedIn;
+      // A deliberate sign-out has already unregistered, while the session was
+      // still good; this covers the one the app ends itself. Both are the same
+      // idempotent call.
+      unawaited(
+        signedIn ? widget.push?.handleSignedIn() : widget.push?.handleSignOut(),
+      );
+    }
     if (!widget.auth.acknowledgeExpiry()) {
       return;
     }
@@ -186,25 +232,68 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     });
   }
 
+  /// Draws a notification that arrived while the app was in front, which FCM
+  /// leaves to the app, and follows a tap on one the OS drew.
+  void _onPushChanged() {
+    final push = widget.push;
+    if (push == null) {
+      return;
+    }
+    final route = push.acknowledgePendingRoute();
+    if (route != null) {
+      // A payload naming no route the app can open still opened the app, so
+      // the reader lands on the catalog rather than nowhere.
+      widget.router.push(route.isEmpty ? AppRoutes.catalog : route);
+    }
+    final message = push.acknowledgeForegroundMessage();
+    if (message == null) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final messages = AppMessages.forLocale(_locale);
+      if (messages == null) {
+        return;
+      }
+      final target = message.route;
+      _messengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(
+            message.body.isEmpty ? message.title : message.body,
+            key: const ValueKey('push-foreground-message'),
+          ),
+          action: target.isEmpty
+              ? null
+              : SnackBarAction(
+                  label: messages.pushOpen,
+                  onPressed: () => widget.router.push(target),
+                ),
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return AuthScope(
       controller: widget.auth,
-      child: OfflineScope(
-        library: widget.offline,
-        child: CatalogScope(
-          repository: widget.catalog,
-          child: MaterialApp.router(
-            title: 'Publira',
-            scaffoldMessengerKey: _messengerKey,
-            locale: _locale,
-            supportedLocales: AppMessages.supportedLocales,
-            localizationsDelegates: appLocalizationsDelegates,
-            theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-              useMaterial3: true,
+      child: PushScope(
+        controller: widget.push,
+        child: OfflineScope(
+          library: widget.offline,
+          child: CatalogScope(
+            repository: widget.catalog,
+            child: MaterialApp.router(
+              title: 'Publira',
+              scaffoldMessengerKey: _messengerKey,
+              locale: _locale,
+              supportedLocales: AppMessages.supportedLocales,
+              localizationsDelegates: appLocalizationsDelegates,
+              theme: ThemeData(
+                colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+                useMaterial3: true,
+              ),
+              routerConfig: widget.router,
             ),
-            routerConfig: widget.router,
           ),
         ),
       ),

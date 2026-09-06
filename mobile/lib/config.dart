@@ -1,3 +1,5 @@
+import 'package:publira/push/firebase_config.dart';
+
 /// Runtime connection settings for the public API.
 ///
 /// Values come from `--dart-define` so a test stack, emulator, or local
@@ -8,22 +10,24 @@ class AppConfig {
     required this.apiBaseUrl,
     required this.tenantHost,
     this.imageBaseUrl = defaultImageBaseUrl,
+    this.firebase,
   });
 
   factory AppConfig.fromEnvironment() {
-    return const AppConfig(
-      apiBaseUrl: String.fromEnvironment(
+    return AppConfig(
+      apiBaseUrl: const String.fromEnvironment(
         'PUBLIRA_API_BASE_URL',
         defaultValue: defaultApiBaseUrl,
       ),
-      tenantHost: String.fromEnvironment(
+      tenantHost: const String.fromEnvironment(
         'PUBLIRA_TENANT_HOST',
         defaultValue: defaultTenantHost,
       ),
-      imageBaseUrl: String.fromEnvironment(
+      imageBaseUrl: const String.fromEnvironment(
         'PUBLIRA_IMAGE_BASE_URL',
         defaultValue: defaultImageBaseUrl,
       ),
+      firebase: FirebaseConfig.fromEnvironment(),
     );
   }
 
@@ -43,6 +47,10 @@ class AppConfig {
   final String apiBaseUrl;
   final String imageBaseUrl;
   final String tenantHost;
+
+  /// The Firebase project the push notifications arrive from, or `null` when
+  /// this build was given none and push is off.
+  final FirebaseConfig? firebase;
 
   Uri get apiBaseUri => Uri.parse(apiBaseUrl);
 

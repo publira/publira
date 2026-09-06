@@ -683,6 +683,15 @@ type UserPasswordResetToken struct {
 	CreatedAt   time.Time    `json:"created_at"`
 }
 
+type UserPushDevice struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Token     string    `json:"token"`
+	Platform  string    `json:"platform"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type UserRecommendFeature struct {
 	TenantID       uuid.UUID       `json:"tenant_id"`
 	UserID         uuid.UUID       `json:"user_id"`

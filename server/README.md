@@ -180,6 +180,20 @@ These are URLs reachable inside the private network, not the public ones meant f
   - Example: `http://email-renderer:8080` (container-to-container)
   - When unset, `http://localhost:8080` is used for local development
 
+## Mobile push (Firebase Cloud Messaging)
+
+outbox-worker mirrors member notifications onto the devices the mobile app registered, over FCM HTTP v1. Firebase relays to APNs for iOS once the APNs auth key is uploaded to the project, so one integration covers both platforms.
+
+- `PUBLIRA_FCM_PROJECT_ID`
+  - The Firebase project the messages are sent to
+  - When unset, the project the credentials name is used
+- `PUBLIRA_FCM_CREDENTIALS_JSON`
+  - A service account key, inline as JSON. The key has to be a `service_account` credential; FCM HTTP v1 accepts no other kind
+- `GOOGLE_APPLICATION_CREDENTIALS`
+  - The alternative to the inline key. It keeps its outside name because the Google library performs that lookup itself
+
+With neither credential set, the `member_push_notification` handler is not registered and push is off, so a local stack without Firebase still runs. `batch publish-episodes` writes the outbox row either way, and an unhandled row retries and then goes dead without affecting the publish.
+
 ## Distributed tracing (OpenTelemetry)
 
 Every process under `cmd/*` emits OpenTelemetry traces. **It is disabled by default**: unless `PUBLIRA_TRACING_ENABLED` is set, neither the TracerProvider nor the propagator is replaced, and the behavior is exactly what it was before the instrumentation was introduced (the processes start without any collection backend).

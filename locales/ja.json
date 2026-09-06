@@ -2001,6 +2001,10 @@
     "account": {
       "name": "お名前",
       "name_unset": "（未設定）",
+      "notifications": "新着エピソードの通知",
+      "notifications_denied": "このアプリの通知がオフになっています。端末の設定でオンにしてください。",
+      "notifications_description": "新しいエピソードが公開されたときにお知らせします。",
+      "notifications_unavailable": "通知をオンにできませんでした。もう一度お試しください。",
       "sign_out": "サインアウト",
       "signed_out": "サインインしていません",
       "title": "アカウント"
@@ -2018,6 +2022,9 @@
     "not_found": {
       "message": "「{$uri}」は存在しません。",
       "title": "ページが見つかりません"
+    },
+    "push": {
+      "open": "開く"
     },
     "series": {
       "episode_count": "{$count} 話",

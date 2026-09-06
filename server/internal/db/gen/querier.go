@@ -150,6 +150,12 @@ type Querier interface {
 	DeleteUserMfaRecoveryCodesByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserPasswordResetTokensByUserID(ctx context.Context, userID uuid.UUID) error
+	// The send path's answer to a token FCM reports as revoked. It runs in the
+	// outbox worker, which knows the token and not who registered it.
+	DeleteUserPushDeviceByToken(ctx context.Context, token string) (int64, error)
+	// Sign-out and the account switch both unregister, and both name the reader
+	// who holds the session, so a token cannot be dropped from another account.
+	DeleteUserPushDeviceForUser(ctx context.Context, arg DeleteUserPushDeviceForUserParams) (int64, error)
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a login code is, which stored it.
 	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
@@ -590,6 +596,10 @@ type Querier interface {
 	ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleAscParams) ([]uuid.UUID, error)
 	// The backward direction of ListPublishedSeriesIDsBySearchTitleAsc.
 	ListPublishedSeriesIDsBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleDescParams) ([]uuid.UUID, error)
+	// Every device to push one notification to, one row per recipient device. The
+	// notification id travels with the token because the push mirrors that row and
+	// the app routes from it.
+	ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error)
 	// The most recent draft and scheduled episodes, for the publish queue on the
 	// dashboard.
 	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
@@ -930,6 +940,11 @@ type Querier interface {
 	// clears the lock, so a stalled attempt never blocks the next one.
 	UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfaTotpSecretParams) (UserMfaTotp, error)
 	UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error)
+	// Records the FCM registration token the reader app holds. The token is the
+	// primary key, so a device that changes hands moves to the new reader instead
+	// of leaving a second row behind that would push one reader's episodes to the
+	// next.
+	UpsertUserPushDevice(ctx context.Context, arg UpsertUserPushDeviceParams) (UserPushDevice, error)
 	UpsertUserRecommendFeatures(ctx context.Context, arg UpsertUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	// Creators are public when they have at least one active series, matching
 	// GetPublishedAuthorByPublicID.

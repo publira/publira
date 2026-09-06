@@ -246,6 +246,97 @@ func (s *apiServer) MarkAllNotificationsAsRead(
 	return connect.NewResponse(&publirav1.MarkAllNotificationsAsReadResponse{MarkedCount: markedCount}), nil
 }
 
+func (s *apiServer) RegisterPushDevice(
+	ctx context.Context,
+	req *connect.Request[publirav1.RegisterPushDeviceRequest],
+) (*connect.Response[publirav1.RegisterPushDeviceResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := pushDeviceToken(req.Msg.Token)
+	if err != nil {
+		return nil, err
+	}
+	platform, err := pushDevicePlatform(req.Msg.Platform)
+	if err != nil {
+		return nil, err
+	}
+
+	// The token is the primary key, so this moves a token another reader left
+	// on the same phone to whoever is signed in now rather than adding a
+	// second row that would push their episodes to this reader.
+	_, err = s.queriesFor(ctx).UpsertUserPushDevice(ctx, dbmodels.UpsertUserPushDeviceParams{
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+		Token:    token,
+		Platform: platform,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to register push device", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	return connect.NewResponse(&publirav1.RegisterPushDeviceResponse{Registered: true}), nil
+}
+
+func (s *apiServer) UnregisterPushDevice(
+	ctx context.Context,
+	req *connect.Request[publirav1.UnregisterPushDeviceRequest],
+) (*connect.Response[publirav1.UnregisterPushDeviceResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := pushDeviceToken(req.Msg.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	// Scoped to the caller, so a token registered to another reader is left
+	// where it is. Removing nothing is not a failure: signing out has to
+	// succeed whether or not the row outlived the session.
+	removed, err := s.queriesFor(ctx).DeleteUserPushDeviceForUser(ctx, dbmodels.DeleteUserPushDeviceForUserParams{
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+		Token:    token,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to unregister push device", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	return connect.NewResponse(&publirav1.UnregisterPushDeviceResponse{Unregistered: removed > 0}), nil
+}
+
+// maxPushDeviceTokenBytes bounds what one device can store. An FCM
+// registration token is a few hundred bytes; this leaves room for a longer one
+// without letting a caller write an unbounded value.
+const maxPushDeviceTokenBytes = 4096
+
+func pushDeviceToken(raw string) (string, error) {
+	token := strings.TrimSpace(raw)
+	if token == "" {
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+	}
+	if len(token) > maxPushDeviceTokenBytes {
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("token is too long"))
+	}
+	return token, nil
+}
+
+func pushDevicePlatform(platform publirav1.PushPlatform) (string, error) {
+	switch platform {
+	case publirav1.PushPlatform_PUSH_PLATFORM_ANDROID:
+		return "android", nil
+	case publirav1.PushPlatform_PUSH_PLATFORM_IOS:
+		return "ios", nil
+	case publirav1.PushPlatform_PUSH_PLATFORM_UNSPECIFIED:
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("platform is required"))
+	default:
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("platform is invalid"))
+	}
+}
+
 func notificationMarkedCount(marked int64) (int32, error) {
 	if marked < 0 || marked > math.MaxInt32 {
 		return 0, connect.NewError(connect.CodeInternal, errors.New("internal server error"))

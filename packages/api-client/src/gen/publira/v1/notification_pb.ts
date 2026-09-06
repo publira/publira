@@ -2,8 +2,8 @@
 // @generated from file publira/v1/notification.proto (package publira.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { TenantContext } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/notification.proto.
  */
 export const file_publira_v1_notification: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL3YxL25vdGlmaWNhdGlvbi5wcm90bxIKcHVibGlyYS52MSKAAQoQTm90aWZpY2F0aW9uSXRlbRIKCgJpZBgBIAEoCRIZChFub3RpZmljYXRpb25fdHlwZRgCIAEoCRIPCgdwYXlsb2FkGAMgASgJEg8KB2lzX3JlYWQYBCABKAgSDwoHcmVhZF9hdBgFIAEoCRISCgpjcmVhdGVkX2F0GAYgASgJImkKGExpc3ROb3RpZmljYXRpb25zUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkifAoZTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZRIzCg1ub3RpZmljYXRpb25zGAEgAygLMhwucHVibGlyYS52MS5Ob3RpZmljYXRpb25JdGVtEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiUgofQ291bnRVbnJlYWROb3RpZmljYXRpb25zUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiOAogQ291bnRVbnJlYWROb3RpZmljYXRpb25zUmVzcG9uc2USFAoMdW5yZWFkX2NvdW50GAEgASgFImkKHU1hcmtOb3RpZmljYXRpb25Bc1JlYWRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIXCg9ub3RpZmljYXRpb25faWQYAiABKAkiMAoeTWFya05vdGlmaWNhdGlvbkFzUmVhZFJlc3BvbnNlEg4KBm1hcmtlZBgBIAEoCCJUCiFNYXJrQWxsTm90aWZpY2F0aW9uc0FzUmVhZFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IjoKIk1hcmtBbGxOb3RpZmljYXRpb25zQXNSZWFkUmVzcG9uc2USFAoMbWFya2VkX2NvdW50GAEgASgFMuQDChNOb3RpZmljYXRpb25TZXJ2aWNlEmIKEUxpc3ROb3RpZmljYXRpb25zEiQucHVibGlyYS52MS5MaXN0Tm90aWZpY2F0aW9uc1JlcXVlc3QaJS5wdWJsaXJhLnYxLkxpc3ROb3RpZmljYXRpb25zUmVzcG9uc2UiABJ3ChhDb3VudFVucmVhZE5vdGlmaWNhdGlvbnMSKy5wdWJsaXJhLnYxLkNvdW50VW5yZWFkTm90aWZpY2F0aW9uc1JlcXVlc3QaLC5wdWJsaXJhLnYxLkNvdW50VW5yZWFkTm90aWZpY2F0aW9uc1Jlc3BvbnNlIgAScQoWTWFya05vdGlmaWNhdGlvbkFzUmVhZBIpLnB1YmxpcmEudjEuTWFya05vdGlmaWNhdGlvbkFzUmVhZFJlcXVlc3QaKi5wdWJsaXJhLnYxLk1hcmtOb3RpZmljYXRpb25Bc1JlYWRSZXNwb25zZSIAEn0KGk1hcmtBbGxOb3RpZmljYXRpb25zQXNSZWFkEi0ucHVibGlyYS52MS5NYXJrQWxsTm90aWZpY2F0aW9uc0FzUmVhZFJlcXVlc3QaLi5wdWJsaXJhLnYxLk1hcmtBbGxOb3RpZmljYXRpb25zQXNSZWFkUmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("Ch1wdWJsaXJhL3YxL25vdGlmaWNhdGlvbi5wcm90bxIKcHVibGlyYS52MSKAAQoQTm90aWZpY2F0aW9uSXRlbRIKCgJpZBgBIAEoCRIZChFub3RpZmljYXRpb25fdHlwZRgCIAEoCRIPCgdwYXlsb2FkGAMgASgJEg8KB2lzX3JlYWQYBCABKAgSDwoHcmVhZF9hdBgFIAEoCRISCgpjcmVhdGVkX2F0GAYgASgJImkKGExpc3ROb3RpZmljYXRpb25zUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkifAoZTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZRIzCg1ub3RpZmljYXRpb25zGAEgAygLMhwucHVibGlyYS52MS5Ob3RpZmljYXRpb25JdGVtEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkihwEKGVJlZ2lzdGVyUHVzaERldmljZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJEioKCHBsYXRmb3JtGAMgASgOMhgucHVibGlyYS52MS5QdXNoUGxhdGZvcm0iMAoaUmVnaXN0ZXJQdXNoRGV2aWNlUmVzcG9uc2USEgoKcmVnaXN0ZXJlZBgBIAEoCCJdChtVbnJlZ2lzdGVyUHVzaERldmljZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJIjQKHFVucmVnaXN0ZXJQdXNoRGV2aWNlUmVzcG9uc2USFAoMdW5yZWdpc3RlcmVkGAEgASgIIlIKH0NvdW50VW5yZWFkTm90aWZpY2F0aW9uc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IjgKIENvdW50VW5yZWFkTm90aWZpY2F0aW9uc1Jlc3BvbnNlEhQKDHVucmVhZF9jb3VudBgBIAEoBSJpCh1NYXJrTm90aWZpY2F0aW9uQXNSZWFkUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSFwoPbm90aWZpY2F0aW9uX2lkGAIgASgJIjAKHk1hcmtOb3RpZmljYXRpb25Bc1JlYWRSZXNwb25zZRIOCgZtYXJrZWQYASABKAgiVAohTWFya0FsbE5vdGlmaWNhdGlvbnNBc1JlYWRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI6CiJNYXJrQWxsTm90aWZpY2F0aW9uc0FzUmVhZFJlc3BvbnNlEhQKDG1hcmtlZF9jb3VudBgBIAEoBSpfCgxQdXNoUGxhdGZvcm0SHQoZUFVTSF9QTEFURk9STV9VTlNQRUNJRklFRBAAEhkKFVBVU0hfUExBVEZPUk1fQU5EUk9JRBABEhUKEVBVU0hfUExBVEZPUk1fSU9TEAIyuAUKE05vdGlmaWNhdGlvblNlcnZpY2USYgoRTGlzdE5vdGlmaWNhdGlvbnMSJC5wdWJsaXJhLnYxLkxpc3ROb3RpZmljYXRpb25zUmVxdWVzdBolLnB1YmxpcmEudjEuTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZSIAEncKGENvdW50VW5yZWFkTm90aWZpY2F0aW9ucxIrLnB1YmxpcmEudjEuQ291bnRVbnJlYWROb3RpZmljYXRpb25zUmVxdWVzdBosLnB1YmxpcmEudjEuQ291bnRVbnJlYWROb3RpZmljYXRpb25zUmVzcG9uc2UiABJxChZNYXJrTm90aWZpY2F0aW9uQXNSZWFkEikucHVibGlyYS52MS5NYXJrTm90aWZpY2F0aW9uQXNSZWFkUmVxdWVzdBoqLnB1YmxpcmEudjEuTWFya05vdGlmaWNhdGlvbkFzUmVhZFJlc3BvbnNlIgASfQoaTWFya0FsbE5vdGlmaWNhdGlvbnNBc1JlYWQSLS5wdWJsaXJhLnYxLk1hcmtBbGxOb3RpZmljYXRpb25zQXNSZWFkUmVxdWVzdBouLnB1YmxpcmEudjEuTWFya0FsbE5vdGlmaWNhdGlvbnNBc1JlYWRSZXNwb25zZSIAEmUKElJlZ2lzdGVyUHVzaERldmljZRIlLnB1YmxpcmEudjEuUmVnaXN0ZXJQdXNoRGV2aWNlUmVxdWVzdBomLnB1YmxpcmEudjEuUmVnaXN0ZXJQdXNoRGV2aWNlUmVzcG9uc2UiABJrChRVbnJlZ2lzdGVyUHVzaERldmljZRInLnB1YmxpcmEudjEuVW5yZWdpc3RlclB1c2hEZXZpY2VSZXF1ZXN0GigucHVibGlyYS52MS5VbnJlZ2lzdGVyUHVzaERldmljZVJlc3BvbnNlIgBCS1pJZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.NotificationItem
@@ -123,6 +123,96 @@ export const ListNotificationsResponseSchema: GenMessage<ListNotificationsRespon
   messageDesc(file_publira_v1_notification, 2);
 
 /**
+ * A device registers the FCM token it holds right now. The token is the
+ * identity, so registering one that another reader left behind moves it to the
+ * caller rather than adding a second row.
+ *
+ * @generated from message publira.v1.RegisterPushDeviceRequest
+ */
+export type RegisterPushDeviceRequest = Message<"publira.v1.RegisterPushDeviceRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string token = 2;
+   */
+  token: string;
+
+  /**
+   * @generated from field: publira.v1.PushPlatform platform = 3;
+   */
+  platform: PushPlatform;
+};
+
+/**
+ * Describes the message publira.v1.RegisterPushDeviceRequest.
+ * Use `create(RegisterPushDeviceRequestSchema)` to create a new message.
+ */
+export const RegisterPushDeviceRequestSchema: GenMessage<RegisterPushDeviceRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_notification, 3);
+
+/**
+ * @generated from message publira.v1.RegisterPushDeviceResponse
+ */
+export type RegisterPushDeviceResponse = Message<"publira.v1.RegisterPushDeviceResponse"> & {
+  /**
+   * @generated from field: bool registered = 1;
+   */
+  registered: boolean;
+};
+
+/**
+ * Describes the message publira.v1.RegisterPushDeviceResponse.
+ * Use `create(RegisterPushDeviceResponseSchema)` to create a new message.
+ */
+export const RegisterPushDeviceResponseSchema: GenMessage<RegisterPushDeviceResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_notification, 4);
+
+/**
+ * Signing out, and turning the account switch off, take the device back off
+ * the delivery list of every notification the reader would have been sent.
+ *
+ * @generated from message publira.v1.UnregisterPushDeviceRequest
+ */
+export type UnregisterPushDeviceRequest = Message<"publira.v1.UnregisterPushDeviceRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string token = 2;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.v1.UnregisterPushDeviceRequest.
+ * Use `create(UnregisterPushDeviceRequestSchema)` to create a new message.
+ */
+export const UnregisterPushDeviceRequestSchema: GenMessage<UnregisterPushDeviceRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_notification, 5);
+
+/**
+ * @generated from message publira.v1.UnregisterPushDeviceResponse
+ */
+export type UnregisterPushDeviceResponse = Message<"publira.v1.UnregisterPushDeviceResponse"> & {
+  /**
+   * @generated from field: bool unregistered = 1;
+   */
+  unregistered: boolean;
+};
+
+/**
+ * Describes the message publira.v1.UnregisterPushDeviceResponse.
+ * Use `create(UnregisterPushDeviceResponseSchema)` to create a new message.
+ */
+export const UnregisterPushDeviceResponseSchema: GenMessage<UnregisterPushDeviceResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_notification, 6);
+
+/**
  * @generated from message publira.v1.CountUnreadNotificationsRequest
  */
 export type CountUnreadNotificationsRequest = Message<"publira.v1.CountUnreadNotificationsRequest"> & {
@@ -137,7 +227,7 @@ export type CountUnreadNotificationsRequest = Message<"publira.v1.CountUnreadNot
  * Use `create(CountUnreadNotificationsRequestSchema)` to create a new message.
  */
 export const CountUnreadNotificationsRequestSchema: GenMessage<CountUnreadNotificationsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_notification, 3);
+  messageDesc(file_publira_v1_notification, 7);
 
 /**
  * @generated from message publira.v1.CountUnreadNotificationsResponse
@@ -154,7 +244,7 @@ export type CountUnreadNotificationsResponse = Message<"publira.v1.CountUnreadNo
  * Use `create(CountUnreadNotificationsResponseSchema)` to create a new message.
  */
 export const CountUnreadNotificationsResponseSchema: GenMessage<CountUnreadNotificationsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_notification, 4);
+  messageDesc(file_publira_v1_notification, 8);
 
 /**
  * @generated from message publira.v1.MarkNotificationAsReadRequest
@@ -176,7 +266,7 @@ export type MarkNotificationAsReadRequest = Message<"publira.v1.MarkNotification
  * Use `create(MarkNotificationAsReadRequestSchema)` to create a new message.
  */
 export const MarkNotificationAsReadRequestSchema: GenMessage<MarkNotificationAsReadRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_notification, 5);
+  messageDesc(file_publira_v1_notification, 9);
 
 /**
  * @generated from message publira.v1.MarkNotificationAsReadResponse
@@ -193,7 +283,7 @@ export type MarkNotificationAsReadResponse = Message<"publira.v1.MarkNotificatio
  * Use `create(MarkNotificationAsReadResponseSchema)` to create a new message.
  */
 export const MarkNotificationAsReadResponseSchema: GenMessage<MarkNotificationAsReadResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_notification, 6);
+  messageDesc(file_publira_v1_notification, 10);
 
 /**
  * @generated from message publira.v1.MarkAllNotificationsAsReadRequest
@@ -210,7 +300,7 @@ export type MarkAllNotificationsAsReadRequest = Message<"publira.v1.MarkAllNotif
  * Use `create(MarkAllNotificationsAsReadRequestSchema)` to create a new message.
  */
 export const MarkAllNotificationsAsReadRequestSchema: GenMessage<MarkAllNotificationsAsReadRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_notification, 7);
+  messageDesc(file_publira_v1_notification, 11);
 
 /**
  * @generated from message publira.v1.MarkAllNotificationsAsReadResponse
@@ -227,7 +317,36 @@ export type MarkAllNotificationsAsReadResponse = Message<"publira.v1.MarkAllNoti
  * Use `create(MarkAllNotificationsAsReadResponseSchema)` to create a new message.
  */
 export const MarkAllNotificationsAsReadResponseSchema: GenMessage<MarkAllNotificationsAsReadResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_notification, 8);
+  messageDesc(file_publira_v1_notification, 12);
+
+/**
+ * Which store issued the registration token, so a message can carry the
+ * platform-specific block its delivery needs.
+ *
+ * @generated from enum publira.v1.PushPlatform
+ */
+export enum PushPlatform {
+  /**
+   * @generated from enum value: PUSH_PLATFORM_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PUSH_PLATFORM_ANDROID = 1;
+   */
+  ANDROID = 1,
+
+  /**
+   * @generated from enum value: PUSH_PLATFORM_IOS = 2;
+   */
+  IOS = 2,
+}
+
+/**
+ * Describes the enum publira.v1.PushPlatform.
+ */
+export const PushPlatformSchema: GenEnum<PushPlatform> = /*@__PURE__*/
+  enumDesc(file_publira_v1_notification, 0);
 
 /**
  * @generated from service publira.v1.NotificationService
@@ -264,6 +383,22 @@ export const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof MarkAllNotificationsAsReadRequestSchema;
     output: typeof MarkAllNotificationsAsReadResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.NotificationService.RegisterPushDevice
+   */
+  registerPushDevice: {
+    methodKind: "unary";
+    input: typeof RegisterPushDeviceRequestSchema;
+    output: typeof RegisterPushDeviceResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.NotificationService.UnregisterPushDevice
+   */
+  unregisterPushDevice: {
+    methodKind: "unary";
+    input: typeof UnregisterPushDeviceRequestSchema;
+    output: typeof UnregisterPushDeviceResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_notification, 0);

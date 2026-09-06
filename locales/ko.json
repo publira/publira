@@ -2001,6 +2001,10 @@
     "account": {
       "name": "이름",
       "name_unset": "미설정",
+      "notifications": "새 에피소드 알림",
+      "notifications_denied": "이 앱의 알림이 꺼져 있습니다. 기기 설정에서 켜 주세요.",
+      "notifications_description": "새 에피소드가 공개되면 알려 드립니다.",
+      "notifications_unavailable": "알림을 켜지 못했습니다. 다시 시도해 주세요.",
       "sign_out": "로그아웃",
       "signed_out": "로그인되어 있지 않습니다",
       "title": "계정"
@@ -2018,6 +2022,9 @@
     "not_found": {
       "message": "“{$uri}”은(는) 존재하지 않습니다.",
       "title": "페이지를 찾을 수 없습니다"
+    },
+    "push": {
+      "open": "열기"
     },
     "series": {
       "episode_count": "{$count}화",

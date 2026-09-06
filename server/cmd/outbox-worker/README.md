@@ -17,6 +17,14 @@ A long-lived worker that drains the Outbox and processes the entries as River jo
 | `admin_email_change_confirmation_email` | Admin console email change confirmation, one event per address to confirm |
 | `admin_email_changed_notice_email` | Admin console notice to the previous address once the change completes |
 
+It also handles one non-mail event:
+
+| Event type | Side effect |
+| --- | --- |
+| `member_push_notification` | The mobile push that mirrors a member's `notifications` row, one message per device that reader registered |
+
+That handler is registered only when a Firebase credential is configured; see [Main environment variables](#main-environment-variables).
+
 The platform console rows carry no `tenant_id`: their handlers resolve the platform SMTP settings and the platform default locale and time zone rather than a tenant's. The reader and admin console rows name a tenant: the reader links point at that tenant's own domain, and the admin console links at its admin domain.
 
 ## Running
@@ -60,6 +68,7 @@ In production the connection must use `publira_outbox`, the BYPASSRLS login the 
 - `PUBLIRA_EMAIL_RENDERER_URL` (optional, the URL of the email-renderer that renders the emails above. `http://localhost:8080` when unset)
 - `PUBLIRA_PLATFORM_APP_URL` (optional, the base URL the Platform Console links in the platform auth mail are built from. `http://platform.localhost:3080` when unset)
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional, the keys used to decrypt the SMTP password. Set the same values as the platform API)
+- `PUBLIRA_FCM_PROJECT_ID` / `PUBLIRA_FCM_CREDENTIALS_JSON` (optional, the Firebase project and service account key the mobile push is sent with. `GOOGLE_APPLICATION_CREDENTIALS` is the alternative to the inline key. With none of them set, `member_push_notification` has no handler and its rows go `dead`)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset)
 

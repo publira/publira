@@ -33,6 +33,38 @@ message ListNotificationsResponse {
   string next_token = 3;
 }
 
+// Which store issued the registration token, so a message can carry the
+// platform-specific block its delivery needs.
+enum PushPlatform {
+  PUSH_PLATFORM_UNSPECIFIED = 0;
+  PUSH_PLATFORM_ANDROID = 1;
+  PUSH_PLATFORM_IOS = 2;
+}
+
+// A device registers the FCM token it holds right now. The token is the
+// identity, so registering one that another reader left behind moves it to the
+// caller rather than adding a second row.
+message RegisterPushDeviceRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+  PushPlatform platform = 3;
+}
+
+message RegisterPushDeviceResponse {
+  bool registered = 1;
+}
+
+// Signing out, and turning the account switch off, take the device back off
+// the delivery list of every notification the reader would have been sent.
+message UnregisterPushDeviceRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+}
+
+message UnregisterPushDeviceResponse {
+  bool unregistered = 1;
+}
+
 message CountUnreadNotificationsRequest {
   publira.types.v1.TenantContext tenant = 1;
 }
@@ -63,4 +95,6 @@ service NotificationService {
   rpc CountUnreadNotifications(CountUnreadNotificationsRequest) returns (CountUnreadNotificationsResponse) {}
   rpc MarkNotificationAsRead(MarkNotificationAsReadRequest) returns (MarkNotificationAsReadResponse) {}
   rpc MarkAllNotificationsAsRead(MarkAllNotificationsAsReadRequest) returns (MarkAllNotificationsAsReadResponse) {}
+  rpc RegisterPushDevice(RegisterPushDeviceRequest) returns (RegisterPushDeviceResponse) {}
+  rpc UnregisterPushDevice(UnregisterPushDeviceRequest) returns (UnregisterPushDeviceResponse) {}
 }

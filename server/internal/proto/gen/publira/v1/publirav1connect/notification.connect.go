@@ -45,6 +45,12 @@ const (
 	// NotificationServiceMarkAllNotificationsAsReadProcedure is the fully-qualified name of the
 	// NotificationService's MarkAllNotificationsAsRead RPC.
 	NotificationServiceMarkAllNotificationsAsReadProcedure = "/publira.v1.NotificationService/MarkAllNotificationsAsRead"
+	// NotificationServiceRegisterPushDeviceProcedure is the fully-qualified name of the
+	// NotificationService's RegisterPushDevice RPC.
+	NotificationServiceRegisterPushDeviceProcedure = "/publira.v1.NotificationService/RegisterPushDevice"
+	// NotificationServiceUnregisterPushDeviceProcedure is the fully-qualified name of the
+	// NotificationService's UnregisterPushDevice RPC.
+	NotificationServiceUnregisterPushDeviceProcedure = "/publira.v1.NotificationService/UnregisterPushDevice"
 )
 
 // NotificationServiceClient is a client for the publira.v1.NotificationService service.
@@ -53,6 +59,8 @@ type NotificationServiceClient interface {
 	CountUnreadNotifications(context.Context, *connect.Request[v1.CountUnreadNotificationsRequest]) (*connect.Response[v1.CountUnreadNotificationsResponse], error)
 	MarkNotificationAsRead(context.Context, *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error)
 	MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error)
+	RegisterPushDevice(context.Context, *connect.Request[v1.RegisterPushDeviceRequest]) (*connect.Response[v1.RegisterPushDeviceResponse], error)
+	UnregisterPushDevice(context.Context, *connect.Request[v1.UnregisterPushDeviceRequest]) (*connect.Response[v1.UnregisterPushDeviceResponse], error)
 }
 
 // NewNotificationServiceClient constructs a client for the publira.v1.NotificationService service.
@@ -90,6 +98,18 @@ func NewNotificationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(notificationServiceMethods.ByName("MarkAllNotificationsAsRead")),
 			connect.WithClientOptions(opts...),
 		),
+		registerPushDevice: connect.NewClient[v1.RegisterPushDeviceRequest, v1.RegisterPushDeviceResponse](
+			httpClient,
+			baseURL+NotificationServiceRegisterPushDeviceProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("RegisterPushDevice")),
+			connect.WithClientOptions(opts...),
+		),
+		unregisterPushDevice: connect.NewClient[v1.UnregisterPushDeviceRequest, v1.UnregisterPushDeviceResponse](
+			httpClient,
+			baseURL+NotificationServiceUnregisterPushDeviceProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("UnregisterPushDevice")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -99,6 +119,8 @@ type notificationServiceClient struct {
 	countUnreadNotifications   *connect.Client[v1.CountUnreadNotificationsRequest, v1.CountUnreadNotificationsResponse]
 	markNotificationAsRead     *connect.Client[v1.MarkNotificationAsReadRequest, v1.MarkNotificationAsReadResponse]
 	markAllNotificationsAsRead *connect.Client[v1.MarkAllNotificationsAsReadRequest, v1.MarkAllNotificationsAsReadResponse]
+	registerPushDevice         *connect.Client[v1.RegisterPushDeviceRequest, v1.RegisterPushDeviceResponse]
+	unregisterPushDevice       *connect.Client[v1.UnregisterPushDeviceRequest, v1.UnregisterPushDeviceResponse]
 }
 
 // ListNotifications calls publira.v1.NotificationService.ListNotifications.
@@ -121,12 +143,24 @@ func (c *notificationServiceClient) MarkAllNotificationsAsRead(ctx context.Conte
 	return c.markAllNotificationsAsRead.CallUnary(ctx, req)
 }
 
+// RegisterPushDevice calls publira.v1.NotificationService.RegisterPushDevice.
+func (c *notificationServiceClient) RegisterPushDevice(ctx context.Context, req *connect.Request[v1.RegisterPushDeviceRequest]) (*connect.Response[v1.RegisterPushDeviceResponse], error) {
+	return c.registerPushDevice.CallUnary(ctx, req)
+}
+
+// UnregisterPushDevice calls publira.v1.NotificationService.UnregisterPushDevice.
+func (c *notificationServiceClient) UnregisterPushDevice(ctx context.Context, req *connect.Request[v1.UnregisterPushDeviceRequest]) (*connect.Response[v1.UnregisterPushDeviceResponse], error) {
+	return c.unregisterPushDevice.CallUnary(ctx, req)
+}
+
 // NotificationServiceHandler is an implementation of the publira.v1.NotificationService service.
 type NotificationServiceHandler interface {
 	ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error)
 	CountUnreadNotifications(context.Context, *connect.Request[v1.CountUnreadNotificationsRequest]) (*connect.Response[v1.CountUnreadNotificationsResponse], error)
 	MarkNotificationAsRead(context.Context, *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error)
 	MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error)
+	RegisterPushDevice(context.Context, *connect.Request[v1.RegisterPushDeviceRequest]) (*connect.Response[v1.RegisterPushDeviceResponse], error)
+	UnregisterPushDevice(context.Context, *connect.Request[v1.UnregisterPushDeviceRequest]) (*connect.Response[v1.UnregisterPushDeviceResponse], error)
 }
 
 // NewNotificationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -160,6 +194,18 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 		connect.WithSchema(notificationServiceMethods.ByName("MarkAllNotificationsAsRead")),
 		connect.WithHandlerOptions(opts...),
 	)
+	notificationServiceRegisterPushDeviceHandler := connect.NewUnaryHandler(
+		NotificationServiceRegisterPushDeviceProcedure,
+		svc.RegisterPushDevice,
+		connect.WithSchema(notificationServiceMethods.ByName("RegisterPushDevice")),
+		connect.WithHandlerOptions(opts...),
+	)
+	notificationServiceUnregisterPushDeviceHandler := connect.NewUnaryHandler(
+		NotificationServiceUnregisterPushDeviceProcedure,
+		svc.UnregisterPushDevice,
+		connect.WithSchema(notificationServiceMethods.ByName("UnregisterPushDevice")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.NotificationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case NotificationServiceListNotificationsProcedure:
@@ -170,6 +216,10 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 			notificationServiceMarkNotificationAsReadHandler.ServeHTTP(w, r)
 		case NotificationServiceMarkAllNotificationsAsReadProcedure:
 			notificationServiceMarkAllNotificationsAsReadHandler.ServeHTTP(w, r)
+		case NotificationServiceRegisterPushDeviceProcedure:
+			notificationServiceRegisterPushDeviceHandler.ServeHTTP(w, r)
+		case NotificationServiceUnregisterPushDeviceProcedure:
+			notificationServiceUnregisterPushDeviceHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -193,4 +243,12 @@ func (UnimplementedNotificationServiceHandler) MarkNotificationAsRead(context.Co
 
 func (UnimplementedNotificationServiceHandler) MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.NotificationService.MarkAllNotificationsAsRead is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) RegisterPushDevice(context.Context, *connect.Request[v1.RegisterPushDeviceRequest]) (*connect.Response[v1.RegisterPushDeviceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.NotificationService.RegisterPushDevice is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) UnregisterPushDevice(context.Context, *connect.Request[v1.UnregisterPushDeviceRequest]) (*connect.Response[v1.UnregisterPushDeviceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.NotificationService.UnregisterPushDevice is not implemented"))
 }
