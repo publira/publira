@@ -1,7 +1,7 @@
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
-import { Button } from "@publira/ui-components/button";
+import { Button, LinkButton } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -109,9 +109,9 @@ export const CommentFilterForm = ({
             <Button type="submit">
               {getMessage(messages, "admin.comments.filter.apply")}
             </Button>
-            <Button formAction="?" type="submit" variant="outline">
+            <LinkButton href="/comments" variant="outline">
               {getMessage(messages, "admin.comments.filter.reset")}
-            </Button>
+            </LinkButton>
           </div>
         </form>
       </CardContent>

@@ -1,7 +1,7 @@
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
-import { Button } from "@publira/ui-components/button";
+import { Button, LinkButton } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -78,9 +78,9 @@ export const TicketFilterForm = ({
             <Button type="submit">
               {getMessage(messages, "admin.access_tickets.filter.apply")}
             </Button>
-            <Button formAction="?" type="submit" variant="outline">
+            <LinkButton href="/access-tickets" variant="outline">
               {getMessage(messages, "admin.access_tickets.filter.reset")}
-            </Button>
+            </LinkButton>
           </div>
         </form>
       </CardContent>

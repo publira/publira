@@ -314,6 +314,34 @@ test.describe("admin reporting screens", () => {
     );
   });
 
+  test("Reset clears every filter instead of resubmitting it", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, "/audit-logs");
+    await page.goto(
+      auditLogsUrl({
+        action: "label_updated",
+        actor: SEED_ADMIN_PUBLIC_ID,
+        from: REPORTING_AUDIT.from,
+        to: REPORTING_AUDIT.to,
+      })
+    );
+
+    const form = auditFilterForm(page);
+    await expect(form.action).toHaveValue("label_updated");
+
+    // Reset is a link rather than a submit button. A GET form serializes its
+    // fields into the query of whatever it submits to, so a button would
+    // navigate back to the very filters the operator is dropping.
+    await page.getByRole("link", { exact: true, name: "Reset" }).click();
+
+    await expect(page).toHaveURL(auditLogsUrl());
+    await expect(form.from).toHaveValue("");
+    await expect(form.to).toHaveValue("");
+    await expect(form.action).toHaveValue("");
+    await expect(auditEntryRows(page)).toHaveCount(AUDIT_PAGE_SIZE);
+  });
+
   test("a malformed filter value in the URL falls back to the default view", async ({
     page,
   }) => {
