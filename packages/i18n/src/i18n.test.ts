@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import enCatalog from "../../../locales/en.json" with { type: "json" };
 import localeIndex from "../../../locales/index.json" with { type: "json" };
 import jaCatalog from "../../../locales/ja.json" with { type: "json" };
+import koCatalog from "../../../locales/ko.json" with { type: "json" };
 import {
   formatMessage,
   getLocales,
@@ -23,8 +24,9 @@ import {
 } from "./i18n";
 import type { ExactCatalog, Locale, MessageTree } from "./i18n";
 
-// The two catalogs are a pair on purpose: loadMessages has to be seen picking
-// one locale over the other, so the ja one is written in Japanese.
+// The catalogs are a set on purpose: loadMessages has to be seen picking one
+// locale over the others, so each fixture is written in its own language. A
+// fixture per locale of `locales/index.json` is what the importer map requires.
 const jaFixture = {
   greeting: "こんにちは、{$name}さん",
   nav: {
@@ -39,8 +41,16 @@ const enFixture = {
   },
 } as const;
 
-/** Compile-time: root `en.json` must match `ja.json` with no extra keys. */
+const koFixture = {
+  greeting: "안녕하세요, {$name}님",
+  nav: {
+    home: "홈",
+  },
+} as const;
+
+/** Compile-time: the root catalogs must match each other with no extra keys. */
 const enMatchesJa: ExactCatalog<typeof enCatalog, typeof jaCatalog> = enCatalog;
+const koMatchesEn: ExactCatalog<typeof koCatalog, typeof enCatalog> = koCatalog;
 
 const missing: unknown = undefined;
 
@@ -256,6 +266,10 @@ describe("loadMessages", () => {
         imported.push("ja");
         return Promise.resolve(jaFixture);
       },
+      ko: () => {
+        imported.push("ko");
+        return Promise.resolve(koFixture);
+      },
     });
 
     expect(imported).toEqual(["en"]);
@@ -266,6 +280,7 @@ describe("loadMessages", () => {
     const catalog = await loadMessages<MessageTree>("ja", {
       en: () => Promise.resolve(asModuleNamespace({ default: enFixture })),
       ja: () => Promise.resolve(asModuleNamespace({ default: jaFixture })),
+      ko: () => Promise.resolve(asModuleNamespace({ default: koFixture })),
     });
 
     expect(catalog).toEqual(jaFixture);
@@ -279,6 +294,7 @@ describe("loadMessages", () => {
     const loaded = await loadMessages<MessageTree>("ja", {
       en: () => Promise.resolve(enFixture),
       ja: () => Promise.resolve(catalogWithDefault),
+      ko: () => Promise.resolve(koFixture),
     });
 
     expect(loaded).toEqual(catalogWithDefault);
@@ -351,6 +367,10 @@ describe("getMessage", () => {
 
   it("reads the shared root catalogs by dotted key", () => {
     expect(enMatchesJa).toBe(enCatalog);
+    expect(koMatchesEn).toBe(koCatalog);
+    expect(getMessage(koCatalog, "errors.validation")).toBe(
+      "입력한 내용을 확인해 주세요."
+    );
     expect(getMessage(jaCatalog, "errors.rpc.unauthenticated")).toBe(
       "セッションが無効です。再ログインしてください。"
     );

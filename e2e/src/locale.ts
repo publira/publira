@@ -2,16 +2,17 @@ import type { Locator, Page, Response } from "@playwright/test";
 import { expect } from "@playwright/test";
 
 /**
- * The two languages the product offers, named by the autonym every language
- * menu in it lists — the one string that does not change with the locale the
- * page is currently rendered in.
+ * The languages the product offers, named by the autonym every language menu in
+ * it lists — the one string that does not change with the locale the page is
+ * currently rendered in.
  */
-export type LocaleLabel = "English" | "日本語";
+export type LocaleLabel = "English" | "日本語" | "한국어";
 
 /** The code the same choice is stored and served under. */
 export const LOCALE_CODE: Record<LocaleLabel, string> = {
   English: "en",
   日本語: "ja",
+  한국어: "ko",
 };
 
 /**
@@ -22,12 +23,14 @@ export const LOCALE_CODE: Record<LocaleLabel, string> = {
 const HOST_SWITCHER_TRIGGER: Record<LocaleLabel, string> = {
   English: "Language: English",
   日本語: "表示言語: 日本語",
+  한국어: "표시 언어: 한국어",
 };
 
 /** The same control in the two consoles, where that label is worded differently. */
 const CONSOLE_SWITCHER_TRIGGER: Record<LocaleLabel, string> = {
   English: "Display language: English",
   日本語: "表示言語: 日本語",
+  한국어: "표시 언어: 한국어",
 };
 
 /**

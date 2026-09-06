@@ -115,6 +115,27 @@ test.describe("web-host locale in the URL", () => {
     await expectDocumentLocale(page, "日本語");
   });
 
+  // The prefix rules name no language, so a catalog added to the registry has
+  // to reach the site through the same switcher and the same URL shape as the
+  // ones that were there first.
+  test("Korean is reached through the switcher and keeps its prefix", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/series"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Series" })
+    ).toBeVisible();
+
+    await switchHostLocale(page, "English", "한국어");
+
+    await expect(page).toHaveURL(
+      (url) => url.pathname === localeHostPath("ko", "/series")
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: "시리즈 목록" })
+    ).toBeVisible();
+  });
+
   test("a locale the site does not serve reaches no page at all", async ({
     page,
   }) => {

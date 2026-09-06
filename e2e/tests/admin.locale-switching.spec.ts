@@ -60,6 +60,24 @@ test.describe("web-admin display language", () => {
     await expectDocumentLocale(page, "English");
     expect(await storedLocaleCookie(page)).toBe("en");
   });
+
+  // Every locale of `locales/index.json` reaches the console the same way, so
+  // one of them being switched to here is what proves a catalog added to the
+  // registry is actually served rather than only present in the repository.
+  test("the switcher serves Korean as well", async ({ page }) => {
+    await signInAsSeedAdmin(page, "/settings");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+
+    await switchConsoleLocale(page, "English", "한국어");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "설정" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "한국어");
+    expect(await storedLocaleCookie(page)).toBe("ko");
+  });
 });
 
 /**

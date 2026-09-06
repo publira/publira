@@ -9,12 +9,14 @@ describe("negotiateInitialLocale", () => {
   it("returns a supported locale the header names outright", () => {
     expect(negotiateInitialLocale("ja")).toBe("ja");
     expect(negotiateInitialLocale("en")).toBe("en");
+    expect(negotiateInitialLocale("ko")).toBe("ko");
   });
 
   it("matches a subtagged range against its base language", () => {
     expect(negotiateInitialLocale("ja-JP")).toBe("ja");
     expect(negotiateInitialLocale("en-US")).toBe("en");
     expect(negotiateInitialLocale("en-GB")).toBe("en");
+    expect(negotiateInitialLocale("ko-KR")).toBe("ko");
     expect(negotiateInitialLocale("zh-Hant-TW,ja-JP")).toBe("ja");
   });
 
@@ -53,7 +55,7 @@ describe("negotiateInitialLocale", () => {
 
   it("falls back to en for a header with no supported locale", () => {
     expect(negotiateInitialLocale("fr")).toBe("en");
-    expect(negotiateInitialLocale("fr-FR, de-DE;q=0.8, ko;q=0.5")).toBe("en");
+    expect(negotiateInitialLocale("fr-FR, de-DE;q=0.8, it;q=0.5")).toBe("en");
   });
 
   it("falls back to en when the header is absent or empty", () => {
