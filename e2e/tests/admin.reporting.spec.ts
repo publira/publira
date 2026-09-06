@@ -314,6 +314,43 @@ test.describe("admin reporting screens", () => {
     );
   });
 
+  test("Reset clears every filter instead of resubmitting it", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, "/audit-logs");
+    await page.goto(
+      auditLogsUrl({
+        action: "label_updated",
+        actor: SEED_ADMIN_PUBLIC_ID,
+        from: REPORTING_AUDIT.from,
+        to: REPORTING_AUDIT.to,
+      })
+    );
+
+    const form = auditFilterForm(page);
+    const actorChipRemove = page.getByRole("button", { name: "Remove actor" });
+    await expect(form.action).toHaveValue("label_updated");
+    await expect(actorChipRemove).toBeVisible();
+
+    // Reset is a link rather than a submit button. A GET form serializes its
+    // fields into the query of whatever it submits to, so a button would
+    // navigate back to the very filters the operator is dropping.
+    await page.getByRole("link", { exact: true, name: "Reset" }).click();
+
+    await expect(page).toHaveURL(auditLogsUrl());
+    await expect(form.from).toHaveValue("");
+    await expect(form.to).toHaveValue("");
+    await expect(form.action).toHaveValue("");
+    // The actor goes through the chip rather than the combobox input, which
+    // holds the search text and is empty either way.
+    await expect(actorChipRemove).toHaveCount(0);
+    // A full page with no `Previous` link is the first page of the unfiltered
+    // list: the seeded January entries sit behind the development seed's, so
+    // none of them is on it.
+    await expect(auditEntryRows(page)).toHaveCount(AUDIT_PAGE_SIZE);
+    await expect(auditPageLink(page, "Previous")).toHaveCount(0);
+  });
+
   test("a malformed filter value in the URL falls back to the default view", async ({
     page,
   }) => {

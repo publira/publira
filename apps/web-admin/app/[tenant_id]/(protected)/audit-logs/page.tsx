@@ -146,7 +146,6 @@ const AuditLogsContent = async ({
 
   await redirectToLoginIfSessionRejected(result, actorCandidatesResult);
 
-  const resetHref = buildQueryString({});
   const previousHref = result.previousToken
     ? buildQueryString({
         action: filters.action,
@@ -235,13 +234,9 @@ const AuditLogsContent = async ({
               <Button type="submit">
                 {getMessage(messages, "admin.audit.filter.apply")}
               </Button>
-              <Button
-                formAction={resetHref || "?"}
-                type="submit"
-                variant="outline"
-              >
+              <LinkButton href="/audit-logs" variant="outline">
                 {getMessage(messages, "admin.audit.filter.reset")}
-              </Button>
+              </LinkButton>
             </div>
           </form>
         </CardContent>

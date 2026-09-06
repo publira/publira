@@ -306,6 +306,14 @@ Use `<p role="status">`. That is the role `<output>` carried implicitly, so `get
 
 oxlint's `jsx-a11y/prefer-tag-over-role` asks for the opposite — `<output>` for any `role="status"` — and inside a form its advice is the bug. `packages/ui-components/src/form-message/form-message.tsx` turns that rule off through an `oxlint.config.ts` override, with the reason recorded there. Do not silence it with an inline `oxlint-disable`, and do not read the override as licence to bring `<output>` back.
 
+## Filter forms: Reset is a link, never a submit button
+
+A screen that keeps its filters in the query string renders a `method="GET"` form, and such a form replaces the query of the URL it submits to with its own serialized fields. A Reset written as `<Button formAction="?" type="submit">` therefore navigates straight back to the filters it was meant to drop: `?` strips the query that was there, and the browser appends the current fields again — the empty ones included, which is how the URL grows an `actor=` nobody typed.
+
+Reset is a `LinkButton` pointing at the screen's own path (`/audit-logs`, `/access-tickets`, `/comments`). A link carries no form data, so the operator lands on the default view whatever the fields hold, and there is no `formAction` left for the mistake to return through.
+
+No lint covers this: `formAction` is an ordinary React prop, and only the surrounding form's method makes it wrong. `e2e/tests/admin.reporting.spec.ts` asserts the behaviour on `/audit-logs`.
+
 ## A `"use cache"` function must not throw
 
 Measured against the production build under Cache Components: **when a cache fill throws, Next.js fails the request that triggered it.** An awaiting `try` / `catch` does not save it, and neither does an outer cached function catching an inner one — both were measured returning a perfectly good element while the response was still a bare `500 Internal Server Error` document. The failure is only recoverable when a static shell has already been committed, and then only by a client error boundary (`SectionErrorBoundary`), which is why the catalog's `<Suspense>` sections survived an outage while its detail routes answered 500.
