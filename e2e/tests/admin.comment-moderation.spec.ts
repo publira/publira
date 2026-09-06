@@ -52,6 +52,16 @@ const consoleRow = (page: Page, body: string) =>
   page.getByRole("row").filter({ hasText: body });
 
 /**
+ * One open confirmation dialog, named by its title.
+ *
+ * The name is not decoration: a toast is a `role="dialog"` too, so a bare
+ * `getByRole("dialog")` matches the success toast of the previous action as
+ * well as the popup this step opened.
+ */
+const openDialog = (page: Page, title: string) =>
+  page.getByRole("dialog", { name: title });
+
+/**
  * Read the episode page again and again until the comment list catches up.
  *
  * Revalidation marks a `"use cache"` entry stale rather than dropping it, so
@@ -203,7 +213,7 @@ test.describe("web-admin comment moderation", () => {
       await consoleRow(consolePage, body)
         .getByRole("button", { exact: true, name: "Remove" })
         .click();
-      const removeDialog = consolePage.getByRole("dialog");
+      const removeDialog = openDialog(consolePage, "Remove this comment?");
       await expect(removeDialog).toBeVisible();
       await removeDialog
         .getByRole("button", { exact: true, name: "Remove" })
@@ -268,10 +278,11 @@ test.describe("web-admin comment moderation", () => {
         .getByRole("button", { exact: true, name: "Purge" })
         .click();
 
-      const purgeDialog = consolePage.getByRole("dialog");
-      await expect(
-        purgeDialog.getByText("Purge this comment for good?")
-      ).toBeVisible();
+      const purgeDialog = openDialog(
+        consolePage,
+        "Purge this comment for good?"
+      );
+      await expect(purgeDialog).toBeVisible();
       await expect(
         purgeDialog.getByText(/this cannot be undone/u)
       ).toBeVisible();
