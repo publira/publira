@@ -159,10 +159,20 @@ func (c *Client) Send(ctx context.Context, msg Message) error {
 	return sendError(res.StatusCode, payload)
 }
 
+// tokenFieldPath is how FCM names the registration token in a field violation,
+// which is the only thing that tells an unusable token apart from an unusable
+// message.
+const tokenFieldPath = "message.token"
+
 // sendError turns an FCM error body into either [ErrTokenGone] or a retriable
-// error. UNREGISTERED is a token the app no longer holds, and INVALID_ARGUMENT
-// on a send whose only variable is the token is a token FCM cannot parse:
-// neither becomes deliverable by waiting.
+// error.
+//
+// UNREGISTERED is a token the app no longer holds. INVALID_ARGUMENT is not, on
+// its own: FCM answers with it for a malformed message as readily as for a
+// malformed token, and this message carries a title, a body, and a data block,
+// so taking the bare status for the token would let one unsendable episode
+// delete every device of a tenant. It counts only when the error names the
+// token field, which FCM reports in a google.rpc.BadRequest detail.
 func sendError(statusCode int, payload []byte) error {
 	var decoded errorResponse
 	if err := json.Unmarshal(payload, &decoded); err != nil {
@@ -170,22 +180,26 @@ func sendError(statusCode int, payload []byte) error {
 	}
 
 	code := decoded.Error.Status
+	namesToken := false
 	for _, detail := range decoded.Error.Details {
 		if strings.TrimSpace(detail.ErrorCode) != "" {
 			code = detail.ErrorCode
-			break
+		}
+		for _, violation := range detail.FieldViolations {
+			if strings.TrimSpace(violation.Field) == tokenFieldPath {
+				namesToken = true
+			}
 		}
 	}
-	switch code {
-	case "UNREGISTERED", "INVALID_ARGUMENT":
+	if code == "UNREGISTERED" || (code == "INVALID_ARGUMENT" && namesToken) {
 		return fmt.Errorf("%w: %s", ErrTokenGone, code)
-	default:
-		message := strings.TrimSpace(decoded.Error.Message)
-		if message == "" {
-			message = truncate(string(payload))
-		}
-		return fmt.Errorf("push: HTTP %d (%s): %s", statusCode, code, message)
 	}
+
+	message := strings.TrimSpace(decoded.Error.Message)
+	if message == "" {
+		message = truncate(string(payload))
+	}
+	return fmt.Errorf("push: HTTP %d (%s): %s", statusCode, code, message)
 }
 
 func truncate(value string) string {
@@ -261,12 +275,19 @@ func newFCMMessage(msg Message) fcmMessage {
 	}
 }
 
+// errorResponse is the google.rpc.Status body FCM answers an error with. The
+// details array is heterogeneous — a google.firebase.fcm.v1.FcmError carries
+// the messaging error code, a google.rpc.BadRequest the field violations — so
+// one struct reads both and the caller looks at whichever is present.
 type errorResponse struct {
 	Error struct {
 		Message string `json:"message"`
 		Status  string `json:"status"`
 		Details []struct {
-			ErrorCode string `json:"errorCode"`
+			ErrorCode       string `json:"errorCode"`
+			FieldViolations []struct {
+				Field string `json:"field"`
+			} `json:"fieldViolations"`
 		} `json:"details"`
 	} `json:"error"`
 }

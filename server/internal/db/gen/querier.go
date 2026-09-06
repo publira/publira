@@ -944,6 +944,16 @@ type Querier interface {
 	// primary key, so a device that changes hands moves to the new reader instead
 	// of leaving a second row behind that would push one reader's episodes to the
 	// next.
+	//
+	// The update never touches tenant_id, and a row cannot move between tenants.
+	// It has no reason to: a build of the app serves one tenant and one Firebase
+	// project, and FCM issues a token per install of it, so the token names a
+	// device that belongs to that tenant alone. A conflict with another tenant's
+	// row is therefore not a state the app can produce, and it fails rather than
+	// resolving: this statement runs under the RLS-bound API role, which cannot
+	// see that row, and PostgreSQL raises on an ON CONFLICT DO UPDATE whose
+	// existing row fails the policy. A hard error is the outcome to want — the
+	// alternative would be one tenant's caller taking a device away from another.
 	UpsertUserPushDevice(ctx context.Context, arg UpsertUserPushDeviceParams) (UserPushDevice, error)
 	UpsertUserRecommendFeatures(ctx context.Context, arg UpsertUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	// Creators are public when they have at least one active series, matching

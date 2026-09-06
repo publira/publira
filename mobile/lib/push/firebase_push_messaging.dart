@@ -17,6 +17,13 @@ class FirebasePushMessaging implements PushMessaging {
   /// A failure to initialize is answered with `null` rather than an exception:
   /// push is the one feature that stops working, and a reader has to be able
   /// to open the app on a device Firebase cannot start on.
+  ///
+  /// Every failure, not only a [FirebaseException]. The call crosses to the
+  /// platform, which raises a `PlatformException` for a project the device
+  /// rejects and a `MissingPluginException` where the plugin is not registered
+  /// at all. `main` awaits this before the first frame, so anything that
+  /// escaped here would leave the reader with no app rather than with no
+  /// notifications.
   static Future<PushMessaging?> connect(
     FirebaseConfig? config, {
     TargetPlatform? platform,
@@ -28,7 +35,7 @@ class FirebasePushMessaging implements PushMessaging {
     try {
       await Firebase.initializeApp(options: options);
       return FirebasePushMessaging(FirebaseMessaging.instance);
-    } on FirebaseException catch (error) {
+    } on Object catch (error) {
       debugPrint('Firebase is unavailable, so push is off: $error');
       return null;
     }

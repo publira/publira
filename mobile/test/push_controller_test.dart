@@ -71,6 +71,52 @@ void main() {
     expect(store.token, isNull);
   });
 
+  test(
+    'a credential store that refuses the write takes the registration back',
+    () async {
+      // The server would keep sending to a device whose switch comes back off on
+      // the next launch, so the registration is rolled back rather than left.
+      final controller = PushController(
+        messaging: messaging,
+        repository: repository,
+        store: InMemoryPushDeviceStore(
+          writeError: Exception('keystore refused'),
+        ),
+        platform: PushPlatform.android,
+      );
+      addTearDown(controller.dispose);
+      await controller.start();
+
+      await controller.setEnabled(true);
+
+      expect(controller.enabled, isFalse);
+      expect(controller.failure, PushFailure.unavailable);
+      expect(repository.registered, ['device-token']);
+      expect(repository.unregistered, ['device-token']);
+      expect(messaging.deletedTokens, 1);
+    },
+  );
+
+  test(
+    'a credential store this launch cannot read leaves the switch off',
+    () async {
+      final controller = PushController(
+        messaging: messaging,
+        repository: repository,
+        store: InMemoryPushDeviceStore(
+          token: 'device-token',
+          readError: Exception('keystore refused'),
+        ),
+        platform: PushPlatform.android,
+      );
+      addTearDown(controller.dispose);
+
+      await controller.start();
+
+      expect(controller.enabled, isFalse);
+    },
+  );
+
   test('turning notifications off unregisters and stops the token', () async {
     final controller = controllerFor(stored: 'device-token');
     await controller.start();

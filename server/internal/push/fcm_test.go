@@ -76,9 +76,11 @@ func TestSendReportsARevokedTokenAsGone(t *testing.T) {
 			body:       `{"error":{"code":404,"status":"NOT_FOUND","message":"Requested entity was not found.","details":[{"@type":"type.googleapis.com/google.firebase.fcm.v1.FcmError","errorCode":"UNREGISTERED"}]}}`,
 		},
 		{
-			name:       "invalid argument",
+			name:       "invalid argument naming the token field",
 			statusCode: http.StatusBadRequest,
-			body:       `{"error":{"code":400,"status":"INVALID_ARGUMENT","message":"The registration token is not a valid FCM registration token."}}`,
+			body: `{"error":{"code":400,"status":"INVALID_ARGUMENT","message":"Request contains an invalid argument.","details":[` +
+				`{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"message.token","description":"Invalid registration token"}]},` +
+				`{"@type":"type.googleapis.com/google.firebase.fcm.v1.FcmError","errorCode":"INVALID_ARGUMENT"}]}}`,
 		},
 	}
 
@@ -96,6 +98,28 @@ func TestSendReportsARevokedTokenAsGone(t *testing.T) {
 				t.Fatalf("send error = %v, want ErrTokenGone", err)
 			}
 		})
+	}
+}
+
+func TestSendKeepsADeviceWhenOnlyTheMessageWasRejected(t *testing.T) {
+	// FCM answers INVALID_ARGUMENT for a malformed message as readily as for a
+	// malformed token. Taking the bare status for the token would delete every
+	// device of a tenant over one unsendable episode.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":{"code":400,"status":"INVALID_ARGUMENT","message":"Invalid value at 'message.notification.title'.","details":[` +
+			`{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"message.notification.title","description":"Invalid value"}]},` +
+			`{"@type":"type.googleapis.com/google.firebase.fcm.v1.FcmError","errorCode":"INVALID_ARGUMENT"}]}}`))
+	}))
+	defer server.Close()
+
+	err := newTestClient(t, server).Send(context.Background(), Message{Token: "device-token"})
+	if err == nil {
+		t.Fatal("send error = nil, want an error")
+	}
+	if errors.Is(err, ErrTokenGone) {
+		t.Fatalf("send error = %v, want the device kept", err)
 	}
 }
 

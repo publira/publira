@@ -56,17 +56,23 @@ type Push struct {
 	// name GOOGLE_APPLICATION_CREDENTIALS keeps because the Google library
 	// performs that lookup itself.
 	FCMCredentialsJSON []byte
-	// ADCConfigured records that GOOGLE_APPLICATION_CREDENTIALS was set, so
-	// [Push.Configured] can tell a deployment that meant to send from one that
-	// never configured push at all.
-	ADCConfigured bool
+	// ADCPathConfigured records that GOOGLE_APPLICATION_CREDENTIALS was set.
+	ADCPathConfigured bool
 }
 
-// Configured reports whether any credential was supplied. A process that gets
-// false leaves the push handler unregistered, so a local stack without
-// Firebase still runs.
+// Configured reports whether this deployment means to send push notifications.
+// A process that gets false leaves the push handler unregistered, so a local
+// stack without Firebase still runs — and, because an event with no handler
+// goes dead, a deployment that does mean to send has to be recognized here.
+//
+// The project id counts on its own, and not only the two credential names,
+// because Application Default Credentials resolves more than an explicit key
+// file: a well-known gcloud file, and the metadata server of an instance with
+// an attached service account, both leave every credential variable empty.
+// Naming the project is what such a deployment can still say, so it is what
+// turns push on; the credential is then whatever the Google library finds.
 func (p Push) Configured() bool {
-	return len(p.FCMCredentialsJSON) > 0 || p.ADCConfigured
+	return p.FCMProjectID != "" || len(p.FCMCredentialsJSON) > 0 || p.ADCPathConfigured
 }
 
 func New() (*Config, error) {
@@ -91,7 +97,7 @@ func parsePush() Push {
 	return Push{
 		FCMProjectID:       strings.TrimSpace(os.Getenv("PUBLIRA_FCM_PROJECT_ID")),
 		FCMCredentialsJSON: []byte(credentials),
-		ADCConfigured:      strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")) != "",
+		ADCPathConfigured:  strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")) != "",
 	}
 }
 

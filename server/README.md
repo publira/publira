@@ -190,9 +190,13 @@ outbox-worker mirrors member notifications onto the devices the mobile app regis
 - `PUBLIRA_FCM_CREDENTIALS_JSON`
   - A service account key, inline as JSON. The key has to be a `service_account` credential; FCM HTTP v1 accepts no other kind
 - `GOOGLE_APPLICATION_CREDENTIALS`
-  - The alternative to the inline key. It keeps its outside name because the Google library performs that lookup itself
+  - The path form of the same key. It keeps its outside name because the Google library performs that lookup itself
 
-With neither credential set, the `member_push_notification` handler is not registered and push is off, so a local stack without Firebase still runs. `batch publish-episodes` writes the outbox row either way, and an unhandled row retries and then goes dead without affecting the publish.
+Any one of the three turns push on. The project id counts on its own because Application Default Credentials resolves more than an explicit key file — a well-known `gcloud` file, and the metadata server of an instance with an attached service account — and a deployment relying on either leaves both credential variables empty. Naming the project is what it can still say.
+
+With none of them set, the `member_push_notification` handler is not registered and push is off, so a local stack without Firebase still runs. `batch publish-episodes` writes the outbox row either way, and an unhandled row retries and then goes dead without affecting the publish.
+
+A send reaches the devices it can. A run that reached none of them is retried as an outage; one that reached some completes, because a retry re-runs the whole send and FCM keeps no delivery record, so the devices that already took the message would take it again once per remaining attempt. The devices a partial run could not reach lose that alert and keep the `notifications` row behind it.
 
 ## Distributed tracing (OpenTelemetry)
 

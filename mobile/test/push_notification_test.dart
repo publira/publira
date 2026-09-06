@@ -67,6 +67,27 @@ void main() {
     return push;
   }
 
+  testWidgets('a restored session re-registers the device it was left on', (
+    tester,
+  ) async {
+    // Restoring the session is what reports the sign-in that re-registers the
+    // device, and both restores start at launch. A session that came back
+    // first would report it while the controller still held no token, and the
+    // device would stay registered to whoever signed in last.
+    store.token = 'device-token';
+    await tester.pumpWidget(
+      PubliraApp(
+        router: createAppRouter(),
+        catalog: catalog,
+        auth: fakeAuthController(storedSession: fakeSession),
+        push: pushController(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.registered, ['device-token']);
+  });
+
   testWidgets('the account screen offers the notification switch', (
     tester,
   ) async {

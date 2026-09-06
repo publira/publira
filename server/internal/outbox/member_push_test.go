@@ -102,11 +102,15 @@ func TestMemberPushNotificationDeletesARevokedToken(t *testing.T) {
 	}
 }
 
-func TestMemberPushNotificationRetriesAfterASendFailure(t *testing.T) {
+func TestMemberPushNotificationRetriesWhenNothingWasDelivered(t *testing.T) {
 	queries := &stubPushDeviceQuerier{devices: []dbmodels.ListPushDevicesForNotificationRow{
 		{NotificationID: uuid.New(), UserID: uuid.New(), Token: "token-a", Platform: "android"},
+		{NotificationID: uuid.New(), UserID: uuid.New(), Token: "token-b", Platform: "android"},
 	}}
-	sender := &stubPushSender{errs: map[string]error{"token-a": errors.New("fcm is unavailable")}}
+	sender := &stubPushSender{errs: map[string]error{
+		"token-a": errors.New("fcm is unavailable"),
+		"token-b": errors.New("fcm is unavailable"),
+	}}
 
 	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
 	err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published"))
@@ -118,6 +122,47 @@ func TestMemberPushNotificationRetriesAfterASendFailure(t *testing.T) {
 	}
 	if len(queries.deleted) != 0 {
 		t.Fatalf("deleted tokens = %v, want none", queries.deleted)
+	}
+}
+
+func TestMemberPushNotificationCompletesWhenSomeDevicesTookIt(t *testing.T) {
+	// A retry would re-send to every device that already took the message,
+	// once per remaining attempt of the retry budget. A run that reached
+	// someone therefore completes, and the devices it could not reach lose
+	// this alert rather than every other reader being notified ten times.
+	queries := &stubPushDeviceQuerier{devices: []dbmodels.ListPushDevicesForNotificationRow{
+		{NotificationID: uuid.New(), UserID: uuid.New(), Token: "token-a", Platform: "android"},
+		{NotificationID: uuid.New(), UserID: uuid.New(), Token: "token-b", Platform: "android"},
+	}}
+	sender := &stubPushSender{errs: map[string]error{"token-b": errors.New("fcm rate limit")}}
+
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(sender.sent) != 1 || sender.sent[0].Token != "token-a" {
+		t.Fatalf("messages sent = %+v, want only token-a", sender.sent)
+	}
+}
+
+func TestMemberPushNotificationCompletesWhenOnlyARevokedTokenFailed(t *testing.T) {
+	// Deleting a revoked device settles it as surely as a delivery does, so an
+	// event whose every device is revoked has nothing left to retry for.
+	queries := &stubPushDeviceQuerier{devices: []dbmodels.ListPushDevicesForNotificationRow{
+		{NotificationID: uuid.New(), UserID: uuid.New(), Token: "revoked", Platform: "android"},
+		{NotificationID: uuid.New(), UserID: uuid.New(), Token: "token-b", Platform: "android"},
+	}}
+	sender := &stubPushSender{errs: map[string]error{
+		"revoked": push.ErrTokenGone,
+		"token-b": errors.New("fcm rate limit"),
+	}}
+
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(queries.deleted) != 1 || queries.deleted[0] != "revoked" {
+		t.Fatalf("deleted tokens = %v, want [revoked]", queries.deleted)
 	}
 }
 

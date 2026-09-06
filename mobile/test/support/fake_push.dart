@@ -72,8 +72,9 @@ class FakePushRepository implements PushRepository {
   final unregistered = <String>[];
   PushPlatform? lastPlatform;
 
-  /// Thrown by the next call of either method, which is how a test acts out an
-  /// unreachable API.
+  /// Thrown by every call of either method until a test clears it, which is
+  /// how an unreachable API is acted out. Set it to `null` between calls to
+  /// act out one that recovers.
   Object? failure;
 
   @override
@@ -102,15 +103,30 @@ class FakePushRepository implements PushRepository {
 /// A [PushDeviceStore] that keeps the token in memory, so a test does not
 /// reach the platform keychain.
 class InMemoryPushDeviceStore implements PushDeviceStore {
-  InMemoryPushDeviceStore({this.token});
+  InMemoryPushDeviceStore({this.token, this.readError, this.writeError});
 
   String? token;
 
+  /// Thrown by [read] and [write], standing in for a credential store the
+  /// platform refuses.
+  Object? readError;
+  Object? writeError;
+
   @override
-  Future<String?> read() async => token;
+  Future<String?> read() async {
+    final error = readError;
+    if (error != null) {
+      throw error;
+    }
+    return token;
+  }
 
   @override
   Future<void> write(String token) async {
+    final error = writeError;
+    if (error != null) {
+      throw error;
+    }
     this.token = token;
   }
 

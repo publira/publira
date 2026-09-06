@@ -134,6 +134,7 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 		}
 
 		var failures []error
+		settled := 0
 		for _, device := range devices {
 			sendErr := cfg.Sender.Send(ctx, push.Message{
 				Token: device.Token,
@@ -143,23 +144,48 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 			})
 			switch {
 			case sendErr == nil:
+				settled++
 			case errors.Is(sendErr, push.ErrTokenGone):
 				if _, delErr := queries.DeleteUserPushDeviceByToken(ctx, device.Token); delErr != nil {
 					failures = append(failures, fmt.Errorf("delete revoked push device: %w", delErr))
 					continue
 				}
+				settled++
 				logPush(ctx, cfg.Logger, "removed revoked push device", event,
 					"user_id", device.UserID.String())
 			default:
 				failures = append(failures, sendErr)
 			}
 		}
-		if len(failures) > 0 {
-			// Retrying re-sends to the devices that already took the message.
-			// FCM has no delivery record to consult, and losing the alert for
-			// the rest of a tenant's members is the worse of the two.
-			return fmt.Errorf("send member push notification to %d of %d devices failed: %w",
-				len(failures), len(devices), errors.Join(failures...))
+		if len(failures) == 0 {
+			return nil
+		}
+
+		// A retry re-runs the whole loop, and FCM keeps no delivery record to
+		// consult, so a device that already took the message would take it
+		// again — once per remaining attempt of the retry budget. The event is
+		// therefore retried only when nothing was settled at all, which is what
+		// an outage looks like; a run that reached some of the devices is
+		// completed, and the ones it could not reach lose this alert rather
+		// than every other reader being notified up to ten times over.
+		//
+		// Losing it is the failure this design already accepts: the
+		// `notifications` row is the record and the push is one delivery of it,
+		// so the bell still shows what the device did not.
+		joined := errors.Join(failures...)
+		if settled == 0 {
+			return fmt.Errorf("send member push notification to all %d devices failed: %w",
+				len(devices), joined)
+		}
+		if cfg.Logger != nil {
+			cfg.Logger.WarnContext(ctx, "member push notification reached some devices and not others",
+				"event_id", event.ID,
+				"event_type", event.EventType,
+				"idempotency_key", event.IdempotencyKey,
+				"settled", settled,
+				"failed", len(failures),
+				"error", joined,
+			)
 		}
 		return nil
 	}

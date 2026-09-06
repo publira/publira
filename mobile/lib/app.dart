@@ -153,8 +153,20 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     widget.auth.addListener(_onAuthChanged);
     widget.push?.addListener(_onPushChanged);
     widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
-    unawaited(widget.auth.restore());
-    unawaited(widget.push?.start());
+    unawaited(_restore());
+  }
+
+  /// Brings the device's notification registration back before the session.
+  ///
+  /// Both are asynchronous, and restoring the session is what reports the
+  /// sign-in that re-registers the device. Started together, a session that
+  /// came back first would report it while the controller still held no token,
+  /// and nothing would register: the sign-in is reported once, and starting the
+  /// controller is not a second one. Restoring the token first is what makes
+  /// the two orders the same.
+  Future<void> _restore() async {
+    await widget.push?.start();
+    await widget.auth.restore();
   }
 
   @override

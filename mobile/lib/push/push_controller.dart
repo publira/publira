@@ -94,7 +94,15 @@ class PushController extends ChangeNotifier {
     );
     _subscriptions.add(messaging.openedMessages.listen(_onMessageOpened));
 
-    final stored = await _store.read();
+    String? stored;
+    try {
+      stored = await _store.read();
+    } on Object {
+      // A credential store this launch cannot read leaves the switch off,
+      // which the reader can turn back on. Failing the launch over it would
+      // cost them the app rather than the notifications.
+      stored = null;
+    }
     if (stored != null) {
       _token = stored;
       notifyListeners();
@@ -211,7 +219,23 @@ class PushController extends ChangeNotifier {
       _failure = PushFailure.unavailable;
       return;
     }
-    await _store.write(token);
+    try {
+      await _store.write(token);
+    } on Object {
+      // The registration is on the server and this device cannot remember it,
+      // so the switch would come back off on the next launch while the server
+      // kept sending. Take the registration back and report the failure, which
+      // leaves both sides saying the same thing.
+      try {
+        await _repository.unregister(token);
+      } on Object {
+        // Nothing further to try. The token is stopped below, so the row the
+        // server still holds is dropped at its next send.
+      }
+      await _stopToken(messaging: messaging);
+      _failure = PushFailure.unavailable;
+      return;
+    }
     _token = token;
   }
 
@@ -228,8 +252,21 @@ class PushController extends ChangeNotifier {
     await _stopToken(messaging: messaging);
   }
 
+  /// Forgets the token this device holds, on both sides of the platform.
+  ///
+  /// Nothing here throws. It runs on the way out of a sign-out and out of a
+  /// failed enable, neither of which has anywhere to report a credential store
+  /// that refused: what matters is that the controller stops claiming a
+  /// registration, and that the token itself is stopped so a row the server
+  /// still holds is dropped at its next send.
   Future<void> _stopToken({PushMessaging? messaging}) async {
-    await _store.clear();
+    try {
+      await _store.clear();
+    } on Object {
+      // The stored value outlives this run. It names a token that is about to
+      // be invalidated, so the next launch reads a registration the server
+      // will drop at its first send.
+    }
     _token = null;
     try {
       await (messaging ?? _messaging)?.deleteToken();
@@ -259,7 +296,15 @@ class PushController extends ChangeNotifier {
       // registers again rather than leaving the device on nothing.
       return;
     }
-    await _store.write(token);
+    try {
+      await _store.write(token);
+    } on Object {
+      // The new token is registered and this device cannot write it down. It
+      // is still the one FCM will deliver to, so it is adopted in memory; a
+      // relaunch reads the old value and re-registers, which moves the row
+      // back to a token that is no longer live and is dropped at the next
+      // send. The refresh after it recovers.
+    }
     _token = token;
     notifyListeners();
   }

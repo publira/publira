@@ -309,9 +309,13 @@ func (s *apiServer) UnregisterPushDevice(
 }
 
 // maxPushDeviceTokenBytes bounds what one device can store. An FCM
-// registration token is a few hundred bytes; this leaves room for a longer one
-// without letting a caller write an unbounded value.
-const maxPushDeviceTokenBytes = 4096
+// registration token is a few hundred bytes, so this leaves room for a longer
+// one, and it stays under the roughly 2704 bytes a btree index entry can hold:
+// the token is the table's primary key, and a value the index refuses would
+// reach the reader as an internal error rather than as the invalid argument it
+// is. `user_push_devices_token_byte_limit_check` holds the same bound in the
+// schema.
+const maxPushDeviceTokenBytes = 1024
 
 func pushDeviceToken(raw string) (string, error) {
 	token := strings.TrimSpace(raw)
