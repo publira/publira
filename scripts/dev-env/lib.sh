@@ -334,3 +334,102 @@ dev_env_selected_profile() {
   selected="$(dev_env_read_selection)" || dev_env_die "no profile is selected; run: task dev-env:create NAME=<name>"
   printf '%s\n' "${selected}"
 }
+
+# Seconds a stopped process group is given to exit after SIGTERM, and then
+# after the SIGKILL that follows it.
+DEV_ENV_STOP_TERM_SECONDS=10
+DEV_ENV_STOP_KILL_SECONDS=5
+
+dev_env_profile_run_dir() {
+  printf '%s/runs/%s\n' "${DEV_ENV_HOME}" "$1"
+}
+
+# Starts one service of a profile, detached, and records the pid that stands
+# for it. That pid is also the id of a process group holding nothing else,
+# because job control puts a background job in a group of its own, and
+# dev_env_stop_process_group signals the group rather than the single pid.
+# The distinction is what stops the pnpm-launched services: their recorded pid
+# heads a chain (`pnpm` -> `sh -c` -> `next dev` -> `next-server`) whose last
+# link is the one holding the port, and it outlives a signal to the pid alone.
+dev_env_start_background() {
+  local run_dir="$1" process_name="$2" pid
+  shift 2
+  set -m
+  nohup "$@" >"${run_dir}/${process_name}.log" 2>&1 </dev/null &
+  pid="$!"
+  set +m
+  # The pid file is the only handle the profile keeps, so the job is dropped
+  # from this shell rather than reported back over whatever it prints next.
+  disown "%%"
+  printf '%s\n' "${pid}" >"${run_dir}/${process_name}.pid"
+}
+
+dev_env_process_group_is_running() {
+  kill -0 -- "-$1" 2>/dev/null
+}
+
+# Prints the command line of every process in a process group. `ps -A -o
+# pgid=,args=` is the portable spelling; pgrep's process group selector takes
+# a different option letter on the BSD side.
+dev_env_process_group_commands() {
+  ps -A -o pgid=,args= 2>/dev/null | awk -v pgid="$1" '$1 == pgid { $1 = ""; print }'
+}
+
+# A recorded pid stands for a profile's service only while some member of its
+# group still runs from this worktree. Once the group is gone the number is
+# free for any process to take, and a group that names another worktree
+# belongs to that one.
+dev_env_process_group_belongs_to_repo() {
+  dev_env_process_group_commands "$1" | grep -qF -- "${REPO_ROOT}"
+}
+
+dev_env_wait_for_process_group() {
+  local pgid="$1" tenths=$(($2 * 10))
+  while ((tenths > 0)); do
+    dev_env_process_group_is_running "${pgid}" || return 0
+    sleep 0.1
+    tenths=$((tenths - 1))
+  done
+  ! dev_env_process_group_is_running "${pgid}"
+}
+
+# Ends one process group and reports whether it is gone, so that its caller
+# can keep the pid file of a group that outlived the attempt.
+dev_env_stop_process_group() {
+  local pgid="$1"
+  dev_env_process_group_is_running "${pgid}" || return 0
+  if ! dev_env_process_group_belongs_to_repo "${pgid}"; then
+    dev_env_error "not signalling process group ${pgid}; it no longer belongs to ${REPO_ROOT}"
+    return 0
+  fi
+  kill -s TERM -- "-${pgid}" 2>/dev/null || true
+  dev_env_wait_for_process_group "${pgid}" "${DEV_ENV_STOP_TERM_SECONDS}" && return 0
+  kill -s KILL -- "-${pgid}" 2>/dev/null || true
+  dev_env_wait_for_process_group "${pgid}" "${DEV_ENV_STOP_KILL_SECONDS}"
+}
+
+dev_env_stop_profile() {
+  local name="$1" run_dir pid_file pgid survivors=0
+  run_dir="$(dev_env_profile_run_dir "${name}")"
+  [[ -d "${run_dir}" ]] || return 0
+  for pid_file in "${run_dir}"/*.pid; do
+    [[ -f "${pid_file}" ]] || continue
+    pgid="$(<"${pid_file}")"
+    if [[ ! "${pgid}" =~ ^[0-9]+$ ]]; then
+      dev_env_error "removing ${pid_file}; it does not name a process"
+      rm -f "${pid_file}"
+      continue
+    fi
+    # A pid file is removed once nothing is left under the pid it names, so an
+    # attempt that could not finish leaves the names a repeated stop needs.
+    if dev_env_stop_process_group "${pgid}"; then
+      rm -f "${pid_file}"
+    else
+      dev_env_error "${pid_file##*/} still has processes in group ${pgid}"
+      survivors=1
+    fi
+  done
+  ((survivors == 0)) || dev_env_die "profile ${name} was not fully stopped; run: task dev-env:stop"
+  rmdir "${run_dir}" 2>/dev/null || true
+  printf 'stopped profile %q\n' "${name}"
+}
