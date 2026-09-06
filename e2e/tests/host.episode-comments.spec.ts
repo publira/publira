@@ -19,9 +19,11 @@ import { hostPath, WEB_HOST_EPISODE_COMMENTS_BASE_URL } from "../src/urls";
  * cannot be read off the screen: a comment staff removed keeps rendering to its
  * author, unchanged, and is gone for everyone else.
  *
- * The removal is written straight to Postgres. `AdminCommentService` exists but
- * the moderation console does not yet, so the database is the only place this
- * suite can act as staff from; every other step goes through the site.
+ * The removal is written straight to Postgres. What staff do is asserted from
+ * the console by `admin.comment-moderation.spec.ts`; here the removal is only
+ * the precondition, and this tenant publishes comments immediately, so the
+ * database is the shortest way to reach the state the reader-side rules are
+ * about.
  */
 
 const episodeUrl = `${WEB_HOST_EPISODE_COMMENTS_BASE_URL}${hostPath(EPISODE_COMMENTS_PATH)}`;

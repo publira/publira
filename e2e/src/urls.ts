@@ -170,6 +170,24 @@ export const WEB_HOST_EPISODE_COMMENTS_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the tenant whose comments wait for approval, from the
+ * scenario seed `db/seeds/scenarios/150_comment_moderation.sql`.
+ *
+ * `tenant_config.comment_mode` is tenant-wide, so the tenant that holds
+ * comments for approval cannot be the one whose comments publish immediately.
+ */
+export const WEB_HOST_COMMENT_MODERATION_BASE_URL = envUrl(
+  "E2E_WEB_HOST_COMMENT_MODERATION_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "moderate.localhost")
+);
+
+/** Admin console of the same moderation tenant. */
+export const WEB_ADMIN_COMMENT_MODERATION_BASE_URL = envUrl(
+  "E2E_WEB_ADMIN_COMMENT_MODERATION_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.moderate.localhost")
+);
+
+/**
  * Public site of the Japanese-default tenant from the scenario seed
  * `db/seeds/scenarios/080_locale_switching.sql`.
  *

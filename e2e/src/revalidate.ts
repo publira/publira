@@ -5,8 +5,8 @@ import { WEB_HOST_INTERNAL_URL } from "./urls";
  *
  * A spec that changes data through the console or the site needs none of this:
  * the API revalidates the tags its own write touched. A spec that reaches past
- * the app and writes to Postgres directly — the only way to remove a comment
- * while the moderation console does not exist yet — leaves web-host holding a
+ * the app and writes to Postgres directly — a scenario seed that empties a
+ * table, or a state no screen produces — leaves web-host holding a
  * `"use cache"` entry nothing invalidated, so it has to send the same request
  * the servers send.
  *
