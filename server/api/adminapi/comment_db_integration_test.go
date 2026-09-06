@@ -127,6 +127,18 @@ func (f commentModerationFixture) list(t *testing.T, req *publiraadminv1.ListCom
 	return res.Msg
 }
 
+func (f commentModerationFixture) countPending(t *testing.T) int32 {
+	t.Helper()
+
+	res, err := f.env.commentClient().CountPendingComments(context.Background(), newAdminDBRequest(f.admin, &publiraadminv1.CountPendingCommentsRequest{
+		Tenant: f.admin.tenantContext(),
+	}))
+	if err != nil {
+		t.Fatalf("CountPendingComments: %v", err)
+	}
+	return res.Msg.PendingCount
+}
+
 func adminCommentPublicIDs(comments []*publiraadminv1.AdminComment) []string {
 	ids := make([]string, 0, len(comments))
 	for _, comment := range comments {
@@ -494,6 +506,48 @@ func TestDBAdminListCommentsFiltersAndPages(t *testing.T) {
 	}
 }
 
+func TestDBAdminCountPendingCommentsCountsOneTenantsQueue(t *testing.T) {
+	env := newAdminDBEnv(t)
+	mine := newCommentModerationFixture(t, env, "CNT", "count.example.com")
+	theirs := newCommentModerationFixture(t, env, "CNO", "count-other.example.com")
+
+	if got := mine.countPending(t); got != 0 {
+		t.Fatalf("pending count on an empty tenant = %d, want 0", got)
+	}
+
+	mine.seedComment(t, "CNTPENDING01", "pending")
+	mine.seedComment(t, "CNTPENDING02", "pending")
+	// Every other state is work already done, so none of them is in the badge.
+	mine.seedComment(t, "CNTPUBLISH01", "published")
+	mine.seedComment(t, "CNTHIDDEN001", "published")
+	if _, err := env.commentClient().HideComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.HideCommentRequest{
+		Tenant:   mine.admin.tenantContext(),
+		PublicId: "CNTHIDDEN001",
+	})); err != nil {
+		t.Fatalf("HideComment: %v", err)
+	}
+	theirs.seedComment(t, "CNOPENDING01", "pending")
+
+	if got := mine.countPending(t); got != 2 {
+		t.Fatalf("pending count = %d, want the two pending comments of this tenant", got)
+	}
+	if got := theirs.countPending(t); got != 1 {
+		t.Fatalf("the other tenant's pending count = %d, want 1", got)
+	}
+
+	// Approving is what empties the queue, so the count is what a moderator
+	// watches shrink as they work through it.
+	if _, err := env.commentClient().ApproveComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.ApproveCommentRequest{
+		Tenant:   mine.admin.tenantContext(),
+		PublicId: "CNTPENDING01",
+	})); err != nil {
+		t.Fatalf("ApproveComment: %v", err)
+	}
+	if got := mine.countPending(t); got != 1 {
+		t.Fatalf("pending count after an approval = %d, want 1", got)
+	}
+}
+
 func TestDBAdminCommentModerationRequiresTheAdminRole(t *testing.T) {
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "ROL", "role.example.com")
@@ -512,6 +566,11 @@ func TestDBAdminCommentModerationRequiresTheAdminRole(t *testing.T) {
 		PublicId: comment.PublicID,
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("ApproveComment as an editor error = %v, want permission_denied", err)
+	}
+	if _, err := client.CountPendingComments(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.CountPendingCommentsRequest{
+		Tenant: asEditor.tenantContext(),
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("CountPendingComments as an editor error = %v, want permission_denied", err)
 	}
 }
 

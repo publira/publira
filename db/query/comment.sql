@@ -13,6 +13,8 @@
 --   ListEpisodeCommentsForModerationByCreatedAt*
 --     -> idx_episode_comments_tenant_status_created_at with a status filter,
 --        idx_episode_comments_tenant_created_at without one
+--   CountPendingEpisodeCommentsForTenant
+--     -> idx_episode_comments_tenant_status_created_at
 --   PurgeWithdrawnEpisodeComments
 --     -> idx_episode_comments_tenant_withdrawn_at
 
@@ -280,6 +282,16 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
 ORDER BY c.created_at ASC,
     c.id ASC
 LIMIT sqlc.arg('limit');
+
+-- name: CountPendingEpisodeCommentsForTenant :one
+-- The size of the approval queue, for the console navigation that carries it on
+-- every screen. Counting is a query of its own rather than the length of a
+-- list page: the badge needs the whole queue, and a page bounded by a limit
+-- cannot report it.
+SELECT COUNT(*)::int AS pending_count
+FROM episode_comments
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND status = 'pending';
 
 -- name: GetEpisodeCommentForModerationByPublicIDForTenant :one
 -- One comment in the shape the moderation list returns. Every moderation action

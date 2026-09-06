@@ -73,6 +73,15 @@ message ListCommentsResponse {
   string next_token = 3;
 }
 
+message CountPendingCommentsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message CountPendingCommentsResponse {
+  // Comments in the pending state across the whole tenant.
+  int32 pending_count = 1;
+}
+
 message ApproveCommentRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
@@ -127,6 +136,13 @@ service AdminCommentService {
   // away from every reader, but staff keep reading it for the retention window
   // so a report or a dispute raised before the deletion can still be settled.
   rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse) {}
+  // Counts the comments waiting for approval across the tenant.
+  //
+  // Separate from ListComments so the console's navigation can carry the size
+  // of the queue without reading a page of it: the badge is on every screen,
+  // and a page of rows fetched to be counted and thrown away would be the most
+  // expensive thing the console does per navigation.
+  rpc CountPendingComments(CountPendingCommentsRequest) returns (CountPendingCommentsResponse) {}
   // Publishes one comment that was posted under approval_required.
   //
   // failed_precondition for a comment in any other state, because approving is

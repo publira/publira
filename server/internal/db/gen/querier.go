@@ -28,6 +28,11 @@ type Querier interface {
 	// For the tenant dashboard.
 	CountDraftEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountPendingEndUsers(ctx context.Context) (int32, error)
+	// The size of the approval queue, for the console navigation that carries it on
+	// every screen. Counting is a query of its own rather than the length of a
+	// list page: the badge needs the whole queue, and a page bounded by a limit
+	// cannot report it.
+	CountPendingEpisodeCommentsForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// Count the platform administrators. Zero means the platform has not been
 	// set up yet.
 	CountPlatformUsers(ctx context.Context) (int32, error)
@@ -61,6 +66,8 @@ type Querier interface {
 	//   ListEpisodeCommentsForModerationByCreatedAt*
 	//     -> idx_episode_comments_tenant_status_created_at with a status filter,
 	//        idx_episode_comments_tenant_created_at without one
+	//   CountPendingEpisodeCommentsForTenant
+	//     -> idx_episode_comments_tenant_status_created_at
 	//   PurgeWithdrawnEpisodeComments
 	//     -> idx_episode_comments_tenant_withdrawn_at
 	// status and published_at come from the tenant's comment_mode: 'published' with

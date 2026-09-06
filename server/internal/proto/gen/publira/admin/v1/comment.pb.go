@@ -356,6 +356,95 @@ func (x *ListCommentsResponse) GetNextToken() string {
 	return ""
 }
 
+type CountPendingCommentsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountPendingCommentsRequest) Reset() {
+	*x = CountPendingCommentsRequest{}
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountPendingCommentsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountPendingCommentsRequest) ProtoMessage() {}
+
+func (x *CountPendingCommentsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountPendingCommentsRequest.ProtoReflect.Descriptor instead.
+func (*CountPendingCommentsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CountPendingCommentsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+type CountPendingCommentsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Comments in the pending state across the whole tenant.
+	PendingCount  int32 `protobuf:"varint,1,opt,name=pending_count,json=pendingCount,proto3" json:"pending_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountPendingCommentsResponse) Reset() {
+	*x = CountPendingCommentsResponse{}
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountPendingCommentsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountPendingCommentsResponse) ProtoMessage() {}
+
+func (x *CountPendingCommentsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountPendingCommentsResponse.ProtoReflect.Descriptor instead.
+func (*CountPendingCommentsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CountPendingCommentsResponse) GetPendingCount() int32 {
+	if x != nil {
+		return x.PendingCount
+	}
+	return 0
+}
+
 type ApproveCommentRequest struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -369,7 +458,7 @@ type ApproveCommentRequest struct {
 
 func (x *ApproveCommentRequest) Reset() {
 	*x = ApproveCommentRequest{}
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[3]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -381,7 +470,7 @@ func (x *ApproveCommentRequest) String() string {
 func (*ApproveCommentRequest) ProtoMessage() {}
 
 func (x *ApproveCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[3]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -394,7 +483,7 @@ func (x *ApproveCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveCommentRequest.ProtoReflect.Descriptor instead.
 func (*ApproveCommentRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{3}
+	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ApproveCommentRequest) GetTenant() *v1.TenantContext {
@@ -427,7 +516,7 @@ type ApproveCommentResponse struct {
 
 func (x *ApproveCommentResponse) Reset() {
 	*x = ApproveCommentResponse{}
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -439,7 +528,7 @@ func (x *ApproveCommentResponse) String() string {
 func (*ApproveCommentResponse) ProtoMessage() {}
 
 func (x *ApproveCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -452,7 +541,7 @@ func (x *ApproveCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveCommentResponse.ProtoReflect.Descriptor instead.
 func (*ApproveCommentResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{4}
+	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ApproveCommentResponse) GetComment() *AdminComment {
@@ -475,7 +564,7 @@ type HideCommentRequest struct {
 
 func (x *HideCommentRequest) Reset() {
 	*x = HideCommentRequest{}
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -487,7 +576,7 @@ func (x *HideCommentRequest) String() string {
 func (*HideCommentRequest) ProtoMessage() {}
 
 func (x *HideCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -500,7 +589,7 @@ func (x *HideCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HideCommentRequest.ProtoReflect.Descriptor instead.
 func (*HideCommentRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{5}
+	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *HideCommentRequest) GetTenant() *v1.TenantContext {
@@ -533,7 +622,7 @@ type HideCommentResponse struct {
 
 func (x *HideCommentResponse) Reset() {
 	*x = HideCommentResponse{}
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -545,7 +634,7 @@ func (x *HideCommentResponse) String() string {
 func (*HideCommentResponse) ProtoMessage() {}
 
 func (x *HideCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -558,7 +647,7 @@ func (x *HideCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HideCommentResponse.ProtoReflect.Descriptor instead.
 func (*HideCommentResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{6}
+	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *HideCommentResponse) GetComment() *AdminComment {
@@ -580,7 +669,7 @@ type RestoreCommentRequest struct {
 
 func (x *RestoreCommentRequest) Reset() {
 	*x = RestoreCommentRequest{}
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[7]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -592,7 +681,7 @@ func (x *RestoreCommentRequest) String() string {
 func (*RestoreCommentRequest) ProtoMessage() {}
 
 func (x *RestoreCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[7]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -605,7 +694,7 @@ func (x *RestoreCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreCommentRequest.ProtoReflect.Descriptor instead.
 func (*RestoreCommentRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{7}
+	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RestoreCommentRequest) GetTenant() *v1.TenantContext {
@@ -638,7 +727,7 @@ type RestoreCommentResponse struct {
 
 func (x *RestoreCommentResponse) Reset() {
 	*x = RestoreCommentResponse{}
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[8]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -650,7 +739,7 @@ func (x *RestoreCommentResponse) String() string {
 func (*RestoreCommentResponse) ProtoMessage() {}
 
 func (x *RestoreCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[8]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -663,7 +752,7 @@ func (x *RestoreCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreCommentResponse.ProtoReflect.Descriptor instead.
 func (*RestoreCommentResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{8}
+	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RestoreCommentResponse) GetComment() *AdminComment {
@@ -687,7 +776,7 @@ type PurgeCommentRequest struct {
 
 func (x *PurgeCommentRequest) Reset() {
 	*x = PurgeCommentRequest{}
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[9]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -699,7 +788,7 @@ func (x *PurgeCommentRequest) String() string {
 func (*PurgeCommentRequest) ProtoMessage() {}
 
 func (x *PurgeCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[9]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -712,7 +801,7 @@ func (x *PurgeCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurgeCommentRequest.ProtoReflect.Descriptor instead.
 func (*PurgeCommentRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{9}
+	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *PurgeCommentRequest) GetTenant() *v1.TenantContext {
@@ -745,7 +834,7 @@ type PurgeCommentResponse struct {
 
 func (x *PurgeCommentResponse) Reset() {
 	*x = PurgeCommentResponse{}
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -757,7 +846,7 @@ func (x *PurgeCommentResponse) String() string {
 func (*PurgeCommentResponse) ProtoMessage() {}
 
 func (x *PurgeCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_comment_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_comment_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -770,7 +859,7 @@ func (x *PurgeCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurgeCommentResponse.ProtoReflect.Descriptor instead.
 func (*PurgeCommentResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{10}
+	return file_publira_admin_v1_comment_proto_rawDescGZIP(), []int{12}
 }
 
 var File_publira_admin_v1_comment_proto protoreflect.FileDescriptor
@@ -809,7 +898,11 @@ const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"\bcomments\x18\x01 \x03(\v2\x1e.publira.admin.v1.AdminCommentR\bcomments\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\x85\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"V\n" +
+	"\x1bCountPendingCommentsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"C\n" +
+	"\x1cCountPendingCommentsResponse\x12#\n" +
+	"\rpending_count\x18\x01 \x01(\x05R\fpendingCount\"\x85\x01\n" +
 	"\x15ApproveCommentRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x16\n" +
@@ -832,9 +925,10 @@ const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\"\x16\n" +
-	"\x14PurgeCommentResponse2\x83\x04\n" +
+	"\x14PurgeCommentResponse2\xfc\x04\n" +
 	"\x13AdminCommentService\x12_\n" +
-	"\fListComments\x12%.publira.admin.v1.ListCommentsRequest\x1a&.publira.admin.v1.ListCommentsResponse\"\x00\x12e\n" +
+	"\fListComments\x12%.publira.admin.v1.ListCommentsRequest\x1a&.publira.admin.v1.ListCommentsResponse\"\x00\x12w\n" +
+	"\x14CountPendingComments\x12-.publira.admin.v1.CountPendingCommentsRequest\x1a..publira.admin.v1.CountPendingCommentsResponse\"\x00\x12e\n" +
 	"\x0eApproveComment\x12'.publira.admin.v1.ApproveCommentRequest\x1a(.publira.admin.v1.ApproveCommentResponse\"\x00\x12\\\n" +
 	"\vHideComment\x12$.publira.admin.v1.HideCommentRequest\x1a%.publira.admin.v1.HideCommentResponse\"\x00\x12e\n" +
 	"\x0eRestoreComment\x12'.publira.admin.v1.RestoreCommentRequest\x1a(.publira.admin.v1.RestoreCommentResponse\"\x00\x12_\n" +
@@ -852,46 +946,51 @@ func file_publira_admin_v1_comment_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_comment_proto_rawDescData
 }
 
-var file_publira_admin_v1_comment_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_publira_admin_v1_comment_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_publira_admin_v1_comment_proto_goTypes = []any{
-	(*AdminComment)(nil),           // 0: publira.admin.v1.AdminComment
-	(*ListCommentsRequest)(nil),    // 1: publira.admin.v1.ListCommentsRequest
-	(*ListCommentsResponse)(nil),   // 2: publira.admin.v1.ListCommentsResponse
-	(*ApproveCommentRequest)(nil),  // 3: publira.admin.v1.ApproveCommentRequest
-	(*ApproveCommentResponse)(nil), // 4: publira.admin.v1.ApproveCommentResponse
-	(*HideCommentRequest)(nil),     // 5: publira.admin.v1.HideCommentRequest
-	(*HideCommentResponse)(nil),    // 6: publira.admin.v1.HideCommentResponse
-	(*RestoreCommentRequest)(nil),  // 7: publira.admin.v1.RestoreCommentRequest
-	(*RestoreCommentResponse)(nil), // 8: publira.admin.v1.RestoreCommentResponse
-	(*PurgeCommentRequest)(nil),    // 9: publira.admin.v1.PurgeCommentRequest
-	(*PurgeCommentResponse)(nil),   // 10: publira.admin.v1.PurgeCommentResponse
-	(*v1.TenantContext)(nil),       // 11: publira.types.v1.TenantContext
+	(*AdminComment)(nil),                 // 0: publira.admin.v1.AdminComment
+	(*ListCommentsRequest)(nil),          // 1: publira.admin.v1.ListCommentsRequest
+	(*ListCommentsResponse)(nil),         // 2: publira.admin.v1.ListCommentsResponse
+	(*CountPendingCommentsRequest)(nil),  // 3: publira.admin.v1.CountPendingCommentsRequest
+	(*CountPendingCommentsResponse)(nil), // 4: publira.admin.v1.CountPendingCommentsResponse
+	(*ApproveCommentRequest)(nil),        // 5: publira.admin.v1.ApproveCommentRequest
+	(*ApproveCommentResponse)(nil),       // 6: publira.admin.v1.ApproveCommentResponse
+	(*HideCommentRequest)(nil),           // 7: publira.admin.v1.HideCommentRequest
+	(*HideCommentResponse)(nil),          // 8: publira.admin.v1.HideCommentResponse
+	(*RestoreCommentRequest)(nil),        // 9: publira.admin.v1.RestoreCommentRequest
+	(*RestoreCommentResponse)(nil),       // 10: publira.admin.v1.RestoreCommentResponse
+	(*PurgeCommentRequest)(nil),          // 11: publira.admin.v1.PurgeCommentRequest
+	(*PurgeCommentResponse)(nil),         // 12: publira.admin.v1.PurgeCommentResponse
+	(*v1.TenantContext)(nil),             // 13: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_comment_proto_depIdxs = []int32{
-	11, // 0: publira.admin.v1.ListCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 0: publira.admin.v1.ListCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 1: publira.admin.v1.ListCommentsResponse.comments:type_name -> publira.admin.v1.AdminComment
-	11, // 2: publira.admin.v1.ApproveCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 3: publira.admin.v1.ApproveCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
-	11, // 4: publira.admin.v1.HideCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 5: publira.admin.v1.HideCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
-	11, // 6: publira.admin.v1.RestoreCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 7: publira.admin.v1.RestoreCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
-	11, // 8: publira.admin.v1.PurgeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 9: publira.admin.v1.AdminCommentService.ListComments:input_type -> publira.admin.v1.ListCommentsRequest
-	3,  // 10: publira.admin.v1.AdminCommentService.ApproveComment:input_type -> publira.admin.v1.ApproveCommentRequest
-	5,  // 11: publira.admin.v1.AdminCommentService.HideComment:input_type -> publira.admin.v1.HideCommentRequest
-	7,  // 12: publira.admin.v1.AdminCommentService.RestoreComment:input_type -> publira.admin.v1.RestoreCommentRequest
-	9,  // 13: publira.admin.v1.AdminCommentService.PurgeComment:input_type -> publira.admin.v1.PurgeCommentRequest
-	2,  // 14: publira.admin.v1.AdminCommentService.ListComments:output_type -> publira.admin.v1.ListCommentsResponse
-	4,  // 15: publira.admin.v1.AdminCommentService.ApproveComment:output_type -> publira.admin.v1.ApproveCommentResponse
-	6,  // 16: publira.admin.v1.AdminCommentService.HideComment:output_type -> publira.admin.v1.HideCommentResponse
-	8,  // 17: publira.admin.v1.AdminCommentService.RestoreComment:output_type -> publira.admin.v1.RestoreCommentResponse
-	10, // 18: publira.admin.v1.AdminCommentService.PurgeComment:output_type -> publira.admin.v1.PurgeCommentResponse
-	14, // [14:19] is the sub-list for method output_type
-	9,  // [9:14] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	13, // 2: publira.admin.v1.CountPendingCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 3: publira.admin.v1.ApproveCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 4: publira.admin.v1.ApproveCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
+	13, // 5: publira.admin.v1.HideCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 6: publira.admin.v1.HideCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
+	13, // 7: publira.admin.v1.RestoreCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 8: publira.admin.v1.RestoreCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
+	13, // 9: publira.admin.v1.PurgeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 10: publira.admin.v1.AdminCommentService.ListComments:input_type -> publira.admin.v1.ListCommentsRequest
+	3,  // 11: publira.admin.v1.AdminCommentService.CountPendingComments:input_type -> publira.admin.v1.CountPendingCommentsRequest
+	5,  // 12: publira.admin.v1.AdminCommentService.ApproveComment:input_type -> publira.admin.v1.ApproveCommentRequest
+	7,  // 13: publira.admin.v1.AdminCommentService.HideComment:input_type -> publira.admin.v1.HideCommentRequest
+	9,  // 14: publira.admin.v1.AdminCommentService.RestoreComment:input_type -> publira.admin.v1.RestoreCommentRequest
+	11, // 15: publira.admin.v1.AdminCommentService.PurgeComment:input_type -> publira.admin.v1.PurgeCommentRequest
+	2,  // 16: publira.admin.v1.AdminCommentService.ListComments:output_type -> publira.admin.v1.ListCommentsResponse
+	4,  // 17: publira.admin.v1.AdminCommentService.CountPendingComments:output_type -> publira.admin.v1.CountPendingCommentsResponse
+	6,  // 18: publira.admin.v1.AdminCommentService.ApproveComment:output_type -> publira.admin.v1.ApproveCommentResponse
+	8,  // 19: publira.admin.v1.AdminCommentService.HideComment:output_type -> publira.admin.v1.HideCommentResponse
+	10, // 20: publira.admin.v1.AdminCommentService.RestoreComment:output_type -> publira.admin.v1.RestoreCommentResponse
+	12, // 21: publira.admin.v1.AdminCommentService.PurgeComment:output_type -> publira.admin.v1.PurgeCommentResponse
+	16, // [16:22] is the sub-list for method output_type
+	10, // [10:16] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_comment_proto_init() }
@@ -905,7 +1004,7 @@ func file_publira_admin_v1_comment_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_comment_proto_rawDesc), len(file_publira_admin_v1_comment_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

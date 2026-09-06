@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/comment.proto.
  */
 export const file_publira_admin_v1_comment: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NvbW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEi0AIKDEFkbWluQ29tbWVudBIRCglwdWJsaWNfaWQYASABKAkSDAoEYm9keRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSEgoKY3JlYXRlZF9hdBgEIAEoCRIUCgxwdWJsaXNoZWRfYXQYBSABKAkSEQoJaGlkZGVuX2F0GAYgASgJEhUKDWhpZGRlbl9yZWFzb24YByABKAkSFAoMd2l0aGRyYXduX2F0GAggASgJEhQKDHB1cmdlX2R1ZV9hdBgJIAEoCRIYChBhdXRob3JfcHVibGljX2lkGAogASgJEhMKC2F1dGhvcl9uYW1lGAsgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAwgASgJEhUKDWVwaXNvZGVfdGl0bGUYDSABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgOIAEoCRIUCgxzZXJpZXNfdGl0bGUYDyABKAkiqQEKE0xpc3RDb21tZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnN0YXR1cxgCIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAMgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAQgASgJEg0KBWxpbWl0GAUgASgFEg0KBXRva2VuGAYgASgJInQKFExpc3RDb21tZW50c1Jlc3BvbnNlEjAKCGNvbW1lbnRzGAEgAygLMh4ucHVibGlyYS5hZG1pbi52MS5BZG1pbkNvbW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJrChVBcHByb3ZlQ29tbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiSQoWQXBwcm92ZUNvbW1lbnRSZXNwb25zZRIvCgdjb21tZW50GAEgASgLMh4ucHVibGlyYS5hZG1pbi52MS5BZG1pbkNvbW1lbnQiaAoSSGlkZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDgoGcmVhc29uGAMgASgJIkYKE0hpZGVDb21tZW50UmVzcG9uc2USLwoHY29tbWVudBgBIAEoCzIeLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Db21tZW50ImsKFVJlc3RvcmVDb21tZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEg4KBnJlYXNvbhgDIAEoCSJJChZSZXN0b3JlQ29tbWVudFJlc3BvbnNlEi8KB2NvbW1lbnQYASABKAsyHi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQ29tbWVudCJpChNQdXJnZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDgoGcmVhc29uGAMgASgJIhYKFFB1cmdlQ29tbWVudFJlc3BvbnNlMoMEChNBZG1pbkNvbW1lbnRTZXJ2aWNlEl8KDExpc3RDb21tZW50cxIlLnB1YmxpcmEuYWRtaW4udjEuTGlzdENvbW1lbnRzUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuTGlzdENvbW1lbnRzUmVzcG9uc2UiABJlCg5BcHByb3ZlQ29tbWVudBInLnB1YmxpcmEuYWRtaW4udjEuQXBwcm92ZUNvbW1lbnRSZXF1ZXN0GigucHVibGlyYS5hZG1pbi52MS5BcHByb3ZlQ29tbWVudFJlc3BvbnNlIgASXAoLSGlkZUNvbW1lbnQSJC5wdWJsaXJhLmFkbWluLnYxLkhpZGVDb21tZW50UmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuSGlkZUNvbW1lbnRSZXNwb25zZSIAEmUKDlJlc3RvcmVDb21tZW50EicucHVibGlyYS5hZG1pbi52MS5SZXN0b3JlQ29tbWVudFJlcXVlc3QaKC5wdWJsaXJhLmFkbWluLnYxLlJlc3RvcmVDb21tZW50UmVzcG9uc2UiABJfCgxQdXJnZUNvbW1lbnQSJS5wdWJsaXJhLmFkbWluLnYxLlB1cmdlQ29tbWVudFJlcXVlc3QaJi5wdWJsaXJhLmFkbWluLnYxLlB1cmdlQ29tbWVudFJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NvbW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEi0AIKDEFkbWluQ29tbWVudBIRCglwdWJsaWNfaWQYASABKAkSDAoEYm9keRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSEgoKY3JlYXRlZF9hdBgEIAEoCRIUCgxwdWJsaXNoZWRfYXQYBSABKAkSEQoJaGlkZGVuX2F0GAYgASgJEhUKDWhpZGRlbl9yZWFzb24YByABKAkSFAoMd2l0aGRyYXduX2F0GAggASgJEhQKDHB1cmdlX2R1ZV9hdBgJIAEoCRIYChBhdXRob3JfcHVibGljX2lkGAogASgJEhMKC2F1dGhvcl9uYW1lGAsgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAwgASgJEhUKDWVwaXNvZGVfdGl0bGUYDSABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgOIAEoCRIUCgxzZXJpZXNfdGl0bGUYDyABKAkiqQEKE0xpc3RDb21tZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnN0YXR1cxgCIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAMgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAQgASgJEg0KBWxpbWl0GAUgASgFEg0KBXRva2VuGAYgASgJInQKFExpc3RDb21tZW50c1Jlc3BvbnNlEjAKCGNvbW1lbnRzGAEgAygLMh4ucHVibGlyYS5hZG1pbi52MS5BZG1pbkNvbW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJOChtDb3VudFBlbmRpbmdDb21tZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IjUKHENvdW50UGVuZGluZ0NvbW1lbnRzUmVzcG9uc2USFQoNcGVuZGluZ19jb3VudBgBIAEoBSJrChVBcHByb3ZlQ29tbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiSQoWQXBwcm92ZUNvbW1lbnRSZXNwb25zZRIvCgdjb21tZW50GAEgASgLMh4ucHVibGlyYS5hZG1pbi52MS5BZG1pbkNvbW1lbnQiaAoSSGlkZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDgoGcmVhc29uGAMgASgJIkYKE0hpZGVDb21tZW50UmVzcG9uc2USLwoHY29tbWVudBgBIAEoCzIeLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Db21tZW50ImsKFVJlc3RvcmVDb21tZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEg4KBnJlYXNvbhgDIAEoCSJJChZSZXN0b3JlQ29tbWVudFJlc3BvbnNlEi8KB2NvbW1lbnQYASABKAsyHi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQ29tbWVudCJpChNQdXJnZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDgoGcmVhc29uGAMgASgJIhYKFFB1cmdlQ29tbWVudFJlc3BvbnNlMvwEChNBZG1pbkNvbW1lbnRTZXJ2aWNlEl8KDExpc3RDb21tZW50cxIlLnB1YmxpcmEuYWRtaW4udjEuTGlzdENvbW1lbnRzUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuTGlzdENvbW1lbnRzUmVzcG9uc2UiABJ3ChRDb3VudFBlbmRpbmdDb21tZW50cxItLnB1YmxpcmEuYWRtaW4udjEuQ291bnRQZW5kaW5nQ29tbWVudHNSZXF1ZXN0Gi4ucHVibGlyYS5hZG1pbi52MS5Db3VudFBlbmRpbmdDb21tZW50c1Jlc3BvbnNlIgASZQoOQXBwcm92ZUNvbW1lbnQSJy5wdWJsaXJhLmFkbWluLnYxLkFwcHJvdmVDb21tZW50UmVxdWVzdBooLnB1YmxpcmEuYWRtaW4udjEuQXBwcm92ZUNvbW1lbnRSZXNwb25zZSIAElwKC0hpZGVDb21tZW50EiQucHVibGlyYS5hZG1pbi52MS5IaWRlQ29tbWVudFJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkhpZGVDb21tZW50UmVzcG9uc2UiABJlCg5SZXN0b3JlQ29tbWVudBInLnB1YmxpcmEuYWRtaW4udjEuUmVzdG9yZUNvbW1lbnRSZXF1ZXN0GigucHVibGlyYS5hZG1pbi52MS5SZXN0b3JlQ29tbWVudFJlc3BvbnNlIgASXwoMUHVyZ2VDb21tZW50EiUucHVibGlyYS5hZG1pbi52MS5QdXJnZUNvbW1lbnRSZXF1ZXN0GiYucHVibGlyYS5hZG1pbi52MS5QdXJnZUNvbW1lbnRSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * One reader comment as tenant staff read it.
@@ -221,6 +221,42 @@ export const ListCommentsResponseSchema: GenMessage<ListCommentsResponse> = /*@_
   messageDesc(file_publira_admin_v1_comment, 2);
 
 /**
+ * @generated from message publira.admin.v1.CountPendingCommentsRequest
+ */
+export type CountPendingCommentsRequest = Message<"publira.admin.v1.CountPendingCommentsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.CountPendingCommentsRequest.
+ * Use `create(CountPendingCommentsRequestSchema)` to create a new message.
+ */
+export const CountPendingCommentsRequestSchema: GenMessage<CountPendingCommentsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_comment, 3);
+
+/**
+ * @generated from message publira.admin.v1.CountPendingCommentsResponse
+ */
+export type CountPendingCommentsResponse = Message<"publira.admin.v1.CountPendingCommentsResponse"> & {
+  /**
+   * Comments in the pending state across the whole tenant.
+   *
+   * @generated from field: int32 pending_count = 1;
+   */
+  pendingCount: number;
+};
+
+/**
+ * Describes the message publira.admin.v1.CountPendingCommentsResponse.
+ * Use `create(CountPendingCommentsResponseSchema)` to create a new message.
+ */
+export const CountPendingCommentsResponseSchema: GenMessage<CountPendingCommentsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_comment, 4);
+
+/**
  * @generated from message publira.admin.v1.ApproveCommentRequest
  */
 export type ApproveCommentRequest = Message<"publira.admin.v1.ApproveCommentRequest"> & {
@@ -248,7 +284,7 @@ export type ApproveCommentRequest = Message<"publira.admin.v1.ApproveCommentRequ
  * Use `create(ApproveCommentRequestSchema)` to create a new message.
  */
 export const ApproveCommentRequestSchema: GenMessage<ApproveCommentRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 3);
+  messageDesc(file_publira_admin_v1_comment, 5);
 
 /**
  * @generated from message publira.admin.v1.ApproveCommentResponse
@@ -265,7 +301,7 @@ export type ApproveCommentResponse = Message<"publira.admin.v1.ApproveCommentRes
  * Use `create(ApproveCommentResponseSchema)` to create a new message.
  */
 export const ApproveCommentResponseSchema: GenMessage<ApproveCommentResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 4);
+  messageDesc(file_publira_admin_v1_comment, 6);
 
 /**
  * @generated from message publira.admin.v1.HideCommentRequest
@@ -295,7 +331,7 @@ export type HideCommentRequest = Message<"publira.admin.v1.HideCommentRequest"> 
  * Use `create(HideCommentRequestSchema)` to create a new message.
  */
 export const HideCommentRequestSchema: GenMessage<HideCommentRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 5);
+  messageDesc(file_publira_admin_v1_comment, 7);
 
 /**
  * @generated from message publira.admin.v1.HideCommentResponse
@@ -312,7 +348,7 @@ export type HideCommentResponse = Message<"publira.admin.v1.HideCommentResponse"
  * Use `create(HideCommentResponseSchema)` to create a new message.
  */
 export const HideCommentResponseSchema: GenMessage<HideCommentResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 6);
+  messageDesc(file_publira_admin_v1_comment, 8);
 
 /**
  * @generated from message publira.admin.v1.RestoreCommentRequest
@@ -341,7 +377,7 @@ export type RestoreCommentRequest = Message<"publira.admin.v1.RestoreCommentRequ
  * Use `create(RestoreCommentRequestSchema)` to create a new message.
  */
 export const RestoreCommentRequestSchema: GenMessage<RestoreCommentRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 7);
+  messageDesc(file_publira_admin_v1_comment, 9);
 
 /**
  * @generated from message publira.admin.v1.RestoreCommentResponse
@@ -358,7 +394,7 @@ export type RestoreCommentResponse = Message<"publira.admin.v1.RestoreCommentRes
  * Use `create(RestoreCommentResponseSchema)` to create a new message.
  */
 export const RestoreCommentResponseSchema: GenMessage<RestoreCommentResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 8);
+  messageDesc(file_publira_admin_v1_comment, 10);
 
 /**
  * @generated from message publira.admin.v1.PurgeCommentRequest
@@ -389,7 +425,7 @@ export type PurgeCommentRequest = Message<"publira.admin.v1.PurgeCommentRequest"
  * Use `create(PurgeCommentRequestSchema)` to create a new message.
  */
 export const PurgeCommentRequestSchema: GenMessage<PurgeCommentRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 9);
+  messageDesc(file_publira_admin_v1_comment, 11);
 
 /**
  * Deliberately empty. The row is deleted, so there is nothing left to return.
@@ -404,7 +440,7 @@ export type PurgeCommentResponse = Message<"publira.admin.v1.PurgeCommentRespons
  * Use `create(PurgeCommentResponseSchema)` to create a new message.
  */
 export const PurgeCommentResponseSchema: GenMessage<PurgeCommentResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 10);
+  messageDesc(file_publira_admin_v1_comment, 12);
 
 /**
  * @generated from service publira.admin.v1.AdminCommentService
@@ -423,6 +459,21 @@ export const AdminCommentService: GenService<{
     methodKind: "unary";
     input: typeof ListCommentsRequestSchema;
     output: typeof ListCommentsResponseSchema;
+  },
+  /**
+   * Counts the comments waiting for approval across the tenant.
+   *
+   * Separate from ListComments so the console's navigation can carry the size
+   * of the queue without reading a page of it: the badge is on every screen,
+   * and a page of rows fetched to be counted and thrown away would be the most
+   * expensive thing the console does per navigation.
+   *
+   * @generated from rpc publira.admin.v1.AdminCommentService.CountPendingComments
+   */
+  countPendingComments: {
+    methodKind: "unary";
+    input: typeof CountPendingCommentsRequestSchema;
+    output: typeof CountPendingCommentsResponseSchema;
   },
   /**
    * Publishes one comment that was posted under approval_required.
