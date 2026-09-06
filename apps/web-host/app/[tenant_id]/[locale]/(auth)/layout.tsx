@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
+import { DocumentLocale } from "#components/document-locale";
 import {
   LocaleProvider,
   TenantDefaultLocaleProvider,
@@ -71,6 +72,7 @@ const TenantLayout = async ({
 
   return (
     <LocaleProvider locale={locale}>
+      <DocumentLocale locale={locale} />
       <TenantDefaultLocaleProvider defaultLocale={defaultLocale}>
         <Suspense fallback={<AuthShellFallback>{children}</AuthShellFallback>}>
           <AuthShell>{children}</AuthShell>

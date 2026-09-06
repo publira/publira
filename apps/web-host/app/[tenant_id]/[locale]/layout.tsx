@@ -55,6 +55,12 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * response (`@publira/utils/resolved-locale`); `suppressHydrationWarning` is
  * what lets the DOM it produces win over what React rendered.
  *
+ * That script runs once per document, so it answers the load and nothing else.
+ * A client-side navigation re-renders this element the way the server
+ * described it — without `lang` — and `<DocumentLocale>`, seeded beside the
+ * locale context in the `(site)` and `(auth)` layouts, is what writes the
+ * attribute back afterwards.
+ *
  * The React context both locales travel in is seeded one level down, by the
  * `(site)` and `(auth)` layouts. That is also what puts the tenant read behind
  * `app/[tenant_id]/[locale]/error.tsx`: a tenant whose stored default cannot be
