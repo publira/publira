@@ -2,4 +2,4 @@
 
 package gen
 
-var Supported = []string{"ja", "en"}
+var Supported = []string{"ja", "en", "ko"}

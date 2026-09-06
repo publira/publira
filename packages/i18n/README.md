@@ -20,13 +20,13 @@ Nothing here reads request state. `cookies()`, `headers()`, and `next/root-param
 
 | Export | What it is |
 | --- | --- |
-| `Locale` | The union of the codes in `locales/index.json` (`"ja" \| "en"`) |
+| `Locale` | The union of the codes in `locales/index.json` |
 | `getLocales()` | Those codes, in the order the file lists them |
 | `isLocale` / `parseLocale` | Narrow an unknown value to a `Locale`, or `undefined` |
 | `parseLocaleCookie` | The same for a cookie **value** (trimmed). It does not call `cookies()` |
 | `negotiateInitialLocale` | The locale to open on for an `Accept-Language` header, for a screen with no identified reader and therefore no stored preference |
-| `getLocaleLabel` | The display name for the locale switcher (`日本語` / `English`) |
-| `toIntlLocale` | The BCP 47 tag for `Intl` (`ja-JP` / `en-US`). `<html lang>` keeps the short code |
+| `getLocaleLabel` | The display name for the locale switcher: the autonym, a language's own name for itself |
+| `toIntlLocale` | The BCP 47 tag for `Intl` (`ja` becomes `ja-JP`). `<html lang>` keeps the short code |
 
 `src/accept-language.test.ts` is the specification of what `negotiateInitialLocale` does with a header, and `src/i18n.test.ts` of the rest.
 

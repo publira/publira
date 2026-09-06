@@ -13,7 +13,11 @@ abstract class AppMessages {
   const AppMessages();
 
   /// Every locale of `locales/index.json`, in its order.
-  static const supportedLocales = <Locale>[Locale('ja'), Locale('en')];
+  static const supportedLocales = <Locale>[
+    Locale('ja'),
+    Locale('en'),
+    Locale('ko'),
+  ];
 
   /// The catalog whose code is [locale]'s language tag, or `null` when
   /// no catalog carries it.
@@ -21,6 +25,7 @@ abstract class AppMessages {
     return switch (locale.toLanguageTag()) {
       'ja' => const _AppMessagesJa(),
       'en' => const _AppMessagesEn(),
+      'ko' => const _AppMessagesKo(),
       _ => null,
     };
   }
@@ -802,5 +807,304 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get viewerTitle {
     return 'Episode';
+  }
+}
+
+class _AppMessagesKo extends AppMessages {
+  const _AppMessagesKo();
+
+  @override
+  String get intlLocale {
+    return 'ko-KR';
+  }
+
+  @override
+  String get errorsDisallowedValue {
+    return '허용되지 않는 값입니다.';
+  }
+
+  @override
+  String get errorsRpcConflict {
+    return '중복된 데이터가 있어 저장할 수 없습니다.';
+  }
+
+  @override
+  String get errorsRpcForbidden {
+    return '이 작업을 수행할 권한이 없습니다.';
+  }
+
+  @override
+  String get errorsRpcInvalidArgument {
+    return '입력한 내용에 오류가 있습니다.';
+  }
+
+  @override
+  String get errorsRpcNotFound {
+    return '대상을 찾을 수 없습니다.';
+  }
+
+  @override
+  String get errorsRpcUnauthenticated {
+    return '세션이 유효하지 않습니다. 다시 로그인해 주세요.';
+  }
+
+  @override
+  String get errorsRpcUnavailable {
+    return '서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get errorsSmtpTestAuthentication {
+    return 'SMTP 인증에 실패했습니다';
+  }
+
+  @override
+  String get errorsSmtpTestConnection {
+    return 'SMTP 서버에 연결할 수 없습니다';
+  }
+
+  @override
+  String get errorsSmtpTestRecipient {
+    return 'SMTP 서버가 받는 사람 이메일 주소를 거부했습니다';
+  }
+
+  @override
+  String get errorsSmtpTestStarttls {
+    return 'STARTTLS를 설정할 수 없습니다';
+  }
+
+  @override
+  String get errorsSmtpTestTimeout {
+    return 'SMTP 서버 연결이 시간 초과되었습니다';
+  }
+
+  @override
+  String get errorsSmtpTestTls {
+    return 'TLS 연결을 설정할 수 없습니다';
+  }
+
+  @override
+  String get errorsSmtpTestUnknown {
+    return 'SMTP 연결 테스트에 실패했습니다';
+  }
+
+  @override
+  String get errorsValidation {
+    return '입력한 내용을 확인해 주세요.';
+  }
+
+  @override
+  String get accountName {
+    return '이름';
+  }
+
+  @override
+  String get accountNameUnset {
+    return '미설정';
+  }
+
+  @override
+  String get accountSignOut {
+    return '로그아웃';
+  }
+
+  @override
+  String get accountSignedOut {
+    return '로그인되어 있지 않습니다';
+  }
+
+  @override
+  String get accountTitle {
+    return '계정';
+  }
+
+  @override
+  String get catalogEmpty {
+    return '아직 공개된 시리즈가 없습니다';
+  }
+
+  @override
+  String get catalogLoadFailed {
+    return '카탈로그를 표시할 수 없습니다';
+  }
+
+  @override
+  String get catalogOfflineNotSaved {
+    return '오프라인 상태이며, 이 기기에 저장된 카탈로그가 없습니다.';
+  }
+
+  @override
+  String get commonBackToCatalog {
+    return '카탈로그로 돌아가기';
+  }
+
+  @override
+  String get commonRetry {
+    return '다시 시도';
+  }
+
+  @override
+  String get commonSignIn {
+    return '로그인';
+  }
+
+  @override
+  String notFoundMessage({required String uri}) {
+    return '“$uri”은(는) 존재하지 않습니다.';
+  }
+
+  @override
+  String get notFoundTitle {
+    return '페이지를 찾을 수 없습니다';
+  }
+
+  @override
+  String seriesEpisodeCount({required String count}) {
+    return '$count화';
+  }
+
+  @override
+  String get seriesEpisodesEmpty {
+    return '아직 공개된 에피소드가 없습니다';
+  }
+
+  @override
+  String get seriesEpisodesHeading {
+    return '에피소드';
+  }
+
+  @override
+  String get seriesLoadFailed {
+    return '시리즈를 표시할 수 없습니다';
+  }
+
+  @override
+  String seriesNotFound({required String id}) {
+    return '시리즈를 찾을 수 없습니다 ($id)';
+  }
+
+  @override
+  String get seriesOfflineNotSaved {
+    return '오프라인 상태이며, 이 기기에 저장된 이 시리즈의 데이터가 없습니다.';
+  }
+
+  @override
+  String get seriesSavedOffline {
+    return '이 기기에 저장됨';
+  }
+
+  @override
+  String get seriesTitle {
+    return '시리즈';
+  }
+
+  @override
+  String get signInEmailLabel {
+    return '이메일 주소';
+  }
+
+  @override
+  String get signInEmailNotVerified {
+    return '이메일 주소 확인이 완료되지 않았습니다. 확인 메일의 링크를 열어 주세요.';
+  }
+
+  @override
+  String get signInEmailRequired {
+    return '이메일 주소를 입력해 주세요.';
+  }
+
+  @override
+  String get signInFailed {
+    return '로그인할 수 없습니다';
+  }
+
+  @override
+  String get signInInvalidCredentials {
+    return '이메일 주소 또는 비밀번호가 올바르지 않습니다';
+  }
+
+  @override
+  String get signInPasswordLabel {
+    return '비밀번호';
+  }
+
+  @override
+  String get signInPasswordRequired {
+    return '비밀번호를 입력해 주세요.';
+  }
+
+  @override
+  String get signInWebsiteNote {
+    return '계정 생성과 비밀번호 재설정은 웹사이트에서 할 수 있습니다.';
+  }
+
+  @override
+  String get viewerBackToSeries {
+    return '시리즈로 돌아가기';
+  }
+
+  @override
+  String get viewerLoadFailed {
+    return '에피소드를 표시할 수 없습니다';
+  }
+
+  @override
+  String get viewerLocked {
+    return '이 에피소드는 구매하면 읽을 수 있습니다';
+  }
+
+  @override
+  String get viewerLockedSignedOut {
+    return '이 에피소드는 구매하면 읽을 수 있습니다. 이미 구매하셨다면 로그인해 주세요.';
+  }
+
+  @override
+  String get viewerNextPage {
+    return '다음 페이지';
+  }
+
+  @override
+  String get viewerNoPages {
+    return '이 에피소드에는 아직 페이지가 없습니다';
+  }
+
+  @override
+  String viewerNotFound({required String id}) {
+    return '에피소드를 찾을 수 없습니다 ($id)';
+  }
+
+  @override
+  String get viewerOfflineNotSaved {
+    return '오프라인 상태이며, 이 기기에 저장된 에피소드만 읽을 수 있습니다.';
+  }
+
+  @override
+  String get viewerPageFailed {
+    return '이 페이지를 표시할 수 없습니다';
+  }
+
+  @override
+  String viewerPageStatus({required String page, required String total}) {
+    return '$page / $total';
+  }
+
+  @override
+  String get viewerPreviousPage {
+    return '이전 페이지';
+  }
+
+  @override
+  String get viewerReload {
+    return '새로고침';
+  }
+
+  @override
+  String get viewerSaveExpired {
+    return '저장된 에피소드의 열람 기한이 만료되었습니다. 통신이 가능한 상태에서 다시 열어 주세요.';
+  }
+
+  @override
+  String get viewerTitle {
+    return '에피소드';
   }
 }

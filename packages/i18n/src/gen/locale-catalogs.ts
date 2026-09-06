@@ -2,16 +2,19 @@
 
 import ja from "../../../../locales/ja.json" with { type: "json" };
 import en from "../../../../locales/en.json" with { type: "json" };
+import ko from "../../../../locales/ko.json" with { type: "json" };
 
 import type { ExactCatalog } from "../i18n";
 import type { Locale } from "./locale-registry";
 
-export type LocaleMessages = typeof ja | typeof en;
+export type LocaleMessages = typeof ja | typeof en | typeof ko;
 
 const jaMatchesCatalogs: ExactCatalog<typeof ja, LocaleMessages> = ja;
 const enMatchesCatalogs: ExactCatalog<typeof en, LocaleMessages> = en;
+const koMatchesCatalogs: ExactCatalog<typeof ko, LocaleMessages> = ko;
 
 export const CATALOGS = {
   ja: jaMatchesCatalogs,
   en: enMatchesCatalogs,
+  ko: koMatchesCatalogs,
 } as const satisfies Record<Locale, LocaleMessages>;

@@ -11,6 +11,7 @@ import type { LocaleMessages } from "./locale-catalogs";
 const importers = {
   ja: () => import("../../../../locales/ja.json", { with: { type: "json" } }),
   en: () => import("../../../../locales/en.json", { with: { type: "json" } }),
+  ko: () => import("../../../../locales/ko.json", { with: { type: "json" } }),
 } satisfies LocaleCatalogImporters<LocaleMessages>;
 
 export const loadLocaleMessages = (

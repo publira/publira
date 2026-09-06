@@ -85,12 +85,17 @@ func TestDefaultLocaleColumnsRejectBlankValues(t *testing.T) {
 	}
 }
 
+// The slug comes from the tail of the UUID rather than its head: a v7 opens
+// with a millisecond timestamp, so two rows written inside the same millisecond
+// would share a prefix and collide on tenants_admin_domain_key. Hexadecimal
+// keeps it usable as a domain label, which a case-sensitive public ID is not.
 func insertTenantWithLocale(ctx context.Context, db *sql.DB, defaultLocale string) error {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return err
 	}
-	slug := strings.ReplaceAll(id.String(), "-", "")[:12]
+	hex := strings.ReplaceAll(id.String(), "-", "")
+	slug := hex[len(hex)-12:]
 	_, err = db.ExecContext(ctx, `
 		INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
 		VALUES ($1, $2, $3, $4, 'Locale Tenant', 'active', $5)

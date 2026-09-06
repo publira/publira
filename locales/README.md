@@ -11,6 +11,7 @@ The format is JSON. Every locale has the same set of keys; both missing and extr
 | `index.json` | The sole hand-maintained registry of supported languages, display names, and BCP 47 tags for `Intl` |
 | `ja.json` | Japanese catalog |
 | `en.json` | English catalog |
+| `ko.json` | Korean catalog |
 
 Every leaf must be a string.
 
@@ -47,7 +48,7 @@ When no value is passed for a variable, MF2's fallback renders it as `{$name}`. 
 The npm package [`messageformat` v4](https://www.npmjs.com/package/messageformat) parses and formats the syntax. It is maintained by a member of the MessageFormat Working Group, follows the specification as of LDML 48 (2025-10), and can also serve as a polyfill for the TC39 `Intl.MessageFormat` proposal. `@publira/i18n` contains only the catalog-specific policies layered on top of it.
 
 - Convert values to strings before passing them. `getMessage` does not receive a locale, so locale-dependent formatting such as `:number` here would leak the host locale. `@publira/utils` formats numbers and dates first, then inserts the resulting strings
-- Bidirectional isolation is disabled. This prevents the formatter from adding bidi controls such as U+2068 / U+2069. Both ja and en are LTR, and these strings can also become email subjects and `<title>` values, so this avoids invisibly transporting those controls. Enable it when adding the first RTL locale
+- Bidirectional isolation is disabled. This prevents the formatter from adding bidi controls such as U+2068 / U+2069. Every catalog here is LTR, and these strings can also become email subjects and `<title>` values, so this avoids invisibly transporting those controls. Enable it when adding the first RTL locale
 
 ### Unsupported features
 
@@ -98,7 +99,7 @@ Use import attributes (`with { type: "json" }`) for JSON imports in generated fi
 ### Go
 
 ```go
-//go:embed ja.json en.json
+//go:embed ja.json en.json ko.json
 var files embed.FS
 
 raw, err := files.ReadFile(locale + ".json")
