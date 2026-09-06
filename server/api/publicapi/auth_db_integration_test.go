@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -569,5 +570,49 @@ func TestDBRequestEmailVerificationIssuesALinkThatActivatesTheAccount(t *testing
 		Token:  "expired-token",
 	})); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("VerifyUserEmail with the replaced link = %v, want not_found", err)
+	}
+}
+
+// Two requests for the same address at once still leave one live link. A reader
+// who submits the form twice is the ordinary way this happens, and without the
+// lock on the account row the two transactions cannot see each other's token:
+// both would insert one, and both links would stay valid.
+func TestDBRequestEmailVerificationKeepsOneLinkUnderConcurrentRequests(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
+	client := env.authClient()
+
+	const requests = 2
+	start := make(chan struct{})
+	errs := make(chan error, requests)
+	var wg sync.WaitGroup
+	for range requests {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			_, err := client.RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+				Tenant: tenantContext(tenant),
+				Email:  pending.Email,
+			}))
+			errs <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("RequestEmailVerification: %v", err)
+		}
+	}
+
+	live := countRows(t, env, `
+		SELECT count(*) FROM user_email_verification_tokens
+		WHERE user_id = $1 AND used_at IS NULL
+	`, pending.ID)
+	if live != 1 {
+		t.Fatalf("live verification tokens = %d, want 1", live)
 	}
 }

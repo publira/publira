@@ -607,10 +607,34 @@ func (s *apiServer) RequestEmailVerification(
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
-	// The account keeps one live link at a time, the way a password reset does.
-	// The account row itself is not written to at all — no password, no name, no
-	// credentials_version — so a request made by anyone but its owner leaves
-	// nothing behind but a link only its owner receives.
+	// Two requests for the same address arrive as often as a reader submits the
+	// form twice, and the delete below cannot serialize them on its own: it
+	// locks the rows it finds, so a request whose snapshot predates the other's
+	// insert deletes nothing and leaves two live links behind. The account row
+	// is what both requests have in common, so locking it is what puts them in
+	// order — the second one's statements then run on a snapshot that includes
+	// the first one's token, and the account keeps a single live link.
+	//
+	// It is a lock, not a write. The account itself is never modified here — no
+	// password, no name, no credentials_version — so a request made by anyone
+	// but its owner leaves nothing behind but a link only its owner receives.
+	locked, err := txq.GetUserByIDForUpdate(ctx, user.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// The account was deleted while this request waited. There is
+			// nothing to activate, and the answer still says nothing about that.
+			auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, user.PublicID, "account_gone")
+			return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
+		}
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
+		return nil, s.internalDBError(ctx, "failed to lock the account for an email verification request", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if locked.EmailVerifiedAt.Valid {
+		// The link from an earlier request was opened while this one waited.
+		auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, user.PublicID, "already_verified")
+		return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
+	}
+
 	if err := txq.DeleteUserEmailVerificationTokensByUserID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
 		return nil, s.internalDBError(ctx, "failed to delete email verification tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())

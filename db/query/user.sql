@@ -16,6 +16,12 @@ SELECT *
 FROM users
 WHERE id = $1;
 
+-- name: GetUserByIDForUpdate :one
+SELECT *
+FROM users
+WHERE id = $1
+FOR UPDATE;
+
 -- name: CreateUser :one
 INSERT INTO users (id, tenant_id, public_id, email, password_hash, name)
 VALUES ($1, $2, $3, $4, $5, $6)
