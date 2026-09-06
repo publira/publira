@@ -212,7 +212,9 @@ const AnnouncementsSection = async ({
         <SectionError className="mb-4">
           <SectionErrorHeading>
             <SectionErrorTitle>
-              {getMessage(messages, "host.announcements.list_error")}
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.announcements.list_error" />
+              </Suspense>
             </SectionErrorTitle>
             <SectionErrorDescription>{result.message}</SectionErrorDescription>
           </SectionErrorHeading>

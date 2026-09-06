@@ -7,8 +7,10 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import { formatDateTime } from "@publira/utils";
+import { Suspense } from "react";
 
 import {
   ActionForm,
@@ -18,6 +20,7 @@ import {
 } from "#components/action-form";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { getMe } from "#lib/auth";
 import {
   listEpisodeComments,
@@ -173,10 +176,14 @@ export const EpisodeComments = async ({
           </Field>
           <ActionFormSubmit className="justify-self-start">
             <ActionFormIdle>
-              {getMessage(messages, "host.episode.comments.submit")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="host.episode.comments.submit" />
+              </Suspense>
             </ActionFormIdle>
             <ActionFormPending>
-              {getMessage(messages, "host.episode.comments.posting")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="host.episode.comments.posting" />
+              </Suspense>
             </ActionFormPending>
           </ActionFormSubmit>
         </ActionForm>
@@ -200,7 +207,9 @@ export const EpisodeComments = async ({
         <SectionError className="mt-6">
           <SectionErrorHeading>
             <SectionErrorTitle>
-              {getMessage(messages, "host.episode.comments.list_error")}
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.episode.comments.list_error" />
+              </Suspense>
             </SectionErrorTitle>
             <SectionErrorDescription>
               {publicResult.message}
@@ -215,7 +224,9 @@ export const EpisodeComments = async ({
         <SectionError className="mt-6">
           <SectionErrorHeading>
             <SectionErrorTitle>
-              {getMessage(messages, "host.episode.comments.own_error")}
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.episode.comments.own_error" />
+              </Suspense>
             </SectionErrorTitle>
             <SectionErrorDescription>
               {ownResult.message}

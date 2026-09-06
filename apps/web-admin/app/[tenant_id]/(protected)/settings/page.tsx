@@ -92,7 +92,6 @@ const tenantDefaultLocaleOptions = (): TenantDefaultLocaleFormOption[] =>
 const SettingsForms = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
 
   const [
     settingsResult,
@@ -133,7 +132,9 @@ const SettingsForms = async () => {
         <SectionError>
           <SectionErrorHeading>
             <SectionErrorTitle>
-              {getMessage(messages, "admin.settings.section_error")}
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.settings.section_error" />
+              </Suspense>
             </SectionErrorTitle>
             <SectionErrorDescription>
               {settingsResult.message}

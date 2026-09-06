@@ -16,6 +16,7 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -25,8 +26,10 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
+import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
@@ -82,7 +85,9 @@ const SeriesListBody = ({
       <SectionError>
         <SectionErrorHeading>
           <SectionErrorTitle>
-            {getMessage(messages, "admin.series.list_error")}
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.series.list_error" />
+            </Suspense>
           </SectionErrorTitle>
           <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
         </SectionErrorHeading>

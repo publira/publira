@@ -117,7 +117,9 @@ const DashboardContent = async () => {
       <SectionError>
         <SectionErrorHeading>
           <SectionErrorTitle>
-            {getMessage(messages, "admin.dashboard.section_error")}
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.dashboard.section_error" />
+            </Suspense>
           </SectionErrorTitle>
           <SectionErrorDescription>{result.message}</SectionErrorDescription>
         </SectionErrorHeading>
@@ -171,13 +173,14 @@ const DashboardContent = async () => {
             <EmptyState>
               <EmptyStateHeading>
                 <EmptyStateTitle>
-                  {getMessage(messages, "admin.dashboard.queue_empty_title")}
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="admin.dashboard.queue_empty_title" />
+                  </Suspense>
                 </EmptyStateTitle>
                 <EmptyStateDescription>
-                  {getMessage(
-                    messages,
-                    "admin.dashboard.queue_empty_description"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                    <Message message="admin.dashboard.queue_empty_description" />
+                  </Suspense>
                 </EmptyStateDescription>
               </EmptyStateHeading>
             </EmptyState>

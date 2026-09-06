@@ -338,7 +338,9 @@ const AuditLogsContent = async ({
             <SectionError>
               <SectionErrorHeading>
                 <SectionErrorTitle>
-                  {getMessage(messages, "admin.audit.section_error")}
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="admin.audit.section_error" />
+                  </Suspense>
                 </SectionErrorTitle>
                 <SectionErrorDescription>
                   {result.message}

@@ -148,7 +148,9 @@ const EngagementContent = async ({
       <SectionError>
         <SectionErrorHeading>
           <SectionErrorTitle>
-            {getMessage(messages, "admin.engagement.section_error")}
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.engagement.section_error" />
+            </Suspense>
           </SectionErrorTitle>
           <SectionErrorDescription>{result.message}</SectionErrorDescription>
         </SectionErrorHeading>

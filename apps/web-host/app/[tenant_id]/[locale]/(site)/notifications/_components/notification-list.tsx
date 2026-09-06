@@ -5,9 +5,12 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
+import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { getLocale, loadHostMessages } from "#lib/locale";
 
 import { notificationsListHref } from "../_lib/search-params";
@@ -141,7 +144,9 @@ export const NotificationList = async ({
         <SectionError>
           <SectionErrorHeading>
             <SectionErrorTitle>
-              {getMessage(messages, "host.notifications.list_error")}
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.notifications.list_error" />
+              </Suspense>
             </SectionErrorTitle>
             <SectionErrorDescription>
               {listErrorMessage}

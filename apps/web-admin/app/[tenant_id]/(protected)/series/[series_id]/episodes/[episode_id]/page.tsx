@@ -6,6 +6,7 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -14,6 +15,7 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { z } from "zod";
 
 import {
@@ -27,6 +29,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
+import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getEpisode, listEpisodeImages } from "#lib/episode";
 import { getLocale, loadAdminMessages } from "#lib/locale";
@@ -161,7 +164,9 @@ const EditEpisodePage = async ({
             <SectionError>
               <SectionErrorHeading>
                 <SectionErrorTitle>
-                  {getMessage(messages, "admin.series.episodes.schedule_error")}
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="admin.series.episodes.schedule_error" />
+                  </Suspense>
                 </SectionErrorTitle>
                 <SectionErrorDescription>
                   {episodeResult.message}
@@ -196,10 +201,9 @@ const EditEpisodePage = async ({
               <SectionError>
                 <SectionErrorHeading>
                   <SectionErrorTitle>
-                    {getMessage(
-                      messages,
-                      "admin.series.episodes.image_list_error"
-                    )}
+                    <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                      <Message message="admin.series.episodes.image_list_error" />
+                    </Suspense>
                   </SectionErrorTitle>
                   <SectionErrorDescription>
                     {imagesResult.message}

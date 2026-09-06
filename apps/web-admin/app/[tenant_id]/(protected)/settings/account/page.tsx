@@ -50,22 +50,22 @@ const MfaSectionSkeleton = () => (
 
 const MfaSection = async () => {
   const tenantId = await getTenantId();
-  const [locale, result] = await Promise.all([
-    getLocale(tenantId),
-    getAdminMfaStatus(tenantId),
-  ]);
+  const result = await getAdminMfaStatus(tenantId);
 
   if (!result.ok) {
     await redirectToLoginIfSessionRejected(result);
-    const messages = await loadAdminMessages(locale);
     return (
       <SectionError>
         <SectionErrorHeading>
           <SectionErrorTitle>
-            {getMessage(messages, "admin.settings.section_error")}
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.settings.section_error" />
+            </Suspense>
           </SectionErrorTitle>
           <SectionErrorDescription>
-            {getMessage(messages, "admin.settings.mfa.load_failed")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.settings.mfa.load_failed" />
+            </Suspense>
           </SectionErrorDescription>
         </SectionErrorHeading>
       </SectionError>

@@ -149,7 +149,9 @@ const SearchResultsData = async ({
       <SectionError>
         <SectionErrorHeading>
           <SectionErrorTitle>
-            {getMessage(messages, "host.search.error")}
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.search.error" />
+            </Suspense>
           </SectionErrorTitle>
           <SectionErrorDescription>{result.message}</SectionErrorDescription>
         </SectionErrorHeading>

@@ -139,7 +139,9 @@ const AuthorsListData = async ({
       <SectionError>
         <SectionErrorHeading>
           <SectionErrorTitle>
-            {getMessage(messages, "host.authors.list_error")}
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.authors.list_error" />
+            </Suspense>
           </SectionErrorTitle>
           <SectionErrorDescription>{result.message}</SectionErrorDescription>
         </SectionErrorHeading>

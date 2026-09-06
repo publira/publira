@@ -36,7 +36,6 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
 
 import { defaultNotificationsPageSize } from "../_lib/search-params";
 import type { NotificationItem } from "../notification-types";
@@ -80,7 +79,6 @@ const renderNotificationListBody = ({
   listErrorMessage,
   locale,
   markReadAriaLabel,
-  messages,
   notifications,
   timeZone,
 }: {
@@ -88,7 +86,6 @@ const renderNotificationListBody = ({
   listErrorMessage?: string;
   locale: Locale;
   markReadAriaLabel: (title: string) => string;
-  messages: PlatformMessages;
   notifications: NotificationItem[];
   timeZone: string;
 }) => {
@@ -112,13 +109,14 @@ const renderNotificationListBody = ({
       <EmptyState>
         <EmptyStateHeading>
           <EmptyStateTitle>
-            {getMessage(messages, "platform.notifications.empty_page_title")}
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="platform.notifications.empty_page_title" />
+            </Suspense>
           </EmptyStateTitle>
           <EmptyStateDescription>
-            {getMessage(
-              messages,
-              "platform.notifications.empty_page_description"
-            )}
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="platform.notifications.empty_page_description" />
+            </Suspense>
           </EmptyStateDescription>
         </EmptyStateHeading>
       </EmptyState>
@@ -126,10 +124,14 @@ const renderNotificationListBody = ({
       <EmptyState>
         <EmptyStateHeading>
           <EmptyStateTitle>
-            {getMessage(messages, "platform.notifications.empty_title")}
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="platform.notifications.empty_title" />
+            </Suspense>
           </EmptyStateTitle>
           <EmptyStateDescription>
-            {getMessage(messages, "platform.notifications.empty_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="platform.notifications.empty_description" />
+            </Suspense>
           </EmptyStateDescription>
         </EmptyStateHeading>
       </EmptyState>
@@ -261,7 +263,6 @@ export const NotificationManager = async ({
             getMessage(messages, "platform.notifications.mark_read_aria", {
               title,
             }),
-          messages,
           notifications,
           timeZone,
         })}

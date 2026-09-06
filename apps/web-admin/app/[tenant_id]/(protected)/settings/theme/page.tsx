@@ -67,7 +67,6 @@ const SettingsThemeFormsSkeleton = () => (
 const SettingsThemeForms = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
 
   const themeResult = await getTenantThemeSettings(tenantId, locale);
 
@@ -78,7 +77,9 @@ const SettingsThemeForms = async () => {
       <SectionError>
         <SectionErrorHeading>
           <SectionErrorTitle>
-            {getMessage(messages, "admin.settings.theme_error")}
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.settings.theme_error" />
+            </Suspense>
           </SectionErrorTitle>
           <SectionErrorDescription>
             {themeResult.message}

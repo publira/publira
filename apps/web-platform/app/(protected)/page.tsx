@@ -244,7 +244,9 @@ const DashboardContent = async () => {
         <SectionError>
           <SectionErrorHeading>
             <SectionErrorTitle>
-              {getMessage(messages, "platform.dashboard.load_failed")}
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="platform.dashboard.load_failed" />
+              </Suspense>
             </SectionErrorTitle>
             <SectionErrorDescription>{result.message}</SectionErrorDescription>
           </SectionErrorHeading>

@@ -569,7 +569,9 @@ const UsersContent = async ({
           <SectionError>
             <SectionErrorHeading>
               <SectionErrorTitle>
-                {getMessage(messages, "platform.users.load_failed")}
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="platform.users.load_failed" />
+                </Suspense>
               </SectionErrorTitle>
               <SectionErrorDescription>
                 {result.message}

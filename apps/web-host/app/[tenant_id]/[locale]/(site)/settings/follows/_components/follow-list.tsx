@@ -5,9 +5,12 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
+import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import type { FollowTargetKind } from "#lib/follow";
 import type { FollowListItem } from "#lib/follow-list";
 import { getLocale, loadHostMessages } from "#lib/locale";
@@ -138,7 +141,9 @@ export const FollowList = async ({
         <SectionError>
           <SectionErrorHeading>
             <SectionErrorTitle>
-              {getMessage(messages, "host.settings.follows_error")}
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.settings.follows_error" />
+              </Suspense>
             </SectionErrorTitle>
             <SectionErrorDescription>
               {listErrorMessage}
