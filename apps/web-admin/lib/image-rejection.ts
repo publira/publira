@@ -21,3 +21,13 @@ export const mentionsIconRejection = (error: unknown): boolean =>
 /** Whether an `invalid_argument` rejection is about the uploaded logo. */
 export const mentionsLogoRejection = (error: unknown): boolean =>
   rpcErrorHasFieldViolation(error, "logo_data");
+
+/**
+ * Whether an `invalid_argument` rejection is about the image sent for a single
+ * aspect ratio. Those RPCs carry the image in `image_data`, so the whole
+ * eye-catch fields above never name it, and the minimum the image missed is
+ * the ratio's own — the slot that submitted writes the wording.
+ */
+export const mentionsAspectImageRejection = (error: unknown): boolean =>
+  rpcErrorHasFieldViolation(error, "image_data") ||
+  rpcErrorHasFieldViolation(error, "image_content_type");

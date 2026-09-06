@@ -419,7 +419,9 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
   );
 
   if (!result.ok) {
-    return toAspectFailure(result.message, variantType);
+    return "imageRejected" in result
+      ? { imageInvalid: true, ok: false, variantType }
+      : toAspectFailure(result.message, variantType);
   }
 
   updateTag(seriesCacheTag(tenantId, publicId));

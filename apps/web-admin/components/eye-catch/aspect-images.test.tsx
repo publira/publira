@@ -24,6 +24,14 @@ vi.mock("next/navigation", () => ({
 
 const action = () => Promise.resolve(null);
 
+/** What the Action answers when the API refuses the image for a ratio. */
+const refuseImage = () =>
+  Promise.resolve({
+    imageInvalid: true as const,
+    ok: false as const,
+    variantType: "landscape",
+  });
+
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
@@ -154,4 +162,26 @@ it("stops showing the picked file once the form is submitted", () => {
   expect(image()?.getAttribute("src")).toBe(stored);
 
   vi.unstubAllGlobals();
+});
+
+it("names the minimum of the ratio the API refused the image for", async () => {
+  const { container } = render(
+    <EyeCatchAspectImages
+      publicId="SERIES001"
+      uploadAction={refuseImage}
+      variants={[variant("landscape", 1600, 900)]}
+    />
+  );
+
+  const form = container
+    .querySelector('input[name="variant_type"][value="landscape"]')
+    ?.closest("form");
+  if (!form) {
+    throw new Error("the landscape slot has no form");
+  }
+  fireEvent.submit(form);
+
+  // 1600x900 is landscape's own minimum. A whole eye-catch asks for
+  // 2400x3200px, which would send the editor after the wrong image.
+  expect(await screen.findByText(/at least 1600x900px/u)).toBeTruthy();
 });

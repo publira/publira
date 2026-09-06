@@ -184,7 +184,12 @@ const EyeCatchAspectSlot = ({
 
       {state && state.variantType === variantType ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>
-          {state.message}
+          {"imageInvalid" in state
+            ? getMessage(messages, "admin.eye_catch.aspect.image_invalid", {
+                height: String(minHeight),
+                width: String(minWidth),
+              })
+            : state.message}
         </FormMessage>
       ) : null}
     </div>
