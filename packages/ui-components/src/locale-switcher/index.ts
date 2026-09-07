@@ -1,5 +1,9 @@
-export { LocaleSwitcher } from "./locale-switcher";
-export type {
+export {
+  LocaleSwitcher,
+  LocaleSwitcherContent,
   LocaleSwitcherOption,
-  LocaleSwitcherProps,
+  LocaleSwitcherOptions,
+  LocaleSwitcherTitle,
+  LocaleSwitcherTrigger,
 } from "./locale-switcher";
+export type { LocaleSwitcherProps } from "./locale-switcher";

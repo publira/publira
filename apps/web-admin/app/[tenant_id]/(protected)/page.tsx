@@ -7,8 +7,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  EmptyState,
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
@@ -104,10 +114,16 @@ const DashboardContent = async () => {
     await redirectToLoginIfSessionRejected(result);
 
     return (
-      <SectionError
-        description={result.message}
-        title={getMessage(messages, "admin.dashboard.section_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.dashboard.section_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
@@ -154,13 +170,20 @@ const DashboardContent = async () => {
         </CardHeader>
         <CardContent>
           {queue.length === 0 ? (
-            <EmptyState
-              description={getMessage(
-                messages,
-                "admin.dashboard.queue_empty_description"
-              )}
-              title={getMessage(messages, "admin.dashboard.queue_empty_title")}
-            />
+            <EmptyState>
+              <EmptyStateHeading>
+                <EmptyStateTitle>
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="admin.dashboard.queue_empty_title" />
+                  </Suspense>
+                </EmptyStateTitle>
+                <EmptyStateDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                    <Message message="admin.dashboard.queue_empty_description" />
+                  </Suspense>
+                </EmptyStateDescription>
+              </EmptyStateHeading>
+            </EmptyState>
           ) : (
             <Table>
               <TableHeader>

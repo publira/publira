@@ -10,7 +10,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { ConfirmDialog } from "@publira/ui-components/dialog";
+import {
+  ConfirmDialog,
+  ConfirmDialogAction,
+  ConfirmDialogCancel,
+  ConfirmDialogContent,
+  ConfirmDialogDescription,
+  ConfirmDialogFooter,
+  ConfirmDialogHeader,
+  ConfirmDialogTitle,
+  ConfirmDialogTrigger,
+} from "@publira/ui-components/dialog";
 import {
   Field,
   FieldContent,
@@ -132,27 +142,45 @@ export const TenantLogoForm = ({
 
           <div className="flex justify-end gap-2">
             {preview ? (
-              <ConfirmDialog
-                actionText={getMessage(
-                  messages,
-                  "admin.settings.delete_action"
-                )}
-                actionVariant="destructive"
-                cancelText={getMessage(messages, "admin.common.cancel")}
-                description={getMessage(
-                  messages,
-                  "admin.settings.logo.delete_description"
-                )}
-                onAction={() => {
-                  formRef.current?.requestSubmit(deleteButtonRef.current);
-                }}
-                title={getMessage(messages, "admin.settings.logo.delete_title")}
-                trigger={
-                  <Button disabled={isPending} type="button" variant="outline">
-                    {getMessage(messages, "admin.settings.delete")}
-                  </Button>
-                }
-              />
+              <ConfirmDialog>
+                <ConfirmDialogTrigger
+                  render={
+                    <Button
+                      disabled={isPending}
+                      type="button"
+                      variant="outline"
+                    >
+                      {getMessage(messages, "admin.settings.delete")}
+                    </Button>
+                  }
+                />
+                <ConfirmDialogContent>
+                  <ConfirmDialogHeader>
+                    <ConfirmDialogTitle>
+                      {getMessage(messages, "admin.settings.logo.delete_title")}
+                    </ConfirmDialogTitle>
+                    <ConfirmDialogDescription>
+                      {getMessage(
+                        messages,
+                        "admin.settings.logo.delete_description"
+                      )}
+                    </ConfirmDialogDescription>
+                  </ConfirmDialogHeader>
+                  <ConfirmDialogFooter>
+                    <ConfirmDialogCancel>
+                      {getMessage(messages, "admin.common.cancel")}
+                    </ConfirmDialogCancel>
+                    <ConfirmDialogAction
+                      onClick={() => {
+                        formRef.current?.requestSubmit(deleteButtonRef.current);
+                      }}
+                      variant="destructive"
+                    >
+                      {getMessage(messages, "admin.settings.delete_action")}
+                    </ConfirmDialogAction>
+                  </ConfirmDialogFooter>
+                </ConfirmDialogContent>
+              </ConfirmDialog>
             ) : null}
             <button
               className="hidden"

@@ -1,6 +1,11 @@
 import { getMessage } from "@publira/i18n";
 import { CollectionIcon } from "@publira/icons";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatList } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -141,10 +146,16 @@ const SearchResultsData = async ({
 
   if (!result.ok) {
     return (
-      <SectionError
-        description={result.message}
-        title={getMessage(messages, "host.search.error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.search.error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

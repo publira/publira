@@ -64,7 +64,7 @@ describe("SiteLayout slots", () => {
   it("renders each footer area from its own child slot", () => {
     render(
       <SiteLayoutFooter>
-        <SiteLayoutFooterLinks ariaLabel="Footer links">
+        <SiteLayoutFooterLinks aria-label="Footer links">
           <SiteLayoutFooterLink href="/terms">
             Terms of service
           </SiteLayoutFooterLink>

@@ -1,10 +1,21 @@
+import {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
 
-import { SectionErrorCatch } from "./section-error-catch";
+import {
+  SectionErrorCatch,
+  SectionErrorDigest,
+  SectionErrorRetry,
+} from "./section-error-catch";
 
 interface SectionErrorBoundaryProps {
   children: ReactNode;
@@ -21,8 +32,7 @@ interface SectionErrorBoundaryProps {
  * section was showing. What the operator can do about it, the retry button, and
  * the digest label say the same thing at every boundary — they belong to the
  * frame, not to the section — so this component resolves them from the catalog
- * itself. Resolving them here also keeps them off the `@publira/ui-components`
- * Japanese defaults, which would read as Japanese on an English console.
+ * itself.
  *
  * This is the component-level counterpart of `(protected)/error.tsx`, and it
  * takes the same throws that one does: the lib layer classifies what it can
@@ -35,22 +45,30 @@ export const SectionErrorBoundary = ({
   title,
 }: SectionErrorBoundaryProps) => (
   <SectionErrorCatch
-    description={
-      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-        <Message message="platform.common.retry_later" />
-      </Suspense>
+    fallback={
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>{title}</SectionErrorTitle>
+          <SectionErrorDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message message="platform.common.retry_later" />
+            </Suspense>
+          </SectionErrorDescription>
+        </SectionErrorHeading>
+        <SectionErrorActions>
+          <SectionErrorRetry>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="platform.common.retry" />
+            </Suspense>
+          </SectionErrorRetry>
+        </SectionErrorActions>
+        <SectionErrorDigest>
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="platform.common.error_id" />
+          </Suspense>
+        </SectionErrorDigest>
+      </SectionError>
     }
-    digestLabel={
-      <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-        <Message message="platform.common.error_id" />
-      </Suspense>
-    }
-    retryLabel={
-      <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-        <Message message="platform.common.retry" />
-      </Suspense>
-    }
-    title={title}
   >
     {children}
   </SectionErrorCatch>

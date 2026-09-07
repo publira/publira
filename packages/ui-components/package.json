@@ -79,6 +79,10 @@
       "types": "./dist/section-error/index.d.mts",
       "default": "./dist/section-error/index.mjs"
     },
+    "./section-error-fallback": {
+      "types": "./dist/section-error-fallback/index.d.mts",
+      "default": "./dist/section-error-fallback/index.mjs"
+    },
     "./select": {
       "types": "./dist/select/index.d.mts",
       "default": "./dist/select/index.mjs"

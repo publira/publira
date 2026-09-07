@@ -1,7 +1,14 @@
-import { getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { resolveAccessToken } from "#lib/api-client";
 import type {
   EpisodeAccessState,
@@ -10,7 +17,7 @@ import type {
   EpisodeSeriesSummary,
 } from "#lib/catalog";
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 
 import { EpisodeAccessGate } from "./episode-access-gate";
 import { EpisodeBodyNotice } from "./episode-body-notice";
@@ -64,13 +71,18 @@ export const EpisodeBody = async ({
     checkoutSessionId
   );
   if (!viewer.ok) {
-    const messages = await loadHostMessages(locale);
     return (
       <EpisodeBodyNotice>
-        <SectionError
-          description={viewer.message}
-          title={getMessage(messages, "host.episode.body_error")}
-        />
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.episode.body_error" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>{viewer.message}</SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
       </EpisodeBodyNotice>
     );
   }

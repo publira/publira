@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 
+import { getMessage } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +22,19 @@ const {
   mockGetTenantCommentMode: vi.fn(),
   mockListEpisodeComments: vi.fn(),
   mockListMyEpisodeComments: vi.fn(),
+}));
+
+// `<Message>` is an async Server Component, which the client renderer cannot
+// mount. It resolves through the real catalog here, so the assertions stay on
+// the copy a reader actually sees.
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => getMessage(sharedCatalog("en"), message, values),
 }));
 
 vi.mock("#components/locale-provider", () => ({
@@ -63,6 +79,11 @@ vi.mock("#lib/comments", async (importOriginal) => {
 vi.mock("#components/action-form", () => ({
   ActionForm: ({ children }: { children: React.ReactNode }) => (
     <form>{children}</form>
+  ),
+  ActionFormIdle: ({ children }: { children: React.ReactNode }) => children,
+  ActionFormPending: () => null,
+  ActionFormSubmit: ({ children }: { children: React.ReactNode }) => (
+    <button type="submit">{children}</button>
   ),
 }));
 

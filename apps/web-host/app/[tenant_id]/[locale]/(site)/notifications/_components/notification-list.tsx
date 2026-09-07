@@ -1,8 +1,16 @@
 import { getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
+import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { getLocale, loadHostMessages } from "#lib/locale";
 
 import { notificationsListHref } from "../_lib/search-params";
@@ -133,10 +141,18 @@ export const NotificationList = async ({
       </div>
 
       {listErrorMessage ? (
-        <SectionError
-          description={listErrorMessage}
-          title={getMessage(messages, "host.notifications.list_error")}
-        />
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.notifications.list_error" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>
+              {listErrorMessage}
+            </SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
       ) : null}
 
       {!listErrorMessage && notifications.length === 0 ? emptyState : null}

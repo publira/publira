@@ -9,7 +9,14 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { LocaleSwitcher } from "./locale-switcher";
+import {
+  LocaleSwitcher,
+  LocaleSwitcherContent,
+  LocaleSwitcherOption,
+  LocaleSwitcherOptions,
+  LocaleSwitcherTitle,
+  LocaleSwitcherTrigger,
+} from "./locale-switcher";
 
 // Each option carries the language's own name, so the ja one is written in
 // Japanese the way the locale registry spells it.
@@ -18,6 +25,28 @@ const options = [
   { label: "日本語", locale: "ja" },
 ];
 
+const Switcher = ({
+  action,
+}: {
+  action: (formData: FormData) => Promise<void>;
+}) => (
+  <LocaleSwitcher action={action} currentLocale="en" fieldName="locale">
+    <LocaleSwitcherTrigger aria-label="Language: English">
+      English
+    </LocaleSwitcherTrigger>
+    <LocaleSwitcherContent>
+      <LocaleSwitcherTitle>Language</LocaleSwitcherTitle>
+      <LocaleSwitcherOptions aria-label="Language">
+        {options.map((option) => (
+          <LocaleSwitcherOption key={option.locale} locale={option.locale}>
+            {option.label}
+          </LocaleSwitcherOption>
+        ))}
+      </LocaleSwitcherOptions>
+    </LocaleSwitcherContent>
+  </LocaleSwitcher>
+);
+
 afterEach(() => {
   cleanup();
   document.documentElement.lang = "en";
@@ -25,15 +54,7 @@ afterEach(() => {
 
 describe("LocaleSwitcher", () => {
   it("the popover lists the options in their own language and marks the current one", () => {
-    render(
-      <LocaleSwitcher
-        action={vi.fn()}
-        currentLocale="en"
-        fieldName="locale"
-        label="Language"
-        options={options}
-      />
-    );
+    render(<Switcher action={vi.fn()} />);
 
     const trigger = screen.getByRole("button", {
       name: "Language: English",
@@ -55,15 +76,7 @@ describe("LocaleSwitcher", () => {
     const action = vi.fn<(formData: FormData) => Promise<void>>(() =>
       Promise.resolve()
     );
-    render(
-      <LocaleSwitcher
-        action={action}
-        currentLocale="en"
-        fieldName="locale"
-        label="Language"
-        options={options}
-      />
-    );
+    render(<Switcher action={action} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
     fireEvent.click(screen.getByRole("button", { name: "日本語" }));
@@ -76,15 +89,7 @@ describe("LocaleSwitcher", () => {
   });
 
   it("Escape closes it and returns focus to the trigger", () => {
-    render(
-      <LocaleSwitcher
-        action={vi.fn()}
-        currentLocale="en"
-        fieldName="locale"
-        label="Language"
-        options={options}
-      />
-    );
+    render(<Switcher action={vi.fn()} />);
 
     const trigger = screen.getByRole("button", {
       name: "Language: English",

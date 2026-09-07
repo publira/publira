@@ -52,6 +52,12 @@ vi.mock("@publira/ui-components/combobox", async () => {
         ))}
       </>
     ),
+    // The mocked root stands in for the whole control, so its slots render
+    // nothing.
+    ComboboxEmpty: () => null,
+    ComboboxInput: () => null,
+    ComboboxItems: () => null,
+    ComboboxPopup: () => null,
   };
 });
 

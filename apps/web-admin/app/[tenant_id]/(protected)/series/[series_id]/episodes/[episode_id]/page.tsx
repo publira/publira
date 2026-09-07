@@ -1,6 +1,12 @@
 import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -9,6 +15,7 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { z } from "zod";
 
 import {
@@ -22,6 +29,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
+import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getEpisode, listEpisodeImages } from "#lib/episode";
 import { getLocale, loadAdminMessages } from "#lib/locale";
@@ -153,13 +161,18 @@ const EditEpisodePage = async ({
               timeZone={timeZone}
             />
           ) : (
-            <SectionError
-              description={episodeResult.message}
-              title={getMessage(
-                messages,
-                "admin.series.episodes.schedule_error"
-              )}
-            />
+            <SectionError>
+              <SectionErrorHeading>
+                <SectionErrorTitle>
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="admin.series.episodes.schedule_error" />
+                  </Suspense>
+                </SectionErrorTitle>
+                <SectionErrorDescription>
+                  {episodeResult.message}
+                </SectionErrorDescription>
+              </SectionErrorHeading>
+            </SectionError>
           )}
           <EpisodePagesForm
             action={uploadEpisodePagesAction}
@@ -185,13 +198,18 @@ const EditEpisodePage = async ({
               were never uploaded, in the same breath.
             */}
             {imagesResult.ok ? null : (
-              <SectionError
-                description={imagesResult.message}
-                title={getMessage(
-                  messages,
-                  "admin.series.episodes.image_list_error"
-                )}
-              />
+              <SectionError>
+                <SectionErrorHeading>
+                  <SectionErrorTitle>
+                    <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                      <Message message="admin.series.episodes.image_list_error" />
+                    </Suspense>
+                  </SectionErrorTitle>
+                  <SectionErrorDescription>
+                    {imagesResult.message}
+                  </SectionErrorDescription>
+                </SectionErrorHeading>
+              </SectionError>
             )}
 
             {imagesResult.ok && imagesResult.images.length === 0 ? (

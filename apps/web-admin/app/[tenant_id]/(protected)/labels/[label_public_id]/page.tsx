@@ -1,6 +1,12 @@
 import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -152,15 +158,19 @@ const EditLabelFormData = async ({
     await redirectToLoginIfSessionRejected(result);
 
     return (
-      <SectionError
-        actions={
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Message message="admin.labels.detail_error" />
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+        <SectionErrorActions>
           <LinkButton render={<Link href="/labels" />} variant="outline">
             <Message message="admin.labels.back_to_list" />
           </LinkButton>
-        }
-        description={result.message}
-        title={<Message message="admin.labels.detail_error" />}
-      />
+        </SectionErrorActions>
+      </SectionError>
     );
   }
 

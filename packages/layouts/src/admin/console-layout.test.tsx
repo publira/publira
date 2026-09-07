@@ -108,9 +108,9 @@ describe("Console layout slots", () => {
     render(
       <ConsoleLayout theme="admin">
         <ConsoleMobileNavigation>
-          <ConsoleMobileNavigationCloseButton ariaLabel="Close navigation" />
+          <ConsoleMobileNavigationCloseButton aria-label="Close navigation" />
         </ConsoleMobileNavigation>
-        <ConsoleMobileNavigationOpenButton ariaLabel="Open navigation" />
+        <ConsoleMobileNavigationOpenButton aria-label="Open navigation" />
         <div />
       </ConsoleLayout>
     );

@@ -1,8 +1,16 @@
 import { getMessage, toIntlLocale } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
+import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import type { PurchaseItem } from "#lib/purchases";
 
@@ -153,10 +161,18 @@ export const PurchaseLibrary = async ({
   return (
     <div className="space-y-6">
       {listErrorMessage ? (
-        <SectionError
-          description={listErrorMessage}
-          title={getMessage(messages, "host.library.list_error")}
-        />
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.library.list_error" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>
+              {listErrorMessage}
+            </SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
       ) : null}
       {!listErrorMessage && purchases.length === 0 ? (
         <section className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-6">

@@ -1,6 +1,11 @@
 import { getMessage } from "@publira/i18n";
 import { CollectionIcon, ImageIcon } from "@publira/icons";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate, formatList } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -98,14 +103,16 @@ const SectionReadError = ({
   description: string;
   title: HostMessageKey;
 }) => (
-  <SectionError
-    description={description}
-    title={
-      <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-        <Message message={title} />
-      </Suspense>
-    }
-  />
+  <SectionError>
+    <SectionErrorHeading>
+      <SectionErrorTitle>
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message={title} />
+        </Suspense>
+      </SectionErrorTitle>
+      <SectionErrorDescription>{description}</SectionErrorDescription>
+    </SectionErrorHeading>
+  </SectionError>
 );
 
 /** The empty state a section renders when the read succeeded with no rows. */

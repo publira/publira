@@ -42,7 +42,8 @@ Add it as a workspace dependency and load the styles from the global CSS.
 - [Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter](./src/card) - cards
 - [Popover](./src/popover) - the floating surfaces placed in a header and similar places
 - [EmptyState](./src/empty-state) - the empty state
-- [SectionError / sectionErrorFallback](./src/section-error) - one section of a page that failed to load
+- [SectionError](./src/section-error) - one section of a page that failed to load
+- [sectionErrorFallback](./src/section-error-fallback) - the body of a section-level error boundary
 
 ## Usage
 

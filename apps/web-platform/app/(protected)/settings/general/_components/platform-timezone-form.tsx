@@ -9,7 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { Combobox } from "@publira/ui-components/combobox";
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItems,
+  ComboboxPopup,
+} from "@publira/ui-components/combobox";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import {
   Field,
@@ -81,18 +87,26 @@ export const PlatformTimezoneForm = ({
             <FieldContent>
               <Combobox
                 disabled={hasLoadError}
-                emptyMessage={getMessage(
-                  messages,
-                  "platform.settings.default_timezone_empty"
-                )}
                 items={items}
                 onValueChange={setTimezone}
-                placeholder={getMessage(
-                  messages,
-                  "platform.settings.default_timezone_placeholder"
-                )}
                 value={timezone}
-              />
+              >
+                <ComboboxInput
+                  placeholder={getMessage(
+                    messages,
+                    "platform.settings.default_timezone_placeholder"
+                  )}
+                />
+                <ComboboxPopup>
+                  <ComboboxEmpty>
+                    {getMessage(
+                      messages,
+                      "platform.settings.default_timezone_empty"
+                    )}
+                  </ComboboxEmpty>
+                  <ComboboxItems />
+                </ComboboxPopup>
+              </Combobox>
               <FieldDescription>
                 <ClientMessage message="platform.settings.default_timezone_help" />
               </FieldDescription>

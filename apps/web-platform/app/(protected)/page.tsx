@@ -8,7 +8,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
@@ -236,10 +241,16 @@ const DashboardContent = async () => {
   return (
     <>
       {result.ok ? null : (
-        <SectionError
-          description={result.message}
-          title={getMessage(messages, "platform.dashboard.load_failed")}
-        />
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="platform.dashboard.load_failed" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>{result.message}</SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

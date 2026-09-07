@@ -1,6 +1,14 @@
 import { getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/auth-shared";
 import type { FollowTargetKind } from "#lib/follow";
 import { getMyFollowStatus } from "#lib/follow";
@@ -36,11 +44,16 @@ export const FollowControl = async ({
 
   if (!result.ok) {
     return (
-      <SectionError
-        className="max-w-sm"
-        description={result.message}
-        title={getMessage(messages, "host.follow.status_error")}
-      />
+      <SectionError className="max-w-sm">
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.follow.status_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

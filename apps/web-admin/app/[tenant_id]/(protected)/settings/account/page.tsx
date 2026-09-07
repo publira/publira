@@ -1,5 +1,10 @@
 import { getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -45,19 +50,25 @@ const MfaSectionSkeleton = () => (
 
 const MfaSection = async () => {
   const tenantId = await getTenantId();
-  const [locale, result] = await Promise.all([
-    getLocale(tenantId),
-    getAdminMfaStatus(tenantId),
-  ]);
+  const result = await getAdminMfaStatus(tenantId);
 
   if (!result.ok) {
     await redirectToLoginIfSessionRejected(result);
-    const messages = await loadAdminMessages(locale);
     return (
-      <SectionError
-        description={getMessage(messages, "admin.settings.mfa.load_failed")}
-        title={getMessage(messages, "admin.settings.section_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.settings.section_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.settings.mfa.load_failed" />
+            </Suspense>
+          </SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

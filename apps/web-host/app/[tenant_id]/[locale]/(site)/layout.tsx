@@ -21,6 +21,7 @@ import {
   SiteLayoutUserMenu,
   SiteLayoutUserMenuContent,
   SiteLayoutUserMenuLogout,
+  SiteLayoutUserMenuLogoutButton,
   SiteLayoutUserMenuMyPageLink,
   SiteLayoutUserMenuSeparator,
   SiteLayoutUserMenuTrigger,
@@ -219,7 +220,7 @@ const HeaderActions = async () => {
         {hasSession ? (
           <SiteLayoutUserMenu>
             <SiteLayoutUserMenuTrigger
-              ariaLabel={getMessage(messages, "host.nav.account_menu")}
+              aria-label={getMessage(messages, "host.nav.account_menu")}
             />
             <SiteLayoutUserMenuContent>
               <SiteLayoutUserMenuMyPageLink
@@ -230,9 +231,10 @@ const HeaderActions = async () => {
               <SiteLayoutUserMenuSeparator />
               <SiteLayoutUserMenuLogout
                 action={logoutAction.bind(null, tenantId, locale)}
-                ariaLabel={getMessage(messages, "host.nav.logout")}
               >
-                {getMessage(messages, "host.nav.logout")}
+                <SiteLayoutUserMenuLogoutButton>
+                  {getMessage(messages, "host.nav.logout")}
+                </SiteLayoutUserMenuLogoutButton>
               </SiteLayoutUserMenuLogout>
             </SiteLayoutUserMenuContent>
           </SiteLayoutUserMenu>
@@ -269,7 +271,7 @@ const TenantFooterLinks = async () => {
 
   return (
     <SiteLayoutFooterLinks
-      ariaLabel={getMessage(messages, "host.nav.footer_links")}
+      aria-label={getMessage(messages, "host.nav.footer_links")}
     >
       {links.map((link) => (
         <SiteLayoutFooterLink

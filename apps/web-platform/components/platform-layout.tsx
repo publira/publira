@@ -33,6 +33,7 @@ import {
   ConsoleUserMenuIdentity,
   ConsoleUserMenuInitial,
   ConsoleUserMenuLogout,
+  ConsoleUserMenuLogoutButton,
   ConsoleUserMenuName,
   ConsoleUserMenuPublicId,
   ConsoleUserMenuRole,
@@ -94,7 +95,7 @@ export const PlatformUser = async () => {
   return (
     <ConsoleHeaderUser>
       <ConsoleUserMenuTrigger
-        ariaLabel={getMessage(messages, "platform.shell.account_menu", {
+        aria-label={getMessage(messages, "platform.shell.account_menu", {
           name: result.operator.name,
         })}
       >
@@ -114,11 +115,10 @@ export const PlatformUser = async () => {
         <ConsoleUserMenuAccountLink href="/settings/account">
           {getMessage(messages, "platform.shell.account_settings")}
         </ConsoleUserMenuAccountLink>
-        <ConsoleUserMenuLogout
-          action={logoutAction}
-          ariaLabel={getMessage(messages, "platform.shell.logout")}
-        >
-          {getMessage(messages, "platform.shell.logout")}
+        <ConsoleUserMenuLogout action={logoutAction}>
+          <ConsoleUserMenuLogoutButton>
+            {getMessage(messages, "platform.shell.logout")}
+          </ConsoleUserMenuLogoutButton>
         </ConsoleUserMenuLogout>
       </ConsoleUserMenuContent>
     </ConsoleHeaderUser>
@@ -226,11 +226,11 @@ const PlatformMobileNavigation = async () => {
     <>
       <ConsoleMobileNavigation>
         <ConsoleMobileNavigationCloseButton
-          ariaLabel={getMessage(messages, "platform.shell.navigation_close")}
+          aria-label={getMessage(messages, "platform.shell.navigation_close")}
         />
       </ConsoleMobileNavigation>
       <ConsoleMobileNavigationOpenButton
-        ariaLabel={getMessage(messages, "platform.shell.navigation_open")}
+        aria-label={getMessage(messages, "platform.shell.navigation_open")}
       />
     </>
   );

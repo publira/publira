@@ -9,7 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -20,8 +26,10 @@ import {
 } from "@publira/ui-components/table";
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
@@ -60,10 +68,16 @@ const CreatorListBody = ({
   // list state alongside the error or operators will read it as "no creators".
   if (listErrorMessage) {
     return (
-      <SectionError
-        description={listErrorMessage}
-        title={getMessage(messages, "admin.creators.list_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.creators.list_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

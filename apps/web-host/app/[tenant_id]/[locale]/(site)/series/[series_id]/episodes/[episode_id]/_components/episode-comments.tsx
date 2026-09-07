@@ -1,13 +1,26 @@
 import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { Field, FieldLabel } from "@publira/ui-components/field";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import { formatDateTime } from "@publira/utils";
+import { Suspense } from "react";
 
-import { ActionForm } from "#components/action-form";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "#components/action-form";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { getMe } from "#lib/auth";
 import {
   listEpisodeComments,
@@ -139,9 +152,6 @@ export const EpisodeComments = async ({
         <ActionForm
           action={postEpisodeCommentAction}
           className="mt-6 grid gap-3"
-          pendingLabel={getMessage(messages, "host.episode.comments.posting")}
-          submitClassName="justify-self-start"
-          submitLabel={getMessage(messages, "host.episode.comments.submit")}
         >
           <LocaleField />
           <input name="episodePublicId" type="hidden" value={episodePublicId} />
@@ -164,6 +174,18 @@ export const EpisodeComments = async ({
               rows={4}
             />
           </Field>
+          <ActionFormSubmit className="justify-self-start">
+            <ActionFormIdle>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="host.episode.comments.submit" />
+              </Suspense>
+            </ActionFormIdle>
+            <ActionFormPending>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="host.episode.comments.posting" />
+              </Suspense>
+            </ActionFormPending>
+          </ActionFormSubmit>
         </ActionForm>
       ) : (
         <p className="mt-6 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -182,21 +204,35 @@ export const EpisodeComments = async ({
       )}
 
       {publicResult.ok ? null : (
-        <SectionError
-          className="mt-6"
-          description={publicResult.message}
-          title={getMessage(messages, "host.episode.comments.list_error")}
-        />
+        <SectionError className="mt-6">
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.episode.comments.list_error" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>
+              {publicResult.message}
+            </SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
       )}
       {/* A failed per-viewer read is reported next to a list that still shows
           the public comments: silently dropping those rows would take the
           reader's own pending comment off the page with nothing saying so. */}
       {ownResult.ok ? null : (
-        <SectionError
-          className="mt-6"
-          description={ownResult.message}
-          title={getMessage(messages, "host.episode.comments.own_error")}
-        />
+        <SectionError className="mt-6">
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.episode.comments.own_error" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>
+              {ownResult.message}
+            </SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
       )}
 
       {publicResult.ok && comments.length === 0 ? (

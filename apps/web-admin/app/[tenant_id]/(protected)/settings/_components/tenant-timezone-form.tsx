@@ -10,7 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { Combobox } from "@publira/ui-components/combobox";
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItems,
+  ComboboxPopup,
+} from "@publira/ui-components/combobox";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import {
   Field,
@@ -86,18 +92,23 @@ export const TenantTimezoneForm = ({
             <FieldContent>
               <Combobox
                 disabled={!canEdit}
-                emptyMessage={getMessage(
-                  messages,
-                  "admin.settings.timezone.empty"
-                )}
                 items={items}
                 onValueChange={setTimezone}
-                placeholder={getMessage(
-                  messages,
-                  "admin.settings.timezone.placeholder"
-                )}
                 value={timezone}
-              />
+              >
+                <ComboboxInput
+                  placeholder={getMessage(
+                    messages,
+                    "admin.settings.timezone.placeholder"
+                  )}
+                />
+                <ComboboxPopup>
+                  <ComboboxEmpty>
+                    {getMessage(messages, "admin.settings.timezone.empty")}
+                  </ComboboxEmpty>
+                  <ComboboxItems />
+                </ComboboxPopup>
+              </Combobox>
               <FieldDescription>
                 {getMessage(
                   messages,

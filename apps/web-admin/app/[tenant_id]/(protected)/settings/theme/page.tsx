@@ -1,5 +1,10 @@
 import { getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -62,7 +67,6 @@ const SettingsThemeFormsSkeleton = () => (
 const SettingsThemeForms = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
 
   const themeResult = await getTenantThemeSettings(tenantId, locale);
 
@@ -70,10 +74,18 @@ const SettingsThemeForms = async () => {
 
   if (!themeResult.ok) {
     return (
-      <SectionError
-        description={themeResult.message}
-        title={getMessage(messages, "admin.settings.theme_error")}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.settings.theme_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>
+            {themeResult.message}
+          </SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 

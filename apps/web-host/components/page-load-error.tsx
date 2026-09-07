@@ -1,7 +1,13 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
@@ -30,15 +36,19 @@ export const PageLoadError = ({ description }: { description: string }) => {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-24">
-      <SectionError
-        actions={
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <ClientMessage message="host.errors.page_title" />
+          </SectionErrorTitle>
+          <SectionErrorDescription>{description}</SectionErrorDescription>
+        </SectionErrorHeading>
+        <SectionErrorActions>
           <Button onClick={onRetry} size="sm" variant="outline">
             <ClientMessage message="host.common.retry" />
           </Button>
-        }
-        description={description}
-        title={<ClientMessage message="host.errors.page_title" />}
-      />
+        </SectionErrorActions>
+      </SectionError>
     </div>
   );
 };

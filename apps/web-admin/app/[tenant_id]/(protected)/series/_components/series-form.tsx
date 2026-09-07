@@ -4,7 +4,19 @@ import { getMessage, toIntlLocale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { Card, CardContent } from "@publira/ui-components/card";
-import { Combobox, MultiCombobox } from "@publira/ui-components/combobox";
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItems,
+  ComboboxPopup,
+  MultiCombobox,
+  MultiComboboxChip,
+  MultiComboboxChipRemove,
+  MultiComboboxChips,
+  MultiComboboxInput,
+  MultiComboboxInputGroup,
+} from "@publira/ui-components/combobox";
 import type {
   ComboboxItem,
   MultiComboboxItem,
@@ -115,23 +127,47 @@ const CreatorField = ({
           </FieldDescription>
         ) : (
           <MultiCombobox
-            emptyMessage={getMessage(
-              messages,
-              "admin.series.form.creators_no_match"
-            )}
             id={comboboxId}
             items={creatorItems}
             onValueChange={onChange}
-            removeLabel={getMessage(
-              messages,
-              "admin.series.form.creators_remove"
-            )}
-            searchPlaceholder={getMessage(
-              messages,
-              "admin.series.form.creators_search"
-            )}
             value={selectedCreatorPublicIds}
-          />
+          >
+            <MultiComboboxInputGroup>
+              <MultiComboboxChips>
+                {(selected) => (
+                  <>
+                    {selected.map((item) => (
+                      <MultiComboboxChip item={item} key={item.value}>
+                        {item.label}
+                        <MultiComboboxChipRemove
+                          aria-label={getMessage(
+                            messages,
+                            "admin.series.form.creators_remove"
+                          )}
+                        />
+                      </MultiComboboxChip>
+                    ))}
+                    <MultiComboboxInput
+                      placeholder={
+                        selected.length > 0
+                          ? ""
+                          : getMessage(
+                              messages,
+                              "admin.series.form.creators_search"
+                            )
+                      }
+                    />
+                  </>
+                )}
+              </MultiComboboxChips>
+            </MultiComboboxInputGroup>
+            <ComboboxPopup>
+              <ComboboxEmpty>
+                {getMessage(messages, "admin.series.form.creators_no_match")}
+              </ComboboxEmpty>
+              <ComboboxItems />
+            </ComboboxPopup>
+          </MultiCombobox>
         )}
 
         {selectedCreatorPublicIds.map((publicId) => (
@@ -214,19 +250,24 @@ const LabelField = ({
         ) : (
           <>
             <Combobox
-              emptyMessage={getMessage(
-                messages,
-                "admin.series.form.label_empty"
-              )}
               id={comboboxId}
               items={labelItems}
               onValueChange={onComboboxChange}
-              placeholder={getMessage(
-                messages,
-                "admin.series.form.label_placeholder"
-              )}
               value={selectedLabelPublicId}
-            />
+            >
+              <ComboboxInput
+                placeholder={getMessage(
+                  messages,
+                  "admin.series.form.label_placeholder"
+                )}
+              />
+              <ComboboxPopup>
+                <ComboboxEmpty>
+                  {getMessage(messages, "admin.series.form.label_empty")}
+                </ComboboxEmpty>
+                <ComboboxItems />
+              </ComboboxPopup>
+            </Combobox>
 
             <input
               name="label_public_id"

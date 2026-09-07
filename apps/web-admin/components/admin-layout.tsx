@@ -32,6 +32,7 @@ import {
   ConsoleUserMenuIdentity,
   ConsoleUserMenuInitial,
   ConsoleUserMenuLogout,
+  ConsoleUserMenuLogoutButton,
   ConsoleUserMenuName,
   ConsoleUserMenuPublicId,
   ConsoleUserMenuRole,
@@ -93,7 +94,7 @@ export const AdminUser = async ({
   return (
     <ConsoleHeaderUser>
       <ConsoleUserMenuTrigger
-        ariaLabel={getMessage(messages, "admin.shell.account_menu", {
+        aria-label={getMessage(messages, "admin.shell.account_menu", {
           name: result.user.name,
         })}
       >
@@ -113,11 +114,10 @@ export const AdminUser = async ({
         <ConsoleUserMenuAccountLink href="/settings/account">
           {getMessage(messages, "admin.shell.account_settings")}
         </ConsoleUserMenuAccountLink>
-        <ConsoleUserMenuLogout
-          action={logout}
-          ariaLabel={getMessage(messages, "admin.shell.logout")}
-        >
-          {getMessage(messages, "admin.shell.logout")}
+        <ConsoleUserMenuLogout action={logout}>
+          <ConsoleUserMenuLogoutButton>
+            {getMessage(messages, "admin.shell.logout")}
+          </ConsoleUserMenuLogoutButton>
         </ConsoleUserMenuLogout>
       </ConsoleUserMenuContent>
     </ConsoleHeaderUser>
@@ -132,11 +132,11 @@ const AdminMobileNavigation = async ({ tenantId }: { tenantId: string }) => {
     <>
       <ConsoleMobileNavigation>
         <ConsoleMobileNavigationCloseButton
-          ariaLabel={getMessage(messages, "admin.shell.navigation_close")}
+          aria-label={getMessage(messages, "admin.shell.navigation_close")}
         />
       </ConsoleMobileNavigation>
       <ConsoleMobileNavigationOpenButton
-        ariaLabel={getMessage(messages, "admin.shell.navigation_open")}
+        aria-label={getMessage(messages, "admin.shell.navigation_open")}
       />
     </>
   );

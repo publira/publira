@@ -38,11 +38,12 @@ export interface ActionFormSubmitProps {
 }
 
 /**
- * Submit control for Server Component form content.
+ * Submit control for the form's content.
  *
  * Keeping the label in `children` lets a server-rendered `<Message />` sit at
  * the point where it is displayed, while `useFormStatus` still disables the
- * control during its Server Action.
+ * control during its Server Action. Wording that changes while the submission
+ * is in flight goes in `ActionFormIdle` / `ActionFormPending`.
  */
 export const ActionFormSubmit = ({
   children,
@@ -64,23 +65,39 @@ export const ActionFormSubmit = ({
   );
 };
 
+/** Renders its children only while the surrounding form is idle. */
+export const ActionFormIdle = ({ children }: { children: ReactNode }) => {
+  const { pending } = useFormStatus();
+
+  return pending ? null : children;
+};
+
+/** Renders its children only while the surrounding form's Action is in flight. */
+export const ActionFormPending = ({ children }: { children: ReactNode }) => {
+  const { pending } = useFormStatus();
+
+  return pending ? children : null;
+};
+
 /**
  * A form component that encapsulates `useActionState`.
  *
- * **Automatic mode** — pass a ReactNode as `children` and the returned message
- * and the submit button are managed for you:
+ * **Node mode** — pass a ReactNode as `children`. The message the Action
+ * returns is rendered for you; the submit control is one of the children, so
+ * its wording and its classes sit on the element itself:
  *
  * ```tsx
- * <ActionForm
- *   action={myAction}
- *   submitLabel="Save"
- *   pendingLabel="Saving..."
- * >
+ * <ActionForm action={myAction}>
  *   <Field>...</Field>
+ *   <ActionFormSubmit className="w-full">
+ *     <ActionFormIdle>Save</ActionFormIdle>
+ *     <ActionFormPending>Saving...</ActionFormPending>
+ *   </ActionFormSubmit>
  * </ActionForm>
  * ```
  *
- * **Render-function mode** — place the button and the message yourself:
+ * **Render-function mode** — place the message yourself, and read the state
+ * the Action returned:
  *
  * ```tsx
  * <ActionForm action={myAction}>
@@ -106,29 +123,19 @@ export interface ActionFormProps {
   ) => Promise<FormActionState>;
   children: ReactNode | ((props: ActionFormRenderProps) => ReactNode);
   className?: string;
-  disabled?: boolean;
-  pendingLabel?: ReactNode;
   /**
    * Show the message when the Action returns `{ ok: true }`. Defaults to true:
    * a returned success message is meant to be shown. Callers that redirect
    * never produce this state; pass `false` to suppress one.
    */
   showSuccess?: boolean;
-  submitClassName?: string;
-  submitLabel?: ReactNode;
-  submitVariant?: ButtonProps["variant"];
 }
 
 export const ActionForm = ({
   action,
   children,
   className,
-  disabled,
-  pendingLabel,
   showSuccess = true,
-  submitClassName,
-  submitLabel,
-  submitVariant,
 }: ActionFormProps) => {
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -148,17 +155,6 @@ export const ActionForm = ({
         <FormMessage variant={state.ok ? "success" : "destructive"}>
           {state.message}
         </FormMessage>
-      ) : null}
-
-      {submitLabel ? (
-        <Button
-          className={submitClassName}
-          disabled={isPending || disabled}
-          type="submit"
-          variant={submitVariant}
-        >
-          {isPending ? (pendingLabel ?? submitLabel) : submitLabel}
-        </Button>
       ) : null}
     </form>
   );

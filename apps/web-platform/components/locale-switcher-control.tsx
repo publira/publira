@@ -12,4 +12,11 @@
  * and the whole control lands in the client graph; only the Server Action and
  * the resolved copy cross the boundary. Same split as `action-form.tsx`.
  */
-export { LocaleSwitcher } from "@publira/ui-components/locale-switcher";
+export {
+  LocaleSwitcher,
+  LocaleSwitcherContent,
+  LocaleSwitcherOption,
+  LocaleSwitcherOptions,
+  LocaleSwitcherTitle,
+  LocaleSwitcherTrigger,
+} from "@publira/ui-components/locale-switcher";

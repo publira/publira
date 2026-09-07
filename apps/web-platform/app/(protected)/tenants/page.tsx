@@ -9,7 +9,12 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { Input } from "@publira/ui-components/input";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
@@ -167,10 +172,18 @@ const TenantsContent = async ({
         </Form>
 
         {result.ok ? null : (
-          <SectionError
-            description={result.message}
-            title={getMessage(messages, "platform.tenants.load_failed")}
-          />
+          <SectionError>
+            <SectionErrorHeading>
+              <SectionErrorTitle>
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="platform.tenants.load_failed" />
+                </Suspense>
+              </SectionErrorTitle>
+              <SectionErrorDescription>
+                {result.message}
+              </SectionErrorDescription>
+            </SectionErrorHeading>
+          </SectionError>
         )}
 
         <Table>

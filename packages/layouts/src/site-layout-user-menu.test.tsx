@@ -8,6 +8,7 @@ import {
   SiteLayoutUserMenu,
   SiteLayoutUserMenuContent,
   SiteLayoutUserMenuLogout,
+  SiteLayoutUserMenuLogoutButton,
   SiteLayoutUserMenuMyPageLink,
   SiteLayoutUserMenuSeparator,
   SiteLayoutUserMenuTrigger,
@@ -27,14 +28,16 @@ vi.mock("next/link", () => ({
 const renderMenu = (logoutAction = () => {}) =>
   render(
     <SiteLayoutUserMenu>
-      <SiteLayoutUserMenuTrigger ariaLabel="Account menu" />
+      <SiteLayoutUserMenuTrigger aria-label="Account menu" />
       <SiteLayoutUserMenuContent>
         <SiteLayoutUserMenuMyPageLink href="/en/my">
           My Page
         </SiteLayoutUserMenuMyPageLink>
         <SiteLayoutUserMenuSeparator />
-        <SiteLayoutUserMenuLogout action={logoutAction} ariaLabel="Sign out">
-          Sign out
+        <SiteLayoutUserMenuLogout action={logoutAction}>
+          <SiteLayoutUserMenuLogoutButton>
+            Sign out
+          </SiteLayoutUserMenuLogoutButton>
         </SiteLayoutUserMenuLogout>
       </SiteLayoutUserMenuContent>
     </SiteLayoutUserMenu>

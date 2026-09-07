@@ -17,7 +17,19 @@ export {
 } from "./card";
 export { Checkbox } from "./checkbox";
 export type { CheckboxProps } from "./checkbox";
-export { Combobox, MultiCombobox } from "./combobox";
+export {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItems,
+  ComboboxPopup,
+  MultiCombobox,
+  MultiComboboxChip,
+  MultiComboboxChipRemove,
+  MultiComboboxChips,
+  MultiComboboxInput,
+  MultiComboboxInputGroup,
+} from "./combobox";
 export type {
   ComboboxItem,
   ComboboxProps,
@@ -26,6 +38,14 @@ export type {
 } from "./combobox";
 export {
   ConfirmDialog,
+  ConfirmDialogAction,
+  ConfirmDialogCancel,
+  ConfirmDialogContent,
+  ConfirmDialogDescription,
+  ConfirmDialogFooter,
+  ConfirmDialogHeader,
+  ConfirmDialogTitle,
+  ConfirmDialogTrigger,
   Dialog,
   DialogBackdrop,
   DialogClose,
@@ -37,9 +57,14 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./dialog";
-export type { ConfirmDialogProps } from "./dialog";
-export { EmptyState } from "./empty-state";
-export type { EmptyStateProps } from "./empty-state";
+export {
+  EmptyState,
+  EmptyStateActions,
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateIcon,
+  EmptyStateTitle,
+} from "./empty-state";
 export {
   Field,
   FieldContent,
@@ -62,11 +87,15 @@ export { Input } from "./input";
 export type { InputProps } from "./input";
 export { LinkButton } from "./button";
 export type { LinkButtonProps } from "./button";
-export { LocaleSwitcher } from "./locale-switcher";
-export type {
+export {
+  LocaleSwitcher,
+  LocaleSwitcherContent,
   LocaleSwitcherOption,
-  LocaleSwitcherProps,
+  LocaleSwitcherOptions,
+  LocaleSwitcherTitle,
+  LocaleSwitcherTrigger,
 } from "./locale-switcher";
+export type { LocaleSwitcherProps } from "./locale-switcher";
 export {
   Popover,
   PopoverContent,
@@ -76,11 +105,12 @@ export {
 export type { PopoverContentProps } from "./popover";
 export { RadioGroup } from "./radio-group";
 export type { RadioGroupProps } from "./radio-group";
-export { SectionError, sectionErrorFallback } from "./section-error";
-export type {
-  SectionErrorDigest,
-  SectionErrorFallbackProps,
-  SectionErrorProps,
+export {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
 } from "./section-error";
 export { Select } from "./select";
 export type { SelectProps } from "./select";

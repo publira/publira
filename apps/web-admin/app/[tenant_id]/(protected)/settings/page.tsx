@@ -1,5 +1,10 @@
 import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -87,7 +92,6 @@ const tenantDefaultLocaleOptions = (): TenantDefaultLocaleFormOption[] =>
 const SettingsForms = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
 
   const [
     settingsResult,
@@ -125,10 +129,18 @@ const SettingsForms = async () => {
           initialSettings={settingsResult.settings}
         />
       ) : (
-        <SectionError
-          description={settingsResult.message}
-          title={getMessage(messages, "admin.settings.section_error")}
-        />
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.settings.section_error" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>
+              {settingsResult.message}
+            </SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
       )}
 
       <TenantTimezoneForm

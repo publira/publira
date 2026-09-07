@@ -1,4 +1,9 @@
-export { ActionForm, ActionFormSubmit } from "./action-form";
+export {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "./action-form";
 export type {
   ActionFormProps,
   ActionFormRenderProps,

@@ -8,8 +8,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
-import { SectionError } from "@publira/ui-components/section-error";
+import {
+  EmptyState,
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
@@ -26,7 +36,6 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
 
 import { defaultNotificationsPageSize } from "../_lib/search-params";
 import type { NotificationItem } from "../notification-types";
@@ -70,7 +79,6 @@ const renderNotificationListBody = ({
   listErrorMessage,
   locale,
   markReadAriaLabel,
-  messages,
   notifications,
   timeZone,
 }: {
@@ -78,40 +86,55 @@ const renderNotificationListBody = ({
   listErrorMessage?: string;
   locale: Locale;
   markReadAriaLabel: (title: string) => string;
-  messages: PlatformMessages;
   notifications: NotificationItem[];
   timeZone: string;
 }) => {
   if (listErrorMessage) {
     return (
-      <SectionError
-        description={listErrorMessage}
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="platform.notifications.list_error" />
-          </Suspense>
-        }
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="platform.notifications.list_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
   if (notifications.length === 0) {
     return hasPageLinks ? (
-      <EmptyState
-        description={getMessage(
-          messages,
-          "platform.notifications.empty_page_description"
-        )}
-        title={getMessage(messages, "platform.notifications.empty_page_title")}
-      />
+      <EmptyState>
+        <EmptyStateHeading>
+          <EmptyStateTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="platform.notifications.empty_page_title" />
+            </Suspense>
+          </EmptyStateTitle>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="platform.notifications.empty_page_description" />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyStateHeading>
+      </EmptyState>
     ) : (
-      <EmptyState
-        description={getMessage(
-          messages,
-          "platform.notifications.empty_description"
-        )}
-        title={getMessage(messages, "platform.notifications.empty_title")}
-      />
+      <EmptyState>
+        <EmptyStateHeading>
+          <EmptyStateTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="platform.notifications.empty_title" />
+            </Suspense>
+          </EmptyStateTitle>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="platform.notifications.empty_description" />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyStateHeading>
+      </EmptyState>
     );
   }
 
@@ -240,7 +263,6 @@ export const NotificationManager = async ({
             getMessage(messages, "platform.notifications.mark_read_aria", {
               title,
             }),
-          messages,
           notifications,
           timeZone,
         })}
