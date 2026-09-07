@@ -21,7 +21,7 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 | `reader_email_changed_notice` | to the previous address once the change completes | `tenant_name`, `previous_email`, `new_email` |
 | `reader_password_reset` | reader password reset | `tenant_name`, `reset_url`, `expires_at` |
 | `reader_password_changed_notice` | to a reader whose password was changed | `tenant_name`, `email`, `reset_url` |
-| `reader_signup_attempt_notice` | to an address a sign-up tried to reuse | `tenant_name`, `email`, `reset_url` |
+| `reader_signup_attempt_notice` | to an address a sign-up tried to reuse | `tenant_name`, `email`, `account_state`, `action_url` |
 | `admin_console_email_change_confirmation` | admin console address change | `tenant_name`, `confirm_url`, `recipient_kind`, `current_email`, `new_email`, `expires_at` |
 | `admin_console_email_changed_notice` | admin console, to the previous address | `tenant_name`, `previous_email`, `new_email` |
 | `admin_console_password_reset` | admin console password reset | `tenant_name`, `reset_url`, `expires_at` |
@@ -34,6 +34,8 @@ Template IDs and variable names are snake_case. The copy lives under `email.*` i
 `tenant_name` is who the mail is from. It opens the subject line, and `EmailLayout` shows it as the sender above the card and repeats it in the footer: a reader signed up on the tenant's site and never met the platform, so a mail a tenant owns is branded with the tenant throughout. The platform console's mails take no `tenant_name` because they belong to no tenant — those, and `sample`, are the only ones that say Publira.
 
 `recipient_kind` is `current_email` or `new_email` — both sides of an address change confirm, and the sender says which side it is addressing.
+
+`account_state` is `confirmed` or `unconfirmed`, and it picks both the copy and what `action_url` is expected to point at: the reset form for an account that can be signed into, the resend form for one whose address is still waiting to be confirmed.
 
 `resolveEmail` and `renderEmail` answer `{ ok: false, reason }` rather than throwing; `src/registry.test.ts` is the specification of what each `reason` means.
 

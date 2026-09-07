@@ -607,11 +607,51 @@ func TestReaderSignupAttemptNoticeEmailGoesToTheAccountOwner(t *testing.T) {
 	}
 	// The reset form, with no token: the notice reports an attempt on an
 	// account it must never act on.
-	if url, _ := request.Data["reset_url"].(string); url != "https://"+tenant.Domain+"/reset-password" {
-		t.Fatalf("reset_url = %v", request.Data["reset_url"])
+	if request.Data["account_state"] != "confirmed" {
+		t.Fatalf("account_state = %v, want confirmed", request.Data["account_state"])
+	}
+	if url, _ := request.Data["action_url"].(string); url != "https://"+tenant.Domain+"/reset-password" {
+		t.Fatalf("action_url = %v", request.Data["action_url"])
 	}
 	if request.Data["email"] != reader.Email {
 		t.Fatalf("email = %v, want %s", request.Data["email"], reader.Email)
+	}
+	if len(mailer.recipients) != 1 || mailer.recipients[0] != reader.Email {
+		t.Fatalf("recipients = %v, want [%s]", mailer.recipients, reader.Email)
+	}
+}
+
+// A reset sets a password an account whose address is unconfirmed still cannot
+// sign in with, so the notice its owner receives names the one page that does
+// help: the form that mails a fresh confirmation link.
+func TestReaderSignupAttemptNoticeEmailSendsAnUnconfirmedAccountToTheResendForm(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	reader := pg.SeedUnverifiedEndUser(t, tenant.ID, "READEROUTB12", "reader@example.com", "Reader")
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{}
+	handler := outbox.NewReaderSignupAttemptNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	attemptID := uuid.Must(uuid.NewV7())
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderSignupAttemptNoticeEmail,
+		outbox.ReaderSignupAttemptNoticeEmailPayload{TenantID: tenant.ID.String(), UserID: reader.ID.String()},
+		"reader_signup_attempt_notice_email:"+attemptID.String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 1 {
+		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
+	}
+	request := renderer.requests[0]
+	if request.Data["account_state"] != "unconfirmed" {
+		t.Fatalf("account_state = %v, want unconfirmed", request.Data["account_state"])
+	}
+	// The resend form, with no token: the attempt may have been made by someone
+	// other than the owner, so what it produces must not confirm the address.
+	if url, _ := request.Data["action_url"].(string); url != "https://"+tenant.Domain+"/resend-verification" {
+		t.Fatalf("action_url = %v", request.Data["action_url"])
 	}
 	if len(mailer.recipients) != 1 || mailer.recipients[0] != reader.Email {
 		t.Fatalf("recipients = %v, want [%s]", mailer.recipients, reader.Email)

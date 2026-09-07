@@ -57,5 +57,6 @@ DELETE FROM users
 WHERE tenant_id = (SELECT id FROM tenants WHERE domain = 'localhost')
   AND email IN (
       'account-lifecycle-new@example.com',
-      'account-lifecycle-expired@example.com'
+      'account-lifecycle-expired@example.com',
+      'account-lifecycle-unconfirmed@example.com'
   );

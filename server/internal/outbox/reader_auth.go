@@ -454,8 +454,8 @@ func NewReaderPasswordChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler 
 // NewReaderSignupAttemptNoticeEmailHandler tells a reader that a sign-up was
 // attempted with their address. The sign-up itself is answered as though the
 // address were free, so this mail is the only report the attempt produces, and
-// it carries no link that acts on the account — only the way back in for
-// someone who forgot they already had one.
+// it carries no link that acts on the account — only the page that leads back
+// into the account the reader already has.
 func NewReaderSignupAttemptNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 	queries := dbmodels.New(cfg.DB)
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
@@ -492,18 +492,28 @@ func NewReaderSignupAttemptNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 		if !reader.TenantID.Valid || reader.TenantID.UUID != tenantID {
 			return Permanent(fmt.Errorf("reader %s does not belong to tenant %s", readerID, tenantID))
 		}
-		resetURL, err := tenantSiteURL(delivery.tenant, "/reset-password")
+		// Which way back in the notice offers is the account's state at the
+		// moment it goes out. A reset sets a password an unconfirmed account
+		// still cannot sign in with, so the one page that helps there is the
+		// resend form; both are pages the recipient has to fill in themselves,
+		// which is what keeps the attempt from reaching the account.
+		accountState, actionPath := "confirmed", "/reset-password"
+		if !reader.EmailVerifiedAt.Valid {
+			accountState, actionPath = "unconfirmed", "/resend-verification"
+		}
+		actionURL, err := tenantSiteURL(delivery.tenant, actionPath)
 		if err != nil {
-			return Permanent(fmt.Errorf("build reader password reset url: %w", err))
+			return Permanent(fmt.Errorf("build reader signup attempt notice url: %w", err))
 		}
 
 		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
 			Template: "reader_signup_attempt_notice",
 			Locale:   delivery.locale,
 			Data: map[string]any{
-				"email":       reader.Email,
-				"reset_url":   resetURL,
-				"tenant_name": delivery.tenantName,
+				"account_state": accountState,
+				"action_url":    actionURL,
+				"email":         reader.Email,
+				"tenant_name":   delivery.tenantName,
 			},
 			TimeZone: delivery.timeZone,
 		})

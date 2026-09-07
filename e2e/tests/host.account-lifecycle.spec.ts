@@ -16,6 +16,7 @@ import {
   ACCOUNT_LIFECYCLE_RESET_PASSWORD,
   ACCOUNT_LIFECYCLE_SCENARIO,
   ACCOUNT_LIFECYCLE_SIGNUP,
+  ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP,
   ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL,
 } from "../src/scenarios/account-lifecycle";
 import {
@@ -34,6 +35,7 @@ const hostUrl = (pathname: string): string =>
 const VERIFY_PATH = "/verify";
 const CONFIRM_PASSWORD_PATH = "/confirm-password";
 const RESET_PASSWORD_PATH = "/reset-password";
+const RESEND_VERIFICATION_PATH = "/resend-verification";
 
 /**
  * The pending page says the same thing for a free address and a registered one,
@@ -213,6 +215,7 @@ test.describe("web-host reader account lifecycle", () => {
     await Promise.all([
       clearMessagesTo(ACCOUNT_LIFECYCLE_SIGNUP.email),
       clearMessagesTo(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email),
+      clearMessagesTo(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email),
       clearMessagesTo(ACCOUNT_LIFECYCLE_MEMBER.email),
       clearMessagesTo(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL),
     ]);
@@ -314,8 +317,60 @@ test.describe("web-host reader account lifecycle", () => {
     const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
     expect(message.subject).toBe(SIGNUP_ATTEMPT_SUBJECT);
     expect(message.text).toContain(RESET_PASSWORD_PATH);
+    expect(message.text).not.toContain(RESEND_VERIFICATION_PATH);
     // Nothing that confirms an address: whoever submitted the form must not be
     // able to reach this account through the mail their attempt produced.
+    expect(() => tokenFromLink(message, VERIFY_PATH)).toThrow();
+  });
+
+  /**
+   * The same attempt on an account that is registered but still unconfirmed.
+   * A reset would set a password that account cannot be signed into with, so
+   * the notice its owner receives names the resend page instead.
+   */
+  test("signing up with an unconfirmed address tells its owner how to finish the first sign-up", async ({
+    page,
+  }) => {
+    await submitSignup(page, ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP);
+    await page.waitForURL(/\/signup\/pending\/?$/u);
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe(
+      false
+    );
+    // The verification mail that sign-up sent is not the one under test, and
+    // the notice below is read as the newest message at this address.
+    await clearMessagesTo(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email);
+
+    await submitSignup(page, {
+      email: ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email,
+      name: "Unconfirmed Impersonating Signup",
+      password: "another-password",
+    });
+
+    await page.waitForURL(/\/signup\/pending\/?$/u);
+    await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
+    expect(await sessionCookie(page)).toBeUndefined();
+
+    // The waiting account is as its first sign-up left it: one account, under
+    // the name that created it, still inactive and still unconfirmed.
+    expect(accountCount(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe("1");
+    expect(accountName(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe(
+      ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.name
+    );
+    expect(accountStatus(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe(
+      "inactive"
+    );
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe(
+      false
+    );
+
+    const message = await waitForMessageTo(
+      ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email
+    );
+    expect(message.subject).toBe(SIGNUP_ATTEMPT_SUBJECT);
+    expect(message.text).toContain(RESEND_VERIFICATION_PATH);
+    expect(message.text).not.toContain(RESET_PASSWORD_PATH);
+    // The resend page is a form the owner fills in themselves: the attempt
+    // produces no link that confirms the address on its own.
     expect(() => tokenFromLink(message, VERIFY_PATH)).toThrow();
   });
 

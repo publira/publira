@@ -58,3 +58,11 @@ export const displayNameField = (name: string) =>
  * rather than the handler picking a template per side.
  */
 export const recipientKindField = () => z.enum(["current_email", "new_email"]);
+
+/**
+ * Whether the account a mail talks about has had its email address confirmed.
+ * The two states have different ways back in — a confirmed account is reached
+ * through the reset form, an unconfirmed one only through a new confirmation
+ * mail — so the sender says which one it found and the copy follows it.
+ */
+export const accountStateField = () => z.enum(["confirmed", "unconfirmed"]);
