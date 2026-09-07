@@ -95,6 +95,20 @@ message ConfirmPasswordResetResponse {
   bool confirmed = 1;
 }
 
+message ChangePasswordRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string current_password = 2;
+  string new_password = 3;
+}
+
+message ChangePasswordResponse {
+  // A change bumps credentials_version, which ends every token minted before
+  // it — including the one that carried this request. The replacement is handed
+  // back here so the reader who made the change keeps the session they made it
+  // from, while every other device has to sign in again.
+  publira.types.v1.AccessToken access_token = 1;
+}
+
 message LogoutRequest {
   publira.types.v1.TenantContext tenant = 1;
 }
@@ -211,6 +225,7 @@ service AuthService {
   rpc ConfirmEmailChange(ConfirmEmailChangeRequest) returns (ConfirmEmailChangeResponse) {}
   rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse) {}
   rpc ConfirmPasswordReset(ConfirmPasswordResetRequest) returns (ConfirmPasswordResetResponse) {}
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {}
   rpc Logout(LogoutRequest) returns (LogoutResponse) {}
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
   rpc UpdateMe(UpdateMeRequest) returns (UpdateMeResponse) {}

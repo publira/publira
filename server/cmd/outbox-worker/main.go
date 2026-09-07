@@ -153,6 +153,7 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeReaderEmailChangeConfirmationEmail, outbox.NewReaderEmailChangeConfirmationEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypeReaderEmailChangedNoticeEmail, outbox.NewReaderEmailChangedNoticeEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypeReaderPasswordResetEmail, outbox.NewReaderPasswordResetEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderPasswordChangedNoticeEmail, outbox.NewReaderPasswordChangedNoticeEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypeReaderSignupAttemptNoticeEmail, outbox.NewReaderSignupAttemptNoticeEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypeAdminPasswordResetEmail, outbox.NewAdminPasswordResetEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypeAdminEmailChangeConfirmationEmail, outbox.NewAdminEmailChangeConfirmationEmailHandler(emailHandlers))

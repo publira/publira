@@ -512,6 +512,72 @@ func TestReaderEmailChangedNoticeEmailFailsPermanentlyOnAnIncompleteRequest(t *t
 	}
 }
 
+// A change made by someone who got hold of the old password tells the account's
+// owner nothing by itself, so the mail is the one report of it — and the reset
+// form is the only link it carries, because whoever made the change already
+// knows the new password.
+func TestReaderPasswordChangedNoticeEmailGoesToTheAccountOwner(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	reader := pg.SeedEndUser(t, tenant.ID, "READEROUTB14", "reader@example.com", "Reader")
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{}
+	handler := outbox.NewReaderPasswordChangedNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderPasswordChangedNoticeEmail,
+		outbox.ReaderPasswordChangedNoticeEmailPayload{TenantID: tenant.ID.String(), UserID: reader.ID.String()},
+		"reader_password_changed_notice_email:"+reader.ID.String()+":2")
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 1 {
+		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
+	}
+	request := renderer.requests[0]
+	if request.Template != "reader_password_changed_notice" {
+		t.Fatalf("template = %q, want reader_password_changed_notice", request.Template)
+	}
+	if url, _ := request.Data["reset_url"].(string); url != "https://"+tenant.Domain+"/reset-password" {
+		t.Fatalf("reset_url = %v", request.Data["reset_url"])
+	}
+	if request.Data["email"] != reader.Email {
+		t.Fatalf("email = %v, want %s", request.Data["email"], reader.Email)
+	}
+	if len(mailer.recipients) != 1 || mailer.recipients[0] != reader.Email {
+		t.Fatalf("recipients = %v, want [%s]", mailer.recipients, reader.Email)
+	}
+}
+
+// The worker reads past RLS, so the account a payload names is not necessarily
+// one of the tenant's readers.
+func TestReaderPasswordChangedNoticeEmailRejectsAnAccountOfAnotherTenant(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	other := pg.SeedTenant(t, "READEROUT003", "other-password-outbox.example.com", "Other Password Outbox Tenant")
+	stranger := pg.SeedEndUser(t, other.ID, "READEROUTB15", "stranger@example.com", "Stranger")
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{}
+	handler := outbox.NewReaderPasswordChangedNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderPasswordChangedNoticeEmail,
+		outbox.ReaderPasswordChangedNoticeEmailPayload{TenantID: tenant.ID.String(), UserID: stranger.ID.String()},
+		"reader_password_changed_notice_email:"+stranger.ID.String()+":2")
+
+	err := handler(context.Background(), event)
+	if err == nil {
+		t.Fatal("handler returned no error for an account of another tenant")
+	}
+	if !outbox.IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a permanent failure", err)
+	}
+	if len(mailer.recipients) != 0 {
+		t.Fatalf("sent %d, want none", len(mailer.recipients))
+	}
+}
+
 // The sign-up that produced this event was answered as if the address were
 // free, so the mail is the only report of it, and the account's own address is
 // the only place it may go.
