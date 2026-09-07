@@ -47,6 +47,7 @@ const INDENT = "  ";
 const CLASS_MEMBERS = new Set([
   "forLocale",
   "intlLocale",
+  "likelyScripts",
   "of",
   "supportedLocales",
 ]);
@@ -242,6 +243,64 @@ const dartLocale = (code: string): string => {
   ];
 
   return `Locale.fromSubtags(${fields.join(", ")})`;
+};
+
+const REGION_LETTERS = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+
+/**
+ * Every region subtag BCP 47 allows: two letters, or the three digits of a
+ * UN M.49 area.
+ */
+const REGION_SUBTAGS: readonly string[] = [
+  ...REGION_LETTERS.flatMap((first) =>
+    REGION_LETTERS.map((second) => `${first}${second}`)
+  ),
+  ...Array.from({ length: 999 }, (_unused, index) =>
+    String(index + 1).padStart(3, "0")
+  ),
+];
+
+/**
+ * The script each language of `locales` is likeliest written in, keyed by the
+ * language alone and, where the answer differs, by the language and a region:
+ * Chinese is Simplified as `zh` and Traditional as `zh-TW`, so a device set to
+ * `zh-TW` reads the Traditional catalog rather than whichever Chinese one
+ * `locales/index.json` lists first.
+ *
+ * `Intl.Locale.prototype.maximize()` is the BCP 47 likely-subtags derivation,
+ * which is why the entries below are computed rather than written by hand.
+ * The app cannot perform it at runtime — a `dart:ui` `Locale` holds the
+ * subtags it was given and completes none of them — so the answers it needs
+ * are compiled in.
+ */
+const likelyScripts = (
+  locales: readonly DartLocale[]
+): ReadonlyMap<string, string> => {
+  const scripts = new Map<string, string>();
+  const seen = new Set<string>();
+  for (const { code } of locales) {
+    const [language] = code.split("-");
+    if (seen.has(language)) {
+      continue;
+    }
+    seen.add(language);
+
+    const languageScript = new Intl.Locale(language).maximize().script;
+    if (languageScript === undefined) {
+      continue;
+    }
+    scripts.set(language, languageScript);
+
+    for (const region of REGION_SUBTAGS) {
+      const regionScript = new Intl.Locale(`${language}-${region}`).maximize()
+        .script;
+      if (regionScript !== undefined && regionScript !== languageScript) {
+        scripts.set(`${language}-${region}`, regionScript);
+      }
+    }
+  }
+
+  return scripts;
 };
 
 const subclassName = (code: string): string =>
@@ -448,6 +507,22 @@ export const renderDartMessages = (
       "static const supportedLocales = <Locale>[",
       locales.map(({ code }) => dartLocale(code)),
       "];"
+    ),
+    "",
+    `${INDENT}/// The script a locale that names none is likeliest written in, keyed`,
+    `${INDENT}/// by its language and, where that answer differs, by its language and`,
+    `${INDENT}/// region.`,
+    `${INDENT}///`,
+    `${INDENT}/// \`matchDeviceLocale\` reads it, so a device asking for a language two`,
+    `${INDENT}/// catalogs share reaches the one written in the script the device`,
+    `${INDENT}/// implies.`,
+    fitted(
+      INDENT,
+      "static const likelyScripts = <String, String>{",
+      [...likelyScripts(locales)].map(
+        ([tag, script]) => `'${tag}': '${script}'`
+      ),
+      "};"
     ),
     "",
     `${INDENT}/// The catalog whose code is [locale]'s language tag, or \`null\` when`,

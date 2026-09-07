@@ -76,23 +76,66 @@ const parseElement = (element: string): WeightedRange | undefined => {
 };
 
 /**
- * The supported locale a single range asks for: the code itself when the range
- * names one, otherwise the base language a subtagged range such as `en-US` or
- * `zh-Hant-TW` belongs to. Tags are case-insensitive, and `locales/index.json`
- * holds the canonical casing.
+ * The language and script `tag` stands for once BCP 47 likely subtags have
+ * filled in what it leaves out: `zh-Hant-TW` and `zh-TW` are both `zh-Hant`,
+ * `zh-CN` and a bare `zh` are both `zh-Hans`, and `ko-KR` is `ko-Kore`.
+ *
+ * `Intl.Locale.prototype.maximize()` is that derivation, so the region a tag
+ * names decides its script from the same data the rest of the platform reads
+ * rather than from a table kept here.
+ *
+ * `undefined` when the tag is not one BCP 47 can hold —
+ * {@link LANGUAGE_RANGE_PATTERN} admits shapes such as `abcd` that RFC 9110
+ * allows and BCP 47 does not — or when the language has no likely script.
  */
-const matchSupportedLocale = (range: string): Locale | undefined => {
+const languageAndScript = (tag: string): string | undefined => {
+  try {
+    const { language, script } = new Intl.Locale(tag).maximize();
+
+    return script === undefined ? undefined : `${language}-${script}`;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * The locale of `supported` a single range asks for, tried from the most
+ * specific match to the least: the code itself, then a locale written in the
+ * same language and script, then any locale in the same language. `en-GB`
+ * reaches `en` at the second step and `zh-TW` reaches `zh-Hant` rather than
+ * whichever Chinese locale `supported` lists first; the third step is what a
+ * range such as `zh-Latn-PY`, whose script no locale here is written in,
+ * still matches through.
+ *
+ * Tags are case-insensitive, and `supported` holds the canonical casing. When
+ * several entries match equally well the first one listed wins, so the order
+ * of `locales/index.json` breaks the tie.
+ */
+export const matchSupportedLocale = <T extends string>(
+  range: string,
+  supported: readonly T[]
+): T | undefined => {
   const wanted = range.toLowerCase();
-  const exact = SUPPORTED_LOCALES.find(
-    (locale) => locale.toLowerCase() === wanted
-  );
+  const exact = supported.find((locale) => locale.toLowerCase() === wanted);
   if (exact !== undefined) {
     return exact;
   }
 
-  const [base] = wanted.split("-");
+  const wantedLanguageAndScript = languageAndScript(range);
+  if (wantedLanguageAndScript !== undefined) {
+    const sameScript = supported.find(
+      (locale) => languageAndScript(locale) === wantedLanguageAndScript
+    );
+    if (sameScript !== undefined) {
+      return sameScript;
+    }
+  }
 
-  return SUPPORTED_LOCALES.find((locale) => locale.toLowerCase() === base);
+  const [language] = wanted.split("-");
+
+  return supported.find(
+    (locale) => locale.toLowerCase().split("-")[0] === language
+  );
 };
 
 /**
@@ -128,7 +171,7 @@ export const negotiateInitialLocale = (
   accepted.sort((a, b) => b.weight - a.weight);
 
   for (const { range } of accepted) {
-    const locale = matchSupportedLocale(range);
+    const locale = matchSupportedLocale(range, SUPPORTED_LOCALES);
     if (locale !== undefined) {
       return locale;
     }
