@@ -58,15 +58,44 @@ class FakeCatalogRepository implements CatalogRepository {
 String episodeKey(String seriesPublicId, String episodePublicId) =>
     '$seriesPublicId/$episodePublicId';
 
-const fixtureSeries = <SeriesItem>[
+/// Headers the repository resolves for a public image request.
+const fixtureImageHeaders = {'x-forwarded-host': 'localhost'};
+
+/// Cover renditions of [fixtureSeries]' first series, in the widths the server
+/// stores. The second series carries none, which is what shows the
+/// placeholder.
+final fixtureEyeCatchVariants = <EyeCatchVariant>[
+  for (final width in [400, 800, 1200])
+    EyeCatchVariant(
+      variantType: 'portrait',
+      url: Uri.parse(
+        'http://images.test/images/series/SeedSIMGAAA1/portrait/$width',
+      ),
+      width: width,
+      height: width * 4 ~/ 3,
+    ),
+  for (final width in [800, 1600])
+    EyeCatchVariant(
+      variantType: 'landscape',
+      url: Uri.parse(
+        'http://images.test/images/series/SeedSIMGAAA1/landscape/$width',
+      ),
+      width: width,
+      height: width * 9 ~/ 16,
+    ),
+];
+
+final fixtureSeries = <SeriesItem>[
   SeriesItem(
     id: 'SeedSERSAAA1',
     title: 'Seed Series 001',
     description: 'A published series of Seed Tenant.',
     episodeCount: 10,
     labelName: 'Seed Label 01',
+    eyeCatchVariants: fixtureEyeCatchVariants,
+    imageRequestHeaders: fixtureImageHeaders,
   ),
-  SeriesItem(
+  const SeriesItem(
     id: 'series-kitchen',
     title: 'The Little Kitchen',
     description: 'Everyday cooking, one plate at a time.',

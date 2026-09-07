@@ -94,6 +94,7 @@ class PubliraApp extends StatefulWidget {
         ),
         library: library,
         readerId: () => auth.session?.userPublicId ?? '',
+        imageRequestHeaders: resolved.publicImageRequestHeaders,
       ),
       auth: auth,
       offline: library,

@@ -123,6 +123,35 @@ void main() {
     expect(restored.single.description, 'Summer holidays');
   });
 
+  test('a saved catalog keeps the cover renditions of its series', () async {
+    await open().writeSeriesList([
+      SeriesItem(
+        id: _seriesId,
+        title: 'Seed Series 001',
+        description: 'Summer holidays',
+        eyeCatchVariants: [
+          EyeCatchVariant(
+            variantType: 'portrait',
+            url: Uri.parse('http://images.test/images/series/IMG/portrait/800'),
+            width: 800,
+            height: 1066,
+          ),
+        ],
+      ),
+    ]);
+
+    final restored = await open().readSeriesList();
+
+    final cover = restored!.single.eyeCatchVariants.single;
+    expect(cover.variantType, 'portrait');
+    expect(
+      cover.url.toString(),
+      'http://images.test/images/series/IMG/portrait/800',
+    );
+    expect(cover.width, 800);
+    expect(cover.height, 1066);
+  });
+
   test('a catalog that was never saved reads as absent', () async {
     expect(await open().readSeriesList(), isNull);
   });

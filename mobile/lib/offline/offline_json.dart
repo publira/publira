@@ -74,12 +74,18 @@ class OfflineIndex {
   }
 }
 
+// The request headers are left out the way a body page's are: they name the
+// tenant this build was pointed at rather than anything the API said, and the
+// screen that reads a saved series has the live ones in hand.
 Map<String, Object?> _seriesToJson(SeriesItem series) => {
   'id': series.id,
   'title': series.title,
   'description': series.description,
   'episodeCount': series.episodeCount,
   'labelName': series.labelName,
+  'eyeCatchVariants': [
+    for (final variant in series.eyeCatchVariants) _variantToJson(variant),
+  ],
 };
 
 SeriesItem? _seriesFromJson(Object? decoded) {
@@ -90,12 +96,44 @@ SeriesItem? _seriesFromJson(Object? decoded) {
   if (id.isEmpty) {
     return null;
   }
+  final rawVariants = decoded['eyeCatchVariants'];
   return SeriesItem(
     id: id,
     title: _string(decoded['title']),
     description: _string(decoded['description']),
     episodeCount: _int(decoded['episodeCount']),
     labelName: _string(decoded['labelName']),
+    eyeCatchVariants: [
+      for (final item in rawVariants is List ? rawVariants : const [])
+        ?_variantFromJson(item),
+    ],
+  );
+}
+
+Map<String, Object?> _variantToJson(EyeCatchVariant variant) => {
+  'variantType': variant.variantType,
+  'url': variant.url.toString(),
+  'width': variant.width,
+  'height': variant.height,
+};
+
+EyeCatchVariant? _variantFromJson(Object? decoded) {
+  if (decoded is! Map) {
+    return null;
+  }
+  final rawUrl = _string(decoded['url']);
+  final url = rawUrl.isEmpty ? null : Uri.tryParse(rawUrl);
+  // A cover is written down already resolved against the image base, so a
+  // relative reference is a record this build cannot address; keeping it would
+  // spend a failed request to arrive at the placeholder it starts as.
+  if (url == null || !url.isAbsolute) {
+    return null;
+  }
+  return EyeCatchVariant(
+    variantType: _string(decoded['variantType']),
+    url: url,
+    width: _int(decoded['width']),
+    height: _int(decoded['height']),
   );
 }
 

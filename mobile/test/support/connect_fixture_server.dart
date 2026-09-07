@@ -38,6 +38,9 @@ class ConnectFixtureServer {
   static const seedSeriesId = 'SeedSERSAAA1';
   static const seedSeriesTitle = 'Seed Series 001';
   static const seedSeriesSynopsis = 'Seed series synopsis for Seed Series 001';
+
+  /// The stored eye-catch image the seed series' cover URLs address.
+  static const seedSeriesImageId = '018f0e6a-2000-7000-8000-000000000001';
   static const seedEpisodeId = 'SeedEPSDAAA1';
   static const seedEpisodeTitle = 'Seed Episode 001-01';
   static const seedEpisodePageCount = 3;
@@ -92,6 +95,32 @@ class ConnectFixtureServer {
     'hwGA60e6kgAAAABJRU5ErkJggg==',
   );
 
+  /// Cover renditions of the seed series, in the shape
+  /// `SeriesEyeCatchVariant` arrives in: a host-relative URL the app resolves
+  /// against its image base.
+  static List<Map<String, Object?>> seedEyeCatchVariants() {
+    return [
+      for (final width in [400, 800, 1200])
+        {
+          'label': 'portrait_${width}w',
+          'variantType': 'portrait',
+          'url': '/images/series/$seedSeriesImageId/portrait/$width',
+          'contentType': 'image/webp',
+          'width': width,
+          'height': width * 4 ~/ 3,
+        },
+      for (final width in [800, 1600])
+        {
+          'label': 'landscape_${width}w',
+          'variantType': 'landscape',
+          'url': '/images/series/$seedSeriesImageId/landscape/$width',
+          'contentType': 'image/webp',
+          'width': width,
+          'height': width * 9 ~/ 16,
+        },
+    ];
+  }
+
   static List<Map<String, Object?>> populatedSeries() {
     return [
       {
@@ -99,6 +128,7 @@ class ConnectFixtureServer {
         'title': seedSeriesTitle,
         'synopsis': seedSeriesSynopsis,
         'label': {'name': 'Seed Label 01', 'publicId': 'SeedLABLAAA1'},
+        'eyeCatchImageVariants': seedEyeCatchVariants(),
       },
       {
         'publicId': 'series-kitchen',
@@ -184,6 +214,7 @@ class ConnectFixtureServer {
           'publicId': seedSeriesId,
           'title': seedSeriesTitle,
           'synopsis': seedSeriesSynopsis,
+          'eyeCatchImageVariants': seedEyeCatchVariants(),
         },
         'episodes': [
           {

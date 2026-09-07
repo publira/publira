@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/catalog/eye_catch.dart';
+import 'package:publira/catalog/series_cover.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
@@ -188,6 +190,19 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // 16:9 is the shape of the rendition, and on a phone it is what the
+          // banner takes. The cap is for the wide screen a tablet or a
+          // desktop window gives it, where the same ratio would push the
+          // synopsis and the episodes off the first screen.
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 220),
+            child: SeriesCover(
+              series: series,
+              preferredTypes: const [eyeCatchLandscape, eyeCatchPortrait],
+              aspectRatio: 16 / 9,
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(series.title, style: theme.textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text(

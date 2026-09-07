@@ -123,7 +123,7 @@ mobile/
 │   ├── config.dart               # --dart-define API / image / tenant configuration
 │   ├── api/                      # Connect JSON client, tenant lookup, page fetch and decryption
 │   ├── auth/                     # Session, secure storage, AuthController
-│   ├── catalog/                  # CatalogRepository
+│   ├── catalog/                  # CatalogRepository, eye-catch rendition choice and cover widget
 │   ├── crypto/                   # HMAC-SHA256 keystream shared by delivery and storage
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages

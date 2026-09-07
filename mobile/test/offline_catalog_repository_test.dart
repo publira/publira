@@ -12,6 +12,19 @@ const _seriesId = 'SeedSERSAAA1';
 const _episodeId = 'SeedEPSDAAA1';
 const _reader = 'SeedMMBRAAA1';
 
+/// What this build sends with a cover request, which is configuration rather
+/// than anything the device saved.
+const _imageHeaders = {'x-forwarded-host': 'localhost'};
+
+/// A cover as the API resolved it, which the device keeps but the headers do
+/// not travel with.
+final _coverVariant = EyeCatchVariant(
+  variantType: 'portrait',
+  url: Uri.parse('http://images.test/images/series/IMG/portrait/800'),
+  width: 800,
+  height: 1066,
+);
+
 const _network = CatalogFailure(CatalogFailureKind.network);
 const _unexpected = CatalogFailure(CatalogFailureKind.unexpected);
 
@@ -51,13 +64,15 @@ EpisodeDetail _detail({
 }
 
 SeriesDetail _seriesDetail() {
-  return const SeriesDetail(
+  return SeriesDetail(
     series: SeriesItem(
       id: _seriesId,
       title: 'Seed Series 001',
       description: 'synopsis',
+      eyeCatchVariants: [_coverVariant],
+      imageRequestHeaders: _imageHeaders,
     ),
-    episodes: [
+    episodes: const [
       EpisodeItem(
         id: _episodeId,
         title: 'Seed Episode 001-01',
@@ -76,8 +91,14 @@ void main() {
 
   setUp(() {
     origin = FakeCatalogRepository(
-      series: const [
-        SeriesItem(id: _seriesId, title: 'Seed Series 001', description: ''),
+      series: [
+        SeriesItem(
+          id: _seriesId,
+          title: 'Seed Series 001',
+          description: '',
+          eyeCatchVariants: [_coverVariant],
+          imageRequestHeaders: _imageHeaders,
+        ),
       ],
       details: {_seriesId: _seriesDetail()},
       episodes: {episodeKey(_seriesId, _episodeId): _detail()},
@@ -92,6 +113,7 @@ void main() {
       origin: origin,
       library: library,
       readerId: () => readerId,
+      imageRequestHeaders: _imageHeaders,
       clock: () => now,
     );
   }
@@ -132,6 +154,29 @@ void main() {
       expect(await failureOf(build().listSeries), CatalogFailureKind.notSaved);
     },
   );
+
+  test('a catalog read off the device can still address its covers', () async {
+    await build().listSeries();
+    origin.listError = _network;
+
+    // An unreachable API is not an unreachable image-server: the saved catalog
+    // has to come back with the headers a cover request needs.
+    final series = await build().listSeries();
+
+    expect(series.single.eyeCatchVariants.single.url, _coverVariant.url);
+    expect(series.single.imageRequestHeaders, _imageHeaders);
+  });
+
+  test('a series read off the device can still address its cover', () async {
+    await build().getSeries(_seriesId);
+    origin.detailError = _network;
+
+    final detail = await build().getSeries(_seriesId);
+
+    expect(detail!.series.eyeCatchVariants.single.url, _coverVariant.url);
+    expect(detail.series.imageRequestHeaders, _imageHeaders);
+    expect(detail.episodes.single.id, _episodeId);
+  });
 
   test('listSeries does not cover a failure that is not the network', () async {
     await build().listSeries();
