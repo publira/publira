@@ -70,6 +70,9 @@ const (
 	// CatalogServiceListRecommendedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// ListRecommendedSeries RPC.
 	CatalogServiceListRecommendedSeriesProcedure = "/publira.v1.CatalogService/ListRecommendedSeries"
+	// CatalogServiceListRankedSeriesProcedure is the fully-qualified name of the CatalogService's
+	// ListRankedSeries RPC.
+	CatalogServiceListRankedSeriesProcedure = "/publira.v1.CatalogService/ListRankedSeries"
 	// EpisodeReadServiceMarkEpisodeAsReadProcedure is the fully-qualified name of the
 	// EpisodeReadService's MarkEpisodeAsRead RPC.
 	EpisodeReadServiceMarkEpisodeAsReadProcedure = "/publira.v1.EpisodeReadService/MarkEpisodeAsRead"
@@ -141,6 +144,13 @@ type CatalogServiceClient interface {
 	// A ranking rebuilt between two pages moves the boundary the same way an
 	// unpublished series does; the token names a position, not a snapshot.
 	ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error)
+	// One page of the latest ranking snapshot for a period, in the positions
+	// that snapshot recorded. A tenant the batch has not ranked yet gets an
+	// empty list rather than an error: nothing has been computed, which is not
+	// a failure. A series unpublished since the snapshot was written drops out
+	// and leaves a gap in the positions, because a snapshot describes a past
+	// window rather than the catalogue as it stands now.
+	ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error)
 }
 
 // NewCatalogServiceClient constructs a client for the publira.v1.CatalogService service. By
@@ -208,6 +218,12 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(catalogServiceMethods.ByName("ListRecommendedSeries")),
 			connect.WithClientOptions(opts...),
 		),
+		listRankedSeries: connect.NewClient[v1.ListRankedSeriesRequest, v1.ListRankedSeriesResponse](
+			httpClient,
+			baseURL+CatalogServiceListRankedSeriesProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("ListRankedSeries")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -222,6 +238,7 @@ type catalogServiceClient struct {
 	getPublishedLabelDetail  *connect.Client[v1.GetPublishedLabelDetailRequest, v1.GetPublishedLabelDetailResponse]
 	searchPublishedSeries    *connect.Client[v1.SearchPublishedSeriesRequest, v1.SearchPublishedSeriesResponse]
 	listRecommendedSeries    *connect.Client[v1.ListRecommendedSeriesRequest, v1.ListRecommendedSeriesResponse]
+	listRankedSeries         *connect.Client[v1.ListRankedSeriesRequest, v1.ListRankedSeriesResponse]
 }
 
 // ListPublishedLabels calls publira.v1.CatalogService.ListPublishedLabels.
@@ -269,6 +286,11 @@ func (c *catalogServiceClient) ListRecommendedSeries(ctx context.Context, req *c
 	return c.listRecommendedSeries.CallUnary(ctx, req)
 }
 
+// ListRankedSeries calls publira.v1.CatalogService.ListRankedSeries.
+func (c *catalogServiceClient) ListRankedSeries(ctx context.Context, req *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error) {
+	return c.listRankedSeries.CallUnary(ctx, req)
+}
+
 // CatalogServiceHandler is an implementation of the publira.v1.CatalogService service.
 type CatalogServiceHandler interface {
 	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
@@ -301,6 +323,13 @@ type CatalogServiceHandler interface {
 	// A ranking rebuilt between two pages moves the boundary the same way an
 	// unpublished series does; the token names a position, not a snapshot.
 	ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error)
+	// One page of the latest ranking snapshot for a period, in the positions
+	// that snapshot recorded. A tenant the batch has not ranked yet gets an
+	// empty list rather than an error: nothing has been computed, which is not
+	// a failure. A series unpublished since the snapshot was written drops out
+	// and leaves a gap in the positions, because a snapshot describes a past
+	// window rather than the catalogue as it stands now.
+	ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error)
 }
 
 // NewCatalogServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -364,6 +393,12 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithSchema(catalogServiceMethods.ByName("ListRecommendedSeries")),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceListRankedSeriesHandler := connect.NewUnaryHandler(
+		CatalogServiceListRankedSeriesProcedure,
+		svc.ListRankedSeries,
+		connect.WithSchema(catalogServiceMethods.ByName("ListRankedSeries")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.CatalogService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CatalogServiceListPublishedLabelsProcedure:
@@ -384,6 +419,8 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceSearchPublishedSeriesHandler.ServeHTTP(w, r)
 		case CatalogServiceListRecommendedSeriesProcedure:
 			catalogServiceListRecommendedSeriesHandler.ServeHTTP(w, r)
+		case CatalogServiceListRankedSeriesProcedure:
+			catalogServiceListRankedSeriesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -427,6 +464,10 @@ func (UnimplementedCatalogServiceHandler) SearchPublishedSeries(context.Context,
 
 func (UnimplementedCatalogServiceHandler) ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListRecommendedSeries is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListRankedSeries is not implemented"))
 }
 
 // EpisodeReadServiceClient is a client for the publira.v1.EpisodeReadService service.

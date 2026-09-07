@@ -95,9 +95,13 @@ func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 }
 
 const (
-	getLatestContentRankingSnapshotQuery  = "-- name: GetLatestContentRankingSnapshot :one\n"
-	listRecommendedSeriesIDsQuery         = "-- name: ListRecommendedSeriesIDs :many\n"
-	listRecommendedSeriesIDsReversedQuery = "-- name: ListRecommendedSeriesIDsReversed :many\n"
+	getContentRankingSnapshotByIDQuery     = "-- name: GetContentRankingSnapshotByID :one\n"
+	getLatestContentRankingSnapshotQuery   = "-- name: GetLatestContentRankingSnapshot :one\n"
+	listLatestContentRankingSnapshotsQuery = "-- name: ListLatestContentRankingSnapshots :many\n"
+	listRankedSeriesIDsQuery               = "-- name: ListRankedSeriesIDs :many\n"
+	listRankedSeriesIDsReversedQuery       = "-- name: ListRankedSeriesIDsReversed :many\n"
+	listRecommendedSeriesIDsQuery          = "-- name: ListRecommendedSeriesIDs :many\n"
+	listRecommendedSeriesIDsReversedQuery  = "-- name: ListRecommendedSeriesIDsReversed :many\n"
 )
 
 // assertSeriesPublicIDs compares a series list against the public ids it should

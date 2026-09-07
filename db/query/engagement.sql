@@ -14,6 +14,13 @@
 --     -> idx_content_ranking_snapshots_unique
 --   GetLatestContentRankingSnapshot
 --     -> idx_content_ranking_snapshots_tenant_key_computed
+--   GetContentRankingSnapshotByID
+--     -> content_ranking_snapshots_pkey
+--   ListLatestContentRankingSnapshots
+--     -> idx_content_ranking_snapshots_tenant_key_computed for the scan, then a
+--        sort by period (see the note there)
+--   ListRankedSeriesIDs / ListRankedSeriesIDsReversed
+--     -> no index; expands one snapshot's items (see the note there)
 --   InsertDebouncedEpisodeViewEvent
 --     -> idx_content_events_episode_view_debounce
 --   InsertProjectedSourceEvent
@@ -671,6 +678,155 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 ORDER BY computed_at DESC
 LIMIT 1;
 
+-- The newest computation of each period for one ranking key, newest period
+-- first. A ranking screen takes two of them: the period to show, and the one
+-- before it, which is where a position's previous rank comes from.
+--
+-- DISTINCT ON is what makes those two different periods. algorithm_version is
+-- part of the snapshot's unique key, so a bumped version files its
+-- recomputation of a period beside the old one rather than replacing it, and a
+-- plain "newest two rows" would hand the screen one period twice and report
+-- movement between two computations of the same window.
+--
+-- The order is by period rather than by computed_at for the same reason the
+-- screen is about windows at all: a backfill recomputing an older period is
+-- written after the current one, and must not become the latest ranking.
+-- computed_at then decides which computation of a period survives DISTINCT ON,
+-- and id breaks a tie between two written in the same instant.
+--
+-- before_period_start asks for the periods strictly older than one already in
+-- hand. That is how a page pinned to a snapshot finds the period its movement
+-- markers compare against, without assuming the run before it was yesterday's.
+-- NULL asks for the newest periods.
+--
+-- No index serves the order. idx_content_ranking_snapshots_tenant_key_computed
+-- narrows the scan to one tenant's ranking key, and what is left is the periods
+-- purge-content-rankings has not yet dropped — a sort over days, not over rows.
+-- name: ListLatestContentRankingSnapshots :many
+SELECT DISTINCT ON (period_start, period_end) *
+FROM content_ranking_snapshots
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND ranking_key = sqlc.arg('ranking_key')
+    AND entity_type = sqlc.arg('entity_type')
+    AND (
+        sqlc.narg('before_period_start')::date IS NULL
+        OR period_start < sqlc.narg('before_period_start')::date
+    )
+ORDER BY period_start DESC, period_end DESC, computed_at DESC, id DESC
+LIMIT sqlc.arg('limit');
+
+-- One snapshot named by a pagination token, refused unless it belongs to the
+-- ranking the request asked for.
+--
+-- Every page after the first is pinned to the snapshot the first page came
+-- from, so a numbered chart cannot take its positions from two different runs
+-- when the batch lands mid-pagination. This is the read that pins it.
+--
+-- ranking_key and entity_type are checked here rather than after the row comes
+-- back: an id is the only part of a token a client could put there on purpose,
+-- and a snapshot of another ranking has to be no answer rather than a chart
+-- served under the wrong heading. A snapshot the retention purge has already
+-- dropped is the same no answer, and the caller rejects the token instead of
+-- silently continuing in a newer ranking.
+-- name: GetContentRankingSnapshotByID :one
+SELECT *
+FROM content_ranking_snapshots
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND ranking_key = sqlc.arg('ranking_key')
+    AND entity_type = sqlc.arg('entity_type');
+
+-- The keyset scan behind the ranking screen: one snapshot's items, in the
+-- positions it recorded, restricted to the series that are still published.
+--
+-- Unlike ListRecommendedSeriesIDs this scan starts from the snapshot rather
+-- than from the catalogue, so an unpublished series does not move the ones
+-- behind it: it drops out and leaves its position empty. The ranks are the
+-- snapshot's own and are never renumbered here.
+--
+-- Duplicate entity ids are folded with min() exactly as the recommendation
+-- scan folds them, which is also what makes entity_id unique in the result.
+-- An item carrying no rank has no position to show and is left out; the
+-- recommendation list keeps such an item because it sorts the whole catalogue
+-- and can put it with the unranked, and this list cannot.
+--
+-- (rank, entity_id) is the sort key. A rank is unique within a snapshot the
+-- batch wrote, and entity_id keeps the key unique even in one that repeats a
+-- position, so the keyset scan can neither skip nor repeat a series.
+--
+-- No index serves this: the sort key comes from the snapshot's JSONB. The scan
+-- is bounded by one snapshot's items (50 by default), each joined to one series
+-- row by primary key.
+-- name: ListRankedSeriesIDs :many
+WITH ranked AS (
+    SELECT (item->>'entity_id')::uuid AS entity_id,
+        min((item->>'rank')::int)::int AS rank
+    FROM jsonb_array_elements(sqlc.arg('ranking_items')::jsonb) AS item
+    WHERE item->>'rank' IS NOT NULL
+    GROUP BY (item->>'entity_id')::uuid
+)
+SELECT r.entity_id AS id, r.rank
+FROM ranked r
+    JOIN series s ON s.tenant_id = sqlc.arg('tenant_id') AND s.id = r.entity_id
+WHERE s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (r.rank, r.entity_id) >= (
+                sqlc.narg('cursor_rank')::int,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (r.rank, r.entity_id) > (
+                sqlc.narg('cursor_rank')::int,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY r.rank ASC, r.entity_id ASC
+LIMIT sqlc.arg('limit');
+
+-- ListRankedSeriesIDs walked the other way, to build a previous page. The
+-- order it describes is the same one.
+-- name: ListRankedSeriesIDsReversed :many
+WITH ranked AS (
+    SELECT (item->>'entity_id')::uuid AS entity_id,
+        min((item->>'rank')::int)::int AS rank
+    FROM jsonb_array_elements(sqlc.arg('ranking_items')::jsonb) AS item
+    WHERE item->>'rank' IS NOT NULL
+    GROUP BY (item->>'entity_id')::uuid
+)
+SELECT r.entity_id AS id, r.rank
+FROM ranked r
+    JOIN series s ON s.tenant_id = sqlc.arg('tenant_id') AND s.id = r.entity_id
+WHERE s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (r.rank, r.entity_id) <= (
+                sqlc.narg('cursor_rank')::int,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (r.rank, r.entity_id) < (
+                sqlc.narg('cursor_rank')::int,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY r.rank DESC, r.entity_id DESC
+LIMIT sqlc.arg('limit');
+
 -- The keyset scan behind the storefront recommendation list. It takes one
 -- ranking snapshot's items as they are stored and puts the ranked series first,
 -- then every other published series newest first.
@@ -693,7 +849,7 @@ LIMIT 1;
 -- name: ListRecommendedSeriesIDs :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
-        min((item->>'rank')::int) AS rank
+        min((item->>'rank')::int)::int AS rank
     FROM jsonb_array_elements(sqlc.arg('ranking_items')::jsonb) AS item
     GROUP BY (item->>'entity_id')::uuid
 ),
@@ -743,7 +899,7 @@ LIMIT sqlc.arg('limit');
 -- name: ListRecommendedSeriesIDsReversed :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
-        min((item->>'rank')::int) AS rank
+        min((item->>'rank')::int)::int AS rank
     FROM jsonb_array_elements(sqlc.arg('ranking_items')::jsonb) AS item
     GROUP BY (item->>'entity_id')::uuid
 ),

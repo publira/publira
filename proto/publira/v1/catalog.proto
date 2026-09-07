@@ -254,6 +254,69 @@ message ListRecommendedSeriesResponse {
   RecommendationSource source = 4;
 }
 
+// The window a ranking snapshot covers. The batch writes one snapshot per
+// period on every run, so a tenant that has one has both.
+enum RankingPeriod {
+  // Same as RANKING_PERIOD_DAILY.
+  RANKING_PERIOD_UNSPECIFIED = 0;
+  // The single day the last run ranked.
+  RANKING_PERIOD_DAILY = 1;
+  // The seven days ending on that same day.
+  RANKING_PERIOD_WEEKLY = 2;
+}
+
+// One series at the position a ranking snapshot gave it.
+message RankedSeries {
+  // The position in the snapshot, counting from 1. Positions are the
+  // snapshot's own, so they stay put when a series between them is
+  // unpublished: a page can run 1, 2, 4.
+  int32 rank = 1;
+  publira.types.v1.Series series = 2;
+  // The position this series held in the snapshot before the current one, for
+  // an up / down marker. Absent when there is no earlier snapshot, or when
+  // that snapshot did not rank this series — a new entry has no movement to
+  // draw, which is not the same as having moved from position 0.
+  optional int32 previous_rank = 3;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// There is no order field: a ranking has one order, the one it was computed
+// in. The token carries the period it was built for, because the same
+// position names a different series in the other period; sending it with a
+// different period is invalid_argument.
+// It also pins the snapshot the first page came from, so the rest of a
+// traversal keeps the positions of one ranking even when the batch writes a
+// new one in between. A token whose snapshot has since been dropped by the
+// retention purge is invalid_argument: the page it names no longer exists, and
+// the client starts again at the first page of the current ranking.
+message ListRankedSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Which period to rank. Unspecified is the daily ranking.
+  RankingPeriod period = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListRankedSeriesResponse {
+  // One page of the snapshot, in ranking order.
+  repeated RankedSeries ranked_series = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+  // When the batch computed the snapshot this page comes from (RFC 3339).
+  // Every page of one traversal reports the same instant, because they are all
+  // pages of the same snapshot. Empty when the tenant has no snapshot yet.
+  string computed_at = 4;
+  // The ranked period, as inclusive calendar dates (YYYY-MM-DD) in the
+  // tenant's time zone, which is the zone the daily stats behind the ranking
+  // are counted in. Empty when the tenant has no snapshot yet.
+  string period_start = 5;
+  string period_end = 6;
+}
+
 service CatalogService {
   rpc ListPublishedLabels(ListPublishedLabelsRequest) returns (ListPublishedLabelsResponse) {}
   rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
@@ -285,6 +348,13 @@ service CatalogService {
   // A ranking rebuilt between two pages moves the boundary the same way an
   // unpublished series does; the token names a position, not a snapshot.
   rpc ListRecommendedSeries(ListRecommendedSeriesRequest) returns (ListRecommendedSeriesResponse) {}
+  // One page of the latest ranking snapshot for a period, in the positions
+  // that snapshot recorded. A tenant the batch has not ranked yet gets an
+  // empty list rather than an error: nothing has been computed, which is not
+  // a failure. A series unpublished since the snapshot was written drops out
+  // and leaves a gap in the positions, because a snapshot describes a past
+  // window rather than the catalogue as it stands now.
+  rpc ListRankedSeries(ListRankedSeriesRequest) returns (ListRankedSeriesResponse) {}
 }
 
 message MarkEpisodeAsReadRequest {

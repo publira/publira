@@ -22,9 +22,9 @@ const (
 	maxRecommendedSeriesPageSize     = int32(100)
 )
 
-// recommendedRankingEntityType is the half of the ranking snapshots this list
-// reads. The batch also ranks episodes; the storefront slot links to series.
-const recommendedRankingEntityType = "series"
+// seriesRankingEntityType is the half of the ranking snapshots the catalogue
+// reads. The batch also ranks episodes; the storefront links to series.
+const seriesRankingEntityType = "series"
 
 // recommendedRankingKey picks the weekly snapshot over the daily one. Both are
 // rebuilt every run from the same daily stats, and a week of signal moves the
@@ -60,7 +60,7 @@ func (s *apiServer) latestSeriesRanking(ctx context.Context, tenantID uuid.UUID)
 	snapshot, err := s.queriesFor(ctx).GetLatestContentRankingSnapshot(ctx, dbmodels.GetLatestContentRankingSnapshotParams{
 		TenantID:   tenantID,
 		RankingKey: recommendedRankingKey,
-		EntityType: recommendedRankingEntityType,
+		EntityType: seriesRankingEntityType,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return seriesRanking{items: emptyRankingItems}, nil
