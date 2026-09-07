@@ -60,42 +60,10 @@ init_profile() {
     "${DEV_ENV_NAME}" "${db_name}" "${DEV_ENV_SLOT}" "${PUBLIRA_S3_BUCKET}"
 }
 
-profile_run_dir() {
-  printf '%s/runs/%s\n' "${DEV_ENV_HOME}" "$1"
-}
-
-stop_profile() {
-  local name="$1" run_dir pid_file pid command
-  run_dir="$(profile_run_dir "${name}")"
-  [[ -d "${run_dir}" ]] || return 0
-  for pid_file in "${run_dir}"/*.pid; do
-    [[ -f "${pid_file}" ]] || continue
-    pid="$(<"${pid_file}")"
-    if [[ "${pid}" =~ ^[0-9]+$ ]] && kill -0 "${pid}" 2>/dev/null; then
-      command="$(ps -p "${pid}" -o args= 2>/dev/null || true)"
-      if [[ "${command}" == *"${REPO_ROOT}"* ]]; then
-        kill "${pid}"
-      else
-        dev_env_error "not killing stale pid ${pid}; it no longer belongs to ${REPO_ROOT}"
-      fi
-    fi
-    rm -f "${pid_file}"
-  done
-  rmdir "${run_dir}" 2>/dev/null || true
-  printf 'stopped profile %q\n' "${name}"
-}
-
-start_background() {
-  local run_dir="$1" process_name="$2"
-  shift 2
-  nohup "$@" >"${run_dir}/${process_name}.log" 2>&1 < /dev/null &
-  printf '%s\n' "$!" >"${run_dir}/${process_name}.pid"
-}
-
 start_profile() {
   local name="$1" run_dir
   dev_env_load_profile "${name}"
-  run_dir="$(profile_run_dir "${name}")"
+  run_dir="$(dev_env_profile_run_dir "${name}")"
   mkdir -p "${run_dir}"
   if compgen -G "${run_dir}/*.pid" >/dev/null; then
     dev_env_die "profile ${name} already has running processes; run: task dev-env:stop"
@@ -115,7 +83,7 @@ start_profile() {
   init_profile "${name}"
   task -d "${REPO_ROOT}" server:build
 
-  start_background "${run_dir}" api-server env \
+  dev_env_start_background "${run_dir}" api-server env \
     PUBLIRA_PUBLIC_API_ADDR=":${PUBLIRA_PUBLIC_API_PORT}" \
     PUBLIRA_PUBLIC_API_GRPC_ADDR=":${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
     PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
@@ -124,7 +92,7 @@ start_profile() {
     PUBLIRA_S3_ENDPOINT="${PUBLIRA_S3_ENDPOINT}" \
     PUBLIRA_S3_FORCE_PATH_STYLE="${PUBLIRA_S3_FORCE_PATH_STYLE}" \
     "${REPO_ROOT}/server/bin/api-server"
-  start_background "${run_dir}" admin-api-server env \
+  dev_env_start_background "${run_dir}" admin-api-server env \
     PUBLIRA_ADMIN_API_ADDR=":${PUBLIRA_ADMIN_API_PORT}" \
     PUBLIRA_ADMIN_API_GRPC_ADDR=":${PUBLIRA_ADMIN_API_GRPC_PORT}" \
     PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL}" \
@@ -137,14 +105,14 @@ start_profile() {
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
     "${REPO_ROOT}/server/bin/admin-api-server"
-  start_background "${run_dir}" platform-api-server env \
+  dev_env_start_background "${run_dir}" platform-api-server env \
     PUBLIRA_PLATFORM_API_ADDR=":${PUBLIRA_PLATFORM_API_PORT}" \
     PUBLIRA_PLATFORM_API_GRPC_ADDR=":${PUBLIRA_PLATFORM_API_GRPC_PORT}" \
     PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \
     PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_PLATFORM_APP_URL}" \
     PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
     "${REPO_ROOT}/server/bin/platform-api-server"
-  start_background "${run_dir}" image-server env \
+  dev_env_start_background "${run_dir}" image-server env \
     PUBLIRA_IMAGE_SERVER_ADDR=":${PUBLIRA_IMAGE_SERVER_PORT}" \
     PUBLIRA_IMAGE_DB_URL="${PUBLIRA_IMAGE_DB_URL}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
@@ -153,7 +121,7 @@ start_profile() {
     PUBLIRA_S3_FORCE_PATH_STYLE="${PUBLIRA_S3_FORCE_PATH_STYLE}" \
     PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
     "${REPO_ROOT}/server/bin/image-server"
-  start_background "${run_dir}" admin-image-server env \
+  dev_env_start_background "${run_dir}" admin-image-server env \
     PUBLIRA_ADMIN_IMAGE_SERVER_ADDR=":${PUBLIRA_ADMIN_IMAGE_SERVER_PORT}" \
     PUBLIRA_ADMIN_IMAGE_DB_URL="${PUBLIRA_ADMIN_IMAGE_DB_URL}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
@@ -162,7 +130,7 @@ start_profile() {
     PUBLIRA_S3_FORCE_PATH_STYLE="${PUBLIRA_S3_FORCE_PATH_STYLE}" \
     PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
     "${REPO_ROOT}/server/bin/admin-image-server"
-  start_background "${run_dir}" outbox-worker env \
+  dev_env_start_background "${run_dir}" outbox-worker env \
     PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL}" \
     PUBLIRA_WORKER_ADDR=":${PUBLIRA_OUTBOX_WORKER_PORT}" \
     PUBLIRA_EMAIL_RENDERER_URL="${PUBLIRA_EMAIL_RENDERER_URL}" \
@@ -172,27 +140,27 @@ start_profile() {
   # publish-episodes has no role variable of its own and reads PUBLIRA_DB_URL,
   # so it stays on the profile's superuser connection. Passing the worker URL
   # here would move it onto publira_outbox along with the worker.
-  start_background "${run_dir}" publish-episodes env \
+  dev_env_start_background "${run_dir}" publish-episodes env \
     PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
     "${REPO_ROOT}/server/bin/batch" publish-episodes
-  start_background "${run_dir}" email-renderer env PORT="${PUBLIRA_EMAIL_RENDERER_PORT}" \
+  dev_env_start_background "${run_dir}" email-renderer env PORT="${PUBLIRA_EMAIL_RENDERER_PORT}" \
     pnpm --dir "${REPO_ROOT}/apps/email-renderer" dev
-  start_background "${run_dir}" web-host env PORT="${PUBLIRA_WEB_HOST_PORT}" \
+  dev_env_start_background "${run_dir}" web-host env PORT="${PUBLIRA_WEB_HOST_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_PUBLIC_GRPC_URL="${PUBLIRA_PUBLIC_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     pnpm --dir "${REPO_ROOT}/apps/web-host" dev
-  start_background "${run_dir}" web-admin env PORT="${PUBLIRA_WEB_ADMIN_PORT}" \
+  dev_env_start_background "${run_dir}" web-admin env PORT="${PUBLIRA_WEB_ADMIN_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_ADMIN_GRPC_URL="${PUBLIRA_ADMIN_GRPC_URL}" \
     PUBLIRA_PUBLIC_GRPC_URL="${PUBLIRA_PUBLIC_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     pnpm --dir "${REPO_ROOT}/apps/web-admin" dev
-  start_background "${run_dir}" web-platform env PORT="${PUBLIRA_WEB_PLATFORM_PORT}" \
+  dev_env_start_background "${run_dir}" web-platform env PORT="${PUBLIRA_WEB_PLATFORM_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_PLATFORM_GRPC_URL="${PUBLIRA_PLATFORM_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
@@ -207,7 +175,7 @@ destroy_profile() {
   dev_env_load_profile "${name}"
   in_use="$(dev_env_profile_in_use "${name}")"
   [[ -z "${in_use}" ]] || dev_env_die "profile ${name} is still selected by: ${in_use}"
-  [[ ! -d "$(profile_run_dir "${name}")" ]] || dev_env_die "stop profile ${name} before destroying it"
+  [[ ! -d "$(dev_env_profile_run_dir "${name}")" ]] || dev_env_die "stop profile ${name} before destroying it"
   read -r -p "Type ${name} to destroy its database, Valkey DB, and bucket: " confirmation
   [[ "${confirmation}" == "${name}" ]] || dev_env_die "confirmation did not match; nothing was destroyed"
   db_name="publira_${DEV_ENV_NAME//-/_}"
@@ -280,7 +248,7 @@ case "${command}" in
     ;;
   stop)
     profile_name="$(profile_name_or_selected "$@")" || exit 1
-    stop_profile "${profile_name}"
+    dev_env_stop_profile "${profile_name}"
     ;;
   destroy)
     [[ $# -eq 1 ]] || { usage; exit 2; }
