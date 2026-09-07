@@ -22,9 +22,19 @@ const (
 	maxRankedSeriesPageSize     = int32(100)
 )
 
-// rankingSnapshotPairSize is how many snapshots one page reads: the one it
+// rankingSnapshotPairSize is how many periods the first page reads: the one it
 // shows, and the one before it, which is where a previous position comes from.
-const rankingSnapshotPairSize = int32(2)
+// A later page already knows the period it shows and reads only the earlier
+// one.
+const (
+	rankingSnapshotPairSize      = int32(2)
+	rankingSnapshotPrecedingSize = int32(1)
+)
+
+// errRankingSnapshotUnavailable reports a token pinned to a snapshot that is no
+// longer there. Only the retention purge removes one, so this is a token older
+// than the rankings themselves.
+var errRankingSnapshotUnavailable = errors.New("the ranking a token names is unavailable")
 
 // rankingKeyForPeriod maps the requested period onto the key the batch files
 // its snapshots under. An unspecified period is the daily ranking, the way an
@@ -62,17 +72,44 @@ type rankingSnapshots struct {
 	found bool
 }
 
-// latestRankingSnapshots reads the snapshot a page is built from together with
-// the one before it.
+// rankingSnapshotsForPage reads the snapshot a page is built from together with
+// the period before it.
+//
+// The first page takes the newest period. Every page after it is pinned to the
+// snapshot its token names, so a chart stays the chart the reader started
+// reading: the batch replacing it mid-pagination would otherwise apply a
+// position from the old ranking to the ordering of the new one, and skip or
+// repeat the series around the boundary. The pinned snapshot outlives the token
+// for as long as the retention purge keeps it; past that the token is refused
+// rather than continued in a ranking it was not built for.
 //
 // A tenant the batch has not ranked yet is not an error: the batch runs daily
 // and a tenant created since the last run simply has nothing yet.
-func (s *apiServer) latestRankingSnapshots(
+func (s *apiServer) rankingSnapshotsForPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	rankingKey string,
+	pinned uuid.NullUUID,
 ) (rankingSnapshots, error) {
-	rows, err := s.queriesFor(ctx).ListLatestContentRankingSnapshots(ctx, dbmodels.ListLatestContentRankingSnapshotsParams{
+	queries := s.queriesFor(ctx)
+
+	if pinned.Valid {
+		current, err := queries.GetContentRankingSnapshotByID(ctx, dbmodels.GetContentRankingSnapshotByIDParams{
+			TenantID:   tenantID,
+			ID:         pinned.UUID,
+			RankingKey: rankingKey,
+			EntityType: seriesRankingEntityType,
+		})
+		if errors.Is(err, sql.ErrNoRows) {
+			return rankingSnapshots{}, errRankingSnapshotUnavailable
+		}
+		if err != nil {
+			return rankingSnapshots{}, err
+		}
+		return s.rankingSnapshotsPrecededBy(ctx, tenantID, rankingKey, current)
+	}
+
+	rows, err := queries.ListLatestContentRankingSnapshots(ctx, dbmodels.ListLatestContentRankingSnapshotsParams{
 		TenantID:   tenantID,
 		RankingKey: rankingKey,
 		EntityType: seriesRankingEntityType,
@@ -88,6 +125,33 @@ func (s *apiServer) latestRankingSnapshots(
 	snapshots := rankingSnapshots{current: rows[0], found: true}
 	if len(rows) > 1 {
 		snapshots.previousRanks = s.rankPositions(ctx, rows[1])
+	}
+	return snapshots, nil
+}
+
+// rankingSnapshotsPrecededBy pairs a snapshot already in hand with the newest
+// period before it, so the movement markers of a later page compare against the
+// same period the first page compared against.
+func (s *apiServer) rankingSnapshotsPrecededBy(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	rankingKey string,
+	current dbmodels.ContentRankingSnapshot,
+) (rankingSnapshots, error) {
+	rows, err := s.queriesFor(ctx).ListLatestContentRankingSnapshots(ctx, dbmodels.ListLatestContentRankingSnapshotsParams{
+		TenantID:          tenantID,
+		RankingKey:        rankingKey,
+		EntityType:        seriesRankingEntityType,
+		BeforePeriodStart: sql.NullTime{Time: current.PeriodStart, Valid: true},
+		Limit:             rankingSnapshotPrecedingSize,
+	})
+	if err != nil {
+		return rankingSnapshots{}, err
+	}
+
+	snapshots := rankingSnapshots{current: current, found: true}
+	if len(rows) > 0 {
+		snapshots.previousRanks = s.rankPositions(ctx, rows[0])
 	}
 	return snapshots, nil
 }
@@ -125,13 +189,29 @@ func (s *apiServer) rankPositions(ctx context.Context, snapshot dbmodels.Content
 	return positions
 }
 
-// The ListRankedSeries cursor carries the period it was built for, then the
-// sort keys of the scan: the position the row holds in the snapshot, and the
-// series id that keeps that key unique. A token from the other period is
-// rejected rather than reinterpreted — the same position names a different
-// series there. Token rules: proto/README.md.
-func encodeRankedSeriesCursor(direction pagination.Direction, rankingKey string, rank int32, id uuid.UUID) string {
-	return pagination.Encode(direction, rankingKey, strconv.FormatInt(int64(rank), 10), id.String())
+// The ListRankedSeries cursor carries the period it was built for and the
+// snapshot it was built from, then the sort keys of the scan: the position the
+// row holds in that snapshot, and the series id that keeps the key unique.
+//
+// Both of the leading keys refuse a token rather than reinterpret it, for the
+// same reason: a position means nothing without the ranking it counts in. The
+// period is checked first because a client sends it, and the snapshot second
+// because the batch changes it — the pinned id is also what keeps the rest of a
+// traversal inside the ranking it started in. Token rules: proto/README.md.
+func encodeRankedSeriesCursor(
+	direction pagination.Direction,
+	rankingKey string,
+	snapshotID uuid.UUID,
+	rank int32,
+	id uuid.UUID,
+) string {
+	return pagination.Encode(
+		direction,
+		rankingKey,
+		snapshotID.String(),
+		strconv.FormatInt(int64(rank), 10),
+		id.String(),
+	)
 }
 
 // A recovery token includes the boundary once, so the boundary row stays in
@@ -145,44 +225,51 @@ func encodeRankedSeriesRecoveryToken(
 	return pagination.Encode(
 		direction,
 		rankingKey,
+		keys.snapshotID.UUID.String(),
 		strconv.FormatInt(int64(keys.rank.Int32), 10),
 		keys.id.UUID.String(),
 		seriesInclusiveKey,
 	)
 }
 
-// rankedSeriesCursorKeys is the decoded token, in the shape the keyset queries
-// take.
+// rankedSeriesCursorKeys is the decoded token: the snapshot the page is pinned
+// to, and the boundary in the shape the keyset queries take.
 type rankedSeriesCursorKeys struct {
-	rank      sql.NullInt32
-	id        uuid.NullUUID
-	inclusive bool
+	snapshotID uuid.NullUUID
+	rank       sql.NullInt32
+	id         uuid.NullUUID
+	inclusive  bool
 }
 
 func decodeRankedSeriesCursorKeys(cursor pagination.Cursor, rankingKey string) (rankedSeriesCursorKeys, error) {
 	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
+	if len(cursor.Keys) != 4 && len(cursor.Keys) != 5 {
 		return rankedSeriesCursorKeys{}, invalid
 	}
-	inclusive := len(cursor.Keys) == 4
-	if inclusive && cursor.Keys[3] != seriesInclusiveKey {
+	inclusive := len(cursor.Keys) == 5
+	if inclusive && cursor.Keys[4] != seriesInclusiveKey {
 		return rankedSeriesCursorKeys{}, invalid
 	}
 	if cursor.Keys[0] != rankingKey {
 		return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another period"))
 	}
-	rank, err := strconv.ParseInt(cursor.Keys[1], 10, 32)
+	snapshotID, err := uuid.Parse(cursor.Keys[1])
 	if err != nil {
 		return rankedSeriesCursorKeys{}, invalid
 	}
-	id, err := uuid.Parse(cursor.Keys[2])
+	rank, err := strconv.ParseInt(cursor.Keys[2], 10, 32)
+	if err != nil {
+		return rankedSeriesCursorKeys{}, invalid
+	}
+	id, err := uuid.Parse(cursor.Keys[3])
 	if err != nil {
 		return rankedSeriesCursorKeys{}, invalid
 	}
 	return rankedSeriesCursorKeys{
-		id:        uuid.NullUUID{UUID: id, Valid: true},
-		inclusive: inclusive,
-		rank:      sql.NullInt32{Int32: int32(rank), Valid: true},
+		id:         uuid.NullUUID{UUID: id, Valid: true},
+		inclusive:  inclusive,
+		rank:       sql.NullInt32{Int32: int32(rank), Valid: true},
+		snapshotID: uuid.NullUUID{UUID: snapshotID, Valid: true},
 	}, nil
 }
 
@@ -273,7 +360,10 @@ func (s *apiServer) ListRankedSeries(
 		}
 	}
 
-	snapshots, err := s.latestRankingSnapshots(ctx, tenant.ID, rankingKey)
+	snapshots, err := s.rankingSnapshotsForPage(ctx, tenant.ID, rankingKey, keys.snapshotID)
+	if errors.Is(err, errRankingSnapshotUnavailable) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is no longer valid"))
+	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read the ranking snapshot", err, "tenant_id", tenant.ID.String())
 	}
@@ -334,11 +424,13 @@ func (s *apiServer) ListRankedSeries(
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
 			first := rows[0]
-			res.PreviousToken = encodeRankedSeriesCursor(pagination.Backward, rankingKey, rankByID[first.ID], first.ID)
+			res.PreviousToken = encodeRankedSeriesCursor(
+				pagination.Backward, rankingKey, snapshots.current.ID, rankByID[first.ID], first.ID)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = encodeRankedSeriesCursor(pagination.Forward, rankingKey, rankByID[last.ID], last.ID)
+			res.NextToken = encodeRankedSeriesCursor(
+				pagination.Forward, rankingKey, snapshots.current.ID, rankByID[last.ID], last.ID)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way

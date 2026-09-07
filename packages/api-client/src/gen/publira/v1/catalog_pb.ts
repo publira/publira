@@ -769,6 +769,11 @@ export const RankedSeriesSchema: GenMessage<RankedSeries> = /*@__PURE__*/
  * in. The token carries the period it was built for, because the same
  * position names a different series in the other period; sending it with a
  * different period is invalid_argument.
+ * It also pins the snapshot the first page came from, so the rest of a
+ * traversal keeps the positions of one ranking even when the batch writes a
+ * new one in between. A token whose snapshot has since been dropped by the
+ * retention purge is invalid_argument: the page it names no longer exists, and
+ * the client starts again at the first page of the current ranking.
  *
  * @generated from message publira.v1.ListRankedSeriesRequest
  */
@@ -834,7 +839,8 @@ export type ListRankedSeriesResponse = Message<"publira.v1.ListRankedSeriesRespo
 
   /**
    * When the batch computed the snapshot this page comes from (RFC 3339).
-   * Empty when the tenant has no snapshot yet.
+   * Every page of one traversal reports the same instant, because they are all
+   * pages of the same snapshot. Empty when the tenant has no snapshot yet.
    *
    * @generated from field: string computed_at = 4;
    */

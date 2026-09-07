@@ -1834,6 +1834,11 @@ func (x *RankedSeries) GetPreviousRank() int32 {
 // in. The token carries the period it was built for, because the same
 // position names a different series in the other period; sending it with a
 // different period is invalid_argument.
+// It also pins the snapshot the first page came from, so the rest of a
+// traversal keeps the positions of one ranking even when the batch writes a
+// new one in between. A token whose snapshot has since been dropped by the
+// retention purge is invalid_argument: the page it names no longer exists, and
+// the client starts again at the first page of the current ranking.
 type ListRankedSeriesRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -1914,7 +1919,8 @@ type ListRankedSeriesResponse struct {
 	// Token for the next page. Empty on the last page.
 	NextToken string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	// When the batch computed the snapshot this page comes from (RFC 3339).
-	// Empty when the tenant has no snapshot yet.
+	// Every page of one traversal reports the same instant, because they are all
+	// pages of the same snapshot. Empty when the tenant has no snapshot yet.
 	ComputedAt string `protobuf:"bytes,4,opt,name=computed_at,json=computedAt,proto3" json:"computed_at,omitempty"`
 	// The ranked period, as inclusive calendar dates (YYYY-MM-DD) in the
 	// tenant's time zone, which is the zone the daily stats behind the ranking

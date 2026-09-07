@@ -95,6 +95,7 @@ func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 }
 
 const (
+	getContentRankingSnapshotByIDQuery     = "-- name: GetContentRankingSnapshotByID :one\n"
 	getLatestContentRankingSnapshotQuery   = "-- name: GetLatestContentRankingSnapshot :one\n"
 	listLatestContentRankingSnapshotsQuery = "-- name: ListLatestContentRankingSnapshots :many\n"
 	listRankedSeriesIDsQuery               = "-- name: ListRankedSeriesIDs :many\n"

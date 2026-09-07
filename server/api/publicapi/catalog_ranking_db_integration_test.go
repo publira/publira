@@ -22,17 +22,25 @@ import (
 // SQL keeps the snapshot's own numbering, pages through it the way the RPC
 // promises, and that RLS keeps one tenant's ranking out of another's chart.
 
+// rankingPeriodDate is the calendar day a seeded snapshot covers, counted back
+// from a fixed date. The date is fixed rather than derived from a clock so that
+// the day a test seeds and the day it asserts are the same one: CURRENT_DATE is
+// the database session's day and time.Now is the process's, and the two part
+// company at a midnight boundary or under a different time zone.
+func rankingPeriodDate(daysBack int) time.Time {
+	return time.Date(2026, time.March, 14, 0, 0, 0, 0, time.UTC).AddDate(0, 0, -daysBack)
+}
+
 // seedPeriodRankingSnapshot files one snapshot under a ranking key, over the
-// single day that many days back, in the order the ids are given. The period
-// bounds and computed_at move together with daysAgo, so two calls file two
-// snapshots the newest-first read can tell apart. It writes through a
-// tenant-scoped connection, so a snapshot RLS would refuse never reaches the
-// table in the first place.
+// single day given, in the order the ids are given. computed_at follows the
+// period, so snapshots of older periods are also the older computations. It
+// writes through a tenant-scoped connection, so a snapshot RLS would refuse
+// never reaches the table in the first place.
 func (e *publicDBEnv) seedPeriodRankingSnapshot(
 	t *testing.T,
 	tenantID uuid.UUID,
 	rankingKey string,
-	daysAgo int,
+	period time.Time,
 	seriesIDs ...uuid.UUID,
 ) {
 	t.Helper()
@@ -52,11 +60,10 @@ func (e *publicDBEnv) seedPeriodRankingSnapshot(
 				id, tenant_id, ranking_key, period_start, period_end,
 				entity_type, items, algorithm_version, computed_at
 			) VALUES (
-				gen_random_uuid(), $1, $2,
-				CURRENT_DATE - $3::int, CURRENT_DATE - $3::int,
-				'series', $4::jsonb, $5, now() - make_interval(days => $3::int)
+				gen_random_uuid(), $1, $2, $3::date, $3::date,
+				'series', $4::jsonb, $5, $3::date + interval '1 day'
 			)
-		`, tenantID, rankingKey, daysAgo, items, contentranking.AlgorithmVersion)
+		`, tenantID, rankingKey, period.Format(time.DateOnly), items, contentranking.AlgorithmVersion)
 		if err != nil {
 			t.Fatalf("insert content_ranking_snapshots: %v", err)
 		}
@@ -109,11 +116,11 @@ func TestDBListRankedSeriesKeepsSnapshotOrderAndTenantsApart(t *testing.T) {
 		PublishedAt: time.Now().Add(-1 * time.Hour),
 	})
 
-	env.seedPeriodRankingSnapshot(t, first.ID, contentranking.DailyRankingKey, 1, oldest.ID, middle.ID)
+	env.seedPeriodRankingSnapshot(t, first.ID, contentranking.DailyRankingKey, rankingPeriodDate(0), oldest.ID, middle.ID)
 	// The second tenant's ranking names the first tenant's series alongside its
 	// own. RLS keeps the snapshot itself tenant-scoped; the scan behind the
 	// chart is what has to refuse the series the rank points at.
-	env.seedPeriodRankingSnapshot(t, second.ID, contentranking.DailyRankingKey, 1, middle.ID, other.ID)
+	env.seedPeriodRankingSnapshot(t, second.ID, contentranking.DailyRankingKey, rankingPeriodDate(0), middle.ID, other.ID)
 
 	ranked := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
 		Tenant: tenantContext(first),
@@ -121,7 +128,7 @@ func TestDBListRankedSeriesKeepsSnapshotOrderAndTenantsApart(t *testing.T) {
 	if got, want := rankedPositions(ranked.RankedSeries), []string{"SERIESAOLD01@1", "SERIESAMID01@2"}; !slices.Equal(got, want) {
 		t.Fatalf("ranked series = %v, want %v", got, want)
 	}
-	period := time.Now().AddDate(0, 0, -1).Format(time.DateOnly)
+	period := rankingPeriodDate(0).Format(time.DateOnly)
 	if ranked.PeriodStart != period || ranked.PeriodEnd != period {
 		t.Fatalf("period = %q..%q, want %q on both sides", ranked.PeriodStart, ranked.PeriodEnd, period)
 	}
@@ -162,7 +169,7 @@ func TestDBListRankedSeriesLeavesTheGapWhereASeriesWasUnpublished(t *testing.T) 
 		PublishedAt: time.Now().Add(-48 * time.Hour),
 	})
 
-	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, 1, top.ID, withdrawn.ID, tail.ID)
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(0), top.ID, withdrawn.ID, tail.ID)
 
 	resp := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
 		Tenant: tenantContext(tenant),
@@ -186,7 +193,7 @@ func TestDBListRankedSeriesPagesThroughTheSnapshotBothWays(t *testing.T) {
 		})
 		ranked = append(ranked, series.ID)
 	}
-	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, 1, ranked...)
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(0), ranked...)
 
 	first := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
 		Limit:  2,
@@ -222,6 +229,60 @@ func TestDBListRankedSeriesPagesThroughTheSnapshotBothWays(t *testing.T) {
 	}
 }
 
+func TestDBListRankedSeriesKeepsPagingInsideTheSnapshotItStartedIn(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+
+	ranked := make([]uuid.UUID, 0, 3)
+	for i, publicID := range []string{"SERIESAONE01", "SERIESATWO01", "SERIESATRI01"} {
+		series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+			PublicID:    publicID,
+			Title:       fmt.Sprintf("Ranked %d", i+1),
+			Published:   true,
+			PublishedAt: time.Now().Add(-time.Duration(i+1) * time.Hour),
+		})
+		ranked = append(ranked, series.ID)
+	}
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(1), ranked...)
+
+	first := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+		Limit:  2,
+		Tenant: tenantContext(tenant),
+	})
+	if got, want := rankedPositions(first.RankedSeries), []string{"SERIESAONE01@1", "SERIESATWO01@2"}; !slices.Equal(got, want) {
+		t.Fatalf("first page = %v, want %v", got, want)
+	}
+
+	// The batch lands between the two pages and reverses the chart. Page 2 was
+	// asked for as a position in the ranking page 1 showed, so it has to come
+	// from that ranking: read against the new one, position 2 is a different
+	// series and the page would repeat what the reader has already seen.
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(0),
+		ranked[2], ranked[1], ranked[0])
+
+	second := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+		Limit:  2,
+		Tenant: tenantContext(tenant),
+		Token:  first.NextToken,
+	})
+	if got, want := rankedPositions(second.RankedSeries), []string{"SERIESATRI01@3"}; !slices.Equal(got, want) {
+		t.Fatalf("second page = %v, want %v (the ranking page 1 came from)", got, want)
+	}
+	if second.PeriodStart != first.PeriodStart || second.ComputedAt != first.ComputedAt {
+		t.Fatalf("second page reports %q/%q, want the first page's %q/%q",
+			second.PeriodStart, second.ComputedAt, first.PeriodStart, first.ComputedAt)
+	}
+
+	// A request without a token is a fresh read, and gets the new chart.
+	fresh := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+		Limit:  2,
+		Tenant: tenantContext(tenant),
+	})
+	if got, want := rankedPositions(fresh.RankedSeries), []string{"SERIESATRI01@1", "SERIESATWO01@2"}; !slices.Equal(got, want) {
+		t.Fatalf("fresh first page = %v, want %v", got, want)
+	}
+}
+
 func TestDBListRankedSeriesReportsMovementAgainstTheEarlierSnapshot(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -247,11 +308,11 @@ func TestDBListRankedSeriesReportsMovementAgainstTheEarlierSnapshot(t *testing.T
 
 	// Two days back is the snapshot the movement is measured from; one day
 	// back is the one the chart shows.
-	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, 2, slipped.ID, climbed.ID)
-	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, 1, climbed.ID, slipped.ID, entered.ID)
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(1), slipped.ID, climbed.ID)
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(0), climbed.ID, slipped.ID, entered.ID)
 	// The weekly chart of the same days must not be read as an earlier daily
 	// snapshot: the two are separate histories.
-	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.WeeklyRankingKey, 1, entered.ID)
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.WeeklyRankingKey, rankingPeriodDate(0), entered.ID)
 
 	resp := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
 		Period: publirav1.RankingPeriod_RANKING_PERIOD_DAILY,

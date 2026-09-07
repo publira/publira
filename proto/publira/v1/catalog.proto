@@ -284,6 +284,11 @@ message RankedSeries {
 // in. The token carries the period it was built for, because the same
 // position names a different series in the other period; sending it with a
 // different period is invalid_argument.
+// It also pins the snapshot the first page came from, so the rest of a
+// traversal keeps the positions of one ranking even when the batch writes a
+// new one in between. A token whose snapshot has since been dropped by the
+// retention purge is invalid_argument: the page it names no longer exists, and
+// the client starts again at the first page of the current ranking.
 message ListRankedSeriesRequest {
   publira.types.v1.TenantContext tenant = 1;
   // Which period to rank. Unspecified is the daily ranking.
@@ -302,7 +307,8 @@ message ListRankedSeriesResponse {
   // Token for the next page. Empty on the last page.
   string next_token = 3;
   // When the batch computed the snapshot this page comes from (RFC 3339).
-  // Empty when the tenant has no snapshot yet.
+  // Every page of one traversal reports the same instant, because they are all
+  // pages of the same snapshot. Empty when the tenant has no snapshot yet.
   string computed_at = 4;
   // The ranked period, as inclusive calendar dates (YYYY-MM-DD) in the
   // tenant's time zone, which is the zone the daily stats behind the ranking
