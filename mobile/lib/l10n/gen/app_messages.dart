@@ -227,6 +227,13 @@ abstract class AppMessages {
   /// `mobile.viewer.page_status`
   String viewerPageStatus({required String page, required String total});
 
+  /// `mobile.viewer.page_status_range`
+  String viewerPageStatusRange({
+    required String first,
+    required String last,
+    required String total,
+  });
+
   /// `mobile.viewer.previous_page`
   String get viewerPreviousPage;
 
@@ -541,6 +548,15 @@ class _AppMessagesJa extends AppMessages {
   @override
   String viewerPageStatus({required String page, required String total}) {
     return '$page / $total';
+  }
+
+  @override
+  String viewerPageStatusRange({
+    required String first,
+    required String last,
+    required String total,
+  }) {
+    return '$first–$last / $total';
   }
 
   @override
@@ -868,6 +884,15 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String viewerPageStatusRange({
+    required String first,
+    required String last,
+    required String total,
+  }) {
+    return '$first–$last / $total';
+  }
+
+  @override
   String get viewerPreviousPage {
     return 'Previous page';
   }
@@ -1189,6 +1214,15 @@ class _AppMessagesKo extends AppMessages {
   @override
   String viewerPageStatus({required String page, required String total}) {
     return '$page / $total';
+  }
+
+  @override
+  String viewerPageStatusRange({
+    required String first,
+    required String last,
+    required String total,
+  }) {
+    return '$first–$last / $total';
   }
 
   @override
