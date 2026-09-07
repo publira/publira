@@ -19,6 +19,8 @@ env:
 on:
   pull_request:
     branches: [main]
+  merge_group:
+    types: [checks_requested]
   push:
     branches: [main]
   schedule:
@@ -37,6 +39,8 @@ on:
 
 # Branch ruleset should require only the final job display name: "Summary"
 # (see job `summary` below). Intermediate jobs may be skipped by path filters.
+# The merge queue on `main` requires that same check on the merge group it
+# builds, which is what the `merge_group` trigger above answers.
 
 # Repo default is read-only GITHUB_TOKEN; paths-filter needs PR file list on pull_request.
 permissions:
@@ -66,18 +70,20 @@ jobs:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # `push` has no API file list, so paths-filter diffs `github.event.before`..HEAD
-          # locally: the base commit must be present already, because
-          # `persist-credentials: false` leaves no credentials for a fallback `git fetch`.
-          # Other events need no history — `pull_request` uses the API file list, and
-          # `schedule` / `workflow_dispatch` skip the filter step entirely.
+          # `push` and `merge_group` have no API file list, so paths-filter diffs
+          # locally — `github.event.before`..HEAD for a push, `base_sha`..`head_sha`
+          # for a merge group — and both endpoints must be present already, because
+          # `persist-credentials: false` leaves no credentials for a fallback
+          # `git fetch`. The other events need no history — `pull_request` uses the
+          # API file list, and `schedule` / `workflow_dispatch` skip the filter step
+          # entirely.
           # Keep `'0'` quoted: a bare 0 is falsy and the `&&`/`||` chain would yield 1.
-          fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
+          fetch-depth: ${{ (github.event_name == 'push' || github.event_name == 'merge_group') && '0' || '1' }}
           persist-credentials: false
 
       - name: Path filter
         id: filter
-        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push'
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           # 'some-with-excludes': a file matches a filter when it matches at least one

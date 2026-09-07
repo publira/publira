@@ -128,7 +128,7 @@ case "${event}" in
     fi
     ;;
   *)
-    # pull_request / push: path-filter driven.
+    # pull_request / merge_group / push: path-filter driven.
     if flag FILTER_FORMAT; then format=true; fi
     if flag FILTER_CHECK; then check=true; fi
     if flag FILTER_LINT_GO; then lint_go=true; fi
