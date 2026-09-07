@@ -337,7 +337,11 @@ test.describe("web-host reader account lifecycle", () => {
       false
     );
     // The verification mail that sign-up sent is not the one under test, and
-    // the notice below is read as the newest message at this address.
+    // the notice below is read as the newest message at this address. It is
+    // waited for before the mailbox is cleared: the sign-up hands it to the
+    // sink after the response the browser already followed, so clearing an
+    // empty mailbox would leave it in flight to arrive after the notice.
+    await waitForMessageTo(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email);
     await clearMessagesTo(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email);
 
     await submitSignup(page, {
