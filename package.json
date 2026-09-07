@@ -26,7 +26,7 @@
     "oxlint-plugin-react-doctor": "0.9.13",
     "turbo": "2.10.12",
     "typescript": "catalog:",
-    "ultracite": "7.10.7"
+    "ultracite": "7.10.8"
   },
   "devEngines": {
     "runtime": {
