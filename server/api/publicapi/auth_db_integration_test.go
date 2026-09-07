@@ -751,6 +751,101 @@ func TestDBChangePasswordKeepsTheCallerSignedInAndEndsTheOtherSessions(t *testin
 	}
 }
 
+// Two changes submitted at once must not both take effect. Without the lock on
+// the account row both verify the same old password and both commit, so the
+// account ends on the loser's password while the winner has been told its own
+// took, and the winner's replacement token is dead on arrival. Exactly one
+// request succeeds, and the password it set is the one stored.
+func TestDBChangePasswordLetsOnlyOneOfTwoConcurrentChangesThrough(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	client := env.authClient()
+
+	candidates := []string{"first-new-password", "second-new-password"}
+	start := make(chan struct{})
+	results := make(chan struct {
+		password string
+		token    string
+		err      error
+	}, len(candidates))
+	var wg sync.WaitGroup
+	for _, candidate := range candidates {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			resp, err := client.ChangePassword(context.Background(), newBearerRequest(
+				&publirav1.ChangePasswordRequest{
+					Tenant:          tenantContext(tenant),
+					CurrentPassword: testutil.SeededPassword,
+					NewPassword:     candidate,
+				},
+				tokenFor(t, tenant, user),
+			))
+			token := ""
+			if err == nil {
+				token = resp.Msg.AccessToken.GetToken()
+			}
+			results <- struct {
+				password string
+				token    string
+				err      error
+			}{candidate, token, err}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+
+	accepted := 0
+	acceptedPassword := ""
+	acceptedToken := ""
+	for result := range results {
+		if result.err == nil {
+			accepted++
+			acceptedPassword = result.password
+			acceptedToken = result.token
+			continue
+		}
+		// The loser verified a password that was no longer the account's by the
+		// time it held the lock, which is the same answer a wrong one gets.
+		if connect.CodeOf(result.err) != connect.CodeInvalidArgument {
+			t.Fatalf("the refused change code = %v, want invalid_argument (err=%v)", connect.CodeOf(result.err), result.err)
+		}
+		assertPublicBadRequestField(t, result.err, "current_password")
+	}
+	if accepted != 1 {
+		t.Fatalf("accepted changes = %d, want 1", accepted)
+	}
+
+	// The stored password is the accepted one, and the token that change handed
+	// back is still the caller's session.
+	if _, err := client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+		Tenant:   tenantContext(tenant),
+		Email:    user.Email,
+		Password: acceptedPassword,
+	})); err != nil {
+		t.Fatalf("Login with the accepted password %q: %v", acceptedPassword, err)
+	}
+	if _, err := client.GetMe(context.Background(), newBearerRequest(
+		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
+		acceptedToken,
+	)); err != nil {
+		t.Fatalf("GetMe with the replacement token of the accepted change: %v", err)
+	}
+
+	// One change took effect, so the account was told about it once.
+	notices := countRows(t, env, `
+		SELECT count(*) FROM outbox_events
+		WHERE event_type = 'reader_password_changed_notice_email'
+		AND payload ->> 'user_id' = $1
+	`, user.ID.String())
+	if notices != 1 {
+		t.Fatalf("queued notices = %d, want 1", notices)
+	}
+}
+
 // A change the account's owner did not make is the one this mail exists for, so
 // every change queues its own notice — the version the change left behind is
 // what keeps two of them apart.

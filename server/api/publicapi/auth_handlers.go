@@ -1094,6 +1094,14 @@ func (s *apiServer) ConfirmPasswordReset(
 // the old one, and the mail that reports the change are one write: a change
 // that took effect without telling the account's owner is the state this
 // transaction exists to rule out.
+//
+// The current password is checked against the locked row rather than the one
+// the session read, which is what puts two changes in order. Without the lock
+// both would verify the same old password, both would commit, and the second
+// would leave the account on a password the first caller was told it had moved
+// off — while that first caller holds a token the second bump has already
+// killed. The loser of the race sees the same "current password is wrong" it
+// would have seen had it arrived a moment later, because by then it is.
 func (s *apiServer) ChangePassword(
 	ctx context.Context,
 	req *connect.Request[publirav1.ChangePasswordRequest],
@@ -1110,26 +1118,12 @@ func (s *apiServer) ChangePassword(
 		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_password and new_password are required"))
 	}
-	if !auth.VerifyPassword(currentPassword, user.PasswordHash) {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_password")
-		// Not Unauthenticated: the session is fine, the confirmation field is
-		// wrong. Clients treat Unauthenticated as "re-authenticate", which would
-		// log the reader out for a typo. The message names the field and nothing
-		// else — the account, its state, and the stored hash stay out of it.
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
-	}
 	if newPassword == currentPassword {
 		// Refused rather than accepted as a no-op: the change would end every
 		// other session the reader holds and leave them with the password an
 		// attacker already knows, which is the opposite of what the form is for.
 		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "same_password")
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("new password must be different from current password"), "new_password")
-	}
-
-	passwordHash, err := auth.HashPassword(newPassword)
-	if err != nil {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_hash_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -1139,6 +1133,32 @@ func (s *apiServer) ChangePassword(
 	}
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
+
+	locked, err := txq.GetUserByIDForUpdate(ctx, user.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// The account was closed while this request waited. There is nothing
+			// left to change, and the session it came with is over.
+			auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "account_gone")
+			return nil, invalidSessionError()
+		}
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
+		return nil, s.internalDBError(ctx, "failed to lock the account for a password change", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if !auth.VerifyPassword(currentPassword, locked.PasswordHash) {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+		// Not Unauthenticated: the session is fine, the confirmation field is
+		// wrong. Clients treat Unauthenticated as "re-authenticate", which would
+		// log the reader out for a typo. The message names the field and nothing
+		// else — the account, its state, and the stored hash stay out of it.
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
+	}
+
+	passwordHash, err := auth.HashPassword(newPassword)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 
 	if _, err := txq.UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
 		ID:           user.ID,
