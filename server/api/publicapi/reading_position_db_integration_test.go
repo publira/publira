@@ -526,6 +526,56 @@ func TestDBListMyRecentSeriesPagesNewestActivityFirst(t *testing.T) {
 	}
 }
 
+// A reader leaves two kinds of mark behind, a saved position and a finished
+// read, and the list sorts on the newer of them. This orders three series so
+// that dropping either kind, or taking the older mark of an episode that
+// carries both, changes the answer.
+func TestDBListMyRecentSeriesOrdersOnTheNewerOfAPositionAndARead(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRECG", "recent-g.example.com", "Recent G")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECH", "member-recent-h@example.com", "Member H", "tenant_member")
+	client := env.episodeReadClient()
+	token := tokenFor(t, tenant, member)
+
+	seedTwoEpisodeSeries := func(seriesPublicID, firstPublicID, secondPublicID string) (testutil.Series, testutil.Episode, testutil.Episode) {
+		series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: seriesPublicID, Title: seriesPublicID, Published: true})
+		first := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: firstPublicID, Title: "Episode 1", Status: testutil.EpisodeStatusPublished}, 10)
+		second := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: secondPublicID, Title: "Episode 2", Status: testutil.EpisodeStatusPublished}, 10)
+		return series, first, second
+	}
+	bothMarks, bothFirst, bothSecond := seedTwoEpisodeSeries("SERIESRECJ", "EPISODERECN", "EPISODERECO")
+	positionOnly, positionFirst, _ := seedTwoEpisodeSeries("SERIESRECK", "EPISODERECP", "EPISODERECQ")
+	readOnly, readFirst, readSecond := seedTwoEpisodeSeries("SERIESRECL", "EPISODERECR", "EPISODERECS")
+
+	// Oldest first, so the expected order is the reverse of the write order
+	// except for the position that the later read of the same episode outranks.
+	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, bothFirst.PublicID, 3, token)); err != nil {
+		t.Fatalf("SaveReadingPosition %s: %v", bothFirst.PublicID, err)
+	}
+	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, positionFirst.PublicID, 4, token)); err != nil {
+		t.Fatalf("SaveReadingPosition %s: %v", positionFirst.PublicID, err)
+	}
+	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, bothFirst.PublicID, token)); err != nil {
+		t.Fatalf("MarkEpisodeAsRead %s: %v", bothFirst.PublicID, err)
+	}
+	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, readFirst.PublicID, token)); err != nil {
+		t.Fatalf("MarkEpisodeAsRead %s: %v", readFirst.PublicID, err)
+	}
+
+	response, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries: %v", err)
+	}
+	want := []string{
+		readOnly.PublicID + "/" + readSecond.PublicID,
+		bothMarks.PublicID + "/" + bothSecond.PublicID,
+		positionOnly.PublicID + "/" + positionFirst.PublicID,
+	}
+	if got := recentSeriesPublicIDs(response.Msg.Series); !slices.Equal(got, want) {
+		t.Fatalf("series = %v, want %v", got, want)
+	}
+}
+
 func TestDBListMyRecentSeriesSkipsASeriesThatIsNoLongerPublished(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRECD", "recent-d.example.com", "Recent D")

@@ -441,6 +441,32 @@ func TestListMyRecentSeriesRecoversOnceFromAnEmptyPage(t *testing.T) {
 	assertPublicExpectations(t, fixture.mock)
 }
 
+func TestListMyRecentSeriesRecoversOnceFromAnEmptyBackwardPage(t *testing.T) {
+	fixture := newReadingPositionFixture(t)
+	boundary := uuid.Must(uuid.NewV7())
+	token := pagination.EncodeTimeUUID(pagination.Backward, fixture.now, boundary)
+
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(listMyRecentSeriesAscQuery)).
+		WithArgs(fixture.tenantID, fixture.userID, sql.NullTime{Time: fixture.now, Valid: true}, false, uuid.NullUUID{UUID: boundary, Valid: true}, int32(21)).
+		WillReturnRows(recentSeriesColumns())
+
+	response, err := fixture.recent(0, token)
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries: %v", err)
+	}
+	if len(response.Msg.Series) != 0 {
+		t.Fatalf("series = %d, want none", len(response.Msg.Series))
+	}
+	want := pagination.EncodeTimeUUIDRecovery(pagination.Forward, fixture.now, boundary)
+	if response.Msg.NextToken != want {
+		t.Fatalf("next_token = %q, want the recovery token back to the boundary row", response.Msg.NextToken)
+	}
+	if response.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty", response.Msg.PreviousToken)
+	}
+	assertPublicExpectations(t, fixture.mock)
+}
+
 func TestListMyRecentSeriesRejectsAMalformedToken(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
 
