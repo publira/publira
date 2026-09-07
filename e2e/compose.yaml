@@ -1,19 +1,21 @@
 # Ephemeral dependency stack for E2E (project name: publira-e2e).
 # Apps (api-server, web-host) run on the host; only data stores are containerized.
 #
-# The one exception is traefik, the edge in front of those host processes.
+# The exceptions are traefik, the edge in front of those host processes, and
+# the browser the screenshot projects render in.
 #
 # Host ports are offset from each service's default (5432 / 6379 / 9000 / 1025
 # / 8025) so they clear other local stacks. Override with E2E_POSTGRES_PORT /
 # E2E_REDIS_PORT / E2E_RUSTFS_PORT / E2E_MAILPIT_SMTP_PORT /
-# E2E_MAILPIT_HTTP_PORT / E2E_EDGE_PORT (and a distinct COMPOSE_PROJECT_NAME)
-# so a second stack can run from the same checkout:
+# E2E_MAILPIT_HTTP_PORT / E2E_EDGE_PORT / E2E_BROWSER_PORT (and a distinct
+# COMPOSE_PROJECT_NAME) so a second stack can run from the same checkout:
 #   postgres → localhost:${E2E_POSTGRES_PORT:-5433}
 #   redis    → localhost:${E2E_REDIS_PORT:-6380}
 #   rustfs   → localhost:${E2E_RUSTFS_PORT:-9003}
 #   mailpit  → localhost:${E2E_MAILPIT_SMTP_PORT:-1026} (SMTP),
 #              localhost:${E2E_MAILPIT_HTTP_PORT:-8026} (API)
 #   traefik  → localhost:${E2E_EDGE_PORT:-3080}
+#   browser  → localhost:${E2E_BROWSER_PORT:-3090}
 
 name: publira-e2e
 
@@ -130,6 +132,41 @@ services:
       # and services.yaml is committed, so it does.
       - ../infra/proxy/traefik/dynamic:/etc/traefik/dynamic:ro
       - ${E2E_TRAEFIK_DYNAMIC_DIR:-./.run/traefik}/services.yaml:/etc/traefik/dynamic/services.yaml:ro
+
+  # The browser the screenshot projects render in. Every other project drives
+  # the Playwright Chromium installed on the host; a screenshot is compared
+  # pixel by pixel, so it comes out of a pinned image instead
+  # (`browser/Dockerfile` says what the pinning buys).
+  #
+  # `network_mode: host` for traefik's reason: every app under test is a host
+  # process on loopback, and a `*.localhost` name has to reach the same
+  # loopback from inside the browser as from outside it.
+  browser:
+    build:
+      context: ./browser
+    labels: *run-dir-label
+    network_mode: host
+    init: true
+    # Chromium's renderer processes share memory through /dev/shm, which is
+    # 64 MB in a container by default and too small for a full-page shot.
+    ipc: host
+    command:
+      - "--host"
+      - "127.0.0.1"
+      - "--port"
+      - "${E2E_BROWSER_PORT:-3090}"
+    healthcheck:
+      # The endpoint is a WebSocket the client upgrades to, so accepting a
+      # connection is the whole readiness signal.
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('node:net').connect(${E2E_BROWSER_PORT:-3090}, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 2s
 
 volumes:
   e2e-postgres-data:

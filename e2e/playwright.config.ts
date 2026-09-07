@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 import {
+  BROWSER_WS_ENDPOINT,
   WEB_ADMIN_BASE_URL,
   WEB_HOST_BASE_URL,
   WEB_HOST_EDGE_BASE_URL,
@@ -53,6 +54,31 @@ const platformSetupSpecs = /platform\.setup\./u;
 const performanceSpecs = /\.viewer-performance\./u;
 
 /**
+ * The suites that record what a screen looks like. They run before every other
+ * project, as its dependency, because the state they photograph is the one
+ * `task e2e:db` seeded: the admin console lists the series the publishing
+ * suites create, and the public catalogue lists the episodes they publish.
+ *
+ * They also render in a different browser from the rest — the pinned image of
+ * `browser/Dockerfile`, reached over `connectOptions` — so a baseline taken on
+ * a workstation and the comparison CI runs are rasterized by the same fonts.
+ */
+const screenshotSpecs = /\.screenshots\./u;
+
+/** What a screenshot project shares with the two others. */
+const screenshotProjectUse = {
+  ...desktopChrome,
+  connectOptions: { wsEndpoint: BROWSER_WS_ENDPOINT },
+} as const;
+
+/** Every project the screenshot suites have to precede. */
+const screenshotDependencies = [
+  "screenshots-host",
+  "screenshots-admin",
+  "screenshots-platform",
+];
+
+/**
  * CI is `ubuntu-latest`, which a public repository gets with 4 vCPU. Three
  * workers leave headroom for the Next servers, Go APIs, and Chromium. The same
  * count is used locally so isolation assumptions match CI. CLI `--workers=1`
@@ -70,13 +96,49 @@ export default defineConfig({
   // a process are kept off this pool by the isolated projects below.
   fullyParallel: false,
   projects: [
+    // First, and in the pinned browser: what they record is the state
+    // `task e2e:db` left, before a publishing suite has put another series in
+    // the console's list or another episode on the public catalogue.
+    //
+    // The public site is reached through the edge rather than web-host
+    // directly, because a comic episode draws its pages from
+    // `/images/episodes/{id}` on the reader's own origin, and only the edge
+    // answers that.
     {
+      name: "screenshots-host",
+      testMatch: [/host\.screenshots\./u],
+      use: {
+        ...screenshotProjectUse,
+        baseURL: WEB_HOST_EDGE_BASE_URL,
+      },
+    },
+    {
+      name: "screenshots-admin",
+      testMatch: [/admin\.screenshots\./u],
+      timeout: 120_000,
+      use: {
+        ...screenshotProjectUse,
+        baseURL: WEB_ADMIN_BASE_URL,
+      },
+    },
+    {
+      name: "screenshots-platform",
+      testMatch: [/platform\.screenshots\./u],
+      timeout: 120_000,
+      use: {
+        ...screenshotProjectUse,
+        baseURL: WEB_PLATFORM_BASE_URL,
+      },
+    },
+    {
+      dependencies: screenshotDependencies,
       name: "web-host",
       testIgnore: [
         /admin\./u,
         /platform\./u,
         processIsolatedSpecs,
         performanceSpecs,
+        screenshotSpecs,
       ],
       use: {
         ...desktopChrome,
@@ -84,8 +146,9 @@ export default defineConfig({
       },
     },
     {
+      dependencies: screenshotDependencies,
       name: "web-admin",
-      testIgnore: [processIsolatedSpecs, performanceSpecs],
+      testIgnore: [processIsolatedSpecs, performanceSpecs, screenshotSpecs],
       testMatch: [/admin\./u],
       timeout: 120_000,
       use: {
@@ -94,6 +157,7 @@ export default defineConfig({
       },
     },
     {
+      dependencies: screenshotDependencies,
       name: "web-platform",
       testIgnore: [
         processIsolatedSpecs,
@@ -101,6 +165,7 @@ export default defineConfig({
         platformOperatorManagementSpecs,
         platformSetupSpecs,
         performanceSpecs,
+        screenshotSpecs,
       ],
       testMatch: [/platform\./u],
       timeout: 120_000,
@@ -250,6 +315,11 @@ export default defineConfig({
     ["html", { open: "never", outputFolder: "playwright-report" }],
   ],
   retries: isCi ? 1 : 0,
+  // One directory per screenshot project, named after the screen. The default
+  // template ends the file name in the operating system Playwright is running
+  // on, which would claim these are per-platform baselines; they are not, since
+  // every one of them is rendered by the Linux browser image.
+  snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{arg}{ext}",
   testDir: "./tests",
   timeout: 60_000,
   use: {

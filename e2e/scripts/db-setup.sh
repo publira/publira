@@ -33,4 +33,12 @@ e2e_log "running task storage:init"
 # After storage:init: the fixtures need the bucket to exist.
 bash "${E2E_SCRIPTS_DIR}/seed-viewer-pages.sh"
 
+# The development seed dates its catalogue and its accounts from the moment it
+# runs, which a screenshot compared pixel by pixel cannot absorb. Applied here
+# rather than by the screenshot specs so every suite reads the same dates the
+# baseline was taken against.
+screenshot_baseline_sql="${REPO_ROOT}/db/seeds/scenarios/160_screenshot_baseline.sql"
+e2e_log "applying ${screenshot_baseline_sql}"
+psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${screenshot_baseline_sql}"
+
 e2e_log "database and storage ready"

@@ -53,5 +53,7 @@ EOF
 
 e2e_log "starting compose project ${COMPOSE_PROJECT_NAME}"
 # --wait blocks until every service healthcheck (postgres / redis / rustfs) is healthy.
-compose up -d --wait
+# --build so an edit to browser/Dockerfile reaches the running browser; every
+# other service pulls a pinned image and has nothing to build.
+compose up -d --wait --build
 e2e_log "compose dependencies are up"
