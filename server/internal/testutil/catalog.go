@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 
 	"github.com/publira/publira/server/internal/publicid"
 )
@@ -47,6 +48,15 @@ type SeriesSeed struct {
 	// PublishedAt defaults to an hour ago. Set it in the future to seed a series
 	// whose publication has not come around yet.
 	PublishedAt time.Time
+	// Status is series_listings.status: ongoing, completed, or hiatus. Empty
+	// takes the column's default.
+	Status string
+	// ScheduleWeekdays is series_listings.schedule_weekdays, as EXTRACT(DOW)
+	// numbers 0 (Sunday) to 6 (Saturday). Nil seeds no weekly schedule.
+	ScheduleWeekdays []int32
+	// AgeRating is series_listings.age_rating: all, r15, or r18. Empty takes the
+	// column's default.
+	AgeRating string
 }
 
 // Episode is a seeded episode together with the listing that prices it.
@@ -124,9 +134,15 @@ func (e *PostgresEnv) SeedSeries(t *testing.T, tenantID uuid.UUID, seed SeriesSe
 
 	synopsis := sql.NullString{String: seed.Synopsis, Valid: seed.Synopsis != ""}
 	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO series_listings (series_id, tenant_id, synopsis, is_published, published_at)
-		VALUES ($1, $2, $3, $4, $5)
-	`, seriesID, tenantID, synopsis, seed.Published, publishedAt); err != nil {
+		INSERT INTO series_listings (series_id, tenant_id, synopsis, is_published, published_at, status, schedule_weekdays, age_rating)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, seriesID, tenantID, synopsis, seed.Published, publishedAt,
+		defaultIfEmpty(seed.Status, "ongoing"),
+		// pq sends a nil slice as NULL, and the column is NOT NULL: a seed with
+		// no schedule stores the empty array the default would have given it.
+		pq.Array(append([]int32{}, seed.ScheduleWeekdays...)),
+		defaultIfEmpty(seed.AgeRating, "all"),
+	); err != nil {
 		t.Fatalf("insert series_listings %s: %v", publicID, err)
 	}
 

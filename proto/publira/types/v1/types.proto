@@ -70,6 +70,30 @@ message ImageCropRect {
   int32 height = 4;
 }
 
+// Whether a series is still gaining episodes. Stored on
+// series_listings.status, so it is the tenant's statement about the series
+// rather than something derived from the episodes it happens to hold.
+enum SeriesStatus {
+  SERIES_STATUS_UNSPECIFIED = 0;
+  // New episodes are still coming.
+  SERIES_STATUS_ONGOING = 1;
+  // The series has ended; no further episode is planned.
+  SERIES_STATUS_COMPLETED = 2;
+  // Paused, with more episodes intended.
+  SERIES_STATUS_HIATUS = 3;
+}
+
+// Who a series is meant for. A client interposes its own confirmation on a
+// rated series; whether the reader has to prove an age is a separate tenant
+// setting.
+enum SeriesAgeRating {
+  SERIES_AGE_RATING_UNSPECIFIED = 0;
+  // No age restriction.
+  SERIES_AGE_RATING_ALL = 1;
+  SERIES_AGE_RATING_R15 = 2;
+  SERIES_AGE_RATING_R18 = 3;
+}
+
 message Series {
   string public_id = 1;
   string title = 2;
@@ -84,6 +108,12 @@ message Series {
   reserved 7, 8;
   string eye_catch_image_updated_at = 9;
   repeated SeriesEyeCatchVariant eye_catch_image_variants = 10;
+  SeriesStatus status = 13;
+  // The weekdays a new episode is expected, as EXTRACT(DOW) numbers: 0 is
+  // Sunday and 6 is Saturday. Ascending, without duplicates. Empty means the
+  // series keeps no weekly schedule, which is a statement rather than a gap.
+  repeated int32 schedule_weekdays = 14;
+  SeriesAgeRating age_rating = 15;
 }
 
 message Episode {

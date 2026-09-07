@@ -21,6 +21,120 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Whether a series is still gaining episodes. Stored on
+// series_listings.status, so it is the tenant's statement about the series
+// rather than something derived from the episodes it happens to hold.
+type SeriesStatus int32
+
+const (
+	SeriesStatus_SERIES_STATUS_UNSPECIFIED SeriesStatus = 0
+	// New episodes are still coming.
+	SeriesStatus_SERIES_STATUS_ONGOING SeriesStatus = 1
+	// The series has ended; no further episode is planned.
+	SeriesStatus_SERIES_STATUS_COMPLETED SeriesStatus = 2
+	// Paused, with more episodes intended.
+	SeriesStatus_SERIES_STATUS_HIATUS SeriesStatus = 3
+)
+
+// Enum value maps for SeriesStatus.
+var (
+	SeriesStatus_name = map[int32]string{
+		0: "SERIES_STATUS_UNSPECIFIED",
+		1: "SERIES_STATUS_ONGOING",
+		2: "SERIES_STATUS_COMPLETED",
+		3: "SERIES_STATUS_HIATUS",
+	}
+	SeriesStatus_value = map[string]int32{
+		"SERIES_STATUS_UNSPECIFIED": 0,
+		"SERIES_STATUS_ONGOING":     1,
+		"SERIES_STATUS_COMPLETED":   2,
+		"SERIES_STATUS_HIATUS":      3,
+	}
+)
+
+func (x SeriesStatus) Enum() *SeriesStatus {
+	p := new(SeriesStatus)
+	*p = x
+	return p
+}
+
+func (x SeriesStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SeriesStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[0].Descriptor()
+}
+
+func (SeriesStatus) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[0]
+}
+
+func (x SeriesStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SeriesStatus.Descriptor instead.
+func (SeriesStatus) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{0}
+}
+
+// Who a series is meant for. A client interposes its own confirmation on a
+// rated series; whether the reader has to prove an age is a separate tenant
+// setting.
+type SeriesAgeRating int32
+
+const (
+	SeriesAgeRating_SERIES_AGE_RATING_UNSPECIFIED SeriesAgeRating = 0
+	// No age restriction.
+	SeriesAgeRating_SERIES_AGE_RATING_ALL SeriesAgeRating = 1
+	SeriesAgeRating_SERIES_AGE_RATING_R15 SeriesAgeRating = 2
+	SeriesAgeRating_SERIES_AGE_RATING_R18 SeriesAgeRating = 3
+)
+
+// Enum value maps for SeriesAgeRating.
+var (
+	SeriesAgeRating_name = map[int32]string{
+		0: "SERIES_AGE_RATING_UNSPECIFIED",
+		1: "SERIES_AGE_RATING_ALL",
+		2: "SERIES_AGE_RATING_R15",
+		3: "SERIES_AGE_RATING_R18",
+	}
+	SeriesAgeRating_value = map[string]int32{
+		"SERIES_AGE_RATING_UNSPECIFIED": 0,
+		"SERIES_AGE_RATING_ALL":         1,
+		"SERIES_AGE_RATING_R15":         2,
+		"SERIES_AGE_RATING_R18":         3,
+	}
+)
+
+func (x SeriesAgeRating) Enum() *SeriesAgeRating {
+	p := new(SeriesAgeRating)
+	*p = x
+	return p
+}
+
+func (x SeriesAgeRating) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SeriesAgeRating) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[1].Descriptor()
+}
+
+func (SeriesAgeRating) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[1]
+}
+
+func (x SeriesAgeRating) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SeriesAgeRating.Descriptor instead.
+func (SeriesAgeRating) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{1}
+}
+
 // How a tenant publishes the comments its readers write on an episode. It is
 // one tenant-wide setting (tenant_config.comment_mode), so a storefront reads
 // it once to decide whether the episode page offers commenting at all.
@@ -65,11 +179,11 @@ func (x CommentMode) String() string {
 }
 
 func (CommentMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[0].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[2].Descriptor()
 }
 
 func (CommentMode) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[0]
+	return &file_publira_types_v1_types_proto_enumTypes[2]
 }
 
 func (x CommentMode) Number() protoreflect.EnumNumber {
@@ -78,7 +192,7 @@ func (x CommentMode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CommentMode.Descriptor instead.
 func (CommentMode) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{0}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{2}
 }
 
 // TenantContext identifies a tenant for internal RPC wiring.
@@ -584,8 +698,14 @@ type Series struct {
 	PublishedAt            string                   `protobuf:"bytes,12,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
 	EyeCatchImageUpdatedAt string                   `protobuf:"bytes,9,opt,name=eye_catch_image_updated_at,json=eyeCatchImageUpdatedAt,proto3" json:"eye_catch_image_updated_at,omitempty"`
 	EyeCatchImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,10,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	Status                 SeriesStatus             `protobuf:"varint,13,opt,name=status,proto3,enum=publira.types.v1.SeriesStatus" json:"status,omitempty"`
+	// The weekdays a new episode is expected, as EXTRACT(DOW) numbers: 0 is
+	// Sunday and 6 is Saturday. Ascending, without duplicates. Empty means the
+	// series keeps no weekly schedule, which is a statement rather than a gap.
+	ScheduleWeekdays []int32         `protobuf:"varint,14,rep,packed,name=schedule_weekdays,json=scheduleWeekdays,proto3" json:"schedule_weekdays,omitempty"`
+	AgeRating        SeriesAgeRating `protobuf:"varint,15,opt,name=age_rating,json=ageRating,proto3,enum=publira.types.v1.SeriesAgeRating" json:"age_rating,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Series) Reset() {
@@ -686,6 +806,27 @@ func (x *Series) GetEyeCatchImageVariants() []*SeriesEyeCatchVariant {
 		return x.EyeCatchImageVariants
 	}
 	return nil
+}
+
+func (x *Series) GetStatus() SeriesStatus {
+	if x != nil {
+		return x.Status
+	}
+	return SeriesStatus_SERIES_STATUS_UNSPECIFIED
+}
+
+func (x *Series) GetScheduleWeekdays() []int32 {
+	if x != nil {
+		return x.ScheduleWeekdays
+	}
+	return nil
+}
+
+func (x *Series) GetAgeRating() SeriesAgeRating {
+	if x != nil {
+		return x.AgeRating
+	}
+	return SeriesAgeRating_SERIES_AGE_RATING_UNSPECIFIED
 }
 
 type Episode struct {
@@ -1503,7 +1644,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x05R\x01y\x12\x14\n" +
 	"\x05width\x18\x03 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\x04 \x01(\x05R\x06height\"\xdf\x03\n" +
+	"\x06height\x18\x04 \x01(\x05R\x06height\"\x86\x05\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -1515,7 +1656,11 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\fpublished_at\x18\f \x01(\tR\vpublishedAt\x12:\n" +
 	"\x1aeye_catch_image_updated_at\x18\t \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
 	"\x18eye_catch_image_variants\x18\n" +
-	" \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariantsJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x02\n" +
+	" \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\x126\n" +
+	"\x06status\x18\r \x01(\x0e2\x1e.publira.types.v1.SeriesStatusR\x06status\x12+\n" +
+	"\x11schedule_weekdays\x18\x0e \x03(\x05R\x10scheduleWeekdays\x12@\n" +
+	"\n" +
+	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRatingJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x02\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -1601,7 +1746,17 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"publish_at\x18\a \x01(\tR\tpublishAt\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12!\n" +
-	"\fpublished_at\x18\t \x01(\tR\vpublishedAt*\x86\x01\n" +
+	"\fpublished_at\x18\t \x01(\tR\vpublishedAt*\x7f\n" +
+	"\fSeriesStatus\x12\x1d\n" +
+	"\x19SERIES_STATUS_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15SERIES_STATUS_ONGOING\x10\x01\x12\x1b\n" +
+	"\x17SERIES_STATUS_COMPLETED\x10\x02\x12\x18\n" +
+	"\x14SERIES_STATUS_HIATUS\x10\x03*\x85\x01\n" +
+	"\x0fSeriesAgeRating\x12!\n" +
+	"\x1dSERIES_AGE_RATING_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15SERIES_AGE_RATING_ALL\x10\x01\x12\x19\n" +
+	"\x15SERIES_AGE_RATING_R15\x10\x02\x12\x19\n" +
+	"\x15SERIES_AGE_RATING_R18\x10\x03*\x86\x01\n" +
 	"\vCommentMode\x12\x1c\n" +
 	"\x18COMMENT_MODE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15COMMENT_MODE_DISABLED\x10\x01\x12\x1a\n" +
@@ -1620,37 +1775,41 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_publira_types_v1_types_proto_goTypes = []any{
-	(CommentMode)(0),              // 0: publira.types.v1.CommentMode
-	(*TenantContext)(nil),         // 1: publira.types.v1.TenantContext
-	(*User)(nil),                  // 2: publira.types.v1.User
-	(*AccessToken)(nil),           // 3: publira.types.v1.AccessToken
-	(*Creator)(nil),               // 4: publira.types.v1.Creator
-	(*Label)(nil),                 // 5: publira.types.v1.Label
-	(*SeriesEyeCatchVariant)(nil), // 6: publira.types.v1.SeriesEyeCatchVariant
-	(*ImageCropRect)(nil),         // 7: publira.types.v1.ImageCropRect
-	(*Series)(nil),                // 8: publira.types.v1.Series
-	(*Episode)(nil),               // 9: publira.types.v1.Episode
-	(*EpisodeImage)(nil),          // 10: publira.types.v1.EpisodeImage
-	(*TenantImageVariant)(nil),    // 11: publira.types.v1.TenantImageVariant
-	(*TenantTheme)(nil),           // 12: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 13: publira.types.v1.Page
-	(*PageVersion)(nil),           // 14: publira.types.v1.PageVersion
+	(SeriesStatus)(0),             // 0: publira.types.v1.SeriesStatus
+	(SeriesAgeRating)(0),          // 1: publira.types.v1.SeriesAgeRating
+	(CommentMode)(0),              // 2: publira.types.v1.CommentMode
+	(*TenantContext)(nil),         // 3: publira.types.v1.TenantContext
+	(*User)(nil),                  // 4: publira.types.v1.User
+	(*AccessToken)(nil),           // 5: publira.types.v1.AccessToken
+	(*Creator)(nil),               // 6: publira.types.v1.Creator
+	(*Label)(nil),                 // 7: publira.types.v1.Label
+	(*SeriesEyeCatchVariant)(nil), // 8: publira.types.v1.SeriesEyeCatchVariant
+	(*ImageCropRect)(nil),         // 9: publira.types.v1.ImageCropRect
+	(*Series)(nil),                // 10: publira.types.v1.Series
+	(*Episode)(nil),               // 11: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 12: publira.types.v1.EpisodeImage
+	(*TenantImageVariant)(nil),    // 13: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 14: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 15: publira.types.v1.Page
+	(*PageVersion)(nil),           // 16: publira.types.v1.PageVersion
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
-	6,  // 0: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	5,  // 1: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	4,  // 2: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	6,  // 3: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	11, // 4: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	11, // 5: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	6,  // [6:6] is the sub-list for method output_type
-	6,  // [6:6] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	8,  // 0: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	7,  // 1: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	6,  // 2: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	8,  // 3: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	0,  // 4: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
+	1,  // 5: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
+	13, // 6: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	13, // 7: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	8,  // [8:8] is the sub-list for method output_type
+	8,  // [8:8] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }
@@ -1663,7 +1822,7 @@ func file_publira_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      3,
 			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,

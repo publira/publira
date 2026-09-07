@@ -231,9 +231,27 @@ type episodeJSON struct {
 }
 
 func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattypesv1.Series, error) {
-	item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
+	item := &publirattypesv1.Series{
+		PublicId:         row.PublicID,
+		Title:            row.Title,
+		ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
+	}
 	if row.Synopsis.Valid {
 		item.Synopsis = row.Synopsis.String
+	}
+	if row.Status.Valid {
+		status, err := protomapper.SeriesStatusFromStored(row.Status.String)
+		if err != nil {
+			return nil, err
+		}
+		item.Status = status
+	}
+	if row.AgeRating.Valid {
+		ageRating, err := protomapper.SeriesAgeRatingFromStored(row.AgeRating.String)
+		if err != nil {
+			return nil, err
+		}
+		item.AgeRating = ageRating
 	}
 	if row.EyeCatchImageUpdatedAt.Valid {
 		item.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
@@ -610,11 +628,29 @@ func (s *apiServer) GetSeriesDetail(
 	}
 
 	res := connect.NewResponse(&publirav1.GetSeriesDetailResponse{
-		Series:   &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title},
+		Series: &publirattypesv1.Series{
+			PublicId:         row.PublicID,
+			Title:            row.Title,
+			ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
+		},
 		Episodes: make([]*publirattypesv1.Episode, 0, len(episodes)),
 	})
 	if row.Synopsis.Valid {
 		res.Msg.Series.Synopsis = row.Synopsis.String
+	}
+	if row.Status.Valid {
+		status, statusErr := protomapper.SeriesStatusFromStored(row.Status.String)
+		if statusErr != nil {
+			return nil, s.internalError(ctx, "series listing holds a value this build does not know", statusErr, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		}
+		res.Msg.Series.Status = status
+	}
+	if row.AgeRating.Valid {
+		ageRating, ageRatingErr := protomapper.SeriesAgeRatingFromStored(row.AgeRating.String)
+		if ageRatingErr != nil {
+			return nil, s.internalError(ctx, "series listing holds a value this build does not know", ageRatingErr, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		}
+		res.Msg.Series.AgeRating = ageRating
 	}
 	if row.EyeCatchImageUpdatedAt.Valid {
 		res.Msg.Series.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
@@ -766,9 +802,13 @@ func (s *apiServer) GetEpisodeDetail(
 		}
 	}
 
+	series, err := protomapper.SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+	}
 	res := connect.NewResponse(&publirav1.GetEpisodeDetailResponse{
 		Episode: protomapper.EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row),
-		Series:  protomapper.SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row),
+		Series:  series,
 		Images:  make([]*publirattypesv1.EpisodeImage, 0),
 		Access:  access,
 	})

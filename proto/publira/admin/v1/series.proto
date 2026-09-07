@@ -17,6 +17,12 @@ message CreateSeriesRequest {
   bytes eye_catch_image_data = 8;
   string eye_catch_image_content_type = 9;
   string published_at = 12;
+  // Unspecified stores the default the column carries: ongoing, all ages.
+  publira.types.v1.SeriesStatus status = 13;
+  // EXTRACT(DOW) numbers, 0 (Sunday) to 6 (Saturday). Sorted and deduplicated
+  // before it is stored; empty keeps no weekly schedule.
+  repeated int32 schedule_weekdays = 14;
+  publira.types.v1.SeriesAgeRating age_rating = 15;
 }
 
 message CreateSeriesResponse {
@@ -36,6 +42,14 @@ message UpdateSeriesRequest {
   string eye_catch_image_content_type = 10;
   bool clear_eye_catch_image = 11;
   string published_at = 12;
+  // Unspecified stores the default the column carries: ongoing, all ages.
+  // Every update writes the whole listing row, so an omitted field resets to
+  // that default the way an omitted synopsis clears the synopsis.
+  publira.types.v1.SeriesStatus status = 13;
+  // EXTRACT(DOW) numbers, 0 (Sunday) to 6 (Saturday). Sorted and deduplicated
+  // before it is stored; empty keeps no weekly schedule.
+  repeated int32 schedule_weekdays = 14;
+  publira.types.v1.SeriesAgeRating age_rating = 15;
 }
 
 message UpdateSeriesResponse {

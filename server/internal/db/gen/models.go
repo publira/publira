@@ -482,6 +482,9 @@ type SeriesListing struct {
 	IsPublished        sql.NullBool   `json:"is_published"`
 	PublishedAt        sql.NullTime   `json:"published_at"`
 	TenantID           uuid.UUID      `json:"tenant_id"`
+	Status             string         `json:"status"`
+	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
+	AgeRating          string         `json:"age_rating"`
 }
 
 type Tenant struct {

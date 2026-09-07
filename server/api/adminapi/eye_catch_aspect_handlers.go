@@ -234,7 +234,10 @@ func (s *adminServer) seriesWithEyeCatchVariants(ctx context.Context, tenantID u
 	if err != nil {
 		return nil, err
 	}
-	series := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(row)
+	series, err := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(row)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenantID.String(), "series_public_id", publicID)
+	}
 	series.Creators = creatorsBySeriesID[row.ID]
 	if row.EyeCatchImageID.Valid {
 		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})

@@ -420,7 +420,7 @@ func TestCatalogGetPublishedAuthorDetailSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", now, nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
@@ -466,8 +466,8 @@ func TestCatalogGetPublishedAuthorDetailFirstPageReportsNextToken(t *testing.T) 
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)).
-			AddRow(ids[1], "SERIESBETA0", "Beta", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)).
+			AddRow(ids[1], "SERIESBETA0", "Beta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
@@ -515,7 +515,7 @@ func TestCatalogGetPublishedAuthorDetailFollowsNextToken(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(ids[0], "SERIESZETA0", "Zeta", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(ids[0], "SERIESZETA0", "Zeta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
@@ -563,8 +563,8 @@ func TestCatalogGetPublishedAuthorDetailFollowsPreviousTokenBackwards(t *testing
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(alphaID, "SERIESALPHA", "Alpha", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)).
-			AddRow(betaID, "SERIESBETA0", "Beta", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(alphaID, "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)).
+			AddRow(betaID, "SERIESBETA0", "Beta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{

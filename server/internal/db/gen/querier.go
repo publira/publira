@@ -973,6 +973,9 @@ type Querier interface {
 	// an existing row keeps the value it already has.
 	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
+	// The whole listing row is written on every admin save, so a field the
+	// request leaves empty is stored as empty rather than kept from the row that
+	// was there.
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
 	// The settings screen can save the comment mode for a tenant whose config row
 	// does not exist yet, so the mode is written without disturbing the site copy
