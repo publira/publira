@@ -100,6 +100,35 @@ message WithdrawEpisodeCommentRequest {
 // response, so there is nothing left to return about it.
 message WithdrawEpisodeCommentResponse {}
 
+// Why a reader says a comment breaks the rules.
+//
+// The list is short on purpose: a reporter picks from it in one glance, and
+// staff working the queue can sort by it. Anything the four do not cover is
+// OTHER plus the reporter's own sentence.
+enum CommentReportReason {
+  COMMENT_REPORT_REASON_UNSPECIFIED = 0;
+  COMMENT_REPORT_REASON_SPAM = 1;
+  COMMENT_REPORT_REASON_ABUSE = 2;
+  COMMENT_REPORT_REASON_SPOILER = 3;
+  COMMENT_REPORT_REASON_OTHER = 4;
+}
+
+message ReportEpisodeCommentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string comment_public_id = 2;
+  // Required. UNSPECIFIED is invalid_argument: a report with no reason on it
+  // cannot be worked from.
+  CommentReportReason reason = 3;
+  // Optional. At most 1000 Unicode code points once trimmed; a blank note is
+  // stored as no note at all.
+  string note = 4;
+}
+
+// Deliberately empty. The reporter is told that their report was accepted and
+// nothing else: what a comment's report count is, and whether the threshold
+// moved it, would tell one reader what other readers have done about it.
+message ReportEpisodeCommentResponse {}
+
 service CommentService {
   // Lists the published comments on a currently public episode, newest first.
   //
@@ -129,4 +158,15 @@ service CommentService {
   // dispute about a comment can still be investigated after its author took it
   // down.
   rpc WithdrawEpisodeComment(WithdrawEpisodeCommentRequest) returns (WithdrawEpisodeCommentResponse) {}
+  // Flags one published comment as breaking the rules, as the authenticated
+  // reader.
+  //
+  // Session required. It is idempotent per reader: a reader who has already
+  // reported this comment gets the same success, and their second submission
+  // adds nothing to the count the removal threshold reads.
+  //
+  // A comment the caller cannot see — never published, removed, withdrawn, or
+  // on an episode that is not public — is not_found, and their own comment is
+  // failed_precondition.
+  rpc ReportEpisodeComment(ReportEpisodeCommentRequest) returns (ReportEpisodeCommentResponse) {}
 }

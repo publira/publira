@@ -45,6 +45,9 @@ const (
 	// CommentServiceWithdrawEpisodeCommentProcedure is the fully-qualified name of the CommentService's
 	// WithdrawEpisodeComment RPC.
 	CommentServiceWithdrawEpisodeCommentProcedure = "/publira.v1.CommentService/WithdrawEpisodeComment"
+	// CommentServiceReportEpisodeCommentProcedure is the fully-qualified name of the CommentService's
+	// ReportEpisodeComment RPC.
+	CommentServiceReportEpisodeCommentProcedure = "/publira.v1.CommentService/ReportEpisodeComment"
 )
 
 // CommentServiceClient is a client for the publira.v1.CommentService service.
@@ -77,6 +80,17 @@ type CommentServiceClient interface {
 	// dispute about a comment can still be investigated after its author took it
 	// down.
 	WithdrawEpisodeComment(context.Context, *connect.Request[v1.WithdrawEpisodeCommentRequest]) (*connect.Response[v1.WithdrawEpisodeCommentResponse], error)
+	// Flags one published comment as breaking the rules, as the authenticated
+	// reader.
+	//
+	// Session required. It is idempotent per reader: a reader who has already
+	// reported this comment gets the same success, and their second submission
+	// adds nothing to the count the removal threshold reads.
+	//
+	// A comment the caller cannot see — never published, removed, withdrawn, or
+	// on an episode that is not public — is not_found, and their own comment is
+	// failed_precondition.
+	ReportEpisodeComment(context.Context, *connect.Request[v1.ReportEpisodeCommentRequest]) (*connect.Response[v1.ReportEpisodeCommentResponse], error)
 }
 
 // NewCommentServiceClient constructs a client for the publira.v1.CommentService service. By
@@ -114,6 +128,12 @@ func NewCommentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(commentServiceMethods.ByName("WithdrawEpisodeComment")),
 			connect.WithClientOptions(opts...),
 		),
+		reportEpisodeComment: connect.NewClient[v1.ReportEpisodeCommentRequest, v1.ReportEpisodeCommentResponse](
+			httpClient,
+			baseURL+CommentServiceReportEpisodeCommentProcedure,
+			connect.WithSchema(commentServiceMethods.ByName("ReportEpisodeComment")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -123,6 +143,7 @@ type commentServiceClient struct {
 	listMyEpisodeComments  *connect.Client[v1.ListMyEpisodeCommentsRequest, v1.ListMyEpisodeCommentsResponse]
 	postEpisodeComment     *connect.Client[v1.PostEpisodeCommentRequest, v1.PostEpisodeCommentResponse]
 	withdrawEpisodeComment *connect.Client[v1.WithdrawEpisodeCommentRequest, v1.WithdrawEpisodeCommentResponse]
+	reportEpisodeComment   *connect.Client[v1.ReportEpisodeCommentRequest, v1.ReportEpisodeCommentResponse]
 }
 
 // ListEpisodeComments calls publira.v1.CommentService.ListEpisodeComments.
@@ -143,6 +164,11 @@ func (c *commentServiceClient) PostEpisodeComment(ctx context.Context, req *conn
 // WithdrawEpisodeComment calls publira.v1.CommentService.WithdrawEpisodeComment.
 func (c *commentServiceClient) WithdrawEpisodeComment(ctx context.Context, req *connect.Request[v1.WithdrawEpisodeCommentRequest]) (*connect.Response[v1.WithdrawEpisodeCommentResponse], error) {
 	return c.withdrawEpisodeComment.CallUnary(ctx, req)
+}
+
+// ReportEpisodeComment calls publira.v1.CommentService.ReportEpisodeComment.
+func (c *commentServiceClient) ReportEpisodeComment(ctx context.Context, req *connect.Request[v1.ReportEpisodeCommentRequest]) (*connect.Response[v1.ReportEpisodeCommentResponse], error) {
+	return c.reportEpisodeComment.CallUnary(ctx, req)
 }
 
 // CommentServiceHandler is an implementation of the publira.v1.CommentService service.
@@ -175,6 +201,17 @@ type CommentServiceHandler interface {
 	// dispute about a comment can still be investigated after its author took it
 	// down.
 	WithdrawEpisodeComment(context.Context, *connect.Request[v1.WithdrawEpisodeCommentRequest]) (*connect.Response[v1.WithdrawEpisodeCommentResponse], error)
+	// Flags one published comment as breaking the rules, as the authenticated
+	// reader.
+	//
+	// Session required. It is idempotent per reader: a reader who has already
+	// reported this comment gets the same success, and their second submission
+	// adds nothing to the count the removal threshold reads.
+	//
+	// A comment the caller cannot see — never published, removed, withdrawn, or
+	// on an episode that is not public — is not_found, and their own comment is
+	// failed_precondition.
+	ReportEpisodeComment(context.Context, *connect.Request[v1.ReportEpisodeCommentRequest]) (*connect.Response[v1.ReportEpisodeCommentResponse], error)
 }
 
 // NewCommentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -208,6 +245,12 @@ func NewCommentServiceHandler(svc CommentServiceHandler, opts ...connect.Handler
 		connect.WithSchema(commentServiceMethods.ByName("WithdrawEpisodeComment")),
 		connect.WithHandlerOptions(opts...),
 	)
+	commentServiceReportEpisodeCommentHandler := connect.NewUnaryHandler(
+		CommentServiceReportEpisodeCommentProcedure,
+		svc.ReportEpisodeComment,
+		connect.WithSchema(commentServiceMethods.ByName("ReportEpisodeComment")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.CommentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CommentServiceListEpisodeCommentsProcedure:
@@ -218,6 +261,8 @@ func NewCommentServiceHandler(svc CommentServiceHandler, opts ...connect.Handler
 			commentServicePostEpisodeCommentHandler.ServeHTTP(w, r)
 		case CommentServiceWithdrawEpisodeCommentProcedure:
 			commentServiceWithdrawEpisodeCommentHandler.ServeHTTP(w, r)
+		case CommentServiceReportEpisodeCommentProcedure:
+			commentServiceReportEpisodeCommentHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -241,4 +286,8 @@ func (UnimplementedCommentServiceHandler) PostEpisodeComment(context.Context, *c
 
 func (UnimplementedCommentServiceHandler) WithdrawEpisodeComment(context.Context, *connect.Request[v1.WithdrawEpisodeCommentRequest]) (*connect.Response[v1.WithdrawEpisodeCommentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CommentService.WithdrawEpisodeComment is not implemented"))
+}
+
+func (UnimplementedCommentServiceHandler) ReportEpisodeComment(context.Context, *connect.Request[v1.ReportEpisodeCommentRequest]) (*connect.Response[v1.ReportEpisodeCommentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CommentService.ReportEpisodeComment is not implemented"))
 }

@@ -13,7 +13,12 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { tenantEpisodeCommentsTag } from "#lib/cache-tags";
-import { postEpisodeComment, withdrawEpisodeComment } from "#lib/comments";
+import { EPISODE_COMMENT_REPORT_REASONS } from "#lib/comment-report-reason";
+import {
+  postEpisodeComment,
+  reportEpisodeComment,
+  withdrawEpisodeComment,
+} from "#lib/comments";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   LOCALE_FIELD_NAME,
@@ -52,6 +57,45 @@ const postCommentSchema = (messages: HostMessages) =>
       }),
     episodePublicId: publicIdFormSchema,
     locale: localeFormSchema,
+    returnTo: returnToFormSchema,
+    tenantId: tenantIdSchema,
+  });
+
+/**
+ * The note limit the API enforces, counted in Unicode code points as the body
+ * limit is.
+ */
+const MAX_COMMENT_REPORT_NOTE_LENGTH = 1000;
+
+/**
+ * The report dialog's own rules, worded in the locale the dialog was submitted
+ * from for the same reason {@link postCommentSchema} is.
+ *
+ * The reason is checked against the list the chooser was built from rather than
+ * against a free string: a submission naming anything else did not come from
+ * that chooser, and the RPC would answer it with a generic rejection the reader
+ * could do nothing with.
+ */
+const reportCommentSchema = (messages: HostMessages) =>
+  z.object({
+    commentPublicId: publicIdFormSchema,
+    locale: localeFormSchema,
+    note: z
+      .string()
+      .trim()
+      .refine((value) => [...value].length <= MAX_COMMENT_REPORT_NOTE_LENGTH, {
+        error: getMessage(
+          messages,
+          "host.episode.comments.report_note_too_long",
+          { max: MAX_COMMENT_REPORT_NOTE_LENGTH }
+        ),
+      }),
+    reason: z.enum(EPISODE_COMMENT_REPORT_REASONS, {
+      error: getMessage(
+        messages,
+        "host.episode.comments.report_reason_required"
+      ),
+    }),
     returnTo: returnToFormSchema,
     tenantId: tenantIdSchema,
   });
@@ -164,6 +208,59 @@ export const withdrawEpisodeCommentAction = async (
   const messages = await loadHostMessages(locale);
   return {
     message: getMessage(messages, "host.episode.comments.deleted"),
+    ok: true,
+  };
+};
+
+/**
+ * Flag one comment as breaking the rules.
+ *
+ * The list is not invalidated afterwards. The comment the reporter can see is
+ * unchanged by their report — what a report moves is a counter staff read — and
+ * refreshing the section around a comment that has just been reported would be
+ * the one visible difference between a comment nobody reported and one that has
+ * been.
+ */
+export const reportEpisodeCommentAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
+  const messages = await loadHostMessages(submittedLocale);
+  const parsed = reportCommentSchema(messages).safeParse(
+    toFormDataInput(formData, {
+      commentPublicId: "value",
+      locale: "value",
+      note: "value",
+      reason: "value",
+      returnTo: "value",
+      tenantId: "value",
+    })
+  );
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
+      ok: false,
+    };
+  }
+
+  const { commentPublicId, locale, note, reason, returnTo, tenantId } =
+    parsed.data;
+  await requirePublicSession(locale, returnTo, tenantId);
+  const result = await withPublicSessionReauth(
+    locale,
+    returnTo,
+    () =>
+      reportEpisodeComment({ commentPublicId, locale, note, reason, tenantId }),
+    tenantId
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  return {
+    message: getMessage(messages, "host.episode.comments.reported"),
     ok: true,
   };
 };

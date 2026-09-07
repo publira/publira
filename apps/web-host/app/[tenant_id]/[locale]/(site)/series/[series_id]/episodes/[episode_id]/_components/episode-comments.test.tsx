@@ -93,6 +93,20 @@ vi.mock("./comment-delete-button", () => ({
   ),
 }));
 
+vi.mock("./comment-report-button", () => ({
+  CommentReportButton: ({
+    ariaLabel,
+    commentPublicId,
+  }: {
+    ariaLabel: string;
+    commentPublicId: string;
+  }) => (
+    <button aria-label={ariaLabel} type="button">
+      Report {commentPublicId}
+    </button>
+  ),
+}));
+
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const viewer = { name: "Sample Member", publicId: "SeedMMBRAAA1", role: "" };
 
@@ -260,6 +274,41 @@ describe("EpisodeComments", () => {
 
     expect(screen.getByText("Delete CmntAAAAAAA2")).toBeDefined();
     expect(screen.queryByText("Delete CmntAAAAAAA1")).toBeNull();
+  });
+
+  it("puts the report control on everyone else's comments only", async () => {
+    mockGetMe.mockResolvedValueOnce(viewer);
+    mockListEpisodeComments.mockResolvedValueOnce(
+      listPage([
+        publicComment("CmntAAAAAAA2", "2026-09-02T00:00:00Z", {
+          authorName: viewer.name,
+          authorPublicId: viewer.publicId,
+        }),
+        publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z"),
+      ])
+    );
+
+    await renderSection();
+
+    // The reader deletes their own comment instead, which is the one case the
+    // API refuses a report for outright.
+    expect(screen.getByText("Report CmntAAAAAAA1")).toBeDefined();
+    expect(screen.queryByText("Report CmntAAAAAAA2")).toBeNull();
+    expect(
+      screen.getByRole("button", {
+        name: "Report the comment Another Reader posted on Sep 1, 2026, 9:00 AM",
+      })
+    ).toBeDefined();
+  });
+
+  it("offers no report control to a reader with no session", async () => {
+    mockListEpisodeComments.mockResolvedValueOnce(
+      listPage([publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z")])
+    );
+
+    await renderSection();
+
+    expect(screen.queryByText("Report CmntAAAAAAA1")).toBeNull();
   });
 
   it("reports a failed public read next to the section rather than emptying it", async () => {

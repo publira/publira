@@ -2,8 +2,8 @@
 // @generated from file publira/v1/comment.proto (package publira.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { TenantContext } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/comment.proto.
  */
 export const file_publira_v1_comment: GenFile = /*@__PURE__*/
-  fileDesc("ChhwdWJsaXJhL3YxL2NvbW1lbnQucHJvdG8SCnB1YmxpcmEudjEidAoORXBpc29kZUNvbW1lbnQSEQoJcHVibGljX2lkGAEgASgJEgwKBGJvZHkYAiABKAkSEgoKY3JlYXRlZF9hdBgDIAEoCRIYChBhdXRob3JfcHVibGljX2lkGAQgASgJEhMKC2F1dGhvcl9uYW1lGAUgASgJImIKEE15RXBpc29kZUNvbW1lbnQSEQoJcHVibGljX2lkGAEgASgJEgwKBGJvZHkYAiABKAkSEgoKY3JlYXRlZF9hdBgDIAEoCRIZChFhd2FpdGluZ19hcHByb3ZhbBgEIAEoCCKGAQoaTGlzdEVwaXNvZGVDb21tZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhkKEWVwaXNvZGVfcHVibGljX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIncKG0xpc3RFcGlzb2RlQ29tbWVudHNSZXNwb25zZRIsCghjb21tZW50cxgBIAMoCzIaLnB1YmxpcmEudjEuRXBpc29kZUNvbW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSKIAQocTGlzdE15RXBpc29kZUNvbW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGQoRZXBpc29kZV9wdWJsaWNfaWQYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkiewodTGlzdE15RXBpc29kZUNvbW1lbnRzUmVzcG9uc2USLgoIY29tbWVudHMYASADKAsyHC5wdWJsaXJhLnYxLk15RXBpc29kZUNvbW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ1ChlQb3N0RXBpc29kZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRIMCgRib2R5GAMgASgJIksKGlBvc3RFcGlzb2RlQ29tbWVudFJlc3BvbnNlEi0KB2NvbW1lbnQYASABKAsyHC5wdWJsaXJhLnYxLk15RXBpc29kZUNvbW1lbnQiawodV2l0aGRyYXdFcGlzb2RlQ29tbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhkKEWNvbW1lbnRfcHVibGljX2lkGAIgASgJIiAKHldpdGhkcmF3RXBpc29kZUNvbW1lbnRSZXNwb25zZTLEAwoOQ29tbWVudFNlcnZpY2USaAoTTGlzdEVwaXNvZGVDb21tZW50cxImLnB1YmxpcmEudjEuTGlzdEVwaXNvZGVDb21tZW50c1JlcXVlc3QaJy5wdWJsaXJhLnYxLkxpc3RFcGlzb2RlQ29tbWVudHNSZXNwb25zZSIAEm4KFUxpc3RNeUVwaXNvZGVDb21tZW50cxIoLnB1YmxpcmEudjEuTGlzdE15RXBpc29kZUNvbW1lbnRzUmVxdWVzdBopLnB1YmxpcmEudjEuTGlzdE15RXBpc29kZUNvbW1lbnRzUmVzcG9uc2UiABJlChJQb3N0RXBpc29kZUNvbW1lbnQSJS5wdWJsaXJhLnYxLlBvc3RFcGlzb2RlQ29tbWVudFJlcXVlc3QaJi5wdWJsaXJhLnYxLlBvc3RFcGlzb2RlQ29tbWVudFJlc3BvbnNlIgAScQoWV2l0aGRyYXdFcGlzb2RlQ29tbWVudBIpLnB1YmxpcmEudjEuV2l0aGRyYXdFcGlzb2RlQ29tbWVudFJlcXVlc3QaKi5wdWJsaXJhLnYxLldpdGhkcmF3RXBpc29kZUNvbW1lbnRSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChhwdWJsaXJhL3YxL2NvbW1lbnQucHJvdG8SCnB1YmxpcmEudjEidAoORXBpc29kZUNvbW1lbnQSEQoJcHVibGljX2lkGAEgASgJEgwKBGJvZHkYAiABKAkSEgoKY3JlYXRlZF9hdBgDIAEoCRIYChBhdXRob3JfcHVibGljX2lkGAQgASgJEhMKC2F1dGhvcl9uYW1lGAUgASgJImIKEE15RXBpc29kZUNvbW1lbnQSEQoJcHVibGljX2lkGAEgASgJEgwKBGJvZHkYAiABKAkSEgoKY3JlYXRlZF9hdBgDIAEoCRIZChFhd2FpdGluZ19hcHByb3ZhbBgEIAEoCCKGAQoaTGlzdEVwaXNvZGVDb21tZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhkKEWVwaXNvZGVfcHVibGljX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIncKG0xpc3RFcGlzb2RlQ29tbWVudHNSZXNwb25zZRIsCghjb21tZW50cxgBIAMoCzIaLnB1YmxpcmEudjEuRXBpc29kZUNvbW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSKIAQocTGlzdE15RXBpc29kZUNvbW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGQoRZXBpc29kZV9wdWJsaWNfaWQYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkiewodTGlzdE15RXBpc29kZUNvbW1lbnRzUmVzcG9uc2USLgoIY29tbWVudHMYASADKAsyHC5wdWJsaXJhLnYxLk15RXBpc29kZUNvbW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ1ChlQb3N0RXBpc29kZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRIMCgRib2R5GAMgASgJIksKGlBvc3RFcGlzb2RlQ29tbWVudFJlc3BvbnNlEi0KB2NvbW1lbnQYASABKAsyHC5wdWJsaXJhLnYxLk15RXBpc29kZUNvbW1lbnQiawodV2l0aGRyYXdFcGlzb2RlQ29tbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhkKEWNvbW1lbnRfcHVibGljX2lkGAIgASgJIiAKHldpdGhkcmF3RXBpc29kZUNvbW1lbnRSZXNwb25zZSKoAQobUmVwb3J0RXBpc29kZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFjb21tZW50X3B1YmxpY19pZBgCIAEoCRIvCgZyZWFzb24YAyABKA4yHy5wdWJsaXJhLnYxLkNvbW1lbnRSZXBvcnRSZWFzb24SDAoEbm90ZRgEIAEoCSIeChxSZXBvcnRFcGlzb2RlQ29tbWVudFJlc3BvbnNlKsEBChNDb21tZW50UmVwb3J0UmVhc29uEiUKIUNPTU1FTlRfUkVQT1JUX1JFQVNPTl9VTlNQRUNJRklFRBAAEh4KGkNPTU1FTlRfUkVQT1JUX1JFQVNPTl9TUEFNEAESHwobQ09NTUVOVF9SRVBPUlRfUkVBU09OX0FCVVNFEAISIQodQ09NTUVOVF9SRVBPUlRfUkVBU09OX1NQT0lMRVIQAxIfChtDT01NRU5UX1JFUE9SVF9SRUFTT05fT1RIRVIQBDKxBAoOQ29tbWVudFNlcnZpY2USaAoTTGlzdEVwaXNvZGVDb21tZW50cxImLnB1YmxpcmEudjEuTGlzdEVwaXNvZGVDb21tZW50c1JlcXVlc3QaJy5wdWJsaXJhLnYxLkxpc3RFcGlzb2RlQ29tbWVudHNSZXNwb25zZSIAEm4KFUxpc3RNeUVwaXNvZGVDb21tZW50cxIoLnB1YmxpcmEudjEuTGlzdE15RXBpc29kZUNvbW1lbnRzUmVxdWVzdBopLnB1YmxpcmEudjEuTGlzdE15RXBpc29kZUNvbW1lbnRzUmVzcG9uc2UiABJlChJQb3N0RXBpc29kZUNvbW1lbnQSJS5wdWJsaXJhLnYxLlBvc3RFcGlzb2RlQ29tbWVudFJlcXVlc3QaJi5wdWJsaXJhLnYxLlBvc3RFcGlzb2RlQ29tbWVudFJlc3BvbnNlIgAScQoWV2l0aGRyYXdFcGlzb2RlQ29tbWVudBIpLnB1YmxpcmEudjEuV2l0aGRyYXdFcGlzb2RlQ29tbWVudFJlcXVlc3QaKi5wdWJsaXJhLnYxLldpdGhkcmF3RXBpc29kZUNvbW1lbnRSZXNwb25zZSIAEmsKFFJlcG9ydEVwaXNvZGVDb21tZW50EicucHVibGlyYS52MS5SZXBvcnRFcGlzb2RlQ29tbWVudFJlcXVlc3QaKC5wdWJsaXJhLnYxLlJlcG9ydEVwaXNvZGVDb21tZW50UmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * One reader comment on an episode, as every visitor of that episode sees it.
@@ -336,6 +336,103 @@ export const WithdrawEpisodeCommentResponseSchema: GenMessage<WithdrawEpisodeCom
   messageDesc(file_publira_v1_comment, 9);
 
 /**
+ * @generated from message publira.v1.ReportEpisodeCommentRequest
+ */
+export type ReportEpisodeCommentRequest = Message<"publira.v1.ReportEpisodeCommentRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string comment_public_id = 2;
+   */
+  commentPublicId: string;
+
+  /**
+   * Required. UNSPECIFIED is invalid_argument: a report with no reason on it
+   * cannot be worked from.
+   *
+   * @generated from field: publira.v1.CommentReportReason reason = 3;
+   */
+  reason: CommentReportReason;
+
+  /**
+   * Optional. At most 1000 Unicode code points once trimmed; a blank note is
+   * stored as no note at all.
+   *
+   * @generated from field: string note = 4;
+   */
+  note: string;
+};
+
+/**
+ * Describes the message publira.v1.ReportEpisodeCommentRequest.
+ * Use `create(ReportEpisodeCommentRequestSchema)` to create a new message.
+ */
+export const ReportEpisodeCommentRequestSchema: GenMessage<ReportEpisodeCommentRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_comment, 10);
+
+/**
+ * Deliberately empty. The reporter is told that their report was accepted and
+ * nothing else: what a comment's report count is, and whether the threshold
+ * moved it, would tell one reader what other readers have done about it.
+ *
+ * @generated from message publira.v1.ReportEpisodeCommentResponse
+ */
+export type ReportEpisodeCommentResponse = Message<"publira.v1.ReportEpisodeCommentResponse"> & {
+};
+
+/**
+ * Describes the message publira.v1.ReportEpisodeCommentResponse.
+ * Use `create(ReportEpisodeCommentResponseSchema)` to create a new message.
+ */
+export const ReportEpisodeCommentResponseSchema: GenMessage<ReportEpisodeCommentResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_comment, 11);
+
+/**
+ * Why a reader says a comment breaks the rules.
+ *
+ * The list is short on purpose: a reporter picks from it in one glance, and
+ * staff working the queue can sort by it. Anything the four do not cover is
+ * OTHER plus the reporter's own sentence.
+ *
+ * @generated from enum publira.v1.CommentReportReason
+ */
+export enum CommentReportReason {
+  /**
+   * @generated from enum value: COMMENT_REPORT_REASON_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: COMMENT_REPORT_REASON_SPAM = 1;
+   */
+  SPAM = 1,
+
+  /**
+   * @generated from enum value: COMMENT_REPORT_REASON_ABUSE = 2;
+   */
+  ABUSE = 2,
+
+  /**
+   * @generated from enum value: COMMENT_REPORT_REASON_SPOILER = 3;
+   */
+  SPOILER = 3,
+
+  /**
+   * @generated from enum value: COMMENT_REPORT_REASON_OTHER = 4;
+   */
+  OTHER = 4,
+}
+
+/**
+ * Describes the enum publira.v1.CommentReportReason.
+ */
+export const CommentReportReasonSchema: GenEnum<CommentReportReason> = /*@__PURE__*/
+  enumDesc(file_publira_v1_comment, 0);
+
+/**
  * @generated from service publira.v1.CommentService
  */
 export const CommentService: GenService<{
@@ -398,6 +495,25 @@ export const CommentService: GenService<{
     methodKind: "unary";
     input: typeof WithdrawEpisodeCommentRequestSchema;
     output: typeof WithdrawEpisodeCommentResponseSchema;
+  },
+  /**
+   * Flags one published comment as breaking the rules, as the authenticated
+   * reader.
+   *
+   * Session required. It is idempotent per reader: a reader who has already
+   * reported this comment gets the same success, and their second submission
+   * adds nothing to the count the removal threshold reads.
+   *
+   * A comment the caller cannot see — never published, removed, withdrawn, or
+   * on an episode that is not public — is not_found, and their own comment is
+   * failed_precondition.
+   *
+   * @generated from rpc publira.v1.CommentService.ReportEpisodeComment
+   */
+  reportEpisodeComment: {
+    methodKind: "unary";
+    input: typeof ReportEpisodeCommentRequestSchema;
+    output: typeof ReportEpisodeCommentResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_comment, 0);
