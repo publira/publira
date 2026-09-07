@@ -52,6 +52,15 @@ Future<void> pumpUntilTrue(
 /// fully in, and [ModalRoute.secondaryAnimation] is dismissed only once
 /// whatever covered it has finished leaving.
 ///
+/// Those animations have to be read together with [ModalRoute.offstage]. On
+/// the first frame of a push the [HeroController] builds the incoming route
+/// offstage so hero geometry can be measured, and an offstage route reports a
+/// complete primary animation and a dismissed secondary one whatever its
+/// transition is really doing. Every widget already has its final size and
+/// position on that frame, so a tap derives the offset it will have once the
+/// route arrives and lands on the route underneath, which is still the one
+/// being hit tested.
+///
 /// The route [finder] matches has to be the one on top, which is what a test
 /// about to interact with it wants: a widget on a route another one covers
 /// keeps a completed secondary animation and never settles.
@@ -69,14 +78,15 @@ Future<void> pumpUntilRouteSettled(
   );
 }
 
-/// Whether the route [element] sits on takes part in no transition any more,
-/// including one a reader is still dragging with a back gesture.
+/// Whether the route [element] sits on is on stage and takes part in no
+/// transition any more, including one a reader is still dragging with a back
+/// gesture.
 bool _isRouteSettled(Element element) {
   final route = ModalRoute.of(element);
   if (route == null) {
     return true;
   }
-  if (route.navigator?.userGestureInProgress ?? false) {
+  if (route.offstage || (route.navigator?.userGestureInProgress ?? false)) {
     return false;
   }
   return (route.animation?.isCompleted ?? true) &&
