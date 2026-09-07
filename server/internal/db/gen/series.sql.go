@@ -320,6 +320,9 @@ SELECT s.id,
     s.public_id,
     s.title,
     sl.synopsis,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
     s.published_at,
     s.eye_catch_image_id,
     NULL::timestamp AS eye_catch_image_updated_at,
@@ -373,6 +376,9 @@ WHERE s.tenant_id = $1
 GROUP BY s.id,
     sl.series_id,
     sl.synopsis,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
     l.public_id,
     l.name
 `
@@ -387,6 +393,9 @@ type ListActiveSeriesByIDsRow struct {
 	PublicID               string          `json:"public_id"`
 	Title                  string          `json:"title"`
 	Synopsis               sql.NullString  `json:"synopsis"`
+	Status                 sql.NullString  `json:"status"`
+	ScheduleWeekdays       []int32         `json:"schedule_weekdays"`
+	AgeRating              sql.NullString  `json:"age_rating"`
 	PublishedAt            sql.NullTime    `json:"published_at"`
 	EyeCatchImageID        uuid.NullUUID   `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt sql.NullTime    `json:"eye_catch_image_updated_at"`
@@ -411,6 +420,9 @@ func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSerie
 			&i.PublicID,
 			&i.Title,
 			&i.Synopsis,
+			&i.Status,
+			pq.Array(&i.ScheduleWeekdays),
+			&i.AgeRating,
 			&i.PublishedAt,
 			&i.EyeCatchImageID,
 			&i.EyeCatchImageUpdatedAt,

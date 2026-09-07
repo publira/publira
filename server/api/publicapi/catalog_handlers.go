@@ -231,9 +231,27 @@ type episodeJSON struct {
 }
 
 func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattypesv1.Series, error) {
-	item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
+	item := &publirattypesv1.Series{
+		PublicId:         row.PublicID,
+		Title:            row.Title,
+		ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
+	}
 	if row.Synopsis.Valid {
 		item.Synopsis = row.Synopsis.String
+	}
+	if row.Status.Valid {
+		status, err := protomapper.SeriesStatusFromStored(row.Status.String)
+		if err != nil {
+			return nil, err
+		}
+		item.Status = status
+	}
+	if row.AgeRating.Valid {
+		ageRating, err := protomapper.SeriesAgeRatingFromStored(row.AgeRating.String)
+		if err != nil {
+			return nil, err
+		}
+		item.AgeRating = ageRating
 	}
 	if row.EyeCatchImageUpdatedAt.Valid {
 		item.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)

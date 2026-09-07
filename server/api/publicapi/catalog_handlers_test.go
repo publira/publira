@@ -37,7 +37,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", now, seriesImageID, now, []byte(`[{"public_id":"CREATOR001","name":"Author A","role":"writer","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "completed", []byte("{2,6}"), "r15", now, seriesImageID, now, []byte(`[{"public_id":"CREATOR001","name":"Author A","role":"writer","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
@@ -65,6 +65,18 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	if resp.Msg.Series[0].EyeCatchImageVariants[0].Url == "" {
 		t.Fatalf("eye_catch_image_variants url is empty")
 	}
+	// A list card states the same three things the detail page does, so a
+	// storefront does not have to open a series to know it has ended or who it
+	// is for.
+	if resp.Msg.Series[0].Status != publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED {
+		t.Fatalf("series status = %s, want COMPLETED", resp.Msg.Series[0].Status)
+	}
+	if want := []int32{2, 6}; !slices.Equal(resp.Msg.Series[0].ScheduleWeekdays, want) {
+		t.Fatalf("series schedule_weekdays = %v, want %v", resp.Msg.Series[0].ScheduleWeekdays, want)
+	}
+	if resp.Msg.Series[0].AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("series age_rating = %s, want R15", resp.Msg.Series[0].AgeRating)
+	}
 	if resp.Msg.PreviousToken != "" {
 		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
 	}
@@ -75,7 +87,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 }
 
 func seriesDetailColumns() *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "creators", "label_info"})
+	return sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "status", "schedule_weekdays", "age_rating", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "creators", "label_info"})
 }
 
 // seriesIDRows is what the keyset half of a page returns: ids only, already in
@@ -94,7 +106,7 @@ func seriesDetailRows(newest time.Time, ids []uuid.UUID) *sqlmock.Rows {
 	rows := seriesDetailColumns()
 	for i, id := range ids {
 		publishedAt := newest.Add(-time.Duration(i) * time.Second)
-		rows.AddRow(id, fmt.Sprintf("SERIES%03d", i), fmt.Sprintf("Series %d", i), nil, publishedAt, nil, nil, []byte(`[]`), []byte(`{}`))
+		rows.AddRow(id, fmt.Sprintf("SERIES%03d", i), fmt.Sprintf("Series %d", i), nil, "ongoing", []byte("{}"), "all", publishedAt, nil, nil, []byte(`[]`), []byte(`{}`))
 	}
 	return rows
 }
@@ -205,8 +217,8 @@ func TestCatalogListPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(olderID, "SERIES_OLD", "Older", nil, now.Add(-2*time.Second), nil, nil, []byte(`[]`), []byte(`{}`)).
-			AddRow(newerID, "SERIES_NEW", "Newer", nil, now.Add(-time.Second), nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(olderID, "SERIES_OLD", "Older", nil, "ongoing", []byte("{}"), "all", now.Add(-2*time.Second), nil, nil, []byte(`[]`), []byte(`{}`)).
+			AddRow(newerID, "SERIES_NEW", "Newer", nil, "ongoing", []byte("{}"), "all", now.Add(-time.Second), nil, nil, []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -605,7 +617,7 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantAID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesAID, "SERIES_A", "Series A", "Synopsis A", now, nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(seriesAID, "SERIES_A", "Series A", "Synopsis A", "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 	expectTenantLookup(mock, tenantBID, "TENANT_B", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
 		WithArgs(tenantBID, nil, false, nil, int32(21)).
@@ -613,7 +625,7 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantBID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesBID, "SERIES_B", "Series B", "Synopsis B", now, nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(seriesBID, "SERIES_B", "Series B", "Synopsis B", "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	respA, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{

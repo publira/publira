@@ -233,6 +233,59 @@ func TestDBGetSeriesDetailListsOnlyPublishedEpisodes(t *testing.T) {
 	}
 }
 
+// The list and the detail describe a series the same way. They are separate
+// queries, so a field added to one and not the other leaves a storefront card
+// saying "ongoing, all ages" about a series the detail page reports as ended
+// and rated.
+func TestDBPublishedSeriesListAndDetailAgreeOnTheListingMetadata(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:         "SERIESA00001",
+		Title:            "Serialized Story",
+		Published:        true,
+		Status:           "completed",
+		ScheduleWeekdays: []int32{2, 6},
+		AgeRating:        "r15",
+	})
+
+	listed, err := env.catalogClient().ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: tenantContext(tenant),
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries: %v", err)
+	}
+	if len(listed.Msg.Series) != 1 || listed.Msg.Series[0].PublicId != series.PublicID {
+		t.Fatalf("series = %v, want the single seeded %s", seriesPublicIDs(listed.Msg.Series), series.PublicID)
+	}
+	if listed.Msg.Series[0].Status != publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED {
+		t.Fatalf("listed status = %s, want COMPLETED", listed.Msg.Series[0].Status)
+	}
+	if want := []int32{2, 6}; !slices.Equal(listed.Msg.Series[0].ScheduleWeekdays, want) {
+		t.Fatalf("listed schedule_weekdays = %v, want %v", listed.Msg.Series[0].ScheduleWeekdays, want)
+	}
+	if listed.Msg.Series[0].AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("listed age_rating = %s, want R15", listed.Msg.Series[0].AgeRating)
+	}
+
+	detail, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: series.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeriesDetail: %v", err)
+	}
+	if detail.Msg.Series.Status != listed.Msg.Series[0].Status {
+		t.Fatalf("detail status = %s, list says %s", detail.Msg.Series.Status, listed.Msg.Series[0].Status)
+	}
+	if !slices.Equal(detail.Msg.Series.ScheduleWeekdays, listed.Msg.Series[0].ScheduleWeekdays) {
+		t.Fatalf("detail schedule_weekdays = %v, list says %v", detail.Msg.Series.ScheduleWeekdays, listed.Msg.Series[0].ScheduleWeekdays)
+	}
+	if detail.Msg.Series.AgeRating != listed.Msg.Series[0].AgeRating {
+		t.Fatalf("detail age_rating = %s, list says %s", detail.Msg.Series.AgeRating, listed.Msg.Series[0].AgeRating)
+	}
+}
+
 // What a tenant states about a series reaches the storefront through the same
 // read the episodes come from, weekday schedule included.
 func TestDBGetSeriesDetailCarriesTheListingMetadata(t *testing.T) {
