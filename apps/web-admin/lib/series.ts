@@ -16,6 +16,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
   cursorPageRequest,
@@ -548,6 +549,8 @@ export const uploadSeriesEyeCatchAspectImage = async (
     variantType: string;
     imageContentType?: string;
     imageData: Uint8Array;
+    /** Where in the upload the cut is taken; omitted, the API centres it. */
+    crop?: CropRect;
   },
   locale: Locale
 ): Promise<SeriesEyeCatchAspectResult> => {
@@ -563,6 +566,7 @@ export const uploadSeriesEyeCatchAspectImage = async (
   try {
     const response = await apiClient.series.uploadSeriesEyeCatchAspectImage(
       {
+        crop: input.crop,
         imageContentType: input.imageContentType,
         imageData: input.imageData,
         publicId: input.publicId,

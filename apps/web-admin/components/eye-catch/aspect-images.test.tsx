@@ -53,6 +53,44 @@ const variant = (
   width,
 });
 
+/** Picks a file in one ratio's slot and returns that slot's form. */
+const pickImage = (
+  container: HTMLElement,
+  variantType: string
+): HTMLFormElement => {
+  const form = container
+    .querySelector(`input[name="variant_type"][value="${variantType}"]`)
+    ?.closest("form");
+  const fileInput = form?.querySelector<HTMLInputElement>('input[type="file"]');
+  if (!(form && fileInput)) {
+    throw new Error(`the ${variantType} slot has no file input`);
+  }
+  fireEvent.change(fileInput, {
+    target: {
+      files: [new File(["x"], `${variantType}.jpg`, { type: "image/jpeg" })],
+    },
+  });
+  return form;
+};
+
+/**
+ * Reports the picked file's size the way a browser would. jsdom decodes
+ * nothing, so the frame has no dimensions to derive itself from until this
+ * runs.
+ */
+const decodePickedImage = (
+  variantType: string,
+  width: number,
+  height: number
+) => {
+  const framed = screen.getByAltText(
+    `The image being framed for ${variantType}`
+  );
+  Object.defineProperty(framed, "naturalWidth", { value: width });
+  Object.defineProperty(framed, "naturalHeight", { value: height });
+  fireEvent.load(framed);
+};
+
 afterEach(() => {
   cleanup();
 });
@@ -184,4 +222,60 @@ it("names the minimum of the ratio the API refused the image for", async () => {
   // 1600x900 is landscape's own minimum. A whole eye-catch asks for
   // 2400x3200px, which would send the editor after the wrong image.
   expect(await screen.findByText(/at least 1600x900px/u)).toBeTruthy();
+});
+
+it("frames the picked file where the API would have cut it anyway", () => {
+  const createObjectURL = vi.fn(() => "blob:picked-file");
+  const revokeObjectURL = vi.fn();
+  vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
+
+  const { container } = render(
+    <EyeCatchAspectImages
+      publicId="SERIES001"
+      uploadAction={action}
+      variants={[variant("landscape", 1600, 900)]}
+    />
+  );
+
+  const form = pickImage(container, "landscape");
+  // Nothing has been decoded yet, so the upload states no rectangle and the
+  // API takes the cut from the centre as it always has.
+  expect(form.querySelector('input[name="crop"]')).toBeNull();
+
+  decodePickedImage("landscape", 2400, 3200);
+
+  // The centre of a 2400x3200 file at 16:9, which is exactly what an upload
+  // carrying no rectangle delivers.
+  expect(
+    form.querySelector<HTMLInputElement>('input[name="crop"]')?.value
+  ).toBe("0,925,2400,1350");
+
+  vi.unstubAllGlobals();
+});
+
+it("previews the framed region rather than the whole picked file", () => {
+  const createObjectURL = vi.fn(() => "blob:picked-file");
+  const revokeObjectURL = vi.fn();
+  vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
+
+  const { container } = render(
+    <EyeCatchAspectImages
+      publicId="SERIES001"
+      uploadAction={action}
+      variants={[variant("landscape", 1600, 900)]}
+    />
+  );
+
+  pickImage(container, "landscape");
+  decodePickedImage("landscape", 2400, 3200);
+
+  const preview = container.querySelector<HTMLImageElement>(
+    'img[alt="Generated image landscape"]'
+  );
+  // The file is 2400 wide and the frame keeps all of that width, so the slot
+  // shows it at its own width, shifted up by the part above the frame.
+  expect(preview?.style.width).toBe("100%");
+  expect(preview?.style.top).toBe(`${(-925 / 1350) * 100}%`);
+
+  vi.unstubAllGlobals();
 });
