@@ -183,6 +183,459 @@ func (q *Queries) GetMySeriesReadingProgress(ctx context.Context, arg GetMySerie
 	return i, err
 }
 
+const listMyRecentSeriesAsc = `-- name: ListMyRecentSeriesAsc :many
+WITH touched AS (
+    SELECT rp.episode_id,
+        rp.updated_at AS activity_at
+    FROM episode_reading_positions rp
+    WHERE rp.tenant_id = $1
+        AND rp.user_id = $2
+    UNION ALL
+    SELECT er.episode_id,
+        er.read_at AS activity_at
+    FROM episode_reads er
+    WHERE er.tenant_id = $1
+        AND er.user_id = $2
+),
+touched_episodes AS (
+    SELECT e.series_id,
+        e.id AS episode_id,
+        e.order_index,
+        MAX(t.activity_at)::timestamptz AS activity_at
+    FROM touched t
+        JOIN episodes e ON e.id = t.episode_id
+        JOIN series s ON s.id = e.series_id
+        JOIN episode_listings el ON el.episode_id = e.id
+    WHERE e.tenant_id = $1
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    GROUP BY e.series_id,
+        e.id,
+        e.order_index
+),
+current_episode AS (
+    SELECT DISTINCT ON (te.series_id) te.series_id,
+        te.episode_id,
+        te.order_index,
+        te.activity_at AS last_activity_at
+    FROM touched_episodes te
+    ORDER BY te.series_id,
+        te.activity_at DESC,
+        te.order_index DESC,
+        te.episode_id DESC
+),
+continue_from AS (
+    SELECT ce.series_id,
+        ce.last_activity_at,
+        CASE
+            WHEN NOT EXISTS (
+                SELECT 1
+                FROM episode_reads cr
+                WHERE cr.tenant_id = $1
+                    AND cr.user_id = $2
+                    AND cr.episode_id = ce.episode_id
+            ) THEN ce.episode_id
+            ELSE (
+                SELECT n.id
+                FROM episodes n
+                    JOIN episode_listings nl ON nl.episode_id = n.id
+                WHERE n.tenant_id = $1
+                    AND n.series_id = ce.series_id
+                    AND (n.order_index, n.id) > (ce.order_index, ce.episode_id)
+                    AND nl.status = 'published'
+                    AND nl.published_at IS NOT NULL
+                    AND nl.published_at <= NOW()
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM episode_reads nr
+                        WHERE nr.tenant_id = $1
+                            AND nr.user_id = $2
+                            AND nr.episode_id = n.id
+                    )
+                ORDER BY n.order_index ASC,
+                    n.id ASC
+                LIMIT 1
+            )
+        END AS episode_id
+    FROM current_episode ce
+)
+SELECT cf.series_id,
+    cf.last_activity_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    rp.page_index,
+    rp.page_count,
+    rp.updated_at AS position_updated_at
+FROM continue_from cf
+    JOIN episodes e ON e.id = cf.episode_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN episode_reading_positions rp ON rp.tenant_id = $1
+        AND rp.user_id = $2
+        AND rp.episode_id = e.id
+        AND (
+            el.price = 0
+            OR EXISTS (
+                SELECT 1
+                FROM purchases p
+                WHERE p.tenant_id = $1
+                    -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+                    AND p.user_id = $2::uuid
+                    AND p.episode_id = e.id
+                    AND (p.expires_at IS NULL OR p.expires_at > NOW())
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM access_tickets at
+                WHERE at.tenant_id = $1
+                    AND at.user_id = $2
+                    AND at.episode_id = e.id
+                    AND at.revoked_at IS NULL
+                    AND (at.expires_at IS NULL OR at.expires_at > NOW())
+            )
+        )
+WHERE (
+        $3::timestamptz IS NULL
+        OR (
+            $4::boolean
+            AND (cf.last_activity_at, cf.series_id) >= (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (cf.last_activity_at, cf.series_id) > (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+    )
+ORDER BY cf.last_activity_at ASC,
+    cf.series_id ASC
+LIMIT $6
+`
+
+type ListMyRecentSeriesAscParams struct {
+	TenantID             uuid.UUID     `json:"tenant_id"`
+	UserID               uuid.UUID     `json:"user_id"`
+	CursorLastActivityAt sql.NullTime  `json:"cursor_last_activity_at"`
+	CursorInclusive      bool          `json:"cursor_inclusive"`
+	CursorSeriesID       uuid.NullUUID `json:"cursor_series_id"`
+	Limit                int32         `json:"limit"`
+}
+
+type ListMyRecentSeriesAscRow struct {
+	SeriesID           uuid.UUID     `json:"series_id"`
+	LastActivityAt     time.Time     `json:"last_activity_at"`
+	EpisodePublicID    string        `json:"episode_public_id"`
+	EpisodeTitle       string        `json:"episode_title"`
+	OrderIndex         int32         `json:"order_index"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	Status             string        `json:"status"`
+	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
+	PublishedAt        sql.NullTime  `json:"published_at"`
+	PageIndex          sql.NullInt32 `json:"page_index"`
+	PageCount          sql.NullInt32 `json:"page_count"`
+	PositionUpdatedAt  sql.NullTime  `json:"position_updated_at"`
+}
+
+// The backward direction of ListMyRecentSeriesDesc.
+func (q *Queries) ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSeriesAscParams) ([]ListMyRecentSeriesAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMyRecentSeriesAsc,
+		arg.TenantID,
+		arg.UserID,
+		arg.CursorLastActivityAt,
+		arg.CursorInclusive,
+		arg.CursorSeriesID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyRecentSeriesAscRow
+	for rows.Next() {
+		var i ListMyRecentSeriesAscRow
+		if err := rows.Scan(
+			&i.SeriesID,
+			&i.LastActivityAt,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.OrderIndex,
+			&i.Price,
+			&i.ReadingPeriodHours,
+			&i.Status,
+			&i.ScheduledAt,
+			&i.PublishedAt,
+			&i.PageIndex,
+			&i.PageCount,
+			&i.PositionUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMyRecentSeriesDesc = `-- name: ListMyRecentSeriesDesc :many
+WITH touched AS (
+    SELECT rp.episode_id,
+        rp.updated_at AS activity_at
+    FROM episode_reading_positions rp
+    WHERE rp.tenant_id = $1
+        AND rp.user_id = $2
+    UNION ALL
+    SELECT er.episode_id,
+        er.read_at AS activity_at
+    FROM episode_reads er
+    WHERE er.tenant_id = $1
+        AND er.user_id = $2
+),
+touched_episodes AS (
+    SELECT e.series_id,
+        e.id AS episode_id,
+        e.order_index,
+        MAX(t.activity_at)::timestamptz AS activity_at
+    FROM touched t
+        JOIN episodes e ON e.id = t.episode_id
+        JOIN series s ON s.id = e.series_id
+        JOIN episode_listings el ON el.episode_id = e.id
+    WHERE e.tenant_id = $1
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    GROUP BY e.series_id,
+        e.id,
+        e.order_index
+),
+current_episode AS (
+    SELECT DISTINCT ON (te.series_id) te.series_id,
+        te.episode_id,
+        te.order_index,
+        te.activity_at AS last_activity_at
+    FROM touched_episodes te
+    ORDER BY te.series_id,
+        te.activity_at DESC,
+        te.order_index DESC,
+        te.episode_id DESC
+),
+continue_from AS (
+    SELECT ce.series_id,
+        ce.last_activity_at,
+        CASE
+            WHEN NOT EXISTS (
+                SELECT 1
+                FROM episode_reads cr
+                WHERE cr.tenant_id = $1
+                    AND cr.user_id = $2
+                    AND cr.episode_id = ce.episode_id
+            ) THEN ce.episode_id
+            ELSE (
+                SELECT n.id
+                FROM episodes n
+                    JOIN episode_listings nl ON nl.episode_id = n.id
+                WHERE n.tenant_id = $1
+                    AND n.series_id = ce.series_id
+                    AND (n.order_index, n.id) > (ce.order_index, ce.episode_id)
+                    AND nl.status = 'published'
+                    AND nl.published_at IS NOT NULL
+                    AND nl.published_at <= NOW()
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM episode_reads nr
+                        WHERE nr.tenant_id = $1
+                            AND nr.user_id = $2
+                            AND nr.episode_id = n.id
+                    )
+                ORDER BY n.order_index ASC,
+                    n.id ASC
+                LIMIT 1
+            )
+        END AS episode_id
+    FROM current_episode ce
+)
+SELECT cf.series_id,
+    cf.last_activity_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    rp.page_index,
+    rp.page_count,
+    rp.updated_at AS position_updated_at
+FROM continue_from cf
+    JOIN episodes e ON e.id = cf.episode_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN episode_reading_positions rp ON rp.tenant_id = $1
+        AND rp.user_id = $2
+        AND rp.episode_id = e.id
+        AND (
+            el.price = 0
+            OR EXISTS (
+                SELECT 1
+                FROM purchases p
+                WHERE p.tenant_id = $1
+                    -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+                    AND p.user_id = $2::uuid
+                    AND p.episode_id = e.id
+                    AND (p.expires_at IS NULL OR p.expires_at > NOW())
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM access_tickets at
+                WHERE at.tenant_id = $1
+                    AND at.user_id = $2
+                    AND at.episode_id = e.id
+                    AND at.revoked_at IS NULL
+                    AND (at.expires_at IS NULL OR at.expires_at > NOW())
+            )
+        )
+WHERE (
+        $3::timestamptz IS NULL
+        OR (
+            $4::boolean
+            AND (cf.last_activity_at, cf.series_id) <= (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (cf.last_activity_at, cf.series_id) < (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+    )
+ORDER BY cf.last_activity_at DESC,
+    cf.series_id DESC
+LIMIT $6
+`
+
+type ListMyRecentSeriesDescParams struct {
+	TenantID             uuid.UUID     `json:"tenant_id"`
+	UserID               uuid.UUID     `json:"user_id"`
+	CursorLastActivityAt sql.NullTime  `json:"cursor_last_activity_at"`
+	CursorInclusive      bool          `json:"cursor_inclusive"`
+	CursorSeriesID       uuid.NullUUID `json:"cursor_series_id"`
+	Limit                int32         `json:"limit"`
+}
+
+type ListMyRecentSeriesDescRow struct {
+	SeriesID           uuid.UUID     `json:"series_id"`
+	LastActivityAt     time.Time     `json:"last_activity_at"`
+	EpisodePublicID    string        `json:"episode_public_id"`
+	EpisodeTitle       string        `json:"episode_title"`
+	OrderIndex         int32         `json:"order_index"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	Status             string        `json:"status"`
+	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
+	PublishedAt        sql.NullTime  `json:"published_at"`
+	PageIndex          sql.NullInt32 `json:"page_index"`
+	PageCount          sql.NullInt32 `json:"page_count"`
+	PositionUpdatedAt  sql.NullTime  `json:"position_updated_at"`
+}
+
+// The series the reader is in the middle of, their newest activity first, each
+// with the episode a "continue reading" offer should open.
+//
+// Activity is either half of what a reader leaves behind: a saved position and
+// a finished mark both count, and the newer of the two is when they last moved
+// in that episode. The two writes happen at different moments of the same
+// reading, so taking only one of them would lose a reader who finished
+// episodes without ever saving a page, and would freeze a series at the last
+// page saved in it.
+//
+// The episode to continue from is the one the last activity is on while it is
+// still unfinished, and otherwise the first published episode after it the
+// reader has not finished. A series whose published episodes are all finished
+// produces no such episode and is dropped by the join, which is what takes it
+// out of the list until another episode is published.
+//
+// Publication decides what may be named, and body access decides only what may
+// be resumed. An episode the reader has not bought is still the one they are
+// meant to open next, because its own page is where they buy it; its saved
+// position is withheld, because a page they cannot reach is not a place to
+// resume. Episodes of an unpublished series are dropped ahead of all of that,
+// so a series taken down reads like one that was never opened.
+//
+// The sort key is an aggregate over the reader's own rows rather than a stored
+// column, so no index orders it directly. Both halves of the scan start from
+// the (tenant_id, user_id) prefix of their primary keys, which bounds the work
+// by one reader's history instead of by the tenant's.
+//
+// Backward calls ListMyRecentSeriesAsc, and the caller sorts the rows back.
+// cursor rules: proto/README.md.
+func (q *Queries) ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSeriesDescParams) ([]ListMyRecentSeriesDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMyRecentSeriesDesc,
+		arg.TenantID,
+		arg.UserID,
+		arg.CursorLastActivityAt,
+		arg.CursorInclusive,
+		arg.CursorSeriesID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyRecentSeriesDescRow
+	for rows.Next() {
+		var i ListMyRecentSeriesDescRow
+		if err := rows.Scan(
+			&i.SeriesID,
+			&i.LastActivityAt,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.OrderIndex,
+			&i.Price,
+			&i.ReadingPeriodHours,
+			&i.Status,
+			&i.ScheduledAt,
+			&i.PublishedAt,
+			&i.PageIndex,
+			&i.PageCount,
+			&i.PositionUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saveEpisodeReadingPosition = `-- name: SaveEpisodeReadingPosition :one
 WITH readable AS (
     SELECT e.id,

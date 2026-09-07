@@ -157,6 +157,29 @@ func EpisodeFromGetMySeriesReadingProgressRow(row dbmodels.GetMySeriesReadingPro
 	return episode
 }
 
+// EpisodeFromListMyRecentSeriesRow maps the episode a recently read series is
+// continued from. Backward pages arrive as ListMyRecentSeriesAscRow and are
+// converted to this identical row type by the caller.
+func EpisodeFromListMyRecentSeriesRow(row dbmodels.ListMyRecentSeriesDescRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
+		PublicId:   row.EpisodePublicID,
+		Title:      row.EpisodeTitle,
+		OrderIndex: row.OrderIndex,
+		Price:      row.Price,
+		Status:     row.Status,
+	}
+	if row.ReadingPeriodHours.Valid {
+		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
+	if row.ScheduledAt.Valid {
+		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return episode
+}
+
 func EpisodeImageFromEpisodeImage(row dbmodels.ListEpisodeImagesByEpisodeIDRow) *publirattypesv1.EpisodeImage {
 	return &publirattypesv1.EpisodeImage{
 		Id:            row.ID.String(),
