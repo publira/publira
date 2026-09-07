@@ -7,20 +7,19 @@ import { Card, CardContent } from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { cn } from "@publira/utils";
-import type { ChangeEventHandler } from "react";
-import {
-  useActionState,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import type { ChangeEventHandler, ReactEventHandler } from "react";
+import { useActionState, useContext, useEffect, useRef, useState } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import type { CropRect } from "#lib/crop-rect";
+import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
 import { useTenantId } from "#lib/use-tenant-id";
 
+import type { EyeCatchAspect } from "./aspects";
 import { EYE_CATCH_ASPECTS, eyeCatchAspectClassName } from "./aspects";
+import type { CropSource } from "./crop";
+import { centreCropRect } from "./crop";
+import { EyeCatchCropDialog } from "./crop-dialog";
 import type { EyeCatchAspectActionState, EyeCatchVariantItem } from "./types";
 
 type EyeCatchAspectAction = (
@@ -37,9 +36,7 @@ interface EyeCatchAspectImagesProps {
 }
 
 interface EyeCatchAspectSlotProps extends EyeCatchAspectImagesProps {
-  variantType: string;
-  minWidth: number;
-  minHeight: number;
+  aspect: EyeCatchAspect;
 }
 
 const largestVariant = (
@@ -51,13 +48,23 @@ const largestVariant = (
     .toSorted((a, b) => a.width - b.width)
     .at(-1);
 
+/**
+ * The picked file scaled and shifted so the slot shows the framed region and
+ * nothing else. The frame carries the slot's own ratio, so the two scales agree
+ * and the region fills the box exactly.
+ */
+const framedPreviewStyle = (crop: CropRect, source: CropSource) => ({
+  height: `${(source.height / crop.height) * 100}%`,
+  left: `${(-crop.x / crop.width) * 100}%`,
+  top: `${(-crop.y / crop.height) * 100}%`,
+  width: `${(source.width / crop.width) * 100}%`,
+});
+
 const EyeCatchAspectSlot = ({
-  minHeight,
-  minWidth,
+  aspect,
   publicId,
   uploadAction,
   variants,
-  variantType,
 }: EyeCatchAspectSlotProps) => {
   const locale = useContext(AdminLocaleContext);
   if (locale === null) {
@@ -65,9 +72,14 @@ const EyeCatchAspectSlot = ({
   }
   const messages = sharedCatalog(locale);
   const tenantId = useTenantId();
+  const { minHeight, minWidth, variantType } = aspect;
 
   const [state, formAction, isUploading] = useActionState(uploadAction, null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+  /** The picked file's own size, and the part of it the editor framed. */
+  const [source, setSource] = useState<CropSource | null>(null);
+  const [crop, setCrop] = useState<CropRect | null>(null);
+  const [isFraming, setIsFraming] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(
@@ -79,35 +91,66 @@ const EyeCatchAspectSlot = ({
     [localPreviewUrl]
   );
 
-  const handlePickImage = useCallback(() => {
+  const handlePickImage = () => {
     fileInputRef.current?.click();
-  }, []);
+  };
 
   // The preview stands in for the file only while it is being chosen. Once the
   // form is submitted the stored crop is the truth, and a preview left set
   // would outrank it below — the Action re-renders this screen without
-  // remounting the slot, so it would go on showing the uncropped file the
-  // editor picked.
-  const handleSubmit = useCallback(() => {
+  // remounting the slot, so it would go on showing the file the editor picked.
+  const handleSubmit = () => {
     setLocalPreviewUrl("");
-  }, []);
+    setSource(null);
+    setCrop(null);
+    setIsFraming(false);
+  };
 
-  const handleImageFileChange = useCallback<
-    ChangeEventHandler<HTMLInputElement>
-  >((event) => {
+  const handleImageFileChange: ChangeEventHandler<HTMLInputElement> = (
+    event
+  ) => {
     const file = event.currentTarget.files?.[0];
-    if (file) {
-      setLocalPreviewUrl((current) => {
-        if (current) {
-          URL.revokeObjectURL(current);
-        }
-        return URL.createObjectURL(file);
-      });
+    if (!file) {
+      return;
     }
-  }, []);
+    setLocalPreviewUrl((current) => {
+      if (current) {
+        URL.revokeObjectURL(current);
+      }
+      return URL.createObjectURL(file);
+    });
+    // Both belong to the file that was just replaced. The new one reports its
+    // own size when it is decoded, and the frame is derived from that.
+    setSource(null);
+    setCrop(null);
+    setIsFraming(true);
+  };
+
+  /**
+   * The frame starts where the API would have cut on its own, so an editor who
+   * touches nothing gets the image this slot has always produced. A file whose
+   * frame is already set keeps it: the dialog remounts its image every time it
+   * is opened, and this runs again each time.
+   */
+  const handleCropImageLoad: ReactEventHandler<HTMLImageElement> = (event) => {
+    const size = {
+      height: event.currentTarget.naturalHeight,
+      width: event.currentTarget.naturalWidth,
+    };
+    setSource(size);
+    setCrop((current) => current ?? centreCropRect(size, aspect));
+  };
 
   const current = largestVariant(variants, variantType);
   const previewUrl = localPreviewUrl || current?.url || "";
+  /**
+   * While a file is picked the slot shows the region the frame keeps, so what
+   * it stands in for is what the upload will deliver rather than the file.
+   */
+  const framedStyle =
+    localPreviewUrl && crop && source
+      ? framedPreviewStyle(crop, source)
+      : undefined;
 
   return (
     <div className="grid gap-3 rounded-lg border border-border/60 p-3">
@@ -139,8 +182,11 @@ const EyeCatchAspectSlot = ({
             alt={getMessage(messages, "admin.eye_catch.variant_alt", {
               variant_type: variantType,
             })}
-            className="h-full w-full object-cover"
+            className={
+              framedStyle ? "absolute max-w-none" : "h-full w-full object-cover"
+            }
             src={previewUrl}
+            style={framedStyle}
           />
         ) : (
           <span className="flex h-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
@@ -160,6 +206,13 @@ const EyeCatchAspectSlot = ({
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="public_id" type="hidden" value={publicId} />
         <input name="variant_type" type="hidden" value={variantType} />
+        {crop ? (
+          <input
+            name={CROP_RECT_FIELD}
+            type="hidden"
+            value={formatCropRect(crop)}
+          />
+        ) : null}
         <Input
           accept="image/jpeg,image/png,image/webp"
           name="aspect_image"
@@ -168,6 +221,16 @@ const EyeCatchAspectSlot = ({
           style={{ display: "none" }}
           type="file"
         />
+        {localPreviewUrl ? (
+          <Button
+            onClick={() => setIsFraming(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            {getMessage(messages, "admin.eye_catch.aspect.crop.adjust")}
+          </Button>
+        ) : null}
         <Button
           disabled={isUploading || localPreviewUrl.length === 0}
           size="sm"
@@ -191,6 +254,19 @@ const EyeCatchAspectSlot = ({
               })
             : state.message}
         </FormMessage>
+      ) : null}
+
+      {localPreviewUrl ? (
+        <EyeCatchCropDialog
+          aspect={aspect}
+          crop={crop}
+          imageUrl={localPreviewUrl}
+          onCropChange={setCrop}
+          onImageLoad={handleCropImageLoad}
+          onOpenChange={setIsFraming}
+          open={isFraming}
+          source={source}
+        />
       ) : null}
     </div>
   );
@@ -233,13 +309,11 @@ export const EyeCatchAspectImages = ({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {EYE_CATCH_ASPECTS.map((aspect) => (
               <EyeCatchAspectSlot
+                aspect={aspect}
                 key={aspect.variantType}
-                minHeight={aspect.minHeight}
-                minWidth={aspect.minWidth}
                 publicId={publicId}
                 uploadAction={uploadAction}
                 variants={variants}
-                variantType={aspect.variantType}
               />
             ))}
           </div>

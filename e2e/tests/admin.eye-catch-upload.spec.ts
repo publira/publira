@@ -78,14 +78,35 @@ const uploadEyeCatchSource = async (
   await expectMessage(page, confirmation);
 };
 
-/** Upload one image for a single ratio, leaving the other three alone. */
+/**
+ * Where the editor leaves the crop frame before submitting. `centred` is where
+ * the dialog opens it, which is the cut the API takes on its own.
+ */
+type CropFraming = "centred" | "off-centre";
+
+/**
+ * Upload one image for a single ratio, leaving the other three alone.
+ *
+ * Choosing a file opens the crop dialog, so framing is part of choosing and
+ * the dialog has to be closed before the slot's own button is reachable again.
+ * The frame is moved by its keyboard step rather than by dragging: a press
+ * lands the same way on every runner, and it is the accessible path through
+ * the control besides.
+ */
 const uploadAspectImage = async (
   page: Page,
   aspect: EyeCatchAspect,
-  fixture: string
+  fixture: string,
+  framing: CropFraming = "centred"
 ): Promise<void> => {
   const slot = aspectSlot(page, aspect);
   await slot.locator('input[name="aspect_image"]').setInputFiles(fixture);
+  if (framing === "off-centre") {
+    await page
+      .getByRole("button", { name: `Move the ${aspect} crop frame` })
+      .press("Shift+ArrowUp");
+  }
+  await page.getByRole("button", { name: "Done" }).click();
   await slot.getByRole("button", { name: "Replace" }).click();
 };
 
@@ -332,6 +353,65 @@ test.describe("admin eye-catch upload", () => {
     );
 
     expect(await deliveredEyeCatch(page, request)).toEqual(before);
+  });
+
+  test("a frame nobody touched cuts where the cover image already did", async ({
+    page,
+    request,
+  }) => {
+    await openSeriesEyeCatchTab(page);
+    await uploadEyeCatchSource(
+      page,
+      "series_eye_catch_image",
+      "Cover image updated."
+    );
+
+    const before = await deliveredEyeCatch(page, request);
+
+    // The very file the cover image was cut from, offered again through one
+    // ratio's own slot with the frame left where the dialog opened it. The
+    // cover image took that ratio out of the centre of this file, so the slot
+    // has to hand those same bytes back.
+    await uploadAspectImage(page, "landscape", EYE_CATCH_SOURCE_FIXTURE);
+    await expectMessage(
+      aspectSlot(page, "landscape"),
+      "The image for this ratio was replaced."
+    );
+
+    const after = await deliveredEyeCatch(page, request);
+    expect(after.landscape).toBe(before.landscape);
+    expectOtherAspectsUnchanged(before, after, "landscape");
+  });
+
+  test("the frame decides which part of the upload survives", async ({
+    page,
+    request,
+  }) => {
+    await openSeriesEyeCatchTab(page);
+    await uploadEyeCatchSource(
+      page,
+      "series_eye_catch_image",
+      "Cover image updated."
+    );
+
+    const centred = await deliveredEyeCatch(page, request);
+
+    await uploadAspectImage(
+      page,
+      "landscape",
+      EYE_CATCH_SOURCE_FIXTURE,
+      "off-centre"
+    );
+    await expectMessage(
+      aspectSlot(page, "landscape"),
+      "The image for this ratio was replaced."
+    );
+
+    // Same file, same ratio, same sizes: only the rectangle the editor framed
+    // separates these bytes from the ones above.
+    const framed = await deliveredEyeCatch(page, request);
+    expect(framed.landscape).not.toBe(centred.landscape);
+    expectOtherAspectsUnchanged(centred, framed, "landscape");
   });
 
   test("the uploaded eye-catch reaches the series on web-host", async ({

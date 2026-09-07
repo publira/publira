@@ -27,7 +27,13 @@ export const mentionsLogoRejection = (error: unknown): boolean =>
  * aspect ratio. Those RPCs carry the image in `image_data`, so the whole
  * eye-catch fields above never name it, and the minimum the image missed is
  * the ratio's own — the slot that submitted writes the wording.
+ *
+ * `crop` counts as the same failure. The console never lets a frame go below
+ * the ratio's minimum, so a rectangle the API refuses for its size is one the
+ * console could not make any larger: the image behind it is the small one, and
+ * that is what the slot's wording tells the editor to replace.
  */
 export const mentionsAspectImageRejection = (error: unknown): boolean =>
   rpcErrorHasFieldViolation(error, "image_data") ||
-  rpcErrorHasFieldViolation(error, "image_content_type");
+  rpcErrorHasFieldViolation(error, "image_content_type") ||
+  rpcErrorHasFieldViolation(error, "crop");

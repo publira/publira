@@ -389,6 +389,43 @@ func TestBuildEyeCatchAspectVariants_RectangleCoveringTheWholeSourceMatchesTheCe
 	}
 }
 
+func TestBuildEyeCatchAspectVariants_TheCentreRectangleDeliversWhatNoRectangleDoes(t *testing.T) {
+	// A console that draws a frame opens it on the centre of the upload and
+	// posts that rectangle, so these are the rectangles it sends when an editor
+	// touches nothing: the centre of a 2400x3200 source, one per ratio. Each has
+	// to deliver what an upload with no rectangle at all delivers, or a frame
+	// nobody touched would store a different image from the one it showed.
+	raw := makeJPEG(t, 2400, 3200)
+	for _, tt := range []struct {
+		ratio string
+		crop  imageproc.CropRect
+	}{
+		{"portrait", imageproc.CropRect{X: 0, Y: 0, Width: 2400, Height: 3200}},
+		{"square", imageproc.CropRect{X: 0, Y: 400, Width: 2400, Height: 2400}},
+		{"landscape", imageproc.CropRect{X: 0, Y: 925, Width: 2400, Height: 1350}},
+		{"og", imageproc.CropRect{X: 0, Y: 970, Width: 2400, Height: 1260}},
+	} {
+		t.Run(tt.ratio, func(t *testing.T) {
+			centre, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", tt.ratio, nil)
+			if err != nil {
+				t.Fatalf("BuildEyeCatchAspectVariants without a rectangle: %v", err)
+			}
+			framed, err := imageproc.BuildEyeCatchAspectVariants(raw, "image/jpeg", tt.ratio, &tt.crop)
+			if err != nil {
+				t.Fatalf("BuildEyeCatchAspectVariants with the centre rectangle: %v", err)
+			}
+			if len(framed) != len(centre) {
+				t.Fatalf("got %d variants, want %d", len(framed), len(centre))
+			}
+			for i, variant := range framed {
+				if variant.Label != centre[i].Label || !bytes.Equal(variant.Data, centre[i].Data) {
+					t.Fatalf("variant %d (%q) differs from the centre crop %q", i, variant.Label, centre[i].Label)
+				}
+			}
+		})
+	}
+}
+
 func TestBuildEyeCatchAspectVariants_RejectsARectangleOutsideTheSource(t *testing.T) {
 	raw := makeJPEG(t, 3200, 1800)
 	for _, tt := range []struct {

@@ -6,6 +6,9 @@
 
 import { z } from "zod";
 
+import type { CropRect } from "./crop-rect";
+import { isCropRectField, parseCropRect } from "./crop-rect";
+
 /**
  * Decimal integers and fractions only. `Number()` alone would also accept
  * `0x10`, `1e3`, and `Infinity`.
@@ -67,6 +70,21 @@ export const flagOneFormSchema = z.preprocess(
   (value) => value === "1",
   z.boolean()
 );
+
+/**
+ * The rectangle a crop control posts beside its image. An absent or empty
+ * field is no rectangle at all, which leaves the cut in the centre of the
+ * upload — what every upload did before a console could frame one. Anything
+ * else has to be a whole rectangle: a half-written one would cut somewhere the
+ * editor never framed, and saying so is more use than silently re-centring.
+ */
+export const optionalCropRectFormSchema = (
+  message: string
+): z.ZodType<CropRect | undefined, unknown> =>
+  z.preprocess(
+    (value) => (typeof value === "string" ? value : ""),
+    z.string().refine(isCropRectField, message).transform(parseCropRect)
+  );
 
 export const optionalFileFormSchema = z.custom<File | undefined>(
   (value) => value === undefined || value instanceof File

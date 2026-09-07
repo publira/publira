@@ -5,6 +5,7 @@ import {
   flagOneFormSchema,
   jsonStringArrayFormSchema,
   nonNegativeIntFormSchema,
+  optionalCropRectFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
   trimmedStringListFormSchema,
@@ -87,5 +88,28 @@ describe("trimmedStringListFormSchema", () => {
       "a",
       "b",
     ]);
+  });
+});
+
+describe("optionalCropRectFormSchema", () => {
+  const schema = optionalCropRectFormSchema("Check the framed area.");
+
+  it("reads the rectangle a crop control posted", () => {
+    expect(schema.parse("0,925,2400,1350")).toEqual({
+      height: 1350,
+      width: 2400,
+      x: 0,
+      y: 925,
+    });
+  });
+
+  it("reads no rectangle from a form that framed nothing", () => {
+    expect(schema.parse("")).toBeUndefined();
+    expect(schema.parse(null)).toBeUndefined();
+  });
+
+  it("rejects a rectangle that lost a side rather than re-centring the cut", () => {
+    expect(schema.safeParse("0,925,2400").success).toBe(false);
+    expect(schema.safeParse("0,925,2400,0").success).toBe(false);
   });
 });

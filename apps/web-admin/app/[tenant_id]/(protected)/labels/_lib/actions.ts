@@ -11,9 +11,11 @@ import { z } from "zod";
 import type { EyeCatchAspectActionState } from "#components/eye-catch/types";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
+import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   flagOneFormSchema,
+  optionalCropRectFormSchema,
   optionalFileFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
@@ -202,6 +204,9 @@ export const updateLabelAction = async (
 
 const eyeCatchAspectSchema = (messages: AdminMessages) =>
   z.object({
+    crop: optionalCropRectFormSchema(
+      getMessage(messages, "admin.eye_catch.aspect.crop.invalid")
+    ),
     publicId: requiredTrimmedString(
       getMessage(messages, "admin.labels.validation.id_missing")
     ),
@@ -214,6 +219,7 @@ const eyeCatchAspectSchema = (messages: AdminMessages) =>
   });
 
 const eyeCatchAspectFormFields = {
+  crop: { kind: "value", name: CROP_RECT_FIELD },
   publicId: { kind: "value", name: "public_id" },
   tenantId: { kind: "value", name: "tenant_id" },
   variantType: { kind: "value", name: "variant_type" },
@@ -247,7 +253,7 @@ export const uploadLabelEyeCatchAspectImageAction = async (
     return toAspectFailure(toFormErrorMessage(parsed.error, { locale }), "");
   }
 
-  const { aspectImage, publicId, tenantId, variantType } = parsed.data;
+  const { aspectImage, crop, publicId, tenantId, variantType } = parsed.data;
   if (!aspectImage) {
     return toAspectFailure(
       getMessage(messages, "admin.eye_catch.aspect.image_required"),
@@ -259,6 +265,7 @@ export const uploadLabelEyeCatchAspectImageAction = async (
   const result = await withAdminSessionReauth(() =>
     uploadLabelEyeCatchAspectImage(
       {
+        crop,
         imageContentType: aspectImage.type || undefined,
         imageData,
         publicId,
