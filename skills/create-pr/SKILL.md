@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Create a pull request in this repository following its own conventions, and add follow-up commits to one. Use when asked to open, raise, or draft a PR, to commit and push finished work for review, to write a PR description, or to push fixes for review feedback onto an existing PR. Reads the applicable AGENTS.md policy, stages only the intended diff, commits with the required Assisted-by trailer, runs the verification commands that match the changed area, rebases onto origin/main when the branch conflicts or the review diff needs it, and fills in the repository pull request template under an English Conventional Commits title.
+description: Create a pull request in this repository following its own conventions, and add follow-up commits to one. Use when asked to open, raise, or draft a PR, to commit and push finished work for review, to write a PR description, or to push fixes for review feedback onto an existing PR. Reads the applicable AGENTS.md policy, stages only the intended diff, commits with the required Assisted-by trailer, runs the verification commands that match the changed area, rebases onto origin/main before every push and before requesting review, and fills in the repository pull request template under an English Conventional Commits title.
 ---
 
 # Create a Pull Request
@@ -92,20 +92,18 @@ Run the checks for what you actually changed, from the repository root, and fix 
 
 `pnpm preflight` is the repository's quality gate, and it stays unit-only. The Playwright suite runs through `task e2e`, which owns the whole lifecycle (build, compose up, migrate and seed, start apps, wait for readiness, run, tear down) and exports the ports and `PUBLIRA_DB_URL` the tests need. Use `task e2e:test` only against a stack you already started. It needs Docker, so say plainly that you skipped it when Docker is unavailable rather than implying the suite passed.
 
-## Rebase onto origin/main only when the branch needs it
+## Rebase onto origin/main
 
-`main` is behind a merge queue, so a branch does not have to be up to date to merge: the queue builds the pull request on top of the current `main`, runs `CI` there, and squash-merges the result. Do not rebase merely because `main` moved while the pull request was open — that costs a full CI run and buys nothing the queue does not already do.
+`main` is behind a merge queue, so a branch no longer has to be up to date for GitHub to let it merge — the queue builds the pull request on top of the current `main`, runs `CI` there, and squash-merges the result. What the queue does not do is tell you early. It composes that tree for the first time at merge time, and a pull request that breaks there is dropped from the queue and takes the rebuild of every entry behind it with it.
 
-Rebase when the branch actually needs it:
-
-- GitHub reports a conflict with `main`.
-- The branch has fallen far enough behind that the review diff shows unrelated changes, or that the verification you are about to run would not reflect what the queue will build.
-- The user asks for it.
+So rebase before pushing, and again immediately before asking for review:
 
 ```bash
 git fetch origin main
 git rebase origin/main
 ```
+
+A textual conflict GitHub already reports on its own, recomputed as `main` moves and without anyone rebasing. The reason to rebase is the break that is not textual: a change that merges cleanly and still fails once it sits next to what landed while the pull request was open. Only a `CI` run on the combined tree finds that, and one run here is cheaper than finding it inside the queue. "It would burn a CI run" is not a reason to skip it, and it is not a reason to rebase early and let the branch fall behind again either — rebase as part of the same stretch of work as the push or the review request, not ahead of it.
 
 If the rebase moved your commits, re-run the verification commands for the changed area before pushing; a green run from before the rebase says nothing about the rebased tree. Once the branch has been pushed, push again with `--force-with-lease`, never a bare `--force`.
 
@@ -192,8 +190,8 @@ Review feedback and later fixes follow the same rules as the first commit:
 1. Stage only the paths the follow-up actually touches. The working tree has had more time to collect unrelated edits, so re-read `git status --porcelain` and `git diff --staged` before committing.
 2. Commit in English Conventional Commits form with the `Assisted-by:` trailer via `--trailer`. Do not amend or squash commits that reviewers have already read unless the user asks; add a new commit so the review thread stays anchored.
 3. Run the verification commands for the area you changed.
-4. Rebase onto `origin/main` only for the reasons above, then re-run verification if the rebase moved anything.
-5. Push. A plain `git push` is enough for a follow-up commit; use `--force-with-lease`, never a bare `--force`, when a rebase rewrote already-pushed commits.
+4. `git fetch origin main` and `git rebase origin/main` before pushing, then re-run verification if the rebase moved anything.
+5. Push with `--force-with-lease`, since the rebase rewrote already-pushed commits.
 6. Update the PR body when the change alters what the PR does or how to test it, keeping the `Assisted-by:` trailer as its last line.
 
 Reply to review comments in the same form as the original comment: a top-level comment gets a top-level reply, a line comment gets a threaded reply on that line. Never delete a posted comment, especially one that already has replies.
@@ -206,7 +204,7 @@ Confirm all of the following, and report anything you could not satisfy:
 - `git status` shows the unrelated modifications you found at the start, still unstaged and unchanged
 - every commit carries an accurate `Assisted-by:` trailer and no AI co-author trailer
 - the verification commands for the changed area ran and passed
-- the pushed branch has no conflict with `main`, and if you rebased through the throwaway-checkout route, report that as the remote branch carrying the rebased commits with the local branch ref still awaiting reconciliation, never as a rebased local branch
+- the pushed branch is rebased on the current `origin/main` — and if you took the throwaway-checkout route, report that as the remote branch carrying the rebased commits with the local branch ref still awaiting reconciliation, never as a rebased local branch
 - no throwaway worktree is left behind (`git worktree list`)
 - `gh pr view` shows the template's headings intact, an English Conventional Commits title, issue links that match the real relationship, exactly one `size/*` label and no hand-set `ai-assisted`, and the `Assisted-by:` trailer as the last line of the body
 - no temporary body file is left behind

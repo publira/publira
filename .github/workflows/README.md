@@ -145,7 +145,7 @@ The branch ruleset requires only final aggregation job **`Summary`** (shown as `
 
 `main` is behind a merge queue, so a pull request that satisfies the review and status requirements is merged with **Merge when ready** rather than by hand. GitHub builds a temporary `gh-readonly-queue/main/…` branch from the current `main`, the entries ahead of this one in the queue, and this pull request, runs the required checks on it, and squash-merges when they pass. An entry whose checks fail is dropped and the entries behind it are rebuilt without it.
 
-That is why the branch no longer has to be up to date before merging, and why a pull request does not have to be rebased onto `origin/main` just to follow a merge someone else landed. Rebasing remains the way to resolve a conflict or to keep the review diff readable.
+That is why the branch no longer has to be up to date for GitHub to let it merge. It is not a reason to stop rebasing onto `origin/main`: the queue composes the combined tree for the first time at merge time, so a break that only appears there is found late and drops the entry along with the rebuild of everything behind it. Rebasing before a push and before a review request is still where that break is cheap to find.
 
 `CI` therefore subscribes to `merge_group` (type `checks_requested`). Without it a queued pull request would wait for a check that never arrives until the queue's status check timeout drops it, so the trigger has to be in place before the rule is added to the ruleset.
 
