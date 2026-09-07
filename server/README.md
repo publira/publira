@@ -475,6 +475,18 @@ There is no RPC for withdrawing a rating. Which rating counts is decided on read
 
 The rate is `complete_count / member_view_count` over a range of days. A period with no member views has no rate at all rather than a rate of zero; the console shows an em dash there. `AdminEngagementService.ListEpisodeReadThrough` reports the last 28 complete days in the tenant's own time zone, the same calendar day the audit log's date filter means, and names that zone in the response.
 
+## Reading positions
+
+`EpisodeReadService.SaveReadingPosition` and `GetMyReadingPosition` carry where a member stopped inside an episode, as one `episode_reading_positions` row per member and episode. `GetMySeriesProgress` answers the same member's standing in one series — the episode they moved in most recently, the position they left in it, and whether `episode_reads` already records it as finished — so `CatalogService.GetSeriesDetail` keeps returning the same bytes to everyone.
+
+| Item | Value |
+| --- | --- |
+| Session | Required. Every one of these RPCs answers for the signed-in member alone and responds `Cache-Control: private, no-store` |
+| Isolation | The member policy `episode_reads` uses: `app.current_tenant_id` and `app.current_user_id` both have to match the row |
+| `page_index` | Zero-based and below `page_count`. A page outside the episode is `invalid_argument`, an episode with no pages `failed_precondition` |
+| `page_count` | Counted from `episode_images` on every save, never taken from the request |
+| Access | Publication and paid-body access are checked on save and on read alike, so an unpublished episode or an expired rental has no position to resume |
+
 ## API server separation
 
 - Public API server: `server/cmd/api-server`

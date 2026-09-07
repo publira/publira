@@ -208,6 +208,19 @@ type Querier interface {
 	// The caller adds one to this to number the version it is about to create;
 	// COALESCE makes the first version of a page number 1.
 	GetMaxPageVersionNumberByPageID(ctx context.Context, pageID uuid.UUID) (int32, error)
+	// The reader's position in one episode, gated on the same publication and body
+	// access the save is: an episode they may no longer open has no position to
+	// resume, and answering with one would tell them the row is still there.
+	GetMyEpisodeReadingPosition(ctx context.Context, arg GetMyEpisodeReadingPositionParams) (GetMyEpisodeReadingPositionRow, error)
+	// The episode of one series the reader moved in most recently, with the
+	// position they left and whether they already finished it. The series page
+	// renders its call to action from this single private read, which is what
+	// keeps the series detail itself shared-cacheable.
+	//
+	// Episodes the reader can no longer open are skipped rather than reported, so
+	// an expired rental hands the reader the episode before it instead of a
+	// position they cannot act on.
+	GetMySeriesReadingProgress(ctx context.Context, arg GetMySeriesReadingProgressParams) (GetMySeriesReadingProgressRow, error)
 	// Non-revoked ticket for a user+episode pair (may already be expired).
 	// Used for idempotent issue under the unique partial index on non-revoked rows.
 	GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error)
@@ -878,6 +891,23 @@ type Querier interface {
 	// one removed while still awaiting approval goes back into that queue.
 	RestoreEpisodeCommentByPublicIDForTenant(ctx context.Context, arg RestoreEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
 	RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error)
+	// Stores where the reader stopped, after checking publication and body access
+	// in the same statement, so a viewer that saves on its way out cannot write a
+	// position for an episode that was unpublished or a rental that has expired.
+	//
+	// The page count comes from the episode's own images rather than from the
+	// client: it is what the reader is allowed to be inside, and the caller has no
+	// standing to widen it.
+	//
+	// readable answers "may this reader open this episode, and how long is it",
+	// which is the whole not-found decision; saved is empty when the page is
+	// outside the episode, so the caller can tell a rejected page from an episode
+	// it may not see. episode_page_count is what that caller reports back.
+	//
+	// Saving the position the row already holds keeps updated_at: a viewer that
+	// writes the current page on a timer would otherwise reorder the reader's
+	// recent activity without the reader having moved.
+	SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error)
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
 	// The theme row is created on demand: a tenant can upload a icon before it
 	// has ever saved a color, and the colors then keep their column defaults.
