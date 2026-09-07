@@ -104,4 +104,4 @@ import { Combobox, MultiCombobox } from "@publira/ui-components/combobox";
 | `id` | `string` | Generated | The id of the input. When omitted, it is associated with `FieldLabel` automatically |
 | `disabled` | `boolean` | — | Disable the control |
 
-`ComboboxInput` takes the input's own `placeholder` and `className`; `MultiComboboxInputGroup` takes the `className` of the box that holds the chips.
+`ComboboxInput` and `MultiComboboxInput` take the input's own attributes — `placeholder`, and the `aria-label` that names the control where no `FieldLabel` points at it; `ComboboxInput` takes a `className` too, and `MultiComboboxInputGroup` takes the `className` of the box that holds the chips.

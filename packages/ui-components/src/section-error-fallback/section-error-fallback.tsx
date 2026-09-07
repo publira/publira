@@ -87,7 +87,7 @@ const SectionErrorFallbackState = ({
  * ```tsx
  * "use client";
  *
- * import { sectionErrorFallback } from "@publira/ui-components/section-error";
+ * import { sectionErrorFallback } from "@publira/ui-components/section-error-fallback";
  * import { catchError } from "next/error";
  *
  * export const SectionErrorCatch = catchError(sectionErrorFallback);

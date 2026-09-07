@@ -85,9 +85,12 @@ export const Combobox = ({
 };
 
 export const ComboboxInput = ({
+  "aria-label": ariaLabel,
   className,
   placeholder,
 }: {
+  /** Names the control where no `FieldLabel` points at it. */
+  "aria-label"?: string;
   className?: string;
   placeholder?: string;
 }) => {
@@ -95,6 +98,7 @@ export const ComboboxInput = ({
 
   return (
     <BaseCombobox.Input
+      aria-label={ariaLabel}
       className={cn(
         "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
         className

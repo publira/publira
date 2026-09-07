@@ -177,14 +177,18 @@ export const MultiComboboxChipRemove = ({
 );
 
 export const MultiComboboxInput = ({
+  "aria-label": ariaLabel,
   placeholder,
 }: {
+  /** Names the control where no `FieldLabel` points at it. */
+  "aria-label"?: string;
   placeholder?: string;
 }) => {
   const id = useContext(ComboboxIdContext);
 
   return (
     <BaseCombobox.Input
+      aria-label={ariaLabel}
       className="h-8 min-w-24 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
       id={id}
       placeholder={placeholder}

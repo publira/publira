@@ -7,6 +7,7 @@ It is composed, so each region is an element the caller writes: a heading that s
 ## Usage
 
 ```tsx
+import { CollectionIcon } from "@publira/icons";
 import {
   EmptyState,
   EmptyStateActions,
@@ -21,7 +22,7 @@ export default function Example() {
   return (
     <EmptyState>
       <EmptyStateIcon>
-        <InboxIcon className="size-6" />
+        <CollectionIcon className="size-6" />
       </EmptyStateIcon>
       <EmptyStateHeading>
         <EmptyStateTitle>No series yet</EmptyStateTitle>
