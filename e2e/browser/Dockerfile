@@ -17,8 +17,25 @@ FROM mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f281
 # every distribution. Installing them is what makes a stack resolve to the same
 # face on the machine that took the baseline and on the runner comparing
 # against it.
-RUN apt-get update \
-  && apt-get install --yes --no-install-recommends fonts-noto-cjk \
+#
+# Which is only true while the face is the same one. Ubuntu's archive is a
+# moving target, so `apt-get install fonts-noto-cjk` would put whatever the
+# mirror carries that day into a rebuild of this image, and other outlines are
+# other pixels — the drift the pinned base image exists to prevent, arriving
+# through the package manager instead. The snapshot service answers with the
+# archive as it stood at one instant, which is what keeps the pinned version
+# below resolvable rather than merely asserted. Moving either value means
+# retaking every baseline in the same commit.
+RUN printf '%s\n' \
+      'Types: deb' \
+      'URIs: https://snapshot.ubuntu.com/ubuntu/20250901T000000Z' \
+      'Suites: noble' \
+      'Components: main universe' \
+      'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
+      > /etc/apt/sources.list.d/ubuntu.sources \
+  && apt-get update \
+  && apt-get install --yes --no-install-recommends \
+      fonts-noto-cjk=1:20230817+repack1-3 \
   && rm -rf /var/lib/apt/lists/*
 
 # `run-server` is a command of the `playwright` CLI, and the image ships the
