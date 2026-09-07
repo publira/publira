@@ -154,21 +154,35 @@ type Episode struct {
 }
 
 type EpisodeComment struct {
-	ID           uuid.UUID      `json:"id"`
-	TenantID     uuid.UUID      `json:"tenant_id"`
-	PublicID     string         `json:"public_id"`
-	EpisodeID    uuid.UUID      `json:"episode_id"`
-	UserID       uuid.UUID      `json:"user_id"`
-	Body         string         `json:"body"`
-	Status       string         `json:"status"`
-	ApprovedBy   uuid.NullUUID  `json:"approved_by"`
-	HiddenBy     uuid.NullUUID  `json:"hidden_by"`
-	HiddenReason sql.NullString `json:"hidden_reason"`
-	CreatedAt    time.Time      `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
-	PublishedAt  sql.NullTime   `json:"published_at"`
-	HiddenAt     sql.NullTime   `json:"hidden_at"`
-	WithdrawnAt  sql.NullTime   `json:"withdrawn_at"`
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	UserID          uuid.UUID      `json:"user_id"`
+	Body            string         `json:"body"`
+	Status          string         `json:"status"`
+	ApprovedBy      uuid.NullUUID  `json:"approved_by"`
+	HiddenBy        uuid.NullUUID  `json:"hidden_by"`
+	HiddenReason    sql.NullString `json:"hidden_reason"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	PublishedAt     sql.NullTime   `json:"published_at"`
+	HiddenAt        sql.NullTime   `json:"hidden_at"`
+	WithdrawnAt     sql.NullTime   `json:"withdrawn_at"`
+	OpenReportCount int32          `json:"open_report_count"`
+}
+
+type EpisodeCommentReport struct {
+	ID             uuid.UUID      `json:"id"`
+	TenantID       uuid.UUID      `json:"tenant_id"`
+	CommentID      uuid.UUID      `json:"comment_id"`
+	ReporterUserID uuid.UUID      `json:"reporter_user_id"`
+	Reason         string         `json:"reason"`
+	Note           sql.NullString `json:"note"`
+	Status         string         `json:"status"`
+	CreatedAt      time.Time      `json:"created_at"`
+	ResolvedBy     uuid.NullUUID  `json:"resolved_by"`
+	ResolvedAt     sql.NullTime   `json:"resolved_at"`
 }
 
 type EpisodeFollow struct {

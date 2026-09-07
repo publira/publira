@@ -73,6 +73,14 @@ type Querier interface {
 	// status and published_at come from the tenant's comment_mode: 'published' with
 	// a timestamp under immediate, 'pending' with NULL under approval_required.
 	CreateEpisodeComment(ctx context.Context, arg CreateEpisodeCommentParams) (EpisodeComment, error)
+	// One reader's report. A reader who has already reported this comment conflicts
+	// with the unique constraint and no row is returned, which is how the caller
+	// tells a first report from a repeat without asking first: asking would leave a
+	// window in which two concurrent submissions both believed they were the first.
+	//
+	// A repeat is deliberately not an update. The reason and the note are what the
+	// reader said the first time, and the report queue is worked from them.
+	CreateEpisodeCommentReport(ctx context.Context, arg CreateEpisodeCommentReportParams) (EpisodeCommentReport, error)
 	// Durable member follows. Episode, series, and creator follows have
 	// distinct source tables; content_events must not be used to model any of them.
 	CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error)
@@ -266,6 +274,26 @@ type Querier interface {
 	// they all treat a foreign, unpublished, or missing series the same way.
 	GetPublishedSeriesIDByPublicID(ctx context.Context, arg GetPublishedSeriesIDByPublicIDParams) (uuid.UUID, error)
 	GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, arg GetPurchasableEpisodeByPublicIDForTenantParams) (GetPurchasableEpisodeByPublicIDForTenantRow, error)
+	// Reader reports on episode comments, and the open-report counter they keep on
+	// the comment they are about.
+	//
+	// Expected plans:
+	//   GetReportableEpisodeCommentByPublicIDForTenant
+	//     -> episode_comments_tenant_public_id_key
+	//   CreateEpisodeCommentReport
+	//     -> episode_comment_reports_tenant_comment_reporter_key for the conflict
+	//   RefreshEpisodeCommentOpenReportCount
+	//     -> episode_comments_tenant_id_id_key, then
+	//        episode_comment_reports_tenant_comment_reporter_key for the count
+	// The comment a reader is allowed to report: one that is published, on an
+	// episode that is itself public right now. The publication predicate is the one
+	// GetPublishedEpisodeByPublicIDForTenant applies, so a comment on an episode
+	// that has been unpublished since is as absent here as one that never existed.
+	//
+	// The author is returned because a reader may not report their own comment, and
+	// that is a decision the caller makes rather than a row this query hides: the
+	// two cases are told apart in the answer the reporter gets.
+	GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Context, arg GetReportableEpisodeCommentByPublicIDForTenantParams) (GetReportableEpisodeCommentByPublicIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
@@ -956,6 +984,15 @@ type Querier interface {
 	// holding a secret, and only they pay for the reclaim. A crash loop costs
 	// these rows no retry budget.
 	RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error)
+	// Recomputes the counter from the reports themselves, in the transaction that
+	// just changed one of them.
+	//
+	// Recomputing rather than adding one is what makes the counter answer the same
+	// question after a resolution as after a report: staff deciding on a report
+	// lowers it by exactly the rows that stopped being open, and a counter that had
+	// drifted for any reason is corrected by the next write instead of staying
+	// wrong until someone notices.
+	RefreshEpisodeCommentOpenReportCount(ctx context.Context, arg RefreshEpisodeCommentOpenReportCountParams) (int32, error)
 	ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error
 	// A restored comment returns to the state the removal interrupted, which
 	// published_at records: one that was already public becomes public again, and

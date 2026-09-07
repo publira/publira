@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { applyScenarioSql, quoteSqlLiteral, runSql } from "../src/db";
+import { applyScenarioSql, querySql, quoteSqlLiteral, runSql } from "../src/db";
 import { signInAsMember } from "../src/host";
 import { episodeCommentsTag, revalidateHostTags } from "../src/revalidate";
 import {
@@ -56,6 +56,42 @@ const hideComment = (body: string): void => {
       AND body = ${quoteSqlLiteral(body)};
   `);
 };
+
+/** Report one comment from the dialog, the way a reader does. */
+const reportComment = async (page: Page, body: string): Promise<void> => {
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: body })
+    .getByRole("button", { name: /^Report the comment/u })
+    .click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("radio", { name: "Spoilers" }).click();
+  await dialog.getByRole("button", { name: "Send report" }).click();
+
+  await expect(
+    page.getByText("Thank you. Your report has been sent to the moderators.")
+  ).toBeVisible();
+};
+
+/** The counter the removal threshold reads, as the database holds it. */
+const openReportCount = (body: string): string =>
+  querySql(`
+    SELECT open_report_count
+    FROM episode_comments
+    WHERE episode_id = '${EPISODE_COMMENTS_EPISODE.id}'::uuid
+      AND body = ${quoteSqlLiteral(body)};
+  `).trim();
+
+const storedReports = (body: string): string =>
+  querySql(`
+    SELECT count(*)
+    FROM episode_comment_reports r
+    JOIN episode_comments c ON c.id = r.comment_id
+    WHERE c.episode_id = '${EPISODE_COMMENTS_EPISODE.id}'::uuid
+      AND c.body = ${quoteSqlLiteral(body)};
+  `).trim();
 
 /**
  * Read the episode page again and again until the comment list catches up.
@@ -216,5 +252,52 @@ test.describe("web-host episode comments", () => {
     // list holds it too. Poll for the reload, the way the reader-side
     // assertion above does.
     await pollEpisodePage(page, () => page.getByText(body).count()).toBe(0);
+  });
+
+  test("a reader reports another reader's comment once, however many times they send it", async ({
+    browser,
+    page,
+  }) => {
+    const body = "A comment another reader will report.";
+    await signInAsMember(
+      page,
+      EPISODE_COMMENTS_AUTHOR,
+      EPISODE_COMMENTS_PATH,
+      WEB_HOST_EPISODE_COMMENTS_BASE_URL
+    );
+    await page.goto(episodeUrl);
+    await postComment(page, body);
+    await expect(page.getByText("Your comment has been posted.")).toBeVisible();
+    // The author has a deletion for their own comment instead.
+    await expect(
+      page.getByRole("button", { name: /^Report the comment/u })
+    ).toHaveCount(0);
+
+    const readerContext = await browser.newContext();
+    const readerPage = await readerContext.newPage();
+    try {
+      await signInAsMember(
+        readerPage,
+        EPISODE_COMMENTS_READER,
+        EPISODE_COMMENTS_PATH,
+        WEB_HOST_EPISODE_COMMENTS_BASE_URL
+      );
+      await pollEpisodePage(readerPage, () =>
+        readerPage.getByText(body).count()
+      ).toBe(1);
+
+      await reportComment(readerPage, body);
+      expect(openReportCount(body)).toBe("1");
+
+      // Sending it again is answered the same way and adds nothing: what the
+      // platform has since done about the earlier report is not something a
+      // second submission may reveal.
+      await readerPage.goto(episodeUrl);
+      await reportComment(readerPage, body);
+      expect(openReportCount(body)).toBe("1");
+      expect(storedReports(body)).toBe("1");
+    } finally {
+      await readerContext.close();
+    }
   });
 });

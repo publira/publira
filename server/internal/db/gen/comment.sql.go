@@ -22,7 +22,7 @@ SET status = 'published',
 WHERE tenant_id = $2
     AND public_id = $3
     AND status = 'pending'
-RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at
+RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at, open_report_count
 `
 
 type ApproveEpisodeCommentByPublicIDForTenantParams struct {
@@ -52,6 +52,7 @@ func (q *Queries) ApproveEpisodeCommentByPublicIDForTenant(ctx context.Context, 
 		&i.PublishedAt,
 		&i.HiddenAt,
 		&i.WithdrawnAt,
+		&i.OpenReportCount,
 	)
 	return i, err
 }
@@ -95,7 +96,7 @@ INSERT INTO episode_comments (
     $7,
     $8
 )
-RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at
+RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at, open_report_count
 `
 
 type CreateEpisodeCommentParams struct {
@@ -160,6 +161,7 @@ func (q *Queries) CreateEpisodeComment(ctx context.Context, arg CreateEpisodeCom
 		&i.PublishedAt,
 		&i.HiddenAt,
 		&i.WithdrawnAt,
+		&i.OpenReportCount,
 	)
 	return i, err
 }
@@ -187,7 +189,7 @@ func (q *Queries) DeleteEpisodeCommentByPublicIDForTenant(ctx context.Context, a
 }
 
 const getEpisodeCommentForModerationByPublicIDForTenant = `-- name: GetEpisodeCommentForModerationByPublicIDForTenant :one
-SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at,
+SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
     e.public_id AS episode_public_id,
@@ -226,6 +228,7 @@ type GetEpisodeCommentForModerationByPublicIDForTenantRow struct {
 	PublishedAt     sql.NullTime   `json:"published_at"`
 	HiddenAt        sql.NullTime   `json:"hidden_at"`
 	WithdrawnAt     sql.NullTime   `json:"withdrawn_at"`
+	OpenReportCount int32          `json:"open_report_count"`
 	AuthorPublicID  string         `json:"author_public_id"`
 	AuthorName      string         `json:"author_name"`
 	EpisodePublicID string         `json:"episode_public_id"`
@@ -256,6 +259,7 @@ func (q *Queries) GetEpisodeCommentForModerationByPublicIDForTenant(ctx context.
 		&i.PublishedAt,
 		&i.HiddenAt,
 		&i.WithdrawnAt,
+		&i.OpenReportCount,
 		&i.AuthorPublicID,
 		&i.AuthorName,
 		&i.EpisodePublicID,
@@ -276,7 +280,7 @@ SET status = 'hidden',
 WHERE tenant_id = $3
     AND public_id = $4
     AND status IN ('pending', 'published')
-RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at
+RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at, open_report_count
 `
 
 type HideEpisodeCommentByPublicIDForTenantParams struct {
@@ -312,12 +316,13 @@ func (q *Queries) HideEpisodeCommentByPublicIDForTenant(ctx context.Context, arg
 		&i.PublishedAt,
 		&i.HiddenAt,
 		&i.WithdrawnAt,
+		&i.OpenReportCount,
 	)
 	return i, err
 }
 
 const listEpisodeCommentsForModerationByCreatedAtAsc = `-- name: ListEpisodeCommentsForModerationByCreatedAtAsc :many
-SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at,
+SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
     e.public_id AS episode_public_id,
@@ -384,6 +389,7 @@ type ListEpisodeCommentsForModerationByCreatedAtAscRow struct {
 	PublishedAt     sql.NullTime   `json:"published_at"`
 	HiddenAt        sql.NullTime   `json:"hidden_at"`
 	WithdrawnAt     sql.NullTime   `json:"withdrawn_at"`
+	OpenReportCount int32          `json:"open_report_count"`
 	AuthorPublicID  string         `json:"author_public_id"`
 	AuthorName      string         `json:"author_name"`
 	EpisodePublicID string         `json:"episode_public_id"`
@@ -427,6 +433,7 @@ func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtAsc(ctx context.Con
 			&i.PublishedAt,
 			&i.HiddenAt,
 			&i.WithdrawnAt,
+			&i.OpenReportCount,
 			&i.AuthorPublicID,
 			&i.AuthorName,
 			&i.EpisodePublicID,
@@ -448,7 +455,7 @@ func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtAsc(ctx context.Con
 }
 
 const listEpisodeCommentsForModerationByCreatedAtDesc = `-- name: ListEpisodeCommentsForModerationByCreatedAtDesc :many
-SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at,
+SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
     e.public_id AS episode_public_id,
@@ -515,6 +522,7 @@ type ListEpisodeCommentsForModerationByCreatedAtDescRow struct {
 	PublishedAt     sql.NullTime   `json:"published_at"`
 	HiddenAt        sql.NullTime   `json:"hidden_at"`
 	WithdrawnAt     sql.NullTime   `json:"withdrawn_at"`
+	OpenReportCount int32          `json:"open_report_count"`
 	AuthorPublicID  string         `json:"author_public_id"`
 	AuthorName      string         `json:"author_name"`
 	EpisodePublicID string         `json:"episode_public_id"`
@@ -565,6 +573,7 @@ func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Co
 			&i.PublishedAt,
 			&i.HiddenAt,
 			&i.WithdrawnAt,
+			&i.OpenReportCount,
 			&i.AuthorPublicID,
 			&i.AuthorName,
 			&i.EpisodePublicID,
@@ -1013,7 +1022,7 @@ SET status = CASE WHEN published_at IS NULL THEN 'pending' ELSE 'published' END,
 WHERE tenant_id = $1
     AND public_id = $2
     AND status = 'hidden'
-RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at
+RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at, open_report_count
 `
 
 type RestoreEpisodeCommentByPublicIDForTenantParams struct {
@@ -1043,6 +1052,7 @@ func (q *Queries) RestoreEpisodeCommentByPublicIDForTenant(ctx context.Context, 
 		&i.PublishedAt,
 		&i.HiddenAt,
 		&i.WithdrawnAt,
+		&i.OpenReportCount,
 	)
 	return i, err
 }
@@ -1059,7 +1069,7 @@ WHERE tenant_id = $1
     AND user_id = $2
     AND public_id = $3
     AND status <> 'withdrawn'
-RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at
+RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at, open_report_count
 `
 
 type WithdrawEpisodeCommentByPublicIDForUserParams struct {
@@ -1091,6 +1101,7 @@ func (q *Queries) WithdrawEpisodeCommentByPublicIDForUser(ctx context.Context, a
 		&i.PublishedAt,
 		&i.HiddenAt,
 		&i.WithdrawnAt,
+		&i.OpenReportCount,
 	)
 	return i, err
 }

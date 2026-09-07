@@ -39,6 +39,10 @@
       "types": "./dist/public/catalog.d.mts",
       "default": "./dist/public/catalog.mjs"
     },
+    "./public/comment": {
+      "types": "./dist/public/comment.d.mts",
+      "default": "./dist/public/comment.mjs"
+    },
     "./public/page": {
       "types": "./dist/public/page.d.mts",
       "default": "./dist/public/page.mjs"

@@ -35,6 +35,8 @@ import { episodeLoginHref } from "../_lib/access-gate";
 import { postEpisodeCommentAction } from "../_lib/comment-actions";
 import { episodeCommentsHref } from "../_lib/comment-search-params";
 import { CommentDeleteButton } from "./comment-delete-button";
+import { CommentReportButton } from "./comment-report-button";
+import type { CommentReportButtonCopy } from "./comment-report-button";
 
 export interface EpisodeCommentsProps {
   episodePublicId: string;
@@ -133,6 +135,39 @@ export const EpisodeComments = async ({
       locale,
       timeZone,
     });
+
+  // The report dialog says the same thing on every row, so it is resolved once
+  // here rather than per comment. Each reason is looked up by its own key so
+  // the catalog checks it, which a key built from the reason would not be.
+  const reportCopy: CommentReportButtonCopy = {
+    cancel: getMessage(messages, "host.common.cancel"),
+    confirm: getMessage(messages, "host.episode.comments.report_confirm"),
+    description: getMessage(
+      messages,
+      "host.episode.comments.report_description"
+    ),
+    noteLabel: getMessage(messages, "host.episode.comments.report_note_label"),
+    notePlaceholder: getMessage(
+      messages,
+      "host.episode.comments.report_note_placeholder"
+    ),
+    pending: getMessage(messages, "host.episode.comments.reporting"),
+    reasonLabel: getMessage(
+      messages,
+      "host.episode.comments.report_reason_label"
+    ),
+    reasons: {
+      abuse: getMessage(messages, "host.episode.comments.report_reason_abuse"),
+      other: getMessage(messages, "host.episode.comments.report_reason_other"),
+      spam: getMessage(messages, "host.episode.comments.report_reason_spam"),
+      spoiler: getMessage(
+        messages,
+        "host.episode.comments.report_reason_spoiler"
+      ),
+    },
+    submit: getMessage(messages, "host.episode.comments.report"),
+    title: getMessage(messages, "host.episode.comments.report_title"),
+  };
 
   return (
     <section
@@ -289,6 +324,25 @@ export const EpisodeComments = async ({
                       ),
                     }}
                     episodePublicId={episodePublicId}
+                    returnTo={episodePath}
+                    tenantId={tenantId}
+                  />
+                ) : null}
+                {/* Reporting needs a session, and a reader reporting their own
+                    comment is the one case the API refuses outright — they can
+                    delete it instead. */}
+                {viewer && comment.authorPublicId !== viewer.publicId ? (
+                  <CommentReportButton
+                    ariaLabel={getMessage(
+                      messages,
+                      "host.episode.comments.report_aria",
+                      {
+                        author: comment.authorName,
+                        date: commentedAt(comment),
+                      }
+                    )}
+                    commentPublicId={comment.publicId}
+                    copy={reportCopy}
                     returnTo={episodePath}
                     tenantId={tenantId}
                   />

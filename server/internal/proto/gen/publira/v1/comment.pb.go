@@ -22,6 +22,66 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Why a reader says a comment breaks the rules.
+//
+// The list is short on purpose: a reporter picks from it in one glance, and
+// staff working the queue can sort by it. Anything the four do not cover is
+// OTHER plus the reporter's own sentence.
+type CommentReportReason int32
+
+const (
+	CommentReportReason_COMMENT_REPORT_REASON_UNSPECIFIED CommentReportReason = 0
+	CommentReportReason_COMMENT_REPORT_REASON_SPAM        CommentReportReason = 1
+	CommentReportReason_COMMENT_REPORT_REASON_ABUSE       CommentReportReason = 2
+	CommentReportReason_COMMENT_REPORT_REASON_SPOILER     CommentReportReason = 3
+	CommentReportReason_COMMENT_REPORT_REASON_OTHER       CommentReportReason = 4
+)
+
+// Enum value maps for CommentReportReason.
+var (
+	CommentReportReason_name = map[int32]string{
+		0: "COMMENT_REPORT_REASON_UNSPECIFIED",
+		1: "COMMENT_REPORT_REASON_SPAM",
+		2: "COMMENT_REPORT_REASON_ABUSE",
+		3: "COMMENT_REPORT_REASON_SPOILER",
+		4: "COMMENT_REPORT_REASON_OTHER",
+	}
+	CommentReportReason_value = map[string]int32{
+		"COMMENT_REPORT_REASON_UNSPECIFIED": 0,
+		"COMMENT_REPORT_REASON_SPAM":        1,
+		"COMMENT_REPORT_REASON_ABUSE":       2,
+		"COMMENT_REPORT_REASON_SPOILER":     3,
+		"COMMENT_REPORT_REASON_OTHER":       4,
+	}
+)
+
+func (x CommentReportReason) Enum() *CommentReportReason {
+	p := new(CommentReportReason)
+	*p = x
+	return p
+}
+
+func (x CommentReportReason) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CommentReportReason) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_v1_comment_proto_enumTypes[0].Descriptor()
+}
+
+func (CommentReportReason) Type() protoreflect.EnumType {
+	return &file_publira_v1_comment_proto_enumTypes[0]
+}
+
+func (x CommentReportReason) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CommentReportReason.Descriptor instead.
+func (CommentReportReason) EnumDescriptor() ([]byte, []int) {
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{0}
+}
+
 // One reader comment on an episode, as every visitor of that episode sees it.
 //
 // The author is named by the identifiers a storefront may show next to the
@@ -650,6 +710,117 @@ func (*WithdrawEpisodeCommentResponse) Descriptor() ([]byte, []int) {
 	return file_publira_v1_comment_proto_rawDescGZIP(), []int{9}
 }
 
+type ReportEpisodeCommentRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	CommentPublicId string                 `protobuf:"bytes,2,opt,name=comment_public_id,json=commentPublicId,proto3" json:"comment_public_id,omitempty"`
+	// Required. UNSPECIFIED is invalid_argument: a report with no reason on it
+	// cannot be worked from.
+	Reason CommentReportReason `protobuf:"varint,3,opt,name=reason,proto3,enum=publira.v1.CommentReportReason" json:"reason,omitempty"`
+	// Optional. At most 1000 Unicode code points once trimmed; a blank note is
+	// stored as no note at all.
+	Note          string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportEpisodeCommentRequest) Reset() {
+	*x = ReportEpisodeCommentRequest{}
+	mi := &file_publira_v1_comment_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportEpisodeCommentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportEpisodeCommentRequest) ProtoMessage() {}
+
+func (x *ReportEpisodeCommentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_comment_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportEpisodeCommentRequest.ProtoReflect.Descriptor instead.
+func (*ReportEpisodeCommentRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ReportEpisodeCommentRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *ReportEpisodeCommentRequest) GetCommentPublicId() string {
+	if x != nil {
+		return x.CommentPublicId
+	}
+	return ""
+}
+
+func (x *ReportEpisodeCommentRequest) GetReason() CommentReportReason {
+	if x != nil {
+		return x.Reason
+	}
+	return CommentReportReason_COMMENT_REPORT_REASON_UNSPECIFIED
+}
+
+func (x *ReportEpisodeCommentRequest) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+// Deliberately empty. The reporter is told that their report was accepted and
+// nothing else: what a comment's report count is, and whether the threshold
+// moved it, would tell one reader what other readers have done about it.
+type ReportEpisodeCommentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportEpisodeCommentResponse) Reset() {
+	*x = ReportEpisodeCommentResponse{}
+	mi := &file_publira_v1_comment_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportEpisodeCommentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportEpisodeCommentResponse) ProtoMessage() {}
+
+func (x *ReportEpisodeCommentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_comment_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportEpisodeCommentResponse.ProtoReflect.Descriptor instead.
+func (*ReportEpisodeCommentResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{11}
+}
+
 var File_publira_v1_comment_proto protoreflect.FileDescriptor
 
 const file_publira_v1_comment_proto_rawDesc = "" +
@@ -699,12 +870,25 @@ const file_publira_v1_comment_proto_rawDesc = "" +
 	"\x1dWithdrawEpisodeCommentRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11comment_public_id\x18\x02 \x01(\tR\x0fcommentPublicId\" \n" +
-	"\x1eWithdrawEpisodeCommentResponse2\xc4\x03\n" +
+	"\x1eWithdrawEpisodeCommentResponse\"\xcf\x01\n" +
+	"\x1bReportEpisodeCommentRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
+	"\x11comment_public_id\x18\x02 \x01(\tR\x0fcommentPublicId\x127\n" +
+	"\x06reason\x18\x03 \x01(\x0e2\x1f.publira.v1.CommentReportReasonR\x06reason\x12\x12\n" +
+	"\x04note\x18\x04 \x01(\tR\x04note\"\x1e\n" +
+	"\x1cReportEpisodeCommentResponse*\xc1\x01\n" +
+	"\x13CommentReportReason\x12%\n" +
+	"!COMMENT_REPORT_REASON_UNSPECIFIED\x10\x00\x12\x1e\n" +
+	"\x1aCOMMENT_REPORT_REASON_SPAM\x10\x01\x12\x1f\n" +
+	"\x1bCOMMENT_REPORT_REASON_ABUSE\x10\x02\x12!\n" +
+	"\x1dCOMMENT_REPORT_REASON_SPOILER\x10\x03\x12\x1f\n" +
+	"\x1bCOMMENT_REPORT_REASON_OTHER\x10\x042\xb1\x04\n" +
 	"\x0eCommentService\x12h\n" +
 	"\x13ListEpisodeComments\x12&.publira.v1.ListEpisodeCommentsRequest\x1a'.publira.v1.ListEpisodeCommentsResponse\"\x00\x12n\n" +
 	"\x15ListMyEpisodeComments\x12(.publira.v1.ListMyEpisodeCommentsRequest\x1a).publira.v1.ListMyEpisodeCommentsResponse\"\x00\x12e\n" +
 	"\x12PostEpisodeComment\x12%.publira.v1.PostEpisodeCommentRequest\x1a&.publira.v1.PostEpisodeCommentResponse\"\x00\x12q\n" +
-	"\x16WithdrawEpisodeComment\x12).publira.v1.WithdrawEpisodeCommentRequest\x1a*.publira.v1.WithdrawEpisodeCommentResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
+	"\x16WithdrawEpisodeComment\x12).publira.v1.WithdrawEpisodeCommentRequest\x1a*.publira.v1.WithdrawEpisodeCommentResponse\"\x00\x12k\n" +
+	"\x14ReportEpisodeComment\x12'.publira.v1.ReportEpisodeCommentRequest\x1a(.publira.v1.ReportEpisodeCommentResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
 var (
 	file_publira_v1_comment_proto_rawDescOnce sync.Once
@@ -718,41 +902,49 @@ func file_publira_v1_comment_proto_rawDescGZIP() []byte {
 	return file_publira_v1_comment_proto_rawDescData
 }
 
-var file_publira_v1_comment_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_publira_v1_comment_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_publira_v1_comment_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_publira_v1_comment_proto_goTypes = []any{
-	(*EpisodeComment)(nil),                 // 0: publira.v1.EpisodeComment
-	(*MyEpisodeComment)(nil),               // 1: publira.v1.MyEpisodeComment
-	(*ListEpisodeCommentsRequest)(nil),     // 2: publira.v1.ListEpisodeCommentsRequest
-	(*ListEpisodeCommentsResponse)(nil),    // 3: publira.v1.ListEpisodeCommentsResponse
-	(*ListMyEpisodeCommentsRequest)(nil),   // 4: publira.v1.ListMyEpisodeCommentsRequest
-	(*ListMyEpisodeCommentsResponse)(nil),  // 5: publira.v1.ListMyEpisodeCommentsResponse
-	(*PostEpisodeCommentRequest)(nil),      // 6: publira.v1.PostEpisodeCommentRequest
-	(*PostEpisodeCommentResponse)(nil),     // 7: publira.v1.PostEpisodeCommentResponse
-	(*WithdrawEpisodeCommentRequest)(nil),  // 8: publira.v1.WithdrawEpisodeCommentRequest
-	(*WithdrawEpisodeCommentResponse)(nil), // 9: publira.v1.WithdrawEpisodeCommentResponse
-	(*v1.TenantContext)(nil),               // 10: publira.types.v1.TenantContext
+	(CommentReportReason)(0),               // 0: publira.v1.CommentReportReason
+	(*EpisodeComment)(nil),                 // 1: publira.v1.EpisodeComment
+	(*MyEpisodeComment)(nil),               // 2: publira.v1.MyEpisodeComment
+	(*ListEpisodeCommentsRequest)(nil),     // 3: publira.v1.ListEpisodeCommentsRequest
+	(*ListEpisodeCommentsResponse)(nil),    // 4: publira.v1.ListEpisodeCommentsResponse
+	(*ListMyEpisodeCommentsRequest)(nil),   // 5: publira.v1.ListMyEpisodeCommentsRequest
+	(*ListMyEpisodeCommentsResponse)(nil),  // 6: publira.v1.ListMyEpisodeCommentsResponse
+	(*PostEpisodeCommentRequest)(nil),      // 7: publira.v1.PostEpisodeCommentRequest
+	(*PostEpisodeCommentResponse)(nil),     // 8: publira.v1.PostEpisodeCommentResponse
+	(*WithdrawEpisodeCommentRequest)(nil),  // 9: publira.v1.WithdrawEpisodeCommentRequest
+	(*WithdrawEpisodeCommentResponse)(nil), // 10: publira.v1.WithdrawEpisodeCommentResponse
+	(*ReportEpisodeCommentRequest)(nil),    // 11: publira.v1.ReportEpisodeCommentRequest
+	(*ReportEpisodeCommentResponse)(nil),   // 12: publira.v1.ReportEpisodeCommentResponse
+	(*v1.TenantContext)(nil),               // 13: publira.types.v1.TenantContext
 }
 var file_publira_v1_comment_proto_depIdxs = []int32{
-	10, // 0: publira.v1.ListEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 1: publira.v1.ListEpisodeCommentsResponse.comments:type_name -> publira.v1.EpisodeComment
-	10, // 2: publira.v1.ListMyEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 3: publira.v1.ListMyEpisodeCommentsResponse.comments:type_name -> publira.v1.MyEpisodeComment
-	10, // 4: publira.v1.PostEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 5: publira.v1.PostEpisodeCommentResponse.comment:type_name -> publira.v1.MyEpisodeComment
-	10, // 6: publira.v1.WithdrawEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 7: publira.v1.CommentService.ListEpisodeComments:input_type -> publira.v1.ListEpisodeCommentsRequest
-	4,  // 8: publira.v1.CommentService.ListMyEpisodeComments:input_type -> publira.v1.ListMyEpisodeCommentsRequest
-	6,  // 9: publira.v1.CommentService.PostEpisodeComment:input_type -> publira.v1.PostEpisodeCommentRequest
-	8,  // 10: publira.v1.CommentService.WithdrawEpisodeComment:input_type -> publira.v1.WithdrawEpisodeCommentRequest
-	3,  // 11: publira.v1.CommentService.ListEpisodeComments:output_type -> publira.v1.ListEpisodeCommentsResponse
-	5,  // 12: publira.v1.CommentService.ListMyEpisodeComments:output_type -> publira.v1.ListMyEpisodeCommentsResponse
-	7,  // 13: publira.v1.CommentService.PostEpisodeComment:output_type -> publira.v1.PostEpisodeCommentResponse
-	9,  // 14: publira.v1.CommentService.WithdrawEpisodeComment:output_type -> publira.v1.WithdrawEpisodeCommentResponse
-	11, // [11:15] is the sub-list for method output_type
-	7,  // [7:11] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	13, // 0: publira.v1.ListEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 1: publira.v1.ListEpisodeCommentsResponse.comments:type_name -> publira.v1.EpisodeComment
+	13, // 2: publira.v1.ListMyEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	2,  // 3: publira.v1.ListMyEpisodeCommentsResponse.comments:type_name -> publira.v1.MyEpisodeComment
+	13, // 4: publira.v1.PostEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	2,  // 5: publira.v1.PostEpisodeCommentResponse.comment:type_name -> publira.v1.MyEpisodeComment
+	13, // 6: publira.v1.WithdrawEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 7: publira.v1.ReportEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 8: publira.v1.ReportEpisodeCommentRequest.reason:type_name -> publira.v1.CommentReportReason
+	3,  // 9: publira.v1.CommentService.ListEpisodeComments:input_type -> publira.v1.ListEpisodeCommentsRequest
+	5,  // 10: publira.v1.CommentService.ListMyEpisodeComments:input_type -> publira.v1.ListMyEpisodeCommentsRequest
+	7,  // 11: publira.v1.CommentService.PostEpisodeComment:input_type -> publira.v1.PostEpisodeCommentRequest
+	9,  // 12: publira.v1.CommentService.WithdrawEpisodeComment:input_type -> publira.v1.WithdrawEpisodeCommentRequest
+	11, // 13: publira.v1.CommentService.ReportEpisodeComment:input_type -> publira.v1.ReportEpisodeCommentRequest
+	4,  // 14: publira.v1.CommentService.ListEpisodeComments:output_type -> publira.v1.ListEpisodeCommentsResponse
+	6,  // 15: publira.v1.CommentService.ListMyEpisodeComments:output_type -> publira.v1.ListMyEpisodeCommentsResponse
+	8,  // 16: publira.v1.CommentService.PostEpisodeComment:output_type -> publira.v1.PostEpisodeCommentResponse
+	10, // 17: publira.v1.CommentService.WithdrawEpisodeComment:output_type -> publira.v1.WithdrawEpisodeCommentResponse
+	12, // 18: publira.v1.CommentService.ReportEpisodeComment:output_type -> publira.v1.ReportEpisodeCommentResponse
+	14, // [14:19] is the sub-list for method output_type
+	9,  // [9:14] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_comment_proto_init() }
@@ -765,13 +957,14 @@ func file_publira_v1_comment_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_comment_proto_rawDesc), len(file_publira_v1_comment_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   10,
+			NumEnums:      1,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_publira_v1_comment_proto_goTypes,
 		DependencyIndexes: file_publira_v1_comment_proto_depIdxs,
+		EnumInfos:         file_publira_v1_comment_proto_enumTypes,
 		MessageInfos:      file_publira_v1_comment_proto_msgTypes,
 	}.Build()
 	File_publira_v1_comment_proto = out.File

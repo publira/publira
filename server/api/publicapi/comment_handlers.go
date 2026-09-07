@@ -470,3 +470,139 @@ func (s *apiServer) WithdrawEpisodeComment(
 
 	return noStorePrivateResponse(&publirav1.WithdrawEpisodeCommentResponse{}), nil
 }
+
+// The episode_comment_reports.reason values, matching the CHECK constraint on
+// the column.
+const (
+	commentReportReasonSpam    = "spam"
+	commentReportReasonAbuse   = "abuse"
+	commentReportReasonSpoiler = "spoiler"
+	commentReportReasonOther   = "other"
+
+	// maxCommentReportNoteRunes counts Unicode code points, as the body limit
+	// does, so a note costs the same length whatever script it is written in.
+	maxCommentReportNoteRunes = 1000
+)
+
+// commentReportReason maps the wire enum onto the stored value. UNSPECIFIED is
+// rejected rather than read as 'other': a reporter who picked nothing has not
+// said what is wrong, and the queue is worked from the reason.
+func commentReportReason(reason publirav1.CommentReportReason) (string, error) {
+	switch reason {
+	case publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM:
+		return commentReportReasonSpam, nil
+	case publirav1.CommentReportReason_COMMENT_REPORT_REASON_ABUSE:
+		return commentReportReasonAbuse, nil
+	case publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPOILER:
+		return commentReportReasonSpoiler, nil
+	case publirav1.CommentReportReason_COMMENT_REPORT_REASON_OTHER:
+		return commentReportReasonOther, nil
+	case publirav1.CommentReportReason_COMMENT_REPORT_REASON_UNSPECIFIED:
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("reason is required"))
+	default:
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("reason is not a supported reason"))
+	}
+}
+
+// validateCommentReportNote normalises the reporter's own sentence. It is
+// optional, so a blank one is stored as no note rather than as an empty string
+// the report queue would render as a line with nothing on it.
+func validateCommentReportNote(note string) (sql.NullString, error) {
+	trimmed := strings.TrimSpace(note)
+	if trimmed == "" {
+		return sql.NullString{}, nil
+	}
+	if utf8.RuneCountInString(trimmed) > maxCommentReportNoteRunes {
+		return sql.NullString{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("note must be at most %d characters", maxCommentReportNoteRunes))
+	}
+	return sql.NullString{String: trimmed, Valid: true}, nil
+}
+
+// ReportEpisodeComment flags one published comment as breaking the rules.
+//
+// The report and the counter it moves are one write. open_report_count is what
+// the removal threshold checks and what the moderation queues show, so a report
+// stored without the counter following it would be a report nothing acts on.
+func (s *apiServer) ReportEpisodeComment(
+	ctx context.Context,
+	req *connect.Request[publirav1.ReportEpisodeCommentRequest],
+) (*connect.Response[publirav1.ReportEpisodeCommentResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+	publicID := strings.TrimSpace(req.Msg.CommentPublicId)
+	if publicID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("comment public id is required"))
+	}
+	reason, err := commentReportReason(req.Msg.Reason)
+	if err != nil {
+		return nil, err
+	}
+	note, err := validateCommentReportNote(req.Msg.Note)
+	if err != nil {
+		return nil, err
+	}
+
+	comment, err := s.queriesFor(ctx).GetReportableEpisodeCommentByPublicIDForTenant(ctx, dbmodels.GetReportableEpisodeCommentByPublicIDForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: publicID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		// A comment awaiting approval, one staff removed, one its author withdrew,
+		// one of another tenant, one on an episode that is no longer public, and
+		// one that never existed share this answer: the reporter can see none of
+		// them, so none of them may be confirmed to exist either.
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("comment not found"))
+	}
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get comment to report", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
+	if comment.UserID == user.ID {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot report your own comment"))
+	}
+
+	reportID, err := uuid.NewV7()
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to allocate comment report id", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin comment report transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	_, err = txq.CreateEpisodeCommentReport(ctx, dbmodels.CreateEpisodeCommentReportParams{
+		ID:             reportID,
+		TenantID:       tenant.ID,
+		CommentID:      comment.ID,
+		ReporterUserID: user.ID,
+		Reason:         reason,
+		Note:           note,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		// This reader has already reported this comment. Nothing is written, the
+		// count does not move, and they are told what the reader whose report was
+		// the first is told: what the platform has since done with that earlier
+		// report is not something a second submission may reveal.
+		return noStorePrivateResponse(&publirav1.ReportEpisodeCommentResponse{}), nil
+	}
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to create comment report", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	if _, err := txq.RefreshEpisodeCommentOpenReportCount(ctx, dbmodels.RefreshEpisodeCommentOpenReportCountParams{
+		TenantID:  tenant.ID,
+		CommentID: comment.ID,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to refresh comment open report count", err, "tenant_id", tenant.ID.String(), "comment_id", comment.ID.String())
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit comment report", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	return noStorePrivateResponse(&publirav1.ReportEpisodeCommentResponse{}), nil
+}

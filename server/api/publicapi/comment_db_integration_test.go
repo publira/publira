@@ -494,3 +494,142 @@ func TestDBEpisodeCommentsPaginateNewestFirst(t *testing.T) {
 		t.Fatalf("previous page = %v, want the page before the last", got)
 	}
 }
+
+func (e *publicDBEnv) reportComment(
+	t *testing.T,
+	tenant testutil.Tenant,
+	reporter testutil.TenantUser,
+	commentPublicID string,
+	reason publirav1.CommentReportReason,
+) error {
+	t.Helper()
+
+	_, err := e.commentClient().ReportEpisodeComment(context.Background(), newBearerRequest(&publirav1.ReportEpisodeCommentRequest{
+		Tenant:          tenantContext(tenant),
+		CommentPublicId: commentPublicID,
+		Reason:          reason,
+		Note:            "It has nothing to do with the episode.",
+	}, tokenFor(t, tenant, reporter)))
+	return err
+}
+
+func (e *publicDBEnv) openReportCount(t *testing.T, tenant testutil.Tenant, commentPublicID string) int {
+	t.Helper()
+
+	return e.countRows(t,
+		"SELECT open_report_count FROM episode_comments WHERE tenant_id = $1 AND public_id = $2",
+		tenant.ID, commentPublicID,
+	)
+}
+
+// A report is one row per reader, and the counter follows it in the same write.
+// Sending the same report again is answered as success and changes nothing:
+// telling a reader that they had already reported this comment would, on a
+// comment since removed, tell them what the removal is meant not to.
+func TestDBReportEpisodeCommentIsOneRowPerReader(t *testing.T) {
+	fixture := newCommentFixture(t, "RPT")
+	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
+	env.setCommentMode(t, tenant.ID, "immediate")
+	reporter := env.PG.SeedEndUser(t, tenant.ID, "RPTREADER", "rpt-reader@example.com", "Reporting Reader")
+
+	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Buy cheap watches at example.com")
+	if got := env.openReportCount(t, tenant, comment.PublicId); got != 0 {
+		t.Fatalf("open_report_count before any report = %d, want 0", got)
+	}
+
+	if err := env.reportComment(t, tenant, reporter, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
+		t.Fatalf("ReportEpisodeComment: %v", err)
+	}
+	if got := env.openReportCount(t, tenant, comment.PublicId); got != 1 {
+		t.Fatalf("open_report_count after one report = %d, want 1", got)
+	}
+
+	if err := env.reportComment(t, tenant, reporter, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_ABUSE); err != nil {
+		t.Fatalf("repeated ReportEpisodeComment: %v", err)
+	}
+	if got := env.openReportCount(t, tenant, comment.PublicId); got != 1 {
+		t.Fatalf("open_report_count after the repeat = %d, want 1", got)
+	}
+	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_comment_reports WHERE tenant_id = $1", tenant.ID); got != 1 {
+		t.Fatalf("episode_comment_reports = %d rows, want the repeat to write nothing", got)
+	}
+
+	// A second reader is a second report, which is what the removal threshold
+	// counts: one account cannot drive it on its own.
+	second := env.PG.SeedEndUser(t, tenant.ID, "RPTREADER2", "rpt-reader-2@example.com", "Another Reader")
+	if err := env.reportComment(t, tenant, second, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
+		t.Fatalf("second reader's ReportEpisodeComment: %v", err)
+	}
+	if got := env.openReportCount(t, tenant, comment.PublicId); got != 2 {
+		t.Fatalf("open_report_count after a second reader = %d, want 2", got)
+	}
+
+	// Nothing about the comment changed for anyone reading it.
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); !containsPublicID(got, comment.PublicId) {
+		t.Fatalf("public comments = %v, want the reported %s still listed", got, comment.PublicId)
+	}
+}
+
+// A reader may only report a comment they can see, and never their own. The
+// author has a deletion for that, and letting them report it would put a report
+// in the queue that no moderator can act on.
+func TestDBReportEpisodeCommentRefusesWhatTheReaderCannotReport(t *testing.T) {
+	fixture := newCommentFixture(t, "RPR")
+	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
+	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "RPRSTAFF", "rpr-staff@example.com", "Moderator")
+	reporter := env.PG.SeedEndUser(t, tenant.ID, "RPRREADER", "rpr-reader@example.com", "Reporting Reader")
+
+	env.setCommentMode(t, tenant.ID, "immediate")
+	own := env.mustPostComment(t, tenant, member, episode.PublicID, "My own comment.")
+	if err := env.reportComment(t, tenant, member, own.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("reporting your own comment error = %v, want failed_precondition", err)
+	}
+
+	env.setCommentMode(t, tenant.ID, "approval_required")
+	awaiting := env.mustPostComment(t, tenant, member, episode.PublicID, "Not approved yet.")
+	if err := env.reportComment(t, tenant, reporter, awaiting.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("reporting a comment awaiting approval error = %v, want not_found", err)
+	}
+
+	env.setCommentMode(t, tenant.ID, "immediate")
+	removed := env.mustPostComment(t, tenant, member, episode.PublicID, "Removed by staff.")
+	env.hideComment(t, tenant, staff, removed.PublicId)
+	if err := env.reportComment(t, tenant, reporter, removed.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("reporting a removed comment error = %v, want not_found", err)
+	}
+
+	if err := env.reportComment(t, tenant, reporter, "NOSUCHCMNT01", publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("reporting a comment that never existed error = %v, want not_found", err)
+	}
+
+	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_comment_reports WHERE tenant_id = $1", tenant.ID); got != 0 {
+		t.Fatalf("episode_comment_reports = %d rows, want every refusal to write nothing", got)
+	}
+}
+
+// The reason is what the report queue is worked from, so a report that names
+// none is rejected rather than filed under "other".
+func TestDBReportEpisodeCommentRequiresAReasonAndASession(t *testing.T) {
+	fixture := newCommentFixture(t, "RPN")
+	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
+	env.setCommentMode(t, tenant.ID, "immediate")
+	reporter := env.PG.SeedEndUser(t, tenant.ID, "RPNREADER", "rpn-reader@example.com", "Reporting Reader")
+	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "A comment to report.")
+
+	if err := env.reportComment(t, tenant, reporter, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_UNSPECIFIED); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("report with no reason error = %v, want invalid_argument", err)
+	}
+
+	_, err := env.commentClient().ReportEpisodeComment(context.Background(), connect.NewRequest(&publirav1.ReportEpisodeCommentRequest{
+		Tenant:          tenantContext(tenant),
+		CommentPublicId: comment.PublicId,
+		Reason:          publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM,
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("report without a session error = %v, want unauthenticated", err)
+	}
+
+	if got := env.openReportCount(t, tenant, comment.PublicId); got != 0 {
+		t.Fatalf("open_report_count after two rejected reports = %d, want 0", got)
+	}
+}

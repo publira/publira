@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { CommentReportReason } from "@publira/api-client/public/comment";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EpisodeCommentItem, EpisodeCommentPage } from "./comments";
@@ -7,6 +8,7 @@ import {
   listMyEpisodeComments,
   mergeOwnEpisodeComments,
   postEpisodeComment,
+  reportEpisodeComment,
   withdrawEpisodeComment,
 } from "./comments";
 
@@ -14,12 +16,14 @@ const {
   mockListEpisodeComments,
   mockListMyEpisodeComments,
   mockPostEpisodeComment,
+  mockReportEpisodeComment,
   mockResolveAccessToken,
   mockWithdrawEpisodeComment,
 } = vi.hoisted(() => ({
   mockListEpisodeComments: vi.fn(),
   mockListMyEpisodeComments: vi.fn(),
   mockPostEpisodeComment: vi.fn(),
+  mockReportEpisodeComment: vi.fn(),
   mockResolveAccessToken: vi.fn(),
   mockWithdrawEpisodeComment: vi.fn(),
 }));
@@ -30,6 +34,7 @@ vi.mock("./api-client", () => ({
       listEpisodeComments: mockListEpisodeComments,
       listMyEpisodeComments: mockListMyEpisodeComments,
       postEpisodeComment: mockPostEpisodeComment,
+      reportEpisodeComment: mockReportEpisodeComment,
       withdrawEpisodeComment: mockWithdrawEpisodeComment,
     },
   },
@@ -358,5 +363,70 @@ describe("withdrawEpisodeComment", () => {
     });
 
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("reportEpisodeComment", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("sends the stored reason as the wire enum", async () => {
+    mockReportEpisodeComment.mockResolvedValueOnce({});
+
+    await expect(
+      reportEpisodeComment({
+        commentPublicId: "CmntAAAAAAA1",
+        locale: "en",
+        note: "  Nothing to do with the episode.  ",
+        reason: "spoiler",
+        tenantId,
+      })
+    ).resolves.toEqual({ ok: true });
+    expect(mockReportEpisodeComment).toHaveBeenCalledWith(
+      {
+        commentPublicId: "CmntAAAAAAA1",
+        note: "  Nothing to do with the episode.  ",
+        reason: CommentReportReason.SPOILER,
+        tenant: { tenantId },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("returns the rejection of a comment the reader may not report", async () => {
+    mockReportEpisodeComment.mockRejectedValueOnce(
+      new ConnectError(
+        "cannot report your own comment",
+        Code.FailedPrecondition
+      )
+    );
+
+    const result = await reportEpisodeComment({
+      commentPublicId: "CmntAAAAAAA1",
+      locale: "en",
+      note: "",
+      reason: "spam",
+      tenantId,
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("lets a rejected session through, so the caller can send the reader to sign in", async () => {
+    mockReportEpisodeComment.mockRejectedValueOnce(
+      new ConnectError("expired", Code.Unauthenticated)
+    );
+
+    await expect(
+      reportEpisodeComment({
+        commentPublicId: "CmntAAAAAAA1",
+        locale: "en",
+        note: "",
+        reason: "spam",
+        tenantId,
+      })
+    ).rejects.toThrow("expired");
   });
 });

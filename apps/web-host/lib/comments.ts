@@ -4,6 +4,7 @@ import {
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { CommentReportReason } from "@publira/api-client/public/comment";
 import type {
   EpisodeComment,
   MyEpisodeComment,
@@ -19,6 +20,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { applyCacheTag, tenantEpisodeCommentsTag } from "./cache-tags";
+import type { EpisodeCommentReportReason } from "./comment-report-reason";
 import { loadHostMessages } from "./messages";
 import { localizedReadFailure } from "./read-failure";
 
@@ -33,6 +35,7 @@ const commentMessage = async (
     | "host.episode.comments.delete_failed"
     | "host.episode.comments.own_failed"
     | "host.episode.comments.post_failed"
+    | "host.episode.comments.report_failed"
 ): Promise<string> => getMessage(await loadHostMessages(locale), key);
 
 /** Rows one comment page asks the API for. The server caps this at 100. */
@@ -453,6 +456,87 @@ export const withdrawEpisodeComment = async (
         await commentMessage(
           input.locale,
           "host.episode.comments.delete_failed"
+        ),
+        { locale: input.locale }
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * The stored reason as the wire enum. The record is exhaustive by its type, so
+ * adding a reason to `EpisodeCommentReportReason` without wiring it here is a
+ * type error rather than a report the server answers `invalid_argument` for.
+ */
+const reportReasonCodes: Record<
+  EpisodeCommentReportReason,
+  CommentReportReason
+> = {
+  abuse: CommentReportReason.ABUSE,
+  other: CommentReportReason.OTHER,
+  spam: CommentReportReason.SPAM,
+  spoiler: CommentReportReason.SPOILER,
+};
+
+export interface ReportEpisodeCommentInput {
+  commentPublicId: string;
+  locale: Locale;
+  /** The reporter's own sentence. Optional; blank is stored as no note. */
+  note: string;
+  reason: EpisodeCommentReportReason;
+  tenantId: string;
+}
+
+export type ReportEpisodeCommentResult =
+  | { message: string; ok: false }
+  | { ok: true };
+
+/**
+ * Flag one comment as breaking the rules, as the signed-in reader.
+ *
+ * The result says only whether the report was accepted. A reader who has
+ * already reported this comment is answered the same way as one whose report
+ * was the first, because what the platform has since done about that earlier
+ * report — including removing the comment — is not something a second
+ * submission may reveal.
+ */
+export const reportEpisodeComment = async (
+  input: ReportEpisodeCommentInput
+): Promise<ReportEpisodeCommentResult> => {
+  const sessionId = await resolveAccessToken();
+  if (!sessionId) {
+    return {
+      message: await commentMessage(
+        input.locale,
+        "host.episode.comments.report_failed"
+      ),
+      ok: false,
+    };
+  }
+
+  try {
+    await apiClient.comment.reportEpisodeComment(
+      {
+        commentPublicId: input.commentPublicId,
+        note: input.note,
+        reason: reportReasonCodes[input.reason],
+        tenant: { tenantId: input.tenantId },
+      },
+      buildSessionHeaders(sessionId)
+    );
+    return { ok: true };
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        await commentMessage(
+          input.locale,
+          "host.episode.comments.report_failed"
         ),
         { locale: input.locale }
       ),
