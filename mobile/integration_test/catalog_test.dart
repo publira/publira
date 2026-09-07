@@ -103,7 +103,7 @@ void main() {
     testWidgets('opens series detail from the catalog list', (tester) async {
       await withFailureScreenshot(tester, 'fixture-detail', () async {
         await pumpApp(tester);
-        await pumpUntilFound(
+        await pumpUntilRouteSettled(
           tester,
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
@@ -134,7 +134,7 @@ void main() {
     ) async {
       await withFailureScreenshot(tester, 'fixture-back', () async {
         await pumpApp(tester);
-        await pumpUntilFound(
+        await pumpUntilRouteSettled(
           tester,
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
@@ -145,9 +145,11 @@ void main() {
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
         );
-        await pumpUntilFound(tester, find.text('Episodes'));
+        await pumpUntilRouteSettled(tester, find.text('Episodes'));
         await tester.pageBack();
-        await pumpUntilFound(tester, find.text('Publira'));
+        // The detail screen carries the series title too, so it matches twice
+        // until that route has finished leaving.
+        await pumpUntilRouteSettled(tester, find.text('Publira'));
         expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsOneWidget);
       });
     });
@@ -240,7 +242,7 @@ void main() {
             ConnectFixtureServer.seedEpisodeId,
           ),
         );
-        await pumpUntilFound(
+        await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('episode-page-view')),
         );
@@ -284,13 +286,13 @@ void main() {
             ConnectFixtureServer.paidEpisodeId,
           ),
         );
-        await pumpUntilFound(
+        await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('episode-locked')),
         );
 
         await tester.tap(find.text('Sign in'));
-        await pumpUntilFound(
+        await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );
@@ -335,12 +337,11 @@ void main() {
           const ValueKey('episode-tile-${ConnectFixtureServer.paidEpisodeId}'),
         );
 
-        // The catalog list is still in flight when its app bar arrives, and a
-        // route below the one on screen stays in the tree, so each step waits
-        // for the widget it is about to tap and then for the transition around
-        // it to finish.
+        // Every step here taps what the step before it opened, so each one
+        // waits for its screen's route to come to rest and then for the frame
+        // callbacks the reader's images leave behind.
         Future<void> settleOn(Finder finder) async {
-          await pumpUntilFound(tester, finder);
+          await pumpUntilRouteSettled(tester, finder);
           await pumpUntilNoPendingFrameCallbacks(tester);
         }
 
@@ -381,7 +382,7 @@ void main() {
     ) async {
       await withFailureScreenshot(tester, 'fixture-sign-in-error', () async {
         await pumpApp(tester, initialLocation: AppRoutes.signIn);
-        await pumpUntilFound(
+        await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );
@@ -406,7 +407,10 @@ void main() {
     testWidgets('missing series shows the not-found state', (tester) async {
       await withFailureScreenshot(tester, 'fixture-not-found', () async {
         await pumpApp(tester, initialLocation: '/series/ZZZZZZZZZZZZ');
-        await pumpUntilFound(tester, find.textContaining('Series not found'));
+        await pumpUntilRouteSettled(
+          tester,
+          find.textContaining('Series not found'),
+        );
         await tester.tap(find.text('Back to the catalog'));
         await pumpUntilFound(
           tester,
@@ -583,14 +587,14 @@ void main() {
             ConnectFixtureServer.paidEpisodeId,
           ),
         );
-        await pumpUntilFound(
+        await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('episode-locked')),
           timeout: const Duration(seconds: 20),
         );
 
         await tester.tap(find.text('Sign in'));
-        await pumpUntilFound(
+        await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );
@@ -621,7 +625,7 @@ void main() {
     ) async {
       await withFailureScreenshot(tester, 'live-sign-in-error', () async {
         await pumpLive(tester, initialLocation: AppRoutes.signIn);
-        await pumpUntilFound(
+        await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );

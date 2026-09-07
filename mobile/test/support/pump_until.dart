@@ -1,4 +1,5 @@
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Pumps until [finder] matches, instead of [WidgetTester.pumpAndSettle].
@@ -37,6 +38,49 @@ Future<void> pumpUntilTrue(
     }
   }
   fail('Timed out waiting for $description');
+}
+
+/// Pumps until [finder] matches and the route holding it has stopped moving,
+/// for a step that is about to tap or type on that screen.
+///
+/// [pumpUntilFound] returns on the first frame the widget exists, and that is
+/// already true while the route carrying it animates in. A route ignores
+/// pointer events and the navigator absorbs them for as long as a transition
+/// runs, so a tap sent then is dropped and the screen it was meant to open
+/// never arrives. A route's own animations are the wait that cannot return
+/// mid-transition: [ModalRoute.animation] is completed only once the route is
+/// fully in, and [ModalRoute.secondaryAnimation] is dismissed only once
+/// whatever covered it has finished leaving.
+///
+/// The route [finder] matches has to be the one on top, which is what a test
+/// about to interact with it wants: a widget on a route another one covers
+/// keeps a completed secondary animation and never settles.
+Future<void> pumpUntilRouteSettled(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  await pumpUntilFound(tester, finder, timeout: timeout);
+  await pumpUntilTrue(
+    tester,
+    () => tester.elementList(finder).every(_isRouteSettled),
+    description: 'the route holding $finder to finish transitioning',
+    timeout: timeout,
+  );
+}
+
+/// Whether the route [element] sits on takes part in no transition any more,
+/// including one a reader is still dragging with a back gesture.
+bool _isRouteSettled(Element element) {
+  final route = ModalRoute.of(element);
+  if (route == null) {
+    return true;
+  }
+  if (route.navigator?.userGestureInProgress ?? false) {
+    return false;
+  }
+  return (route.animation?.isCompleted ?? true) &&
+      (route.secondaryAnimation?.isDismissed ?? true);
 }
 
 /// Pumps until no transient frame callback is left registered.
