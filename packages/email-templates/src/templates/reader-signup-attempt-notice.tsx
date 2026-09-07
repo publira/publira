@@ -13,11 +13,17 @@ import {
   EmailIntro,
   EmailMeta,
 } from "../text";
-import { displayNameField, emailAddressField, httpUrlField } from "./fields";
+import {
+  accountStateField,
+  displayNameField,
+  emailAddressField,
+  httpUrlField,
+} from "./fields";
 
 export const readerSignupAttemptNoticeDataSchema = z.object({
+  account_state: accountStateField(),
+  action_url: httpUrlField("action_url"),
   email: emailAddressField("email"),
-  reset_url: httpUrlField("reset_url"),
   tenant_name: displayNameField("tenant_name"),
 });
 
@@ -49,43 +55,62 @@ export const ReaderSignupAttemptNoticeEmail = ({
   data,
   locale,
   messages,
-}: ReaderSignupAttemptNoticeEmailProps) => (
-  <EmailLayout
-    brand={data.tenant_name}
-    locale={locale}
-    messages={messages}
-    preview={readerSignupAttemptNoticePreview(data, messages)}
-  >
-    <EmailHeading>
-      {emailMessage(messages, "email.reader_signup_attempt_notice.heading")}
-    </EmailHeading>
-    <EmailIntro>
-      {emailMessage(messages, "email.reader_signup_attempt_notice.intro", {
-        tenant_name: data.tenant_name,
-      })}
-    </EmailIntro>
-    <EmailBody>
-      {emailMessage(messages, "email.reader_signup_attempt_notice.body")}
-    </EmailBody>
-    <EmailDetail>
-      {emailMessage(messages, "email.reader_signup_attempt_notice.email", {
-        email: data.email,
-      })}
-    </EmailDetail>
-    <EmailButton href={data.reset_url}>
-      {emailMessage(messages, "email.reader_signup_attempt_notice.action")}
-    </EmailButton>
-    <EmailMeta>
-      {emailMessage(messages, "email.reader_signup_attempt_notice.forgot")}
-    </EmailMeta>
-    <EmailMeta>
-      {emailMessage(messages, "email.reader_signup_attempt_notice.ignore")}
-    </EmailMeta>
-    <EmailFallbackLink href={data.reset_url}>
-      {emailMessage(
-        messages,
-        "email.reader_signup_attempt_notice.fallback_link"
-      )}
-    </EmailFallbackLink>
-  </EmailLayout>
-);
+}: ReaderSignupAttemptNoticeEmailProps) => {
+  const confirmed = data.account_state === "confirmed";
+
+  return (
+    <EmailLayout
+      brand={data.tenant_name}
+      locale={locale}
+      messages={messages}
+      preview={readerSignupAttemptNoticePreview(data, messages)}
+    >
+      <EmailHeading>
+        {emailMessage(messages, "email.reader_signup_attempt_notice.heading")}
+      </EmailHeading>
+      <EmailIntro>
+        {emailMessage(messages, "email.reader_signup_attempt_notice.intro", {
+          tenant_name: data.tenant_name,
+        })}
+      </EmailIntro>
+      <EmailBody>
+        {emailMessage(
+          messages,
+          confirmed
+            ? "email.reader_signup_attempt_notice.body_confirmed"
+            : "email.reader_signup_attempt_notice.body_unconfirmed"
+        )}
+      </EmailBody>
+      <EmailDetail>
+        {emailMessage(messages, "email.reader_signup_attempt_notice.email", {
+          email: data.email,
+        })}
+      </EmailDetail>
+      <EmailButton href={data.action_url}>
+        {emailMessage(
+          messages,
+          confirmed
+            ? "email.reader_signup_attempt_notice.action_confirmed"
+            : "email.reader_signup_attempt_notice.action_unconfirmed"
+        )}
+      </EmailButton>
+      <EmailMeta>
+        {emailMessage(
+          messages,
+          confirmed
+            ? "email.reader_signup_attempt_notice.forgot_confirmed"
+            : "email.reader_signup_attempt_notice.forgot_unconfirmed"
+        )}
+      </EmailMeta>
+      <EmailMeta>
+        {emailMessage(messages, "email.reader_signup_attempt_notice.ignore")}
+      </EmailMeta>
+      <EmailFallbackLink href={data.action_url}>
+        {emailMessage(
+          messages,
+          "email.reader_signup_attempt_notice.fallback_link"
+        )}
+      </EmailFallbackLink>
+    </EmailLayout>
+  );
+};

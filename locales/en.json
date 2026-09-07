@@ -129,11 +129,14 @@
       "subject": "{$tenant_name} password reset"
     },
     "reader_signup_attempt_notice": {
-      "action": "Reset password",
-      "body": "Your account already exists, so no second account was created and nothing about yours changed.",
+      "action_confirmed": "Reset password",
+      "action_unconfirmed": "Send a new confirmation email",
+      "body_confirmed": "Your account already exists, so no second account was created and nothing about yours changed.",
+      "body_unconfirmed": "Your account already exists, so no second account was created. Its email address is not confirmed yet, which is why signing in does not work.",
       "email": "Email address: {$email}",
       "fallback_link": "If the button does not work, paste this URL into your browser.",
-      "forgot": "If this was you and you cannot remember your password, use the button above to set a new one.",
+      "forgot_confirmed": "If this was you and you cannot remember your password, use the button above to set a new one.",
+      "forgot_unconfirmed": "If this was you, use the button above to have a new confirmation email sent.",
       "heading": "A sign-up used your email address",
       "ignore": "If it was not you, there is nothing to do. Nobody can sign in without your password.",
       "intro": "Someone tried to create an account on {$tenant_name} with this email address.",

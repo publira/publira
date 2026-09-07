@@ -1,7 +1,7 @@
 /**
  * Records created by `db/seeds/scenarios/100_account_lifecycle.sql`.
  *
- * The suite signs up the two addresses below and resets the registered
+ * The suite signs up the three addresses below and resets the registered
  * member's password, so it owns every account it touches. Re-applying the
  * scenario is what puts the member's password back and removes the accounts
  * the sign-ups created.
@@ -46,6 +46,17 @@ export const ACCOUNT_LIFECYCLE_SIGNUP = {
 export const ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP = {
   email: "account-lifecycle-expired@example.com",
   name: "Account Lifecycle E2E Expired Signup",
+  password: "signuppass",
+} as const;
+
+/**
+ * A third sign-up, whose address is never confirmed. Signing up for it a second
+ * time is what produces the notice for an unconfirmed account, and it is its own
+ * account so that second attempt cannot reach the confirmations above.
+ */
+export const ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP = {
+  email: "account-lifecycle-unconfirmed@example.com",
+  name: "Account Lifecycle E2E Unconfirmed Signup",
   password: "signuppass",
 } as const;
 
