@@ -48,6 +48,67 @@ void main() {
     expect(items.first.labelName, 'Seed Label 01');
   });
 
+  test('listSeries resolves cover renditions against the image base', () async {
+    final items = await catalog.listSeries();
+
+    final covers = items.first.eyeCatchVariants;
+    expect(covers, hasLength(5));
+    expect(
+      covers.first.url.toString(),
+      '$imageBaseUrl/images/series/'
+      '${ConnectFixtureServer.seedSeriesImageId}/portrait/400',
+    );
+    expect(covers.first.variantType, 'portrait');
+    expect(covers.first.width, 400);
+    expect(covers.first.height, 533);
+  });
+
+  test('a cover is requested with the tenant and no reader token', () async {
+    final items = await catalog.listSeries();
+
+    // An eye-catch is the same image for every reader, so the request that
+    // fetches it names only the tenant.
+    expect(items.first.imageRequestHeaders, {'x-forwarded-host': 'localhost'});
+  });
+
+  test('listSeries reads a series without a cover as carrying none', () async {
+    final items = await catalog.listSeries();
+
+    expect(items.last.eyeCatchVariants, isEmpty);
+  });
+
+  test('getSeries carries the cover renditions of the series', () async {
+    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+
+    expect(detail!.series.eyeCatchVariants, hasLength(5));
+    expect(detail.series.imageRequestHeaders, {
+      'x-forwarded-host': 'localhost',
+    });
+  });
+
+  test('listSeries rejects a cover rendition without a url', () async {
+    server.series = [
+      {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+        'eyeCatchImageVariants': [
+          {'variantType': 'portrait', 'width': 400, 'height': 533},
+        ],
+      },
+    ];
+
+    expect(
+      () => catalog.listSeries(),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.unexpected,
+        ),
+      ),
+    );
+  });
+
   test('listSeries returns an empty list when the API has no series', () async {
     server.series = const [];
     expect(await catalog.listSeries(), isEmpty);

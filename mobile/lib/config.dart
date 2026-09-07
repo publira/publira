@@ -60,6 +60,13 @@ class AppConfig {
   Uri imageUri(String imageUrl) =>
       Uri.parse(imageBaseUrl).resolveUri(Uri.parse(imageUrl));
 
+  /// Headers a public image request carries.
+  ///
+  /// A series eye-catch is served to every reader alike, so only the tenant
+  /// travels: the reader's bearer token would unlock nothing and would turn
+  /// one shared, cacheable cover into a response held per reader.
+  Map<String, String> get publicImageRequestHeaders => imageRequestHeaders('');
+
   /// Headers an image-server request carries for a reader holding
   /// [accessToken], which is empty for an anonymous one.
   ///

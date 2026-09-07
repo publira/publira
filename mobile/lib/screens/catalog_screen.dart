@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/catalog/eye_catch.dart';
+import 'package:publira/catalog/series_cover.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
@@ -84,6 +86,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
               final item = series[index];
               return ListTile(
                 key: ValueKey('series-tile-${item.id}'),
+                // 42 is the widest a 3:4 box can be and still stand inside
+                // the 56 pixels ListTile allows its leading widget; a taller
+                // one is squeezed back to this width anyway.
+                leading: SizedBox(
+                  width: 42,
+                  child: SeriesCover(
+                    series: item,
+                    preferredTypes: const [eyeCatchPortrait],
+                    aspectRatio: 3 / 4,
+                  ),
+                ),
                 title: Text(item.title),
                 subtitle: item.description.isEmpty
                     ? null

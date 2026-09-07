@@ -126,6 +126,8 @@ class HttpCatalogRepository implements CatalogRepository {
         description: series.description,
         episodeCount: episodes.length,
         labelName: series.labelName,
+        eyeCatchVariants: series.eyeCatchVariants,
+        imageRequestHeaders: series.imageRequestHeaders,
       ),
       episodes: episodes,
     );
@@ -145,7 +147,35 @@ class HttpCatalogRepository implements CatalogRepository {
       title: _readString(json, 'title', path),
       description: _readString(json, 'synopsis', path),
       labelName: labelName.trim(),
+      eyeCatchVariants: _parseEyeCatchVariants(
+        json['eyeCatchImageVariants'],
+        path,
+      ),
+      imageRequestHeaders: config.publicImageRequestHeaders,
     );
+  }
+
+  List<EyeCatchVariant> _parseEyeCatchVariants(Object? raw, String path) {
+    // protojson omits an empty repeated field, so a series with no cover
+    // arrives without the key at all.
+    if (raw == null) {
+      return const [];
+    }
+    final variantPath = '$path.eyeCatchImageVariants[]';
+    final variants = _expectList(raw, '$path.eyeCatchImageVariants')
+        .map((item) => _expectMap(item, variantPath))
+        .map((json) {
+          return EyeCatchVariant(
+            variantType: _readString(json, 'variantType', variantPath),
+            url: config.imageUri(
+              _readString(json, 'url', variantPath, requiredNonEmpty: true),
+            ),
+            width: _readInt(json, 'width', variantPath),
+            height: _readInt(json, 'height', variantPath),
+          );
+        })
+        .toList();
+    return List<EyeCatchVariant>.unmodifiable(variants);
   }
 
   List<EpisodeItem> _parseEpisodes(Object? raw) {
