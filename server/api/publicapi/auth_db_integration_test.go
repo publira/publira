@@ -616,3 +616,178 @@ func TestDBRequestEmailVerificationKeepsOneLinkUnderConcurrentRequests(t *testin
 		t.Fatalf("live verification tokens = %d, want 1", live)
 	}
 }
+
+// The current password is the whole authorization for a change: a session
+// someone walked away from must not be enough to take the account over.
+func TestDBChangePasswordRejectsAWrongCurrentPassword(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	before := readStoredAccount(t, env, user.Email)
+	token := tokenFor(t, tenant, user)
+	client := env.authClient()
+
+	_, err := client.ChangePassword(context.Background(), newBearerRequest(
+		&publirav1.ChangePasswordRequest{
+			Tenant:          tenantContext(tenant),
+			CurrentPassword: "not-the-password",
+			NewPassword:     "a-brand-new-password",
+		},
+		token,
+	))
+	// Invalid_argument, not unauthenticated: a typo in the confirmation field
+	// must not read as "your session ended" and log the reader out.
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ChangePassword with a wrong current password code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertPublicBadRequestField(t, err, "current_password")
+
+	after := readStoredAccount(t, env, user.Email)
+	if after.passwordHash != before.passwordHash {
+		t.Fatal("the stored password hash changed on a refused request")
+	}
+	if after.credentialsVersion != before.credentialsVersion {
+		t.Fatalf("credentials_version = %d, want %d — a refused request must end no session", after.credentialsVersion, before.credentialsVersion)
+	}
+	if notices := countRows(t, env, `
+		SELECT count(*) FROM outbox_events WHERE event_type = 'reader_password_changed_notice_email'
+	`); notices != 0 {
+		t.Fatalf("queued notices after a refused request = %d, want none", notices)
+	}
+
+	// The session is untouched, so the reader can correct the field and retry.
+	if _, err := client.GetMe(context.Background(), newBearerRequest(
+		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
+		token,
+	)); err != nil {
+		t.Fatalf("GetMe after a rejected ChangePassword: %v", err)
+	}
+}
+
+// A reader who repeats the password they already have would lose every other
+// session for nothing, and keep the password whoever prompted the change may
+// already know.
+func TestDBChangePasswordRejectsTheCurrentPasswordAsTheNewOne(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	before := readStoredAccount(t, env, user.Email)
+
+	_, err := env.authClient().ChangePassword(context.Background(), newBearerRequest(
+		&publirav1.ChangePasswordRequest{
+			Tenant:          tenantContext(tenant),
+			CurrentPassword: testutil.SeededPassword,
+			NewPassword:     testutil.SeededPassword,
+		},
+		tokenFor(t, tenant, user),
+	))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ChangePassword with an unchanged password code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertPublicBadRequestField(t, err, "new_password")
+
+	if after := readStoredAccount(t, env, user.Email); after.credentialsVersion != before.credentialsVersion {
+		t.Fatalf("credentials_version = %d, want %d", after.credentialsVersion, before.credentialsVersion)
+	}
+}
+
+// The change ends every session minted before it, which includes the one that
+// carried the request. The reader who made the change is handed the replacement
+// rather than signed out of the device they made it from.
+func TestDBChangePasswordKeepsTheCallerSignedInAndEndsTheOtherSessions(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	callingToken := tokenFor(t, tenant, user)
+	otherDeviceToken := tokenFor(t, tenant, user)
+	client := env.authClient()
+
+	const newPassword = "a-brand-new-password"
+	changed, err := client.ChangePassword(context.Background(), newBearerRequest(
+		&publirav1.ChangePasswordRequest{
+			Tenant:          tenantContext(tenant),
+			CurrentPassword: testutil.SeededPassword,
+			NewPassword:     newPassword,
+		},
+		callingToken,
+	))
+	if err != nil {
+		t.Fatalf("ChangePassword: %v", err)
+	}
+	if changed.Msg.AccessToken.GetToken() == "" {
+		t.Fatal("ChangePassword returned no replacement access token")
+	}
+
+	if _, err := client.GetMe(context.Background(), newBearerRequest(
+		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
+		changed.Msg.AccessToken.Token,
+	)); err != nil {
+		t.Fatalf("GetMe with the replacement token: %v", err)
+	}
+	for name, stale := range map[string]string{"calling": callingToken, "other_device": otherDeviceToken} {
+		_, err := client.GetMe(context.Background(), newBearerRequest(
+			&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
+			stale,
+		))
+		if connect.CodeOf(err) != connect.CodeUnauthenticated {
+			t.Fatalf("GetMe with the %s token minted before the change code = %v, want unauthenticated (err=%v)", name, connect.CodeOf(err), err)
+		}
+	}
+
+	// The new password is what signs in now, and the old one no longer does.
+	if _, err := client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+		Tenant:   tenantContext(tenant),
+		Email:    user.Email,
+		Password: newPassword,
+	})); err != nil {
+		t.Fatalf("Login with the new password: %v", err)
+	}
+	if _, err := client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+		Tenant:   tenantContext(tenant),
+		Email:    user.Email,
+		Password: testutil.SeededPassword,
+	})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("Login with the old password code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
+// A change the account's owner did not make is the one this mail exists for, so
+// every change queues its own notice — the version the change left behind is
+// what keeps two of them apart.
+func TestDBChangePasswordQueuesOneNoticePerChange(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	client := env.authClient()
+
+	current := testutil.SeededPassword
+	for attempt, next := range []string{"first-new-password", "second-new-password"} {
+		changed, err := client.ChangePassword(context.Background(), newBearerRequest(
+			&publirav1.ChangePasswordRequest{
+				Tenant:          tenantContext(tenant),
+				CurrentPassword: current,
+				NewPassword:     next,
+			},
+			tokenFor(t, tenant, user),
+		))
+		if err != nil {
+			t.Fatalf("ChangePassword %d: %v", attempt+1, err)
+		}
+		if changed.Msg.AccessToken.GetToken() == "" {
+			t.Fatalf("ChangePassword %d returned no replacement access token", attempt+1)
+		}
+		current = next
+		// The next request needs a session minted against the version this
+		// change left behind.
+		user.CredentialsVersion++
+	}
+
+	notices := countRows(t, env, `
+		SELECT count(*) FROM outbox_events
+		WHERE event_type = 'reader_password_changed_notice_email'
+		AND payload ->> 'user_id' = $1
+	`, user.ID.String())
+	if notices != 2 {
+		t.Fatalf("queued notices = %d, want 2", notices)
+	}
+}

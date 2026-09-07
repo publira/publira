@@ -55,6 +55,9 @@ const (
 	// AuthServiceConfirmPasswordResetProcedure is the fully-qualified name of the AuthService's
 	// ConfirmPasswordReset RPC.
 	AuthServiceConfirmPasswordResetProcedure = "/publira.v1.AuthService/ConfirmPasswordReset"
+	// AuthServiceChangePasswordProcedure is the fully-qualified name of the AuthService's
+	// ChangePassword RPC.
+	AuthServiceChangePasswordProcedure = "/publira.v1.AuthService/ChangePassword"
 	// AuthServiceLogoutProcedure is the fully-qualified name of the AuthService's Logout RPC.
 	AuthServiceLogoutProcedure = "/publira.v1.AuthService/Logout"
 	// AuthServiceGetMeProcedure is the fully-qualified name of the AuthService's GetMe RPC.
@@ -93,6 +96,7 @@ type AuthServiceClient interface {
 	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
 	RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error)
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error)
+	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error)
@@ -162,6 +166,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+AuthServiceConfirmPasswordResetProcedure,
 			connect.WithSchema(authServiceMethods.ByName("ConfirmPasswordReset")),
+			connect.WithClientOptions(opts...),
+		),
+		changePassword: connect.NewClient[v1.ChangePasswordRequest, v1.ChangePasswordResponse](
+			httpClient,
+			baseURL+AuthServiceChangePasswordProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ChangePassword")),
 			connect.WithClientOptions(opts...),
 		),
 		logout: connect.NewClient[v1.LogoutRequest, v1.LogoutResponse](
@@ -237,6 +247,7 @@ type authServiceClient struct {
 	confirmEmailChange         *connect.Client[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse]
 	requestPasswordReset       *connect.Client[v1.RequestPasswordResetRequest, v1.RequestPasswordResetResponse]
 	confirmPasswordReset       *connect.Client[v1.ConfirmPasswordResetRequest, v1.ConfirmPasswordResetResponse]
+	changePassword             *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
 	logout                     *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
 	getMe                      *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
 	updateMe                   *connect.Client[v1.UpdateMeRequest, v1.UpdateMeResponse]
@@ -287,6 +298,11 @@ func (c *authServiceClient) RequestPasswordReset(ctx context.Context, req *conne
 // ConfirmPasswordReset calls publira.v1.AuthService.ConfirmPasswordReset.
 func (c *authServiceClient) ConfirmPasswordReset(ctx context.Context, req *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error) {
 	return c.confirmPasswordReset.CallUnary(ctx, req)
+}
+
+// ChangePassword calls publira.v1.AuthService.ChangePassword.
+func (c *authServiceClient) ChangePassword(ctx context.Context, req *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
+	return c.changePassword.CallUnary(ctx, req)
 }
 
 // Logout calls publira.v1.AuthService.Logout.
@@ -349,6 +365,7 @@ type AuthServiceHandler interface {
 	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
 	RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error)
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error)
+	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error)
@@ -414,6 +431,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		AuthServiceConfirmPasswordResetProcedure,
 		svc.ConfirmPasswordReset,
 		connect.WithSchema(authServiceMethods.ByName("ConfirmPasswordReset")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceChangePasswordHandler := connect.NewUnaryHandler(
+		AuthServiceChangePasswordProcedure,
+		svc.ChangePassword,
+		connect.WithSchema(authServiceMethods.ByName("ChangePassword")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceLogoutHandler := connect.NewUnaryHandler(
@@ -494,6 +517,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceRequestPasswordResetHandler.ServeHTTP(w, r)
 		case AuthServiceConfirmPasswordResetProcedure:
 			authServiceConfirmPasswordResetHandler.ServeHTTP(w, r)
+		case AuthServiceChangePasswordProcedure:
+			authServiceChangePasswordHandler.ServeHTTP(w, r)
 		case AuthServiceLogoutProcedure:
 			authServiceLogoutHandler.ServeHTTP(w, r)
 		case AuthServiceGetMeProcedure:
@@ -553,6 +578,10 @@ func (UnimplementedAuthServiceHandler) RequestPasswordReset(context.Context, *co
 
 func (UnimplementedAuthServiceHandler) ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ConfirmPasswordReset is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ChangePassword is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error) {

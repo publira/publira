@@ -29,6 +29,7 @@ const (
 	EventTypeReaderEmailChangeConfirmationEmail = "reader_email_change_confirmation_email"
 	EventTypeReaderEmailChangedNoticeEmail      = "reader_email_changed_notice_email"
 	EventTypeReaderPasswordResetEmail           = "reader_password_reset_email"
+	EventTypeReaderPasswordChangedNoticeEmail   = "reader_password_changed_notice_email"
 	EventTypeReaderSignupAttemptNoticeEmail     = "reader_signup_attempt_notice_email"
 )
 
@@ -63,6 +64,14 @@ type ReaderPasswordResetEmailPayload struct {
 	TenantID string `json:"tenant_id"`
 	TokenID  string `json:"token_id"`
 	Token    string `json:"token"`
+}
+
+// ReaderPasswordChangedNoticeEmailPayload names the account whose password was
+// changed. The change writes no token row, so the reader's own row is all the
+// notice points at.
+type ReaderPasswordChangedNoticeEmailPayload struct {
+	TenantID string `json:"tenant_id"`
+	UserID   string `json:"user_id"`
 }
 
 // ReaderSignupAttemptNoticeEmailPayload names the account a sign-up tried to
@@ -371,6 +380,72 @@ func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 		}
 		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, reader.Email, rendered); err != nil {
 			return fmt.Errorf("send reader password reset email: %w", err)
+		}
+		return nil
+	}
+}
+
+// NewReaderPasswordChangedNoticeEmailHandler tells a reader that the password
+// on their account was changed. A change made by someone who got hold of the
+// old password leaves the reader locked out and told nothing, so this mail is
+// the one report of it, and the link it carries is the reset form — the way
+// back in for the owner of the mailbox, and no help to whoever made the change.
+func NewReaderPasswordChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("reader password changed notice email"); err != nil {
+			return err
+		}
+		var payload ReaderPasswordChangedNoticeEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode reader password changed notice email payload: %w", err))
+		}
+		tenantID, err := tenantAuthEventTenantID(event, payload.TenantID)
+		if err != nil {
+			return Permanent(err)
+		}
+		readerID, err := uuid.Parse(payload.UserID)
+		if err != nil {
+			return Permanent(fmt.Errorf("%s payload has an invalid user_id", event.EventType))
+		}
+
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+		reader, err := queries.GetUserByID(ctx, readerID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Permanent(fmt.Errorf("reader %s no longer exists", readerID))
+		}
+		if err != nil {
+			return fmt.Errorf("load reader: %w", err)
+		}
+		// The worker reads past RLS, so the account the payload names is checked
+		// against the tenant the mail goes out for rather than assumed to be one
+		// of its readers.
+		if !reader.TenantID.Valid || reader.TenantID.UUID != tenantID {
+			return Permanent(fmt.Errorf("reader %s does not belong to tenant %s", readerID, tenantID))
+		}
+		resetURL, err := tenantSiteURL(delivery.tenant, "/reset-password")
+		if err != nil {
+			return Permanent(fmt.Errorf("build reader password reset url: %w", err))
+		}
+
+		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+			Template: "reader_password_changed_notice",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"email":       reader.Email,
+				"reset_url":   resetURL,
+				"tenant_name": delivery.tenantName,
+			},
+			TimeZone: delivery.timeZone,
+		})
+		if err != nil {
+			return fmt.Errorf("render reader password changed notice email: %w", err)
+		}
+		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, reader.Email, rendered); err != nil {
+			return fmt.Errorf("send reader password changed notice email: %w", err)
 		}
 		return nil
 	}

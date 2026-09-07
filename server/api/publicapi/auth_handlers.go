@@ -36,11 +36,14 @@ const (
 	maxAnnouncementPageSize     = int32(100)
 )
 
-func (s *apiServer) issueAccessToken(
+// mintAccessToken signs a session for the user row as it stands. The row's
+// credentials_version goes into the token, so a caller that has just bumped it
+// has to mint from the updated row rather than the one it read first.
+func (s *apiServer) mintAccessToken(
 	tenant dbmodels.Tenant,
 	user dbmodels.User,
 	role string,
-) (*connect.Response[publirav1.LoginResponse], error) {
+) (*publirattypesv1.AccessToken, error) {
 	if s.tokens == nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
 	}
@@ -55,16 +58,28 @@ func (s *apiServer) issueAccessToken(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	return &publirattypesv1.AccessToken{
+		Token:     token,
+		ExpiresAt: auth.FormatExpiresAt(expiresAt),
+	}, nil
+}
+
+func (s *apiServer) issueAccessToken(
+	tenant dbmodels.Tenant,
+	user dbmodels.User,
+	role string,
+) (*connect.Response[publirav1.LoginResponse], error) {
+	accessToken, err := s.mintAccessToken(tenant, user, role)
+	if err != nil {
+		return nil, err
+	}
 	resp := &publirav1.LoginResponse{
 		User: &publirattypesv1.User{
 			PublicId: user.PublicID,
 			Name:     user.Name,
 			Role:     role,
 		},
-		AccessToken: &publirattypesv1.AccessToken{
-			Token:     token,
-			ExpiresAt: auth.FormatExpiresAt(expiresAt),
-		},
+		AccessToken: accessToken,
 	}
 	return connect.NewResponse(resp), nil
 }
@@ -176,7 +191,7 @@ func (s *apiServer) Login(
 	return response, nil
 }
 
-// The four reader auth mails are enqueued as outbox_events rows in the
+// The reader auth mails are enqueued as outbox_events rows in the
 // transaction that writes what they announce, and rendered and delivered by the
 // resident worker. Every row names the tenant the account belongs to, in the
 // column and in the payload alike, which is what the table's own check
@@ -253,6 +268,27 @@ func enqueueReaderPasswordResetEmail(
 	}
 	return insertReaderOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderPasswordResetEmail, payload,
 		"reader_password_reset_email:"+tokenID.String())
+}
+
+func enqueueReaderPasswordChangedNoticeEmail(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID, userID uuid.UUID,
+	credentialsVersion int32,
+) error {
+	payload, err := json.Marshal(outbox.ReaderPasswordChangedNoticeEmailPayload{
+		TenantID: tenantID.String(),
+		UserID:   userID.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal reader password changed notice email event: %w", err)
+	}
+	// A change writes no row of its own, and a reader who changes their password
+	// twice has to hear about both. The version the change left behind is what
+	// separates them: it moves once per change and never moves back, so a retry
+	// of one change still collapses into a single send.
+	return insertReaderOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderPasswordChangedNoticeEmail, payload,
+		fmt.Sprintf("reader_password_changed_notice_email:%s:%d", userID, credentialsVersion))
 }
 
 func enqueueReaderSignupAttemptNoticeEmail(
@@ -1047,6 +1083,94 @@ func (s *apiServer) ConfirmPasswordReset(
 
 	auth.AuditEvent(req.Header(), "password_reset_confirm", "success", tenant.PublicID, user.PublicID, "confirmed")
 	return connect.NewResponse(&publirav1.ConfirmPasswordResetResponse{Confirmed: true}), nil
+}
+
+// ChangePassword sets a new password for the reader whose session carries the
+// request. The reset flow exists for a reader who cannot sign in; this one is
+// for a reader who can, so the current password stands in for the mailed link
+// and the account is never touched without it.
+//
+// The new hash, the credentials_version that ends the sessions minted against
+// the old one, and the mail that reports the change are one write: a change
+// that took effect without telling the account's owner is the state this
+// transaction exists to rule out.
+func (s *apiServer) ChangePassword(
+	ctx context.Context,
+	req *connect.Request[publirav1.ChangePasswordRequest],
+) (*connect.Response[publirav1.ChangePasswordResponse], error) {
+	tenant, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", "", "", "invalid_session")
+		return nil, err
+	}
+
+	currentPassword := strings.TrimSpace(req.Msg.CurrentPassword)
+	newPassword := strings.TrimSpace(req.Msg.NewPassword)
+	if currentPassword == "" || newPassword == "" {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_password and new_password are required"))
+	}
+	if !auth.VerifyPassword(currentPassword, user.PasswordHash) {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+		// Not Unauthenticated: the session is fine, the confirmation field is
+		// wrong. Clients treat Unauthenticated as "re-authenticate", which would
+		// log the reader out for a typo. The message names the field and nothing
+		// else — the account, its state, and the stored hash stay out of it.
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
+	}
+	if newPassword == currentPassword {
+		// Refused rather than accepted as a no-op: the change would end every
+		// other session the reader holds and leave them with the password an
+		// attacker already knows, which is the opposite of what the form is for.
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "same_password")
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("new password must be different from current password"), "new_password")
+	}
+
+	passwordHash, err := auth.HashPassword(newPassword)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin password change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	if _, err := txq.UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
+		ID:           user.ID,
+		PasswordHash: passwordHash,
+	}); err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
+		return nil, s.internalDBError(ctx, "failed to update password", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	bumped, err := txq.BumpUserCredentialsVersion(ctx, user.ID)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
+		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := enqueueReaderPasswordChangedNoticeEmail(ctx, txq, tenant.ID, user.ID, bumped.CredentialsVersion); err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_changed_notice_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader password changed notice email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	// The replacement is minted before the commit so a caller is never left with
+	// a change that took effect and no session to see it through.
+	accessToken, err := s.mintAccessToken(tenant, bumped, role)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit password change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	auth.AuditEvent(req.Header(), "password_change", "success", tenant.PublicID, user.PublicID, "password_changed")
+	return connect.NewResponse(&publirav1.ChangePasswordResponse{AccessToken: accessToken}), nil
 }
 
 func (s *apiServer) Logout(

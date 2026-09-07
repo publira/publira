@@ -106,6 +106,17 @@
       "preview": "Finish verifying your email address.",
       "subject": "{$tenant_name} email address verification"
     },
+    "reader_password_changed_notice": {
+      "action": "Reset password",
+      "body": "The password on your account was changed.",
+      "email": "Email address: {$email}",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Your password was changed",
+      "preview": "The password on your account was changed.",
+      "sessions": "Your other devices were signed out and need the new password to sign in again.",
+      "subject": "{$tenant_name} password changed",
+      "warning": "If you did not make this change, set a new password right away."
+    },
     "reader_password_reset": {
       "action": "Reset password",
       "body": "Open the button below to set a new password.",
