@@ -578,6 +578,8 @@ func TestDBReportEpisodeCommentRefusesWhatTheReaderCannotReport(t *testing.T) {
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "RPRSTAFF", "rpr-staff@example.com", "Moderator")
 	reporter := env.PG.SeedEndUser(t, tenant.ID, "RPRREADER", "rpr-reader@example.com", "Reporting Reader")
+	other := env.seedTenant(t, "RPROTHER", "rpr-other.example.com", "Other Tenant")
+	outsider := env.PG.SeedEndUser(t, other.ID, "RPROUTSID", "rpr-outsider@example.com", "Outside Reader")
 
 	env.setCommentMode(t, tenant.ID, "immediate")
 	own := env.mustPostComment(t, tenant, member, episode.PublicID, "My own comment.")
@@ -602,8 +604,18 @@ func TestDBReportEpisodeCommentRefusesWhatTheReaderCannotReport(t *testing.T) {
 		t.Fatalf("reporting a comment that never existed error = %v, want not_found", err)
 	}
 
+	// A public id is only unique within its tenant, so the lookup is scoped to
+	// the one the request names. A reader of another tenant is told what a
+	// reader of this one is told about a comment that is not there.
+	if err := env.reportComment(t, other, outsider, own.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("reporting another tenant's comment error = %v, want not_found", err)
+	}
+
 	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_comment_reports WHERE tenant_id = $1", tenant.ID); got != 0 {
 		t.Fatalf("episode_comment_reports = %d rows, want every refusal to write nothing", got)
+	}
+	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_comment_reports WHERE tenant_id = $1", other.ID); got != 0 {
+		t.Fatalf("the other tenant's episode_comment_reports = %d rows, want 0", got)
 	}
 }
 

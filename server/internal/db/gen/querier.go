@@ -290,6 +290,11 @@ type Querier interface {
 	// GetPublishedEpisodeByPublicIDForTenant applies, so a comment on an episode
 	// that has been unpublished since is as absent here as one that never existed.
 	//
+	// Every join carries the tenant because the catalog's foreign keys are
+	// single-column: episodes.series_id names a series without naming its tenant,
+	// and so does episode_listings.episode_id. Only the tenant on each side keeps
+	// the publication that is being read the same tenant's as the comment.
+	//
 	// The author is returned because a reader may not report their own comment, and
 	// that is a decision the caller makes rather than a row this query hides: the
 	// two cases are told apart in the answer the reporter gets.

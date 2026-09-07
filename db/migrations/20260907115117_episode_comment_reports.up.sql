@@ -93,6 +93,17 @@ ALTER TABLE ONLY episode_comment_reports
 -- The report queue, which spans every comment of the tenant.
 CREATE INDEX idx_episode_comment_reports_tenant_status_created_at ON episode_comment_reports USING btree (tenant_id, status, created_at DESC, id DESC);
 
+-- INDEX: idx_episode_comment_reports_tenant_reporter_user_id
+-- INDEX: idx_episode_comment_reports_tenant_resolved_by
+-- The two foreign keys into users, in the column order their checks look the
+-- rows up in. Deleting an account checks both, and neither the unique
+-- constraint nor the queue index begins with the referencing column, so without
+-- these a deletion scans every report the tenant has ever collected. Decided
+-- reports are kept rather than removed, so that table only grows.
+CREATE INDEX idx_episode_comment_reports_tenant_reporter_user_id ON episode_comment_reports USING btree (tenant_id, reporter_user_id);
+
+CREATE INDEX idx_episode_comment_reports_tenant_resolved_by ON episode_comment_reports USING btree (tenant_id, resolved_by);
+
 -- ROW SECURITY: episode_comment_reports
 ALTER TABLE episode_comment_reports ENABLE ROW LEVEL SECURITY;
 
