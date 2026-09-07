@@ -2142,6 +2142,7 @@
       "offline_not_saved": "オフラインのため、このエピソードを表示できません。端末に保存済みのエピソードのみ読めます。",
       "page_failed": "このページを表示できませんでした",
       "page_status": "{$page} / {$total}",
+      "page_status_range": "{$first}–{$last} / {$total}",
       "previous_page": "前のページ",
       "reload": "再読み込み",
       "save_expired": "保存したエピソードの閲覧期限が切れました。通信できる状態で開き直してください。",

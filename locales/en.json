@@ -2142,6 +2142,7 @@
       "offline_not_saved": "You are offline, and only the episodes saved on this device can be read.",
       "page_failed": "This page could not be loaded.",
       "page_status": "{$page} / {$total}",
+      "page_status_range": "{$first}–{$last} / {$total}",
       "previous_page": "Previous page",
       "reload": "Reload",
       "save_expired": "The saved copy of this episode has expired. Open it again while connected.",

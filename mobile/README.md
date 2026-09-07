@@ -179,7 +179,6 @@ There is no in-app switcher: the device setting is the switch, and changing it w
 
 The viewer displays the images returned by `GetEpisodeDetail` as episode content, paging from right to left (the same reading direction as the `web-host` reader).
 
-- One page per screen. Tap the left half, swipe left, or use the `Next page` button to advance
 - The page container reserves space from the API's `width` / `height` before the image arrives, so the layout does not shift. Images without dimensions use the entire viewport as a provisional container
 - Each page has its own loading and failure-with-retry state, so one failed page does not fail the entire episode body
 - Images come from image-server. The tenant is sent in `X-Forwarded-Host` and the reader in `Authorization: Bearer`, using the token of whoever is signed in. Preserve the media token the API adds to an episode image URL: a paid body's names the reader, a free body's names the episode

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +17,33 @@ void main() {
   final episodeId = '$seriesId-ep-1';
   final viewerPath = AppRoutes.episodeViewerPath(seriesId, episodeId);
 
+  /// A phone held upright, where one page fills the screen.
+  const portrait = Size(400, 800);
+
+  /// Wide enough, and wider than it is tall, for two pages at once.
+  const landscape = Size(900, 600);
+
+  final pageView = find.byKey(const ValueKey('episode-page-view'));
+
+  /// The image the reader draws for the one-based page [number].
+  Finder page(int number) =>
+      find.byKey(ValueKey('episode-page-$episodeId-page-$number-0'));
+
+  /// How far the screen on display is zoomed in.
+  double zoomScale(WidgetTester tester) => tester
+      .widget<InteractiveViewer>(find.byType(InteractiveViewer).first)
+      .transformationController!
+      .value
+      .getMaxScaleOnAxis();
+
+  Future<void> doubleTapAt(WidgetTester tester, Offset position) async {
+    await tester.tapAt(position);
+    await tester.pump(kDoubleTapMinTime);
+    await tester.tapAt(position);
+    // Past the window the recognizer waits out before it lets go of the tap.
+    await tester.pump(kDoubleTapTimeout);
+  }
+
   late GoRouter router;
   late FakeCatalogRepository catalog;
 
@@ -28,7 +56,15 @@ void main() {
     );
   });
 
-  Future<void> pumpApp(WidgetTester tester, {AuthSession? session}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    AuthSession? session,
+    Size screen = portrait,
+  }) async {
+    tester.view
+      ..physicalSize = screen
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       PubliraApp(
         router: router,
@@ -95,6 +131,79 @@ void main() {
     await pumpUntilFound(tester, find.text('2 / 3'));
 
     expect(find.text('2 / 3'), findsOneWidget);
+  });
+
+  testWidgets('a double tap zooms the page in and a second one resets it', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+
+    expect(zoomScale(tester), 1);
+
+    await doubleTapAt(tester, tester.getRect(pageView).center);
+    expect(zoomScale(tester), greaterThan(1));
+
+    await doubleTapAt(tester, tester.getRect(pageView).center);
+    expect(zoomScale(tester), 1);
+  });
+
+  testWidgets('a swipe turns the page only while the page is not zoomed', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+
+    await doubleTapAt(tester, tester.getRect(pageView).center);
+    await tester.drag(pageView, const Offset(300, 0));
+    // Long enough for a turn to have finished, had the drag started one.
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(
+      tester.widget<PageView>(pageView).physics,
+      isA<NeverScrollableScrollPhysics>(),
+    );
+    expect(find.text('1 / 3'), findsOneWidget);
+
+    await doubleTapAt(tester, tester.getRect(pageView).center);
+    await tester.drag(pageView, const Offset(300, 0));
+    await pumpUntilFound(tester, find.text('2 / 3'));
+
+    expect(find.text('2 / 3'), findsOneWidget);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('a landscape screen pairs the pages after the cover', (
+    tester,
+  ) async {
+    catalog.episodes = fixtureEpisodes(pageCount: 5);
+    await pumpApp(tester, screen: landscape);
+    await pumpUntilFound(tester, pageView);
+
+    // The cover stands alone, the way the volume it came from opens.
+    expect(find.text('1 / 5'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+    await pumpUntilFound(tester, find.text('2–3 / 5'));
+    // The counter answers from the page the reader is on, so it is right
+    // before the turn has finished moving there.
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // Reading runs right to left, so the earlier page of a pair is on the
+    // right.
+    final second = tester.getRect(page(2));
+    final third = tester.getRect(page(3));
+    expect(second.center.dx, greaterThan(third.center.dx));
+    expect(third.left, greaterThanOrEqualTo(0));
+
+    await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+    await pumpUntilFound(tester, find.text('4–5 / 5'));
+
+    final next = tester.widget<IconButton>(
+      find.byKey(const ValueKey('episode-next-page')),
+    );
+    expect(next.onPressed, isNull);
+    await pumpUntilNoPendingFrameCallbacks(tester);
   });
 
   testWidgets('a locked paid body shows the purchase notice', (tester) async {
