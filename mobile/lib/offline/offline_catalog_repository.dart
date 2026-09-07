@@ -18,6 +18,7 @@ class OfflineCatalogRepository implements CatalogRepository {
     required CatalogRepository origin,
     required this.library,
     required ReaderIdReader readerId,
+    required this.imageRequestHeaders,
     DateTime Function() clock = DateTime.now,
     this.grace = offlineGracePeriod,
   }) : _origin = origin,
@@ -32,6 +33,16 @@ class OfflineCatalogRepository implements CatalogRepository {
 
   /// How long an entitled body reads without the API confirming the grant.
   final Duration grace;
+
+  /// Headers a cover request carries, put back on every series read off the
+  /// device.
+  ///
+  /// They name the tenant this build was pointed at rather than anything the
+  /// API said, which is why they are not written down. Restoring them matters
+  /// because the API being unreachable does not mean image-server is: an
+  /// api-server outage leaves a device that is otherwise online reading the
+  /// saved catalog, and its covers still load.
+  final Map<String, String> imageRequestHeaders;
 
   final ReaderIdReader _readerId;
   final DateTime Function() _clock;
@@ -53,7 +64,7 @@ class OfflineCatalogRepository implements CatalogRepository {
           message: 'the device holds no catalog',
         );
       }
-      return saved;
+      return [for (final series in saved) _addressable(series)];
     }
   }
 
@@ -78,7 +89,10 @@ class OfflineCatalogRepository implements CatalogRepository {
           message: 'the device holds no detail for this series',
         );
       }
-      return saved;
+      return SeriesDetail(
+        series: _addressable(saved.series),
+        episodes: saved.episodes,
+      );
     }
   }
 
@@ -162,6 +176,23 @@ class OfflineCatalogRepository implements CatalogRepository {
         ownerId: detail.access == EpisodeAccess.entitled ? reader : '',
         checkedAt: _clock(),
       ),
+    );
+  }
+
+  /// The same series with the headers its cover has to be requested with.
+  ///
+  /// The counterpart of [_forStorage]: what the device holds is stripped of
+  /// everything that addresses a live server, so reading it back is what puts
+  /// that part on again.
+  SeriesItem _addressable(SeriesItem series) {
+    return SeriesItem(
+      id: series.id,
+      title: series.title,
+      description: series.description,
+      episodeCount: series.episodeCount,
+      labelName: series.labelName,
+      eyeCatchVariants: series.eyeCatchVariants,
+      imageRequestHeaders: imageRequestHeaders,
     );
   }
 

@@ -153,7 +153,7 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/series/:seriesId`                     | Series details                |
 | `/series/:seriesId/episodes/:episodeId` | Episode viewer                |
 
-The list displays loading, empty, and network-error-with-retry states. Details display loading, not-found, and network-error states. Both draw the series eye-catch — the list a portrait rendition, the detail a landscape one — and a series without the rendition a screen asks for, or without a cover at all, shows a placeholder in the same box. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
+The list displays loading, empty, and network-error-with-retry states. Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
 The catalog's app bar carries the account entry point, which opens `/sign-in` for a signed-out reader and `/account` for a signed-in one.
 

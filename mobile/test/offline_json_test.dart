@@ -2,11 +2,38 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/offline/offline_json.dart';
 
-Map<String, Object?> _index(Map<String, Object?> episode) => {
+Map<String, Object?> _index(
+  Map<String, Object?> episode, {
+  List<Map<String, Object?>>? series,
+}) => {
   'version': offlineIndexVersion,
+  'series': ?series,
   'details': const <String, Object?>{},
   'episodes': {'SeedSERSAAA1/SeedEPSDAAA1': episode},
 };
+
+/// One saved series whose covers mix a resolved URL with a relative one.
+List<Map<String, Object?>> _series() => [
+  {
+    'id': 'SeedSERSAAA1',
+    'title': 'Seed Series 001',
+    'description': 'synopsis',
+    'eyeCatchVariants': [
+      {
+        'variantType': 'portrait',
+        'url': 'http://images.test/images/series/IMG/portrait/800',
+        'width': 800,
+        'height': 1066,
+      },
+      {
+        'variantType': 'portrait',
+        'url': 'images/series/IMG/portrait/400',
+        'width': 400,
+        'height': 533,
+      },
+    ],
+  },
+];
 
 Map<String, Object?> _episode({
   required String access,
@@ -70,5 +97,23 @@ void main() {
     );
 
     expect(decoded!.episodes, isEmpty);
+  });
+
+  test('a cover rendition this build cannot address is dropped', () {
+    // A cover is written down already resolved against the image base, so a
+    // relative reference names no server to ask.
+    final decoded = OfflineIndex.fromJson(
+      _index(
+        _episode(access: 'free', ownerId: ''),
+        series: _series(),
+      ),
+    );
+
+    final variants = decoded!.series!.single.eyeCatchVariants;
+    expect(variants, hasLength(1));
+    expect(
+      variants.single.url.toString(),
+      'http://images.test/images/series/IMG/portrait/800',
+    );
   });
 }

@@ -123,7 +123,10 @@ EyeCatchVariant? _variantFromJson(Object? decoded) {
   }
   final rawUrl = _string(decoded['url']);
   final url = rawUrl.isEmpty ? null : Uri.tryParse(rawUrl);
-  if (url == null) {
+  // A cover is written down already resolved against the image base, so a
+  // relative reference is a record this build cannot address; keeping it would
+  // spend a failed request to arrive at the placeholder it starts as.
+  if (url == null || !url.isAbsolute) {
     return null;
   }
   return EyeCatchVariant(
