@@ -108,6 +108,9 @@ SELECT s.id,
     l.name AS label_name,
     sl.synopsis,
     sl.reading_period_hours,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
     s.is_published,
     s.published_at,
     s.eye_catch_image_id,
@@ -142,6 +145,9 @@ type GetSeriesByPublicIDForTenantRow struct {
 	LabelName                  sql.NullString `json:"label_name"`
 	Synopsis                   sql.NullString `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	Status                     sql.NullString `json:"status"`
+	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
+	AgeRating                  sql.NullString `json:"age_rating"`
 	IsPublished                bool           `json:"is_published"`
 	PublishedAt                sql.NullTime   `json:"published_at"`
 	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
@@ -160,6 +166,9 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 		&i.LabelName,
 		&i.Synopsis,
 		&i.ReadingPeriodHours,
+		&i.Status,
+		pq.Array(&i.ScheduleWeekdays),
+		&i.AgeRating,
 		&i.IsPublished,
 		&i.PublishedAt,
 		&i.EyeCatchImageID,
@@ -178,6 +187,9 @@ SELECT s.id,
     s.eye_catch_image_id,
     NULL::timestamp AS eye_catch_image_updated_at,
     sl.synopsis,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
     s.is_published,
     s.published_at,
     -- Collect the several creators into one column as a JSON array
@@ -251,7 +263,10 @@ WHERE s.public_id = $1
 GROUP BY s.id,
     l.id,
     sl.series_id,
-    sl.synopsis
+    sl.synopsis,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating
 `
 
 type GetSeriesDetailParams struct {
@@ -268,6 +283,9 @@ type GetSeriesDetailRow struct {
 	EyeCatchImageID        uuid.NullUUID   `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt sql.NullTime    `json:"eye_catch_image_updated_at"`
 	Synopsis               sql.NullString  `json:"synopsis"`
+	Status                 sql.NullString  `json:"status"`
+	ScheduleWeekdays       []int32         `json:"schedule_weekdays"`
+	AgeRating              sql.NullString  `json:"age_rating"`
 	IsPublished            bool            `json:"is_published"`
 	PublishedAt            sql.NullTime    `json:"published_at"`
 	Creators               json.RawMessage `json:"creators"`
@@ -286,6 +304,9 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 		&i.EyeCatchImageID,
 		&i.EyeCatchImageUpdatedAt,
 		&i.Synopsis,
+		&i.Status,
+		pq.Array(&i.ScheduleWeekdays),
+		&i.AgeRating,
 		&i.IsPublished,
 		&i.PublishedAt,
 		&i.Creators,
@@ -1144,6 +1165,9 @@ SELECT s.id,
     l.name AS label_name,
     sl.synopsis,
     sl.reading_period_hours,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
     s.is_published,
     s.published_at,
     s.created_at,
@@ -1193,6 +1217,9 @@ type ListSeriesByTenantAscRow struct {
 	LabelName                  sql.NullString `json:"label_name"`
 	Synopsis                   sql.NullString `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	Status                     sql.NullString `json:"status"`
+	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
+	AgeRating                  sql.NullString `json:"age_rating"`
 	IsPublished                bool           `json:"is_published"`
 	PublishedAt                sql.NullTime   `json:"published_at"`
 	CreatedAt                  time.Time      `json:"created_at"`
@@ -1224,6 +1251,9 @@ func (q *Queries) ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTen
 			&i.LabelName,
 			&i.Synopsis,
 			&i.ReadingPeriodHours,
+			&i.Status,
+			pq.Array(&i.ScheduleWeekdays),
+			&i.AgeRating,
 			&i.IsPublished,
 			&i.PublishedAt,
 			&i.CreatedAt,
@@ -1252,6 +1282,9 @@ SELECT s.id,
     l.name AS label_name,
     sl.synopsis,
     sl.reading_period_hours,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
     s.is_published,
     s.published_at,
     s.created_at,
@@ -1301,6 +1334,9 @@ type ListSeriesByTenantDescRow struct {
 	LabelName                  sql.NullString `json:"label_name"`
 	Synopsis                   sql.NullString `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	Status                     sql.NullString `json:"status"`
+	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
+	AgeRating                  sql.NullString `json:"age_rating"`
 	IsPublished                bool           `json:"is_published"`
 	PublishedAt                sql.NullTime   `json:"published_at"`
 	CreatedAt                  time.Time      `json:"created_at"`
@@ -1337,6 +1373,9 @@ func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTe
 			&i.LabelName,
 			&i.Synopsis,
 			&i.ReadingPeriodHours,
+			&i.Status,
+			pq.Array(&i.ScheduleWeekdays),
+			&i.AgeRating,
 			&i.IsPublished,
 			&i.PublishedAt,
 			&i.CreatedAt,
@@ -1427,18 +1466,27 @@ INSERT INTO series_listings (
         tenant_id,
         series_id,
         synopsis,
-        reading_period_hours
+        reading_period_hours,
+        status,
+        schedule_weekdays,
+        age_rating
     )
 VALUES (
         $1,
         $2,
         $3,
-        $4
+        $4,
+        $5,
+        $6,
+        $7
     ) ON CONFLICT (series_id) DO
 UPDATE
 SET synopsis = EXCLUDED.synopsis,
-    reading_period_hours = EXCLUDED.reading_period_hours
-RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id
+    reading_period_hours = EXCLUDED.reading_period_hours,
+    status = EXCLUDED.status,
+    schedule_weekdays = EXCLUDED.schedule_weekdays,
+    age_rating = EXCLUDED.age_rating
+RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating
 `
 
 type UpsertSeriesListingParams struct {
@@ -1446,14 +1494,23 @@ type UpsertSeriesListingParams struct {
 	SeriesID           uuid.UUID      `json:"series_id"`
 	Synopsis           sql.NullString `json:"synopsis"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	Status             string         `json:"status"`
+	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
+	AgeRating          string         `json:"age_rating"`
 }
 
+// The whole listing row is written on every admin save, so a field the
+// request leaves empty is stored as empty rather than kept from the row that
+// was there.
 func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error) {
 	row := q.db.QueryRowContext(ctx, upsertSeriesListing,
 		arg.TenantID,
 		arg.SeriesID,
 		arg.Synopsis,
 		arg.ReadingPeriodHours,
+		arg.Status,
+		pq.Array(arg.ScheduleWeekdays),
+		arg.AgeRating,
 	)
 	var i SeriesListing
 	err := row.Scan(
@@ -1463,6 +1520,9 @@ func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListi
 		&i.IsPublished,
 		&i.PublishedAt,
 		&i.TenantID,
+		&i.Status,
+		pq.Array(&i.ScheduleWeekdays),
+		&i.AgeRating,
 	)
 	return i, err
 }

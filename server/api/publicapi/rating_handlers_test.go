@@ -115,10 +115,10 @@ func TestRateContentEpisodeResolvesSeriesFromTheEpisodeRow(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
 			"reading_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title",
+			"series_public_id", "series_title", "series_age_rating",
 		}).AddRow(
 			episodeID, "EPISODE001", "Episode Title", int32(1), seriesID,
-			int32(0), int32(24), "published", nil, fixture.now, "SERIES001", "Series Title",
+			int32(0), int32(24), "published", nil, fixture.now, "SERIES001", "Series Title", "all",
 		))
 	fixture.expectRatingInsert(seriesID, uuid.NullUUID{UUID: episodeID, Valid: true}, 5)
 

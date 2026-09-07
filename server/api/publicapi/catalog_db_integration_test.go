@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"net/url"
+	"slices"
 	"testing"
 	"time"
 
@@ -229,6 +230,73 @@ func TestDBGetSeriesDetailListsOnlyPublishedEpisodes(t *testing.T) {
 	}
 	if resp.Msg.Episodes[1].Price != 300 {
 		t.Fatalf("second episode price = %d, want 300", resp.Msg.Episodes[1].Price)
+	}
+}
+
+// What a tenant states about a series reaches the storefront through the same
+// read the episodes come from, weekday schedule included.
+func TestDBGetSeriesDetailCarriesTheListingMetadata(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:         "SERIESA00001",
+		Title:            "Serialized Story",
+		Published:        true,
+		Status:           "hiatus",
+		ScheduleWeekdays: []int32{1, 4},
+		AgeRating:        "r18",
+	})
+
+	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: series.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeriesDetail: %v", err)
+	}
+	if resp.Msg.Series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS {
+		t.Fatalf("status = %s, want HIATUS", resp.Msg.Series.Status)
+	}
+	if want := []int32{1, 4}; !slices.Equal(resp.Msg.Series.ScheduleWeekdays, want) {
+		t.Fatalf("schedule_weekdays = %v, want %v", resp.Msg.Series.ScheduleWeekdays, want)
+	}
+	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18 {
+		t.Fatalf("age_rating = %s, want R18", resp.Msg.Series.AgeRating)
+	}
+}
+
+// The episode detail answers with the rating of the series it belongs to, so a
+// reader is asked to confirm before the body rather than after it.
+func TestDBGetEpisodeDetailCarriesTheSeriesAgeRating(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:  "SERIESA00001",
+		Title:     "Serialized Story",
+		Published: true,
+		AgeRating: "r15",
+	})
+	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEPUB01",
+		Title:    "Chapter One",
+		Status:   testutil.EpisodeStatusPublished,
+		Price:    0,
+	})
+
+	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: "EPISODEPUB01",
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("age_rating = %s, want R15", resp.Msg.Series.AgeRating)
+	}
+	// The rating says who the series is for and nothing about entitlement: a
+	// free body is still free until reader age verification lands.
+	if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
+		t.Fatalf("access = %s, want FREE", resp.Msg.Access)
 	}
 }
 

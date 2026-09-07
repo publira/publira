@@ -231,10 +231,14 @@ SELECT e.id,
     el.scheduled_at,
     el.published_at,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    s.title AS series_title,
+    -- The rating a client interposes its confirmation on. Reading it here
+    -- keeps the episode detail one round trip.
+    sl.age_rating AS series_age_rating
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND e.public_id = $2
     AND s.is_published = true

@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
 // seedTwoTenants returns two tenants that share a server, so the second one
@@ -139,6 +140,113 @@ func TestDBUpdateSeriesPersistsChanges(t *testing.T) {
 	}
 	if !got.Msg.Series.IsPublished || got.Msg.Series.PublishedAt == "" {
 		t.Fatalf("reloaded publication = (%v, %q), want published with a timestamp", got.Msg.Series.IsPublished, got.Msg.Series.PublishedAt)
+	}
+}
+
+// The three listing fields survive a real write and read: the schedule is
+// stored ascending and distinct whatever order it arrived in, and an update
+// replaces the whole set rather than merging into it.
+func TestDBSeriesListingMetadataRoundTrips(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+
+	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+		Tenant:           tenant.tenantContext(),
+		Title:            "Weekly Story",
+		IsPublished:      true,
+		Status:           publirattypesv1.SeriesStatus_SERIES_STATUS_ONGOING,
+		ScheduleWeekdays: []int32{5, 2, 5},
+		AgeRating:        publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15,
+	}))
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	publicID := created.Msg.Series.PublicId
+	if want := []int32{2, 5}; !slices.Equal(created.Msg.Series.ScheduleWeekdays, want) {
+		t.Fatalf("created schedule_weekdays = %v, want %v", created.Msg.Series.ScheduleWeekdays, want)
+	}
+	if created.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("created age_rating = %s, want R15", created.Msg.Series.AgeRating)
+	}
+
+	listed, err := client.ListSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListSeriesRequest{
+		Tenant: tenant.tenantContext(),
+	}))
+	if err != nil {
+		t.Fatalf("ListSeries: %v", err)
+	}
+	if len(listed.Msg.Series) != 1 {
+		t.Fatalf("ListSeries returned %d series, want 1", len(listed.Msg.Series))
+	}
+	if want := []int32{2, 5}; !slices.Equal(listed.Msg.Series[0].ScheduleWeekdays, want) {
+		t.Fatalf("listed schedule_weekdays = %v, want %v", listed.Msg.Series[0].ScheduleWeekdays, want)
+	}
+
+	if _, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:      tenant.tenantContext(),
+		PublicId:    publicID,
+		Title:       "Weekly Story",
+		IsPublished: true,
+		Status:      publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED,
+		AgeRating:   publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_ALL,
+	})); err != nil {
+		t.Fatalf("UpdateSeries: %v", err)
+	}
+
+	got, err := client.GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+		Tenant:   tenant.tenantContext(),
+		PublicId: publicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeries: %v", err)
+	}
+	if got.Msg.Series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED {
+		t.Fatalf("reloaded status = %s, want COMPLETED", got.Msg.Series.Status)
+	}
+	if got.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_ALL {
+		t.Fatalf("reloaded age_rating = %s, want ALL", got.Msg.Series.AgeRating)
+	}
+	if len(got.Msg.Series.ScheduleWeekdays) != 0 {
+		t.Fatalf("reloaded schedule_weekdays = %v, want the empty schedule the update stated", got.Msg.Series.ScheduleWeekdays)
+	}
+}
+
+// A weekday outside the week never reaches the CHECK constraint: the RPC
+// refuses it, and the series keeps the schedule it had.
+func TestDBUpdateSeriesRejectsAWeekdayOutsideTheWeek(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+
+	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+		Tenant:           tenant.tenantContext(),
+		Title:            "Weekly Story",
+		ScheduleWeekdays: []int32{3},
+	}))
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+
+	_, err = client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:           tenant.tenantContext(),
+		PublicId:         created.Msg.Series.PublicId,
+		Title:            "Weekly Story",
+		ScheduleWeekdays: []int32{3, 9},
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+
+	got, err := client.GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+		Tenant:   tenant.tenantContext(),
+		PublicId: created.Msg.Series.PublicId,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeries: %v", err)
+	}
+	if want := []int32{3}; !slices.Equal(got.Msg.Series.ScheduleWeekdays, want) {
+		t.Fatalf("schedule_weekdays = %v, want the untouched %v", got.Msg.Series.ScheduleWeekdays, want)
 	}
 }
 

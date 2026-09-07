@@ -418,6 +418,9 @@ SELECT s.id,
     s.eye_catch_image_id,
     NULL::timestamp AS eye_catch_image_updated_at,
     sl.synopsis,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
     s.is_published,
     s.published_at,
     -- Collect the several creators into one column as a JSON array
@@ -491,7 +494,10 @@ WHERE s.public_id = $1
 GROUP BY s.id,
     l.id,
     sl.series_id,
-    sl.synopsis;
+    sl.synopsis,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating;
 
 -- name: CreateSeriesBase :one
 INSERT INTO series (
@@ -512,21 +518,33 @@ SET title = $2,
 WHERE id = $1;
 
 -- name: UpsertSeriesListing :one
+-- The whole listing row is written on every admin save, so a field the
+-- request leaves empty is stored as empty rather than kept from the row that
+-- was there.
 INSERT INTO series_listings (
         tenant_id,
         series_id,
         synopsis,
-        reading_period_hours
+        reading_period_hours,
+        status,
+        schedule_weekdays,
+        age_rating
     )
 VALUES (
-        $1,
-        $2,
-        $3,
-        $4
+        sqlc.arg('tenant_id'),
+        sqlc.arg('series_id'),
+        sqlc.arg('synopsis'),
+        sqlc.arg('reading_period_hours'),
+        sqlc.arg('status'),
+        sqlc.arg('schedule_weekdays'),
+        sqlc.arg('age_rating')
     ) ON CONFLICT (series_id) DO
 UPDATE
 SET synopsis = EXCLUDED.synopsis,
-    reading_period_hours = EXCLUDED.reading_period_hours
+    reading_period_hours = EXCLUDED.reading_period_hours,
+    status = EXCLUDED.status,
+    schedule_weekdays = EXCLUDED.schedule_weekdays,
+    age_rating = EXCLUDED.age_rating
 RETURNING *;
 
 -- name: UpdateSeriesPublication :exec
@@ -552,6 +570,9 @@ SELECT s.id,
     l.name AS label_name,
     sl.synopsis,
     sl.reading_period_hours,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
     s.is_published,
     s.published_at,
     s.created_at,
@@ -592,6 +613,9 @@ SELECT s.id,
     l.name AS label_name,
     sl.synopsis,
     sl.reading_period_hours,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
     s.is_published,
     s.published_at,
     s.created_at,
@@ -645,6 +669,9 @@ SELECT s.id,
     l.name AS label_name,
     sl.synopsis,
     sl.reading_period_hours,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
     s.is_published,
     s.published_at,
     s.eye_catch_image_id,

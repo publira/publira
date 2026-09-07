@@ -11,11 +11,19 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
-func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDForTenantRow) *publirattypesv1.Series {
+// SeriesFromGetSeriesByPublicIDForTenantRow builds the admin view of a series.
+// It fails on a stored status or age rating this build does not know rather
+// than showing the console a series described by a value it guessed.
+//
+// The listing columns arrive through a LEFT JOIN, so they are absent for a
+// series with no listing row at all; the enums stay unspecified there, which
+// says the tenant has stated nothing.
+func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDForTenantRow) (*publirattypesv1.Series, error) {
 	series := &publirattypesv1.Series{
-		PublicId:    row.PublicID,
-		Title:       row.Title,
-		IsPublished: row.IsPublished,
+		PublicId:         row.PublicID,
+		Title:            row.Title,
+		IsPublished:      row.IsPublished,
+		ScheduleWeekdays: ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
 	}
 	if row.LabelPublicID.Valid {
 		series.Label = Label(row.LabelPublicID.String, row.LabelName.String)
@@ -26,13 +34,27 @@ func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDF
 	if row.ReadingPeriodHours.Valid {
 		series.ReadingPeriodHours = row.ReadingPeriodHours.Int32
 	}
+	if row.Status.Valid {
+		status, err := SeriesStatusFromStored(row.Status.String)
+		if err != nil {
+			return nil, err
+		}
+		series.Status = status
+	}
+	if row.AgeRating.Valid {
+		ageRating, err := SeriesAgeRatingFromStored(row.AgeRating.String)
+		if err != nil {
+			return nil, err
+		}
+		series.AgeRating = ageRating
+	}
 	if row.EyeCatchImageUpdatedAt.Valid {
 		series.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
 	}
 	if row.PublishedAt.Valid {
 		series.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
 	}
-	return series
+	return series, nil
 }
 
 func EpisodeFromGetEpisodeByPublicIDForTenantRow(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirattypesv1.Episode {
@@ -159,11 +181,24 @@ func EpisodeImageFromImageAndVariant(image dbmodels.EpisodeImage, variant dbmode
 	}
 }
 
-func SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow) *publirattypesv1.Series {
-	return &publirattypesv1.Series{
+// SeriesFromGetPublishedEpisodeByPublicIDForTenantRow builds the series an
+// episode detail is read under. It carries the age rating so a client can
+// interpose its confirmation before the body is shown, and fails on a stored
+// rating this build does not know rather than reporting the episode as
+// unrestricted.
+func SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow) (*publirattypesv1.Series, error) {
+	series := &publirattypesv1.Series{
 		PublicId: row.SeriesPublicID,
 		Title:    row.SeriesTitle,
 	}
+	if row.SeriesAgeRating.Valid {
+		ageRating, err := SeriesAgeRatingFromStored(row.SeriesAgeRating.String)
+		if err != nil {
+			return nil, err
+		}
+		series.AgeRating = ageRating
+	}
+	return series, nil
 }
 
 func Creator(publicID, name, profileText string) *publirattypesv1.Creator {

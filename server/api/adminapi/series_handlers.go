@@ -290,6 +290,43 @@ func (s *adminServer) seriesCreatorsBySeriesIDs(
 	return items, nil
 }
 
+// seriesListingMetadata is the part of a series the tenant states about the
+// series itself: whether it is still running, when a new episode is expected,
+// and who it is meant for.
+type seriesListingMetadata struct {
+	status           string
+	scheduleWeekdays []int32
+	ageRating        string
+}
+
+// normalizeSeriesListingMetadata validates the three listing fields of a create
+// or update request. An unspecified enum stores the column's default, so a
+// client that does not carry these fields yet keeps saving series the way it
+// did.
+func normalizeSeriesListingMetadata(
+	status publirattypesv1.SeriesStatus,
+	scheduleWeekdays []int32,
+	ageRating publirattypesv1.SeriesAgeRating,
+) (seriesListingMetadata, error) {
+	storedStatus, err := protomapper.SeriesStatusToStored(status)
+	if err != nil {
+		return seriesListingMetadata{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "status")
+	}
+	storedWeekdays, err := protomapper.ScheduleWeekdaysToStored(scheduleWeekdays)
+	if err != nil {
+		return seriesListingMetadata{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "schedule_weekdays")
+	}
+	storedAgeRating, err := protomapper.SeriesAgeRatingToStored(ageRating)
+	if err != nil {
+		return seriesListingMetadata{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "age_rating")
+	}
+	return seriesListingMetadata{
+		status:           storedStatus,
+		scheduleWeekdays: storedWeekdays,
+		ageRating:        storedAgeRating,
+	}, nil
+}
+
 func seriesRevalidateTags(tenantID, seriesPublicID string) []string {
 	normalizedTenantID := strings.TrimSpace(tenantID)
 	normalizedSeriesPublicID := strings.TrimSpace(seriesPublicID)
@@ -317,6 +354,10 @@ func (s *adminServer) CreateSeries(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
 	}
 	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	if err != nil {
+		return nil, err
+	}
+	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating)
 	if err != nil {
 		return nil, err
 	}
@@ -367,6 +408,9 @@ func (s *adminServer) CreateSeries(
 		SeriesID:           base.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
+		Status:             listingMetadata.status,
+		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
+		AgeRating:          listingMetadata.ageRating,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
@@ -418,7 +462,10 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get created series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
-	series := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(created)
+	series, err := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(created)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", created.PublicID)
+	}
 	if created.EyeCatchImageID.Valid {
 		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{created.EyeCatchImageID.UUID})
 		if variantErr != nil {
@@ -446,6 +493,10 @@ func (s *adminServer) UpdateSeries(
 	}
 	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
+	}
+	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating)
+	if err != nil {
+		return nil, err
 	}
 	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {
@@ -501,6 +552,9 @@ func (s *adminServer) UpdateSeries(
 		SeriesID:           current.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
+		Status:             listingMetadata.status,
+		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
+		AgeRating:          listingMetadata.ageRating,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
@@ -560,7 +614,10 @@ func (s *adminServer) UpdateSeries(
 			}
 		}
 	}
-	series := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(updated)
+	series, err := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(updated)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", updated.PublicID)
+	}
 	if updated.EyeCatchImageID.Valid {
 		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{updated.EyeCatchImageID.UUID})
 		if variantErr != nil {
@@ -587,6 +644,9 @@ type seriesPageRow struct {
 	labelName              sql.NullString
 	synopsis               sql.NullString
 	readingPeriodHours     sql.NullInt32
+	status                 sql.NullString
+	scheduleWeekdays       []int32
+	ageRating              sql.NullString
 	isPublished            bool
 	publishedAt            sql.NullTime
 	createdAt              time.Time
@@ -605,6 +665,9 @@ func mapSeriesDescRows(rows []dbmodels.ListSeriesByTenantDescRow) []seriesPageRo
 			labelName:              row.LabelName,
 			synopsis:               row.Synopsis,
 			readingPeriodHours:     row.ReadingPeriodHours,
+			status:                 row.Status,
+			scheduleWeekdays:       row.ScheduleWeekdays,
+			ageRating:              row.AgeRating,
 			isPublished:            row.IsPublished,
 			publishedAt:            row.PublishedAt,
 			createdAt:              row.CreatedAt,
@@ -626,6 +689,9 @@ func mapSeriesAscRows(rows []dbmodels.ListSeriesByTenantAscRow) []seriesPageRow 
 			labelName:              row.LabelName,
 			synopsis:               row.Synopsis,
 			readingPeriodHours:     row.ReadingPeriodHours,
+			status:                 row.Status,
+			scheduleWeekdays:       row.ScheduleWeekdays,
+			ageRating:              row.AgeRating,
 			isPublished:            row.IsPublished,
 			publishedAt:            row.PublishedAt,
 			createdAt:              row.CreatedAt,
@@ -708,7 +774,12 @@ func (s *adminServer) ListSeries(
 	itemByID := make(map[uuid.UUID]*publirattypesv1.Series, len(rows))
 	itemByImageID := make(map[uuid.UUID]*publirattypesv1.Series, len(rows))
 	for _, row := range rows {
-		item := &publirattypesv1.Series{PublicId: row.publicID, Title: row.title, IsPublished: row.isPublished}
+		item := &publirattypesv1.Series{
+			PublicId:         row.publicID,
+			Title:            row.title,
+			IsPublished:      row.isPublished,
+			ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.scheduleWeekdays),
+		}
 		if row.labelPublicID.Valid {
 			item.Label = protomapper.Label(row.labelPublicID.String, row.labelName.String)
 		}
@@ -717,6 +788,20 @@ func (s *adminServer) ListSeries(
 		}
 		if row.readingPeriodHours.Valid {
 			item.ReadingPeriodHours = row.readingPeriodHours.Int32
+		}
+		if row.status.Valid {
+			status, statusErr := protomapper.SeriesStatusFromStored(row.status.String)
+			if statusErr != nil {
+				return nil, s.internalError(ctx, "series listing holds a value this build does not know", statusErr, "tenant_id", tenant.ID.String(), "series_public_id", row.publicID)
+			}
+			item.Status = status
+		}
+		if row.ageRating.Valid {
+			ageRating, ageRatingErr := protomapper.SeriesAgeRatingFromStored(row.ageRating.String)
+			if ageRatingErr != nil {
+				return nil, s.internalError(ctx, "series listing holds a value this build does not know", ageRatingErr, "tenant_id", tenant.ID.String(), "series_public_id", row.publicID)
+			}
+			item.AgeRating = ageRating
 		}
 		if row.eyeCatchImageID.Valid {
 			seriesImageIDs = append(seriesImageIDs, row.eyeCatchImageID.UUID)
@@ -802,7 +887,10 @@ func (s *adminServer) GetSeries(
 	if err != nil {
 		return nil, err
 	}
-	series := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(row)
+	series, err := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(row)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", row.PublicID)
+	}
 	if row.EyeCatchImageID.Valid {
 		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
 		if variantErr != nil {
