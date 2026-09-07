@@ -61,6 +61,7 @@ var publicDataTables = []struct {
 	{name: "episodes", count: "SELECT count(*) FROM episodes"},
 	{name: "episode_listings", count: "SELECT count(*) FROM episode_listings"},
 	{name: "episode_reads", count: "SELECT count(*) FROM episode_reads"},
+	{name: "episode_reading_positions", count: "SELECT count(*) FROM episode_reading_positions"},
 	{name: "users", count: "SELECT count(*) FROM users"},
 	{name: "purchases", count: "SELECT count(*) FROM purchases"},
 	{name: "pages", count: "SELECT count(*) FROM pages"},
@@ -88,6 +89,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	env.PG.SeedPurchase(t, first.ID, member.ID, episode.ID, episode.Price)
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID); err != nil {
 		t.Fatalf("seed episode read: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count) VALUES ($1, $2, $3, 1, 10)", first.ID, member.ID, episode.ID); err != nil {
+		t.Fatalf("seed reading position: %v", err)
 	}
 	env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
 

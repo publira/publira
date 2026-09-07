@@ -73,6 +73,15 @@ const (
 	// EpisodeReadServiceMarkEpisodeAsReadProcedure is the fully-qualified name of the
 	// EpisodeReadService's MarkEpisodeAsRead RPC.
 	EpisodeReadServiceMarkEpisodeAsReadProcedure = "/publira.v1.EpisodeReadService/MarkEpisodeAsRead"
+	// EpisodeReadServiceSaveReadingPositionProcedure is the fully-qualified name of the
+	// EpisodeReadService's SaveReadingPosition RPC.
+	EpisodeReadServiceSaveReadingPositionProcedure = "/publira.v1.EpisodeReadService/SaveReadingPosition"
+	// EpisodeReadServiceGetMyReadingPositionProcedure is the fully-qualified name of the
+	// EpisodeReadService's GetMyReadingPosition RPC.
+	EpisodeReadServiceGetMyReadingPositionProcedure = "/publira.v1.EpisodeReadService/GetMyReadingPosition"
+	// EpisodeReadServiceGetMySeriesProgressProcedure is the fully-qualified name of the
+	// EpisodeReadService's GetMySeriesProgress RPC.
+	EpisodeReadServiceGetMySeriesProgressProcedure = "/publira.v1.EpisodeReadService/GetMySeriesProgress"
 	// FollowServiceGetMyFollowStatusProcedure is the fully-qualified name of the FollowService's
 	// GetMyFollowStatus RPC.
 	FollowServiceGetMyFollowStatusProcedure = "/publira.v1.FollowService/GetMyFollowStatus"
@@ -426,6 +435,19 @@ type EpisodeReadServiceClient interface {
 	// published episode they may read. Unpublished, foreign, missing, and
 	// inaccessible episodes are all surfaced as NotFound.
 	MarkEpisodeAsRead(context.Context, *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error)
+	// Stores where the authenticated member stopped in an episode they may read.
+	// Saving the same page again changes nothing, and a page they went back to
+	// is accepted like any other. Unpublished, foreign, missing, and
+	// inaccessible episodes are all surfaced as NotFound.
+	SaveReadingPosition(context.Context, *connect.Request[v1.SaveReadingPositionRequest]) (*connect.Response[v1.SaveReadingPositionResponse], error)
+	// Returns where the authenticated member stopped in an episode. An episode
+	// they may no longer read has no position, the same answer as one they never
+	// opened.
+	GetMyReadingPosition(context.Context, *connect.Request[v1.GetMyReadingPositionRequest]) (*connect.Response[v1.GetMyReadingPositionResponse], error)
+	// Returns the authenticated member's standing in one published series. It is
+	// separate from CatalogService.GetSeriesDetail so the series detail stays
+	// shared-cacheable while this read stays private.
+	GetMySeriesProgress(context.Context, *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error)
 }
 
 // NewEpisodeReadServiceClient constructs a client for the publira.v1.EpisodeReadService service. By
@@ -445,17 +467,53 @@ func NewEpisodeReadServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(episodeReadServiceMethods.ByName("MarkEpisodeAsRead")),
 			connect.WithClientOptions(opts...),
 		),
+		saveReadingPosition: connect.NewClient[v1.SaveReadingPositionRequest, v1.SaveReadingPositionResponse](
+			httpClient,
+			baseURL+EpisodeReadServiceSaveReadingPositionProcedure,
+			connect.WithSchema(episodeReadServiceMethods.ByName("SaveReadingPosition")),
+			connect.WithClientOptions(opts...),
+		),
+		getMyReadingPosition: connect.NewClient[v1.GetMyReadingPositionRequest, v1.GetMyReadingPositionResponse](
+			httpClient,
+			baseURL+EpisodeReadServiceGetMyReadingPositionProcedure,
+			connect.WithSchema(episodeReadServiceMethods.ByName("GetMyReadingPosition")),
+			connect.WithClientOptions(opts...),
+		),
+		getMySeriesProgress: connect.NewClient[v1.GetMySeriesProgressRequest, v1.GetMySeriesProgressResponse](
+			httpClient,
+			baseURL+EpisodeReadServiceGetMySeriesProgressProcedure,
+			connect.WithSchema(episodeReadServiceMethods.ByName("GetMySeriesProgress")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // episodeReadServiceClient implements EpisodeReadServiceClient.
 type episodeReadServiceClient struct {
-	markEpisodeAsRead *connect.Client[v1.MarkEpisodeAsReadRequest, v1.MarkEpisodeAsReadResponse]
+	markEpisodeAsRead    *connect.Client[v1.MarkEpisodeAsReadRequest, v1.MarkEpisodeAsReadResponse]
+	saveReadingPosition  *connect.Client[v1.SaveReadingPositionRequest, v1.SaveReadingPositionResponse]
+	getMyReadingPosition *connect.Client[v1.GetMyReadingPositionRequest, v1.GetMyReadingPositionResponse]
+	getMySeriesProgress  *connect.Client[v1.GetMySeriesProgressRequest, v1.GetMySeriesProgressResponse]
 }
 
 // MarkEpisodeAsRead calls publira.v1.EpisodeReadService.MarkEpisodeAsRead.
 func (c *episodeReadServiceClient) MarkEpisodeAsRead(ctx context.Context, req *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error) {
 	return c.markEpisodeAsRead.CallUnary(ctx, req)
+}
+
+// SaveReadingPosition calls publira.v1.EpisodeReadService.SaveReadingPosition.
+func (c *episodeReadServiceClient) SaveReadingPosition(ctx context.Context, req *connect.Request[v1.SaveReadingPositionRequest]) (*connect.Response[v1.SaveReadingPositionResponse], error) {
+	return c.saveReadingPosition.CallUnary(ctx, req)
+}
+
+// GetMyReadingPosition calls publira.v1.EpisodeReadService.GetMyReadingPosition.
+func (c *episodeReadServiceClient) GetMyReadingPosition(ctx context.Context, req *connect.Request[v1.GetMyReadingPositionRequest]) (*connect.Response[v1.GetMyReadingPositionResponse], error) {
+	return c.getMyReadingPosition.CallUnary(ctx, req)
+}
+
+// GetMySeriesProgress calls publira.v1.EpisodeReadService.GetMySeriesProgress.
+func (c *episodeReadServiceClient) GetMySeriesProgress(ctx context.Context, req *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error) {
+	return c.getMySeriesProgress.CallUnary(ctx, req)
 }
 
 // EpisodeReadServiceHandler is an implementation of the publira.v1.EpisodeReadService service.
@@ -464,6 +522,19 @@ type EpisodeReadServiceHandler interface {
 	// published episode they may read. Unpublished, foreign, missing, and
 	// inaccessible episodes are all surfaced as NotFound.
 	MarkEpisodeAsRead(context.Context, *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error)
+	// Stores where the authenticated member stopped in an episode they may read.
+	// Saving the same page again changes nothing, and a page they went back to
+	// is accepted like any other. Unpublished, foreign, missing, and
+	// inaccessible episodes are all surfaced as NotFound.
+	SaveReadingPosition(context.Context, *connect.Request[v1.SaveReadingPositionRequest]) (*connect.Response[v1.SaveReadingPositionResponse], error)
+	// Returns where the authenticated member stopped in an episode. An episode
+	// they may no longer read has no position, the same answer as one they never
+	// opened.
+	GetMyReadingPosition(context.Context, *connect.Request[v1.GetMyReadingPositionRequest]) (*connect.Response[v1.GetMyReadingPositionResponse], error)
+	// Returns the authenticated member's standing in one published series. It is
+	// separate from CatalogService.GetSeriesDetail so the series detail stays
+	// shared-cacheable while this read stays private.
+	GetMySeriesProgress(context.Context, *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error)
 }
 
 // NewEpisodeReadServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -479,10 +550,34 @@ func NewEpisodeReadServiceHandler(svc EpisodeReadServiceHandler, opts ...connect
 		connect.WithSchema(episodeReadServiceMethods.ByName("MarkEpisodeAsRead")),
 		connect.WithHandlerOptions(opts...),
 	)
+	episodeReadServiceSaveReadingPositionHandler := connect.NewUnaryHandler(
+		EpisodeReadServiceSaveReadingPositionProcedure,
+		svc.SaveReadingPosition,
+		connect.WithSchema(episodeReadServiceMethods.ByName("SaveReadingPosition")),
+		connect.WithHandlerOptions(opts...),
+	)
+	episodeReadServiceGetMyReadingPositionHandler := connect.NewUnaryHandler(
+		EpisodeReadServiceGetMyReadingPositionProcedure,
+		svc.GetMyReadingPosition,
+		connect.WithSchema(episodeReadServiceMethods.ByName("GetMyReadingPosition")),
+		connect.WithHandlerOptions(opts...),
+	)
+	episodeReadServiceGetMySeriesProgressHandler := connect.NewUnaryHandler(
+		EpisodeReadServiceGetMySeriesProgressProcedure,
+		svc.GetMySeriesProgress,
+		connect.WithSchema(episodeReadServiceMethods.ByName("GetMySeriesProgress")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.EpisodeReadService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case EpisodeReadServiceMarkEpisodeAsReadProcedure:
 			episodeReadServiceMarkEpisodeAsReadHandler.ServeHTTP(w, r)
+		case EpisodeReadServiceSaveReadingPositionProcedure:
+			episodeReadServiceSaveReadingPositionHandler.ServeHTTP(w, r)
+		case EpisodeReadServiceGetMyReadingPositionProcedure:
+			episodeReadServiceGetMyReadingPositionHandler.ServeHTTP(w, r)
+		case EpisodeReadServiceGetMySeriesProgressProcedure:
+			episodeReadServiceGetMySeriesProgressHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -494,6 +589,18 @@ type UnimplementedEpisodeReadServiceHandler struct{}
 
 func (UnimplementedEpisodeReadServiceHandler) MarkEpisodeAsRead(context.Context, *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.MarkEpisodeAsRead is not implemented"))
+}
+
+func (UnimplementedEpisodeReadServiceHandler) SaveReadingPosition(context.Context, *connect.Request[v1.SaveReadingPositionRequest]) (*connect.Response[v1.SaveReadingPositionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.SaveReadingPosition is not implemented"))
+}
+
+func (UnimplementedEpisodeReadServiceHandler) GetMyReadingPosition(context.Context, *connect.Request[v1.GetMyReadingPositionRequest]) (*connect.Response[v1.GetMyReadingPositionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.GetMyReadingPosition is not implemented"))
+}
+
+func (UnimplementedEpisodeReadServiceHandler) GetMySeriesProgress(context.Context, *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.GetMySeriesProgress is not implemented"))
 }
 
 // FollowServiceClient is a client for the publira.v1.FollowService service.

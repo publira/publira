@@ -16,9 +16,10 @@ import (
 	"github.com/publira/publira/server/internal/tenantconn"
 )
 
-// scopeEpisodeReadUser applies the member part of episode_reads' RLS policy to
-// the request connection. Direct handler tests use sqlmock and therefore have
-// no request connection to scope.
+// scopeEpisodeReadUser applies the member part of the RLS policies that guard
+// a reader's own history — episode_reads and episode_reading_positions — to the
+// request connection. Direct handler tests use sqlmock and therefore have no
+// request connection to scope.
 func (s *apiServer) scopeEpisodeReadUser(ctx context.Context, userID uuid.UUID) error {
 	conn, ok := rpcmiddleware.TenantConnFromContext(ctx)
 	if !ok {

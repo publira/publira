@@ -217,6 +217,15 @@ type EpisodeRead struct {
 	ReadAt    time.Time `json:"read_at"`
 }
 
+type EpisodeReadingPosition struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+	PageIndex int32     `json:"page_index"`
+	PageCount int32     `json:"page_count"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type ItemRecommendFeature struct {
 	TenantID       uuid.UUID       `json:"tenant_id"`
 	EntityType     string          `json:"entity_type"`

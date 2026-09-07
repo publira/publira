@@ -299,11 +299,79 @@ message MarkEpisodeAsReadResponse {
   string read_at = 1;
 }
 
+// Where a reader stopped inside one episode. page_index is zero-based, so the
+// last page is page_count - 1; page_count is what the episode held when the
+// position was saved, which is what lets a client show progress without
+// reading the episode itself.
+message ReadingPosition {
+  string episode_public_id = 1;
+  int32 page_index = 2;
+  int32 page_count = 3;
+  string updated_at = 4;
+}
+
+message SaveReadingPositionRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The public ID of the episode the signed-in member is reading.
+  string episode_public_id = 2;
+  // The zero-based page the member stopped on. A page outside the episode is
+  // invalid_argument.
+  int32 page_index = 3;
+}
+
+message SaveReadingPositionResponse {
+  ReadingPosition position = 1;
+}
+
+message GetMyReadingPositionRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+}
+
+message GetMyReadingPositionResponse {
+  // Unset when this member has no saved position in the episode, which is what
+  // a viewer opening it for the first time gets.
+  ReadingPosition position = 1;
+}
+
+message GetMySeriesProgressRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_public_id = 2;
+}
+
+// The member's standing in one series: the episode they last moved in, where
+// they stopped in it, and whether they already finished it. A series page
+// turns these three into "continue from here" or "start the next episode".
+message SeriesProgress {
+  publira.types.v1.Episode episode = 1;
+  ReadingPosition position = 2;
+  bool is_finished = 3;
+}
+
+message GetMySeriesProgressResponse {
+  // Unset when the member has opened no episode of the series they can still
+  // read.
+  SeriesProgress progress = 1;
+}
+
 service EpisodeReadService {
   // Idempotently records that the authenticated member finished a currently
   // published episode they may read. Unpublished, foreign, missing, and
   // inaccessible episodes are all surfaced as NotFound.
   rpc MarkEpisodeAsRead(MarkEpisodeAsReadRequest) returns (MarkEpisodeAsReadResponse) {}
+  // Stores where the authenticated member stopped in an episode they may read.
+  // Saving the same page again changes nothing, and a page they went back to
+  // is accepted like any other. Unpublished, foreign, missing, and
+  // inaccessible episodes are all surfaced as NotFound.
+  rpc SaveReadingPosition(SaveReadingPositionRequest) returns (SaveReadingPositionResponse) {}
+  // Returns where the authenticated member stopped in an episode. An episode
+  // they may no longer read has no position, the same answer as one they never
+  // opened.
+  rpc GetMyReadingPosition(GetMyReadingPositionRequest) returns (GetMyReadingPositionResponse) {}
+  // Returns the authenticated member's standing in one published series. It is
+  // separate from CatalogService.GetSeriesDetail so the series detail stays
+  // shared-cacheable while this read stays private.
+  rpc GetMySeriesProgress(GetMySeriesProgressRequest) returns (GetMySeriesProgressResponse) {}
 }
 
 // Kinds of public catalog targets a member can follow.
