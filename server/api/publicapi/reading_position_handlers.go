@@ -9,10 +9,18 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/pagination"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+)
+
+const (
+	defaultRecentSeriesPageSize = int32(20)
+	maxRecentSeriesPageSize     = int32(100)
 )
 
 // SaveReadingPosition stores where the authenticated member stopped inside an
@@ -155,4 +163,139 @@ func (s *apiServer) GetMySeriesProgress(
 			IsFinished: row.IsFinished,
 		},
 	}), nil
+}
+
+// ListMyRecentSeries answers what a "continue reading" row shows: the series
+// the authenticated member was in the middle of, newest activity first, each
+// with the episode to open and the page to open it at.
+//
+// The keyset scan is kept to the reader's own history and the identifiers it
+// settles on; the series display data is a second query, the way every other
+// paginated series list here is built.
+func (s *apiServer) ListMyRecentSeries(
+	ctx context.Context,
+	req *connect.Request[publirav1.ListMyRecentSeriesRequest],
+) (*connect.Response[publirav1.ListMyRecentSeriesResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRecentSeriesPageSize, maxRecentSeriesPageSize)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	}
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
+	}
+
+	// One row past the page: its presence is what says another page exists.
+	rows, err := s.recentSeriesPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list recent series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+
+	ids := make([]uuid.UUID, 0, len(rows))
+	rowBySeriesID := make(map[uuid.UUID]dbmodels.ListMyRecentSeriesDescRow, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.SeriesID)
+		rowBySeriesID[row.SeriesID] = row
+	}
+	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list recent series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	seriesItems, err := s.publishedSeriesItems(ctx, seriesRows)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]*publirav1.RecentSeries, 0, len(seriesItems))
+	for i, seriesRow := range seriesRows {
+		items = append(items, recentSeriesFromRow(seriesItems[i], rowBySeriesID[seriesRow.ID]))
+	}
+
+	res := &publirav1.ListMyRecentSeriesResponse{Series: items}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			first := rows[0]
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, first.LastActivityAt, first.SeriesID)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.LastActivityAt, last.SeriesID)
+		}
+	// An empty page means the boundary row moved after the token was issued.
+	// Hand back a token to where the client came from, and only once: a
+	// recovery token that comes back empty means the boundary is gone too, so
+	// both tokens stay empty rather than bouncing between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return noStorePrivateResponse(res), nil
+}
+
+// recentSeriesPage runs the keyset scan in the direction the cursor asks for.
+// The ascending query carries the previous-page direction and returns the same
+// columns, so its rows are converted rather than mapped through a third type.
+func (s *apiServer) recentSeriesPage(
+	ctx context.Context,
+	tenantID, userID uuid.UUID,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]dbmodels.ListMyRecentSeriesDescRow, error) {
+	queries := s.queriesFor(ctx)
+	params := dbmodels.ListMyRecentSeriesDescParams{
+		TenantID:             tenantID,
+		UserID:               userID,
+		CursorLastActivityAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		CursorInclusive:      keys.Inclusive,
+		CursorSeriesID:       uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		Limit:                limit,
+	}
+	if direction == pagination.Backward {
+		ascending, err := queries.ListMyRecentSeriesAsc(ctx, dbmodels.ListMyRecentSeriesAscParams(params))
+		if err != nil {
+			return nil, err
+		}
+		rows := make([]dbmodels.ListMyRecentSeriesDescRow, 0, len(ascending))
+		for _, row := range ascending {
+			rows = append(rows, dbmodels.ListMyRecentSeriesDescRow(row))
+		}
+		return rows, nil
+	}
+
+	return queries.ListMyRecentSeriesDesc(ctx, params)
+}
+
+func recentSeriesFromRow(series *publirattypesv1.Series, row dbmodels.ListMyRecentSeriesDescRow) *publirav1.RecentSeries {
+	item := &publirav1.RecentSeries{
+		Series:         series,
+		Episode:        protomapper.EpisodeFromListMyRecentSeriesRow(row),
+		LastActivityAt: row.LastActivityAt.UTC().Format(time.RFC3339Nano),
+	}
+	// The position is joined only when the reader can still open the body, so
+	// an episode they have yet to buy is offered without one.
+	if row.PositionUpdatedAt.Valid {
+		item.Position = &publirav1.ReadingPosition{
+			EpisodePublicId: row.EpisodePublicID,
+			PageIndex:       row.PageIndex.Int32,
+			PageCount:       row.PageCount.Int32,
+			UpdatedAt:       row.PositionUpdatedAt.Time.UTC().Format(time.RFC3339Nano),
+		}
+	}
+	return item
 }

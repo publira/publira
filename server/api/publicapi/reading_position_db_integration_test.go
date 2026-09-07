@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"testing"
 	"time"
 
@@ -367,5 +368,250 @@ func TestDBSeriesProgressSkipsAnEpisodeTheReaderCanNoLongerOpen(t *testing.T) {
 	}
 	if got := progress.Msg.Progress.GetEpisode().GetPublicId(); got != free.PublicID {
 		t.Fatalf("progress episode = %q, want the episode before the expired rental %q", got, free.PublicID)
+	}
+}
+
+func recentSeriesRequest(tenant testutil.Tenant, sessionToken string, limit int32, pageToken string) *connect.Request[publirav1.ListMyRecentSeriesRequest] {
+	return newBearerRequest(&publirav1.ListMyRecentSeriesRequest{
+		Tenant: tenantContext(tenant),
+		Limit:  limit,
+		Token:  pageToken,
+	}, sessionToken)
+}
+
+// recentSeriesPublicIDs is what the "continue reading" row would render: the
+// series in page order, each with the episode the offer opens.
+func recentSeriesPublicIDs(items []*publirav1.RecentSeries) []string {
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		ids = append(ids, item.GetSeries().GetPublicId()+"/"+item.GetEpisode().GetPublicId())
+	}
+	return ids
+}
+
+func TestDBListMyRecentSeriesOffersTheEpisodeAfterTheOneJustFinished(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRECA", "recent-a.example.com", "Recent A")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECA", "member-recent-a@example.com", "Member A", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRECA", Title: "Public series", Published: true})
+	var episodes []testutil.Episode
+	for _, publicID := range []string{"EPISODERECA", "EPISODERECB", "EPISODERECC", "EPISODERECD"} {
+		episodes = append(episodes, seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{
+			PublicID: publicID,
+			Title:    publicID,
+			Status:   testutil.EpisodeStatusPublished,
+		}, 10))
+	}
+	third, fourth := episodes[2], episodes[3]
+	client := env.episodeReadClient()
+	token := tokenFor(t, tenant, member)
+
+	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, third.PublicID, 9, token)); err != nil {
+		t.Fatalf("SaveReadingPosition: %v", err)
+	}
+	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, third.PublicID, token)); err != nil {
+		t.Fatalf("MarkEpisodeAsRead: %v", err)
+	}
+
+	response, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries: %v", err)
+	}
+	if got, want := recentSeriesPublicIDs(response.Msg.Series), []string{series.PublicID + "/" + fourth.PublicID}; !slices.Equal(got, want) {
+		t.Fatalf("series = %v, want %v", got, want)
+	}
+	// The next episode was never opened, so there is no page to resume at and
+	// the viewer starts the reader at the beginning.
+	if position := response.Msg.Series[0].GetPosition(); position != nil {
+		t.Fatalf("position = %+v, want none for an episode never opened", position)
+	}
+	if response.Msg.Series[0].GetLastActivityAt() == "" {
+		t.Fatal("last_activity_at is empty, want the time of the finished read")
+	}
+	if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
+		t.Fatalf("Cache-Control = %q, want private, no-store", got)
+	}
+}
+
+func TestDBListMyRecentSeriesDropsAFinishedSeriesUntilAnotherEpisodeIsPublished(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRECB", "recent-b.example.com", "Recent B")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECB", "member-recent-b@example.com", "Member B", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRECB", Title: "Public series", Published: true})
+	last := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERECE", Title: "Episode 1", Status: testutil.EpisodeStatusPublished}, 10)
+	client := env.episodeReadClient()
+	token := tokenFor(t, tenant, member)
+
+	// A finished mark is activity on its own: the position is written by the
+	// viewer, and a reader who only reached the end still read the series.
+	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, last.PublicID, token)); err != nil {
+		t.Fatalf("MarkEpisodeAsRead: %v", err)
+	}
+	finished, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries after finishing the last episode: %v", err)
+	}
+	if len(finished.Msg.Series) != 0 {
+		t.Fatalf("series = %v, want none while nothing is left to read", recentSeriesPublicIDs(finished.Msg.Series))
+	}
+
+	next := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERECF", Title: "Episode 2", Status: testutil.EpisodeStatusPublished}, 10)
+	reopened, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries after another episode was published: %v", err)
+	}
+	if got, want := recentSeriesPublicIDs(reopened.Msg.Series), []string{series.PublicID + "/" + next.PublicID}; !slices.Equal(got, want) {
+		t.Fatalf("series = %v, want %v", got, want)
+	}
+}
+
+func TestDBListMyRecentSeriesPagesNewestActivityFirst(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRECC", "recent-c.example.com", "Recent C")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECC", "member-recent-c@example.com", "Member C", "tenant_member")
+	client := env.episodeReadClient()
+	token := tokenFor(t, tenant, member)
+
+	type opened struct {
+		series  testutil.Series
+		episode testutil.Episode
+	}
+	var reading []opened
+	for i, ids := range [][2]string{{"SERIESRECC", "EPISODERECG"}, {"SERIESRECD", "EPISODERECH"}, {"SERIESRECE", "EPISODERECI"}} {
+		series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: ids[0], Title: ids[0], Published: true})
+		episode := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: ids[1], Title: ids[1], Status: testutil.EpisodeStatusPublished}, 10)
+		// Saved oldest first, so the list order is the reverse of the seed order.
+		if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.PublicID, int32(i), token)); err != nil {
+			t.Fatalf("SaveReadingPosition %s: %v", episode.PublicID, err)
+		}
+		reading = append(reading, opened{series: series, episode: episode})
+	}
+	first, second, third := reading[0], reading[1], reading[2]
+
+	page, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 2, ""))
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries: %v", err)
+	}
+	want := []string{third.series.PublicID + "/" + third.episode.PublicID, second.series.PublicID + "/" + second.episode.PublicID}
+	if got := recentSeriesPublicIDs(page.Msg.Series); !slices.Equal(got, want) {
+		t.Fatalf("first page = %v, want %v", got, want)
+	}
+	if got := page.Msg.Series[0].GetPosition().GetPageIndex(); got != 2 {
+		t.Fatalf("position = %+v, want the page the reader stopped on", page.Msg.Series[0].GetPosition())
+	}
+	if page.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", page.Msg.PreviousToken)
+	}
+	if page.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token while a series remains")
+	}
+
+	rest, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 2, page.Msg.NextToken))
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries next page: %v", err)
+	}
+	if got, want := recentSeriesPublicIDs(rest.Msg.Series), []string{first.series.PublicID + "/" + first.episode.PublicID}; !slices.Equal(got, want) {
+		t.Fatalf("second page = %v, want %v", got, want)
+	}
+	if rest.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", rest.Msg.NextToken)
+	}
+
+	back, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 2, rest.Msg.PreviousToken))
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries previous page: %v", err)
+	}
+	if got := recentSeriesPublicIDs(back.Msg.Series); !slices.Equal(got, want) {
+		t.Fatalf("page back = %v, want the first page again %v", got, want)
+	}
+}
+
+func TestDBListMyRecentSeriesSkipsASeriesThatIsNoLongerPublished(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRECD", "recent-d.example.com", "Recent D")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECD", "member-recent-d@example.com", "Member D", "tenant_member")
+	staying := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRECF", Title: "Staying", Published: true})
+	withdrawn := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRECG", Title: "Withdrawn", Published: true})
+	stayingEpisode := seedEpisodeWithPages(t, env, tenant.ID, staying.ID, testutil.EpisodeSeed{PublicID: "EPISODERECJ", Title: "Episode 1", Status: testutil.EpisodeStatusPublished}, 10)
+	withdrawnEpisode := seedEpisodeWithPages(t, env, tenant.ID, withdrawn.ID, testutil.EpisodeSeed{PublicID: "EPISODERECK", Title: "Episode 1", Status: testutil.EpisodeStatusPublished}, 10)
+	client := env.episodeReadClient()
+	token := tokenFor(t, tenant, member)
+
+	for _, publicID := range []string{stayingEpisode.PublicID, withdrawnEpisode.PublicID} {
+		if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, publicID, 4, token)); err != nil {
+			t.Fatalf("SaveReadingPosition %s: %v", publicID, err)
+		}
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(),
+		"UPDATE series SET is_published = false WHERE id = $1", withdrawn.ID,
+	); err != nil {
+		t.Fatalf("unpublish series: %v", err)
+	}
+
+	response, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries: %v", err)
+	}
+	if got, want := recentSeriesPublicIDs(response.Msg.Series), []string{staying.PublicID + "/" + stayingEpisode.PublicID}; !slices.Equal(got, want) {
+		t.Fatalf("series = %v, want only the published one %v", got, want)
+	}
+}
+
+func TestDBListMyRecentSeriesOffersAnEpisodeWithoutAPositionTheReaderCannotReach(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRECE", "recent-e.example.com", "Recent E")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECE", "member-recent-e@example.com", "Member E", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRECH", Title: "Public series", Published: true})
+	rented := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERECL", Title: "Rented", Status: testutil.EpisodeStatusPublished, Price: 500}, 10)
+	ticketID := uuid.Must(uuid.NewV7())
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, ticketID, tenant.ID, "TICKETREC001", rented.ID, member.ID, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("seed access ticket: %v", err)
+	}
+	client := env.episodeReadClient()
+	token := tokenFor(t, tenant, member)
+
+	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, rented.PublicID, 8, token)); err != nil {
+		t.Fatalf("SaveReadingPosition: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(),
+		"UPDATE access_tickets SET expires_at = $1 WHERE id = $2", time.Now().Add(-time.Minute), ticketID,
+	); err != nil {
+		t.Fatalf("expire access ticket: %v", err)
+	}
+
+	response, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries: %v", err)
+	}
+	if got, want := recentSeriesPublicIDs(response.Msg.Series), []string{series.PublicID + "/" + rented.PublicID}; !slices.Equal(got, want) {
+		t.Fatalf("series = %v, want the episode the reader is sent to rent again %v", got, want)
+	}
+	if position := response.Msg.Series[0].GetPosition(); position != nil {
+		t.Fatalf("position = %+v, want none while the reader cannot open the body", position)
+	}
+}
+
+func TestDBListMyRecentSeriesShowsNothingOfAnotherMembersReading(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRECF", "recent-f.example.com", "Recent F")
+	reader := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECF", "member-recent-f@example.com", "Member F", "tenant_member")
+	other := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECG", "member-recent-g@example.com", "Member G", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRECI", Title: "Public series", Published: true})
+	episode := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERECM", Title: "Episode 1", Status: testutil.EpisodeStatusPublished}, 10)
+	client := env.episodeReadClient()
+
+	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.PublicID, 6, tokenFor(t, tenant, reader))); err != nil {
+		t.Fatalf("SaveReadingPosition: %v", err)
+	}
+
+	response, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, tokenFor(t, tenant, other), 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries as another member: %v", err)
+	}
+	if len(response.Msg.Series) != 0 {
+		t.Fatalf("series = %v, want none of the other member's reading", recentSeriesPublicIDs(response.Msg.Series))
 	}
 }

@@ -591,6 +591,39 @@ type Querier interface {
 	ListLatestContentRatingsByEntity(ctx context.Context, arg ListLatestContentRatingsByEntityParams) ([]ListLatestContentRatingsByEntityRow, error)
 	ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error)
 	ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error)
+	// The backward direction of ListMyRecentSeriesDesc.
+	ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSeriesAscParams) ([]ListMyRecentSeriesAscRow, error)
+	// The series the reader is in the middle of, their newest activity first, each
+	// with the episode a "continue reading" offer should open.
+	//
+	// Activity is either half of what a reader leaves behind: a saved position and
+	// a finished mark both count, and the newer of the two is when they last moved
+	// in that episode. The two writes happen at different moments of the same
+	// reading, so taking only one of them would lose a reader who finished
+	// episodes without ever saving a page, and would freeze a series at the last
+	// page saved in it.
+	//
+	// The episode to continue from is the one the last activity is on while it is
+	// still unfinished, and otherwise the first published episode after it the
+	// reader has not finished. A series whose published episodes are all finished
+	// produces no such episode and is dropped by the join, which is what takes it
+	// out of the list until another episode is published.
+	//
+	// Publication decides what may be named, and body access decides only what may
+	// be resumed. An episode the reader has not bought is still the one they are
+	// meant to open next, because its own page is where they buy it; its saved
+	// position is withheld, because a page they cannot reach is not a place to
+	// resume. Episodes of an unpublished series are dropped ahead of all of that,
+	// so a series taken down reads like one that was never opened.
+	//
+	// The sort key is an aggregate over the reader's own rows rather than a stored
+	// column, so no index orders it directly. Both halves of the scan start from
+	// the (tenant_id, user_id) prefix of their primary keys, which bounds the work
+	// by one reader's history instead of by the tenant's.
+	//
+	// Backward calls ListMyRecentSeriesAsc, and the caller sorts the rows back.
+	// cursor rules: proto/README.md.
+	ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSeriesDescParams) ([]ListMyRecentSeriesDescRow, error)
 	ListNotificationsForUserAsc(ctx context.Context, arg ListNotificationsForUserAscParams) ([]ListNotificationsForUserAscRow, error)
 	// ListNotifications is (created_at, id) DESC. Forward uses the DESC query;
 	// backward uses ASC so the index can be scanned in reverse. The handler

@@ -85,6 +85,9 @@ const (
 	// EpisodeReadServiceGetMySeriesProgressProcedure is the fully-qualified name of the
 	// EpisodeReadService's GetMySeriesProgress RPC.
 	EpisodeReadServiceGetMySeriesProgressProcedure = "/publira.v1.EpisodeReadService/GetMySeriesProgress"
+	// EpisodeReadServiceListMyRecentSeriesProcedure is the fully-qualified name of the
+	// EpisodeReadService's ListMyRecentSeries RPC.
+	EpisodeReadServiceListMyRecentSeriesProcedure = "/publira.v1.EpisodeReadService/ListMyRecentSeries"
 	// FollowServiceGetMyFollowStatusProcedure is the fully-qualified name of the FollowService's
 	// GetMyFollowStatus RPC.
 	FollowServiceGetMyFollowStatusProcedure = "/publira.v1.FollowService/GetMyFollowStatus"
@@ -489,6 +492,13 @@ type EpisodeReadServiceClient interface {
 	// separate from CatalogService.GetSeriesDetail so the series detail stays
 	// shared-cacheable while this read stays private.
 	GetMySeriesProgress(context.Context, *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error)
+	// The series the authenticated member was in the middle of, newest activity
+	// first, each with the episode to continue from. A series whose published
+	// episodes the member has all finished is not in the middle of anything and
+	// drops out until another episode is published. A series that is no longer
+	// published is skipped like one the member never read, so the list never
+	// names something the storefront has taken down.
+	ListMyRecentSeries(context.Context, *connect.Request[v1.ListMyRecentSeriesRequest]) (*connect.Response[v1.ListMyRecentSeriesResponse], error)
 }
 
 // NewEpisodeReadServiceClient constructs a client for the publira.v1.EpisodeReadService service. By
@@ -526,6 +536,12 @@ func NewEpisodeReadServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(episodeReadServiceMethods.ByName("GetMySeriesProgress")),
 			connect.WithClientOptions(opts...),
 		),
+		listMyRecentSeries: connect.NewClient[v1.ListMyRecentSeriesRequest, v1.ListMyRecentSeriesResponse](
+			httpClient,
+			baseURL+EpisodeReadServiceListMyRecentSeriesProcedure,
+			connect.WithSchema(episodeReadServiceMethods.ByName("ListMyRecentSeries")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -535,6 +551,7 @@ type episodeReadServiceClient struct {
 	saveReadingPosition  *connect.Client[v1.SaveReadingPositionRequest, v1.SaveReadingPositionResponse]
 	getMyReadingPosition *connect.Client[v1.GetMyReadingPositionRequest, v1.GetMyReadingPositionResponse]
 	getMySeriesProgress  *connect.Client[v1.GetMySeriesProgressRequest, v1.GetMySeriesProgressResponse]
+	listMyRecentSeries   *connect.Client[v1.ListMyRecentSeriesRequest, v1.ListMyRecentSeriesResponse]
 }
 
 // MarkEpisodeAsRead calls publira.v1.EpisodeReadService.MarkEpisodeAsRead.
@@ -557,6 +574,11 @@ func (c *episodeReadServiceClient) GetMySeriesProgress(ctx context.Context, req 
 	return c.getMySeriesProgress.CallUnary(ctx, req)
 }
 
+// ListMyRecentSeries calls publira.v1.EpisodeReadService.ListMyRecentSeries.
+func (c *episodeReadServiceClient) ListMyRecentSeries(ctx context.Context, req *connect.Request[v1.ListMyRecentSeriesRequest]) (*connect.Response[v1.ListMyRecentSeriesResponse], error) {
+	return c.listMyRecentSeries.CallUnary(ctx, req)
+}
+
 // EpisodeReadServiceHandler is an implementation of the publira.v1.EpisodeReadService service.
 type EpisodeReadServiceHandler interface {
 	// Idempotently records that the authenticated member finished a currently
@@ -576,6 +598,13 @@ type EpisodeReadServiceHandler interface {
 	// separate from CatalogService.GetSeriesDetail so the series detail stays
 	// shared-cacheable while this read stays private.
 	GetMySeriesProgress(context.Context, *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error)
+	// The series the authenticated member was in the middle of, newest activity
+	// first, each with the episode to continue from. A series whose published
+	// episodes the member has all finished is not in the middle of anything and
+	// drops out until another episode is published. A series that is no longer
+	// published is skipped like one the member never read, so the list never
+	// names something the storefront has taken down.
+	ListMyRecentSeries(context.Context, *connect.Request[v1.ListMyRecentSeriesRequest]) (*connect.Response[v1.ListMyRecentSeriesResponse], error)
 }
 
 // NewEpisodeReadServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -609,6 +638,12 @@ func NewEpisodeReadServiceHandler(svc EpisodeReadServiceHandler, opts ...connect
 		connect.WithSchema(episodeReadServiceMethods.ByName("GetMySeriesProgress")),
 		connect.WithHandlerOptions(opts...),
 	)
+	episodeReadServiceListMyRecentSeriesHandler := connect.NewUnaryHandler(
+		EpisodeReadServiceListMyRecentSeriesProcedure,
+		svc.ListMyRecentSeries,
+		connect.WithSchema(episodeReadServiceMethods.ByName("ListMyRecentSeries")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.EpisodeReadService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case EpisodeReadServiceMarkEpisodeAsReadProcedure:
@@ -619,6 +654,8 @@ func NewEpisodeReadServiceHandler(svc EpisodeReadServiceHandler, opts ...connect
 			episodeReadServiceGetMyReadingPositionHandler.ServeHTTP(w, r)
 		case EpisodeReadServiceGetMySeriesProgressProcedure:
 			episodeReadServiceGetMySeriesProgressHandler.ServeHTTP(w, r)
+		case EpisodeReadServiceListMyRecentSeriesProcedure:
+			episodeReadServiceListMyRecentSeriesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -642,6 +679,10 @@ func (UnimplementedEpisodeReadServiceHandler) GetMyReadingPosition(context.Conte
 
 func (UnimplementedEpisodeReadServiceHandler) GetMySeriesProgress(context.Context, *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.GetMySeriesProgress is not implemented"))
+}
+
+func (UnimplementedEpisodeReadServiceHandler) ListMyRecentSeries(context.Context, *connect.Request[v1.ListMyRecentSeriesRequest]) (*connect.Response[v1.ListMyRecentSeriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.ListMyRecentSeries is not implemented"))
 }
 
 // FollowServiceClient is a client for the publira.v1.FollowService service.

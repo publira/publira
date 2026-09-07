@@ -11,6 +11,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -20,6 +21,8 @@ const (
 	saveEpisodeReadingPositionQuery  = "-- name: SaveEpisodeReadingPosition :one\n"
 	getMyEpisodeReadingPositionQuery = "-- name: GetMyEpisodeReadingPosition :one\n"
 	getMySeriesReadingProgressQuery  = "-- name: GetMySeriesReadingProgress :one\n"
+	listMyRecentSeriesDescQuery      = "-- name: ListMyRecentSeriesDesc :many\n"
+	listMyRecentSeriesAscQuery       = "-- name: ListMyRecentSeriesAsc :many\n"
 )
 
 type readingPositionFixture struct {
@@ -265,4 +268,200 @@ func TestGetMySeriesProgressRejectsBlankSeriesPublicID(t *testing.T) {
 		t.Fatalf("GetMySeriesProgress blank ID error = %v, want invalid_argument", err)
 	}
 	assertPublicExpectations(t, fixture.mock)
+}
+
+// recentSeriesColumns is the keyset half of a recent series page: the series
+// id and sort key, the episode to continue from, and the position when the
+// reader may still open that episode's body.
+func recentSeriesColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"series_id", "last_activity_at", "episode_public_id", "episode_title", "order_index",
+		"price", "reading_period_hours", "status", "scheduled_at", "published_at",
+		"page_index", "page_count", "position_updated_at",
+	})
+}
+
+func (f *readingPositionFixture) recent(limit int32, token string) (*connect.Response[publirav1.ListMyRecentSeriesResponse], error) {
+	return f.client.ListMyRecentSeries(context.Background(), newAuthedPublicRequest(&publirav1.ListMyRecentSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
+		Limit:  limit,
+		Token:  token,
+	}, f.tenantID.String()))
+}
+
+func TestListMyRecentSeriesReturnsTheEpisodeToContinueFrom(t *testing.T) {
+	fixture := newReadingPositionFixture(t)
+	resumed := uuid.Must(uuid.NewV7())
+	started := uuid.Must(uuid.NewV7())
+	activity := fixture.now.Add(-time.Hour)
+
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(listMyRecentSeriesDescQuery)).
+		WithArgs(fixture.tenantID, fixture.userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(3)).
+		WillReturnRows(recentSeriesColumns().
+			AddRow(resumed, fixture.now, "EPISODE003", "Episode 3", int32(3), int32(0), nil, "published", nil, fixture.now, int32(11), int32(40), fixture.now).
+			AddRow(started, activity, "EPISODE004", "Episode 4", int32(4), int32(500), nil, "published", nil, activity, nil, nil, nil))
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(fixture.tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(started, "SERIES002", "Started", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, []byte("[]"), []byte("{}")).
+			AddRow(resumed, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, []byte("[]"), []byte("{}")))
+
+	response, err := fixture.recent(2, "")
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries: %v", err)
+	}
+	// The display query is unordered; the keyset scan is what decides the page
+	// order, and the handler puts the rows back into it.
+	items := make([]*publirattypesv1.Series, 0, len(response.Msg.Series))
+	for _, item := range response.Msg.Series {
+		items = append(items, item.GetSeries())
+	}
+	assertSeriesPublicIDs(t, items, "SERIES001", "SERIES002")
+
+	first := response.Msg.Series[0]
+	if got := first.GetEpisode().GetPublicId(); got != "EPISODE003" {
+		t.Fatalf("episode = %q, want the unfinished EPISODE003", got)
+	}
+	if got := first.GetPosition().GetPageIndex(); got != 11 {
+		t.Fatalf("position = %+v, want page 11", first.GetPosition())
+	}
+	if got, want := first.GetLastActivityAt(), fixture.now.Format(time.RFC3339Nano); got != want {
+		t.Fatalf("last_activity_at = %q, want %q", got, want)
+	}
+
+	// A next episode the reader has never opened has no position to resume, and
+	// a paid one they have not bought is offered all the same.
+	second := response.Msg.Series[1]
+	if got := second.GetEpisode().GetPublicId(); got != "EPISODE004" {
+		t.Fatalf("episode = %q, want the next EPISODE004", got)
+	}
+	if second.GetPosition() != nil {
+		t.Fatalf("position = %+v, want none for an episode never opened", second.GetPosition())
+	}
+
+	if response.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", response.Msg.PreviousToken)
+	}
+	if response.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", response.Msg.NextToken)
+	}
+	if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
+		t.Fatalf("Cache-Control = %q, want private, no-store", got)
+	}
+	assertPublicExpectations(t, fixture.mock)
+}
+
+func TestListMyRecentSeriesPagesForwardOnTheActivityCursor(t *testing.T) {
+	fixture := newReadingPositionFixture(t)
+	series := uuid.Must(uuid.NewV7())
+	boundary := uuid.Must(uuid.NewV7())
+	activity := fixture.now.Add(-2 * time.Hour)
+
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(listMyRecentSeriesDescQuery)).
+		WithArgs(fixture.tenantID, fixture.userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(2)).
+		WillReturnRows(recentSeriesColumns().
+			AddRow(series, fixture.now, "EPISODE001", "Episode 1", int32(1), int32(0), nil, "published", nil, fixture.now, int32(2), int32(20), fixture.now).
+			AddRow(boundary, activity, "EPISODE009", "Episode 9", int32(9), int32(0), nil, "published", nil, activity, nil, nil, nil))
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(fixture.tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(series, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, []byte("[]"), []byte("{}")))
+
+	response, err := fixture.recent(1, "")
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries: %v", err)
+	}
+	// The over-fetched row is dropped from the page and is what says another
+	// page exists; the token names the last row that stayed.
+	if len(response.Msg.Series) != 1 {
+		t.Fatalf("series = %d, want the single row of the page", len(response.Msg.Series))
+	}
+	want := pagination.EncodeTimeUUID(pagination.Forward, fixture.now, series)
+	if response.Msg.NextToken != want {
+		t.Fatalf("next_token = %q, want the token of the last row on the page", response.Msg.NextToken)
+	}
+	assertPublicExpectations(t, fixture.mock)
+}
+
+func TestListMyRecentSeriesReadsTheBackwardDirectionAscending(t *testing.T) {
+	fixture := newReadingPositionFixture(t)
+	series := uuid.Must(uuid.NewV7())
+	boundary := uuid.Must(uuid.NewV7())
+	token := pagination.EncodeTimeUUID(pagination.Backward, fixture.now, boundary)
+
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(listMyRecentSeriesAscQuery)).
+		WithArgs(fixture.tenantID, fixture.userID, sql.NullTime{Time: fixture.now, Valid: true}, false, uuid.NullUUID{UUID: boundary, Valid: true}, int32(21)).
+		WillReturnRows(recentSeriesColumns().
+			AddRow(series, fixture.now, "EPISODE001", "Episode 1", int32(1), int32(0), nil, "published", nil, fixture.now, int32(2), int32(20), fixture.now))
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(fixture.tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(series, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, []byte("[]"), []byte("{}")))
+
+	response, err := fixture.recent(0, token)
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries: %v", err)
+	}
+	if len(response.Msg.Series) != 1 {
+		t.Fatalf("series = %d, want the single row of the page", len(response.Msg.Series))
+	}
+	// The side the client came from is known to hold rows without asking.
+	if response.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want the way back to the page the client came from")
+	}
+	if response.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan ran out", response.Msg.PreviousToken)
+	}
+	assertPublicExpectations(t, fixture.mock)
+}
+
+func TestListMyRecentSeriesRecoversOnceFromAnEmptyPage(t *testing.T) {
+	fixture := newReadingPositionFixture(t)
+	boundary := uuid.Must(uuid.NewV7())
+	token := pagination.EncodeTimeUUID(pagination.Forward, fixture.now, boundary)
+
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(listMyRecentSeriesDescQuery)).
+		WithArgs(fixture.tenantID, fixture.userID, sql.NullTime{Time: fixture.now, Valid: true}, false, uuid.NullUUID{UUID: boundary, Valid: true}, int32(21)).
+		WillReturnRows(recentSeriesColumns())
+
+	response, err := fixture.recent(0, token)
+	if err != nil {
+		t.Fatalf("ListMyRecentSeries: %v", err)
+	}
+	if len(response.Msg.Series) != 0 {
+		t.Fatalf("series = %d, want none", len(response.Msg.Series))
+	}
+	want := pagination.EncodeTimeUUIDRecovery(pagination.Backward, fixture.now, boundary)
+	if response.Msg.PreviousToken != want {
+		t.Fatalf("previous_token = %q, want the recovery token back to the boundary row", response.Msg.PreviousToken)
+	}
+	if response.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty", response.Msg.NextToken)
+	}
+	assertPublicExpectations(t, fixture.mock)
+}
+
+func TestListMyRecentSeriesRejectsAMalformedToken(t *testing.T) {
+	fixture := newReadingPositionFixture(t)
+
+	_, err := fixture.recent(10, "not-a-token")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListMyRecentSeries error = %v, want invalid_argument", err)
+	}
+	assertPublicExpectations(t, fixture.mock)
+}
+
+func TestListMyRecentSeriesRequiresASession(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	testServer, mock := newTestPublicServer(t)
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now().UTC())
+	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
+
+	_, err := client.ListMyRecentSeries(context.Background(), connect.NewRequest(&publirav1.ListMyRecentSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("ListMyRecentSeries without a bearer error = %v, want unauthenticated", err)
+	}
+	assertPublicExpectations(t, mock)
 }
