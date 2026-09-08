@@ -65,7 +65,7 @@ start_profile() {
   dev_env_load_profile "${name}"
   run_dir="$(dev_env_profile_run_dir "${name}")"
   mkdir -p "${run_dir}"
-  if compgen -G "${run_dir}/*.pid" >/dev/null; then
+  if dev_env_profile_has_running_processes "${name}"; then
     dev_env_die "profile ${name} already has running processes; run: task dev-env:stop"
   fi
   local port
@@ -176,7 +176,7 @@ destroy_profile() {
   dev_env_load_profile "${name}"
   in_use="$(dev_env_profile_in_use "${name}")"
   [[ -z "${in_use}" ]] || dev_env_die "profile ${name} is still selected by: ${in_use}"
-  [[ ! -d "$(dev_env_profile_run_dir "${name}")" ]] || dev_env_die "stop profile ${name} before destroying it"
+  ! dev_env_profile_has_running_processes "${name}" || dev_env_die "stop profile ${name} before destroying it"
   read -r -p "Type ${name} to destroy its database, Valkey DB, and bucket: " confirmation
   [[ "${confirmation}" == "${name}" ]] || dev_env_die "confirmation did not match; nothing was destroyed"
   db_name="publira_${DEV_ENV_NAME//-/_}"

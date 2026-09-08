@@ -193,3 +193,22 @@ dev_env_process_group_is_running "${foreign_pgid}" || fail "a process group outs
 [[ ! -e "${foreign_run_dir}/web.pid" ]] || fail "the pid file of a pid taken over by another process was kept"
 kill -s KILL -- "-${foreign_pgid}"
 pass "a pid whose process group no longer belongs to this repository is not signalled"
+
+# The run directory outlives the run: `dev_env_stop_profile` removes the pid
+# files and then cannot `rmdir` a directory that still holds the logs. Reading
+# the directory would therefore call every profile that has ever been started a
+# running one.
+logged_run_dir="$(dev_env_profile_run_dir logged)"
+start_fake_service "${logged_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
+dev_env_profile_has_running_processes logged || fail "a profile whose service is running was not reported as running"
+dev_env_stop_profile logged >/dev/null
+[[ -f "${logged_run_dir}/web.log" ]] || fail "the log of a stopped service was removed"
+if dev_env_profile_has_running_processes logged; then
+  fail "a stopped profile whose logs are still on disk was reported as running"
+fi
+pass "a profile is running while a pid file names one of its services, not while its logs remain"
+
+if dev_env_profile_has_running_processes never-started; then
+  fail "a profile with no run directory was reported as running"
+fi
+pass "a profile that was never started is not reported as running"

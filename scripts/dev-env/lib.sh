@@ -344,6 +344,15 @@ dev_env_profile_run_dir() {
   printf '%s/runs/%s\n' "${DEV_ENV_HOME}" "$1"
 }
 
+# Whether a profile still has processes of its own. The run directory outlives
+# them: a stop removes the pid file of every service it ended, but the logs of
+# that run are kept for reading afterwards, so the directory itself says only
+# that the profile was started once. A pid file exists for as long as the
+# processes it names do, which is the question both start and destroy ask.
+dev_env_profile_has_running_processes() {
+  compgen -G "$(dev_env_profile_run_dir "$1")/*.pid" >/dev/null
+}
+
 # Starts one service of a profile, detached, and records the pid that stands
 # for it. That pid is also the id of a process group holding nothing else,
 # because job control puts a background job in a group of its own, and
