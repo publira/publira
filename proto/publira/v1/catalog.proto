@@ -92,6 +92,24 @@ enum EpisodeAccess {
   EPISODE_ACCESS_ENTITLED = 3;
 }
 
+// A published episode next to the one being read, in its own series. It holds
+// what a link to that episode needs and nothing about the reader, so an
+// episode detail carrying it stays as cacheable as it was; what the reader may
+// do with the neighbour's body is decided when they open it.
+message EpisodeNeighbor {
+  string public_id = 1;
+  string title = 2;
+  int32 order_index = 3;
+  // What the episode costs. It stays the stored price while a free window is
+  // open, because that is what the episode costs again once the window closes.
+  int32 price = 4;
+  // Whether the body is public right now: price is 0, or a free window is open
+  // on it. It is resolved here rather than read off the price, so a link
+  // cannot say "paid" about an episode that is free at the moment the reader
+  // follows it.
+  bool is_free = 5;
+}
+
 // Episode detail for public viewing.
 // Body/content is represented as ordered images for the reader UI.
 message GetEpisodeDetailResponse {
@@ -107,6 +125,13 @@ message GetEpisodeDetailResponse {
   // to. An episode whose price is 0 carries no value here: it is not free
   // until anything.
   string free_until = 5;
+  // The published episodes either side of this one in the same series, by
+  // order_index and then id, which is the order the series detail lists them
+  // in. Unset at the ends of the series, and both unset when the series has
+  // this episode alone. A draft or scheduled episode is never one of them, so
+  // the pair moves as episodes are published, reordered, or taken down.
+  EpisodeNeighbor previous_episode = 6;
+  EpisodeNeighbor next_episode = 7;
 }
 
 // A creator that currently has at least one published series.

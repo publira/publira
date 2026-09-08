@@ -422,6 +422,7 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 			episodeID, "EPISODE001", "Episode Title", int32(1), seriesID,
 			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil,
 		))
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
 	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{

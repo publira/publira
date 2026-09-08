@@ -766,6 +766,7 @@ func TestCatalogGetEpisodeDetailReportsTheSeriesAgeRating(t *testing.T) {
 		WithArgs(tenantID, "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "free_until"}).
 			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "r18", nil))
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
@@ -984,6 +985,9 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
+			if tc.wantCode == 0 {
+				expectEpisodeNeighborsLookup(mock, tenantID, normalSeriesID, int32(1), normalEpisodeID)
+			}
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
@@ -1147,6 +1151,8 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 				expectTenantLookup(mock, tenantID, "TENANT", now)
 			}
 
+			expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
+
 			if tc.wantImageCount > 0 {
 				mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
 					WithArgs(episodeID).
@@ -1220,6 +1226,152 @@ func TestUserHasEpisodeContentAccessQueryCoversPurchasesAndTickets(t *testing.T)
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(userHasEpisodeContentAccessQuery, snippet) {
 			t.Fatalf("userHasEpisodeContentAccessQuery does not contain %q", snippet)
+		}
+	}
+}
+
+// The detail carries the episodes either side of the one being read, so a
+// viewer draws its own navigation from the response it already has. The fields
+// restate the neighbour's price rather than the reader's standing in it, which
+// is what lets a locked episode's detail stay as cacheable as a free one.
+func TestCatalogGetEpisodeDetailCarriesItsNeighbors(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
+		WithArgs(tenantID, "EPISODE002").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "free_until"}).
+			AddRow(episodeID, "EPISODE002", "Chapter Two", int32(2), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil))
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(2), episodeID,
+		episodeNeighbor{direction: -1, publicID: "EPISODE001", title: "Chapter One", orderIndex: 1, price: 0, isFree: true},
+		episodeNeighbor{direction: 1, publicID: "EPISODE003", title: "Chapter Three", orderIndex: 3, price: 500},
+	)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "EPISODE002",
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+
+	previous := resp.Msg.PreviousEpisode
+	if previous.GetPublicId() != "EPISODE001" || previous.GetTitle() != "Chapter One" || previous.GetOrderIndex() != 1 {
+		t.Fatalf("previous_episode = %+v, want Chapter One at order 1", previous)
+	}
+	if previous.GetPrice() != 0 || !previous.GetIsFree() {
+		t.Fatalf("previous_episode price = %d, is_free = %t, want a free neighbour", previous.GetPrice(), previous.GetIsFree())
+	}
+
+	next := resp.Msg.NextEpisode
+	if next.GetPublicId() != "EPISODE003" || next.GetTitle() != "Chapter Three" || next.GetOrderIndex() != 3 {
+		t.Fatalf("next_episode = %+v, want Chapter Three at order 3", next)
+	}
+	if next.GetPrice() != 500 || next.GetIsFree() {
+		t.Fatalf("next_episode price = %d, is_free = %t, want a paid neighbour", next.GetPrice(), next.GetIsFree())
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// A priced episode inside an open free window is free to read while the window
+// lasts, and its price is what it costs again afterwards. The link carries both,
+// so a viewer marks it free without contradicting the price beside it.
+func TestCatalogGetEpisodeDetailMarksAPricedNeighborInAFreeWindowAsFree(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
+		WithArgs(tenantID, "EPISODE001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "free_until"}).
+			AddRow(episodeID, "EPISODE001", "Chapter One", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil))
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID,
+		episodeNeighbor{direction: 1, publicID: "EPISODE002", title: "Chapter Two", orderIndex: 2, price: 500, isFree: true},
+	)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "EPISODE001",
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+	next := resp.Msg.NextEpisode
+	if !next.GetIsFree() {
+		t.Fatalf("next_episode is_free = %t, want a neighbour inside a free window to read as free", next.GetIsFree())
+	}
+	if next.GetPrice() != 500 {
+		t.Fatalf("next_episode price = %d, want the price it costs once the window closes", next.GetPrice())
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// An end of the series leaves its side unset rather than naming the episode
+// being read, so a viewer can draw one link where there is only one.
+func TestCatalogGetEpisodeDetailLeavesAMissingNeighborUnset(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
+		WithArgs(tenantID, "EPISODE001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "free_until"}).
+			AddRow(episodeID, "EPISODE001", "Chapter One", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil))
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID,
+		episodeNeighbor{direction: 1, publicID: "EPISODE002", title: "Chapter Two", orderIndex: 2, price: 0, isFree: true},
+	)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "EPISODE001",
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+	if resp.Msg.PreviousEpisode != nil {
+		t.Fatalf("previous_episode = %+v, want none before the first episode", resp.Msg.PreviousEpisode)
+	}
+	if resp.Msg.NextEpisode.GetPublicId() != "EPISODE002" {
+		t.Fatalf("next_episode = %q, want EPISODE002", resp.Msg.NextEpisode.GetPublicId())
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// The neighbour query is what keeps a draft or scheduled episode from becoming
+// a link on a published one, on both sides of the episode being read.
+func TestListPublishedEpisodeNeighborsQueryHasPublicationGuards(t *testing.T) {
+	requiredSnippets := []string{
+		"s.is_published = true",
+		"s.published_at IS NOT NULL",
+		"s.published_at <= NOW()",
+		"el.status = 'published'",
+		"el.published_at IS NOT NULL",
+		"el.published_at <= NOW()",
+		// is_free follows the same rule as the body access it describes.
+		"FROM episode_free_windows fw",
+	}
+	for _, snippet := range requiredSnippets {
+		if strings.Count(listPublishedEpisodeNeighborsQuery, snippet) != 2 {
+			t.Fatalf("listPublishedEpisodeNeighborsQuery does not contain %q on both sides", snippet)
 		}
 	}
 }
