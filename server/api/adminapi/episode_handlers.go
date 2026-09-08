@@ -320,39 +320,6 @@ func (s *adminServer) GetEpisode(
 	}), nil
 }
 
-func validateEpisodePublicIDList(ids []string, field string) error {
-	if len(ids) == 0 {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s are required", field))
-	}
-	seen := make(map[string]struct{}, len(ids))
-	for _, id := range ids {
-		if strings.TrimSpace(id) == "" {
-			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s contains empty value", field))
-		}
-		if _, ok := seen[id]; ok {
-			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s contains duplicate episode", field))
-		}
-		seen[id] = struct{}{}
-	}
-	return nil
-}
-
-func sameEpisodePublicIDSet(left, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	want := make(map[string]struct{}, len(left))
-	for _, id := range left {
-		want[id] = struct{}{}
-	}
-	for _, id := range right {
-		if _, ok := want[id]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
 func listEpisodePublicIDs(rows []dbmodels.ListEpisodesBySeriesForTenantRow) []string {
 	ids := make([]string, 0, len(rows))
 	for _, row := range rows {
@@ -372,13 +339,13 @@ func (s *adminServer) ReorderEpisodes(
 	if strings.TrimSpace(req.Msg.SeriesPublicId) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
 	}
-	if err := validateEpisodePublicIDList(req.Msg.EpisodePublicIds, "episode_public_ids"); err != nil {
+	if err := validateReorderPublicIDs(req.Msg.EpisodePublicIds, "episode_public_ids", "episode"); err != nil {
 		return nil, err
 	}
-	if err := validateEpisodePublicIDList(req.Msg.ExpectedEpisodePublicIds, "expected_episode_public_ids"); err != nil {
+	if err := validateReorderPublicIDs(req.Msg.ExpectedEpisodePublicIds, "expected_episode_public_ids", "episode"); err != nil {
 		return nil, err
 	}
-	if !sameEpisodePublicIDSet(req.Msg.EpisodePublicIds, req.Msg.ExpectedEpisodePublicIds) {
+	if !samePublicIDSet(req.Msg.EpisodePublicIds, req.Msg.ExpectedEpisodePublicIds) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids must be a permutation of expected_episode_public_ids"))
 	}
 

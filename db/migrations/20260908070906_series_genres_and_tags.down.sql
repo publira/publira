@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS series_tags;
+
+DROP TABLE IF EXISTS series_genres;
+
+DROP TABLE IF EXISTS tags;
+
+DROP TABLE IF EXISTS genres;

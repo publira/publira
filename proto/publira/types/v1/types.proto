@@ -94,6 +94,27 @@ enum SeriesAgeRating {
   SERIES_AGE_RATING_R18 = 3;
 }
 
+// One entry of the classification a tenant curates. The genre list is short,
+// ordered by the tenant, and managed from the console; `public_id` is what a
+// filter names, so a rename does not move it.
+message Genre {
+  string public_id = 1;
+  string name = 2;
+  // Unique within the tenant, derived from the name. It identifies the name
+  // rather than standing in for it: two genres cannot differ by case or
+  // spacing alone.
+  string slug = 3;
+}
+
+// A free-form label written on the series form. Tags have no console of their
+// own and no order: a tag exists because a series carries it, and stops
+// existing when the last one lets it go. It is addressed by slug, which is why
+// it carries no public_id.
+message Tag {
+  string name = 1;
+  string slug = 2;
+}
+
 message Series {
   string public_id = 1;
   string title = 2;
@@ -114,6 +135,10 @@ message Series {
   // series keeps no weekly schedule, which is a statement rather than a gap.
   repeated int32 schedule_weekdays = 14;
   SeriesAgeRating age_rating = 15;
+  // In the tenant's genre order, not the order they were assigned in.
+  repeated Genre genres = 16;
+  // By name, so a series presents its tags the same way every time.
+  repeated Tag tags = 17;
 }
 
 message Episode {

@@ -40,8 +40,16 @@ type CreateSeriesRequest struct {
 	// before it is stored; empty keeps no weekly schedule.
 	ScheduleWeekdays []int32            `protobuf:"varint,14,rep,packed,name=schedule_weekdays,json=scheduleWeekdays,proto3" json:"schedule_weekdays,omitempty"`
 	AgeRating        v1.SeriesAgeRating `protobuf:"varint,15,opt,name=age_rating,json=ageRating,proto3,enum=publira.types.v1.SeriesAgeRating" json:"age_rating,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Genres of this tenant, by public_id. An id naming no genre of the tenant
+	// is invalid_argument; the assignment carries no order of its own, because
+	// the series presents them in the tenant's genre order.
+	GenrePublicIds []string `protobuf:"bytes,16,rep,name=genre_public_ids,json=genrePublicIds,proto3" json:"genre_public_ids,omitempty"`
+	// Tag names as the editor typed them. A name used for the first time creates
+	// the tag; one that matches an existing tag's slug resolves to it, keeping
+	// the name that tag was created under. At most 20 per series.
+	TagNames      []string `protobuf:"bytes,17,rep,name=tag_names,json=tagNames,proto3" json:"tag_names,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateSeriesRequest) Reset() {
@@ -165,6 +173,20 @@ func (x *CreateSeriesRequest) GetAgeRating() v1.SeriesAgeRating {
 	return v1.SeriesAgeRating(0)
 }
 
+func (x *CreateSeriesRequest) GetGenrePublicIds() []string {
+	if x != nil {
+		return x.GenrePublicIds
+	}
+	return nil
+}
+
+func (x *CreateSeriesRequest) GetTagNames() []string {
+	if x != nil {
+		return x.TagNames
+	}
+	return nil
+}
+
 type CreateSeriesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
@@ -231,8 +253,14 @@ type UpdateSeriesRequest struct {
 	// before it is stored; empty keeps no weekly schedule.
 	ScheduleWeekdays []int32            `protobuf:"varint,14,rep,packed,name=schedule_weekdays,json=scheduleWeekdays,proto3" json:"schedule_weekdays,omitempty"`
 	AgeRating        v1.SeriesAgeRating `protobuf:"varint,15,opt,name=age_rating,json=ageRating,proto3,enum=publira.types.v1.SeriesAgeRating" json:"age_rating,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The whole assignment, the way creator_public_ids is: what this field holds
+	// is what the series carries afterwards, and an empty field clears it.
+	GenrePublicIds []string `protobuf:"bytes,16,rep,name=genre_public_ids,json=genrePublicIds,proto3" json:"genre_public_ids,omitempty"`
+	// Likewise the whole tag list. A tag the last series here lets go of is
+	// deleted, because nothing else keeps a tag alive.
+	TagNames      []string `protobuf:"bytes,17,rep,name=tag_names,json=tagNames,proto3" json:"tag_names,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateSeriesRequest) Reset() {
@@ -368,6 +396,20 @@ func (x *UpdateSeriesRequest) GetAgeRating() v1.SeriesAgeRating {
 		return x.AgeRating
 	}
 	return v1.SeriesAgeRating(0)
+}
+
+func (x *UpdateSeriesRequest) GetGenrePublicIds() []string {
+	if x != nil {
+		return x.GenrePublicIds
+	}
+	return nil
+}
+
+func (x *UpdateSeriesRequest) GetTagNames() []string {
+	if x != nil {
+		return x.TagNames
+	}
+	return nil
 }
 
 type UpdateSeriesResponse struct {
@@ -2198,7 +2240,7 @@ var File_publira_admin_v1_series_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\n" +
-	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xe6\x04\n" +
+	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xad\x05\n" +
 	"\x13CreateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -2213,9 +2255,11 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x06status\x18\r \x01(\x0e2\x1e.publira.types.v1.SeriesStatusR\x06status\x12+\n" +
 	"\x11schedule_weekdays\x18\x0e \x03(\x05R\x10scheduleWeekdays\x12@\n" +
 	"\n" +
-	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\"H\n" +
+	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12(\n" +
+	"\x10genre_public_ids\x18\x10 \x03(\tR\x0egenrePublicIds\x12\x1b\n" +
+	"\ttag_names\x18\x11 \x03(\tR\btagNames\"H\n" +
 	"\x14CreateSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xb6\x05\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xfd\x05\n" +
 	"\x13UpdateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
@@ -2233,7 +2277,9 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x06status\x18\r \x01(\x0e2\x1e.publira.types.v1.SeriesStatusR\x06status\x12+\n" +
 	"\x11schedule_weekdays\x18\x0e \x03(\x05R\x10scheduleWeekdays\x12@\n" +
 	"\n" +
-	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\"H\n" +
+	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12(\n" +
+	"\x10genre_public_ids\x18\x10 \x03(\tR\x0egenrePublicIds\x12\x1b\n" +
+	"\ttag_names\x18\x11 \x03(\tR\btagNames\"H\n" +
 	"\x14UpdateSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\x86\x01\n" +
 	"\x11ListSeriesRequest\x127\n" +

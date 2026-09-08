@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListGenresRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListGenresResponse {
+  // In the tenant's own order, which is what ReorderGenres writes.
+  repeated publira.types.v1.Genre genres = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message CreateGenreRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The slug is derived from this, so a name that collides with an existing
+  // genre on nothing but case or spacing is refused with already_exists.
+  string name = 2;
+}
+
+message CreateGenreResponse {
+  // Created at the end of the list. ReorderGenres is how it moves.
+  publira.types.v1.Genre genre = 1;
+}
+
+message UpdateGenreRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // Renaming re-derives the slug. The public_id does not move, so whatever
+  // addresses this genre keeps addressing it.
+  string name = 3;
+}
+
+message UpdateGenreResponse {
+  publira.types.v1.Genre genre = 1;
+}
+
+message ReorderGenresRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Desired order after the write. Must be a permutation of
+  // expected_genre_public_ids.
+  repeated string genre_public_ids = 2;
+  // The genre order the client read before composing genre_public_ids. The
+  // RPC locks the tenant's genres, re-reads the current order, and rejects the
+  // write with failed_precondition when this no longer matches.
+  repeated string expected_genre_public_ids = 3;
+}
+
+message ReorderGenresResponse {
+  repeated publira.types.v1.Genre genres = 1;
+}
+
+// Removes a genre no series carries. One that is still assigned is refused
+// with failed_precondition: dropping it would silently reclassify every series
+// holding it, so the editor is told to unassign it first.
+message DeleteGenreRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message DeleteGenreResponse {}
+
+service AdminGenreService {
+  rpc ListGenres(ListGenresRequest) returns (ListGenresResponse) {}
+  rpc CreateGenre(CreateGenreRequest) returns (CreateGenreResponse) {}
+  rpc UpdateGenre(UpdateGenreRequest) returns (UpdateGenreResponse) {}
+  rpc ReorderGenres(ReorderGenresRequest) returns (ReorderGenresResponse) {}
+  rpc DeleteGenre(DeleteGenreRequest) returns (DeleteGenreResponse) {}
+}

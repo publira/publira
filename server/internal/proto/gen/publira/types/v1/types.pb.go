@@ -686,6 +686,128 @@ func (x *ImageCropRect) GetHeight() int32 {
 	return 0
 }
 
+// One entry of the classification a tenant curates. The genre list is short,
+// ordered by the tenant, and managed from the console; `public_id` is what a
+// filter names, so a rename does not move it.
+type Genre struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Unique within the tenant, derived from the name. It identifies the name
+	// rather than standing in for it: two genres cannot differ by case or
+	// spacing alone.
+	Slug          string `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Genre) Reset() {
+	*x = Genre{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Genre) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Genre) ProtoMessage() {}
+
+func (x *Genre) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Genre.ProtoReflect.Descriptor instead.
+func (*Genre) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *Genre) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *Genre) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Genre) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+// A free-form label written on the series form. Tags have no console of their
+// own and no order: a tag exists because a series carries it, and stops
+// existing when the last one lets it go. It is addressed by slug, which is why
+// it carries no public_id.
+type Tag struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Tag) Reset() {
+	*x = Tag{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Tag) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Tag) ProtoMessage() {}
+
+func (x *Tag) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Tag.ProtoReflect.Descriptor instead.
+func (*Tag) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *Tag) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Tag) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
 type Series struct {
 	state                  protoimpl.MessageState   `protogen:"open.v1"`
 	PublicId               string                   `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -704,13 +826,17 @@ type Series struct {
 	// series keeps no weekly schedule, which is a statement rather than a gap.
 	ScheduleWeekdays []int32         `protobuf:"varint,14,rep,packed,name=schedule_weekdays,json=scheduleWeekdays,proto3" json:"schedule_weekdays,omitempty"`
 	AgeRating        SeriesAgeRating `protobuf:"varint,15,opt,name=age_rating,json=ageRating,proto3,enum=publira.types.v1.SeriesAgeRating" json:"age_rating,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// In the tenant's genre order, not the order they were assigned in.
+	Genres []*Genre `protobuf:"bytes,16,rep,name=genres,proto3" json:"genres,omitempty"`
+	// By name, so a series presents its tags the same way every time.
+	Tags          []*Tag `protobuf:"bytes,17,rep,name=tags,proto3" json:"tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Series) Reset() {
 	*x = Series{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[7]
+	mi := &file_publira_types_v1_types_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -722,7 +848,7 @@ func (x *Series) String() string {
 func (*Series) ProtoMessage() {}
 
 func (x *Series) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[7]
+	mi := &file_publira_types_v1_types_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -735,7 +861,7 @@ func (x *Series) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Series.ProtoReflect.Descriptor instead.
 func (*Series) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{7}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Series) GetPublicId() string {
@@ -829,6 +955,20 @@ func (x *Series) GetAgeRating() SeriesAgeRating {
 	return SeriesAgeRating_SERIES_AGE_RATING_UNSPECIFIED
 }
 
+func (x *Series) GetGenres() []*Genre {
+	if x != nil {
+		return x.Genres
+	}
+	return nil
+}
+
+func (x *Series) GetTags() []*Tag {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 type Episode struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	PublicId           string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -845,7 +985,7 @@ type Episode struct {
 
 func (x *Episode) Reset() {
 	*x = Episode{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[8]
+	mi := &file_publira_types_v1_types_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -857,7 +997,7 @@ func (x *Episode) String() string {
 func (*Episode) ProtoMessage() {}
 
 func (x *Episode) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[8]
+	mi := &file_publira_types_v1_types_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -870,7 +1010,7 @@ func (x *Episode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Episode.ProtoReflect.Descriptor instead.
 func (*Episode) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{8}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Episode) GetPublicId() string {
@@ -944,7 +1084,7 @@ type EpisodeImage struct {
 
 func (x *EpisodeImage) Reset() {
 	*x = EpisodeImage{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[9]
+	mi := &file_publira_types_v1_types_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -956,7 +1096,7 @@ func (x *EpisodeImage) String() string {
 func (*EpisodeImage) ProtoMessage() {}
 
 func (x *EpisodeImage) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[9]
+	mi := &file_publira_types_v1_types_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -969,7 +1109,7 @@ func (x *EpisodeImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EpisodeImage.ProtoReflect.Descriptor instead.
 func (*EpisodeImage) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{9}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *EpisodeImage) GetId() string {
@@ -1040,7 +1180,7 @@ type TenantImageVariant struct {
 
 func (x *TenantImageVariant) Reset() {
 	*x = TenantImageVariant{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[10]
+	mi := &file_publira_types_v1_types_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1052,7 +1192,7 @@ func (x *TenantImageVariant) String() string {
 func (*TenantImageVariant) ProtoMessage() {}
 
 func (x *TenantImageVariant) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[10]
+	mi := &file_publira_types_v1_types_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1065,7 +1205,7 @@ func (x *TenantImageVariant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantImageVariant.ProtoReflect.Descriptor instead.
 func (*TenantImageVariant) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{10}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *TenantImageVariant) GetLabel() string {
@@ -1159,7 +1299,7 @@ type TenantTheme struct {
 
 func (x *TenantTheme) Reset() {
 	*x = TenantTheme{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[11]
+	mi := &file_publira_types_v1_types_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1171,7 +1311,7 @@ func (x *TenantTheme) String() string {
 func (*TenantTheme) ProtoMessage() {}
 
 func (x *TenantTheme) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[11]
+	mi := &file_publira_types_v1_types_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1184,7 +1324,7 @@ func (x *TenantTheme) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantTheme.ProtoReflect.Descriptor instead.
 func (*TenantTheme) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{11}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *TenantTheme) GetPrimaryColor() string {
@@ -1419,7 +1559,7 @@ type Page struct {
 
 func (x *Page) Reset() {
 	*x = Page{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[12]
+	mi := &file_publira_types_v1_types_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1431,7 +1571,7 @@ func (x *Page) String() string {
 func (*Page) ProtoMessage() {}
 
 func (x *Page) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[12]
+	mi := &file_publira_types_v1_types_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1444,7 +1584,7 @@ func (x *Page) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Page.ProtoReflect.Descriptor instead.
 func (*Page) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{12}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Page) GetId() string {
@@ -1513,7 +1653,7 @@ type PageVersion struct {
 
 func (x *PageVersion) Reset() {
 	*x = PageVersion{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[13]
+	mi := &file_publira_types_v1_types_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1525,7 +1665,7 @@ func (x *PageVersion) String() string {
 func (*PageVersion) ProtoMessage() {}
 
 func (x *PageVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[13]
+	mi := &file_publira_types_v1_types_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1538,7 +1678,7 @@ func (x *PageVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageVersion.ProtoReflect.Descriptor instead.
 func (*PageVersion) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{13}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PageVersion) GetId() string {
@@ -1644,7 +1784,14 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x05R\x01y\x12\x14\n" +
 	"\x05width\x18\x03 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\x04 \x01(\x05R\x06height\"\x86\x05\n" +
+	"\x06height\x18\x04 \x01(\x05R\x06height\"L\n" +
+	"\x05Genre\x12\x1b\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x03 \x01(\tR\x04slug\"-\n" +
+	"\x03Tag\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xe2\x05\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -1660,7 +1807,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x06status\x18\r \x01(\x0e2\x1e.publira.types.v1.SeriesStatusR\x06status\x12+\n" +
 	"\x11schedule_weekdays\x18\x0e \x03(\x05R\x10scheduleWeekdays\x12@\n" +
 	"\n" +
-	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRatingJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x02\n" +
+	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12/\n" +
+	"\x06genres\x18\x10 \x03(\v2\x17.publira.types.v1.GenreR\x06genres\x12)\n" +
+	"\x04tags\x18\x11 \x03(\v2\x15.publira.types.v1.TagR\x04tagsJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x02\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -1776,7 +1925,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(SeriesStatus)(0),             // 0: publira.types.v1.SeriesStatus
 	(SeriesAgeRating)(0),          // 1: publira.types.v1.SeriesAgeRating
@@ -1788,13 +1937,15 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(*Label)(nil),                 // 7: publira.types.v1.Label
 	(*SeriesEyeCatchVariant)(nil), // 8: publira.types.v1.SeriesEyeCatchVariant
 	(*ImageCropRect)(nil),         // 9: publira.types.v1.ImageCropRect
-	(*Series)(nil),                // 10: publira.types.v1.Series
-	(*Episode)(nil),               // 11: publira.types.v1.Episode
-	(*EpisodeImage)(nil),          // 12: publira.types.v1.EpisodeImage
-	(*TenantImageVariant)(nil),    // 13: publira.types.v1.TenantImageVariant
-	(*TenantTheme)(nil),           // 14: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 15: publira.types.v1.Page
-	(*PageVersion)(nil),           // 16: publira.types.v1.PageVersion
+	(*Genre)(nil),                 // 10: publira.types.v1.Genre
+	(*Tag)(nil),                   // 11: publira.types.v1.Tag
+	(*Series)(nil),                // 12: publira.types.v1.Series
+	(*Episode)(nil),               // 13: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 14: publira.types.v1.EpisodeImage
+	(*TenantImageVariant)(nil),    // 15: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 16: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 17: publira.types.v1.Page
+	(*PageVersion)(nil),           // 18: publira.types.v1.PageVersion
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
 	8,  // 0: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
@@ -1803,13 +1954,15 @@ var file_publira_types_v1_types_proto_depIdxs = []int32{
 	8,  // 3: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	0,  // 4: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
 	1,  // 5: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	13, // 6: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	13, // 7: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	8,  // [8:8] is the sub-list for method output_type
-	8,  // [8:8] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	10, // 6: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
+	11, // 7: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
+	15, // 8: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	15, // 9: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }
@@ -1823,7 +1976,7 @@ func file_publira_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   14,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

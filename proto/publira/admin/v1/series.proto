@@ -23,6 +23,14 @@ message CreateSeriesRequest {
   // before it is stored; empty keeps no weekly schedule.
   repeated int32 schedule_weekdays = 14;
   publira.types.v1.SeriesAgeRating age_rating = 15;
+  // Genres of this tenant, by public_id. An id naming no genre of the tenant
+  // is invalid_argument; the assignment carries no order of its own, because
+  // the series presents them in the tenant's genre order.
+  repeated string genre_public_ids = 16;
+  // Tag names as the editor typed them. A name used for the first time creates
+  // the tag; one that matches an existing tag's slug resolves to it, keeping
+  // the name that tag was created under. At most 20 per series.
+  repeated string tag_names = 17;
 }
 
 message CreateSeriesResponse {
@@ -50,6 +58,12 @@ message UpdateSeriesRequest {
   // before it is stored; empty keeps no weekly schedule.
   repeated int32 schedule_weekdays = 14;
   publira.types.v1.SeriesAgeRating age_rating = 15;
+  // The whole assignment, the way creator_public_ids is: what this field holds
+  // is what the series carries afterwards, and an empty field clears it.
+  repeated string genre_public_ids = 16;
+  // Likewise the whole tag list. A tag the last series here lets go of is
+  // deleted, because nothing else keeps a tag alive.
+  repeated string tag_names = 17;
 }
 
 message UpdateSeriesResponse {
