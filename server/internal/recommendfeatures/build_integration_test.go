@@ -46,7 +46,7 @@ func TestRunBuildsFeatureSnapshotsPerTenant(t *testing.T) {
 	insertUserFeatures(t, pg.DB, tenant.ID, idleReader.ID)
 	insertItemFeatures(t, pg.DB, tenant.ID, "series", secondSeries.ID)
 
-	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: "2026-08-22", entityType: "episode", entityID: episode.ID, viewCount: 10, uniqueViewerCount: 5, purchaseCount: 1, ratingCount: 1, ratingSum: 4})
+	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: "2026-08-22", entityType: "episode", entityID: episode.ID, viewCount: 10, uniqueViewerCount: 5, purchaseCount: 1, ratingCount: 1, ratingSum: 4, commentCount: 2})
 	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: "2026-08-28", entityType: "episode", entityID: episode.ID, viewCount: 4, uniqueViewerCount: 3})
 	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: "2026-08-25", entityType: "series", entityID: series.ID, viewCount: 20, uniqueViewerCount: 8, purchaseCount: 1, ratingCount: 2, ratingSum: 9, favoriteCount: 3})
 	// One day before the window opens: it must not reach the snapshot.
@@ -58,6 +58,7 @@ func TestRunBuildsFeatureSnapshotsPerTenant(t *testing.T) {
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "series_view", userID: reader.ID, seriesID: series.ID, debounceBucket: 3, occurredAt: at("2026-08-25T01:00:00Z")})
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "rating", userID: reader.ID, seriesID: series.ID, episodeID: episode.ID, ratingScore: 4, occurredAt: at("2026-08-26T01:00:00Z")})
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "purchase", userID: reader.ID, seriesID: series.ID, episodeID: episode.ID, occurredAt: at("2026-08-26T02:00:00Z")})
+	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "comment", userID: reader.ID, seriesID: series.ID, episodeID: episode.ID, occurredAt: at("2026-08-26T03:00:00Z")})
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "series_view", userID: reader.ID, seriesID: secondSeries.ID, debounceBucket: 4, occurredAt: at("2026-08-27T01:00:00Z")})
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "favorite", userID: reader.ID, seriesID: secondSeries.ID, occurredAt: at("2026-08-27T02:00:00Z")})
 	// Before the window, and an anonymous actor that has no user row to key on.
@@ -78,7 +79,7 @@ func TestRunBuildsFeatureSnapshotsPerTenant(t *testing.T) {
 	items := loadItemFeatures(t, pg.DB)
 	assertItem(t, items, itemKey{tenantID: tenant.ID, entityType: "episode", entityID: episode.ID}, itemFeatures{
 		WindowDays: windowDays, WindowStart: windowStart, WindowEnd: referenceDate,
-		ViewCount: 14, ViewerDays: 8, PurchaseCount: 1, RatingCount: 1, RatingSum: 4,
+		ViewCount: 14, ViewerDays: 8, PurchaseCount: 1, RatingCount: 1, RatingSum: 4, CommentCount: 2,
 		ActiveDays: 2, LastActiveDate: "2026-08-28",
 	})
 	assertItem(t, items, itemKey{tenantID: tenant.ID, entityType: "series", entityID: series.ID}, itemFeatures{
@@ -97,10 +98,10 @@ func TestRunBuildsFeatureSnapshotsPerTenant(t *testing.T) {
 	users := loadUserFeatures(t, pg.DB)
 	assertUser(t, users, userKey{tenantID: tenant.ID, userID: reader.ID}, userFeatures{
 		WindowDays: windowDays, WindowStart: windowStart, WindowEnd: referenceDate,
-		EventCount: 7, ViewCount: 4, PurchaseCount: 1, RatingCount: 1, RatingSum: 4, FavoriteCount: 1,
+		EventCount: 8, ViewCount: 4, PurchaseCount: 1, RatingCount: 1, RatingSum: 4, FavoriteCount: 1, CommentCount: 1,
 		SeriesCount: 2, LastEventAt: "2026-08-27T02:00:00Z",
 		TopSeries: []topSeriesEntry{
-			{SeriesID: series.ID, EventCount: 5, ViewCount: 3, PurchaseCount: 1, RatingCount: 1, RatingSum: 4, LastEventAt: "2026-08-26T02:00:00Z"},
+			{SeriesID: series.ID, EventCount: 6, ViewCount: 3, PurchaseCount: 1, RatingCount: 1, RatingSum: 4, CommentCount: 1, LastEventAt: "2026-08-26T03:00:00Z"},
 			{SeriesID: secondSeries.ID, EventCount: 2, ViewCount: 1, FavoriteCount: 1, LastEventAt: "2026-08-27T02:00:00Z"},
 		},
 	})
@@ -393,6 +394,7 @@ type dailyStatSeed struct {
 	ratingCount       int64
 	ratingSum         int64
 	favoriteCount     int64
+	commentCount      int64
 }
 
 func insertDailyStat(t *testing.T, db *sql.DB, seed dailyStatSeed) {
@@ -402,11 +404,12 @@ func insertDailyStat(t *testing.T, db *sql.DB, seed dailyStatSeed) {
 	if _, err := db.ExecContext(ctx, `
 		INSERT INTO content_daily_stats (
 			id, tenant_id, stat_date, entity_type, entity_id,
-			view_count, unique_viewer_count, purchase_count, rating_count, rating_sum, favorite_count
-		) VALUES ($1, $2, $3::date, $4, $5, $6, $7, $8, $9, $10, $11)
+			view_count, unique_viewer_count, purchase_count, rating_count, rating_sum, favorite_count,
+			comment_count
+		) VALUES ($1, $2, $3::date, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.statDate, seed.entityType, seed.entityID,
 		seed.viewCount, seed.uniqueViewerCount, seed.purchaseCount,
-		seed.ratingCount, seed.ratingSum, seed.favoriteCount); err != nil {
+		seed.ratingCount, seed.ratingSum, seed.favoriteCount, seed.commentCount); err != nil {
 		t.Fatalf("insert daily stat: %v", err)
 	}
 }
@@ -584,6 +587,7 @@ type itemFeatures struct {
 	RatingCount    int64  `json:"rating_count"`
 	RatingSum      int64  `json:"rating_sum"`
 	FavoriteCount  int64  `json:"favorite_count"`
+	CommentCount   int64  `json:"comment_count"`
 	ActiveDays     int64  `json:"active_days"`
 	LastActiveDate string `json:"last_active_date"`
 }
@@ -601,6 +605,7 @@ type topSeriesEntry struct {
 	RatingCount   int64     `json:"rating_count"`
 	RatingSum     int64     `json:"rating_sum"`
 	FavoriteCount int64     `json:"favorite_count"`
+	CommentCount  int64     `json:"comment_count"`
 	LastEventAt   string    `json:"last_event_at"`
 }
 
@@ -614,6 +619,7 @@ type userFeatures struct {
 	RatingCount   int64            `json:"rating_count"`
 	RatingSum     int64            `json:"rating_sum"`
 	FavoriteCount int64            `json:"favorite_count"`
+	CommentCount  int64            `json:"comment_count"`
 	SeriesCount   int64            `json:"series_count"`
 	LastEventAt   string           `json:"last_event_at"`
 	TopSeries     []topSeriesEntry `json:"top_series"`

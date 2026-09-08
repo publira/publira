@@ -743,12 +743,16 @@ func TestEngagementSnapshotQueriesRoundTrip(t *testing.T) {
 		RatingCount:       2,
 		RatingSum:         8,
 		FavoriteCount:     0,
+		CommentCount:      3,
 	})
 	if err != nil {
 		t.Fatalf("upsert daily stats: %v", err)
 	}
 	if stats.ViewCount != 10 {
 		t.Fatalf("view_count = %d, want 10", stats.ViewCount)
+	}
+	if stats.CommentCount != 3 {
+		t.Fatalf("comment_count = %d, want 3", stats.CommentCount)
 	}
 
 	userFeat, err := queries.UpsertUserRecommendFeatures(ctx, dbmodels.UpsertUserRecommendFeaturesParams{
@@ -948,5 +952,118 @@ func TestEpisodeReadThroughSumsTheWindowAndPagesByCompletions(t *testing.T) {
 	}
 	if len(recovery) == 0 || recovery[0].EpisodeID != thirdEpisode {
 		t.Fatalf("recovery page = %+v, want the boundary row %s first", recovery, thirdEpisode)
+	}
+}
+
+// mustInsertEpisodeComment stores one comment in whichever state the caller
+// names, so a projection test can move a single row through the states that
+// decide whether it has an engagement event.
+func mustInsertEpisodeComment(
+	t *testing.T,
+	ctx context.Context,
+	db *sql.DB,
+	seed engagementSeed,
+	publicID, status string,
+	publishedAt sql.NullTime,
+) uuid.UUID {
+	t.Helper()
+	commentID := uuid.Must(uuid.NewV7())
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO episode_comments (
+			id, tenant_id, public_id, episode_id, user_id, body, status, published_at
+		) VALUES ($1, $2, $3, $4, $5, 'A comment about this episode.', $6, $7)
+	`, commentID, seed.tenantID, publicID, seed.episodeID, seed.userID, status, publishedAt)
+	if err != nil {
+		t.Fatalf("insert %s comment: %v", status, err)
+	}
+	return commentID
+}
+
+func TestProjectCommentContentEventFilesOnePublishedCommentOnce(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "CMT00001")
+	queries := dbmodels.New(pg.DB)
+
+	// A comment waiting for approval was never public and earns no event.
+	pending := mustInsertEpisodeComment(t, ctx, pg.DB, seed, "CMTPENDING01", "pending", sql.NullTime{})
+	_, err := queries.ProjectCommentContentEvent(ctx, dbmodels.ProjectCommentContentEventParams{
+		ID:        uuid.Must(uuid.NewV7()),
+		TenantID:  seed.tenantID,
+		CommentID: pending,
+	})
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("pending comment projection error = %v, want sql.ErrNoRows", err)
+	}
+
+	publishedAt := time.Date(2026, time.September, 3, 4, 5, 6, 0, time.UTC)
+	published := mustInsertEpisodeComment(t, ctx, pg.DB, seed, "CMTPUBLISH01", "published",
+		sql.NullTime{Time: publishedAt, Valid: true})
+	event, err := queries.ProjectCommentContentEvent(ctx, dbmodels.ProjectCommentContentEventParams{
+		ID:        uuid.Must(uuid.NewV7()),
+		TenantID:  seed.tenantID,
+		CommentID: published,
+	})
+	if err != nil {
+		t.Fatalf("published comment projection: %v", err)
+	}
+	if event.EventType != "comment" {
+		t.Fatalf("event_type = %q, want comment", event.EventType)
+	}
+	if !event.UserID.Valid || event.UserID.UUID != seed.userID {
+		t.Fatalf("user_id = %v, want %s", event.UserID, seed.userID)
+	}
+	if !event.SeriesID.Valid || event.SeriesID.UUID != seed.seriesID {
+		t.Fatalf("series_id = %v, want the episode's own series %s", event.SeriesID, seed.seriesID)
+	}
+	if !event.EpisodeID.Valid || event.EpisodeID.UUID != seed.episodeID {
+		t.Fatalf("episode_id = %v, want %s", event.EpisodeID, seed.episodeID)
+	}
+	if !event.SourceTable.Valid || event.SourceTable.String != "episode_comments" {
+		t.Fatalf("source_table = %v, want episode_comments", event.SourceTable)
+	}
+	if !event.SourceID.Valid || event.SourceID.UUID != published {
+		t.Fatalf("source_id = %v, want the comment %s", event.SourceID, published)
+	}
+	// The event falls on the day the comment became readable rather than the day
+	// it was projected, so a late projection still lands on the right day.
+	if !event.OccurredAt.Equal(publishedAt) {
+		t.Fatalf("occurred_at = %s, want the comment's published_at %s", event.OccurredAt, publishedAt)
+	}
+
+	// A comment that already carries its event — one approved after a restore —
+	// files nothing a second time.
+	_, err = queries.ProjectCommentContentEvent(ctx, dbmodels.ProjectCommentContentEventParams{
+		ID:        uuid.Must(uuid.NewV7()),
+		TenantID:  seed.tenantID,
+		CommentID: published,
+	})
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("repeated projection error = %v, want sql.ErrNoRows", err)
+	}
+
+	// Removal does not take the event back: content_events records what
+	// happened, and content_daily_stats is where a removed comment stops
+	// counting.
+	if _, err := pg.DB.ExecContext(ctx, `
+		UPDATE episode_comments
+		SET status = 'hidden', hidden_at = NOW(), hidden_reason = 'staff'
+		WHERE id = $1
+	`, published); err != nil {
+		t.Fatalf("hide the projected comment: %v", err)
+	}
+	var count int
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT count(*) FROM content_events
+		WHERE tenant_id = $1 AND source_table = 'episode_comments' AND source_id = $2
+	`, seed.tenantID, published).Scan(&count); err != nil {
+		t.Fatalf("count comment projections: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("comment events after the removal = %d, want 1", count)
 	}
 }

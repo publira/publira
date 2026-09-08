@@ -46,6 +46,23 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "episode_complete", userID: firstViewer.ID, seriesID: series.ID, episodeID: secondEpisode.ID, occurredAt: statDate.Add(9*time.Hour + 55*time.Minute)})
 	insertPurchase(t, pg.DB, tenant.ID, firstViewer.ID, episode.ID, statDate.Add(10*time.Hour))
 	insertPurchase(t, pg.DB, tenant.ID, secondViewer.ID, episode.ID, statDate.Add(11*time.Hour))
+	// Comments are counted from episode_comments rather than from the events,
+	// so only the ones that are still public when the rebuild runs count: a
+	// comment waiting for approval, one staff removed, and one its author
+	// withdrew all leave the day at the value they never contributed to.
+	insertComment(t, pg.DB, commentSeed{tenantID: tenant.ID, userID: firstViewer.ID, episodeID: episode.ID,
+		publicID: "STATSCMT0001", status: "published", publishedAt: statDate.Add(12 * time.Hour)})
+	insertComment(t, pg.DB, commentSeed{tenantID: tenant.ID, userID: secondViewer.ID, episodeID: episode.ID,
+		publicID: "STATSCMT0002", status: "published", publishedAt: statDate.Add(13 * time.Hour)})
+	insertComment(t, pg.DB, commentSeed{tenantID: tenant.ID, userID: firstViewer.ID, episodeID: secondEpisode.ID,
+		publicID: "STATSCMT0003", status: "published", publishedAt: statDate.Add(14 * time.Hour)})
+	insertComment(t, pg.DB, commentSeed{tenantID: tenant.ID, userID: firstViewer.ID, episodeID: episode.ID,
+		publicID: "STATSCMT0004", status: "pending"})
+	insertComment(t, pg.DB, commentSeed{tenantID: tenant.ID, userID: secondViewer.ID, episodeID: episode.ID,
+		publicID: "STATSCMT0005", status: "hidden", publishedAt: statDate.Add(15 * time.Hour)})
+	insertComment(t, pg.DB, commentSeed{tenantID: tenant.ID, userID: firstViewer.ID, episodeID: episode.ID,
+		publicID: "STATSCMT0006", status: "withdrawn", publishedAt: statDate.Add(16 * time.Hour),
+		withdrawnAt: statDate.Add(17 * time.Hour)})
 	insertEvent(t, pg.DB, eventSeed{tenantID: otherTenant.ID, eventType: "episode_view", userID: otherViewer.ID, seriesID: otherSeries.ID, episodeID: otherEpisode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
 
 	aggregator := New(pg.OpenPlatformDB(t))
@@ -58,15 +75,15 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	}
 
 	stats := loadStats(t, pg.DB, statDate)
-	assertStat(t, stats, tenant.ID, "episode", episode.ID, stat{viewCount: 4, uniqueViewerCount: 3, memberViewCount: 3, purchaseCount: 2, completeCount: 2, ratingCount: 2, ratingSum: 5})
-	assertStat(t, stats, tenant.ID, "episode", secondEpisode.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1, completeCount: 1})
+	assertStat(t, stats, tenant.ID, "episode", episode.ID, stat{viewCount: 4, uniqueViewerCount: 3, memberViewCount: 3, purchaseCount: 2, completeCount: 2, ratingCount: 2, ratingSum: 5, commentCount: 2})
+	assertStat(t, stats, tenant.ID, "episode", secondEpisode.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1, completeCount: 1, commentCount: 1})
 	// The same reader viewed the series and two episodes, so the series rollup
 	// must union actors rather than summing the per-episode distinct counts.
 	// member_view_count rolls up the episode views only: a series_view is not
 	// a view of anything a member could finish, so putting it in the
 	// denominator would make the series read-through rate lower than the
 	// episodes it is made of.
-	assertStat(t, stats, tenant.ID, "series", series.ID, stat{viewCount: 6, uniqueViewerCount: 3, memberViewCount: 4, purchaseCount: 2, completeCount: 3, ratingCount: 3, ratingSum: 10, favoriteCount: 1})
+	assertStat(t, stats, tenant.ID, "series", series.ID, stat{viewCount: 6, uniqueViewerCount: 3, memberViewCount: 4, purchaseCount: 2, completeCount: 3, ratingCount: 3, ratingSum: 10, favoriteCount: 1, commentCount: 3})
 	assertStat(t, stats, otherTenant.ID, "episode", otherEpisode.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1})
 	assertStat(t, stats, otherTenant.ID, "series", otherSeries.ID, stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1})
 
@@ -528,6 +545,49 @@ func insertPurchase(t *testing.T, db *sql.DB, tenantID, userID, episodeID uuid.U
 	}
 }
 
+// commentSeed is one episode_comments row in whichever state the caller names.
+// The state is the point: only a 'published' row counts, and published_at is
+// the instant the aggregate files it under rather than created_at.
+type commentSeed struct {
+	tenantID    uuid.UUID
+	userID      uuid.UUID
+	episodeID   uuid.UUID
+	publicID    string
+	status      string
+	publishedAt time.Time
+	withdrawnAt time.Time
+}
+
+func insertComment(t *testing.T, db *sql.DB, seed commentSeed) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var publishedAt any
+	if !seed.publishedAt.IsZero() {
+		publishedAt = seed.publishedAt
+	}
+	var hiddenAt any
+	var hiddenReason any
+	if seed.status == "hidden" {
+		hiddenAt = seed.publishedAt
+		hiddenReason = "staff"
+	}
+	var withdrawnAt any
+	if !seed.withdrawnAt.IsZero() {
+		withdrawnAt = seed.withdrawnAt
+	}
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO episode_comments (
+			id, tenant_id, public_id, episode_id, user_id, body, status,
+			published_at, hidden_at, hidden_reason, withdrawn_at
+		) VALUES ($1, $2, $3, $4, $5, 'A comment about this episode.', $6, $7, $8, $9, $10)
+	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.publicID, seed.episodeID, seed.userID,
+		seed.status, publishedAt, hiddenAt, hiddenReason, withdrawnAt); err != nil {
+		t.Fatalf("insert %s comment: %v", seed.status, err)
+	}
+}
+
 type stat struct {
 	viewCount         int64
 	uniqueViewerCount int64
@@ -537,6 +597,7 @@ type stat struct {
 	ratingCount       int64
 	ratingSum         int64
 	favoriteCount     int64
+	commentCount      int64
 }
 
 type statKey struct {
@@ -552,7 +613,7 @@ func loadStats(t *testing.T, db *sql.DB, statDate time.Time) map[statKey]stat {
 	rows, err := db.QueryContext(ctx, `
 		SELECT tenant_id, entity_type, entity_id, view_count, unique_viewer_count,
 			member_view_count, purchase_count, complete_count, rating_count,
-			rating_sum, favorite_count
+			rating_sum, favorite_count, comment_count
 		FROM content_daily_stats
 		WHERE stat_date = $1
 	`, statDate.Format(time.DateOnly))
@@ -568,7 +629,7 @@ func loadStats(t *testing.T, db *sql.DB, statDate time.Time) map[statKey]stat {
 		if err := rows.Scan(&key.tenantID, &key.entityType, &key.entityID,
 			&value.viewCount, &value.uniqueViewerCount, &value.memberViewCount,
 			&value.purchaseCount, &value.completeCount, &value.ratingCount,
-			&value.ratingSum, &value.favoriteCount); err != nil {
+			&value.ratingSum, &value.favoriteCount, &value.commentCount); err != nil {
 			t.Fatalf("scan stat: %v", err)
 		}
 		stats[key] = value
@@ -594,5 +655,62 @@ func assertStat(t *testing.T, stats map[statKey]stat, tenantID uuid.UUID, entity
 		t.Fatalf("missing stat for tenant=%s type=%s entity=%s", tenantID, entityType, entityID)
 	} else if got != want {
 		t.Fatalf("stat for tenant=%s type=%s entity=%s = %+v, want %+v", tenantID, entityType, entityID, got, want)
+	}
+}
+
+func TestRunCountsOnlyTheCommentsStillPublishedWhenItRebuildsTheDay(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	statDate := time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)
+	nextDate := statDate.AddDate(0, 0, 1)
+	tenant := pg.SeedTenant(t, "CMTSTATTNT01", "comment-stats.example.com", "Comment Stats Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "CMTSTATSER01"})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "CMTSTATEP001"})
+	reader := pg.SeedEndUser(t, tenant.ID, "CMTSTATRDR01", "reader@comment-stats.example.com", "Comment Reader")
+
+	// A comment on its own is enough to give the day a row, so the count is
+	// observable without any other signal standing in for it.
+	insertComment(t, pg.DB, commentSeed{tenantID: tenant.ID, userID: reader.ID, episodeID: episode.ID,
+		publicID: "CMTSTATCMT01", status: "published", publishedAt: statDate.Add(9 * time.Hour)})
+
+	aggregator := New(pg.OpenPlatformDB(t))
+	if _, err := aggregator.Run(context.Background(), Options{StatDate: statDate}); err != nil {
+		t.Fatalf("Run for the day of the comment: %v", err)
+	}
+	stats := loadStats(t, pg.DB, statDate)
+	assertStat(t, stats, tenant.ID, "episode", episode.ID, stat{commentCount: 1})
+	assertStat(t, stats, tenant.ID, "series", series.ID, stat{commentCount: 1})
+
+	hideComment(t, pg.DB, tenant.ID, "CMTSTATCMT01")
+
+	// The next day's run does not touch the day the comment was published on,
+	// so what that day already recorded is what it keeps.
+	if _, err := aggregator.Run(context.Background(), Options{StatDate: nextDate}); err != nil {
+		t.Fatalf("Run for the day after: %v", err)
+	}
+	stats = loadStats(t, pg.DB, statDate)
+	assertStat(t, stats, tenant.ID, "episode", episode.ID, stat{commentCount: 1})
+
+	// Rebuilding that day is what drops the removed comment. Nothing else
+	// happened, so the entities leave the day entirely.
+	if _, err := aggregator.Run(context.Background(), Options{StatDate: statDate}); err != nil {
+		t.Fatalf("second Run for the day of the comment: %v", err)
+	}
+	stats = loadStats(t, pg.DB, statDate)
+	assertNoStat(t, stats, tenant.ID, "episode", episode.ID)
+	assertNoStat(t, stats, tenant.ID, "series", series.ID)
+}
+
+func hideComment(t *testing.T, db *sql.DB, tenantID uuid.UUID, publicID string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := db.ExecContext(ctx, `
+		UPDATE episode_comments
+		SET status = 'hidden', hidden_at = NOW(), hidden_reason = 'staff'
+		WHERE tenant_id = $1 AND public_id = $2
+	`, tenantID, publicID); err != nil {
+		t.Fatalf("hide comment %s: %v", publicID, err)
 	}
 }

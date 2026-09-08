@@ -475,6 +475,23 @@ There is no RPC for withdrawing a rating. Which rating counts is decided on read
 
 The rate is `complete_count / member_view_count` over a range of days. A period with no member views has no rate at all rather than a rate of zero; the console shows an em dash there. `AdminEngagementService.ListEpisodeReadThrough` reports the last 28 complete days in the tenant's own time zone, the same calendar day the audit log's date filter means, and names that zone in the response.
 
+## Comment events
+
+`CommentService.PostEpisodeComment` under the `immediate` comment mode and `AdminCommentService.ApproveComment` under `approval_required` are the two ways a comment becomes public, and each files a `comment` event in the transaction that publishes it. A comment that never became public files none: one waiting for approval has no event, and neither has one removed or withdrawn while it was still waiting.
+
+| Item | Value |
+| --- | --- |
+| Event type | `comment` |
+| actor | `user_id` (sign-in required, so a comment has no anonymous form) |
+| Source | `source_table = 'episode_comments'`, `source_id = episode_comments.id`. The partial UNIQUE index on `(tenant_id, source_table, source_id)` is what keeps a comment approved after a restore from filing a second event |
+| `occurred_at` | The comment's own `published_at`, so the event falls on the day the comment became readable rather than the day it was written |
+| `series_id` | Resolved from `episodes` rather than taken from client input |
+| Failure | Returned. The event shares the transaction that published the comment, because no batch replays this projection the way `project-episode-reads` replays completions |
+
+### Comment counts
+
+`content_daily_stats.comment_count` is built from `episode_comments` rather than from those events: it counts the comments whose `published_at` falls on that day and that are still `published` when the aggregate runs. A comment hidden or withdrawn afterwards keeps the event it earned, leaves the count from the next rebuild of its day, and does not disturb a row `aggregate-content-stats` already wrote for a past day. The ranking snapshots and the recommendation features read that column alongside the other engagement totals.
+
 ## Reading positions
 
 `EpisodeReadService.SaveReadingPosition` and `GetMyReadingPosition` carry where a member stopped inside an episode, as one `episode_reading_positions` row per member and episode. `GetMySeriesProgress` answers the same member's standing in one series — the episode they moved in most recently, the position they left in it, and whether `episode_reads` already records it as finished — so `CatalogService.GetSeriesDetail` keeps returning the same bytes to everyone.

@@ -15,7 +15,7 @@ import (
 )
 
 const getContentDailyStatsByEntity = `-- name: GetContentDailyStatsByEntity :one
-SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at
+SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at, comment_count
 FROM content_daily_stats
 WHERE tenant_id = $1
     AND stat_date = $2
@@ -53,6 +53,7 @@ func (q *Queries) GetContentDailyStatsByEntity(ctx context.Context, arg GetConte
 		&i.RatingSum,
 		&i.FavoriteCount,
 		&i.UpdatedAt,
+		&i.CommentCount,
 	)
 	return i, err
 }
@@ -729,7 +730,7 @@ func (q *Queries) InsertRatingEvent(ctx context.Context, arg InsertRatingEventPa
 }
 
 const listContentDailyStatsByTenantDate = `-- name: ListContentDailyStatsByTenantDate :many
-SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at
+SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at, comment_count
 FROM content_daily_stats
 WHERE tenant_id = $1
     AND stat_date = $2
@@ -765,6 +766,7 @@ func (q *Queries) ListContentDailyStatsByTenantDate(ctx context.Context, arg Lis
 			&i.RatingSum,
 			&i.FavoriteCount,
 			&i.UpdatedAt,
+			&i.CommentCount,
 		); err != nil {
 			return nil, err
 		}
@@ -1642,6 +1644,87 @@ func (q *Queries) ListRecommendedSeriesIDsReversed(ctx context.Context, arg List
 	return items, nil
 }
 
+const projectCommentContentEvent = `-- name: ProjectCommentContentEvent :one
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    payload,
+    occurred_at
+)
+SELECT
+    $1,
+    c.tenant_id,
+    'comment',
+    c.user_id,
+    e.series_id,
+    c.episode_id,
+    'episode_comments',
+    c.id,
+    '{}'::jsonb,
+    c.published_at
+FROM episode_comments c
+JOIN episodes e
+    ON e.tenant_id = c.tenant_id
+    AND e.id = c.episode_id
+WHERE c.tenant_id = $2
+    AND c.id = $3
+    AND c.status = 'published'
+ON CONFLICT (tenant_id, source_table, source_id)
+WHERE source_id IS NOT NULL
+DO NOTHING
+RETURNING id, tenant_id, event_type, user_id, anonymous_id, actor_key, series_id, episode_id, debounce_bucket, rating_score, source_table, source_id, payload, occurred_at, created_at
+`
+
+type ProjectCommentContentEventParams struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	CommentID uuid.UUID `json:"comment_id"`
+}
+
+// Projects one comment's publication as the analytics event for that comment.
+// episode_comments stays the source of truth: the author, the episode and the
+// moment the comment became public are copied from the row, and the owning
+// series is resolved from the catalog rather than taken from the caller.
+//
+// Only a 'published' row is projected, so a comment still waiting for approval
+// files nothing; the status CHECK on the table is what guarantees such a row
+// carries the published_at this event occurs at. A comment removed afterwards
+// keeps the event it already earned, because content_events is the history of
+// what happened rather than of what still stands — content_daily_stats counts
+// comments from episode_comments for exactly that reason.
+//
+// The pair (source_table, source_id) is what makes this replayable: approval
+// and the immediate-mode insert both land on the comment's own id, so a second
+// attempt is turned into a no-op by the unique index.
+func (q *Queries) ProjectCommentContentEvent(ctx context.Context, arg ProjectCommentContentEventParams) (ContentEvent, error) {
+	row := q.db.QueryRowContext(ctx, projectCommentContentEvent, arg.ID, arg.TenantID, arg.CommentID)
+	var i ContentEvent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EventType,
+		&i.UserID,
+		&i.AnonymousID,
+		&i.ActorKey,
+		&i.SeriesID,
+		&i.EpisodeID,
+		&i.DebounceBucket,
+		&i.RatingScore,
+		&i.SourceTable,
+		&i.SourceID,
+		&i.Payload,
+		&i.OccurredAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const projectEpisodeCompleteEvent = `-- name: ProjectEpisodeCompleteEvent :one
 INSERT INTO content_events (
     id,
@@ -1899,7 +1982,8 @@ INSERT INTO content_daily_stats (
     complete_count,
     rating_count,
     rating_sum,
-    favorite_count
+    favorite_count,
+    comment_count
 ) VALUES (
     $1,
     $2,
@@ -1913,7 +1997,8 @@ INSERT INTO content_daily_stats (
     $10,
     $11,
     $12,
-    $13
+    $13,
+    $14
 )
 ON CONFLICT (tenant_id, stat_date, entity_type, entity_id) DO UPDATE
 SET view_count = EXCLUDED.view_count,
@@ -1924,8 +2009,9 @@ SET view_count = EXCLUDED.view_count,
     rating_count = EXCLUDED.rating_count,
     rating_sum = EXCLUDED.rating_sum,
     favorite_count = EXCLUDED.favorite_count,
+    comment_count = EXCLUDED.comment_count,
     updated_at = NOW()
-RETURNING id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at
+RETURNING id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at, comment_count
 `
 
 type UpsertContentDailyStatsParams struct {
@@ -1942,6 +2028,7 @@ type UpsertContentDailyStatsParams struct {
 	RatingCount       int64     `json:"rating_count"`
 	RatingSum         int64     `json:"rating_sum"`
 	FavoriteCount     int64     `json:"favorite_count"`
+	CommentCount      int64     `json:"comment_count"`
 }
 
 // Daily stats are full-day replacements. Upsert keeps a single row per
@@ -1966,6 +2053,7 @@ func (q *Queries) UpsertContentDailyStats(ctx context.Context, arg UpsertContent
 		arg.RatingCount,
 		arg.RatingSum,
 		arg.FavoriteCount,
+		arg.CommentCount,
 	)
 	var i ContentDailyStat
 	err := row.Scan(
@@ -1983,6 +2071,7 @@ func (q *Queries) UpsertContentDailyStats(ctx context.Context, arg UpsertContent
 		&i.RatingSum,
 		&i.FavoriteCount,
 		&i.UpdatedAt,
+		&i.CommentCount,
 	)
 	return i, err
 }

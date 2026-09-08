@@ -32,7 +32,7 @@ const (
 	// FeatureVersion stamps every row this package writes. Bump it whenever
 	// the shape or the meaning of a field changes, so a reader can tell a
 	// freshly built row from one an older build left behind.
-	FeatureVersion = 1
+	FeatureVersion = 2
 )
 
 // Builder rebuilds user_recommend_features and item_recommend_features.
@@ -276,6 +276,7 @@ SELECT
 		'rating_count', sum(cds.rating_count)::bigint,
 		'rating_sum', sum(cds.rating_sum)::bigint,
 		'favorite_count', sum(cds.favorite_count)::bigint,
+		'comment_count', sum(cds.comment_count)::bigint,
 		'active_days', count(*)::bigint,
 		'last_active_date', to_char(max(cds.stat_date), 'YYYY-MM-DD')
 	),
@@ -318,6 +319,7 @@ WITH bounds AS (
 		count(*) FILTER (WHERE event_type = 'rating')::bigint AS rating_count,
 		COALESCE(sum(rating_score) FILTER (WHERE event_type = 'rating'), 0)::bigint AS rating_sum,
 		count(*) FILTER (WHERE event_type = 'favorite')::bigint AS favorite_count,
+		count(*) FILTER (WHERE event_type = 'comment')::bigint AS comment_count,
 		max(occurred_at) AS last_event_at
 	FROM windowed_events
 	GROUP BY user_id, series_id
@@ -341,6 +343,7 @@ WITH bounds AS (
 				'rating_count', rating_count,
 				'rating_sum', rating_sum,
 				'favorite_count', favorite_count,
+				'comment_count', comment_count,
 				'last_event_at', to_char(last_event_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
 			)
 			ORDER BY position
@@ -357,6 +360,7 @@ WITH bounds AS (
 		sum(rating_count)::bigint AS rating_count,
 		sum(rating_sum)::bigint AS rating_sum,
 		sum(favorite_count)::bigint AS favorite_count,
+		sum(comment_count)::bigint AS comment_count,
 		count(*)::bigint AS series_count,
 		max(last_event_at) AS last_event_at
 	FROM per_series
@@ -378,6 +382,7 @@ SELECT
 		'rating_count', t.rating_count,
 		'rating_sum', t.rating_sum,
 		'favorite_count', t.favorite_count,
+		'comment_count', t.comment_count,
 		'series_count', t.series_count,
 		'last_event_at', to_char(t.last_event_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
 		'top_series', COALESCE(ts.series, '[]'::jsonb)
