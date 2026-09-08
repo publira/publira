@@ -18,17 +18,16 @@ FROM mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b7
 # face on the machine that took the baseline and on the runner comparing
 # against it.
 #
-# Which is only true while the face is the same one. Ubuntu's archive is a
-# moving target, so `apt-get install fonts-noto-cjk` would put whatever the
-# mirror carries that day into a rebuild of this image, and other outlines are
-# other pixels — the drift the pinned base image exists to prevent, arriving
-# through the package manager instead. The snapshot service answers with the
-# archive as it stood at one instant, which is what keeps the pinned version
-# below resolvable rather than merely asserted. Moving either value means
-# retaking every baseline in the same commit.
+# Which is only true while the face is the same one, so the version is pinned
+# and the source is the `noble` release pocket alone. That pocket is frozen at
+# release: the index and the pool files it names never change afterwards, so
+# the pin resolves to the same bytes on every rebuild without a snapshot
+# service in between. `noble-updates` is deliberately absent, since it does
+# move and would give the pin a second place to resolve from. Moving the
+# version means retaking every baseline in the same commit.
 RUN printf '%s\n' \
       'Types: deb' \
-      'URIs: https://snapshot.ubuntu.com/ubuntu/20250901T000000Z' \
+      'URIs: http://archive.ubuntu.com/ubuntu' \
       'Suites: noble' \
       'Components: main universe' \
       'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
