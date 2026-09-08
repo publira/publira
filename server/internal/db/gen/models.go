@@ -451,6 +451,12 @@ type PlatformUserRole struct {
 	PlatformUserID uuid.UUID `json:"platform_user_id"`
 }
 
+type PublishedFreeEpisode struct {
+	EpisodeID uuid.UUID `json:"episode_id"`
+	SeriesID  uuid.UUID `json:"series_id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+}
+
 type Purchase struct {
 	ID                      uuid.UUID      `json:"id"`
 	UserID                  uuid.NullUUID  `json:"user_id"`

@@ -194,22 +194,8 @@ SELECT s.id,
     s.published_at,
     (
         SELECT COUNT(*)
-        FROM episodes e
-            JOIN episode_listings el ON el.episode_id = e.id
-        WHERE e.series_id = s.id
-            AND el.status = 'published'
-            AND el.published_at IS NOT NULL
-            AND el.published_at <= NOW()
-            AND (
-                el.price = 0
-                OR EXISTS (
-                    SELECT 1
-                    FROM episode_free_windows fw
-                    WHERE fw.episode_id = e.id
-                        AND fw.starts_at <= NOW()
-                        AND fw.ends_at > NOW()
-                )
-            )
+        FROM published_free_episodes fe
+        WHERE fe.series_id = s.id
     )::int4 AS free_episode_count,
     -- Collect the several creators into one column as a JSON array
     COALESCE(
@@ -355,22 +341,8 @@ SELECT s.id,
     NULL::timestamp AS eye_catch_image_updated_at,
     (
         SELECT COUNT(*)
-        FROM episodes e
-            JOIN episode_listings el ON el.episode_id = e.id
-        WHERE e.series_id = s.id
-            AND el.status = 'published'
-            AND el.published_at IS NOT NULL
-            AND el.published_at <= NOW()
-            AND (
-                el.price = 0
-                OR EXISTS (
-                    SELECT 1
-                    FROM episode_free_windows fw
-                    WHERE fw.episode_id = e.id
-                        AND fw.starts_at <= NOW()
-                        AND fw.ends_at > NOW()
-                )
-            )
+        FROM published_free_episodes fe
+        WHERE fe.series_id = s.id
     )::int4 AS free_episode_count,
     COALESCE(
         json_agg(
@@ -501,22 +473,8 @@ WHERE s.tenant_id = $1
         NOT $2::boolean
         OR EXISTS (
             SELECT 1
-            FROM episodes e
-                JOIN episode_listings el ON el.episode_id = e.id
-            WHERE e.series_id = s.id
-                AND el.status = 'published'
-                AND el.published_at IS NOT NULL
-                AND el.published_at <= NOW()
-                AND (
-                    el.price = 0
-                    OR EXISTS (
-                        SELECT 1
-                        FROM episode_free_windows fw
-                        WHERE fw.episode_id = e.id
-                            AND fw.starts_at <= NOW()
-                            AND fw.ends_at > NOW()
-                    )
-                )
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
         )
     )
     AND (
@@ -591,22 +549,8 @@ WHERE s.tenant_id = $1
         NOT $2::boolean
         OR EXISTS (
             SELECT 1
-            FROM episodes e
-                JOIN episode_listings el ON el.episode_id = e.id
-            WHERE e.series_id = s.id
-                AND el.status = 'published'
-                AND el.published_at IS NOT NULL
-                AND el.published_at <= NOW()
-                AND (
-                    el.price = 0
-                    OR EXISTS (
-                        SELECT 1
-                        FROM episode_free_windows fw
-                        WHERE fw.episode_id = e.id
-                            AND fw.starts_at <= NOW()
-                            AND fw.ends_at > NOW()
-                    )
-                )
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
         )
     )
     AND (
@@ -655,11 +599,10 @@ type ListActiveSeriesIDsByPublishedAtDescParams struct {
 // Stage two is ListActiveSeriesByIDs, which builds the display data for the
 // ids stage one settled on.
 //
-// What counts as a free episode is one rule, written out in both stages: a
-// published episode priced at 0, or a priced one a free window is open on at
-// the moment of the read. Stage one uses it to keep only the series that have
-// such an episode when the caller asks for those, and stage two counts them
-// into free_episode_count, so a series the filter kept never reports none.
+// What counts as a free episode is the published_free_episodes view, which
+// both stages read: stage one keeps only the series that have such an episode
+// when the caller asks for those, and stage two counts them into
+// free_episode_count, so a series the filter kept never reports none.
 //
 // cursor rules: proto/README.md.
 func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error) {
@@ -703,22 +646,8 @@ WHERE s.tenant_id = $1
         NOT $2::boolean
         OR EXISTS (
             SELECT 1
-            FROM episodes e
-                JOIN episode_listings el ON el.episode_id = e.id
-            WHERE e.series_id = s.id
-                AND el.status = 'published'
-                AND el.published_at IS NOT NULL
-                AND el.published_at <= NOW()
-                AND (
-                    el.price = 0
-                    OR EXISTS (
-                        SELECT 1
-                        FROM episode_free_windows fw
-                        WHERE fw.episode_id = e.id
-                            AND fw.starts_at <= NOW()
-                            AND fw.ends_at > NOW()
-                    )
-                )
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
         )
     )
     AND (
@@ -793,22 +722,8 @@ WHERE s.tenant_id = $1
         NOT $2::boolean
         OR EXISTS (
             SELECT 1
-            FROM episodes e
-                JOIN episode_listings el ON el.episode_id = e.id
-            WHERE e.series_id = s.id
-                AND el.status = 'published'
-                AND el.published_at IS NOT NULL
-                AND el.published_at <= NOW()
-                AND (
-                    el.price = 0
-                    OR EXISTS (
-                        SELECT 1
-                        FROM episode_free_windows fw
-                        WHERE fw.episode_id = e.id
-                            AND fw.starts_at <= NOW()
-                            AND fw.ends_at > NOW()
-                    )
-                )
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
         )
     )
     AND (

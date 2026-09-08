@@ -137,6 +137,13 @@ func TestDBListPublishedSeriesKeepsOnlyTheSeriesWithAFreeEpisode(t *testing.T) {
 	if got := len(unfiltered.Msg.Series); got != 3 {
 		t.Fatalf("series without the filter = %v, want all three", seriesPublicIDs(unfiltered.Msg.Series))
 	}
+	// The filter and the count answer the same question, so the series the
+	// filter drops is the one the count reports nothing for.
+	for _, series := range unfiltered.Msg.Series {
+		if series.PublicId == "SERIESPAID01" && series.FreeEpisodeCount != 0 {
+			t.Fatalf("SERIESPAID01 free_episode_count = %d, want 0", series.FreeEpisodeCount)
+		}
+	}
 
 	filtered, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
 		Tenant:          tenantContext(tenant),
