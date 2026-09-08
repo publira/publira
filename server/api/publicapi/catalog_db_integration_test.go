@@ -744,3 +744,67 @@ func TestDBGetEpisodeDetailFollowsAReorderedSeries(t *testing.T) {
 		t.Fatalf("neighbours after the reorder = (%q, %q), want (EPISODETRE03, EPISODEONE01)", previous, next)
 	}
 }
+
+// Nothing stops two episodes of a series from sharing an order_index, so both
+// the list the reader is shown and the links they follow out of it break the
+// tie on the episode id. This walks one against the other: every step the
+// series detail describes has to be the step the episode detail offers, or a
+// reader following "next" lands somewhere the list did not send them.
+func TestDBEpisodeNeighborsAgreeWithTheSeriesDetailOrder(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:  "SERIESA00001",
+		Title:     "Serialized Story",
+		Published: true,
+	})
+	// The middle two share an order_index; the id decides which of them is read
+	// first, and both queries have to decide it the same way.
+	for _, seed := range []testutil.EpisodeSeed{
+		{PublicID: "EPISODEONE01", Title: "Chapter One", OrderIndex: 1, Status: testutil.EpisodeStatusPublished},
+		{PublicID: "EPISODETWO02", Title: "Chapter Two", OrderIndex: 2, Status: testutil.EpisodeStatusPublished},
+		{PublicID: "EPISODETWO03", Title: "Chapter Two, Continued", OrderIndex: 2, Status: testutil.EpisodeStatusPublished},
+		{PublicID: "EPISODETRE04", Title: "Chapter Three", OrderIndex: 3, Status: testutil.EpisodeStatusPublished},
+	} {
+		env.PG.SeedEpisode(t, tenant.ID, series.ID, seed)
+	}
+
+	client := env.catalogClient()
+	seriesDetail, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: series.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeriesDetail: %v", err)
+	}
+	listed := episodePublicIDs(seriesDetail.Msg.Episodes)
+	if len(listed) != 4 {
+		t.Fatalf("episodes = %v, want all four published episodes", listed)
+	}
+
+	for index, publicID := range listed {
+		episodeDetail, detailErr := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+			Tenant:   tenantContext(tenant),
+			PublicId: publicID,
+		}))
+		if detailErr != nil {
+			t.Fatalf("GetEpisodeDetail %s: %v", publicID, detailErr)
+		}
+
+		wantPrevious := ""
+		if index > 0 {
+			wantPrevious = listed[index-1]
+		}
+		if got := episodeDetail.Msg.PreviousEpisode.GetPublicId(); got != wantPrevious {
+			t.Errorf("previous_episode of %s (position %d in %v) = %q, want %q", publicID, index, listed, got, wantPrevious)
+		}
+
+		wantNext := ""
+		if index < len(listed)-1 {
+			wantNext = listed[index+1]
+		}
+		if got := episodeDetail.Msg.NextEpisode.GetPublicId(); got != wantNext {
+			t.Errorf("next_episode of %s (position %d in %v) = %q, want %q", publicID, index, listed, got, wantNext)
+		}
+	}
+}

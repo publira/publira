@@ -478,7 +478,13 @@ SELECT s.id,
                         'published_at',
                         el.published_at
                     )
-                    ORDER BY e.order_index ASC
+                    -- order_index can tie, so the UUIDv7 id is the
+                    -- tiebreaker that keeps the order unique. It is the order
+                    -- the episode detail's neighbour links are found in, and
+                    -- the two have to agree: a reader following "next" from
+                    -- this list must land where the list said they would.
+                    ORDER BY e.order_index ASC,
+                        e.id ASC
                 )
             FROM episodes e
                 JOIN episode_listings el ON el.episode_id = e.id
