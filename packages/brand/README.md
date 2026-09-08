@@ -17,7 +17,7 @@ The typography tokens:
 
 No font file is served: both stacks name faces the reader's platform already has.
 
-Sizes and the remaining line heights come from Tailwind's own scale — `text-xs` … `text-9xl`, `leading-tight` for a heading and `leading-normal` for UI text — so there is no second scale here to keep in step with it.
+Sizes and the remaining line heights come from Tailwind: `text-xs` … `text-9xl`, `leading-tight` for a heading, `leading-normal` for UI text.
 
 ## Usage
 

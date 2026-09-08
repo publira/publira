@@ -12,11 +12,6 @@ export const emailColors = {
   muted: "#5c6773",
 } as const;
 
-/**
- * The two stacks from `@publira/brand/theme.css`, spelled out because an email
- * client resolves no custom property. A mail composed here therefore reads in
- * the same faces as the site it was sent from.
- */
 export const emailFonts = {
   sans: '"Hiragino Sans", "BIZ UDPGothic", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP", system-ui, sans-serif',
   serif:

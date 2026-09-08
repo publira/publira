@@ -1,28 +1,10 @@
 /**
- * Typography. Only what Tailwind does not already carry is defined here: its
- * own size scale and its `leading-tight` / `leading-normal` are the scale and
- * the two line heights the design brief asks for, so a screen reaches for those
- * rather than for a copy of them under another name.
- *
- * `static`, so every token below reaches `:root` whether or not a utility
- * happens to name it. Tailwind otherwise emits a theme variable only once
- * something uses it, and `--measure-prose` and the two reading line heights are
- * read through `var()` from hand-written CSS and arbitrary values rather than
- * from a utility of their own.
+ * `static` because Tailwind emits a theme variable only when a utility names
+ * it, and `--measure-prose` and the reading line heights are read through
+ * `var()` instead.
  */
 @theme static {
-  /**
-   * Two roles, each filled by the faces the reader's platform already has. The
-   * platform serves no font file: a CJK family runs to several megabytes per
-   * weight even when sliced by Unicode range, and the reader on a phone is the
-   * one who pays for it.
-   *
-   * The order is Apple's faces, then the BIZ UD faces Windows ships, then Yu,
-   * then the Noto CJK faces a Linux desktop and the CI image carry. All of them
-   * cover Latin, so an English reader gets the same two faces. A tenant
-   * replaces either stack through `--publira-font-*`, the way it replaces a
-   * color.
-   */
+  /* Installed faces only: no `@font-face` backs either stack. */
   --font-sans: var(
     --publira-font-sans,
     "Hiragino Sans",
@@ -43,20 +25,10 @@
     serif
   );
 
-  /**
-   * Reading text is set looser than the interface around it, and looser again
-   * in Japanese: a line of mixed kanji and kana carries more ink than a line of
-   * Latin at the same size, so it needs more air between lines to stay readable
-   * over a whole episode. Neither value has a `leading-*` of its own in
-   * Tailwind, and both are picked per passage rather than per size.
-   */
   --leading-reading-cjk: 1.9;
   --leading-reading-latin: 1.6;
 
-  /**
-   * The measure reading text is capped at: forty full-width characters at the
-   * base size, and about seventy Latin ones.
-   */
+  /* Forty full-width characters at the base size. */
   --measure-prose: 40rem;
 }
 
