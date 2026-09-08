@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { signInAsAdmin } from "../src/admin";
+import { uniqueCommentBody } from "../src/comments";
 import { applyScenarioSql } from "../src/db";
 import { signInAsMember } from "../src/host";
 import {
@@ -190,7 +191,9 @@ test.describe("web-admin comment moderation", () => {
     browser,
     page,
   }) => {
-    const body = "A comment the moderators will let through.";
+    const body = uniqueCommentBody(
+      "A comment the moderators will let through."
+    );
     await signInAsMember(
       page,
       COMMENT_MODERATION_MEMBER,
@@ -255,7 +258,9 @@ test.describe("web-admin comment moderation", () => {
     browser,
     page,
   }) => {
-    const body = "A comment the moderators will take down and put back.";
+    const body = uniqueCommentBody(
+      "A comment the moderators will take down and put back."
+    );
     await signInAsMember(
       page,
       COMMENT_MODERATION_MEMBER,
@@ -331,7 +336,7 @@ test.describe("web-admin comment moderation", () => {
     browser,
     page,
   }) => {
-    const body = "A comment that has to be gone for good.";
+    const body = uniqueCommentBody("A comment that has to be gone for good.");
     await signInAsMember(
       page,
       COMMENT_MODERATION_MEMBER,
@@ -382,7 +387,9 @@ test.describe("web-admin comment moderation", () => {
     browser,
     page,
   }) => {
-    const body = "A comment another reader will report to the moderators.";
+    const body = uniqueCommentBody(
+      "A comment another reader will report to the moderators."
+    );
     await signInAsMember(
       page,
       COMMENT_MODERATION_MEMBER,

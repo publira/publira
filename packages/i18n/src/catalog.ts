@@ -19,6 +19,7 @@ const RPC_MESSAGE_KEYS = {
   forbidden: "errors.rpc.forbidden",
   "invalid-argument": "errors.rpc.invalid-argument",
   "not-found": "errors.rpc.not-found",
+  "rate-limited": "errors.rpc.rate-limited",
   unauthenticated: "errors.rpc.unauthenticated",
   unavailable: "errors.rpc.unavailable",
 } as const satisfies Record<string, MessageKey<SharedMessages>>;

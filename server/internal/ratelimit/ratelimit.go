@@ -1,0 +1,111 @@
+// Package ratelimit bounds how often one subject may perform one action.
+//
+// It exists for the endpoints readers write to. Those are the first places on
+// this platform where a signed-in stranger can put text in front of everyone
+// else, so each of them needs an answer to "how often", and the answer has to
+// be the same one whichever instance of a server happens to take the request.
+//
+// The mechanism knows nothing about comments or about any other RPC: a caller
+// names the subject it is charging and the rules to charge it against, so the
+// next reader-writable RPC is a policy this package never has to learn.
+package ratelimit
+
+import (
+	"context"
+	"fmt"
+	"time"
+)
+
+// Rule is one fixed window: at most Limit actions inside each Window. Several
+// rules describe one action together — a burst rule per minute and a budget
+// per day are the pair every reader-writable RPC starts with.
+type Rule struct {
+	Limit  int
+	Window time.Duration
+}
+
+// Decision is Allow's answer. RetryAfter is what is left of the window that
+// refused the action, so the reader can be told when to come back instead of
+// being left to guess.
+type Decision struct {
+	Allowed    bool
+	RetryAfter time.Duration
+}
+
+// Store keeps the counters. The counters are the entire state of a limiter, so
+// the implementation in use is what decides whether a limit is shared by every
+// instance of a server or held by each of them on its own.
+type Store interface {
+	// Incr adds one to the counter at key and returns the new count. A counter
+	// that does not exist yet starts at one and expires after ttl.
+	Incr(ctx context.Context, key string, ttl time.Duration) (int64, error)
+	// Add stores key when it is absent, and reports whether this call is the one
+	// that stored it. The entry expires after ttl.
+	Add(ctx context.Context, key string, ttl time.Duration) (bool, error)
+	// Forget removes key, so a claim whose action did not go through stops
+	// standing for the rest of its window.
+	Forget(ctx context.Context, key string)
+}
+
+// Limiter charges actions against a Store.
+type Limiter struct {
+	store Store
+	now   func() time.Time
+}
+
+// New returns a limiter that keeps its counters in store.
+func New(store Store) *Limiter {
+	return &Limiter{store: store, now: time.Now}
+}
+
+// Allow charges one action by subject against every rule and reports the first
+// rule that subject has exhausted.
+//
+// Charging stops at the rule that refuses: a reader held off by the per-minute
+// burst rule does not also spend the day's budget, so hammering a refused
+// endpoint cannot cost them the rest of the day.
+func (l *Limiter) Allow(ctx context.Context, subject string, rules ...Rule) (Decision, error) {
+	now := l.now()
+	for _, rule := range rules {
+		if rule.Limit < 1 || rule.Window <= 0 {
+			return Decision{}, fmt.Errorf("ratelimit: rule for %q allows %d actions in %s, want at least one in a positive window", subject, rule.Limit, rule.Window)
+		}
+		key, remaining := bucket(subject, rule, now)
+		count, err := l.store.Incr(ctx, key, remaining)
+		if err != nil {
+			return Decision{}, err
+		}
+		if count > int64(rule.Limit) {
+			return Decision{RetryAfter: remaining}, nil
+		}
+	}
+	return Decision{Allowed: true}, nil
+}
+
+// Claim records key for window and reports whether it was free. A caller told
+// false is repeating something it already did inside that window.
+func (l *Limiter) Claim(ctx context.Context, key string, window time.Duration) (bool, error) {
+	if window <= 0 {
+		return false, fmt.Errorf("ratelimit: claim window for %q is %s, want a positive one", key, window)
+	}
+	return l.store.Add(ctx, key, window)
+}
+
+// Release gives up a claim whose action did not go through, so a write that
+// failed does not leave the caller refused for the rest of the window.
+func (l *Limiter) Release(ctx context.Context, key string) {
+	l.store.Forget(ctx, key)
+}
+
+// bucket names the counter for the window rule is in at now, and reports how
+// long that window still has to run.
+//
+// The windows are fixed ones aligned to the epoch rather than ones starting at
+// the subject's first action: the counter's name then follows from the clock
+// alone, which is what lets several instances charge the same counter without
+// having agreed on anything beforehand.
+func bucket(subject string, rule Rule, now time.Time) (string, time.Duration) {
+	window := rule.Window.Nanoseconds()
+	index := now.UnixNano() / window
+	return fmt.Sprintf("%s|%d|%d", subject, window, index), time.Duration((index+1)*window - now.UnixNano())
+}

@@ -376,6 +376,11 @@ func (s *apiServer) PostEpisodeComment(
 	if err != nil {
 		return nil, err
 	}
+	// Charged before the stored policy is read, so a reader hammering this RPC
+	// is stopped at the allowance rather than at a query per attempt.
+	if err := s.chargeReaderAction(ctx, actionPostComment, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
 	mode, err := s.tenantCommentMode(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
@@ -410,8 +415,19 @@ func (s *apiServer) PostEpisodeComment(
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("episode body is not readable"))
 	}
 
+	// The reader takes their place for this body before it is written, so two
+	// requests carrying the same text cannot both find nothing to repeat.
+	duplicateKey := duplicateCommentKey(tenant.ID, user.ID, episode.ID, body)
+	if err := s.claimCommentBody(ctx, duplicateKey); err != nil {
+		return nil, err
+	}
+
 	commentID, err := uuid.NewV7()
 	if err != nil {
+		// The claim is given back only here, before anything has been sent to the
+		// database: the write provably did not happen, so the reader may say the
+		// same thing again straight away.
+		s.guards.limiter.Release(ctx, duplicateKey)
 		return nil, s.internalDBError(ctx, "failed to allocate comment id", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	comment, err := publicid.Insert(func(publicID string) (dbmodels.EpisodeComment, error) {
@@ -427,6 +443,11 @@ func (s *apiServer) PostEpisodeComment(
 		})
 	})
 	if err != nil {
+		// The claim stands. An INSERT that reports a failure has not necessarily
+		// failed — a connection lost after the commit and before the returned row
+		// arrives looks exactly like one that stored nothing — and of the two
+		// wrong answers, a duplicate comment is the permanent, public one while a
+		// reader held off for the rest of the window is temporary.
 		return nil, s.internalDBError(ctx, "failed to create episode comment", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
@@ -541,6 +562,11 @@ func (s *apiServer) ReportEpisodeComment(
 	}
 	note, err := validateCommentReportNote(req.Msg.Note)
 	if err != nil {
+		return nil, err
+	}
+	// A reporter who has spent their allowance is stopped before the lookup, so
+	// this RPC cannot be walked to find out which comments exist.
+	if err := s.chargeReaderAction(ctx, actionReportComment, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
 

@@ -85,6 +85,7 @@ describe("rpcErrorDisposition", () => {
     [Code.AlreadyExists, "conflict"],
     [Code.Aborted, "conflict"],
     [Code.FailedPrecondition, "precondition"],
+    [Code.ResourceExhausted, "rate-limited"],
     [Code.Unavailable, "unavailable"],
     [Code.Internal, "unexpected"],
   ])("Code %s is %s", (code, expected) => {

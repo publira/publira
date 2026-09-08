@@ -56,6 +56,16 @@ So a new kind of stored object either records its key in one of the existing `*_
 
 No lint covers this. The reclamation logic is `internal/orphanimages`, documented in [`cmd/batch/README.md`](cmd/batch/README.md).
 
+## A reader-writable RPC charges the shared flood control
+
+Every public RPC a signed-in reader writes through spends an allowance before it reaches the database: `chargeReaderAction` in `api/publicapi`, over the counters in `internal/ratelimit`. Adding one is an action name, its rules and their `PUBLIRA_*` settings in `reader_guards.go`, and the charge in the handler — never a limiter of its own, which would be a second policy an operator has to find before they can raise a limit.
+
+An RPC that stores something a reader can repeat verbatim also claims that text for the window, so the same body arriving twice is refused rather than stored twice.
+
+The counters live in Redis when `PUBLIRA_REDIS_URL` names one and in this process when it does not, and a Redis that stops answering falls back to the in-process counters rather than to no limit: a rate limiter that fails open is one an outage turns into the flood it was there to stop.
+
+No lint covers this — nothing can tell an RPC that writes on a reader's behalf from one that does not.
+
 ## Verification after Go changes
 
 Run verification from the **repository root** unless noted. Prefer Task targets so commands stay consistent with CI.

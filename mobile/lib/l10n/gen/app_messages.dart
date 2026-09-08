@@ -65,6 +65,9 @@ abstract class AppMessages {
   /// `errors.rpc.not-found`
   String get errorsRpcNotFound;
 
+  /// `errors.rpc.rate-limited`
+  String get errorsRpcRateLimited;
+
   /// `errors.rpc.unauthenticated`
   String get errorsRpcUnauthenticated;
 
@@ -278,6 +281,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get errorsRpcNotFound {
     return '対象が見つかりません。';
+  }
+
+  @override
+  String get errorsRpcRateLimited {
+    return '短時間に操作が集中しています。少し時間をおいて再試行してください。';
   }
 
   @override
@@ -614,6 +622,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get errorsRpcRateLimited {
+    return 'Too many requests in a short time. Please wait a moment and try again.';
+  }
+
+  @override
   String get errorsRpcUnauthenticated {
     return 'Your session is no longer valid. Please sign in again.';
   }
@@ -944,6 +957,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get errorsRpcNotFound {
     return '대상을 찾을 수 없습니다.';
+  }
+
+  @override
+  String get errorsRpcRateLimited {
+    return '짧은 시간에 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.';
   }
 
   @override

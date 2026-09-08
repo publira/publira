@@ -200,7 +200,13 @@ type commentFixture struct {
 func newCommentFixture(t *testing.T, prefix string) commentFixture {
 	t.Helper()
 
-	env := newPublicDBEnv(t)
+	return newCommentFixtureWithGuards(t, prefix, openReaderGuards())
+}
+
+func newCommentFixtureWithGuards(t *testing.T, prefix string, guards readerGuards) commentFixture {
+	t.Helper()
+
+	env := newPublicDBEnvWithGuards(t, guards)
 	tenant := env.seedTenant(t, prefix+"TENANT", prefix+"-comment.example.com", "Comment Tenant")
 	member := env.PG.SeedEndUser(t, tenant.ID, prefix+"MEMBER", prefix+"-member@example.com", "Comment Member")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: prefix + "SERIES", Title: "Commented series", Published: true})

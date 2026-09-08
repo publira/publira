@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -32,6 +34,14 @@ type publicDBEnv struct {
 func newPublicDBEnv(t *testing.T) *publicDBEnv {
 	t.Helper()
 
+	return newPublicDBEnvWithGuards(t, openReaderGuards())
+}
+
+// newPublicDBEnvWithGuards is newPublicDBEnv for the cases that are about the
+// flood control itself and need it tight enough to reach.
+func newPublicDBEnvWithGuards(t *testing.T, guards readerGuards) *publicDBEnv {
+	t.Helper()
+
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenPublicDB(t)
@@ -39,9 +49,29 @@ func newPublicDBEnv(t *testing.T) *publicDBEnv {
 	// Secret decryption belongs to the payment flows, which these tests seed
 	// around rather than drive. The auth mails are outbox rows the public API
 	// writes and never sends, so no SMTP client takes part here.
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, nil, testutil.TokenManager()))
+	//
+	// The guards are built here rather than read from the environment: the
+	// counters would otherwise be the deployment's shared Redis, where one run
+	// of these tests would charge the budget of the next.
+	server := httptest.NewServer(handlerFromServer(
+		newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, nil, testutil.TokenManager(), slog.Default(), guards),
+	))
 	t.Cleanup(server.Close)
 	return &publicDBEnv{Server: server, PG: pg}
+}
+
+// openReaderGuards allows far more than any case that is not about the flood
+// control reaches, so those cases assert the behaviour they are about rather
+// than the limit they happen to sit under.
+func openReaderGuards() readerGuards {
+	return readerGuards{
+		limiter: ratelimit.New(ratelimit.NewMemoryStore()),
+		rules: map[readerAction][]ratelimit.Rule{
+			actionPostComment:   {{Limit: 1000, Window: time.Minute}},
+			actionReportComment: {{Limit: 1000, Window: time.Minute}},
+		},
+		duplicateCommentWindow: defaultDuplicateCommentWindow,
+	}
 }
 
 func (e *publicDBEnv) seedTenant(t *testing.T, publicID, domain, name string) testutil.Tenant {
