@@ -18,7 +18,6 @@ export {
 } from "./site-layout";
 export {
   SiteLayoutActions,
-  SiteLayoutLogoutAction,
   SiteLayoutPrimaryAction,
   SiteLayoutSecondaryAction,
 } from "./site-layout-actions";

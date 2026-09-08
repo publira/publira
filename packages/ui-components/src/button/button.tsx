@@ -25,6 +25,12 @@ export const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground hover:opacity-90",
         ghost: "text-foreground hover:bg-muted",
+        /**
+         * Filled in ink. The one filled button on a screen that is neither a
+         * console's primary action, which is Ai, nor the reading action, which
+         * is the single Shu the screen is allowed.
+         */
+        ink: "bg-foreground text-background hover:opacity-90",
         link: "text-primary underline-offset-4 hover:underline",
         outline:
           "border border-border bg-background text-foreground hover:bg-muted",

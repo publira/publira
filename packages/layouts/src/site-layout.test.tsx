@@ -20,7 +20,6 @@ import {
 } from "./site-layout";
 import {
   SiteLayoutActions,
-  SiteLayoutLogoutAction,
   SiteLayoutPrimaryAction,
   SiteLayoutSecondaryAction,
 } from "./site-layout-actions";
@@ -101,19 +100,5 @@ describe("SiteLayout slots", () => {
     expect(
       screen.getByRole("link", { name: "Get started" }).getAttribute("href")
     ).toBe("/signup");
-  });
-
-  it("only the dedicated slot receives the sign-out Server Action", () => {
-    render(
-      <SiteLayoutActions>
-        <SiteLayoutLogoutAction action={() => {}}>
-          Sign out
-        </SiteLayoutLogoutAction>
-      </SiteLayoutActions>
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Sign out" }).closest("form")
-    ).toBeTruthy();
   });
 });

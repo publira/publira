@@ -375,7 +375,7 @@ const TenantFooterCopyright = async () => {
 const SiteNavSkeleton = () => (
   <div
     aria-hidden="true"
-    className="hidden h-5 w-64 animate-pulse rounded bg-muted md:block"
+    className="hidden h-5 w-64 animate-pulse rounded-control bg-muted md:block"
   />
 );
 
