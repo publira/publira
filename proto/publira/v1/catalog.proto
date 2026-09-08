@@ -84,7 +84,7 @@ message GetEpisodeDetailRequest {
 // Viewer access state for an episode body on GetEpisodeDetail.
 enum EpisodeAccess {
   EPISODE_ACCESS_UNSPECIFIED = 0;
-  // price is 0 (public body).
+  // The body is public: price is 0, or a scheduled free window is open on it.
   EPISODE_ACCESS_FREE = 1;
   // paid and no valid purchase/ticket grant.
   EPISODE_ACCESS_LOCKED = 2;
@@ -101,6 +101,12 @@ message GetEpisodeDetailResponse {
   repeated publira.types.v1.EpisodeImage images = 3;
   // Viewer access state for this episode.
   EpisodeAccess access = 4;
+  // RFC3339 end of the free window open on this episode, empty when none is.
+  // A priced episode reads as free until this instant and is locked again
+  // afterwards, which is what a countdown on the reader's screen counts down
+  // to. An episode whose price is 0 carries no value here: it is not free
+  // until anything.
+  string free_until = 5;
 }
 
 // A creator that currently has at least one published series.

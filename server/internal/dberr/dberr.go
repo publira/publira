@@ -12,10 +12,23 @@ import (
 // constraint.
 const uniqueViolationCode = "23505"
 
+// exclusionViolationCode is the SQLSTATE PostgreSQL reports for a violated
+// exclusion constraint, which is how episode_free_windows refuses two periods
+// that overlap on the same episode.
+const exclusionViolationCode = "23P01"
+
 // IsUniqueViolation reports whether err is a unique constraint violation.
 func IsUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode
+}
+
+// IsExclusionViolation reports whether err is an exclusion constraint
+// violation. The conflicting row is not part of the error, so a caller that
+// wants to name it has to read it back itself.
+func IsExclusionViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == exclusionViolationCode
 }
 
 // UniqueViolationConstraint returns the name of the constraint err violated, or

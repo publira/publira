@@ -79,10 +79,10 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
 			"reading_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title", "series_age_rating",
+			"series_public_id", "series_title", "series_age_rating", "free_until",
 		}).AddRow(
 			fixture.episodeID, "EPISODE001", "Episode Title", int32(1), fixture.seriesID,
-			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all",
+			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil,
 		))
 	return fixture
 }
@@ -417,10 +417,10 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
 			"reading_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title", "series_age_rating",
+			"series_public_id", "series_title", "series_age_rating", "free_until",
 		}).AddRow(
 			episodeID, "EPISODE001", "Episode Title", int32(1), seriesID,
-			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all",
+			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil,
 		))
 	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
 		WithArgs(episodeID).

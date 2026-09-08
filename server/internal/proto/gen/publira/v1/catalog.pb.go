@@ -88,7 +88,7 @@ type EpisodeAccess int32
 
 const (
 	EpisodeAccess_EPISODE_ACCESS_UNSPECIFIED EpisodeAccess = 0
-	// price is 0 (public body).
+	// The body is public: price is 0, or a scheduled free window is open on it.
 	EpisodeAccess_EPISODE_ACCESS_FREE EpisodeAccess = 1
 	// paid and no valid purchase/ticket grant.
 	EpisodeAccess_EPISODE_ACCESS_LOCKED EpisodeAccess = 2
@@ -828,7 +828,13 @@ type GetEpisodeDetailResponse struct {
 	// Body images. Empty when access is locked (paid, no purchase/ticket).
 	Images []*v1.EpisodeImage `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
 	// Viewer access state for this episode.
-	Access        EpisodeAccess `protobuf:"varint,4,opt,name=access,proto3,enum=publira.v1.EpisodeAccess" json:"access,omitempty"`
+	Access EpisodeAccess `protobuf:"varint,4,opt,name=access,proto3,enum=publira.v1.EpisodeAccess" json:"access,omitempty"`
+	// RFC3339 end of the free window open on this episode, empty when none is.
+	// A priced episode reads as free until this instant and is locked again
+	// afterwards, which is what a countdown on the reader's screen counts down
+	// to. An episode whose price is 0 carries no value here: it is not free
+	// until anything.
+	FreeUntil     string `protobuf:"bytes,5,opt,name=free_until,json=freeUntil,proto3" json:"free_until,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -889,6 +895,13 @@ func (x *GetEpisodeDetailResponse) GetAccess() EpisodeAccess {
 		return x.Access
 	}
 	return EpisodeAccess_EPISODE_ACCESS_UNSPECIFIED
+}
+
+func (x *GetEpisodeDetailResponse) GetFreeUntil() string {
+	if x != nil {
+		return x.FreeUntil
+	}
+	return ""
 }
 
 // A creator that currently has at least one published series.
@@ -4045,12 +4058,14 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\bepisodes\x18\x02 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"o\n" +
 	"\x17GetEpisodeDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xec\x01\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x8b\x02\n" +
 	"\x18GetEpisodeDetailResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x120\n" +
 	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x126\n" +
 	"\x06images\x18\x03 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\x121\n" +
-	"\x06access\x18\x04 \x01(\x0e2\x19.publira.v1.EpisodeAccessR\x06access\"\xb0\x02\n" +
+	"\x06access\x18\x04 \x01(\x0e2\x19.publira.v1.EpisodeAccessR\x06access\x12\x1d\n" +
+	"\n" +
+	"free_until\x18\x05 \x01(\tR\tfreeUntil\"\xb0\x02\n" +
 	"\x0fPublishedAuthor\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +

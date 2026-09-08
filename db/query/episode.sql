@@ -234,11 +234,21 @@ SELECT e.id,
     s.title AS series_title,
     -- The rating a client interposes its confirmation on. Reading it here
     -- keeps the episode detail one round trip.
-    sl.age_rating AS series_age_rating
+    sl.age_rating AS series_age_rating,
+    -- The end of the free window covering this instant, or NULL when none
+    -- does. Windows on one episode cannot overlap, so at most one row answers.
+    -- A priced episode inside one reads as free until this moment, which is
+    -- also what the response shows the reader as a countdown.
+    fw.ends_at AS free_until
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    -- At most one window can cover an instant of an episode, so this join
+    -- cannot multiply the row.
+    LEFT JOIN episode_free_windows fw ON fw.episode_id = e.id
+    AND fw.starts_at <= NOW()
+    AND fw.ends_at > NOW()
 WHERE s.tenant_id = $1
     AND e.public_id = $2
     AND s.is_published = true
@@ -271,6 +281,13 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND el.published_at <= NOW()
     AND (
         el.price = 0
+        OR EXISTS (
+            SELECT 1
+            FROM episode_free_windows fw
+            WHERE fw.episode_id = e.id
+                AND fw.starts_at <= NOW()
+                AND fw.ends_at > NOW()
+        )
         OR EXISTS (
             SELECT 1
             FROM purchases p

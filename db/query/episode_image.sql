@@ -84,6 +84,13 @@ SELECT ei.id,
         el.price = 0
         OR EXISTS (
             SELECT 1
+            FROM episode_free_windows fw
+            WHERE fw.episode_id = e.id
+                AND fw.starts_at <= NOW()
+                AND fw.ends_at > NOW()
+        )
+        OR EXISTS (
+            SELECT 1
             FROM purchases p
             WHERE p.tenant_id = s.tenant_id
                 -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
@@ -157,7 +164,14 @@ SELECT ei.id,
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
     ) AS is_published,
-    (el.price = 0) AS has_public_access
+    (
+        el.price = 0
+        OR fw.ends_at IS NOT NULL
+    ) AS has_public_access,
+    -- When the body is public only because a window is open, this is the
+    -- instant it stops being public. The caller bounds how long the response
+    -- may be cached by it, so no copy of a paid page outlives the campaign.
+    fw.ends_at AS free_until
 FROM episode_images ei
 JOIN LATERAL (
     SELECT object_key, content_type
@@ -169,6 +183,11 @@ JOIN LATERAL (
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    -- At most one window can cover an instant of an episode, so this join
+    -- cannot multiply the row.
+    LEFT JOIN episode_free_windows fw ON fw.episode_id = e.id
+    AND fw.starts_at <= NOW()
+    AND fw.ends_at > NOW()
 WHERE ei.id = $1
     AND s.tenant_id = $2
 LIMIT 1;

@@ -20,6 +20,30 @@ import (
 	"github.com/publira/publira/server/internal/tracing"
 )
 
+// publicImageCacheControl is what a body anyone may read is served with. An
+// episode that is free by price stays free, so its pages can be held for the
+// full hour.
+const publicImageCacheControl = "public, max-age=3600"
+
+// publicImageMaxAgeSeconds is the ceiling above; freeWindowCacheControl never
+// exceeds it.
+const publicImageMaxAgeSeconds = 3600
+
+// freeWindowCacheControl bounds a public response to what is left of the free
+// window that made it public. A window shorter than the default hour shortens
+// the response with it, and one that closed between the query and here leaves
+// nothing cacheable at all.
+func freeWindowCacheControl(freeUntil, now time.Time) string {
+	remaining := int(freeUntil.Sub(now).Seconds())
+	if remaining < 0 {
+		remaining = 0
+	}
+	if remaining > publicImageMaxAgeSeconds {
+		remaining = publicImageMaxAgeSeconds
+	}
+	return "public, max-age=" + strconv.Itoa(remaining)
+}
+
 type ResolverQuerier interface {
 	GetTenantByDomains(ctx context.Context, domains []string) (dbmodels.Tenant, error)
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (dbmodels.Tenant, error)
@@ -146,7 +170,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 
 	objectKey := ""
 	contentTypeFromDB := ""
-	cacheControl := "public, max-age=3600"
+	cacheControl := publicImageCacheControl
 	var cipher *imageCipher
 
 	if credential, ok := h.episodeImageCredential(r, tenant.ID); ok {
@@ -203,12 +227,20 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		isPublished := publicAccess.IsPublished.Valid && publicAccess.IsPublished.Bool
-		if !isPublished || !publicAccess.HasPublicAccess {
+		hasPublicAccess := publicAccess.HasPublicAccess.Valid && publicAccess.HasPublicAccess.Bool
+		if !isPublished || !hasPublicAccess {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
 		objectKey = publicAccess.ObjectKey
 		contentTypeFromDB = publicAccess.ContentType
+		if publicAccess.FreeUntil.Valid {
+			// The body is public only while the window is open, so the
+			// response must not outlive it: a copy still in a browser or a
+			// shared cache afterwards is a paid page being read for free, and
+			// the token that came with it still decrypts what is cached.
+			cacheControl = freeWindowCacheControl(publicAccess.FreeUntil.Time, time.Now())
+		}
 		// A free body leaves as ciphertext too, so what a page costs to
 		// extract does not depend on whether its episode is sold. The admin
 		// preview host is left out: it renders bodies with an <img>, which

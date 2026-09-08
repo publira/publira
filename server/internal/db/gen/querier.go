@@ -84,6 +84,7 @@ type Querier interface {
 	// Durable member follows. Episode, series, and creator follows have
 	// distinct source tables; content_events must not be used to model any of them.
 	CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error)
+	CreateEpisodeFreeWindow(ctx context.Context, arg CreateEpisodeFreeWindowParams) (CreateEpisodeFreeWindowRow, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
 	CreateEpisodeImageVariant(ctx context.Context, arg CreateEpisodeImageVariantParams) (EpisodeImageVariant, error)
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
@@ -130,6 +131,10 @@ type Querier interface {
 	// state it is in, and the reversible removal is a different query.
 	DeleteEpisodeCommentByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeCommentByPublicIDForTenantParams) (int64, error)
 	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
+	// Returns the deleted row so a concurrent second delete is told apart from a
+	// public_id that never existed. What the caller audits and revalidates comes
+	// from the read it did first.
+	DeleteEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByPublicIDForTenantParams) (DeleteEpisodeFreeWindowByPublicIDForTenantRow, error)
 	// Clears one aspect ratio of an eye-catch, like the series query above.
 	DeleteLabelImageVariantsByType(ctx context.Context, arg DeleteLabelImageVariantsByTypeParams) (int64, error)
 	DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
@@ -203,6 +208,7 @@ type Querier interface {
 	// reads it before deciding and again after writing, so the caller answers from
 	// the stored row rather than from what it assumed the transition would produce.
 	GetEpisodeCommentForModerationByPublicIDForTenant(ctx context.Context, arg GetEpisodeCommentForModerationByPublicIDForTenantParams) (GetEpisodeCommentForModerationByPublicIDForTenantRow, error)
+	GetEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByPublicIDForTenantParams) (GetEpisodeFreeWindowByPublicIDForTenantRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
 	// Tenant-staff preview: membership and role are evaluated in the handler.
 	// This query only answers whether the image belongs to the tenant, with no
@@ -510,6 +516,13 @@ type Querier interface {
 	// The author and the episode are joined in because a comment cannot be judged
 	// from its text alone: staff need to know who wrote it and what it is about.
 	ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentsForModerationByCreatedAtDescRow, error)
+	// Every window with a boundary the apply-free-windows batch has not dropped
+	// the site caches for yet. A window whose start and end both passed while the
+	// batch was down comes back with both flags set, and one revalidation answers
+	// for both.
+	//
+	// This spans every tenant, so the connection must bypass RLS.
+	ListEpisodeFreeWindowBoundariesDue(ctx context.Context) ([]ListEpisodeFreeWindowBoundariesDueRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)
 	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error)
 	// ListEpisodeReadThroughDesc walked the other way, to build a previous page.
@@ -907,6 +920,8 @@ type Querier interface {
 	// Upserts, so marking an already-read announcement refreshes read_at instead
 	// of failing. The SELECT confines the insert to the caller's own inbox.
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
+	MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error
+	MarkEpisodeFreeWindowStartRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
 	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error)
 	// Same token drop as MarkOutboxEventDone: a dead auth-mail event is
@@ -1160,7 +1175,8 @@ type Querier interface {
 	// indistinguishable from an unfollowed one.
 	UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error)
 	// True when the user may view paid body content for the episode via purchase or active access ticket.
-	// Free episodes (price = 0) are evaluated by the caller; this query only covers grants.
+	// Whether the body is free to everyone — price = 0, or an open free window —
+	// is evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (sql.NullBool, error)
 	UserHasValidPurchaseForEpisode(ctx context.Context, arg UserHasValidPurchaseForEpisodeParams) (bool, error)
 	// The author's own deletion. It applies to a comment staff had removed too,

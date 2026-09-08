@@ -34,6 +34,11 @@ var subcommands = []subcommand{
 		run:     runPublishEpisodes,
 	},
 	{
+		name:    "apply-free-windows",
+		summary: "Drop the public site caches at every free window boundary, on a ticker until interrupted",
+		run:     runApplyFreeWindows,
+	},
+	{
 		name:    "project-episode-reads",
 		summary: "File the missing episode_complete events for stored episode reads",
 		run:     runProjectEpisodeReads,

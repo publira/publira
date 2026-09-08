@@ -32,6 +32,28 @@ func TestIsUniqueViolation(t *testing.T) {
 	}
 }
 
+func TestIsExclusionViolation(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"exclusion_violation", &pgconn.PgError{Code: "23P01", ConstraintName: "episode_free_windows_no_overlap"}, true},
+		{"wrapped", fmt.Errorf("create free window: %w", &pgconn.PgError{Code: "23P01"}), true},
+		{"unique_violation", &pgconn.PgError{Code: "23505"}, false},
+		{"plain_error", errors.New("boom"), false},
+		{"nil", nil, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := dberr.IsExclusionViolation(tc.err); got != tc.want {
+				t.Fatalf("IsExclusionViolation(%v) = %t, want %t", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestUniqueViolationConstraint(t *testing.T) {
 	cases := []struct {
 		name string

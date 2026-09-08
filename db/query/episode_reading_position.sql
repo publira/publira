@@ -37,6 +37,13 @@ WITH readable AS (
             el.price = 0
             OR EXISTS (
                 SELECT 1
+                FROM episode_free_windows fw
+                WHERE fw.episode_id = e.id
+                    AND fw.starts_at <= NOW()
+                    AND fw.ends_at > NOW()
+            )
+            OR EXISTS (
+                SELECT 1
                 FROM purchases p
                 WHERE p.tenant_id = sqlc.arg('tenant_id')
                     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
@@ -104,6 +111,13 @@ WHERE rp.tenant_id = sqlc.arg('tenant_id')
         el.price = 0
         OR EXISTS (
             SELECT 1
+            FROM episode_free_windows fw
+            WHERE fw.episode_id = e.id
+                AND fw.starts_at <= NOW()
+                AND fw.ends_at > NOW()
+        )
+        OR EXISTS (
+            SELECT 1
             FROM purchases p
             WHERE p.tenant_id = sqlc.arg('tenant_id')
                 -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
@@ -165,6 +179,13 @@ WHERE rp.tenant_id = sqlc.arg('tenant_id')
     AND el.published_at <= NOW()
     AND (
         el.price = 0
+        OR EXISTS (
+            SELECT 1
+            FROM episode_free_windows fw
+            WHERE fw.episode_id = e.id
+                AND fw.starts_at <= NOW()
+                AND fw.ends_at > NOW()
+        )
         OR EXISTS (
             SELECT 1
             FROM purchases p
@@ -321,6 +342,13 @@ FROM continue_from cf
             el.price = 0
             OR EXISTS (
                 SELECT 1
+                FROM episode_free_windows fw
+                WHERE fw.episode_id = e.id
+                    AND fw.starts_at <= NOW()
+                    AND fw.ends_at > NOW()
+            )
+            OR EXISTS (
+                SELECT 1
                 FROM purchases p
                 WHERE p.tenant_id = sqlc.arg('tenant_id')
                     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
@@ -461,6 +489,13 @@ FROM continue_from cf
         AND rp.episode_id = e.id
         AND (
             el.price = 0
+            OR EXISTS (
+                SELECT 1
+                FROM episode_free_windows fw
+                WHERE fw.episode_id = e.id
+                    AND fw.starts_at <= NOW()
+                    AND fw.ends_at > NOW()
+            )
             OR EXISTS (
                 SELECT 1
                 FROM purchases p

@@ -25,6 +25,11 @@ type Tenant struct {
 	// asserting what an API answers names the seeded value rather than a
 	// constant of its own.
 	DefaultLocale string
+	// TimeZone is the IANA zone [SeedTenant] stated for the row. A test whose
+	// subject is a calendar boundary — a free window ending at the tenant's own
+	// midnight, say — computes that instant in this zone rather than in the
+	// zone the test process happens to run in.
+	TimeZone string
 }
 
 // TenantUser is a seeded users row together with the tenant role it holds.
@@ -76,6 +81,7 @@ func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Te
 		AdminDomain:   adminDomain,
 		Name:          tenant.Name,
 		DefaultLocale: tenant.DefaultLocale,
+		TimeZone:      tenant.Timezone,
 	}
 }
 
