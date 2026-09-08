@@ -40,12 +40,12 @@ import { CommentActionButton } from "./comment-action-button";
 import { CommentReasonDialog } from "./comment-reason-dialog";
 import { CommentReportDecisionButton } from "./comment-report-decision-button";
 import {
-  commentReportReasonMessage,
-  commentReportStatusMessage,
+  CommentReportReasonMessage,
+  CommentReportStatusMessage,
   commentReportStatusTone,
 } from "./comment-report-labels";
 import {
-  commentStatusMessage,
+  CommentStatusMessage,
   commentStatusTone,
 } from "./comment-status-label";
 
@@ -104,13 +104,11 @@ const CommentReportStatusFilter = ({
         variant={option.status === status ? "default" : "outline"}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-          <Message
-            message={
-              option.status === ""
-                ? "admin.comments.reports.filter_all"
-                : commentReportStatusMessage(option.status)
-            }
-          />
+          {option.status === "" ? (
+            <Message message="admin.comments.reports.filter_all" />
+          ) : (
+            <CommentReportStatusMessage status={option.status} />
+          )}
         </Suspense>
       </LinkButton>
     ))}
@@ -157,13 +155,11 @@ const ReportedCommentNotes = ({ report }: { report: CommentReportItem }) => {
     <>
       <span className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
-          <Message
-            message={
-              report.comment.hiddenReason === "auto_reports"
-                ? "admin.comments.hidden_by_reports"
-                : "admin.comments.hidden_by_staff"
-            }
-          />
+          {report.comment.hiddenReason === "auto_reports" ? (
+            <Message message="admin.comments.hidden_by_reports" />
+          ) : (
+            <Message message="admin.comments.hidden_by_staff" />
+          )}
         </Suspense>
       </span>
       <span className="text-xs text-muted-foreground">
@@ -188,12 +184,12 @@ const ReportSummary = ({
   <div className="grid gap-1">
     <StatusChip status={commentReportStatusTone(report.status)}>
       <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-        <Message message={commentReportStatusMessage(report.status)} />
+        <CommentReportStatusMessage status={report.status} />
       </Suspense>
     </StatusChip>
     <span className="font-medium">
       <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-        <Message message={commentReportReasonMessage(report.reason)} />
+        <CommentReportReasonMessage reason={report.reason} />
       </Suspense>
     </span>
     {report.note ? (
@@ -234,19 +230,19 @@ const ReportedComment = ({ report }: { report: CommentReportItem }) => (
     <div className="flex flex-wrap items-center gap-2">
       <StatusChip status={commentStatusTone(report.comment.status)}>
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-          <Message message={commentStatusMessage(report.comment.status)} />
+          <CommentStatusMessage status={report.comment.status} />
         </Suspense>
       </StatusChip>
       <span className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-3 w-32" />}>
-          <Message
-            message={
-              report.comment.openReportCount === 1
-                ? "admin.comments.reports.open_count_one"
-                : "admin.comments.reports.open_count"
-            }
-            values={{ count: report.comment.openReportCount }}
-          />
+          {report.comment.openReportCount === 1 ? (
+            <Message message="admin.comments.reports.open_count_one" />
+          ) : (
+            <Message
+              message="admin.comments.reports.open_count"
+              values={{ count: report.comment.openReportCount }}
+            />
+          )}
         </Suspense>
       </span>
     </div>
