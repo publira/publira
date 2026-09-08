@@ -1,1 +1,1 @@
-DROP INDEX IF EXISTS idx_episode_reads_tenant_user_read_at;
+DROP INDEX CONCURRENTLY IF EXISTS idx_episode_reads_tenant_user_read_at;

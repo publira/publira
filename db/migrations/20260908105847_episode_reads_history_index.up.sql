@@ -6,4 +6,10 @@
 --
 -- id is the tiebreaker rather than episode_id because it is the sort key the
 -- cursor token carries, and episode_reads.id is unique on its own.
-CREATE INDEX idx_episode_reads_tenant_user_read_at ON episode_reads USING btree (tenant_id, user_id, read_at DESC, id DESC);
+--
+-- CONCURRENTLY, so building it does not block the completions readers keep
+-- writing. That is also why this statement is the whole file: the driver hands
+-- a migration to PostgreSQL as one query string, and a string holding more
+-- than one statement becomes an implicit transaction, which is the one place
+-- CONCURRENTLY cannot run.
+CREATE INDEX CONCURRENTLY idx_episode_reads_tenant_user_read_at ON episode_reads USING btree (tenant_id, user_id, read_at DESC, id DESC);
