@@ -227,17 +227,25 @@ const ViewerPageNavigation = () => {
  * a plugin hook without changing this layout.
  *
  * `children` are mounted inside the viewer root, for the components that read
- * the reader's progress but draw nothing — the read recorder today. They sit
- * here rather than arriving as ids on this component so the reader itself
- * stays about reading.
+ * the reader's progress but draw nothing — the read recorder and the reading
+ * position recorder today. They sit here rather than arriving as ids on this
+ * component so the reader itself stays about reading.
+ *
+ * `initialPageIndex` is where the reader left the episode, resolved on the
+ * server. It is the page the viewer mounts on rather than a page it moves to
+ * afterwards, so the reader never sees the first page of an episode they are
+ * in the middle of.
  */
 export const EpisodeComicViewer = ({
   children,
   copy,
+  initialPageIndex = 0,
   pages,
 }: {
   children?: ReactNode;
   copy: EpisodeComicViewerCopy;
+  /** Zero-based page the reader opens at. */
+  initialPageIndex?: number;
   pages: ViewerPage[];
 }) => {
   const shellRef = useRef<HTMLDivElement>(null);
@@ -264,6 +272,7 @@ export const EpisodeComicViewer = ({
     <CopyContext value={copy}>
       <div className="h-full w-full bg-neutral-950" ref={shellRef}>
         <ComicViewerRoot
+          initialIndex={initialPageIndex}
           pages={pages}
           plugins={VIEWER_PLUGINS}
           spreadStartIndex={SPREAD_START_INDEX}

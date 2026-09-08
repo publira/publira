@@ -77,6 +77,32 @@ const clearEpisodeReadState = (): void => {
   `);
 };
 
+/** The seed member's saved position in the seeded episode. */
+const READING_POSITION_SCOPE = `
+  FROM episode_reading_positions p
+      JOIN users u ON u.id = p.user_id
+      JOIN episodes e ON e.id = p.episode_id
+  WHERE u.email = '${SEED_MEMBER.email}'
+      AND e.public_id = '${VIEWER_EPISODE_ID}'
+`;
+
+/**
+ * The zero-based page that position names, or an empty string when the member
+ * has no position in the episode.
+ */
+const savedPageIndex = (): string =>
+  querySql(`SELECT p.page_index ${READING_POSITION_SCOPE};`);
+
+/** Put this member back where they had never opened the episode. */
+const clearReadingPosition = (): void => {
+  runSql(`
+    DELETE FROM episode_reading_positions
+    WHERE (tenant_id, user_id, episode_id) IN (
+        SELECT p.tenant_id, p.user_id, p.episode_id ${READING_POSITION_SCOPE}
+    );
+  `);
+};
+
 const readingProgress = (page: Page) => page.getByLabel(VIEWER_PROGRESS_LABEL);
 
 const pageCanvas = (page: Page, pageNumber: number) =>
@@ -116,6 +142,26 @@ const turnToLastPage = async (
   return turnToLastPage(page, visited);
 };
 
+/**
+ * Turn `count` pages forward, waiting for the reader to report each one.
+ *
+ * Recursive rather than a loop for the reason `turnToLastPage` is: each turn
+ * has to be awaited before the next key press, and the reader's own report is
+ * what says the turn happened.
+ */
+const turnPages = async (page: Page, count: number): Promise<void> => {
+  if (count <= 0) {
+    return;
+  }
+
+  const progress = readingProgress(page);
+  const current = await progress.getAttribute("value");
+  await page.keyboard.press("ArrowLeft");
+  await expect(progress).not.toHaveAttribute("value", String(current));
+
+  return turnPages(page, count - 1);
+};
+
 const isStrictlyAscending = (values: readonly number[]): boolean =>
   values.every(
     (value, index) => index === 0 || value > (values[index - 1] ?? value)
@@ -133,14 +179,19 @@ const isStrictlyAscending = (values: readonly number[]): boolean =>
  * is the beacon the viewer sends on the last page, so the record is still
  * reached the way a reader reaches it rather than written by the fixture.
  *
- * That read state is the only thing this suite writes, and no other suite
- * touches it, so the tests stay independent of one another rather than running
- * serially. The one test that writes it arranges it for itself, which is also
- * what makes a retry start from an unread episode.
+ * The reader's saved position is asserted the same way, and for the same
+ * reason: what a reader can see of it is the page the episode opens at, which
+ * is what the resume test reads back.
+ *
+ * That read state and that position are the only things this suite writes, and
+ * no other suite touches them, so the tests stay independent of one another
+ * rather than running serially. Each test that writes one arranges it for
+ * itself, which is also what makes a retry start from an unopened episode.
  */
 test.describe("web-host episode reading", () => {
   test.afterAll(() => {
     clearEpisodeReadState();
+    clearReadingPosition();
   });
 
   test("turning pages moves the reading progress to the last page of the episode", async ({
@@ -174,6 +225,7 @@ test.describe("web-host episode reading", () => {
     page,
   }) => {
     clearEpisodeReadState();
+    clearReadingPosition();
     await signInAsMember(
       page,
       SEED_MEMBER,
@@ -199,9 +251,24 @@ test.describe("web-host episode reading", () => {
       })
       .toBe("1");
 
+    // The reader stopped on the last page, so that is where the episode opens
+    // again. Waiting for the position to be written is what makes the reload
+    // land somewhere this test can name, and it puts the reader back on the
+    // last page without a single turn — which is the re-read this asserts is
+    // not a second completion.
+    await expect
+      .poll(savedPageIndex, { message: "the last page was saved" })
+      .toBe(String(VIEWER_PAGE_COUNT - 1));
+
     await page.reload();
-    await expectFirstPageDrawn(page);
-    await turnToLastPage(page);
+    await expect(readingProgress(page)).toHaveAttribute(
+      "value",
+      String(VIEWER_PAGE_COUNT)
+    );
+    await expect(pageCanvas(page, VIEWER_PAGE_COUNT)).toHaveAttribute(
+      "data-page-status",
+      "loaded"
+    );
 
     expect(episodeReadAt(), "the first read keeps its timestamp").toBe(
       firstReadAt
@@ -210,6 +277,45 @@ test.describe("web-host episode reading", () => {
       episodeCompleteEventCount(),
       "a re-read is not a second completion"
     ).toBe("1");
+  });
+
+  test("reopening the episode puts the member back on the page they stopped on", async ({
+    page,
+  }) => {
+    clearReadingPosition();
+    expect(savedPageIndex(), "the member has never opened the episode").toBe(
+      ""
+    );
+    await signInAsMember(
+      page,
+      SEED_MEMBER,
+      VIEWER_EPISODE_PATH,
+      WEB_HOST_EDGE_BASE_URL
+    );
+    await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
+    await expectFirstPageDrawn(page);
+
+    await turnPages(page, 3);
+    const stoppedOn = Number(await readingProgress(page).getAttribute("value"));
+    expect(stoppedOn, "the reader moved off the first page").toBeGreaterThan(1);
+
+    // `sendBeacon` hands the position to the browser, which delivers it on its
+    // own schedule, and the viewer waits for the reader to settle before
+    // handing over anything at all. Opening the episode saves the first page
+    // on its own, so what this waits for is a page past it: `-1` stands for a
+    // member who still has no position at all.
+    await expect
+      .poll(() => Number(savedPageIndex() || "-1"), {
+        message: "the page the reader stopped on reached the database",
+      })
+      .toBeGreaterThan(0);
+
+    await page.reload();
+
+    await expect(readingProgress(page)).toHaveAttribute(
+      "value",
+      String(stoppedOn)
+    );
   });
 
   test("a page that fails to load is retried on its own", async ({ page }) => {

@@ -1,18 +1,33 @@
 import { getMessage } from "@publira/i18n";
 
+import { resolveAccessToken } from "#lib/api-client";
 import type {
   EpisodeDetail,
   EpisodeImageItem,
   EpisodeSeriesSummary,
 } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMyReadingPosition } from "#lib/reading-position";
+import { getTenantId } from "#lib/tenant-id";
 
+import { resumePageIndex } from "../_lib/reading-position";
 import { VIEWER_HEIGHT_CLASS } from "../_lib/viewer-layout";
 import { toViewerPages } from "../_lib/viewer-pages";
 import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeComicViewer } from "./episode-comic-viewer";
 import { EpisodeReadRecorder } from "./episode-read-recorder";
+import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
 
+/**
+ * The reader itself, with the page it opens at and the recorders that keep
+ * that page up to date.
+ *
+ * The reading position is read here rather than alongside the episode body,
+ * because a free episode reaches this component without a session ever being
+ * resolved. It is read uncached and awaited before the viewer mounts: the page
+ * the reader resumes on is the page the viewer draws first, not one it jumps
+ * to once the reader is already looking at the first page.
+ */
 export const EpisodeViewer = async ({
   episode,
   images,
@@ -34,6 +49,16 @@ export const EpisodeViewer = async ({
       </EpisodeBodyNotice>
     );
   }
+
+  const [tenantId, accessToken] = await Promise.all([
+    getTenantId(),
+    resolveAccessToken(),
+  ]);
+  const savedPageIndex = await getMyReadingPosition({
+    accessToken,
+    episodePublicId: episode.publicId,
+    tenantId,
+  });
 
   return (
     <div className={`${VIEWER_HEIGHT_CLASS} w-full`}>
@@ -61,11 +86,15 @@ export const EpisodeViewer = async ({
           progress: getMessage(messages, "host.episode.viewer.progress"),
           reload: getMessage(messages, "host.episode.viewer.reload"),
         }}
+        initialPageIndex={resumePageIndex(savedPageIndex, images.length)}
         pages={toViewerPages(episode.title, images, (values) =>
           getMessage(messages, "host.episode.viewer.page_title", values)
         )}
       >
         <EpisodeReadRecorder episode={episode} series={series} />
+        {accessToken ? (
+          <EpisodeReadingPositionRecorder episode={episode} series={series} />
+        ) : null}
       </EpisodeComicViewer>
     </div>
   );
