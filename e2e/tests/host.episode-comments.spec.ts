@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+import { uniqueCommentBody } from "../src/comments";
 import { applyScenarioSql, querySql, quoteSqlLiteral, runSql } from "../src/db";
 import { signInAsMember } from "../src/host";
 import { episodeCommentsTag, revalidateHostTags } from "../src/revalidate";
@@ -156,7 +157,7 @@ test.describe("web-host episode comments", () => {
   test("a signed-in reader posts a comment and finds it in the list", async ({
     page,
   }) => {
-    const body = "This episode landed the ending perfectly.";
+    const body = uniqueCommentBody("This episode landed the ending perfectly.");
     await signInAsMember(
       page,
       EPISODE_COMMENTS_AUTHOR,
@@ -182,7 +183,7 @@ test.describe("web-host episode comments", () => {
     browser,
     page,
   }) => {
-    const body = "A comment the moderators will take down.";
+    const body = uniqueCommentBody("A comment the moderators will take down.");
     await signInAsMember(
       page,
       EPISODE_COMMENTS_AUTHOR,
@@ -228,7 +229,9 @@ test.describe("web-host episode comments", () => {
   test("the author deletes a comment and it leaves their own page too", async ({
     page,
   }) => {
-    const body = "A comment its author will think better of.";
+    const body = uniqueCommentBody(
+      "A comment its author will think better of."
+    );
     await signInAsMember(
       page,
       EPISODE_COMMENTS_AUTHOR,
@@ -258,7 +261,7 @@ test.describe("web-host episode comments", () => {
     browser,
     page,
   }) => {
-    const body = "A comment another reader will report.";
+    const body = uniqueCommentBody("A comment another reader will report.");
     await signInAsMember(
       page,
       EPISODE_COMMENTS_AUTHOR,
