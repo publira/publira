@@ -227,7 +227,7 @@ func TestEpisodeImageConvertsToWebPAndCaches(t *testing.T) {
 			ObjectKey:       "episodes/page.jpg",
 			ContentType:     "image/jpeg",
 			IsPublished:     sql.NullBool{Bool: true, Valid: true},
-			HasPublicAccess: true,
+			HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
 		},
 	}
 	srv := newTestServer(t,
@@ -294,7 +294,7 @@ func TestEpisodeImageResizeQuery(t *testing.T) {
 				ObjectKey:       "episodes/page.jpg",
 				ContentType:     "image/jpeg",
 				IsPublished:     sql.NullBool{Bool: true, Valid: true},
-				HasPublicAccess: true,
+				HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
 			},
 		}},
 		store,
@@ -327,7 +327,7 @@ func TestEpisodeImageForbiddenWhenNotPublic(t *testing.T) {
 				ID:              mediaID,
 				ObjectKey:       "episodes/page.jpg",
 				IsPublished:     sql.NullBool{Bool: true, Valid: true},
-				HasPublicAccess: false,
+				HasPublicAccess: sql.NullBool{Bool: false, Valid: true},
 			},
 		}},
 		&countingStore{objects: map[string]storedObject{}},
@@ -353,7 +353,7 @@ func paidEpisodeQueries(mediaID, episodeID, userID uuid.UUID, credentialsVersion
 			ObjectKey:       "episodes/page.jpg",
 			ContentType:     "image/jpeg",
 			IsPublished:     sql.NullBool{Bool: true, Valid: true},
-			HasPublicAccess: false,
+			HasPublicAccess: sql.NullBool{Bool: false, Valid: true},
 		},
 		userRef: dbmodels.GetUserByPublicIDForTenantRow{ID: userID, PublicID: "reader-public-id", Status: "active"},
 		user: dbmodels.User{
@@ -510,7 +510,7 @@ func TestEpisodeImageFreeEpisodeMediaTokenGrantsNothing(t *testing.T) {
 				ObjectKey:       "episodes/page.jpg",
 				ContentType:     "image/jpeg",
 				IsPublished:     sql.NullBool{Bool: isPublished, Valid: true},
-				HasPublicAccess: hasPublicAccess,
+				HasPublicAccess: sql.NullBool{Bool: hasPublicAccess, Valid: true},
 			},
 			userRefErr: sql.ErrNoRows,
 		}
@@ -601,7 +601,7 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 			ObjectKey:       "episodes/page.jpg",
 			ContentType:     "image/jpeg",
 			IsPublished:     sql.NullBool{Bool: true, Valid: true},
-			HasPublicAccess: true,
+			HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
 		},
 		userRefErr: sql.ErrNoRows,
 	}
@@ -720,7 +720,7 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 	t.Run("a signed-in reader's bearer decrypts the same body", func(t *testing.T) {
 		queries := paidEpisodeQueries(mediaID, episodeID, userID, 4)
 		queries.public.EpisodeID = episodeID
-		queries.public.HasPublicAccess = true
+		queries.public.HasPublicAccess = sql.NullBool{Bool: true, Valid: true}
 		bearer, _, err := tokens.Issue("reader-public-id", auth.AudiencePublic, tenantID.String(), "", 4, time.Now())
 		if err != nil {
 			t.Fatalf("Issue() error = %v", err)
@@ -764,7 +764,7 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 	// rule is still what decides whether the body is served at all.
 	t.Run("the material unlocks nothing on its own", func(t *testing.T) {
 		paid := anonymousQueries
-		paid.public.HasPublicAccess = false
+		paid.public.HasPublicAccess = sql.NullBool{Bool: false, Valid: true}
 		unpublished := anonymousQueries
 		unpublished.public.IsPublished = sql.NullBool{Bool: false, Valid: true}
 
@@ -870,7 +870,7 @@ func TestEpisodeImageMediaTokenEncryptsAfterSharedConversionCache(t *testing.T) 
 func unpublishedPaidEpisodeQueries(mediaID, episodeID, userID uuid.UUID, credentialsVersion int32, tenantID uuid.UUID, roles []string) stubTenantQueries {
 	q := paidEpisodeQueries(mediaID, episodeID, userID, credentialsVersion)
 	q.public.IsPublished = sql.NullBool{Bool: false, Valid: true}
-	q.public.HasPublicAccess = false
+	q.public.HasPublicAccess = sql.NullBool{Bool: false, Valid: true}
 	q.userAccess.IsPublished = sql.NullBool{Bool: false, Valid: true}
 	q.userAccess.HasAccess = sql.NullBool{Bool: false, Valid: true}
 	q.adminImage = dbmodels.GetEpisodeImageByIDForTenantRow{
@@ -1215,7 +1215,7 @@ func TestEpisodeImageMissingObjectIsNotPubliclyCacheable(t *testing.T) {
 				ObjectKey:       "episodes/missing.jpg",
 				ContentType:     "image/jpeg",
 				IsPublished:     sql.NullBool{Bool: true, Valid: true},
-				HasPublicAccess: true,
+				HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
 			},
 		}},
 		&countingStore{objects: map[string]storedObject{}},

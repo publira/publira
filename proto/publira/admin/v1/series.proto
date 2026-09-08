@@ -215,6 +215,59 @@ message UploadSeriesEyeCatchAspectImageResponse {
   publira.types.v1.Series series = 1;
 }
 
+// A scheduled period during which an episode reads as free to everyone. The
+// episode keeps its price, which is what it costs again once the window closes.
+message AdminEpisodeFreeWindow {
+  string public_id = 1;
+  string episode_public_id = 2;
+  string episode_title = 3;
+  string series_public_id = 4;
+  // RFC3339. The window covers starts_at up to but not including ends_at, so
+  // one window may begin at the instant another ends.
+  string starts_at = 5;
+  string ends_at = 6;
+  string created_at = 7;
+}
+
+message CreateEpisodeFreeWindowRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  // RFC3339 both. ends_at must be after starts_at, and the period must not
+  // overlap a window the episode already has: an overlap is failed_precondition
+  // rather than a silently merged period.
+  string starts_at = 3;
+  string ends_at = 4;
+}
+
+message CreateEpisodeFreeWindowResponse {
+  AdminEpisodeFreeWindow free_window = 1;
+}
+
+// Schedules the same period on every episode of one series, which is how a
+// "first week free" campaign is set up in one call. It is all or nothing: when
+// the period overlaps a window any one episode already has, no window is
+// created.
+message CreateSeriesFreeWindowsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_public_id = 2;
+  string starts_at = 3;
+  string ends_at = 4;
+}
+
+message CreateSeriesFreeWindowsResponse {
+  // One per episode of the series, in the series' own episode order.
+  repeated AdminEpisodeFreeWindow free_windows = 1;
+}
+
+// Removes a scheduled window. Removing one that is currently open ends the
+// campaign immediately: the episode is priced again as soon as the caches drop.
+message DeleteEpisodeFreeWindowRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message DeleteEpisodeFreeWindowResponse {}
+
 service AdminSeriesService {
   rpc CreateSeries(CreateSeriesRequest) returns (CreateSeriesResponse) {}
   rpc UpdateSeries(UpdateSeriesRequest) returns (UpdateSeriesResponse) {}
@@ -229,4 +282,7 @@ service AdminSeriesService {
   rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
   rpc UploadSeriesEyeCatchAspectImage(UploadSeriesEyeCatchAspectImageRequest) returns (UploadSeriesEyeCatchAspectImageResponse) {}
+  rpc CreateEpisodeFreeWindow(CreateEpisodeFreeWindowRequest) returns (CreateEpisodeFreeWindowResponse) {}
+  rpc CreateSeriesFreeWindows(CreateSeriesFreeWindowsRequest) returns (CreateSeriesFreeWindowsResponse) {}
+  rpc DeleteEpisodeFreeWindow(DeleteEpisodeFreeWindowRequest) returns (DeleteEpisodeFreeWindowResponse) {}
 }

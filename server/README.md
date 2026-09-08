@@ -165,7 +165,7 @@ Building requires libvips. For the details, see [cmd/image-server/README.md](cmd
 
 ## Internal URLs for Next.js revalidation
 
-With `PUBLIRA_REVALIDATE_TOKEN` set, admin-api and `batch publish-episodes` send cache tags to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app. All three URLs are required together.
+With `PUBLIRA_REVALIDATE_TOKEN` set, admin-api, `batch publish-episodes`, and `batch apply-free-windows` send cache tags to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app. All three URLs are required together.
 
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` (for example `http://web-host:3000`)
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)
@@ -250,7 +250,7 @@ Persistence retries, final drops, queue overflows, and shutdown drain deadlines 
 
 | Key | Value |
 | --- | --- |
-| `service.name` | A default per process (`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`). `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
+| `service.name` | A default per process (`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`). `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-apply-free-windows` / `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
 | `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 
@@ -357,7 +357,7 @@ A browser cannot attach an `Authorization` header to an `<img>` request. So for 
 
 The token only states who the reader is; whether the image may be viewed is decided by `image-server`, which consults purchases and access_tickets on every request, under the same rules as the API.
 
-Free episodes (`price = 0`) get a token of the same audience with a different shape, because their reader may hold no credential at all and still needs key material for the encrypted body:
+Bodies that are free to everyone — `price = 0`, or a priced episode inside an open `episode_free_windows` period — get a token of the same audience with a different shape, because their reader may hold no credential at all and still needs key material for the encrypted body:
 
 | Item | Value |
 | --- | --- |
@@ -519,12 +519,13 @@ Each API server connects with its own dedicated PostgreSQL login user, which kee
 | batch purge-orphan-images | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_ORPHAN_IMAGES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch publish-episodes | none — the connection `PUBLIRA_DB_URL` names | `PUBLIRA_DB_URL` | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
+| batch apply-free-windows | none — the connection `PUBLIRA_DB_URL` names | `PUBLIRA_DB_URL` | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
 
 `publira_platform`, `publira_content_stats`, and `publira_outbox` carry the BYPASSRLS attribute and access data across every tenant; `publira_admin` and `publira_public` have RLS enabled and are scoped by tenant ID.
 
 `PUBLIRA_WORKER_DB_URL` resolves on its own, with no fallback to `PUBLIRA_DB_URL`: leaving it unset lands on the development default in the table above and fails to authenticate anywhere that role's password is not `outboxpass`, rather than silently running the worker on the migration tooling's connection. Local development sets it to `publira_outbox` too — a `dev-env` profile writes that URL, and the Dev Container leaves the variable unset and takes the same role from the default — so the grants that role holds, `CREATE ON SCHEMA public` among them, are exercised on the first local run instead of on a production deploy.
 
-`batch publish-episodes` is the one process with no role of its own; it reads `PUBLIRA_DB_URL` directly and therefore runs as whatever that connection names. Giving it a dedicated login is [#1688](https://github.com/publira/publira/issues/1688).
+`batch publish-episodes` and `batch apply-free-windows` are the processes with no role of their own; they read `PUBLIRA_DB_URL` directly and therefore run as whatever that connection names. Giving them a dedicated login is [#1688](https://github.com/publira/publira/issues/1688).
 
 River's tables, sequences, enum, and function belong to whichever role created them, and `rivermigrate` alters them in place on a later River release. A database that ran the worker on another connection before it had a role of its own therefore keeps an owner the worker cannot alter, which surfaces as `must be owner of table river_job` at startup the next time River ships a schema change. `db/seeds/baseline/010_river_object_owner.sql` hands those objects to `publira_outbox`; it runs with the rest of the seed, so re-running `task db:setup` against an existing database is the fix.
 

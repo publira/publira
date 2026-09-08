@@ -42,8 +42,8 @@ const (
 	// not have. A user's public_id is exactly publicid.Length Base58
 	// characters, so this value can never resolve to one: image-server finds
 	// nobody, the token therefore names no grant, and the public rule —
-	// published, and price = 0 — is left to decide exactly as it does for a
-	// request that carries no token at all.
+	// published, and free to everyone — is left to decide exactly as it does
+	// for a request that carries no token at all.
 	FreeEpisodeMediaSubject = "anonymous-free-episode"
 
 	// MFAChallengeTTL bounds the half-finished session a correct password

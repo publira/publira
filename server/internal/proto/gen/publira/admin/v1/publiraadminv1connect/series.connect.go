@@ -72,6 +72,15 @@ const (
 	// AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure is the fully-qualified name of the
 	// AdminSeriesService's UploadSeriesEyeCatchAspectImage RPC.
 	AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminSeriesService/UploadSeriesEyeCatchAspectImage"
+	// AdminSeriesServiceCreateEpisodeFreeWindowProcedure is the fully-qualified name of the
+	// AdminSeriesService's CreateEpisodeFreeWindow RPC.
+	AdminSeriesServiceCreateEpisodeFreeWindowProcedure = "/publira.admin.v1.AdminSeriesService/CreateEpisodeFreeWindow"
+	// AdminSeriesServiceCreateSeriesFreeWindowsProcedure is the fully-qualified name of the
+	// AdminSeriesService's CreateSeriesFreeWindows RPC.
+	AdminSeriesServiceCreateSeriesFreeWindowsProcedure = "/publira.admin.v1.AdminSeriesService/CreateSeriesFreeWindows"
+	// AdminSeriesServiceDeleteEpisodeFreeWindowProcedure is the fully-qualified name of the
+	// AdminSeriesService's DeleteEpisodeFreeWindow RPC.
+	AdminSeriesServiceDeleteEpisodeFreeWindowProcedure = "/publira.admin.v1.AdminSeriesService/DeleteEpisodeFreeWindow"
 )
 
 // AdminSeriesServiceClient is a client for the publira.admin.v1.AdminSeriesService service.
@@ -89,6 +98,9 @@ type AdminSeriesServiceClient interface {
 	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
 	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
+	CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error)
+	CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error)
+	DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error)
 }
 
 // NewAdminSeriesServiceClient constructs a client for the publira.admin.v1.AdminSeriesService
@@ -180,6 +192,24 @@ func NewAdminSeriesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(adminSeriesServiceMethods.ByName("UploadSeriesEyeCatchAspectImage")),
 			connect.WithClientOptions(opts...),
 		),
+		createEpisodeFreeWindow: connect.NewClient[v1.CreateEpisodeFreeWindowRequest, v1.CreateEpisodeFreeWindowResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceCreateEpisodeFreeWindowProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("CreateEpisodeFreeWindow")),
+			connect.WithClientOptions(opts...),
+		),
+		createSeriesFreeWindows: connect.NewClient[v1.CreateSeriesFreeWindowsRequest, v1.CreateSeriesFreeWindowsResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceCreateSeriesFreeWindowsProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("CreateSeriesFreeWindows")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteEpisodeFreeWindow: connect.NewClient[v1.DeleteEpisodeFreeWindowRequest, v1.DeleteEpisodeFreeWindowResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceDeleteEpisodeFreeWindowProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("DeleteEpisodeFreeWindow")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -198,6 +228,9 @@ type adminSeriesServiceClient struct {
 	reorderEpisodeImages            *connect.Client[v1.ReorderEpisodeImagesRequest, v1.ReorderEpisodeImagesResponse]
 	updateEpisodePublishSchedule    *connect.Client[v1.UpdateEpisodePublishScheduleRequest, v1.UpdateEpisodePublishScheduleResponse]
 	uploadSeriesEyeCatchAspectImage *connect.Client[v1.UploadSeriesEyeCatchAspectImageRequest, v1.UploadSeriesEyeCatchAspectImageResponse]
+	createEpisodeFreeWindow         *connect.Client[v1.CreateEpisodeFreeWindowRequest, v1.CreateEpisodeFreeWindowResponse]
+	createSeriesFreeWindows         *connect.Client[v1.CreateSeriesFreeWindowsRequest, v1.CreateSeriesFreeWindowsResponse]
+	deleteEpisodeFreeWindow         *connect.Client[v1.DeleteEpisodeFreeWindowRequest, v1.DeleteEpisodeFreeWindowResponse]
 }
 
 // CreateSeries calls publira.admin.v1.AdminSeriesService.CreateSeries.
@@ -267,6 +300,21 @@ func (c *adminSeriesServiceClient) UploadSeriesEyeCatchAspectImage(ctx context.C
 	return c.uploadSeriesEyeCatchAspectImage.CallUnary(ctx, req)
 }
 
+// CreateEpisodeFreeWindow calls publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow.
+func (c *adminSeriesServiceClient) CreateEpisodeFreeWindow(ctx context.Context, req *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error) {
+	return c.createEpisodeFreeWindow.CallUnary(ctx, req)
+}
+
+// CreateSeriesFreeWindows calls publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows.
+func (c *adminSeriesServiceClient) CreateSeriesFreeWindows(ctx context.Context, req *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error) {
+	return c.createSeriesFreeWindows.CallUnary(ctx, req)
+}
+
+// DeleteEpisodeFreeWindow calls publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow.
+func (c *adminSeriesServiceClient) DeleteEpisodeFreeWindow(ctx context.Context, req *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error) {
+	return c.deleteEpisodeFreeWindow.CallUnary(ctx, req)
+}
+
 // AdminSeriesServiceHandler is an implementation of the publira.admin.v1.AdminSeriesService
 // service.
 type AdminSeriesServiceHandler interface {
@@ -283,6 +331,9 @@ type AdminSeriesServiceHandler interface {
 	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
 	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
+	CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error)
+	CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error)
+	DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error)
 }
 
 // NewAdminSeriesServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -370,6 +421,24 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 		connect.WithSchema(adminSeriesServiceMethods.ByName("UploadSeriesEyeCatchAspectImage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminSeriesServiceCreateEpisodeFreeWindowHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceCreateEpisodeFreeWindowProcedure,
+		svc.CreateEpisodeFreeWindow,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("CreateEpisodeFreeWindow")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminSeriesServiceCreateSeriesFreeWindowsHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceCreateSeriesFreeWindowsProcedure,
+		svc.CreateSeriesFreeWindows,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("CreateSeriesFreeWindows")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminSeriesServiceDeleteEpisodeFreeWindowHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceDeleteEpisodeFreeWindowProcedure,
+		svc.DeleteEpisodeFreeWindow,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("DeleteEpisodeFreeWindow")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminSeriesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminSeriesServiceCreateSeriesProcedure:
@@ -398,6 +467,12 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 			adminSeriesServiceUpdateEpisodePublishScheduleHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure:
 			adminSeriesServiceUploadSeriesEyeCatchAspectImageHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceCreateEpisodeFreeWindowProcedure:
+			adminSeriesServiceCreateEpisodeFreeWindowHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceCreateSeriesFreeWindowsProcedure:
+			adminSeriesServiceCreateSeriesFreeWindowsHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceDeleteEpisodeFreeWindowProcedure:
+			adminSeriesServiceDeleteEpisodeFreeWindowHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -457,4 +532,16 @@ func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePublishSchedule(conte
 
 func (UnimplementedAdminSeriesServiceHandler) UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow is not implemented"))
 }

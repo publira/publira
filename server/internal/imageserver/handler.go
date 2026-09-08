@@ -203,7 +203,8 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		isPublished := publicAccess.IsPublished.Valid && publicAccess.IsPublished.Bool
-		if !isPublished || !publicAccess.HasPublicAccess {
+		hasPublicAccess := publicAccess.HasPublicAccess.Valid && publicAccess.HasPublicAccess.Bool
+		if !isPublished || !hasPublicAccess {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}

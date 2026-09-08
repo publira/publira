@@ -229,7 +229,8 @@ LIMIT 1;
 
 -- name: UserHasEpisodeContentAccess :one
 -- True when the user may view paid body content for the episode via purchase or active access ticket.
--- Free episodes (price = 0) are evaluated by the caller; this query only covers grants.
+-- Whether the body is free to everyone — price = 0, or an open free window —
+-- is evaluated by the caller; this query only covers grants.
 SELECT (
         EXISTS (
             SELECT 1

@@ -192,6 +192,19 @@ type EpisodeFollow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type EpisodeFreeWindow struct {
+	ID                 uuid.UUID     `json:"id"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	PublicID           string        `json:"public_id"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
+	StartsAt           time.Time     `json:"starts_at"`
+	EndsAt             time.Time     `json:"ends_at"`
+	StartRevalidatedAt sql.NullTime  `json:"start_revalidated_at"`
+	EndRevalidatedAt   sql.NullTime  `json:"end_revalidated_at"`
+	CreatedByUserID    uuid.NullUUID `json:"created_by_user_id"`
+	CreatedAt          time.Time     `json:"created_at"`
+}
+
 type EpisodeImage struct {
 	ID           uuid.UUID `json:"id"`
 	TenantID     uuid.UUID `json:"tenant_id"`

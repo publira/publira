@@ -728,7 +728,11 @@ func (s *apiServer) GetEpisodeDetail(
 	access := publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED
 	includeImages := false
 	mediaToken := ""
-	if row.Price == 0 {
+	// A priced episode whose free window is open is as public as one that costs
+	// nothing: the same query answers both, so the body, the token, and the
+	// access state below follow one condition.
+	freeToEveryone := row.Price == 0 || row.FreeUntil.Valid
+	if freeToEveryone {
 		access = publirav1.EpisodeAccess_EPISODE_ACCESS_FREE
 		includeImages = true
 		// The row exists only for an episode that is published and whose series
@@ -757,7 +761,7 @@ func (s *apiServer) GetEpisodeDetail(
 		// the body — a free body must stay readable when attribution breaks.
 		session, authErr := s.authenticateAccessToken(ctx, req.Msg.Tenant, req.Header())
 		if authErr != nil {
-			if row.Price > 0 && connect.CodeOf(authErr) == connect.CodeInternal {
+			if !freeToEveryone && connect.CodeOf(authErr) == connect.CodeInternal {
 				return nil, authErr
 			}
 			// A paid body stays locked and the view stays anonymous; log for operational tracing.
@@ -766,7 +770,7 @@ func (s *apiServer) GetEpisodeDetail(
 				"episode_public_id", req.Msg.PublicId,
 				"code", connect.CodeOf(authErr).String(),
 			)
-		} else if row.Price > 0 {
+		} else if !freeToEveryone {
 			hasAccess, accessErr := s.queriesFor(ctx).UserHasEpisodeContentAccess(ctx, dbmodels.UserHasEpisodeContentAccessParams{
 				TenantID:  tenant.ID,
 				UserID:    session.User.ID,
@@ -812,6 +816,9 @@ func (s *apiServer) GetEpisodeDetail(
 		Images:  make([]*publirattypesv1.EpisodeImage, 0),
 		Access:  access,
 	})
+	if row.FreeUntil.Valid {
+		res.Msg.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
+	}
 	if includeImages {
 		images, listErr := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, row.ID)
 		if listErr != nil {

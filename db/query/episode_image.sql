@@ -84,6 +84,13 @@ SELECT ei.id,
         el.price = 0
         OR EXISTS (
             SELECT 1
+            FROM episode_free_windows fw
+            WHERE fw.episode_id = e.id
+                AND fw.starts_at <= NOW()
+                AND fw.ends_at > NOW()
+        )
+        OR EXISTS (
+            SELECT 1
             FROM purchases p
             WHERE p.tenant_id = s.tenant_id
                 -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
@@ -157,7 +164,16 @@ SELECT ei.id,
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
     ) AS is_published,
-    (el.price = 0) AS has_public_access
+    (
+        el.price = 0
+        OR EXISTS (
+            SELECT 1
+            FROM episode_free_windows fw
+            WHERE fw.episode_id = e.id
+                AND fw.starts_at <= NOW()
+                AND fw.ends_at > NOW()
+        )
+    ) AS has_public_access
 FROM episode_images ei
 JOIN LATERAL (
     SELECT object_key, content_type

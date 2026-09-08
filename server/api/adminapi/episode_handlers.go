@@ -49,6 +49,10 @@ func normalizeAndValidateScheduledAt(scheduledAt sql.NullTime, now time.Time) (s
 	return sql.NullTime{Time: normalized, Valid: true}, nil
 }
 
+// episodeScheduleRevalidateTags names the public caches that answer with when
+// an episode is readable and at what price: the series detail every cached
+// episode read is also tagged with. A publication schedule and a free window
+// both change that answer, so both drop this tag.
 func episodeScheduleRevalidateTags(tenantID string) []string {
 	normalizedTenantID := strings.TrimSpace(tenantID)
 	return []string{
