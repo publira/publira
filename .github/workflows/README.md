@@ -139,13 +139,21 @@ Implementation:
 | `Docker / <target>` | `task docker:build:*`, then web/node smoke tests. | [`infra/docker/README.md`](../../infra/docker/README.md) |
 | `Summary` | Final aggregation of every job result. | This file |
 
-The branch ruleset requires only final aggregation job **`Summary`** (shown as `CI / Summary`). Intermediate jobs can be skipped by filters; `Summary` treats `skipped` as success.
+The branch ruleset requires only final aggregation job **`Summary`** (shown as `CI / Summary`). Intermediate jobs can be skipped by filters; `Summary` treats `skipped` as success. The same requirement is what the merge queue on `main` runs, so `Summary` has to be reported on merge-group commits as well as on pull requests.
+
+## Merge queue
+
+`main` is behind a merge queue, so a pull request that satisfies the review and status requirements is merged with **Merge when ready** rather than by hand. GitHub builds a temporary `gh-readonly-queue/main/…` branch from the current `main`, the entries ahead of this one in the queue, and this pull request, runs the required checks on it, and squash-merges when they pass. An entry whose checks fail is dropped and the entries behind it are rebuilt without it.
+
+That is why the branch no longer has to be up to date for GitHub to let it merge. It is not a reason to stop rebasing onto `origin/main`: the queue composes the combined tree for the first time at merge time, so a break that only appears there is found late and drops the entry along with the rebuild of everything behind it. Rebasing before a push and before a review request is still where that break is cheap to find.
+
+`CI` therefore subscribes to `merge_group` (type `checks_requested`). Without it a queued pull request would wait for a check that never arrives until the queue's status check timeout drops it, so the trigger has to be in place before the rule is added to the ruleset.
 
 ## Triggers and modes
 
 | Trigger | Host CI | Docker |
 | --- | --- | --- |
-| `pull_request` to main / `push` to main | Only matching jobs through path filters. | Representatives of changed roles only; all targets when `docker_core` changes. |
+| `pull_request` to main / `merge_group` / `push` to main | Only matching jobs through path filters. | Representatives of changed roles only; all targets when `docker_core` changes. |
 | `schedule` (daily at 03:00 UTC) | Only `Test / Bootstrap`. | Every target (nightly full). |
 | `workflow_dispatch` | Every job. | Select `verify` (representatives) or `full` (all targets) through `docker_mode`. |
 
@@ -190,13 +198,15 @@ filters: |
 
 **`predicate-quantifier: "some-with-excludes"` is required.** Default `some` treats the negative pattern as merely another choice, so it does not exclude Markdown. `some-with-excludes` requires at least one positive match and no negative matches. Define `&docs_excluded` once and include `*docs_excluded` in every heavyweight filter; the negative-only `docs_excluded` output is always false and is not read by `scripts/ci-plan-jobs.sh`. `format` intentionally omits it, so documentation-only pull requests receive only the lightweight `Lint and Format` job.
 
-For `pull_request`, paths-filter obtains changed files through the GitHub API, so shallow history is sufficient. For `push`, it diffs `github.event.before`..HEAD locally, requiring the base commit. `Detect changes` sets `persist-credentials: false`, so the fallback fetch cannot authenticate; on pushes, use `fetch-depth: 0` to provide the base locally:
+For `pull_request`, paths-filter obtains changed files through the GitHub API, so shallow history is sufficient. For `push` it diffs `github.event.before`..HEAD locally, and for `merge_group` it diffs the event's `base_sha`..`head_sha`, so both endpoints have to be in the local repository. `Detect changes` sets `persist-credentials: false`, so the fallback fetch cannot authenticate; on those two events, use `fetch-depth: 0` to provide the history locally:
 
 ```yaml
-fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
+fetch-depth: ${{ (github.event_name == 'push' || github.event_name == 'merge_group') && '0' || '1' }}
 ```
 
-Quotes around `'0'` are required: GitHub expressions treat bare `0` as falsy, which would turn the push result into `1` and reproduce the failure.
+Quotes around `'0'` are required: GitHub expressions treat bare `0` as falsy, which would turn the result into `1` and reproduce the failure.
+
+The `Path filter` step runs on all three events, so a merge-group run selects its jobs from the group's changed paths instead of falling through to an empty filter result.
 
 Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and routing jobs prevent unrelated toolchain setup for a focused PR; `Summary` keeps the required-check count unchanged. `sqlc diff` reads schema and query files and needs no live database, so it remains in `Check`.
 
@@ -206,7 +216,7 @@ Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and rout
 
 `Lint / Go` is independent from `Test / Go` so static-analysis results arrive before Testcontainers tests, and front-end-only PRs do not run it. Its rules and version are [`server/.golangci.yml`](../../server/.golangci.yml) and `GOLANGCI_LINT_VERSION` in `ci.yml`; reproduce it with `task server:lint`.
 
-`Test / DB Migrations` first checks that the PR only adds files under `db/migrations/` — an applied migration is immutable, so a modified, renamed, or deleted one fails the job before Postgres is touched. It then runs against its own Postgres service and must succeed through `migrate up`, `migrate down -all`, and another `migrate up`; any failure, including a dirty database, makes `Summary` fail. Because the guard diffs against `origin/main`, this job's checkout uses `fetch-depth: 0` on every event, where `Detect changes` fetches full history only on `push`.
+`Test / DB Migrations` first checks that the PR only adds files under `db/migrations/` — an applied migration is immutable, so a modified, renamed, or deleted one fails the job before Postgres is touched. It then runs against its own Postgres service and must succeed through `migrate up`, `migrate down -all`, and another `migrate up`; any failure, including a dirty database, makes `Summary` fail. Because the guard diffs against `origin/main`, this job's checkout uses `fetch-depth: 0` on every event, where `Detect changes` fetches full history only on `push` and `merge_group`.
 
 `Test / TypeScript` starts a Valkey service — the same image as `compose.yaml` — and sets `PUBLIRA_REDIS_URL` so `@publira/next-cache-handlers` integration tests reach Redis. Reproduce it with `pnpm test` in the Dev Container.
 
@@ -246,6 +256,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
 - [ ] Updated `scripts/ci-plan-jobs.sh` flags, output, and `workflow_dispatch` branch for a new path filter
 - [ ] Added `- *docs_excluded` to every new heavyweight filter
 - [ ] Updated the Jobs and Path filters tables in this document
-- [ ] Confirmed that a `Detect changes` checkout change still resolves the push base (the `fetch-depth` / `persist-credentials` combination)
+- [ ] Confirmed that a `Detect changes` checkout change still resolves the base locally on `push` and `merge_group` (the `fetch-depth` / `persist-credentials` combination)
+- [ ] Kept `merge_group` on the `on:` block and on the `Path filter` step — the merge queue on `main` requires `Summary` on merge-group commits
 - [ ] Confirmed that `Summary` remains the required branch-ruleset check after changing a displayed job name
 - [ ] Updated `infra/docker/Taskfile.yaml` `verify:full` and the full Docker matrix in `scripts/ci-plan-jobs.sh` when adding a Docker target

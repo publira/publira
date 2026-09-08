@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Create a pull request in this repository following its own conventions, and add follow-up commits to one. Use when asked to open, raise, or draft a PR, to commit and push finished work for review, to write a PR description, or to push fixes for review feedback onto an existing PR. Reads the applicable AGENTS.md policy, stages only the intended diff, commits with the required Assisted-by trailer, runs the verification commands that match the changed area, rebases onto origin/main before every push, and fills in the repository pull request template under an English Conventional Commits title.
+description: Create a pull request in this repository following its own conventions, and add follow-up commits to one. Use when asked to open, raise, or draft a PR, to commit and push finished work for review, to write a PR description, or to push fixes for review feedback onto an existing PR. Reads the applicable AGENTS.md policy, stages only the intended diff, commits with the required Assisted-by trailer, runs the verification commands that match the changed area, rebases onto origin/main before every push and before requesting review, and fills in the repository pull request template under an English Conventional Commits title.
 ---
 
 # Create a Pull Request
@@ -94,12 +94,16 @@ Run the checks for what you actually changed, from the repository root, and fix 
 
 ## Rebase onto origin/main
 
-Rebase immediately before **every** push — the first one and every follow-up — so history stays linear and no PR sits on a stale `main`.
+`main` is behind a merge queue, so a branch no longer has to be up to date for GitHub to let it merge — the queue builds the pull request on top of the current `main`, runs `CI` there, and squash-merges the result. What the queue does not do is tell you early. It composes that tree for the first time at merge time, and a pull request that breaks there is dropped from the queue and takes the rebuild of every entry behind it with it.
+
+So rebase before pushing, and again immediately before asking for review:
 
 ```bash
 git fetch origin main
 git rebase origin/main
 ```
+
+A textual conflict GitHub already reports on its own, recomputed as `main` moves and without anyone rebasing. The reason to rebase is the break that is not textual: a change that merges cleanly and still fails once it sits next to what landed while the pull request was open. Only a `CI` run on the combined tree finds that, and one run here is cheaper than finding it inside the queue. "It would burn a CI run" is not a reason to skip it, and it is not a reason to rebase early and let the branch fall behind again either — rebase as part of the same stretch of work as the push or the review request, not ahead of it.
 
 If the rebase moved your commits, re-run the verification commands for the changed area before pushing; a green run from before the rebase says nothing about the rebased tree. Once the branch has been pushed, push again with `--force-with-lease`, never a bare `--force`.
 
