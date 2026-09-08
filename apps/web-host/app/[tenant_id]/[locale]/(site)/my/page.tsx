@@ -22,9 +22,7 @@ import type { HostMessageKey } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { ReadingHistorySection } from "./_components/reading-history";
-import { parseMySearchParams } from "./_lib/search-params";
-
-const MY_RETURN_TO = "/my";
+import { myPageHref, parseMySearchParams } from "./_lib/search-params";
 
 type MyPageProps = PageProps<"/[tenant_id]/[locale]/my">;
 
@@ -88,12 +86,12 @@ const notificationStatusKey = (
     : "host.my.email_notifications_on";
 };
 
-const SubscriptionSection = async () => {
+const SubscriptionSection = async ({ returnTo }: { returnTo: string }) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [notificationSettings, messages] = await Promise.all([
     withPublicSessionReauth(
       locale,
-      MY_RETURN_TO,
+      returnTo,
       () => getNotificationSettings(tenantId),
       tenantId
     ),
@@ -146,14 +144,13 @@ const MyContent = async ({
     searchParams,
   ]);
   const { token } = parseMySearchParams(resolvedSearchParams);
-  await requirePublicSession(locale, MY_RETURN_TO, tenantId);
+  // Every way out of this page to the sign-in screen names the history page
+  // the reader was on, so signing in again puts them back on it rather than on
+  // page 1.
+  const returnTo = myPageHref(token);
+  await requirePublicSession(locale, returnTo, tenantId);
   const [me, messages] = await Promise.all([
-    withPublicSessionReauth(
-      locale,
-      MY_RETURN_TO,
-      () => getMe(tenantId),
-      tenantId
-    ),
+    withPublicSessionReauth(locale, returnTo, () => getMe(tenantId), tenantId),
     loadHostMessages(locale),
   ]);
 
@@ -173,7 +170,7 @@ const MyContent = async ({
             <div className="mt-4">
               <LocaleLink
                 className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-                href="/login?returnTo=%2Fmy"
+                href={`/login?returnTo=${encodeURIComponent(returnTo)}`}
               >
                 {getMessage(messages, "host.my.to_login")}
               </LocaleLink>
@@ -184,7 +181,7 @@ const MyContent = async ({
 
       {me ? (
         <Suspense fallback={<SubscriptionSectionFallback />}>
-          <SubscriptionSection />
+          <SubscriptionSection returnTo={returnTo} />
         </Suspense>
       ) : null}
 

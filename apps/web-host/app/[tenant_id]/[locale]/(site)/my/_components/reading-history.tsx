@@ -25,7 +25,7 @@ import { getTenantId } from "#lib/tenant-id";
 
 import {
   defaultReadingHistoryPageSize,
-  readingHistoryHref,
+  myPageHref,
 } from "../_lib/search-params";
 
 /**
@@ -56,7 +56,7 @@ export const ReadingHistorySection = async ({ token }: { token: string }) => {
   ]);
 
   if (!result.ok && result.requiresSignIn) {
-    await redirectToLogin(locale, readingHistoryHref(token), tenantId);
+    await redirectToLogin(locale, myPageHref(token), tenantId);
   }
 
   return (
@@ -131,7 +131,7 @@ export const ReadingHistorySection = async ({ token }: { token: string }) => {
           {result.previousToken ? (
             <LocaleLink
               className="text-sm text-primary underline-offset-4 hover:underline"
-              href={readingHistoryHref(result.previousToken)}
+              href={myPageHref(result.previousToken)}
             >
               {getMessage(messages, "host.common.previous_page")}
             </LocaleLink>
@@ -143,7 +143,7 @@ export const ReadingHistorySection = async ({ token }: { token: string }) => {
           {result.nextToken ? (
             <LocaleLink
               className="text-sm text-primary underline-offset-4 hover:underline"
-              href={readingHistoryHref(result.nextToken)}
+              href={myPageHref(result.nextToken)}
             >
               {getMessage(messages, "host.common.next_page")}
             </LocaleLink>
