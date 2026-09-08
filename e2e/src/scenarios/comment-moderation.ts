@@ -42,5 +42,16 @@ export const COMMENT_MODERATION_MEMBER = {
   publicId: "ModrMMBRAAA1",
 } as const;
 
+/**
+ * A second reader, because a reader may not report their own comment: the
+ * report the console works has to come from an account that did not write it.
+ */
+export const COMMENT_MODERATION_REPORTER = {
+  email: "moderate-reporter@example.com",
+  name: "Moderation E2E Reporter",
+  password: "memberpass",
+  publicId: "ModrMMBRAAA2",
+} as const;
+
 /** Path of the episode the suite comments on. */
 export const COMMENT_MODERATION_PATH = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/episodes/${COMMENT_MODERATION_EPISODE.publicId}`;

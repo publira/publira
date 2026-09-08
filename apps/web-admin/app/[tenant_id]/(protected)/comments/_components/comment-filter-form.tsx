@@ -66,6 +66,24 @@ export const CommentFilterForm = ({
       </CardHeader>
       <CardContent>
         <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {/*
+            A GET form replaces the whole query of the URL it submits to with
+            its own fields, and the report queue above keeps its state in that
+            same query. Its two parameters ride along as hidden fields so
+            narrowing the comment list does not send the queue back to its
+            first page.
+          */}
+          <input
+            name="report_status"
+            type="hidden"
+            value={filters.reportStatus}
+          />
+          <input
+            name="report_token"
+            type="hidden"
+            value={filters.reportToken}
+          />
+
           <CommentStatusSelect
             defaultValue={filters.status}
             options={statusOptions(locale)}

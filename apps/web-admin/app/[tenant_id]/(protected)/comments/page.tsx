@@ -16,7 +16,7 @@ import {
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { listComments } from "#lib/comment";
+import { listCommentReports, listComments } from "#lib/comment";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { buildQueryString } from "#lib/query-string";
@@ -25,8 +25,11 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { CommentFilterForm } from "./_components/comment-filter-form";
 import { CommentManager } from "./_components/comment-manager";
+import { CommentReportQueue } from "./_components/comment-report-queue";
+import type { CommentReportStatusOption } from "./_components/comment-report-queue";
 import { parseCommentFilters } from "./_lib/search-params";
 import type { CommentFilters } from "./_lib/search-params";
+import { COMMENT_REPORT_STATUSES } from "./comment-types";
 
 type CommentsPageProps = PageProps<"/[tenant_id]/comments">;
 
@@ -43,6 +46,13 @@ export const generateStaticParams = () =>
 
 const CommentsSkeleton = () => (
   <div className="grid gap-6">
+    <div className="rounded-2xl border border-border/70 bg-card p-6">
+      <div className="mb-4 h-6 w-44 animate-pulse rounded bg-muted" />
+      <div className="grid gap-3">
+        <div className="h-16 animate-pulse rounded bg-muted/70" />
+        <div className="h-16 animate-pulse rounded bg-muted/70" />
+      </div>
+    </div>
     <div className="rounded-2xl border border-border/70 bg-card p-6">
       <div className="mb-4 h-6 w-32 animate-pulse rounded bg-muted" />
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -63,14 +73,43 @@ const CommentsSkeleton = () => (
   </div>
 );
 
-/** Query-only href that keeps the filters while the operator walks the pages. */
-const commentFilterQuery = (filters: CommentFilters, token?: string) =>
+/**
+ * Query-only href that keeps every filter on the screen while the operator
+ * walks the pages of one of its two lists.
+ *
+ * Both lists live on this URL, so each link carries the other one's state as
+ * well: paging the comments would otherwise send the report queue back to its
+ * first page, and switching the report state would drop the comment filters.
+ */
+const commentScreenQuery = (
+  filters: CommentFilters,
+  overrides: Partial<
+    Pick<CommentFilters, "reportStatus" | "reportToken" | "token">
+  > = {}
+) =>
   buildQueryString({
     episode: filters.episode,
+    report_status: overrides.reportStatus ?? filters.reportStatus,
+    report_token: overrides.reportToken ?? filters.reportToken,
     series: filters.series,
     status: filters.status,
-    token,
+    token: overrides.token ?? filters.token,
   });
+
+/**
+ * Switching the report state drops that queue's own cursor: a token names a
+ * row in the page it was issued for, so it means nothing once the state being
+ * filtered has changed. The comment list keeps its own.
+ */
+const reportStatusOptions = (
+  filters: CommentFilters
+): CommentReportStatusOption[] =>
+  ["" as const, ...COMMENT_REPORT_STATUSES].map((status) => ({
+    href:
+      commentScreenQuery(filters, { reportStatus: status, reportToken: "" }) ||
+      "?",
+    status,
+  }));
 
 const CommentsContent = async ({
   searchParams,
@@ -79,7 +118,7 @@ const CommentsContent = async ({
   const filters = parseCommentFilters(sp);
   const locale = await getLocale(tenantId);
 
-  const [listResult, timeZone] = await Promise.all([
+  const [listResult, reportResult, timeZone] = await Promise.all([
     listComments(tenantId, locale, {
       episodePublicId: filters.episode,
       limit: DEFAULT_PAGE_SIZE,
@@ -87,13 +126,47 @@ const CommentsContent = async ({
       status: filters.status,
       token: filters.token,
     }),
+    listCommentReports(tenantId, locale, {
+      limit: DEFAULT_PAGE_SIZE,
+      status: filters.reportStatus,
+      token: filters.reportToken,
+    }),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
   await redirectToLoginIfSessionRejected(listResult);
+  await redirectToLoginIfSessionRejected(reportResult);
 
   return (
     <div className="grid gap-6">
+      {/*
+        The reports come first because they are the work that arrived from
+        outside the console: a reader flagged something, and nobody has looked
+        at it yet.
+      */}
+      <CommentReportQueue
+        listErrorMessage={reportResult.ok ? undefined : reportResult.message}
+        locale={locale}
+        nextHref={
+          reportResult.nextToken
+            ? commentScreenQuery(filters, {
+                reportToken: reportResult.nextToken,
+              })
+            : undefined
+        }
+        pageSize={DEFAULT_PAGE_SIZE}
+        previousHref={
+          reportResult.previousToken
+            ? commentScreenQuery(filters, {
+                reportToken: reportResult.previousToken,
+              })
+            : undefined
+        }
+        reports={reportResult.reports}
+        status={filters.reportStatus}
+        statusOptions={reportStatusOptions(filters)}
+        timeZone={timeZone}
+      />
       <CommentFilterForm
         filters={filters}
         locale={locale}
@@ -105,13 +178,13 @@ const CommentsContent = async ({
         locale={locale}
         nextHref={
           listResult.nextToken
-            ? commentFilterQuery(filters, listResult.nextToken)
+            ? commentScreenQuery(filters, { token: listResult.nextToken })
             : undefined
         }
         pageSize={DEFAULT_PAGE_SIZE}
         previousHref={
           listResult.previousToken
-            ? commentFilterQuery(filters, listResult.previousToken)
+            ? commentScreenQuery(filters, { token: listResult.previousToken })
             : undefined
         }
         timeZone={timeZone}

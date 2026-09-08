@@ -14,6 +14,7 @@ import {
   COMMENT_MODERATION_EPISODE,
   COMMENT_MODERATION_MEMBER,
   COMMENT_MODERATION_PATH,
+  COMMENT_MODERATION_REPORTER,
   COMMENT_MODERATION_SCENARIO,
   COMMENT_MODERATION_TENANT,
 } from "../src/scenarios/comment-moderation";
@@ -62,6 +63,46 @@ const saveCommentMode = async (page: Page, option: string): Promise<void> => {
 /** The console row for one comment, found by the text of the comment itself. */
 const consoleRow = (page: Page, body: string) =>
   page.getByRole("row").filter({ hasText: body });
+
+/**
+ * The report queue's row for one comment.
+ *
+ * Both lists on `/comments` carry the comment's text, so the row is narrowed
+ * by the sentence only a report has: who sent it and when.
+ */
+const reportRow = (page: Page, body: string) =>
+  page
+    .getByRole("row")
+    .filter({ hasText: body })
+    .filter({ hasText: "Reported by" });
+
+/** The comment list's own row, which is the same page's other table. */
+const commentListRow = (page: Page, body: string) =>
+  page
+    .getByRole("row")
+    .filter({ hasText: body })
+    .filter({ hasNotText: "Reported by" });
+
+/** Report one comment from the reader's dialog, the way a reader does. */
+const reportComment = async (page: Page, body: string): Promise<void> => {
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: body })
+    .getByRole("button", { name: /^Report the comment/u })
+    .click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("radio", { name: "Spam or advertising" }).click();
+  await dialog
+    .getByRole("textbox", { name: "Anything to add" })
+    .fill("Links to a shop.");
+  await dialog.getByRole("button", { name: "Send report" }).click();
+
+  await expect(
+    page.getByText("Thank you. Your report has been sent to the moderators.")
+  ).toBeVisible();
+};
 
 /**
  * One open confirmation dialog, named by its title.
@@ -334,6 +375,89 @@ test.describe("web-admin comment moderation", () => {
       await expect(consoleRow(consolePage, body)).toHaveCount(0);
     } finally {
       await consoleContext.close();
+    }
+  });
+
+  test("a reader's report reaches the console queue and is decided there", async ({
+    browser,
+    page,
+  }) => {
+    const body = "A comment another reader will report to the moderators.";
+    await signInAsMember(
+      page,
+      COMMENT_MODERATION_MEMBER,
+      COMMENT_MODERATION_PATH,
+      WEB_HOST_COMMENT_MODERATION_BASE_URL
+    );
+    await postComment(page, body);
+
+    const consoleContext = await browser.newContext();
+    const consolePage = await consoleContext.newPage();
+    const reporterContext = await browser.newContext();
+    const reporterPage = await reporterContext.newPage();
+    try {
+      await signInAsAdmin(
+        consolePage,
+        COMMENT_MODERATION_ADMIN,
+        "/comments",
+        WEB_ADMIN_COMMENT_MODERATION_BASE_URL
+      );
+      // Only a published comment can be reported, so the approval comes first.
+      await consoleRow(consolePage, body)
+        .getByRole("button", { exact: true, name: "Approve" })
+        .click();
+      await expect(
+        consoleRow(consolePage, body).getByText("Published")
+      ).toBeVisible();
+
+      // A reader may not report their own comment, so the report comes from
+      // the second member of this tenant.
+      await signInAsMember(
+        reporterPage,
+        COMMENT_MODERATION_REPORTER,
+        COMMENT_MODERATION_PATH,
+        WEB_HOST_COMMENT_MODERATION_BASE_URL
+      );
+      await pollEpisodePage(reporterPage, () =>
+        reporterPage.getByText(body).count()
+      ).toBe(1);
+      await reportComment(reporterPage, body);
+
+      await consolePage.goto(
+        `${WEB_ADMIN_COMMENT_MODERATION_BASE_URL}/comments`
+      );
+      const queued = reportRow(consolePage, body);
+      await expect(queued).toBeVisible();
+      // The queue carries what the reader said, who they are, and how many
+      // reports the comment is still carrying.
+      await expect(queued.getByText("Spam or advertising")).toBeVisible();
+      await expect(queued.getByText("Links to a shop.")).toBeVisible();
+      await expect(
+        queued.getByText(
+          new RegExp(`Reported by ${COMMENT_MODERATION_REPORTER.name}`, "u")
+        )
+      ).toBeVisible();
+      await expect(queued.getByText("1 report still waiting")).toBeVisible();
+
+      await queued.getByRole("button", { exact: true, name: "Uphold" }).click();
+      await expect(
+        consolePage.getByText("The report was upheld.")
+      ).toBeVisible();
+      await expect(
+        reportRow(consolePage, body).getByText("Already decided.")
+      ).toBeVisible();
+
+      // Agreeing with a report is not the same act as removing what it is
+      // about: the comment is where it was, and a reader still reads it.
+      await expect(
+        commentListRow(consolePage, body).getByText("Published")
+      ).toBeVisible();
+      await pollEpisodePage(reporterPage, () =>
+        reporterPage.getByText(body).count()
+      ).toBe(1);
+    } finally {
+      await consoleContext.close();
+      await reporterContext.close();
     }
   });
 
