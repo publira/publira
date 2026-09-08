@@ -490,6 +490,12 @@ type Querier interface {
 	// Stage two is ListActiveSeriesByIDs, which builds the display data for the
 	// ids stage one settled on.
 	//
+	// What counts as a free episode is one rule, written out in both stages: a
+	// published episode priced at 0, or a priced one a free window is open on at
+	// the moment of the read. Stage one uses it to keep only the series that have
+	// such an episode when the caller asks for those, and stage two counts them
+	// into free_episode_count, so a series the filter kept never reports none.
+	//
 	// cursor rules: proto/README.md.
 	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error)

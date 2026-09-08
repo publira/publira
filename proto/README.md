@@ -55,6 +55,12 @@ Go encoding and validation live in [server/internal/pagination](../server/intern
 - When the client changes order, discard its token and request the first page again. The UI must follow the rule “reset to page 1 when changing sort order.”
 - Scan direction is the exclusive OR of whether the sort order is descending and whether the token goes toward the previous page. Pass only this single resolved direction to SQL; do not combine two flags in SQL.
 
+### Lists with filters
+
+- A filter decides which rows the list holds, so a boundary row sits somewhere else once it changes — the same problem the order name solves. Bind the token to the filters as well, by appending the ones that are on to the order name in that first key (`published_at_desc+has_free_episodes`), and reject a mismatch with `invalid_argument`. A request with no filter therefore keeps the plain order name, and an unfiltered list needs no change.
+- Changing a filter resets the client to page 1, exactly as changing the order does.
+- Keep the filter out of the sort keys. It narrows the list rather than ordering it, so the keyset comparison and the index it walks stay as they are.
+
 ### Existing `limit` / `offset`
 
 For an RPC migrated to cursors, **remove** `offset` and put both its field number and name in `reserved`. This product is not public yet, so there is no reason to retain a deprecated field for backward compatibility. Keep `limit` as the number of items per page.

@@ -65,32 +65,51 @@ type seriesCursorKeys struct {
 	inclusive   bool
 }
 
-// The ListPublishedSeries cursor carries the order it was built for, then the
+// seriesFilters is what a series list was narrowed by, beyond the tenant and
+// the publication state every one of them applies.
+type seriesFilters struct {
+	// Keep only the series that have a free episode at the moment of the read.
+	hasFreeEpisodes bool
+}
+
+// seriesListKey names the list a token points into. A boundary row sits at
+// another position once the list is filtered differently, exactly as it does
+// under another order, so the filters ride in the same key as the order name
+// and a list with no filter keeps the plain order name it always carried.
+func seriesListKey(order seriesOrder, filters seriesFilters) string {
+	key := order.name
+	if filters.hasFreeEpisodes {
+		key += "+has_free_episodes"
+	}
+	return key
+}
+
+// The ListPublishedSeries cursor carries the list it was built for, then the
 // sort keys of the query in order: the sorted column, then the id that breaks
 // its ties. Token rules: proto/README.md.
-func encodeSeriesCursor(direction pagination.Direction, order seriesOrder, row dbmodels.ListActiveSeriesByIDsRow) string {
+func encodeSeriesCursor(direction pagination.Direction, order seriesOrder, filters seriesFilters, row dbmodels.ListActiveSeriesByIDsRow) string {
 	sortValue := row.Title
 	if order.column == seriesOrderColumnPublishedAt {
 		sortValue = row.PublishedAt.Time.UTC().Format(time.RFC3339Nano)
 	}
-	return pagination.Encode(direction, order.name, sortValue, row.ID.String())
+	return pagination.Encode(direction, seriesListKey(order, filters), sortValue, row.ID.String())
 }
 
 // A recovery token includes the boundary once. That keeps the boundary row in
 // the page when rows beyond it were deleted after the original token was issued.
-func encodeSeriesRecoveryToken(direction pagination.Direction, order seriesOrder, keys seriesCursorKeys) string {
+func encodeSeriesRecoveryToken(direction pagination.Direction, order seriesOrder, filters seriesFilters, keys seriesCursorKeys) string {
 	sortValue := keys.title.String
 	if order.column == seriesOrderColumnPublishedAt {
 		sortValue = keys.publishedAt.Time.UTC().Format(time.RFC3339Nano)
 	}
-	return pagination.Encode(direction, order.name, sortValue, keys.id.UUID.String(), seriesInclusiveKey)
+	return pagination.Encode(direction, seriesListKey(order, filters), sortValue, keys.id.UUID.String(), seriesInclusiveKey)
 }
 
 // decodeSeriesCursorKeys reads a token into the keyset the query compares
-// against. A token built for another order is rejected rather than
-// reinterpreted: its keys point into a page that does not exist in the
-// requested order.
-func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder) (seriesCursorKeys, error) {
+// against. A token built for another order or another filter is rejected
+// rather than reinterpreted: its keys point into a page that does not exist in
+// the requested list.
+func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder, filters seriesFilters) (seriesCursorKeys, error) {
 	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
 		return seriesCursorKeys{}, invalid
@@ -99,8 +118,8 @@ func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder) (series
 	if inclusive && cursor.Keys[3] != seriesInclusiveKey {
 		return seriesCursorKeys{}, invalid
 	}
-	if cursor.Keys[0] != order.name {
-		return seriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another order"))
+	if cursor.Keys[0] != seriesListKey(order, filters) {
+		return seriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another order or filter"))
 	}
 
 	seriesID, err := uuid.Parse(cursor.Keys[2])
@@ -132,6 +151,7 @@ func (s *apiServer) activeSeriesPageIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	order seriesOrder,
+	filters seriesFilters,
 	descending bool,
 	keys seriesCursorKeys,
 	limit int32,
@@ -142,6 +162,7 @@ func (s *apiServer) activeSeriesPageIDs(
 	case order.column == seriesOrderColumnTitle && descending:
 		return queries.ListActiveSeriesIDsByTitleDesc(ctx, dbmodels.ListActiveSeriesIDsByTitleDescParams{
 			TenantID:        tenantID,
+			HasFreeEpisodes: filters.hasFreeEpisodes,
 			CursorTitle:     keys.title,
 			CursorID:        keys.id,
 			CursorInclusive: keys.inclusive,
@@ -150,6 +171,7 @@ func (s *apiServer) activeSeriesPageIDs(
 	case order.column == seriesOrderColumnTitle:
 		return queries.ListActiveSeriesIDsByTitleAsc(ctx, dbmodels.ListActiveSeriesIDsByTitleAscParams{
 			TenantID:        tenantID,
+			HasFreeEpisodes: filters.hasFreeEpisodes,
 			CursorTitle:     keys.title,
 			CursorID:        keys.id,
 			CursorInclusive: keys.inclusive,
@@ -158,6 +180,7 @@ func (s *apiServer) activeSeriesPageIDs(
 	case descending:
 		return queries.ListActiveSeriesIDsByPublishedAtDesc(ctx, dbmodels.ListActiveSeriesIDsByPublishedAtDescParams{
 			TenantID:          tenantID,
+			HasFreeEpisodes:   filters.hasFreeEpisodes,
 			CursorPublishedAt: keys.publishedAt,
 			CursorID:          keys.id,
 			CursorInclusive:   keys.inclusive,
@@ -166,6 +189,7 @@ func (s *apiServer) activeSeriesPageIDs(
 	default:
 		return queries.ListActiveSeriesIDsByPublishedAtAsc(ctx, dbmodels.ListActiveSeriesIDsByPublishedAtAscParams{
 			TenantID:          tenantID,
+			HasFreeEpisodes:   filters.hasFreeEpisodes,
 			CursorPublishedAt: keys.publishedAt,
 			CursorID:          keys.id,
 			CursorInclusive:   keys.inclusive,
@@ -235,6 +259,7 @@ func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattyp
 		PublicId:         row.PublicID,
 		Title:            row.Title,
 		ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
+		FreeEpisodeCount: row.FreeEpisodeCount,
 	}
 	if row.Synopsis.Valid {
 		item.Synopsis = row.Synopsis.String
@@ -543,6 +568,7 @@ func (s *apiServer) ListPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
+	filters := seriesFilters{hasFreeEpisodes: req.Msg.HasFreeEpisodes}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultSeriesPageSize, maxSeriesPageSize)
 	cursor, err := pagination.Decode(req.Msg.Token)
 	if err != nil {
@@ -550,7 +576,7 @@ func (s *apiServer) ListPublishedSeries(
 	}
 	var keys seriesCursorKeys
 	if !cursor.IsZero() {
-		keys, err = decodeSeriesCursorKeys(cursor, order)
+		keys, err = decodeSeriesCursorKeys(cursor, order, filters)
 		if err != nil {
 			return nil, err
 		}
@@ -558,7 +584,7 @@ func (s *apiServer) ListPublishedSeries(
 	// Walking back through the list runs against the sort order.
 	descending := order.descending != (cursor.Direction == pagination.Backward)
 	// One id past the page: its presence is what says another page exists.
-	ids, err := s.activeSeriesPageIDs(ctx, tenant.ID, order, descending, keys, limit+1)
+	ids, err := s.activeSeriesPageIDs(ctx, tenant.ID, order, filters, descending, keys, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published series", err, "tenant_id", tenant.ID.String())
 	}
@@ -577,10 +603,10 @@ func (s *apiServer) ListPublishedSeries(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = encodeSeriesCursor(pagination.Backward, order, rows[0])
+			res.PreviousToken = encodeSeriesCursor(pagination.Backward, order, filters, rows[0])
 		}
 		if hasNext {
-			res.NextToken = encodeSeriesCursor(pagination.Forward, order, rows[len(rows)-1])
+			res.NextToken = encodeSeriesCursor(pagination.Forward, order, filters, rows[len(rows)-1])
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -588,9 +614,9 @@ func (s *apiServer) ListPublishedSeries(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		res.PreviousToken = encodeSeriesRecoveryToken(pagination.Backward, order, keys)
+		res.PreviousToken = encodeSeriesRecoveryToken(pagination.Backward, order, filters, keys)
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		res.NextToken = encodeSeriesRecoveryToken(pagination.Forward, order, keys)
+		res.NextToken = encodeSeriesRecoveryToken(pagination.Forward, order, filters, keys)
 	}
 	return connect.NewResponse(res), nil
 }
@@ -632,6 +658,7 @@ func (s *apiServer) GetSeriesDetail(
 			PublicId:         row.PublicID,
 			Title:            row.Title,
 			ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
+			FreeEpisodeCount: row.FreeEpisodeCount,
 		},
 		Episodes: make([]*publirattypesv1.Episode, 0, len(episodes)),
 	})

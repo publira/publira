@@ -56,6 +56,13 @@ message ListPublishedSeriesRequest {
   // different order is invalid_argument, because the page it points at no
   // longer exists in the new order. Changing the order restarts at page 1.
   SeriesOrder order = 5;
+  // Keep only the series a reader can start without paying: those whose
+  // free_episode_count is above zero right now. A token carries the filters it
+  // was built for next to the order, and for the same reason — the row it names
+  // sits somewhere else in a differently filtered list — so sending it with a
+  // different filter is invalid_argument and changing the filter restarts at
+  // page 1.
+  bool has_free_episodes = 6;
 }
 
 message ListPublishedSeriesResponse {
