@@ -35,6 +35,14 @@ const (
 	// The removal a moderator makes, as opposed to the 'auto_reports' one the
 	// report threshold makes with no actor to name.
 	commentHiddenReasonStaff = "staff"
+
+	// The episode_comment_reports.status values, which are also the accepted
+	// values of the queue filter. 'resolved' is a report staff agreed with and
+	// 'rejected' one they did not; both are decisions, and only 'open' counts
+	// towards the automatic removal threshold.
+	commentReportStatusOpen     = "open"
+	commentReportStatusResolved = "resolved"
+	commentReportStatusRejected = "rejected"
 )
 
 // moderationCommentRow is the single shape every comment the console reads
@@ -61,6 +69,28 @@ func moderationCommentRowsFromAsc(rows []dbmodels.ListEpisodeCommentsForModerati
 	return mapped
 }
 
+// commentReportRow is the single shape every report the console reads arrives
+// in, the same way moderationCommentRow is for comments: the queue queries and
+// the single-report read select the same columns in the same order, so sqlc
+// emits structurally identical row types.
+type commentReportRow = dbmodels.GetEpisodeCommentReportForModerationByIDForTenantRow
+
+func commentReportRowsFromDesc(rows []dbmodels.ListEpisodeCommentReportsForModerationByCreatedAtDescRow) []commentReportRow {
+	mapped := make([]commentReportRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, commentReportRow(row))
+	}
+	return mapped
+}
+
+func commentReportRowsFromAsc(rows []dbmodels.ListEpisodeCommentReportsForModerationByCreatedAtAscRow) []commentReportRow {
+	mapped := make([]commentReportRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, commentReportRow(row))
+	}
+	return mapped
+}
+
 // normalizeCommentStatusFilter accepts the four stored states and nothing else.
 // An unrecognised filter is rejected rather than ignored: silently listing every
 // state would answer a question the caller did not ask, and a moderator reading
@@ -79,6 +109,57 @@ func normalizeCommentStatusFilter(raw string) (sql.NullString, error) {
 			"status",
 		)
 	}
+}
+
+// normalizeCommentReportStatusFilter accepts the three stored report states and
+// nothing else, for the reason normalizeCommentStatusFilter rejects an unknown
+// comment status: a moderator who believes they are looking at the open reports
+// must not be handed the decided ones as well.
+func normalizeCommentReportStatusFilter(raw string) (sql.NullString, error) {
+	status := strings.TrimSpace(raw)
+	switch status {
+	case "":
+		return sql.NullString{}, nil
+	case commentReportStatusOpen, commentReportStatusResolved, commentReportStatusRejected:
+		return sql.NullString{String: status, Valid: true}, nil
+	default:
+		return sql.NullString{}, rpcerrors.NewFieldViolationError(
+			connect.CodeInvalidArgument,
+			errors.New("status is not a comment report status"),
+			"status",
+		)
+	}
+}
+
+// commentReportResolutionArg reads which way the decision went. Only the two
+// terminal states are accepted: 'open' would be a call that decides nothing,
+// and an empty value a decision the caller never made.
+func commentReportResolutionArg(raw string) (string, error) {
+	resolution := strings.TrimSpace(raw)
+	if resolution == commentReportStatusResolved || resolution == commentReportStatusRejected {
+		return resolution, nil
+	}
+	return "", rpcerrors.NewFieldViolationError(
+		connect.CodeInvalidArgument,
+		errors.New("resolution must be resolved or rejected"),
+		"resolution",
+	)
+}
+
+// commentReportIDArg reads the report a decision names. Reports are identified
+// by their uuid, so an unparseable one is refused here rather than reaching a
+// query that would answer not_found for a value that is not an identifier at
+// all.
+func commentReportIDArg(raw string) (uuid.UUID, error) {
+	reportID, err := uuid.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return uuid.UUID{}, rpcerrors.NewFieldViolationError(
+			connect.CodeInvalidArgument,
+			errors.New("report_id is not an identifier"),
+			"report_id",
+		)
+	}
+	return reportID, nil
 }
 
 // commentPageFilter is the part of a page query that stays the same while the
@@ -125,32 +206,146 @@ func (s *adminServer) commentPage(
 	return moderationCommentRowsFromDesc(rows), nil
 }
 
+// commentReportPage runs the keyset query for one page of the report queue,
+// the same way commentPage does for the comment list.
+func (s *adminServer) commentReportPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	status sql.NullString,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]commentReportRow, error) {
+	params := dbmodels.ListEpisodeCommentReportsForModerationByCreatedAtDescParams{
+		TenantID:        tenantID,
+		Status:          status,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		Limit:           limit,
+	}
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListEpisodeCommentReportsForModerationByCreatedAtAsc(ctx, dbmodels.ListEpisodeCommentReportsForModerationByCreatedAtAscParams(params))
+		if err != nil {
+			return nil, err
+		}
+		return commentReportRowsFromAsc(rows), nil
+	}
+	rows, err := queries.ListEpisodeCommentReportsForModerationByCreatedAtDesc(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return commentReportRowsFromDesc(rows), nil
+}
+
+// commentProjection is the part of a stored comment that AdminComment is built
+// from.
+//
+// Two queries return that comment in row shapes of their own — the moderation
+// list, and the report queue that joins the same comment beside the report it
+// is about — so the projection names what it reads instead of one of them, and
+// purge_due_at is derived in one place for both.
+type commentProjection struct {
+	publicID        string
+	body            string
+	status          string
+	createdAt       time.Time
+	publishedAt     sql.NullTime
+	hiddenAt        sql.NullTime
+	hiddenReason    sql.NullString
+	withdrawnAt     sql.NullTime
+	openReportCount int32
+	authorPublicID  string
+	authorName      string
+	episodePublicID string
+	episodeTitle    string
+	seriesPublicID  string
+	seriesTitle     string
+}
+
+func commentProjectionOf(row moderationCommentRow) commentProjection {
+	return commentProjection{
+		publicID:        row.PublicID,
+		body:            row.Body,
+		status:          row.Status,
+		createdAt:       row.CreatedAt,
+		publishedAt:     row.PublishedAt,
+		hiddenAt:        row.HiddenAt,
+		hiddenReason:    row.HiddenReason,
+		withdrawnAt:     row.WithdrawnAt,
+		openReportCount: row.OpenReportCount,
+		authorPublicID:  row.AuthorPublicID,
+		authorName:      row.AuthorName,
+		episodePublicID: row.EpisodePublicID,
+		episodeTitle:    row.EpisodeTitle,
+		seriesPublicID:  row.SeriesPublicID,
+		seriesTitle:     row.SeriesTitle,
+	}
+}
+
+func commentProjectionOfReport(row commentReportRow) commentProjection {
+	return commentProjection{
+		publicID:        row.PublicID,
+		body:            row.Body,
+		status:          row.Status,
+		createdAt:       row.CreatedAt,
+		publishedAt:     row.PublishedAt,
+		hiddenAt:        row.HiddenAt,
+		hiddenReason:    row.HiddenReason,
+		withdrawnAt:     row.WithdrawnAt,
+		openReportCount: row.OpenReportCount,
+		authorPublicID:  row.AuthorPublicID,
+		authorName:      row.AuthorName,
+		episodePublicID: row.EpisodePublicID,
+		episodeTitle:    row.EpisodeTitle,
+		seriesPublicID:  row.SeriesPublicID,
+		seriesTitle:     row.SeriesTitle,
+	}
+}
+
 // adminComment projects one stored comment for the console.
 //
 // purge_due_at is derived here rather than stored: the retention window is a
 // deployment setting, so a deadline written into the row when the author
 // withdrew it would keep promising a date the purge batch no longer honours.
-func (s *adminServer) adminComment(row moderationCommentRow) *publiraadminv1.AdminComment {
+func (s *adminServer) adminComment(row commentProjection) *publiraadminv1.AdminComment {
 	comment := &publiraadminv1.AdminComment{
-		PublicId:        row.PublicID,
-		Body:            row.Body,
-		Status:          row.Status,
-		CreatedAt:       row.CreatedAt.UTC().Format(time.RFC3339),
-		PublishedAt:     formatOptionalTime(row.PublishedAt),
-		HiddenAt:        formatOptionalTime(row.HiddenAt),
-		HiddenReason:    formatOptionalString(row.HiddenReason),
-		WithdrawnAt:     formatOptionalTime(row.WithdrawnAt),
-		AuthorPublicId:  row.AuthorPublicID,
-		AuthorName:      row.AuthorName,
-		EpisodePublicId: row.EpisodePublicID,
-		EpisodeTitle:    row.EpisodeTitle,
-		SeriesPublicId:  row.SeriesPublicID,
-		SeriesTitle:     row.SeriesTitle,
+		PublicId:        row.publicID,
+		Body:            row.body,
+		Status:          row.status,
+		CreatedAt:       row.createdAt.UTC().Format(time.RFC3339),
+		PublishedAt:     formatOptionalTime(row.publishedAt),
+		HiddenAt:        formatOptionalTime(row.hiddenAt),
+		HiddenReason:    formatOptionalString(row.hiddenReason),
+		WithdrawnAt:     formatOptionalTime(row.withdrawnAt),
+		AuthorPublicId:  row.authorPublicID,
+		AuthorName:      row.authorName,
+		EpisodePublicId: row.episodePublicID,
+		EpisodeTitle:    row.episodeTitle,
+		SeriesPublicId:  row.seriesPublicID,
+		SeriesTitle:     row.seriesTitle,
+		OpenReportCount: row.openReportCount,
 	}
-	if row.WithdrawnAt.Valid {
-		comment.PurgeDueAt = row.WithdrawnAt.Time.UTC().AddDate(0, 0, s.commentRetentionDays).Format(time.RFC3339)
+	if row.withdrawnAt.Valid {
+		comment.PurgeDueAt = row.withdrawnAt.Time.UTC().AddDate(0, 0, s.commentRetentionDays).Format(time.RFC3339)
 	}
 	return comment
+}
+
+// adminCommentReport projects one stored report, with the comment it is about.
+func (s *adminServer) adminCommentReport(row commentReportRow) *publiraadminv1.CommentReport {
+	return &publiraadminv1.CommentReport{
+		ReportId:         row.ReportID.String(),
+		Reason:           row.Reason,
+		Note:             formatOptionalString(row.Note),
+		Status:           row.ReportStatus,
+		CreatedAt:        row.ReportCreatedAt.UTC().Format(time.RFC3339),
+		ResolvedAt:       formatOptionalTime(row.ResolvedAt),
+		ReporterPublicId: row.ReporterPublicID,
+		ReporterName:     row.ReporterName,
+		Comment:          s.adminComment(commentProjectionOfReport(row)),
+	}
 }
 
 // loadCommentForModeration reads the comment an action names. The tenant is part
@@ -312,7 +507,7 @@ func (s *adminServer) ListComments(
 
 	comments := make([]*publiraadminv1.AdminComment, 0, len(rows))
 	for _, row := range rows {
-		comments = append(comments, s.adminComment(row))
+		comments = append(comments, s.adminComment(commentProjectionOf(row)))
 	}
 
 	res := &publiraadminv1.ListCommentsResponse{Comments: comments}
@@ -398,7 +593,7 @@ func (s *adminServer) ApproveComment(
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_approved", publicID, strings.TrimSpace(req.Msg.Reason))
 	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
-	return connect.NewResponse(&publiraadminv1.ApproveCommentResponse{Comment: s.adminComment(updated)}), nil
+	return connect.NewResponse(&publiraadminv1.ApproveCommentResponse{Comment: s.adminComment(commentProjectionOf(updated))}), nil
 }
 
 // HideComment removes one comment from every reader-facing response but its
@@ -436,7 +631,7 @@ func (s *adminServer) HideComment(
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_hidden", publicID, strings.TrimSpace(req.Msg.Reason))
 	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
-	return connect.NewResponse(&publiraadminv1.HideCommentResponse{Comment: s.adminComment(updated)}), nil
+	return connect.NewResponse(&publiraadminv1.HideCommentResponse{Comment: s.adminComment(commentProjectionOf(updated))}), nil
 }
 
 // RestoreComment puts a removed comment back into the state its removal
@@ -461,11 +656,42 @@ func (s *adminServer) RestoreComment(
 		return nil, commentStateError("restored", current.Status)
 	}
 
-	if _, err := s.queriesFor(ctx).RestoreEpisodeCommentByPublicIDForTenant(ctx, dbmodels.RestoreEpisodeCommentByPublicIDForTenantParams{
+	// The restore and the reports it settles are one transaction. Putting the
+	// comment back is staff saying it stands, so the reports against it do not,
+	// and leaving them open would let the very same reports carry it past the
+	// automatic removal threshold again the moment it came back. The restore's
+	// own audit row accounts for all of it: what a tenant has to be able to
+	// state afterwards is that staff put the comment back, and by whom.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin comment restore transaction", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	qtx := dbmodels.New(tx)
+	if _, err := qtx.RestoreEpisodeCommentByPublicIDForTenant(ctx, dbmodels.RestoreEpisodeCommentByPublicIDForTenantParams{
 		TenantID: tenant.ID,
 		PublicID: publicID,
 	}); err != nil {
 		return nil, s.commentTransitionError(ctx, "restore", "restored", tenant.ID, publicID, err)
+	}
+	if _, err := qtx.RejectOpenEpisodeCommentReportsForComment(ctx, dbmodels.RejectOpenEpisodeCommentReportsForCommentParams{
+		TenantID:   tenant.ID,
+		CommentID:  current.ID,
+		ResolvedBy: sessionCtx.User.ID,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to reject the open reports on a restored comment", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
+	// Recomputed rather than zeroed, so the counter is what the report rows say
+	// it is even if one of them was decided between the two statements.
+	if _, err := qtx.RefreshEpisodeCommentOpenReportCount(ctx, dbmodels.RefreshEpisodeCommentOpenReportCountParams{
+		TenantID:  tenant.ID,
+		CommentID: current.ID,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to refresh the report count of a restored comment", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit the comment restore", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
 	}
 
 	updated, err := s.loadCommentForModeration(ctx, tenant.ID, publicID)
@@ -475,7 +701,7 @@ func (s *adminServer) RestoreComment(
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_restored", publicID, strings.TrimSpace(req.Msg.Reason))
 	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
-	return connect.NewResponse(&publiraadminv1.RestoreCommentResponse{Comment: s.adminComment(updated)}), nil
+	return connect.NewResponse(&publiraadminv1.RestoreCommentResponse{Comment: s.adminComment(commentProjectionOf(updated))}), nil
 }
 
 // PurgeComment deletes one comment for good, whatever state it is in.
@@ -532,6 +758,189 @@ func (s *adminServer) PurgeComment(
 	s.revalidateCommentList(ctx, tenant.ID, current.EpisodePublicID)
 
 	return connect.NewResponse(&publiraadminv1.PurgeCommentResponse{}), nil
+}
+
+// ListCommentReports returns the tenant's comment reports, newest first.
+//
+// One entry per report: a report is what staff decide on, and each carries the
+// reason and the sentence one reader wrote. A comment several readers reported
+// is therefore in the queue once per report, with open_report_count on it
+// saying how many of those are still waiting.
+func (s *adminServer) ListCommentReports(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ListCommentReportsRequest],
+) (*connect.Response[publiraadminv1.ListCommentReportsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	status, err := normalizeCommentReportStatusFilter(req.Msg.Status)
+	if err != nil {
+		return nil, err
+	}
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCommentListLimit, maxCommentListLimit)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	}
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
+	}
+
+	// One row past the page: its presence is what says another page exists.
+	rows, err := s.commentReportPage(ctx, tenant.ID, status, keys, cursor.Direction, limit+1)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list comment reports", err, "tenant_id", tenant.ID.String())
+	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+
+	reports := make([]*publiraadminv1.CommentReport, 0, len(rows))
+	for _, row := range rows {
+		reports = append(reports, s.adminCommentReport(row))
+	}
+
+	res := &publiraadminv1.ListCommentReportsResponse{Reports: reports}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].ReportCreatedAt, rows[0].ReportID)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.ReportCreatedAt, last.ReportID)
+		}
+	// An empty page means the boundary row was removed after the token was
+	// issued — purging a comment takes its reports with it. Hand back a token
+	// to where the client came from, and only once.
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
+}
+
+// ResolveCommentReport marks one open report resolved or rejected.
+//
+// The comment is left exactly as it was, whichever way the decision goes:
+// agreeing with a report is not the same act as removing what it is about, and
+// rejecting the last open report on an automatically removed comment does not
+// bring it back — only RestoreComment does. What does follow is the comment's
+// open report count, since a decided report no longer counts towards the
+// automatic removal threshold.
+func (s *adminServer) ResolveCommentReport(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ResolveCommentReportRequest],
+) (*connect.Response[publiraadminv1.ResolveCommentReportResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	reportID, err := commentReportIDArg(req.Msg.ReportId)
+	if err != nil {
+		return nil, err
+	}
+	resolution, err := commentReportResolutionArg(req.Msg.Resolution)
+	if err != nil {
+		return nil, err
+	}
+
+	current, err := s.loadCommentReport(ctx, tenant.ID, reportID)
+	if err != nil {
+		return nil, err
+	}
+	if current.ReportStatus != commentReportStatusOpen {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("a %s report cannot be decided again", current.ReportStatus))
+	}
+
+	// The decision and the counter it moves are one write, for the reason the
+	// report itself was: open_report_count is what the removal threshold reads
+	// and what the queues show, so a decision the counter did not follow would
+	// leave a comment carrying reports nobody is waiting on any more.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin comment report transaction", err, "tenant_id", tenant.ID.String(), "report_id", reportID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	qtx := dbmodels.New(tx)
+	if _, err := qtx.ResolveEpisodeCommentReportByIDForTenant(ctx, dbmodels.ResolveEpisodeCommentReportByIDForTenantParams{
+		TenantID:   tenant.ID,
+		ID:         reportID,
+		Status:     resolution,
+		ResolvedBy: sessionCtx.User.ID,
+	}); err != nil {
+		// The UPDATE names 'open' as the state it moves from, so no row means
+		// another moderator decided this report between the read and the write.
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the report was already decided"))
+		}
+		return nil, s.internalDBError(ctx, "failed to resolve comment report", err, "tenant_id", tenant.ID.String(), "report_id", reportID.String())
+	}
+	if _, err := qtx.RefreshEpisodeCommentOpenReportCount(ctx, dbmodels.RefreshEpisodeCommentOpenReportCountParams{
+		TenantID:  tenant.ID,
+		CommentID: current.ID,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to refresh comment open report count", err, "tenant_id", tenant.ID.String(), "report_id", reportID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit the comment report decision", err, "tenant_id", tenant.ID.String(), "report_id", reportID.String())
+	}
+
+	updated, err := s.loadCommentReport(ctx, tenant.ID, reportID)
+	if err != nil {
+		return nil, err
+	}
+	// The audit row names the comment rather than the report: what a tenant has
+	// to be able to account for afterwards is what was decided about a piece of
+	// content, and every other entry about that comment is filed under the same
+	// target. The action says which way this decision went.
+	s.recordCommentAction(ctx, req.Header(), sessionCtx, commentReportAuditAction(resolution), updated.PublicID, strings.TrimSpace(req.Msg.Reason))
+
+	return connect.NewResponse(&publiraadminv1.ResolveCommentReportResponse{Report: s.adminCommentReport(updated)}), nil
+}
+
+// commentReportAuditAction names the decision in the audit log.
+func commentReportAuditAction(resolution string) string {
+	if resolution == commentReportStatusResolved {
+		return "comment_report_resolved"
+	}
+	return "comment_report_rejected"
+}
+
+// loadCommentReport reads the report a decision names. The tenant is part of
+// the lookup, so a report of another tenant is not found rather than forbidden:
+// a moderator learns nothing about what exists elsewhere.
+func (s *adminServer) loadCommentReport(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	reportID uuid.UUID,
+) (commentReportRow, error) {
+	row, err := s.queriesFor(ctx).GetEpisodeCommentReportForModerationByIDForTenant(ctx, dbmodels.GetEpisodeCommentReportForModerationByIDForTenantParams{
+		TenantID: tenantID,
+		ID:       reportID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return commentReportRow{}, connect.NewError(connect.CodeNotFound, errors.New("comment report not found"))
+	}
+	if err != nil {
+		return commentReportRow{}, s.internalDBError(ctx, "failed to get comment report", err, "tenant_id", tenantID.String(), "report_id", reportID.String())
+	}
+	return row, nil
 }
 
 // commentActionContext is the opening every moderation action shares: the

@@ -208,6 +208,10 @@ type Querier interface {
 	// reads it before deciding and again after writing, so the caller answers from
 	// the stored row rather than from what it assumed the transition would produce.
 	GetEpisodeCommentForModerationByPublicIDForTenant(ctx context.Context, arg GetEpisodeCommentForModerationByPublicIDForTenantParams) (GetEpisodeCommentForModerationByPublicIDForTenantRow, error)
+	// One report in the shape the queue returns. A decision reads it before acting
+	// and again after writing, so the answer describes the stored rows rather than
+	// what the transition was assumed to produce.
+	GetEpisodeCommentReportForModerationByIDForTenant(ctx context.Context, arg GetEpisodeCommentReportForModerationByIDForTenantParams) (GetEpisodeCommentReportForModerationByIDForTenantRow, error)
 	GetEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByPublicIDForTenantParams) (GetEpisodeFreeWindowByPublicIDForTenantRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
 	// Tenant-staff preview: membership and role are evaluated in the handler.
@@ -291,6 +295,15 @@ type Querier interface {
 	//   RefreshEpisodeCommentOpenReportCount
 	//     -> episode_comments_tenant_id_id_key, then
 	//        episode_comment_reports_tenant_comment_reporter_key for the count
+	//   ListEpisodeCommentReportsForModerationByCreatedAt*
+	//     -> idx_episode_comment_reports_tenant_status_created_at with a status
+	//        filter, idx_episode_comment_reports_tenant_created_at without one
+	//   GetEpisodeCommentReportForModerationByIDForTenant
+	//     -> episode_comment_reports_pkey
+	//   ResolveEpisodeCommentReportByIDForTenant
+	//     -> episode_comment_reports_pkey
+	//   RejectOpenEpisodeCommentReportsForComment
+	//     -> episode_comment_reports_tenant_comment_reporter_key
 	// The comment a reader is allowed to report: one that is published, on an
 	// episode that is itself public right now. The publication predicate is the one
 	// GetPublishedEpisodeByPublicIDForTenant applies, so a comment on an episode
@@ -505,6 +518,19 @@ type Querier interface {
 	// in reverse. The handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescParams) ([]ListEndUsersDescRow, error)
+	// The previous-page half of ListEpisodeCommentReportsForModerationByCreatedAtDesc.
+	// The handler reverses the returned rows to preserve the newest-first order.
+	ListEpisodeCommentReportsForModerationByCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentReportsForModerationByCreatedAtAscParams) ([]ListEpisodeCommentReportsForModerationByCreatedAtAscRow, error)
+	// The report queue: one row per report rather than per reported comment,
+	// because a report is what staff decide on. A comment several readers reported
+	// is therefore here once per report, and open_report_count on it says how many
+	// of those are still waiting.
+	//
+	// The reported comment travels with the report, joined the same way
+	// ListEpisodeCommentsForModerationByCreatedAtDesc joins it: a report cannot be
+	// judged without the text it is about, and the queue offers the removal
+	// actions from the same row.
+	ListEpisodeCommentReportsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentReportsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentReportsForModerationByCreatedAtDescRow, error)
 	// The previous-page half of ListEpisodeCommentsForModerationByCreatedAtDesc.
 	ListEpisodeCommentsForModerationByCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtAscParams) ([]ListEpisodeCommentsForModerationByCreatedAtAscRow, error)
 	// The console queues: 'pending' is the approval queue, 'hidden' the removed
@@ -1061,7 +1087,22 @@ type Querier interface {
 	// drifted for any reason is corrected by the next write instead of staying
 	// wrong until someone notices.
 	RefreshEpisodeCommentOpenReportCount(ctx context.Context, arg RefreshEpisodeCommentOpenReportCountParams) (int32, error)
+	// Every open report on one comment, decided at once by a restore.
+	//
+	// Putting a removed comment back is staff saying the comment stands, so the
+	// reports against it do not; leaving them open would let the same reports carry
+	// the comment past the removal threshold again the moment it came back.
+	RejectOpenEpisodeCommentReportsForComment(ctx context.Context, arg RejectOpenEpisodeCommentReportsForCommentParams) (int64, error)
 	ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error
+	// Staff deciding one report, either way. It names 'open' as the state it moves
+	// from, so a report a second moderator decided in between returns no row and
+	// the caller answers "already decided" rather than overwriting the first
+	// decision.
+	//
+	// The comment is untouched here: agreeing with a report is not the same act as
+	// removing what it is about. Only the counter follows, through
+	// RefreshEpisodeCommentOpenReportCount in the same transaction.
+	ResolveEpisodeCommentReportByIDForTenant(ctx context.Context, arg ResolveEpisodeCommentReportByIDForTenantParams) (EpisodeCommentReport, error)
 	// A restored comment returns to the state the removal interrupted, which
 	// published_at records: one that was already public becomes public again, and
 	// one removed while still awaiting approval goes back into that queue.

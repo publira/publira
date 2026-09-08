@@ -9,6 +9,15 @@
 --   RefreshEpisodeCommentOpenReportCount
 --     -> episode_comments_tenant_id_id_key, then
 --        episode_comment_reports_tenant_comment_reporter_key for the count
+--   ListEpisodeCommentReportsForModerationByCreatedAt*
+--     -> idx_episode_comment_reports_tenant_status_created_at with a status
+--        filter, idx_episode_comment_reports_tenant_created_at without one
+--   GetEpisodeCommentReportForModerationByIDForTenant
+--     -> episode_comment_reports_pkey
+--   ResolveEpisodeCommentReportByIDForTenant
+--     -> episode_comment_reports_pkey
+--   RejectOpenEpisodeCommentReportsForComment
+--     -> episode_comment_reports_tenant_comment_reporter_key
 
 -- name: GetReportableEpisodeCommentByPublicIDForTenant :one
 -- The comment a reader is allowed to report: one that is published, on an
@@ -91,3 +100,206 @@ SET open_report_count = (
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.id = sqlc.arg('comment_id')
 RETURNING c.open_report_count;
+
+-- name: ListEpisodeCommentReportsForModerationByCreatedAtDesc :many
+-- The report queue: one row per report rather than per reported comment,
+-- because a report is what staff decide on. A comment several readers reported
+-- is therefore here once per report, and open_report_count on it says how many
+-- of those are still waiting.
+--
+-- The reported comment travels with the report, joined the same way
+-- ListEpisodeCommentsForModerationByCreatedAtDesc joins it: a report cannot be
+-- judged without the text it is about, and the queue offers the removal
+-- actions from the same row.
+SELECT r.id AS report_id,
+    r.reason,
+    r.note,
+    r.status AS report_status,
+    r.created_at AS report_created_at,
+    r.resolved_at,
+    reporter.public_id AS reporter_public_id,
+    reporter.name AS reporter_name,
+    c.id,
+    c.public_id,
+    c.body,
+    c.status,
+    c.hidden_reason,
+    c.created_at,
+    c.published_at,
+    c.hidden_at,
+    c.withdrawn_at,
+    c.open_report_count,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_comment_reports r
+    JOIN episode_comments c ON c.tenant_id = r.tenant_id
+        AND c.id = r.comment_id
+    JOIN users reporter ON reporter.tenant_id = r.tenant_id
+        AND reporter.id = r.reporter_user_id
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND (sqlc.narg('status')::text IS NULL OR r.status = sqlc.narg('status')::text)
+    AND (
+        sqlc.narg('cursor_created_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (r.created_at, r.id) <= (
+                sqlc.narg('cursor_created_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (r.created_at, r.id) < (
+                sqlc.narg('cursor_created_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY r.created_at DESC,
+    r.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListEpisodeCommentReportsForModerationByCreatedAtAsc :many
+-- The previous-page half of ListEpisodeCommentReportsForModerationByCreatedAtDesc.
+-- The handler reverses the returned rows to preserve the newest-first order.
+SELECT r.id AS report_id,
+    r.reason,
+    r.note,
+    r.status AS report_status,
+    r.created_at AS report_created_at,
+    r.resolved_at,
+    reporter.public_id AS reporter_public_id,
+    reporter.name AS reporter_name,
+    c.id,
+    c.public_id,
+    c.body,
+    c.status,
+    c.hidden_reason,
+    c.created_at,
+    c.published_at,
+    c.hidden_at,
+    c.withdrawn_at,
+    c.open_report_count,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_comment_reports r
+    JOIN episode_comments c ON c.tenant_id = r.tenant_id
+        AND c.id = r.comment_id
+    JOIN users reporter ON reporter.tenant_id = r.tenant_id
+        AND reporter.id = r.reporter_user_id
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND (sqlc.narg('status')::text IS NULL OR r.status = sqlc.narg('status')::text)
+    AND (
+        sqlc.narg('cursor_created_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (r.created_at, r.id) >= (
+                sqlc.narg('cursor_created_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (r.created_at, r.id) > (
+                sqlc.narg('cursor_created_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY r.created_at ASC,
+    r.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: GetEpisodeCommentReportForModerationByIDForTenant :one
+-- One report in the shape the queue returns. A decision reads it before acting
+-- and again after writing, so the answer describes the stored rows rather than
+-- what the transition was assumed to produce.
+SELECT r.id AS report_id,
+    r.reason,
+    r.note,
+    r.status AS report_status,
+    r.created_at AS report_created_at,
+    r.resolved_at,
+    reporter.public_id AS reporter_public_id,
+    reporter.name AS reporter_name,
+    c.id,
+    c.public_id,
+    c.body,
+    c.status,
+    c.hidden_reason,
+    c.created_at,
+    c.published_at,
+    c.hidden_at,
+    c.withdrawn_at,
+    c.open_report_count,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_comment_reports r
+    JOIN episode_comments c ON c.tenant_id = r.tenant_id
+        AND c.id = r.comment_id
+    JOIN users reporter ON reporter.tenant_id = r.tenant_id
+        AND reporter.id = r.reporter_user_id
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND r.id = sqlc.arg('id');
+
+-- name: ResolveEpisodeCommentReportByIDForTenant :one
+-- Staff deciding one report, either way. It names 'open' as the state it moves
+-- from, so a report a second moderator decided in between returns no row and
+-- the caller answers "already decided" rather than overwriting the first
+-- decision.
+--
+-- The comment is untouched here: agreeing with a report is not the same act as
+-- removing what it is about. Only the counter follows, through
+-- RefreshEpisodeCommentOpenReportCount in the same transaction.
+UPDATE episode_comment_reports
+SET status = sqlc.arg('status')::text,
+    resolved_at = NOW(),
+    resolved_by = sqlc.arg('resolved_by')::uuid
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND status = 'open'
+RETURNING *;
+
+-- name: RejectOpenEpisodeCommentReportsForComment :execrows
+-- Every open report on one comment, decided at once by a restore.
+--
+-- Putting a removed comment back is staff saying the comment stands, so the
+-- reports against it do not; leaving them open would let the same reports carry
+-- the comment past the removal threshold again the moment it came back.
+UPDATE episode_comment_reports
+SET status = 'rejected',
+    resolved_at = NOW(),
+    resolved_by = sqlc.arg('resolved_by')::uuid
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND comment_id = sqlc.arg('comment_id')
+    AND status = 'open';

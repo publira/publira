@@ -44,6 +44,40 @@ message AdminComment {
   string episode_title = 13;
   string series_public_id = 14;
   string series_title = 15;
+  // Distinct reports on this comment that are still open — the number the
+  // automatic removal threshold reads. It is the count of undecided reports
+  // rather than of reports ever made, so deciding on one lowers it.
+  int32 open_report_count = 16;
+}
+
+// One reader's report on one comment, as the report queue reads it.
+//
+// The whole comment travels with the report rather than only its identifier:
+// staff cannot judge a report without the text it is about, and the queue
+// offers the hide, restore and purge actions from the same row, which need the
+// state that AdminComment carries.
+message CommentReport {
+  // The report's uuid, since a report has no public_id of its own. Nothing
+  // reader-facing ever names a report, so there is no identifier here to keep
+  // out of a URL a reader could see, and AdminNotification is identified the
+  // same way.
+  string report_id = 1;
+  // One of spam, abuse, spoiler, other, as the reporter chose it.
+  string reason = 2;
+  // What the reporter added in their own words. Usually empty: the reason on
+  // its own is a complete report.
+  string note = 3;
+  // One of open, resolved, rejected. Only an open report counts towards the
+  // automatic removal threshold.
+  string status = 4;
+  string created_at = 5;
+  // When staff decided this report. Empty while it is open.
+  string resolved_at = 6;
+  // The reader who sent the report. Staff see it because a queue full of one
+  // account's reports is itself the thing to act on; no reader ever does.
+  string reporter_public_id = 7;
+  string reporter_name = 8;
+  AdminComment comment = 9;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -129,6 +163,45 @@ message PurgeCommentRequest {
 // Deliberately empty. The row is deleted, so there is nothing left to return.
 message PurgeCommentResponse {}
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListCommentReportsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // One of open, resolved, rejected. Empty lists every state, which is how the
+  // decisions already made are read back. Anything else is invalid_argument.
+  string status = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListCommentReportsResponse {
+  // Newest first.
+  repeated CommentReport reports = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message ResolveCommentReportRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string report_id = 2;
+  // 'resolved' for a report staff agreed with, 'rejected' for one they did
+  // not. Anything else, the empty string included, is invalid_argument: which
+  // way the decision went is the whole content of this call.
+  string resolution = 3;
+  // Recorded on the audit log row. Optional: the resolution itself is the
+  // decision, and a queue worked one obvious report at a time would otherwise
+  // ask for a sentence per row.
+  string reason = 4;
+}
+
+message ResolveCommentReportResponse {
+  // The decided report, with the comment as it stands after the decision.
+  CommentReport report = 1;
+}
+
 service AdminCommentService {
   // Lists the tenant's comments for moderation, newest first.
   //
@@ -168,4 +241,23 @@ service AdminCommentService {
   // Separate from HideComment so the routine action stays reversible and the
   // one that cannot be undone is asked for by name.
   rpc PurgeComment(PurgeCommentRequest) returns (PurgeCommentResponse) {}
+  // Lists the tenant's comment reports for review, newest first.
+  //
+  // One entry per report, not per reported comment. A report is what staff
+  // decide on — each one carries the reason and the sentence one reader wrote,
+  // and ResolveCommentReport settles them one at a time — so the same comment
+  // appears once per report it collected, with the open count on it saying how
+  // many of those are still waiting.
+  rpc ListCommentReports(ListCommentReportsRequest) returns (ListCommentReportsResponse) {}
+  // Marks one open report resolved or rejected and records the decision.
+  //
+  // It leaves the comment itself untouched, whichever way it goes: agreeing
+  // with a report is not the same act as removing what it is about, and the
+  // removal is HideComment. What it does change is the comment's open report
+  // count, since a decided report no longer counts towards the automatic
+  // removal threshold.
+  //
+  // failed_precondition for a report that was already decided, and not_found
+  // for one of another tenant.
+  rpc ResolveCommentReport(ResolveCommentReportRequest) returns (ResolveCommentReportResponse) {}
 }
