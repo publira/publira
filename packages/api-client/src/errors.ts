@@ -43,6 +43,7 @@ export type RpcErrorDisposition =
   | "invalid-argument"
   | "not-found"
   | "precondition"
+  | "rate-limited"
   | "unauthenticated"
   | "unavailable"
   | "unexpected";
@@ -59,7 +60,11 @@ const DISPOSITION_BY_CODE: Readonly<Record<Code, RpcErrorDisposition>> = {
   [Code.NotFound]: "not-found",
   [Code.OutOfRange]: "invalid-argument",
   [Code.PermissionDenied]: "forbidden",
-  [Code.ResourceExhausted]: "unavailable",
+  // Its own category rather than `unavailable`: the caller reached the server
+  // and the server answered them. Telling someone who wrote too fast that we
+  // could not connect sends them to check their network over something only
+  // waiting fixes.
+  [Code.ResourceExhausted]: "rate-limited",
   [Code.Unauthenticated]: "unauthenticated",
   [Code.Unavailable]: "unavailable",
   [Code.Unimplemented]: "unexpected",
@@ -181,14 +186,15 @@ const REJECTED_REQUEST_DISPOSITIONS: ReadonlySet<RpcErrorDisposition> = new Set(
     "invalid-argument",
     "not-found",
     "precondition",
+    "rate-limited",
     "unauthenticated",
   ]
 );
 
 /**
  * The server rejected this request — bad input, a conflict, a missing record,
- * an unusable session. A form may render these as a message the user can act
- * on.
+ * an unusable session, an allowance the caller has spent. A form may render
+ * these as a message the user can act on.
  *
  * Excludes `unavailable` (transport / overload) and `unexpected` (the server
  * broke, or the throw was not an RPC error at all): those say nothing the user
