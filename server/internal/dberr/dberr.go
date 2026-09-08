@@ -12,6 +12,11 @@ import (
 // constraint.
 const uniqueViolationCode = "23505"
 
+// foreignKeyViolationCode is the SQLSTATE PostgreSQL reports for a violated
+// foreign key, which is how a genre still carried by a series refuses to be
+// deleted.
+const foreignKeyViolationCode = "23503"
+
 // exclusionViolationCode is the SQLSTATE PostgreSQL reports for a violated
 // exclusion constraint, which is how episode_free_windows refuses two periods
 // that overlap on the same episode.
@@ -21,6 +26,12 @@ const exclusionViolationCode = "23P01"
 func IsUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode
+}
+
+// IsForeignKeyViolation reports whether err is a foreign key violation.
+func IsForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode
 }
 
 // IsExclusionViolation reports whether err is an exclusion constraint

@@ -40,6 +40,9 @@ type Querier interface {
 	CountPublishedSeriesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// For the tenant dashboard.
 	CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
+	// Whether a genre may still be deleted. The refusal is the handler's, and this
+	// is what it is based on.
+	CountSeriesByGenreIDForTenant(ctx context.Context, arg CountSeriesByGenreIDForTenantParams) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
@@ -87,6 +90,7 @@ type Querier interface {
 	CreateEpisodeFreeWindow(ctx context.Context, arg CreateEpisodeFreeWindowParams) (CreateEpisodeFreeWindowRow, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
 	CreateEpisodeImageVariant(ctx context.Context, arg CreateEpisodeImageVariantParams) (EpisodeImageVariant, error)
+	CreateGenre(ctx context.Context, arg CreateGenreParams) (Genre, error)
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	CreateLabelImage(ctx context.Context, arg CreateLabelImageParams) (LabelImage, error)
 	CreateLabelImageVariant(ctx context.Context, arg CreateLabelImageVariantParams) (LabelImageVariant, error)
@@ -108,8 +112,10 @@ type Querier interface {
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error
 	CreateSeriesFollow(ctx context.Context, arg CreateSeriesFollowParams) (SeriesFollow, error)
+	CreateSeriesGenre(ctx context.Context, arg CreateSeriesGenreParams) error
 	CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error)
 	CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error)
+	CreateSeriesTag(ctx context.Context, arg CreateSeriesTagParams) error
 	// Tenant creation for platform administrators.
 	// default_locale has no column DEFAULT, so the caller always passes it
 	// explicitly. timezone is not left to its column DEFAULT either: the
@@ -135,6 +141,7 @@ type Querier interface {
 	// public_id that never existed. What the caller audits and revalidates comes
 	// from the read it did first.
 	DeleteEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByPublicIDForTenantParams) (DeleteEpisodeFreeWindowByPublicIDForTenantRow, error)
+	DeleteGenre(ctx context.Context, id uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch, like the series query above.
 	DeleteLabelImageVariantsByType(ctx context.Context, arg DeleteLabelImageVariantsByTypeParams) (int64, error)
 	DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
@@ -142,10 +149,12 @@ type Querier interface {
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	DeleteSeriesFollow(ctx context.Context, arg DeleteSeriesFollowParams) (int64, error)
+	DeleteSeriesGenresBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch so a newly uploaded image for that
 	// ratio can take its place. The objects the deleted rows named are left to
 	// `batch purge-orphan-images`.
 	DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error)
+	DeleteSeriesTagsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
 	// An upload points its creator at the new icon and leaves the previous
@@ -157,6 +166,11 @@ type Querier interface {
 	// A tenant image is reachable from either branding slot, and the theme holds
 	// both, so one row can be the icon of one theme and nothing else anywhere.
 	DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error)
+	// Removes the tags the last series carrying them just let go of. A tag has no
+	// management screen and nothing else to say for itself, so one no series
+	// carries is not a tag the tenant kept — it is one nobody would ever see
+	// again.
+	DeleteUnusedTagsForTenant(ctx context.Context, tenantID uuid.UUID) error
 	// Hard delete. Related rows go with the user wherever the foreign key cascades.
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error
@@ -225,6 +239,7 @@ type Querier interface {
 	// rate assembled from one page's rows would describe that page instead of the
 	// period.
 	GetEpisodeReadThroughTotals(ctx context.Context, arg GetEpisodeReadThroughTotalsParams) (GetEpisodeReadThroughTotalsRow, error)
+	GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreByPublicIDForTenantParams) (GetGenreByPublicIDForTenantRow, error)
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
@@ -237,6 +252,8 @@ type Querier interface {
 	GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
 	GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error)
+	// Where a newly created genre goes: after everything that already exists.
+	GetMaxGenreDisplayOrderForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// The caller adds one to this to number the version it is about to create;
 	// COALESCE makes the first version of a page number 1.
 	GetMaxPageVersionNumberByPageID(ctx context.Context, pageID uuid.UUID) (int32, error)
@@ -584,6 +601,18 @@ type Querier interface {
 	ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodesBySeriesForTenantDescParams) ([]ListEpisodesBySeriesForTenantDescRow, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
+	// Resolves the genres a series form assigned. The caller compares the row
+	// count against what it asked for, so a public_id of another tenant reads as
+	// a genre that does not exist.
+	ListGenresByPublicIDsForTenant(ctx context.Context, arg ListGenresByPublicIDsForTenantParams) ([]ListGenresByPublicIDsForTenantRow, error)
+	// The genre list is read in the order the tenant put it in, so the cursor
+	// sorts on (display_order, id) — the same pair idx_genres_tenant_display_order
+	// holds. Forward uses the ascending query; backward uses the descending one so
+	// the index is scanned in reverse, and the handler flips those rows back into
+	// display order.
+	// cursor rules: proto/README.md.
+	ListGenresByTenantAsc(ctx context.Context, arg ListGenresByTenantAscParams) ([]ListGenresByTenantAscRow, error)
+	ListGenresByTenantDesc(ctx context.Context, arg ListGenresByTenantDescParams) ([]ListGenresByTenantDescRow, error)
 	ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error)
 	ListLabelsByTenantAsc(ctx context.Context, arg ListLabelsByTenantAscParams) ([]ListLabelsByTenantAscRow, error)
 	// Admin ListLabels and the public ListPublishedLabels are both
@@ -872,7 +901,15 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error)
 	ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error)
+	// Genres read back in the tenant's own genre order rather than the order they
+	// were assigned in, so every series presents them the same way the genre list
+	// does.
+	ListSeriesGenresBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesGenresBySeriesIDsRow, error)
 	ListSeriesImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListSeriesImageVariantsByImageIDsRow, error)
+	// Tags have no order of their own, so they read back by name: the same series
+	// shows the same list every time, and two series sharing tags show them in the
+	// same places.
+	ListSeriesTagsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesTagsBySeriesIDsRow, error)
 	// Worker fan-out: every user that holds a tenant_user_roles row is a
 	// tenant admin for that tenant. DISTINCT so one person with two roles
 	// is still one notification.
@@ -932,6 +969,11 @@ type Querier interface {
 	// exactly as it was, because the removal is silent; only the author's own
 	// withdrawal takes it away from them.
 	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error)
+	// Locks every genre of the tenant and hands back the order they are in now, so
+	// a reorder can check the client's expected order against a list no concurrent
+	// write can move underneath it. The names come along because a reorder answers
+	// with the whole list, and nothing in this transaction changes them.
+	LockGenresForTenant(ctx context.Context, tenantID uuid.UUID) ([]LockGenresForTenantRow, error)
 	// Lock the label row so concurrent eye-catch writes serialize, the way
 	// LockSeriesByPublicIDForTenant does for a series. The read of the row's
 	// current eye_catch_image_id has to be a separate statement: READ COMMITTED
@@ -1145,6 +1187,8 @@ type Querier interface {
 	UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
+	UpdateGenre(ctx context.Context, arg UpdateGenreParams) error
+	UpdateGenreDisplayOrder(ctx context.Context, arg UpdateGenreDisplayOrderParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
 	// display_in_footer keeps the stored value when the argument is omitted (NULL),
 	// so a title-only edit does not have to restate the footer flag.
@@ -1194,6 +1238,15 @@ type Querier interface {
 	// request leaves empty is stored as empty rather than kept from the row that
 	// was there.
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
+	// Resolves one tag name the series form carried, creating the tag when this is
+	// its first use.
+	//
+	// The update is deliberately a no-op that keeps the stored name: ON CONFLICT
+	// DO NOTHING returns no row, and the insert has to hand back the tag either
+	// way. Keeping the stored name is also the answer to "fantasy" typed under a
+	// tag saved as "Fantasy" — the slug says they are the same tag, and the name
+	// the tenant first wrote is the one every other series keeps showing.
+	UpsertTagForTenant(ctx context.Context, arg UpsertTagForTenantParams) (Tag, error)
 	// The settings screen can save the comment mode for a tenant whose config row
 	// does not exist yet, so the mode is written without disturbing the site copy
 	// columns UpdateTenantConfig owns.

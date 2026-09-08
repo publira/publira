@@ -109,6 +109,10 @@ func (e *adminDBEnv) labelClient() publiraadminv1connect.AdminLabelServiceClient
 	return publiraadminv1connect.NewAdminLabelServiceClient(e.Server.Client(), e.Server.URL)
 }
 
+func (e *adminDBEnv) genreClient() publiraadminv1connect.AdminGenreServiceClient {
+	return publiraadminv1connect.NewAdminGenreServiceClient(e.Server.Client(), e.Server.URL)
+}
+
 func (e *adminDBEnv) themeClient() publiraadminv1connect.TenantThemeServiceClient {
 	return publiraadminv1connect.NewTenantThemeServiceClient(e.Server.Client(), e.Server.URL)
 }

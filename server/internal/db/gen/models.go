@@ -253,6 +253,16 @@ type EpisodeReadingPosition struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type Genre struct {
+	ID           uuid.UUID `json:"id"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	PublicID     string    `json:"public_id"`
+	Name         string    `json:"name"`
+	Slug         string    `json:"slug"`
+	DisplayOrder int32     `json:"display_order"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 type ItemRecommendFeature struct {
 	TenantID       uuid.UUID       `json:"tenant_id"`
 	EntityType     string          `json:"entity_type"`
@@ -479,6 +489,13 @@ type SeriesFollow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type SeriesGenre struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	SeriesID  uuid.UUID `json:"series_id"`
+	GenreID   uuid.UUID `json:"genre_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type SeriesImage struct {
 	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`
@@ -512,6 +529,21 @@ type SeriesListing struct {
 	Status             string         `json:"status"`
 	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
 	AgeRating          string         `json:"age_rating"`
+}
+
+type SeriesTag struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	SeriesID  uuid.UUID `json:"series_id"`
+	TagID     uuid.UUID `json:"tag_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type Tag struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Tenant struct {

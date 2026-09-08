@@ -290,6 +290,206 @@ func (s *adminServer) seriesCreatorsBySeriesIDs(
 	return items, nil
 }
 
+// maxSeriesTags bounds how many tags one series carries. Tags exist to group
+// series, and a series wearing more labels than a reader can take in groups it
+// with everything and therefore with nothing.
+const maxSeriesTags = 20
+
+// resolveGenresByPublicIDs reads the genres a save assigned, in the tenant's
+// genre order. A public_id naming no genre of this tenant is a bad request
+// rather than a silently dropped assignment.
+func (s *adminServer) resolveGenresByPublicIDs(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	genrePublicIDs []string,
+) ([]dbmodels.ListGenresByPublicIDsForTenantRow, error) {
+	normalized := make([]string, 0, len(genrePublicIDs))
+	seen := make(map[string]struct{}, len(genrePublicIDs))
+	for _, value := range genrePublicIDs {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_public_ids contains empty value"), "genre_public_ids")
+		}
+		if _, ok := seen[trimmed]; ok {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_public_ids contains duplicate value"), "genre_public_ids")
+		}
+		seen[trimmed] = struct{}{}
+		normalized = append(normalized, trimmed)
+	}
+	if len(normalized) == 0 {
+		return []dbmodels.ListGenresByPublicIDsForTenantRow{}, nil
+	}
+	rows, err := s.queriesFor(ctx).ListGenresByPublicIDsForTenant(ctx, dbmodels.ListGenresByPublicIDsForTenantParams{
+		TenantID:  tenantID,
+		PublicIds: normalized,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list genres by public ids", err, "tenant_id", tenantID.String())
+	}
+	if len(rows) != len(normalized) {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre not found"), "genre_public_ids")
+	}
+	return rows, nil
+}
+
+// syncSeriesGenres writes the whole genre assignment of a series. replace is
+// false only on create, where there is nothing to clear.
+func (s *adminServer) syncSeriesGenres(
+	ctx context.Context,
+	tenantID, seriesID uuid.UUID,
+	genres []dbmodels.ListGenresByPublicIDsForTenantRow,
+	replace bool,
+) ([]*publirattypesv1.Genre, error) {
+	if replace {
+		if err := s.queriesFor(ctx).DeleteSeriesGenresBySeriesID(ctx, seriesID); err != nil {
+			return nil, s.internalDBError(ctx, "failed to delete series genres", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
+		}
+	}
+	items := make([]*publirattypesv1.Genre, 0, len(genres))
+	for _, genre := range genres {
+		if err := s.queriesFor(ctx).CreateSeriesGenre(ctx, dbmodels.CreateSeriesGenreParams{
+			TenantID: tenantID,
+			SeriesID: seriesID,
+			GenreID:  genre.ID,
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to create series genre", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "genre_id", genre.ID.String())
+		}
+		items = append(items, &publirattypesv1.Genre{PublicId: genre.PublicID, Name: genre.Name, Slug: genre.Slug})
+	}
+	return items, nil
+}
+
+// normalizeTagNames turns what the editor typed into the tags to store: each
+// name trimmed and slugged, and two names that share a slug counted once, so
+// "Fantasy" alongside "fantasy" is one tag rather than a rejected save.
+func normalizeTagNames(names []string) ([]normalizedCatalogName, error) {
+	tags := make([]normalizedCatalogName, 0, len(names))
+	seen := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		normalized, err := normalizeCatalogName(name, "tag_names")
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := seen[normalized.slug]; ok {
+			continue
+		}
+		seen[normalized.slug] = struct{}{}
+		tags = append(tags, normalized)
+	}
+	if len(tags) > maxSeriesTags {
+		return nil, rpcerrors.NewFieldViolationError(
+			connect.CodeInvalidArgument,
+			fmt.Errorf("tag_names must hold at most %d tags", maxSeriesTags),
+			"tag_names",
+		)
+	}
+	return tags, nil
+}
+
+// syncSeriesTags writes the whole tag assignment of a series, creating the tags
+// being used for the first time and deleting the ones this series was the last
+// to carry.
+func (s *adminServer) syncSeriesTags(
+	ctx context.Context,
+	tenantID, seriesID uuid.UUID,
+	tags []normalizedCatalogName,
+	replace bool,
+) ([]*publirattypesv1.Tag, error) {
+	if replace {
+		if err := s.queriesFor(ctx).DeleteSeriesTagsBySeriesID(ctx, seriesID); err != nil {
+			return nil, s.internalDBError(ctx, "failed to delete series tags", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
+		}
+	}
+	for _, tag := range tags {
+		tagID, err := uuid.NewV7()
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		stored, err := s.queriesFor(ctx).UpsertTagForTenant(ctx, dbmodels.UpsertTagForTenantParams{
+			ID:       tagID,
+			TenantID: tenantID,
+			Name:     tag.name,
+			Slug:     tag.slug,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to upsert tag", err, "tenant_id", tenantID.String(), "tag_slug", tag.slug)
+		}
+		if err := s.queriesFor(ctx).CreateSeriesTag(ctx, dbmodels.CreateSeriesTagParams{
+			TenantID: tenantID,
+			SeriesID: seriesID,
+			TagID:    stored.ID,
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to create series tag", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "tag_id", stored.ID.String())
+		}
+	}
+	if replace {
+		// The links this save removed may have been the last ones a tag had.
+		// Nothing else keeps a tag alive, so it goes with them.
+		if err := s.queriesFor(ctx).DeleteUnusedTagsForTenant(ctx, tenantID); err != nil {
+			return nil, s.internalDBError(ctx, "failed to delete unused tags", err, "tenant_id", tenantID.String())
+		}
+	}
+	if len(tags) == 0 {
+		return []*publirattypesv1.Tag{}, nil
+	}
+	// Read the assignment back through the query the read path uses, so a save
+	// answers with the names actually stored, in the order the next read will
+	// hand them back — the database sorts them, and only it knows its own
+	// collation.
+	tagsBySeriesID, err := s.seriesTagsBySeriesIDs(ctx, []uuid.UUID{seriesID})
+	if err != nil {
+		return nil, err
+	}
+	items := tagsBySeriesID[seriesID]
+	if items == nil {
+		items = []*publirattypesv1.Tag{}
+	}
+	return items, nil
+}
+
+func (s *adminServer) seriesGenresBySeriesIDs(
+	ctx context.Context,
+	seriesIDs []uuid.UUID,
+) (map[uuid.UUID][]*publirattypesv1.Genre, error) {
+	if len(seriesIDs) == 0 {
+		return map[uuid.UUID][]*publirattypesv1.Genre{}, nil
+	}
+	rows, err := s.queriesFor(ctx).ListSeriesGenresBySeriesIDs(ctx, seriesIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list series genres", err)
+	}
+	items := make(map[uuid.UUID][]*publirattypesv1.Genre, len(seriesIDs))
+	for _, row := range rows {
+		items[row.SeriesID] = append(items[row.SeriesID], &publirattypesv1.Genre{
+			PublicId: row.PublicID,
+			Name:     row.Name,
+			Slug:     row.Slug,
+		})
+	}
+	return items, nil
+}
+
+func (s *adminServer) seriesTagsBySeriesIDs(
+	ctx context.Context,
+	seriesIDs []uuid.UUID,
+) (map[uuid.UUID][]*publirattypesv1.Tag, error) {
+	if len(seriesIDs) == 0 {
+		return map[uuid.UUID][]*publirattypesv1.Tag{}, nil
+	}
+	rows, err := s.queriesFor(ctx).ListSeriesTagsBySeriesIDs(ctx, seriesIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list series tags", err)
+	}
+	items := make(map[uuid.UUID][]*publirattypesv1.Tag, len(seriesIDs))
+	for _, row := range rows {
+		items[row.SeriesID] = append(items[row.SeriesID], &publirattypesv1.Tag{
+			Name: row.Name,
+			Slug: row.Slug,
+		})
+	}
+	return items, nil
+}
+
 // seriesListingMetadata is the part of a series the tenant states about the
 // series itself: whether it is still running, when a new episode is expected,
 // and who it is meant for.
@@ -383,6 +583,14 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, err
 	}
+	genresToLink, err := s.resolveGenresByPublicIDs(ctx, tenant.ID, req.Msg.GenrePublicIds)
+	if err != nil {
+		return nil, err
+	}
+	tagsToLink, err := normalizeTagNames(req.Msg.TagNames)
+	if err != nil {
+		return nil, err
+	}
 	seriesID, err := uuid.NewV7()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -438,6 +646,14 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, err
 	}
+	genres, err := s.syncSeriesGenres(txCtx, tenant.ID, base.ID, genresToLink, false)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := s.syncSeriesTags(txCtx, tenant.ID, base.ID, tagsToLink, false)
+	if err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
@@ -474,6 +690,8 @@ func (s *adminServer) CreateSeries(
 		series.EyeCatchImageVariants = variantsByImageID[created.EyeCatchImageID.UUID]
 	}
 	series.Creators = creators
+	series.Genres = genres
+	series.Tags = tags
 	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: series}), nil
 }
 
@@ -535,6 +753,14 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, err
 	}
+	genresToLink, err := s.resolveGenresByPublicIDs(ctx, tenant.ID, req.Msg.GenrePublicIds)
+	if err != nil {
+		return nil, err
+	}
+	tagsToLink, err := normalizeTagNames(req.Msg.TagNames)
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -588,6 +814,14 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, err
 	}
+	genres, err := s.syncSeriesGenres(txCtx, tenant.ID, current.ID, genresToLink, true)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := s.syncSeriesTags(txCtx, tenant.ID, current.ID, tagsToLink, true)
+	if err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
@@ -626,6 +860,8 @@ func (s *adminServer) UpdateSeries(
 		series.EyeCatchImageVariants = variantsByImageID[updated.EyeCatchImageID.UUID]
 	}
 	series.Creators = creators
+	series.Genres = genres
+	series.Tags = tags
 	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{Series: series}), nil
 }
 
@@ -826,6 +1062,24 @@ func (s *adminServer) ListSeries(
 			item.Creators = creators
 		}
 	}
+	genresBySeriesID, err := s.seriesGenresBySeriesIDs(ctx, seriesIDs)
+	if err != nil {
+		return nil, err
+	}
+	for seriesID, genres := range genresBySeriesID {
+		if item, ok := itemByID[seriesID]; ok {
+			item.Genres = genres
+		}
+	}
+	tagsBySeriesID, err := s.seriesTagsBySeriesIDs(ctx, seriesIDs)
+	if err != nil {
+		return nil, err
+	}
+	for seriesID, tags := range tagsBySeriesID {
+		if item, ok := itemByID[seriesID]; ok {
+			item.Tags = tags
+		}
+	}
 	eyeCatchVariantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, seriesImageIDs)
 	if err != nil {
 		return nil, err
@@ -887,6 +1141,14 @@ func (s *adminServer) GetSeries(
 	if err != nil {
 		return nil, err
 	}
+	genresBySeriesID, err := s.seriesGenresBySeriesIDs(ctx, []uuid.UUID{row.ID})
+	if err != nil {
+		return nil, err
+	}
+	tagsBySeriesID, err := s.seriesTagsBySeriesIDs(ctx, []uuid.UUID{row.ID})
+	if err != nil {
+		return nil, err
+	}
 	series, err := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(row)
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", row.PublicID)
@@ -899,5 +1161,7 @@ func (s *adminServer) GetSeries(
 		series.EyeCatchImageVariants = variantsByImageID[row.EyeCatchImageID.UUID]
 	}
 	series.Creators = creatorsBySeriesID[row.ID]
+	series.Genres = genresBySeriesID[row.ID]
+	series.Tags = tagsBySeriesID[row.ID]
 	return connect.NewResponse(&publiraadminv1.GetSeriesResponse{Series: series}), nil
 }

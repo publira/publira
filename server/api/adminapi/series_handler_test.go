@@ -62,11 +62,33 @@ func addSeriesRow(
 	return rows.AddRow(id, publicID, title, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", true, createdAt, createdAt, nil, nil, int64(0))
 }
 
-// Every non-empty page reads the creators of the series it returned.
-func expectSeriesCreatorsLookup(mock sqlmock.Sqlmock) {
+// Every series a read returns is presented with the creators, genres, and tags
+// it carries, each of them read for the whole page at once.
+func expectSeriesRelationLookups(mock sqlmock.Sqlmock) {
 	mock.ExpectQuery("FROM series_creators").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role", "display_order"}))
+	mock.ExpectQuery("FROM series_genres").
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "slug"}))
+	mock.ExpectQuery("FROM series_tags").
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "name", "slug"}))
+}
+
+// A save states the whole classification, so it clears what the series carried
+// before writing what it carries now, and drops the tags nothing carries any
+// more.
+func expectSeriesClassificationReplace(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
+	mock.ExpectExec("DELETE FROM series_genres").
+		WithArgs(seriesID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("DELETE FROM series_tags").
+		WithArgs(seriesID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("DELETE FROM tags").
+		WithArgs(tenantID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 }
 
 func newSeriesClient(
@@ -128,7 +150,7 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantDescQuery)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addSeriesRow(seriesColumns(), seriesID, "SERIES001", "Series Title", now))
-	expectSeriesCreatorsLookup(mock)
+	expectSeriesRelationLookups(mock)
 
 	resp, err := client.ListSeries(context.Background(), newListSeriesRequest(tenantID, sessionToken))
 	if err != nil {
@@ -165,7 +187,7 @@ func TestListSeriesFirstPageReportsNextToken(t *testing.T) {
 			),
 			ids[2], "SERIES003", "Third", now.Add(-2*time.Minute),
 		))
-	expectSeriesCreatorsLookup(mock)
+	expectSeriesRelationLookups(mock)
 
 	req := newListSeriesRequest(tenantID, sessionToken)
 	req.Msg.Limit = 2
@@ -202,7 +224,7 @@ func TestListSeriesFollowsNextToken(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantDescQuery)).
 		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES003", "Last", now.Add(-2*time.Minute)))
-	expectSeriesCreatorsLookup(mock)
+	expectSeriesRelationLookups(mock)
 
 	req := newListSeriesRequest(tenantID, sessionToken)
 	req.Msg.Limit = 2
@@ -237,7 +259,7 @@ func TestListSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 			addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES002", "Older", now.Add(-2*time.Minute)),
 			uuid.Must(uuid.NewV7()), "SERIES001", "Newer", now.Add(-time.Minute),
 		))
-	expectSeriesCreatorsLookup(mock)
+	expectSeriesRelationLookups(mock)
 
 	req := newListSeriesRequest(tenantID, sessionToken)
 	req.Msg.Limit = 2
@@ -322,7 +344,7 @@ func TestListSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
 				WithArgs(tenantID, boundaryID, true, now, int32(21)).
 				WillReturnRows(recoveryRows)
-			expectSeriesCreatorsLookup(mock)
+			expectSeriesRelationLookups(mock)
 
 			recoveryReq := newListSeriesRequest(tenantID, sessionToken)
 			recoveryReq.Msg.Token = recoveryToken
@@ -632,6 +654,7 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 	mock.ExpectExec("DELETE FROM series_creators").
 		WithArgs(seriesID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
+	expectSeriesClassificationReplace(mock, tenantID, seriesID)
 	mock.ExpectCommit()
 
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
@@ -699,6 +722,7 @@ func TestUpdateSeriesStoresTheListingMetadataItWasGiven(t *testing.T) {
 	mock.ExpectExec("DELETE FROM series_creators").
 		WithArgs(seriesID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
+	expectSeriesClassificationReplace(mock, tenantID, seriesID)
 	mock.ExpectCommit()
 
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
@@ -780,7 +804,7 @@ func TestGetSeriesFailsOnAStoredStatusItDoesNotKnow(t *testing.T) {
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "cancelled", []byte("{}"), "all", true, now, nil, nil, int64(0)))
-	expectSeriesCreatorsLookup(mock)
+	expectSeriesRelationLookups(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
@@ -911,6 +935,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 	mock.ExpectExec("INSERT INTO series_creators").
 		WithArgs(tenantID, seriesID, creatorID2, "creator", int32(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectSeriesClassificationReplace(mock, tenantID, seriesID)
 	mock.ExpectCommit()
 
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
@@ -1093,9 +1118,7 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
 			if tc.wantCode == 0 {
-				mock.ExpectQuery("FROM series_creators").
-					WithArgs(sqlmock.AnyArg()).
-					WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role", "display_order"}))
+				expectSeriesRelationLookups(mock)
 			}
 
 			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
