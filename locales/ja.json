@@ -1840,6 +1840,12 @@
         "title": "コメント"
       },
       "detail_failed": "エピソードを取得できませんでした。時間をおいて再試行してください。",
+      "end": {
+        "back_to_series": "シリーズに戻る",
+        "up_next": "次のエピソード",
+        "up_to_date_description": "「{$title}」にはこの先のエピソードがまだありません。フォローすると次の更新をお知らせします。",
+        "up_to_date_title": "最新のエピソードまで読み終えました"
+      },
       "gate": {
         "guest_payable_description": "本文を読むには、ログインしたうえで購入するか、管理者からチケットを付与してもらう必要があります。",
         "guest_title": "このエピソードは有料です",
@@ -1851,6 +1857,13 @@
         "signed_in_unpayable_description": "現在このサイトでは購入手続きを利用できません。チケットの有効期限が切れているか、まだ付与されていないかを確認してください。"
       },
       "images_empty": "本文画像はまだ公開されていません。",
+      "navigation": {
+        "label": "エピソードの移動",
+        "next": "次のエピソード",
+        "next_hint": "もう一度キーを押すと次のエピソードを開きます。",
+        "previous": "前のエピソード",
+        "previous_hint": "もう一度キーを押すと前のエピソードを開きます。"
+      },
       "page_count": "本文枚数",
       "page_count_value": "{$count}枚",
       "price": "価格",

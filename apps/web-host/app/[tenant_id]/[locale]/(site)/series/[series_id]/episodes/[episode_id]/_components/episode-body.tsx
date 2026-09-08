@@ -14,6 +14,7 @@ import type {
   EpisodeAccessState,
   EpisodeDetail,
   EpisodeImageItem,
+  EpisodeNeighborItem,
   EpisodeSeriesSummary,
 } from "#lib/catalog";
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
@@ -29,6 +30,8 @@ export const EpisodeBody = async ({
   checkoutSessionId,
   episode,
   images,
+  nextEpisode,
+  previousEpisode,
   series,
   tenantId,
 }: {
@@ -37,11 +40,22 @@ export const EpisodeBody = async ({
   checkoutSessionId: string;
   episode: EpisodeDetail;
   images: EpisodeImageItem[];
+  /** Absent at the ends of the series; the viewer's own chrome links to them. */
+  nextEpisode?: EpisodeNeighborItem;
+  previousEpisode?: EpisodeNeighborItem;
   series: EpisodeSeriesSummary;
   tenantId: string;
 }) => {
   if (isPublicEpisodeBody(access)) {
-    return <EpisodeViewer episode={episode} images={images} series={series} />;
+    return (
+      <EpisodeViewer
+        episode={episode}
+        images={images}
+        nextEpisode={nextEpisode}
+        previousEpisode={previousEpisode}
+        series={series}
+      />
+    );
   }
 
   const [locale, sessionId] = await Promise.all([
@@ -94,6 +108,8 @@ export const EpisodeBody = async ({
       <EpisodeViewer
         episode={episode}
         images={viewer.value.images}
+        nextEpisode={nextEpisode}
+        previousEpisode={previousEpisode}
         series={series}
       />
     );
