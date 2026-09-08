@@ -171,18 +171,26 @@ start_profile() {
 }
 
 destroy_profile() {
-  local name="$1" profile_path db_name in_use
+  local name="$1" profile_path db_name in_use redis_cli
   local s3_endpoint_args=()
   dev_env_load_profile "${name}"
   in_use="$(dev_env_profile_in_use "${name}")"
   [[ -z "${in_use}" ]] || dev_env_die "profile ${name} is still selected by: ${in_use}"
   ! dev_env_profile_has_running_processes "${name}" || dev_env_die "stop profile ${name} before destroying it"
+  # Every client this needs is resolved before the first step that removes
+  # something. None of the steps can be undone and each one is a precondition
+  # of nothing that follows, so a run that stopped partway would leave a
+  # profile that is listed and holds a Valkey slot but has no database, and a
+  # repeated destroy would fail at the same missing client.
+  dev_env_require_commands psql aws
+  redis_cli="$(dev_env_redis_cli)" ||
+    dev_env_die "required command not found: valkey-cli or redis-cli, to flush the profile's Valkey database"
   read -r -p "Type ${name} to destroy its database, Valkey DB, and bucket: " confirmation
   [[ "${confirmation}" == "${name}" ]] || dev_env_die "confirmation did not match; nothing was destroyed"
   db_name="publira_${DEV_ENV_NAME//-/_}"
   psql "$(dev_env_postgres_admin_url)" \
     -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${db_name}\" WITH (FORCE)"
-  redis-cli -u "${PUBLIRA_REDIS_URL}" FLUSHDB
+  "${redis_cli}" -u "${PUBLIRA_REDIS_URL}" FLUSHDB
   if [[ -n "${PUBLIRA_S3_ENDPOINT}" ]]; then
     s3_endpoint_args=(--endpoint-url "${PUBLIRA_S3_ENDPOINT}")
   fi
