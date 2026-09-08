@@ -2039,7 +2039,11 @@
       "list_failed": "シリーズ一覧を取得できませんでした。時間をおいて再試行してください。",
       "list_title": "シリーズ一覧",
       "page_empty": "このページに表示できるシリーズがありません。",
-      "pagination_aria": "シリーズ一覧ページング"
+      "pagination_aria": "シリーズ一覧ページング",
+      "progress_continue": "第{$number}話の続きから読む",
+      "progress_error": "読みかけの位置を表示できませんでした",
+      "progress_failed": "読みかけの位置を取得できませんでした。時間をおいて再試行してください。",
+      "progress_start": "第{$number}話を読む"
     },
     "settings": {
       "cancel": "キャンセル",
@@ -2097,6 +2101,9 @@
       "title": "設定"
     },
     "top": {
+      "continue_error": "読みかけの作品を表示できませんでした",
+      "continue_failed": "読みかけの作品を取得できませんでした。時間をおいて再試行してください。",
+      "continue_heading": "読みかけの作品",
       "description": "おすすめ、新着、更新作品から気になる作品を見つけてください。",
       "featured_authors_empty": "公開中シリーズに紐づく著者はまだいません。",
       "featured_authors_error": "注目の著者を表示できませんでした",

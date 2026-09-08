@@ -11,5 +11,7 @@ export type {
   MyFollow,
   MyPurchase,
   PublishedAuthor,
+  RecentSeries,
+  SeriesProgress,
 } from "../gen/publira/v1/catalog_pb.js";
 export type { NotificationItem } from "../gen/publira/v1/notification_pb.js";

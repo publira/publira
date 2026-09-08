@@ -7,6 +7,7 @@ import { SEED_MEMBER } from "../src/scenarios/member-announcements";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
   VIEWER_EPISODE_ID,
+  VIEWER_EPISODE_ORDER_INDEX,
   VIEWER_EPISODE_PATH,
   VIEWER_EPISODE_TITLE,
   VIEWER_PAGE_COUNT,
@@ -316,6 +317,42 @@ test.describe("web-host episode reading", () => {
       "value",
       String(stoppedOn)
     );
+  });
+
+  test("the series page and the home page offer the episode the member stopped in", async ({
+    page,
+  }) => {
+    clearEpisodeReadState();
+    clearReadingPosition();
+    await signInAsMember(
+      page,
+      SEED_MEMBER,
+      VIEWER_EPISODE_PATH,
+      WEB_HOST_EDGE_BASE_URL
+    );
+    await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
+    await expectFirstPageDrawn(page);
+
+    await turnPages(page, 2);
+    await expect
+      .poll(() => Number(savedPageIndex() || "-1"), {
+        message: "the page the reader stopped on reached the database",
+      })
+      .toBeGreaterThan(0);
+
+    await page.goto(edgeUrl(seriesPath));
+    await expect(
+      page.getByRole("link", {
+        name: `Continue from episode ${VIEWER_EPISODE_ORDER_INDEX}`,
+      })
+    ).toHaveAttribute("href", hostPath(VIEWER_EPISODE_PATH));
+
+    await page.goto(edgeUrl("/"));
+    await expect(
+      page
+        .getByRole("region", { name: "Continue reading" })
+        .getByRole("link", { name: SEED_TENANT.series.title })
+    ).toHaveAttribute("href", hostPath(VIEWER_EPISODE_PATH));
   });
 
   test("a page that fails to load is retried on its own", async ({ page }) => {

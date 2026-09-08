@@ -2039,7 +2039,11 @@
       "list_failed": "시리즈 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "list_title": "시리즈 목록",
       "page_empty": "이 페이지에는 표시할 시리즈가 없습니다.",
-      "pagination_aria": "시리즈 목록 페이지 이동"
+      "pagination_aria": "시리즈 목록 페이지 이동",
+      "progress_continue": "{$number}화부터 이어 읽기",
+      "progress_error": "읽던 위치를 표시할 수 없습니다",
+      "progress_failed": "읽던 위치를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "progress_start": "{$number}화 읽기"
     },
     "settings": {
       "cancel": "취소",
@@ -2097,6 +2101,9 @@
       "title": "설정"
     },
     "top": {
+      "continue_error": "읽던 작품을 표시할 수 없습니다",
+      "continue_failed": "읽던 작품을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "continue_heading": "이어서 읽기",
       "description": "추천, 신작, 최근 업데이트 작품에서 다음에 읽을 작품을 찾아보세요.",
       "featured_authors_empty": "공개 중인 시리즈에 연결된 작가가 아직 없습니다.",
       "featured_authors_error": "주목할 작가를 표시할 수 없습니다",

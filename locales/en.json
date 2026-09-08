@@ -2039,7 +2039,11 @@
       "list_failed": "Could not load the series list. Please try again later.",
       "list_title": "Series",
       "page_empty": "There are no series to show on this page.",
-      "pagination_aria": "Series list pagination"
+      "pagination_aria": "Series list pagination",
+      "progress_continue": "Continue from episode {$number}",
+      "progress_error": "Could not show where you left off",
+      "progress_failed": "Could not load where you left off. Please try again later.",
+      "progress_start": "Read episode {$number}"
     },
     "settings": {
       "cancel": "Cancel",
@@ -2097,6 +2101,9 @@
       "title": "Settings"
     },
     "top": {
+      "continue_error": "Could not show what you were reading",
+      "continue_failed": "Could not load what you were reading. Please try again later.",
+      "continue_heading": "Continue reading",
       "description": "Find your next read among the recommended, new, and recently updated works.",
       "featured_authors_empty": "No authors are credited on a published series yet.",
       "featured_authors_error": "Could not show the featured authors",
