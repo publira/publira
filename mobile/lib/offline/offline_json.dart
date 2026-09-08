@@ -19,8 +19,10 @@ class OfflineIndex {
     this.series,
     Map<String, SeriesDetail>? details,
     Map<String, SavedEpisode>? episodes,
+    Map<String, SavedReadingPosition>? positions,
   }) : details = details ?? <String, SeriesDetail>{},
-       episodes = episodes ?? <String, SavedEpisode>{};
+       episodes = episodes ?? <String, SavedEpisode>{},
+       positions = positions ?? <String, SavedReadingPosition>{};
 
   /// Catalog list as it last loaded, or `null` when it never has.
   List<SeriesItem>? series;
@@ -30,6 +32,10 @@ class OfflineIndex {
 
   /// Saved episodes, keyed by [savedEpisodeKey].
   final Map<String, SavedEpisode> episodes;
+
+  /// Where the reader stopped, keyed by [savedEpisodeKey] like the episodes
+  /// the positions point into.
+  final Map<String, SavedReadingPosition> positions;
 
   Map<String, Object?> toJson() => {
     'version': offlineIndexVersion,
@@ -43,6 +49,10 @@ class OfflineIndex {
       for (final entry in episodes.entries)
         entry.key: _savedEpisodeToJson(entry.value),
     },
+    'positions': {
+      for (final entry in positions.entries)
+        entry.key: _positionToJson(entry.value),
+    },
   };
 
   /// Reads an index written by [toJson], or `null` for anything this build
@@ -54,7 +64,14 @@ class OfflineIndex {
     final rawSeries = decoded['series'];
     final rawDetails = decoded['details'];
     final rawEpisodes = decoded['episodes'];
+    final rawPositions = decoded['positions'];
     return OfflineIndex(
+      positions: rawPositions is! Map
+          ? null
+          : {
+              for (final entry in rawPositions.entries)
+                entry.key.toString(): ?_positionFromJson(entry.value),
+            },
       series: rawSeries is List
           ? [for (final item in rawSeries) ?_seriesFromJson(item)]
           : null,
@@ -255,6 +272,25 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
       ],
     ),
   );
+}
+
+Map<String, Object?> _positionToJson(SavedReadingPosition position) => {
+  'readerId': position.readerId,
+  'pageIndex': position.pageIndex,
+};
+
+SavedReadingPosition? _positionFromJson(Object? decoded) {
+  if (decoded is! Map) {
+    return null;
+  }
+  final readerId = _string(decoded['readerId']);
+  final pageIndex = decoded['pageIndex'];
+  // A position nobody is named in is one no reader can be answered with, and
+  // a page before the first is not a page of the episode.
+  if (readerId.isEmpty || pageIndex is! int || pageIndex < 0) {
+    return null;
+  }
+  return SavedReadingPosition(readerId: readerId, pageIndex: pageIndex);
 }
 
 EpisodeAccess _accessFromName(String name) {

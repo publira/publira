@@ -36,12 +36,24 @@ class EpisodeReader extends StatefulWidget {
     super.key,
     required this.images,
     required this.imageHeaders,
+    this.initialPageIndex = 0,
+    this.onPageChanged,
     this.imageClient,
     this.pageStore,
   });
 
   final List<EpisodeImageItem> images;
   final Map<String, String> imageHeaders;
+
+  /// The page the reader opens on, which is where they stopped last time.
+  /// Read once: a reader who signs in halfway through an episode stays on the
+  /// page they are looking at rather than being moved to the one the API
+  /// answers for them.
+  final int initialPageIndex;
+
+  /// The reader moved to another page of the episode. It is not called for
+  /// [initialPageIndex], which is the page they were already on.
+  final ValueChanged<int>? onPageChanged;
 
   /// Fetches and decrypts the pages. The reader opens its own client when this
   /// is null, and closes only the one it opened.
@@ -67,11 +79,12 @@ class _EpisodeReaderState extends State<EpisodeReader> {
   /// The page the reader is on, not the screen it is shown on: a spread moves
   /// two pages onto one screen, and the position the reader keeps is a page of
   /// the episode.
-  var _index = 0;
+  late int _index;
 
   @override
   void initState() {
     super.initState();
+    _index = widget.initialPageIndex;
     _ownsClient = widget.imageClient == null;
     _client = widget.imageClient ?? EpisodeImageClient(pages: widget.pageStore);
   }
@@ -107,9 +120,19 @@ class _EpisodeReaderState extends State<EpisodeReader> {
     if (target < 0 || target >= spreads.length) {
       return;
     }
+    _moveTo(spreads.firstPageOf(target));
+  }
+
+  /// Puts the reader on [index], and reports it once, however the page was
+  /// turned: a control, a tap, and a swipe all arrive here.
+  void _moveTo(int index) {
+    if (index == _index) {
+      return;
+    }
     setState(() {
-      _index = spreads.firstPageOf(target);
+      _index = index;
     });
+    widget.onPageChanged?.call(index);
   }
 
   @override
@@ -136,9 +159,7 @@ class _EpisodeReaderState extends State<EpisodeReader> {
               client: _client,
               viewport: viewport,
               index: _index,
-              onIndexChanged: (index) => setState(() {
-                _index = index;
-              }),
+              onIndexChanged: _moveTo,
               onTurn: (delta) => _turn(spreads, delta),
             ),
             Positioned(

@@ -157,6 +157,8 @@ The list displays loading, empty, and network-error-with-retry states. Details d
 
 The catalog's app bar carries the account entry point, which opens `/sign-in` for a signed-out reader and `/account` for a signed-in one.
 
+Above the list, a signed-in reader is offered the series they were in the middle of, each opening the episode `ListMyRecentSeries` names for it. A reader who is signed out, in the middle of nothing, or on a device that could not reach the API sees the catalog on its own.
+
 ## Localization
 
 Every string the app shows comes from the shared catalogs in `locales/`, and the app renders in the language the device asks for.
@@ -187,6 +189,7 @@ The viewer displays the images returned by `GetEpisodeDetail` as episode content
 - A response without `X-Publira-Image-Encryption` is decoded as it arrives, which is what keeps the reader working when a rolling deploy answers them from an image-server instance it has not replaced yet. A page whose stream cannot be reversed fails on its own and offers a retry, the same way a failed fetch does
 - Pages are requested with an `Accept` that offers WebP and leaves AVIF out, because image-server's converter negotiates the rendition from that header and Flutter has no AVIF codec
 - Leaving the reader evicts the episode's pages from the shared image cache, so a body's decoded pixels are not left behind whatever is read next
+- A signed-in reader opens the episode on the page `GetMyReadingPosition` answers with, which is the same position `web-host` writes, and the page they rest on is recorded with `SaveReadingPosition`. A guest has no position and opens on the first page
 
 ## Offline reading
 
@@ -196,6 +199,7 @@ Everything the reader opens is kept on the device, so the same screens open agai
 - The API decides. Every read goes to it first, and only its answer refreshes what the device holds; the saved copy is reached only when the API cannot be. A body that comes back locked, or that the API no longer has, is taken off the device along with its pages, and a series the API no longer publishes takes every episode saved under it
 - A body that needed a purchase or a ticket is saved against the reader it was granted to, so it stays closed to a signed-out device and to a second reader on the same phone. It also stops opening once **7 days** have passed without the API confirming the grant, because the device cannot see a purchase lapse on its own. That window is measured against the device's own clock: a confirmation dated in the future is refused rather than trusted, but a reader who holds their clock back keeps reading, which is the same boundary the delivery stream draws — not DRM
 - Saved episodes are marked on the series screen, so a reader can tell before they lose their connection what they will still be able to open
+- The page the reader stopped on is kept beside the episode, against the member it belongs to, so an episode read without a network opens where they left it. The API wins over it wherever it holds a position of its own, which is what carries a page saved on the website into the app
 - The device keeps up to **512 MB** of pages. Over that, the least recently confirmed episodes are dropped whole, and page files no episode claims any more go with them
 
 Everything is written under the app-private directory `path_provider` resolves (`getApplicationSupportDirectory()`), encrypted with a random 32-byte key this install mints on first use and keeps in the OS keychain / Keystore. The stream is the one `lib/api/image_cipher.dart` speaks, under its own domain separator and a per-file key. Like the delivery stream, it protects the files on the device rather than the reader's own access: whoever may open the episode necessarily holds the key that recovers it.
@@ -285,6 +289,8 @@ flutter run -d android \
 - A free episode read online turning again once the API is gone, and the catalog opening from the device
 - An episode the device never saved saying so instead of failing blankly
 - A paid episode saved by a member closing again once they sign out, and leaving the device once the API takes the grant back
+- An episode opening on the page the API already held for the member, and the page they turn to reaching the API
+- An episode reopening on its saved page once the API is gone
 
 By default, it uses an on-device Connect fixture server. When `PUBLIRA_LIVE_API=true`, it also runs against the public API for the development seed (`Seed Series 001` / `SeedSERSAAA1`), signing in as `member@example.com`, who holds a seeded access ticket for the paid episode.
 

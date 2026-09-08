@@ -86,6 +86,11 @@ class FileOfflineLibrary implements OfflineLibrary {
   Future<void> removeSeries(String seriesPublicId) {
     return _write((home, index) async {
       index.details.remove(seriesPublicId);
+      // A position is keyed by `<series>/<episode>`, so the series' own
+      // prefix is what its positions share, evicted episodes included.
+      index.positions.removeWhere(
+        (key, position) => key.startsWith('$seriesPublicId/'),
+      );
       final dropped = index.episodes.values
           .where((episode) => episode.detail.seriesId == seriesPublicId)
           .toList(growable: false);
@@ -122,9 +127,9 @@ class FileOfflineLibrary implements OfflineLibrary {
   @override
   Future<void> removeEpisode(String seriesPublicId, String episodePublicId) {
     return _write((home, index) async {
-      final removed = index.episodes.remove(
-        savedEpisodeKey(seriesPublicId, episodePublicId),
-      );
+      final key = savedEpisodeKey(seriesPublicId, episodePublicId);
+      index.positions.remove(key);
+      final removed = index.episodes.remove(key);
       if (removed == null) {
         return;
       }
@@ -132,6 +137,34 @@ class FileOfflineLibrary implements OfflineLibrary {
         await _deletePage(home, key);
       }
       _pageBytes = null;
+    });
+  }
+
+  @override
+  Future<int?> readReadingPosition(
+    String seriesPublicId,
+    String episodePublicId, {
+    required String readerId,
+  }) {
+    return _read<int>((home, index) {
+      final saved =
+          index.positions[savedEpisodeKey(seriesPublicId, episodePublicId)];
+      return saved == null || saved.readerId != readerId
+          ? null
+          : saved.pageIndex;
+    });
+  }
+
+  @override
+  Future<void> writeReadingPosition(
+    String seriesPublicId,
+    String episodePublicId, {
+    required String readerId,
+    required int pageIndex,
+  }) {
+    return _write((home, index) {
+      index.positions[savedEpisodeKey(seriesPublicId, episodePublicId)] =
+          SavedReadingPosition(readerId: readerId, pageIndex: pageIndex);
     });
   }
 
@@ -196,7 +229,8 @@ class FileOfflineLibrary implements OfflineLibrary {
       index
         ..series = null
         ..details.clear()
-        ..episodes.clear();
+        ..episodes.clear()
+        ..positions.clear();
       _pageBytes = 0;
     });
   }
@@ -231,6 +265,7 @@ class FileOfflineLibrary implements OfflineLibrary {
         total -= size;
       }
       index.episodes.remove(episode.key);
+      index.positions.remove(episode.key);
     }
     _pageBytes = total;
   }

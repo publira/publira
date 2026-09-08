@@ -24,6 +24,39 @@ abstract class CatalogRepository {
     String seriesPublicId,
     String episodePublicId,
   );
+
+  /// The zero-based page the signed-in reader stopped on in
+  /// [episodePublicId], or `null` when they stopped nowhere.
+  ///
+  /// A reader who is signed out has no position: the API keeps one per member
+  /// and answers a guest nothing, so the viewer opens at the first page.
+  /// [seriesPublicId] addresses nothing at the API, which knows the episode by
+  /// itself, and is here because the device keys its own copy by both.
+  ///
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<int?> getReadingPosition(
+    String seriesPublicId,
+    String episodePublicId,
+  );
+
+  /// Records that the signed-in reader stopped on [pageIndex], zero-based over
+  /// the episode's pages in reading order.
+  ///
+  /// A page the episode does not hold is refused by the API, and a guest is
+  /// left alone the way [getReadingPosition] leaves them.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<void> saveReadingPosition(
+    String seriesPublicId,
+    String episodePublicId,
+    int pageIndex,
+  );
+
+  /// The series the signed-in reader was in the middle of, newest activity
+  /// first, each with the episode to continue from.
+  ///
+  /// Empty for a reader who is signed out or in the middle of nothing.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<List<RecentSeriesItem>> listRecentSeries({required int limit});
 }
 
 /// Looks up the [CatalogRepository] installed by [CatalogScope].

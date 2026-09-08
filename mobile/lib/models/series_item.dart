@@ -75,3 +75,17 @@ class SeriesDetail {
   final SeriesItem series;
   final List<EpisodeItem> episodes;
 }
+
+/// One offer in the reader's continue-reading row, as `RecentSeries`
+/// describes it.
+class RecentSeriesItem {
+  const RecentSeriesItem({required this.series, required this.episode});
+
+  final SeriesItem series;
+
+  /// The episode to open: the one the reader last moved in while it is still
+  /// unfinished, and otherwise the next published one they have not finished.
+  /// It is offered whatever they may do with its body, so a paid episode they
+  /// have not bought is the episode they are sent to buy.
+  final EpisodeItem episode;
+}

@@ -36,6 +36,12 @@ class HttpCatalogRepository implements CatalogRepository {
   static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
   static const _episodeProcedure =
       '/publira.v1.CatalogService/GetEpisodeDetail';
+  static const _readingPositionProcedure =
+      '/publira.v1.EpisodeReadService/GetMyReadingPosition';
+  static const _saveReadingPositionProcedure =
+      '/publira.v1.EpisodeReadService/SaveReadingPosition';
+  static const _recentSeriesProcedure =
+      '/publira.v1.EpisodeReadService/ListMyRecentSeries';
 
   final AppConfig config;
   final ConnectClient _client;
@@ -90,6 +96,95 @@ class HttpCatalogRepository implements CatalogRepository {
       }
       throw _toFailure(error);
     }
+  }
+
+  @override
+  Future<int?> getReadingPosition(
+    String seriesPublicId,
+    String episodePublicId,
+  ) async {
+    // A guest holds no session, and every one of these RPCs answers a request
+    // without one `unauthenticated`. Asking anyway would spend a round trip on
+    // the answer the viewer already has: the first page.
+    if (_client.accessToken.isEmpty) {
+      return null;
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_readingPositionProcedure, {
+        'episodePublicId': episodePublicId,
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+      final raw = body['position'];
+      // protojson omits an unset message, which is the answer for a reader who
+      // never opened the episode and for one who may no longer read it.
+      if (raw == null) {
+        return null;
+      }
+      return _readInt(_expectMap(raw, 'position'), 'pageIndex', 'position');
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<void> saveReadingPosition(
+    String seriesPublicId,
+    String episodePublicId,
+    int pageIndex,
+  ) async {
+    if (_client.accessToken.isEmpty) {
+      return;
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      await _client.unary(_saveReadingPositionProcedure, {
+        'episodePublicId': episodePublicId,
+        'pageIndex': pageIndex,
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<List<RecentSeriesItem>> listRecentSeries({required int limit}) async {
+    if (_client.accessToken.isEmpty) {
+      return const [];
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_recentSeriesProcedure, {
+        'limit': limit,
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+      return _parseRecentSeries(body['series']);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  List<RecentSeriesItem> _parseRecentSeries(Object? raw) {
+    if (raw == null) {
+      return const [];
+    }
+    final items = _expectList(raw, 'series')
+        .map((item) => _expectMap(item, 'series[]'))
+        .map((json) {
+          return RecentSeriesItem(
+            series: _seriesFromJson(
+              _expectMap(json['series'], 'series[].series'),
+              'series[].series',
+            ),
+            episode: _episodeFromJson(
+              _expectMap(json['episode'], 'series[].episode'),
+              'series[].episode',
+            ),
+          );
+        })
+        .toList();
+    return List<RecentSeriesItem>.unmodifiable(items);
   }
 
   CatalogFailure _toFailure(ConnectException error) {

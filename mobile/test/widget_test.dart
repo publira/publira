@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
+import 'package:publira/auth/auth_session.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/offline/offline_library.dart';
@@ -26,12 +27,12 @@ void main() {
     offline = InMemoryOfflineLibrary();
   });
 
-  Future<void> pumpApp(WidgetTester tester) async {
+  Future<void> pumpApp(WidgetTester tester, {AuthSession? session}) async {
     await tester.pumpWidget(
       PubliraApp(
         router: router,
         catalog: catalog,
-        auth: fakeAuthController(),
+        auth: fakeAuthController(session: session),
         offline: offline,
       ),
     );
@@ -191,6 +192,76 @@ void main() {
     );
 
     expect(find.byKey(const ValueKey('episode-saved-offline')), findsOneWidget);
+  });
+
+  testWidgets('the continue-reading row offers what the reader was reading', (
+    tester,
+  ) async {
+    catalog.recentSeries = fixtureRecentSeries();
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('continue-reading')),
+    );
+
+    expect(find.text('Continue reading'), findsOneWidget);
+    expect(find.text('${fixtureSeries.first.title} #1'), findsOneWidget);
+    expect(catalog.recentSeriesLimits, isNotEmpty);
+  });
+
+  testWidgets('tapping an offer opens the episode it points at', (
+    tester,
+  ) async {
+    final series = fixtureSeries.first;
+    catalog
+      ..recentSeries = fixtureRecentSeries()
+      ..episodes = fixtureEpisodes();
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('continue-reading-${series.id}')),
+    );
+
+    await tester.tap(find.byKey(ValueKey('continue-reading-${series.id}')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('episode-page-view')),
+    );
+
+    expect(
+      router.state.uri.path,
+      AppRoutes.episodeViewerPath(series.id, '${series.id}-ep-1'),
+    );
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('a signed-out reader is offered no continue-reading row', (
+    tester,
+  ) async {
+    catalog.recentSeries = fixtureRecentSeries();
+    await pumpApp(tester);
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('series-tile-${fixtureSeries.first.id}')),
+    );
+
+    expect(find.byKey(const ValueKey('continue-reading')), findsNothing);
+  });
+
+  testWidgets('a row the API could not answer leaves the catalog alone', (
+    tester,
+  ) async {
+    catalog
+      ..recentSeries = fixtureRecentSeries()
+      ..recentSeriesError = const CatalogFailure(CatalogFailureKind.network);
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('series-tile-${fixtureSeries.first.id}')),
+    );
+
+    expect(find.byKey(const ValueKey('continue-reading')), findsNothing);
+    expect(find.byKey(const ValueKey('catalog-error')), findsNothing);
   });
 
   testWidgets('a catalog with nothing saved says the device is offline', (

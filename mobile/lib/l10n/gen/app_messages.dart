@@ -122,6 +122,9 @@ abstract class AppMessages {
   /// `mobile.account.title`
   String get accountTitle;
 
+  /// `mobile.catalog.continue_heading`
+  String get catalogContinueHeading;
+
   /// `mobile.catalog.empty`
   String get catalogEmpty;
 
@@ -373,6 +376,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get accountTitle {
     return 'アカウント';
+  }
+
+  @override
+  String get catalogContinueHeading {
+    return '読みかけの作品';
   }
 
   @override
@@ -709,6 +717,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get catalogContinueHeading {
+    return 'Continue reading';
+  }
+
+  @override
   String get catalogEmpty {
     return 'No series have been published yet.';
   }
@@ -1039,6 +1052,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get accountTitle {
     return '계정';
+  }
+
+  @override
+  String get catalogContinueHeading {
+    return '이어서 읽기';
   }
 
   @override

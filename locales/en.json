@@ -2144,6 +2144,7 @@
       "title": "Account"
     },
     "catalog": {
+      "continue_heading": "Continue reading",
       "empty": "No series have been published yet.",
       "load_failed": "Could not show the catalog.",
       "offline_not_saved": "You are offline, and this device holds no saved catalog."
