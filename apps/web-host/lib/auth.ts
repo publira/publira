@@ -22,6 +22,18 @@ export interface PublicCurrentUser {
   publicId: string;
 }
 
+/**
+ * An access token and the moment it stops being one.
+ *
+ * The expiry is a `Date` because it ends up as the session cookie's `expires`,
+ * which the Next.js cookie API types that way. Every other timestamp in
+ * web-host is a `Temporal` instant.
+ */
+export interface PublicSession {
+  accessToken: string;
+  expiresAt: Date;
+}
+
 export interface MeInfo {
   name: string;
   publicId: string;
@@ -36,7 +48,7 @@ export const loginPublic = async (
   email: string,
   password: string,
   tenantId: string
-): Promise<{ accessToken: string; expiresAt: Date } | null> => {
+): Promise<PublicSession | null> => {
   try {
     const response = await apiClient.auth.login({
       email,
@@ -184,6 +196,53 @@ export const confirmPublicPasswordReset = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return false;
+  }
+};
+
+/**
+ * Change the signed-in reader's password and hand back the session that
+ * replaces the one the change ended.
+ *
+ * The write bumps `credentials_version`, so the token this request carried dies
+ * with every other token the account holds. The API mints a replacement in the
+ * same transaction; returning it is what lets the caller re-seal the cookie and
+ * keep the browser that made the change signed in.
+ *
+ * A wrong current password is `invalid_argument` rather than `unauthenticated`,
+ * so it comes back as `null` for the form to word. A rejected session still
+ * throws, because that one is not a typo.
+ */
+export const changePublicPassword = async (
+  tenantId: string,
+  currentPassword: string,
+  newPassword: string,
+  accessToken?: string
+): Promise<PublicSession | null> => {
+  const sid = await resolveAccessToken(accessToken);
+  if (!sid) {
+    return null;
+  }
+
+  try {
+    const response = await apiClient.auth.changePassword(
+      {
+        currentPassword,
+        newPassword,
+        tenant: { tenantId },
+      },
+      buildSessionHeaders(sid)
+    );
+    const { token, expiresAt } = response.accessToken ?? {};
+    if (!token || !expiresAt) {
+      return null;
+    }
+    return { accessToken: token, expiresAt: new Date(expiresAt) };
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
+    rethrowUnclassifiedRpcError(error);
+    return null;
   }
 };
 

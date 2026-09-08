@@ -6,9 +6,11 @@ import { signInAsMember } from "../src/host";
 import {
   MEMBER_SETTINGS_MEMBER,
   MEMBER_SETTINGS_NEW_EMAIL,
+  MEMBER_SETTINGS_NEW_PASSWORD,
   MEMBER_SETTINGS_SCENARIO,
   MEMBER_SETTINGS_SERIES,
 } from "../src/scenarios/member-settings";
+import { expectSessionRevokedFlash } from "../src/session";
 import { hostPath, WEB_HOST_BASE_URL } from "../src/urls";
 
 const hostUrl = (pathname: string): string =>
@@ -28,7 +30,7 @@ const MEMBER_PATHS = [
 const signIn = (page: Page, returnTo: string): Promise<void> =>
   signInAsMember(page, MEMBER_SETTINGS_MEMBER, returnTo);
 
-const memberField = (column: "email" | "name"): string =>
+const memberField = (column: "email" | "name" | "password_hash"): string =>
   querySql(
     `SELECT ${column} FROM users WHERE public_id = '${MEMBER_SETTINGS_MEMBER.publicId}';`
   );
@@ -44,6 +46,17 @@ const expectFlash = (
 ): Promise<void> =>
   expect(page.getByRole(role).filter({ hasText: message })).toBeVisible();
 
+/**
+ * The two forms on `/settings/security` both ask for the current password, so
+ * a bare `getByLabel("Current password")` matches twice. Each section names
+ * itself after its heading, which is what these scope to.
+ */
+const emailChangeSection = (page: Page) =>
+  page.getByRole("region", { name: "Change email address" });
+
+const passwordChangeSection = (page: Page) =>
+  page.getByRole("region", { name: "Change password" });
+
 const emailChangeTokenCount = (): string =>
   querySql(`
     SELECT COUNT(*)
@@ -56,17 +69,22 @@ const emailChangeTokenCount = (): string =>
  * The member area: My Page and the four `/settings` tabs.
  *
  * Every test here rewrites the account it signs in as — the display name, the
- * notification preference, the follow list — so the suite owns a member no
- * other spec signs in as, and re-applies its scenario afterwards to put the
- * starting values back. `mode: "serial"` stops a failed write from being read
- * back as a pass by the test after it.
+ * notification preference, the follow list, the password — so the suite owns a
+ * member no other spec signs in as, and re-applies its scenario afterwards to
+ * put the starting values back. `mode: "serial"` stops a failed write from
+ * being read back as a pass by the test after it. The password test re-applies
+ * that scenario itself rather than waiting for `afterAll`, because every test
+ * after it signs in with the password it moved off.
  *
- * `/settings/security` requests an email change rather than a password change.
- * What is asserted here is the gate in front of the send: a wrong current
- * password is refused, the address stays put, and no change token is left
- * behind. The round trip a valid request starts — the two confirmation links
- * and the address the account ends up signing in with — belongs to
- * `host.email-change.spec.ts`, which owns an account of its own to move.
+ * `/settings/security` carries both an email change and a password change.
+ * What the email form is asserted on here is the gate in front of the send: a
+ * wrong current password is refused, the address stays put, and no change
+ * token is left behind. The round trip a valid request starts — the two
+ * confirmation links and the address the account ends up signing in with —
+ * belongs to `host.email-change.spec.ts`, which owns an account of its own to
+ * move. The password change is asserted end to end here instead, because what
+ * it produces is a session rather than a link: the browser that made it stays
+ * signed in, and every other one is turned away on its next request.
  */
 test.describe("web-host member settings", () => {
   test.describe.configure({ mode: "serial" });
@@ -145,15 +163,18 @@ test.describe("web-host member settings", () => {
   }) => {
     await signIn(page, "/settings/security");
 
+    const section = emailChangeSection(page);
     await expect(
       page.getByRole("heading", { name: "Change email address" })
     ).toBeVisible();
-    await page
+    await section
       .getByLabel("Current email address")
       .fill(MEMBER_SETTINGS_MEMBER.email);
-    await page.getByLabel("New email address").fill(MEMBER_SETTINGS_NEW_EMAIL);
-    await page.getByLabel("Current password").fill("wrong-password");
-    await page
+    await section
+      .getByLabel("New email address")
+      .fill(MEMBER_SETTINGS_NEW_EMAIL);
+    await section.getByLabel("Current password").fill("wrong-password");
+    await section
       .getByRole("button", { name: "Send confirmation emails" })
       .click();
 
@@ -165,6 +186,93 @@ test.describe("web-host member settings", () => {
     await expect(page).toHaveURL(/\/settings\/security/u);
     expect(memberField("email")).toBe(MEMBER_SETTINGS_MEMBER.email);
     expect(emailChangeTokenCount()).toBe("0");
+  });
+
+  test("the security screen refuses a password change whose current password is wrong", async ({
+    page,
+  }) => {
+    await signIn(page, "/settings/security");
+    const storedHash = memberField("password_hash");
+
+    const section = passwordChangeSection(page);
+    await section.getByLabel("Current password").fill("wrong-password");
+    await section
+      .getByLabel("New password", { exact: true })
+      .fill(MEMBER_SETTINGS_NEW_PASSWORD);
+    await section
+      .getByLabel("Confirm new password")
+      .fill(MEMBER_SETTINGS_NEW_PASSWORD);
+    await section.getByRole("button", { name: "Change password" }).click();
+
+    await expectFlash(
+      page,
+      "alert",
+      "Could not change your password. Please check what you entered."
+    );
+    await expect(page).toHaveURL(/\/settings\/security/u);
+    expect(memberField("password_hash")).toBe(storedHash);
+  });
+
+  test("a password change keeps this browser signed in and turns the other one away", async ({
+    browser,
+    page,
+  }) => {
+    const otherContext = await browser.newContext();
+    const otherPage = await otherContext.newPage();
+    try {
+      await signInAsMember(otherPage, MEMBER_SETTINGS_MEMBER, "/my");
+      await expect(
+        otherPage.getByText(MEMBER_SETTINGS_MEMBER.publicId)
+      ).toBeVisible();
+
+      await signIn(page, "/settings/security");
+      const section = passwordChangeSection(page);
+      await section
+        .getByLabel("Current password")
+        .fill(MEMBER_SETTINGS_MEMBER.password);
+      await section
+        .getByLabel("New password", { exact: true })
+        .fill(MEMBER_SETTINGS_NEW_PASSWORD);
+      await section
+        .getByLabel("Confirm new password")
+        .fill(MEMBER_SETTINGS_NEW_PASSWORD);
+      await section.getByRole("button", { name: "Change password" }).click();
+
+      await expectFlash(
+        page,
+        "status",
+        "Your password has been changed. Your other devices have been signed out."
+      );
+
+      // The change ended the token this browser arrived with too; it is the
+      // replacement the Action sealed into the cookie that keeps it signed in.
+      await page.goto(hostUrl("/my"));
+      await expect(
+        page.getByText(MEMBER_SETTINGS_MEMBER.publicId)
+      ).toBeVisible();
+
+      // `/settings` is where a revoked session surfaces: it calls GetMe through
+      // `withPublicSessionReauth`, which turns the rejection into the re-login.
+      await otherPage.goto(hostUrl("/settings"));
+      await expectSessionRevokedFlash(otherPage);
+
+      // The new password is the one that signs in now.
+      await signInAsMember(
+        otherPage,
+        {
+          email: MEMBER_SETTINGS_MEMBER.email,
+          password: MEMBER_SETTINGS_NEW_PASSWORD,
+        },
+        "/my"
+      );
+      await expect(
+        otherPage.getByText(MEMBER_SETTINGS_MEMBER.publicId)
+      ).toBeVisible();
+    } finally {
+      await otherContext.close();
+      // Put the original password back before the tests that sign in with it.
+      applyScenarioSql(MEMBER_SETTINGS_SCENARIO);
+    }
   });
 
   test("following a series from its page lists it, and unfollowing clears both", async ({

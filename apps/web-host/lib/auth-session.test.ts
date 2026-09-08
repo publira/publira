@@ -1,29 +1,51 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetTenantDefaultLocale, mockRedirect, mockResolveAccessToken } =
-  vi.hoisted(() => ({
+import {
+  getPublicSessionCacheTag,
+  PUBLIC_SESSION_COOKIE_NAME,
+} from "./auth-shared";
+
+const {
+  mockCookies,
+  mockGetTenantDefaultLocale,
+  mockRedirect,
+  mockResolveAccessToken,
+  mockSealSessionCookieValue,
+  mockSetCookie,
+  mockUpdateTag,
+} = vi.hoisted(() => {
+  const setCookie = vi.fn();
+  return {
+    mockCookies: vi.fn(() =>
+      Promise.resolve({ delete: vi.fn(), set: setCookie })
+    ),
     mockGetTenantDefaultLocale: vi.fn(),
     mockRedirect: vi.fn((path: string) => {
       throw new Error(`NEXT_REDIRECT:${path}`);
     }),
     mockResolveAccessToken: vi.fn(),
-  }));
+    mockSealSessionCookieValue: vi.fn(),
+    mockSetCookie: setCookie,
+    mockUpdateTag: vi.fn(),
+  };
+});
 
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
 }));
 
 vi.mock("next/cache", () => ({
-  updateTag: vi.fn(),
+  updateTag: mockUpdateTag,
 }));
 
 vi.mock("next/headers", () => ({
-  cookies: vi.fn(),
+  cookies: mockCookies,
 }));
 
 vi.mock("./api-client", () => ({
   resolveAccessToken: mockResolveAccessToken,
+  sealSessionCookieValue: mockSealSessionCookieValue,
 }));
 
 vi.mock("./tenant", () => ({
@@ -38,6 +60,36 @@ describe("web-host auth-session", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetTenantDefaultLocale.mockResolvedValue("ja");
+  });
+
+  it("writePublicSessionCookie seals the token and updates the session cache tag", async () => {
+    mockSealSessionCookieValue.mockResolvedValueOnce("sealed-value");
+    const { writePublicSessionCookie } = await importAuthSession();
+
+    await writePublicSessionCookie(
+      {
+        accessToken: "fresh-token",
+        expiresAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+      tenantId
+    );
+
+    expect(mockSealSessionCookieValue).toHaveBeenCalledWith({
+      accessToken: "fresh-token",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      tenantId,
+    });
+    expect(mockSetCookie).toHaveBeenCalledWith(
+      expect.objectContaining({
+        httpOnly: true,
+        name: PUBLIC_SESSION_COOKIE_NAME,
+        path: "/",
+        value: "sealed-value",
+      })
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME)
+    );
   });
 
   it("redirectToLogin sends sanitized returnTo and revocation reason to /login", async () => {

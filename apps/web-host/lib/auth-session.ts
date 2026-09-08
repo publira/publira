@@ -1,9 +1,11 @@
 import type { Locale } from "@publira/i18n";
+import { sessionCookieOptions } from "@publira/web-session";
 import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { resolveAccessToken } from "./api-client";
+import { resolveAccessToken, sealSessionCookieValue } from "./api-client";
+import type { PublicSession } from "./auth";
 import {
   buildLoginPath,
   getPublicSessionCacheTag,
@@ -11,6 +13,37 @@ import {
   PUBLIC_SESSION_COOKIE_NAME,
 } from "./auth-shared";
 import { getTenantDefaultLocale } from "./tenant";
+
+/**
+ * Seal a freshly minted access token into the local session cookie.
+ *
+ * **Server Actions only**, for the same reason as the deletion below: the
+ * cookie write needs a response whose headers are still open, and `updateTag()`
+ * is rejected outside an Action.
+ *
+ * Every Action that receives a token writes it through here — signing in, and
+ * changing a password, which ends the token the request arrived with and hands
+ * back its replacement. A caller that seals its own cookie is one that can
+ * forget the cache tag, and a stale tag serves the previous token for as long
+ * as the private cache holds it.
+ */
+export const writePublicSessionCookie = async (
+  session: PublicSession,
+  tenantId: string
+): Promise<void> => {
+  const sealed = await sealSessionCookieValue({
+    accessToken: session.accessToken,
+    expiresAt: session.expiresAt.toISOString(),
+    tenantId,
+  });
+  const cookieStore = await cookies();
+  cookieStore.set({
+    ...sessionCookieOptions(session.expiresAt),
+    name: PUBLIC_SESSION_COOKIE_NAME,
+    value: sealed,
+  });
+  updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
+};
 
 /**
  * Drop the local session cookie.
