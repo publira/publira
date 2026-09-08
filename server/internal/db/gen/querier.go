@@ -707,6 +707,21 @@ type Querier interface {
 	// These projections are used only while constructing the public Follow API
 	// response. The follow relations and their cursor queries remain UUID-only.
 	ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedEpisodeFollowTargetPublicIDsByIDsParams) ([]ListPublishedEpisodeFollowTargetPublicIDsByIDsRow, error)
+	// The published episodes on either side of one episode within its own series,
+	// in the (order_index, id) order the series detail lists them in. `direction`
+	// is -1 for the one before and 1 for the one after. A missing neighbour is a
+	// missing row rather than a null column, so an episode at an end of the series
+	// returns one row and the only episode of a series returns none.
+	//
+	// The series predicate is repeated on both branches so the query answers for
+	// itself which episodes count as published: an episode of a series that has
+	// been taken down is not a link the storefront may offer, whichever episode
+	// was asked about.
+	//
+	// `is_free` is the same rule the body access uses, price 0 or an open free
+	// window, so a link cannot say "paid" about an episode that is free at the
+	// moment the reader would follow it.
+	ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// Restricted to the pages flagged for the footer, which is the only place a
 	// reader navigates to them from.

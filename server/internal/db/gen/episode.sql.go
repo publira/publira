@@ -660,6 +660,139 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 	return items, nil
 }
 
+const listPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNeighborsForTenant :many
+(
+    SELECT -1::int4 AS direction,
+        e.public_id,
+        e.title,
+        e.order_index,
+        el.price,
+        (
+            el.price = 0
+            OR EXISTS (
+                SELECT 1
+                FROM episode_free_windows fw
+                WHERE fw.episode_id = e.id
+                    AND fw.starts_at <= NOW()
+                    AND fw.ends_at > NOW()
+            )
+        ) AS is_free
+    FROM episodes e
+        JOIN series s ON s.id = e.series_id
+        JOIN episode_listings el ON el.episode_id = e.id
+    WHERE s.tenant_id = $1
+        AND e.series_id = $2
+        AND (e.order_index, e.id) < ($3::int4, $4::uuid)
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    ORDER BY e.order_index DESC,
+        e.id DESC
+    LIMIT 1
+)
+UNION ALL
+(
+    SELECT 1::int4 AS direction,
+        e.public_id,
+        e.title,
+        e.order_index,
+        el.price,
+        (
+            el.price = 0
+            OR EXISTS (
+                SELECT 1
+                FROM episode_free_windows fw
+                WHERE fw.episode_id = e.id
+                    AND fw.starts_at <= NOW()
+                    AND fw.ends_at > NOW()
+            )
+        ) AS is_free
+    FROM episodes e
+        JOIN series s ON s.id = e.series_id
+        JOIN episode_listings el ON el.episode_id = e.id
+    WHERE s.tenant_id = $1
+        AND e.series_id = $2
+        AND (e.order_index, e.id) > ($3::int4, $4::uuid)
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    ORDER BY e.order_index ASC,
+        e.id ASC
+    LIMIT 1
+)
+`
+
+type ListPublishedEpisodeNeighborsForTenantParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	SeriesID   uuid.UUID `json:"series_id"`
+	OrderIndex int32     `json:"order_index"`
+	EpisodeID  uuid.UUID `json:"episode_id"`
+}
+
+type ListPublishedEpisodeNeighborsForTenantRow struct {
+	Direction  int32        `json:"direction"`
+	PublicID   string       `json:"public_id"`
+	Title      string       `json:"title"`
+	OrderIndex int32        `json:"order_index"`
+	Price      int32        `json:"price"`
+	IsFree     sql.NullBool `json:"is_free"`
+}
+
+// The published episodes on either side of one episode within its own series,
+// in the (order_index, id) order the series detail lists them in. `direction`
+// is -1 for the one before and 1 for the one after. A missing neighbour is a
+// missing row rather than a null column, so an episode at an end of the series
+// returns one row and the only episode of a series returns none.
+//
+// The series predicate is repeated on both branches so the query answers for
+// itself which episodes count as published: an episode of a series that has
+// been taken down is not a link the storefront may offer, whichever episode
+// was asked about.
+//
+// `is_free` is the same rule the body access uses, price 0 or an open free
+// window, so a link cannot say "paid" about an episode that is free at the
+// moment the reader would follow it.
+func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedEpisodeNeighborsForTenant,
+		arg.TenantID,
+		arg.SeriesID,
+		arg.OrderIndex,
+		arg.EpisodeID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedEpisodeNeighborsForTenantRow
+	for rows.Next() {
+		var i ListPublishedEpisodeNeighborsForTenantRow
+		if err := rows.Scan(
+			&i.Direction,
+			&i.PublicID,
+			&i.Title,
+			&i.OrderIndex,
+			&i.Price,
+			&i.IsFree,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublishedEpisodesBySeries = `-- name: ListPublishedEpisodesBySeries :many
 SELECT e.id,
     e.series_id,

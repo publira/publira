@@ -527,3 +527,220 @@ func TestDBGetEpisodeDetailWithholdsPaidPagesUntilEntitled(t *testing.T) {
 		t.Fatalf("buyer images = %d, want the page they paid for", len(entitled.Msg.Images))
 	}
 }
+
+// A reader walks a series one episode at a time, so the detail names the
+// published episodes either side of the one they opened. Draft and scheduled
+// episodes are not among them, and the ends of the series have none.
+func TestDBGetEpisodeDetailNamesThePublishedEpisodesEitherSide(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:  "SERIESA00001",
+		Title:     "Serialized Story",
+		Published: true,
+	})
+	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:   "EPISODEONE01",
+		Title:      "Chapter One",
+		OrderIndex: 1,
+		Status:     testutil.EpisodeStatusPublished,
+	})
+	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:   "EPISODEDRF02",
+		Title:      "Chapter Two",
+		OrderIndex: 2,
+	})
+	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:   "EPISODETRE03",
+		Title:      "Chapter Three",
+		OrderIndex: 3,
+		Status:     testutil.EpisodeStatusPublished,
+		Price:      300,
+	})
+	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:    "EPISODESCH04",
+		Title:       "Chapter Four",
+		OrderIndex:  4,
+		Status:      testutil.EpisodeStatusScheduled,
+		ScheduledAt: time.Now().Add(24 * time.Hour),
+	})
+	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:   "EPISODEFIV05",
+		Title:      "Chapter Five",
+		OrderIndex: 5,
+		Status:     testutil.EpisodeStatusPublished,
+	})
+
+	client := env.catalogClient()
+	detailOf := func(t *testing.T, publicID string) *publirav1.GetEpisodeDetailResponse {
+		t.Helper()
+		resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+			Tenant:   tenantContext(tenant),
+			PublicId: publicID,
+		}))
+		if err != nil {
+			t.Fatalf("GetEpisodeDetail %s: %v", publicID, err)
+		}
+		return resp.Msg
+	}
+
+	// The paid episode in the middle: the draft before it and the scheduled one
+	// after it are passed over for the published episodes further out.
+	middle := detailOf(t, "EPISODETRE03")
+	if middle.PreviousEpisode.GetPublicId() != "EPISODEONE01" {
+		t.Fatalf("previous_episode = %q, want EPISODEONE01", middle.PreviousEpisode.GetPublicId())
+	}
+	if middle.NextEpisode.GetPublicId() != "EPISODEFIV05" {
+		t.Fatalf("next_episode = %q, want EPISODEFIV05", middle.NextEpisode.GetPublicId())
+	}
+	if middle.PreviousEpisode.GetTitle() != "Chapter One" || middle.PreviousEpisode.GetOrderIndex() != 1 {
+		t.Fatalf("previous_episode = %+v, want Chapter One at order 1", middle.PreviousEpisode)
+	}
+	if !middle.PreviousEpisode.GetIsFree() || middle.PreviousEpisode.GetPrice() != 0 {
+		t.Fatalf("previous_episode price = %d, is_free = %t, want a free neighbour", middle.PreviousEpisode.GetPrice(), middle.PreviousEpisode.GetIsFree())
+	}
+
+	// The first published episode has nothing before it and the last nothing
+	// after it. The reader here holds no credential at all, and still gets both
+	// links: what they may do with the neighbour's body is decided when they
+	// open it.
+	first := detailOf(t, "EPISODEONE01")
+	if first.PreviousEpisode != nil {
+		t.Fatalf("previous_episode = %+v, want none before the first episode", first.PreviousEpisode)
+	}
+	if first.NextEpisode.GetPublicId() != "EPISODETRE03" {
+		t.Fatalf("next_episode = %q, want EPISODETRE03", first.NextEpisode.GetPublicId())
+	}
+	if first.NextEpisode.GetIsFree() || first.NextEpisode.GetPrice() != 300 {
+		t.Fatalf("next_episode price = %d, is_free = %t, want the paid neighbour", first.NextEpisode.GetPrice(), first.NextEpisode.GetIsFree())
+	}
+
+	last := detailOf(t, "EPISODEFIV05")
+	if last.PreviousEpisode.GetPublicId() != "EPISODETRE03" {
+		t.Fatalf("previous_episode = %q, want EPISODETRE03", last.PreviousEpisode.GetPublicId())
+	}
+	if last.NextEpisode != nil {
+		t.Fatalf("next_episode = %+v, want none after the last episode", last.NextEpisode)
+	}
+}
+
+// A free window makes a priced episode public while it lasts, so a link to that
+// episode has to say so. The price stays what the episode costs again once the
+// window closes.
+func TestDBGetEpisodeDetailMarksANeighborInAFreeWindowAsFree(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:  "SERIESA00001",
+		Title:     "Serialized Story",
+		Published: true,
+	})
+	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:   "EPISODEONE01",
+		Title:      "Chapter One",
+		OrderIndex: 1,
+		Status:     testutil.EpisodeStatusPublished,
+	})
+	openWindow := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:   "EPISODETWO02",
+		Title:      "Chapter Two",
+		OrderIndex: 2,
+		Status:     testutil.EpisodeStatusPublished,
+		Price:      400,
+	})
+	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:   "EPISODETRE03",
+		Title:      "Chapter Three",
+		OrderIndex: 3,
+		Status:     testutil.EpisodeStatusPublished,
+		Price:      400,
+	})
+	env.PG.SeedEpisodeFreeWindow(t, tenant.ID, openWindow.ID, time.Now().Add(-time.Hour), time.Now().Add(time.Hour))
+
+	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: "EPISODEONE01",
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+	next := resp.Msg.NextEpisode
+	if next.GetPublicId() != "EPISODETWO02" {
+		t.Fatalf("next_episode = %q, want EPISODETWO02", next.GetPublicId())
+	}
+	if !next.GetIsFree() {
+		t.Fatalf("next_episode is_free = %t, want the open free window to make it free", next.GetIsFree())
+	}
+	if next.GetPrice() != 400 {
+		t.Fatalf("next_episode price = %d, want the price it costs once the window closes", next.GetPrice())
+	}
+
+	// The identically priced episode outside the window is the control: without
+	// one, a link to it stays paid.
+	fromTheOtherSide, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: "EPISODETWO02",
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+	if fromTheOtherSide.Msg.NextEpisode.GetIsFree() {
+		t.Fatalf("next_episode is_free = %t, want a priced episode with no window to stay paid", fromTheOtherSide.Msg.NextEpisode.GetIsFree())
+	}
+}
+
+// The neighbours are the series order as it stands, not as it stood when the
+// episode was written: reordering the series in the admin console changes them
+// on the next read.
+func TestDBGetEpisodeDetailFollowsAReorderedSeries(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:  "SERIESA00001",
+		Title:     "Serialized Story",
+		Published: true,
+	})
+	for _, seed := range []testutil.EpisodeSeed{
+		{PublicID: "EPISODEONE01", Title: "Chapter One", OrderIndex: 1, Status: testutil.EpisodeStatusPublished},
+		{PublicID: "EPISODETWO02", Title: "Chapter Two", OrderIndex: 2, Status: testutil.EpisodeStatusPublished},
+		{PublicID: "EPISODETRE03", Title: "Chapter Three", OrderIndex: 3, Status: testutil.EpisodeStatusPublished},
+	} {
+		env.PG.SeedEpisode(t, tenant.ID, series.ID, seed)
+	}
+
+	client := env.catalogClient()
+	neighborsOf := func(t *testing.T, publicID string) (string, string) {
+		t.Helper()
+		resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+			Tenant:   tenantContext(tenant),
+			PublicId: publicID,
+		}))
+		if err != nil {
+			t.Fatalf("GetEpisodeDetail %s: %v", publicID, err)
+		}
+		return resp.Msg.PreviousEpisode.GetPublicId(), resp.Msg.NextEpisode.GetPublicId()
+	}
+
+	previous, next := neighborsOf(t, "EPISODETWO02")
+	if previous != "EPISODEONE01" || next != "EPISODETRE03" {
+		t.Fatalf("neighbours = (%q, %q), want (EPISODEONE01, EPISODETRE03)", previous, next)
+	}
+
+	// The two outer episodes swap places around the one being read.
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		UPDATE episodes
+		SET order_index = CASE public_id
+			WHEN 'EPISODEONE01' THEN 3
+			ELSE 1
+		END
+		WHERE series_id = $1
+			AND public_id IN ('EPISODEONE01', 'EPISODETRE03')
+	`, series.ID); err != nil {
+		t.Fatalf("reorder the series: %v", err)
+	}
+
+	previous, next = neighborsOf(t, "EPISODETWO02")
+	if previous != "EPISODETRE03" || next != "EPISODEONE01" {
+		t.Fatalf("neighbours after the reorder = (%q, %q), want (EPISODETRE03, EPISODEONE01)", previous, next)
+	}
+}

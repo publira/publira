@@ -810,11 +810,17 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 	}
+	previousEpisode, nextEpisode, err := s.episodeNeighbors(ctx, tenant.ID, row)
+	if err != nil {
+		return nil, err
+	}
 	res := connect.NewResponse(&publirav1.GetEpisodeDetailResponse{
-		Episode: protomapper.EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row),
-		Series:  series,
-		Images:  make([]*publirattypesv1.EpisodeImage, 0),
-		Access:  access,
+		Episode:         protomapper.EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row),
+		Series:          series,
+		Images:          make([]*publirattypesv1.EpisodeImage, 0),
+		Access:          access,
+		PreviousEpisode: previousEpisode,
+		NextEpisode:     nextEpisode,
 	})
 	if row.FreeUntil.Valid {
 		res.Msg.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
@@ -833,6 +839,47 @@ func (s *apiServer) GetEpisodeDetail(
 	}
 
 	return res, nil
+}
+
+// episodeNeighbors returns the published episodes either side of the given one
+// in its series, in the shape the response carries them: nil where the series
+// ends.
+//
+// It is a read of its own rather than more columns on the episode row, because
+// each side is found by comparing against that row's own (order_index, id):
+// the episode has to be in hand before the episodes around it can be asked
+// for.
+func (s *apiServer) episodeNeighbors(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow,
+) (previous, next *publirav1.EpisodeNeighbor, err error) {
+	rows, err := s.queriesFor(ctx).ListPublishedEpisodeNeighborsForTenant(ctx, dbmodels.ListPublishedEpisodeNeighborsForTenantParams{
+		TenantID:   tenantID,
+		SeriesID:   row.SeriesID,
+		OrderIndex: row.OrderIndex,
+		EpisodeID:  row.ID,
+	})
+	if err != nil {
+		return nil, nil, s.internalDBError(ctx, "failed to list episode neighbors", err, "tenant_id", tenantID.String(), "episode_public_id", row.PublicID)
+	}
+
+	for _, neighbor := range rows {
+		mapped := &publirav1.EpisodeNeighbor{
+			PublicId:   neighbor.PublicID,
+			Title:      neighbor.Title,
+			OrderIndex: neighbor.OrderIndex,
+			Price:      neighbor.Price,
+			IsFree:     neighbor.IsFree.Valid && neighbor.IsFree.Bool,
+		}
+		if neighbor.Direction < 0 {
+			previous = mapped
+			continue
+		}
+		next = mapped
+	}
+
+	return previous, next, nil
 }
 
 // labelEyeCatchVariantsByImageIDs fetches the variants of the given label
