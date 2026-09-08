@@ -39,7 +39,6 @@ import {
   PlatformPage,
   PlatformPageContent,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -541,7 +540,6 @@ const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
-        <PlatformPageEyebrow>Platform Governance</PlatformPageEyebrow>
         <PlatformPageTitle>
           <Suspense fallback={<SkeletonLine className="h-8 w-24" />}>
             <Message message="platform.audit.heading" />

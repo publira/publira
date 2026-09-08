@@ -3,29 +3,26 @@
 import { DashboardIcon } from "@publira/icons";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ConsoleHeader,
   ConsoleHeaderActions,
   ConsoleHeaderContext,
-  ConsoleHeaderEyebrow,
   ConsoleHeaderLabel,
   ConsoleHeaderText,
   ConsoleLayout,
-  ConsoleLayoutSkeleton,
   ConsoleMobileNavigation,
   ConsoleMobileNavigationCloseButton,
   ConsoleMobileNavigationOpenButton,
   ConsoleSidebar,
   ConsoleSidebarBrand,
-  ConsoleSidebarBrandLabel,
   ConsoleSidebarBrandName,
+  ConsoleSidebarContext,
   ConsoleSidebarNavigation,
-  ConsoleSidebarNavigationContent,
-  ConsoleSidebarNavigationIcon,
   ConsoleSidebarNavigationItem,
-  ConsoleSidebarNavigationItemDescription,
+  ConsoleSidebarNavigationItemHeading,
+  ConsoleSidebarNavigationItemIcon,
   ConsoleSidebarNavigationItemLabel,
   ConsoleSidebarNavigationItems,
   ConsoleSidebarNavigationSection,
@@ -43,7 +40,48 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+const pathname = vi.fn(() => "/");
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => pathname(),
+}));
+
 afterEach(cleanup);
+
+beforeEach(() => {
+  pathname.mockReturnValue("/");
+});
+
+const hrefs = ["/", "/tenants", "/tenants/new"];
+
+const renderNavigation = () =>
+  render(
+    <ConsoleSidebar>
+      <ConsoleSidebarBrand>
+        <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
+      </ConsoleSidebarBrand>
+      <ConsoleSidebarContext>Platform Console</ConsoleSidebarContext>
+      <ConsoleSidebarNavigation hrefs={hrefs}>
+        <ConsoleSidebarNavigationSection>
+          <ConsoleSidebarNavigationTitle>Tenants</ConsoleSidebarNavigationTitle>
+          <ConsoleSidebarNavigationItems>
+            {hrefs.map((href) => (
+              <ConsoleSidebarNavigationItem href={href} key={href}>
+                <ConsoleSidebarNavigationItemIcon>
+                  <DashboardIcon className="size-4" />
+                </ConsoleSidebarNavigationItemIcon>
+                <ConsoleSidebarNavigationItemHeading>
+                  <ConsoleSidebarNavigationItemLabel>
+                    {href}
+                  </ConsoleSidebarNavigationItemLabel>
+                </ConsoleSidebarNavigationItemHeading>
+              </ConsoleSidebarNavigationItem>
+            ))}
+          </ConsoleSidebarNavigationItems>
+        </ConsoleSidebarNavigationSection>
+      </ConsoleSidebarNavigation>
+    </ConsoleSidebar>
+  );
 
 describe("Console layout slots", () => {
   it("renders the header context and actions from child slots", () => {
@@ -51,7 +89,6 @@ describe("Console layout slots", () => {
       <ConsoleHeader>
         <ConsoleHeaderContext>
           <ConsoleHeaderText>
-            <ConsoleHeaderEyebrow>Current tenant</ConsoleHeaderEyebrow>
             <ConsoleHeaderLabel>Example Publishing</ConsoleHeaderLabel>
           </ConsoleHeaderText>
         </ConsoleHeaderContext>
@@ -59,54 +96,23 @@ describe("Console layout slots", () => {
       </ConsoleHeader>
     );
 
-    expect(screen.getByText("Current tenant")).toBeTruthy();
     expect(screen.getByText("Example Publishing")).toBeTruthy();
     expect(screen.getByText("Notifications")).toBeTruthy();
   });
 
   it("renders sidebar navigation from child slots", () => {
-    render(
-      <ConsoleSidebar>
-        <ConsoleSidebarBrand>
-          <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
-          <ConsoleSidebarBrandLabel>Platform Console</ConsoleSidebarBrandLabel>
-        </ConsoleSidebarBrand>
-        <ConsoleSidebarNavigation>
-          <ConsoleSidebarNavigationSection>
-            <ConsoleSidebarNavigationTitle>
-              Operations
-            </ConsoleSidebarNavigationTitle>
-            <ConsoleSidebarNavigationItems>
-              <ConsoleSidebarNavigationItem href="/">
-                <ConsoleSidebarNavigationIcon>
-                  <DashboardIcon className="size-5" />
-                </ConsoleSidebarNavigationIcon>
-                <ConsoleSidebarNavigationContent>
-                  <ConsoleSidebarNavigationItemLabel>
-                    Dashboard
-                  </ConsoleSidebarNavigationItemLabel>
-                  <ConsoleSidebarNavigationItemDescription>
-                    Overview
-                  </ConsoleSidebarNavigationItemDescription>
-                </ConsoleSidebarNavigationContent>
-              </ConsoleSidebarNavigationItem>
-            </ConsoleSidebarNavigationItems>
-          </ConsoleSidebarNavigationSection>
-        </ConsoleSidebarNavigation>
-      </ConsoleSidebar>
-    );
+    renderNavigation();
 
     expect(
       screen.getByRole("link", { name: /Publira/u }).dataset.nextLink
     ).toBe("true");
-    expect(
-      screen.getByRole("link", { name: /dashboard/iu }).getAttribute("href")
-    ).toBe("/");
+    expect(screen.getByText("Platform Console")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "/tenants" })).toBeTruthy();
   });
 
   it("uses navigation aria labels supplied by the caller", () => {
     render(
-      <ConsoleLayout theme="admin">
+      <ConsoleLayout>
         <ConsoleMobileNavigation>
           <ConsoleMobileNavigationCloseButton aria-label="Close navigation" />
         </ConsoleMobileNavigation>
@@ -123,40 +129,36 @@ describe("Console layout slots", () => {
   });
 });
 
-const consoleBackground = (container: HTMLElement) =>
-  container.querySelector<HTMLElement>(".publira-console-background");
+const currentHrefs = () =>
+  screen
+    .getAllByRole("link")
+    .filter((link) => link.getAttribute("aria-current") === "page")
+    .map((link) => link.getAttribute("href"));
 
-describe("Console background", () => {
-  it.each(["admin", "platform"] as const)(
-    "names the %s console on the background overlay",
-    (theme) => {
-      const { container } = render(
-        <ConsoleLayout theme={theme}>
-          <div />
-        </ConsoleLayout>
-      );
+describe("Sidebar navigation active item", () => {
+  it("marks only the item whose path the browser is on", () => {
+    pathname.mockReturnValue("/tenants");
 
-      expect(consoleBackground(container)?.dataset.consoleTheme).toBe(theme);
-    }
-  );
+    renderNavigation();
 
-  it.each(["admin", "platform"] as const)(
-    "gives the %s skeleton the same background overlay as the layout",
-    (theme) => {
-      const layout = render(
-        <ConsoleLayout theme={theme}>
-          <div />
-        </ConsoleLayout>
-      );
-      const skeleton = render(<ConsoleLayoutSkeleton theme={theme} />);
+    expect(currentHrefs()).toEqual(["/tenants"]);
+  });
 
-      const layoutBackground = consoleBackground(layout.container);
-      const skeletonBackground = consoleBackground(skeleton.container);
+  it("leaves a broader item to the more specific one that also matches", () => {
+    pathname.mockReturnValue("/tenants/new");
 
-      expect(skeletonBackground?.className).toBe(layoutBackground?.className);
-      expect(skeletonBackground?.dataset.consoleTheme).toBe(
-        layoutBackground?.dataset.consoleTheme
-      );
-    }
-  );
+    renderNavigation();
+
+    expect(currentHrefs()).toEqual(["/tenants/new"]);
+  });
+
+  it("reads the same item as current before and after a tenant rewrite", () => {
+    pathname.mockReturnValue(
+      "/1b4e28ba-2fa1-11d2-883f-0016d3cca427/tenants/SR01"
+    );
+
+    renderNavigation();
+
+    expect(currentHrefs()).toEqual(["/tenants"]);
+  });
 });

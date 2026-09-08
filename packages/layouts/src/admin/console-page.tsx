@@ -4,6 +4,10 @@ import type { ReactNode } from "react";
 /**
  * Compound page scaffold for the admin / platform consoles.
  *
+ * A console page is a workbench: a heading, then the table or the form the
+ * screen is for. The header is a plain row rather than a surface of its own,
+ * so nothing is wrapped around either.
+ *
  * Composed rather than prop-driven so any slot can hold a `<Suspense>`
  * boundary: URL-dependent headings stream on their own while the rest of the
  * chrome stays in the static shell.
@@ -12,7 +16,7 @@ import type { ReactNode } from "react";
  * <ConsolePage>
  *   <ConsolePageHeader>
  *     <ConsolePageHeading>
- *       <ConsolePageEyebrow>Console</ConsolePageEyebrow>
+ *       <ConsolePageContext>Series SR01</ConsolePageContext>
  *       <ConsolePageTitle>Title</ConsolePageTitle>
  *       <ConsolePageDescription>Description</ConsolePageDescription>
  *     </ConsolePageHeading>
@@ -23,47 +27,43 @@ import type { ReactNode } from "react";
  * ```
  */
 export const ConsolePage = ({ children }: { children: ReactNode }) => (
-  <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+  <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
     {children}
   </section>
 );
 
 export const ConsolePageHeader = ({ children }: { children: ReactNode }) => (
-  <header className="grid gap-4 rounded-[1.75rem] border border-border/70 bg-card/80 p-6 shadow-[0_18px_50px_-30px_rgba(30,43,56,0.45)] backdrop-blur sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+  <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
     {children}
   </header>
 );
 
-/** Eyebrow / title / description stack. `mb-1` on the eyebrow keeps the
- * eyebrow→title gap at 8px while title→description stays 4px. */
 export const ConsolePageHeading = ({ children }: { children: ReactNode }) => (
   <div className="grid gap-1">{children}</div>
 );
 
-export const ConsolePageEyebrow = ({ children }: { children: ReactNode }) => (
-  <p className="mb-1 text-xs font-medium tracking-[0.24em] text-muted-foreground uppercase">
-    {children}
-  </p>
+/**
+ * What the screen below is part of, when the reader needs it to place the page
+ * — the series an episode form belongs to, say. Secondary text in a sentence,
+ * not a label above the heading: a page whose title says enough on its own
+ * leaves this out.
+ */
+export const ConsolePageContext = ({ children }: { children: ReactNode }) => (
+  <p className="text-sm text-muted-foreground">{children}</p>
 );
 
 export const ConsolePageTitle = ({ children }: { children: ReactNode }) => (
-  <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-    {children}
-  </h1>
+  <h1 className="text-2xl font-semibold text-foreground">{children}</h1>
 );
 
 export const ConsolePageDescription = ({
   children,
 }: {
   children: ReactNode;
-}) => (
-  <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-    {children}
-  </p>
-);
+}) => <p className="max-w-3xl text-sm text-muted-foreground">{children}</p>;
 
 export const ConsolePageActions = ({ children }: { children: ReactNode }) => (
-  <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
     {children}
   </div>
 );

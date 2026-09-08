@@ -24,7 +24,6 @@ import {
   AdminPageActions,
   AdminPageContent,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -230,7 +229,6 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-64" />}>
             <EditSeriesTitle searchParams={searchParams} />

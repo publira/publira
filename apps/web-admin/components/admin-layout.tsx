@@ -3,7 +3,6 @@ import {
   ConsoleHeader,
   ConsoleHeaderActions,
   ConsoleHeaderContext,
-  ConsoleHeaderEyebrow,
   ConsoleHeaderLabel,
   ConsoleHeaderUser,
   ConsoleHeaderUserSkeleton,
@@ -16,17 +15,8 @@ import {
   ConsoleMobileNavigationOpenButton,
   ConsoleSidebar,
   ConsoleSidebarBrand,
+  ConsoleSidebarBrandName,
   ConsoleSidebarContext,
-  ConsoleSidebarNavigation,
-  ConsoleSidebarNavigationContent,
-  ConsoleSidebarNavigationIcon,
-  ConsoleSidebarNavigationItem,
-  ConsoleSidebarNavigationItemDescription,
-  ConsoleSidebarNavigationItemHeading,
-  ConsoleSidebarNavigationItemLabel,
-  ConsoleSidebarNavigationItems,
-  ConsoleSidebarNavigationSection,
-  ConsoleSidebarNavigationTitle,
   ConsoleUserMenuAccountLink,
   ConsoleUserMenuContent,
   ConsoleUserMenuIdentity,
@@ -39,8 +29,7 @@ import {
   ConsoleUserMenuSeparator,
   ConsoleUserMenuTrigger,
 } from "@publira/layouts/admin";
-import { StatusChip } from "@publira/ui-components/badge";
-import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton } from "@publira/ui-components/skeleton";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -54,9 +43,8 @@ import { tenantBrandingVariant } from "../lib/tenant-branding-image";
 import type { TenantBrandingImage } from "../lib/tenant-branding-image";
 import { getTenantId } from "../lib/tenant-id";
 import { AdminBrandLogo } from "./admin-brand-logo";
-import { navigation } from "./admin-navigation";
+import { AdminNavigation } from "./admin-navigation";
 import { AdminLocaleSwitcher } from "./locale-switcher";
-import { Message } from "./message";
 import {
   NotificationBell,
   NotificationBellSkeleton,
@@ -71,7 +59,6 @@ export interface AdminLayoutCurrentUser {
 
 interface AdminLayoutTenant {
   adminDomain: string;
-  domain: string;
   name: string;
   publicId: string;
 }
@@ -155,89 +142,36 @@ export const AdminLayout = ({
 }) => {
   const logoVariant = tenantBrandingVariant(logo);
   const headerBrand = logoVariant ? (
-    <Suspense fallback={<Skeleton className="h-8 w-[9rem]" />}>
+    <Suspense fallback={<Skeleton className="h-6 w-[7rem]" />}>
       <AdminBrandLogo priority tenantName={tenant.name} variant={logoVariant} />
     </Suspense>
   ) : null;
-  // ConsoleSidebar falls back to "Publira" when brandMark is omitted. Tenant
-  // chrome always supplies its own mark so the platform name never appears.
+  // The sidebar names the tenant either way: as its own mark when it has one,
+  // and as the brand text when it does not. The platform name never appears in
+  // tenant chrome.
   const sidebarBrand = logoVariant ? (
-    <Suspense fallback={<Skeleton className="h-9 w-[11rem]" />}>
+    <Suspense fallback={<Skeleton className="h-8 w-[10rem]" />}>
       <AdminBrandLogo
-        className="h-9 max-w-[11rem]"
+        className="h-8 max-w-[10rem]"
         tenantName={tenant.name}
         variant={logoVariant}
       />
     </Suspense>
   ) : (
-    <p className="font-serif text-xl font-semibold tracking-tight text-foreground">
-      {tenant.name}
-    </p>
+    <ConsoleSidebarBrandName>{tenant.name}</ConsoleSidebarBrandName>
   );
 
   return (
-    <ConsoleLayout theme="admin">
+    <ConsoleLayout>
       <Suspense fallback={null}>
         <AdminMobileNavigation tenantId={tenantId} />
       </Suspense>
       <ConsoleSidebar>
         <ConsoleSidebarBrand>{sidebarBrand}</ConsoleSidebarBrand>
-        <ConsoleSidebarContext>
-          <div className="flex items-start justify-between gap-3">
-            <div className="grid gap-1">
-              <p className="text-sm font-medium text-foreground">
-                {tenant.name}
-              </p>
-              <p className="text-xs leading-5 text-muted-foreground">
-                <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
-                  <Message
-                    message="admin.shell.domain"
-                    values={{ domain: tenant.domain || "-" }}
-                  />
-                </Suspense>
-              </p>
-            </div>
-            <StatusChip status="success">
-              <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
-                <Message message="admin.shell.status_online" />
-              </Suspense>
-            </StatusChip>
-          </div>
-        </ConsoleSidebarContext>
-        <ConsoleSidebarNavigation>
-          {navigation.map((section) => (
-            <ConsoleSidebarNavigationSection
-              key={section.id ?? section.items[0]?.href}
-            >
-              <ConsoleSidebarNavigationTitle>
-                {section.title}
-              </ConsoleSidebarNavigationTitle>
-              <ConsoleSidebarNavigationItems>
-                {section.items.map((item) => (
-                  <ConsoleSidebarNavigationItem
-                    href={item.href}
-                    key={item.href}
-                  >
-                    <ConsoleSidebarNavigationIcon>
-                      <item.icon className="size-5" />
-                    </ConsoleSidebarNavigationIcon>
-                    <ConsoleSidebarNavigationContent>
-                      <ConsoleSidebarNavigationItemHeading>
-                        <ConsoleSidebarNavigationItemLabel>
-                          {item.label}
-                        </ConsoleSidebarNavigationItemLabel>
-                        {item.badge}
-                      </ConsoleSidebarNavigationItemHeading>
-                      <ConsoleSidebarNavigationItemDescription>
-                        {item.description}
-                      </ConsoleSidebarNavigationItemDescription>
-                    </ConsoleSidebarNavigationContent>
-                  </ConsoleSidebarNavigationItem>
-                ))}
-              </ConsoleSidebarNavigationItems>
-            </ConsoleSidebarNavigationSection>
-          ))}
-        </ConsoleSidebarNavigation>
+        {logoVariant ? (
+          <ConsoleSidebarContext>{tenant.name}</ConsoleSidebarContext>
+        ) : null}
+        <AdminNavigation />
       </ConsoleSidebar>
 
       <ConsoleLayoutContent>
@@ -245,16 +179,11 @@ export const AdminLayout = ({
           <ConsoleHeaderContext>
             {headerBrand}
             <ConsoleHeaderText>
-              <ConsoleHeaderEyebrow>
-                <Suspense fallback={<SkeletonLine className="h-3 w-28" />}>
-                  <Message message="admin.shell.eyebrow" />
-                </Suspense>
-              </ConsoleHeaderEyebrow>
               <ConsoleHeaderLabel>{tenant.name}</ConsoleHeaderLabel>
             </ConsoleHeaderText>
           </ConsoleHeaderContext>
           <ConsoleHeaderActions>
-            <Suspense fallback={<Skeleton className="h-9 w-24 rounded-full" />}>
+            <Suspense fallback={<Skeleton className="h-8 w-24 rounded-full" />}>
               <AdminLocaleSwitcher tenantId={tenantId} />
             </Suspense>
             <NotificationBellErrorBoundary>

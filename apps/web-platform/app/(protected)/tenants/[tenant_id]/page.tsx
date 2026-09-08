@@ -42,7 +42,6 @@ import {
   PlatformPageActions,
   PlatformPageContent,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -187,7 +186,6 @@ const TenantDetailContent = async ({
     <>
       <PlatformPageHeader>
         <PlatformPageHeading>
-          <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
           <PlatformPageTitle>
             {getMessage(messages, "platform.tenants.detail_title", {
               name: tenant.name,

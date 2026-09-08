@@ -22,8 +22,8 @@ import {
   AdminPage,
   AdminPageActions,
   AdminPageContent,
+  AdminPageContext,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -101,7 +101,7 @@ const EditEpisodePage = async ({
     <AdminPage>
       <AdminPageHeader>
         <AdminPageHeading>
-          <AdminPageEyebrow>{`Series ${series_id} / Episode ${episode_id}`}</AdminPageEyebrow>
+          <AdminPageContext>{`Series ${series_id}, episode ${episode_id}`}</AdminPageContext>
           <AdminPageTitle>
             {getMessage(messages, "admin.series.episodes.edit_title")}
           </AdminPageTitle>

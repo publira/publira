@@ -8,7 +8,6 @@ import {
   AdminPage,
   AdminPageContent,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -197,7 +196,6 @@ const CommentsPage = ({ searchParams }: CommentsPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
             <Message message="admin.comments.title" />

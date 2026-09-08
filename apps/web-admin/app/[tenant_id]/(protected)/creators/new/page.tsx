@@ -11,7 +11,6 @@ import {
   AdminPageActions,
   AdminPageContent,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -52,7 +51,6 @@ const NewCreatorPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
             <Message message="admin.creators.new_title" />

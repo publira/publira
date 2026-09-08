@@ -14,7 +14,6 @@ import {
   AdminPage,
   AdminPageContent,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -111,7 +110,6 @@ const SettingsThemePage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
             <Message message="admin.settings.title" />

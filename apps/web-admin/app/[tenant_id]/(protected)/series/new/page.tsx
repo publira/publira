@@ -10,7 +10,6 @@ import {
   AdminPage,
   AdminPageActions,
   AdminPageContent,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -90,7 +89,6 @@ const NewSeriesPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
             <Message message="admin.series.new_title" />

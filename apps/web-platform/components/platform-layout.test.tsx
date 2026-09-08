@@ -45,6 +45,11 @@ vi.mock("./message", () => ({
   Message: ({ message }: { message: string }) => message,
 }));
 
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(),
+  usePathname: () => "/tenants/new",
+}));
+
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
     <a href={href} {...props}>
@@ -58,17 +63,30 @@ afterEach(() => {
 });
 
 describe("PlatformLayout", () => {
-  it("asks the shared stylesheet for the platform console background", () => {
-    const { container } = render(
+  it("names the operator console under the platform brand", () => {
+    render(
+      <PlatformLayout>
+        <p>Body</p>
+      </PlatformLayout>
+    );
+
+    expect(screen.getByText("Publira")).toBeTruthy();
+    expect(screen.getByText("Platform Console")).toBeTruthy();
+  });
+
+  it("leaves the tenants list inactive while the console is on the form below it", () => {
+    render(
       <PlatformLayout>
         <p>Body</p>
       </PlatformLayout>
     );
 
     expect(
-      container.querySelector<HTMLElement>(".publira-console-background")
-        ?.dataset.consoleTheme
-    ).toBe("platform");
+      screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("aria-current") === "page")
+        .map((link) => link.getAttribute("href"))
+    ).toEqual(["/tenants/new"]);
   });
 });
 

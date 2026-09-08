@@ -24,7 +24,6 @@ import {
   AdminPageActions,
   AdminPageContent,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -131,7 +130,6 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
           <Message message="admin.creators.edit_title" />
         </AdminPageTitle>

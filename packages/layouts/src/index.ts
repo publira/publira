@@ -33,4 +33,3 @@ export {
 } from "./site-layout-user-menu";
 
 export { isCurrentPath } from "./navigation";
-export type { NavItem, NavSection } from "./navigation";

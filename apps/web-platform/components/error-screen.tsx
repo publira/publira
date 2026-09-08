@@ -8,7 +8,6 @@ import {
   PlatformPageActions,
   PlatformPageContent,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -54,7 +53,6 @@ export const ErrorScreen = ({
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
-        <PlatformPageEyebrow>Error</PlatformPageEyebrow>
         <PlatformPageTitle>{title}</PlatformPageTitle>
         <PlatformPageDescription>{description}</PlatformPageDescription>
       </PlatformPageHeading>

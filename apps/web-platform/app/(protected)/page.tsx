@@ -34,7 +34,6 @@ import {
   PlatformPageActions,
   PlatformPageContent,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -419,7 +418,6 @@ const Page = () => (
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
-        <PlatformPageEyebrow>Platform Dashboard</PlatformPageEyebrow>
         <PlatformPageTitle>
           <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
             <Message message="platform.dashboard.heading" />

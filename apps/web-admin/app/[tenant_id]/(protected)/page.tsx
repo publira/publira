@@ -36,7 +36,6 @@ import { Suspense } from "react";
 import {
   AdminPage,
   AdminPageContent,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -241,7 +240,6 @@ const DashboardPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
             <Message message="admin.dashboard.title" />

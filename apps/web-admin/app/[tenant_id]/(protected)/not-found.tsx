@@ -7,7 +7,6 @@ import {
   AdminPage,
   AdminPageActions,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -60,7 +59,6 @@ const NotFound = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>404 Not Found</AdminPageEyebrow>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-8 w-56" />}>
             <Message message="admin.not_found.title" />

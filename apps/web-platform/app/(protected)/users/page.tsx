@@ -43,7 +43,6 @@ import {
   PlatformPage,
   PlatformPageContent,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -612,7 +611,6 @@ const UsersPage = ({ searchParams }: UsersPageProps) => (
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
-        <PlatformPageEyebrow>Platform Users</PlatformPageEyebrow>
         <PlatformPageTitle>
           <Suspense fallback={<SkeletonLine className="h-8 w-36" />}>
             <Message message="platform.users.title" />
