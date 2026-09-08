@@ -245,6 +245,47 @@ func TestPurgingACommentDeletesItsReports(t *testing.T) {
 	}
 }
 
+// The report queue joins the reporter in, so an open report whose reporter no
+// longer exists would be one no moderator could ever decide: it would go on
+// counting towards the removal threshold while never appearing in the queue
+// that decides it. The foreign key is what keeps that state from arising at
+// all — deleting the account takes its reports with it — and the counter
+// catches up on the next write, the way it does after any other drift.
+func TestDeletingAReporterTakesTheirReportsWithIt(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	queries := dbmodels.New(pg.DB)
+	seed := seedCommentTenant(t, ctx, pg.DB, "RPG")
+	comment := mustCreateComment(t, ctx, queries, seed, "published", "RPGCOMMENT1")
+	leaving := mustInsertUser(t, ctx, pg.DB, seed.tenantID, "RPGREPORT01", "rpg-leaving@example.com", "Leaving Reader")
+	staying := mustInsertUser(t, ctx, pg.DB, seed.tenantID, "RPGREPORT02", "rpg-staying@example.com", "Staying Reader")
+
+	if _, err := queries.CreateEpisodeCommentReport(ctx, newReportParams(seed.tenantID, comment.ID, leaving)); err != nil {
+		t.Fatalf("report by the leaving reader: %v", err)
+	}
+	if _, err := queries.CreateEpisodeCommentReport(ctx, newReportParams(seed.tenantID, comment.ID, staying)); err != nil {
+		t.Fatalf("report by the staying reader: %v", err)
+	}
+	if count := mustRefreshOpenReportCount(t, ctx, queries, seed.tenantID, comment.ID); count != 2 {
+		t.Fatalf("open report count after two reports = %d, want 2", count)
+	}
+
+	if _, err := pg.DB.ExecContext(ctx, "DELETE FROM users WHERE id = $1", leaving); err != nil {
+		t.Fatalf("delete the reporter: %v", err)
+	}
+
+	if stored := mustCountReports(t, ctx, pg.DB, comment.ID); stored != 1 {
+		t.Fatalf("reports left after the deletion = %d, want only the staying reader's", stored)
+	}
+	if count := mustRefreshOpenReportCount(t, ctx, queries, seed.tenantID, comment.ID); count != 1 {
+		t.Fatalf("open report count after the deletion = %d, want 1", count)
+	}
+}
+
 func newReportParams(tenantID, commentID, reporterID uuid.UUID) dbmodels.CreateEpisodeCommentReportParams {
 	return dbmodels.CreateEpisodeCommentReportParams{
 		ID:             uuid.Must(uuid.NewV7()),
