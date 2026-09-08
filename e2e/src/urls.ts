@@ -54,6 +54,19 @@ export const WEB_HOST_EDGE_BASE_URL = envUrl(
   "http://localhost:3080"
 );
 
+/**
+ * The browser the screenshot projects render in (`e2e/browser/Dockerfile`).
+ *
+ * A baseline and the run comparing against it have to be rasterized by the
+ * same fonts and the same Chromium, which the host machine cannot promise, so
+ * those projects connect to a pinned image instead of launching a local
+ * browser. Every other project keeps using the host's Playwright Chromium.
+ */
+export const BROWSER_WS_ENDPOINT = `${envUrl(
+  "E2E_BROWSER_WS_ENDPOINT",
+  "ws://127.0.0.1:3090"
+)}/`;
+
 /** Tenant admin console (web-admin). Matches seed domain `admin.localhost`. */
 export const WEB_ADMIN_BASE_URL = envUrl(
   "E2E_WEB_ADMIN_BASE_URL",

@@ -17,7 +17,7 @@ Development bootstrap, from empty database volumes through `task setup` and all 
   sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
   ```
 
-The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8001` / `8101` (admin API), `8002` / `8102` (platform API), `8003` (outbox worker), `8200` (image-server), `8300` (email-renderer), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), and `1026` / `8026` (E2E Mailpit SMTP / API).
+The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8001` / `8101` (admin API), `8002` / `8102` (platform API), `8003` (outbox worker), `8200` (image-server), `8300` (email-renderer), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to).
 
 PIDs and logs default to `e2e/.run/`. When `E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
@@ -39,8 +39,8 @@ This always tears down app processes and compose volumes, including on failure o
 | Command | Purpose |
 | --- | --- |
 | `task e2e:prepare` | Build server binaries, the web apps, and email-renderer; install Playwright Chromium. |
-| `task e2e:up` | Start Postgres, Redis, RustFS, Mailpit, and the Traefik edge only. |
-| `task e2e:db` | Migrate, apply development seed, point the seeded SMTP settings at the E2E Mailpit, create the S3 bucket (`task storage:init`), and seed the viewer's page fixtures. |
+| `task e2e:up` | Start Postgres, Redis, RustFS, Mailpit, the Traefik edge, and the screenshot browser only. |
+| `task e2e:db` | Migrate, apply development seed, point the seeded SMTP settings at the E2E Mailpit, create the S3 bucket (`task storage:init`), seed the viewer's page fixtures, and pin the timestamps the screenshot baseline records. |
 | `task e2e:start-apps` | Start APIs, `publish-episodes`, email-renderer, outbox worker, image-server, and the three web apps in the background. |
 | `bash e2e/scripts/{api-server,admin-api-server,platform-api-server}.sh <start\|start-wait\|stop>` | Operate one API server for outage scenarios. |
 | `bash e2e/scripts/image-server.sh <start\|start-wait\|stop>` | Operate image-server on its own. |
@@ -68,15 +68,17 @@ For Next.js HMR during development, use `E2E_WEB_MODE=dev task e2e`; CI does not
 e2e/
 ├── bootstrap/             # Development bootstrap check (separate lifecycle, no Playwright)
 ├── routing/               # Edge routing check (separate lifecycle, no Playwright)
-├── compose.yaml           # postgres + redis + rustfs + mailpit + traefik (project: publira-e2e)
+├── browser/               # The pinned browser image the screenshot projects render in
+├── compose.yaml           # postgres + redis + rustfs + mailpit + traefik + browser (project: publira-e2e)
 ├── fixtures/              # binary test data (viewer page images, eye-catch sources)
 ├── playwright.config.ts
 ├── scripts/               # lifecycle, API controls, readiness, test, and locking helpers
 ├── src/                   # app login, API control, DB, scenario, session, and URL helpers
 └── tests/                 # catalogue, admin, host, platform, and health scenarios
+    └── __screenshots__/   # committed screenshot baselines, one directory per project
 ```
 
-- **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), RustFS (S3-compatible, path-style, bucket `publira`), Mailpit (SMTP sink), and Traefik.
+- **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), RustFS (S3-compatible, path-style, bucket `publira`), Mailpit (SMTP sink), Traefik, and the browser the screenshot projects connect to.
 - **Host processes:** API, admin API, platform API, batch `publish-episodes`, email-renderer, outbox worker, image-server, and standalone `web-host`, `web-admin`, and `web-platform` (`node server.js`).
 - **Seed:** development `task db:setup`: public domain `localhost`, admin domain `admin.localhost`, tenant `Seed Tenant`, and platform user `platform@example.com`. The seed tenant and `platform_config` both store `en` as their default locale, so every console and public site opens in English with no `publira_locale` cookie — which is the copy the specs locate elements by. `task e2e:db` then runs `scripts/seed-viewer-pages.sh`, which applies `db/seeds/scenarios/050_viewer_pages.sql` and uploads `fixtures/viewer-pages/*.jpg` to the object keys those rows name, giving `Seed Episode 001-02` a body the canvas viewer can draw. It is deliberately not the series' first episode: 001-01 is the one other suites reach for, and mobile's live integration test reads its empty state as proof of a working round trip.
 
@@ -102,6 +104,8 @@ Host-based URL constants are in `src/urls.ts`. web-host accepts one port and res
 
 `playwright.config.ts` uses `workers: 3` and `fullyParallel: false`: files run in parallel while tests within a file run serially. This matches the four vCPUs CI's `ubuntu-latest` runner has on a public repository; temporarily serialize with `task e2e:test -- --workers=1`.
 
+The `screenshots-host`, `screenshots-admin`, and `screenshots-platform` projects run **before** everything else — the three ordinary projects declare them as `dependencies` — because what they record is the state `task e2e:db` seeded, and the publishing suites add series and episodes to the lists they photograph. A baseline that no longer matches therefore stops the run before the functional projects start: update the baselines (below) and run again.
+
 Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects, and the `viewer-performance` timing project runs after all of those. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
 
 A spec that changes state the whole console reads gets an isolated project for the same reason, and three do:
@@ -118,6 +122,28 @@ A spec that changes state the whole console reads gets an isolated project for t
 | Playwright | `Playwright tests failed`; inspect `test-results/`, `playwright-report/`, and `.run/logs/`. |
 
 `wait-ready` verifies RustFS on `:9003/health`, public/admin/platform API readiness on `:8100`–`:8102`, email-renderer on `:8300/readyz`, the outbox worker on `:8003/readyz`, image-server on `:8200/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-host's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, RustFS, and Mailpit.
+
+## Screenshot baseline
+
+`tests/host.screenshots.spec.ts`, `admin.screenshots.spec.ts`, and `platform.screenshots.spec.ts` record what a screen looks like, so a change to it arrives for review as an image beside the image it replaces. Each screen is taken full-page at 390px, the width of a phone, and at 1280px, the width the two consoles are used at. The baselines are committed under `tests/__screenshots__/<project>/<screen>-<width>.png`; a run compares against them and fails with a diff image in `test-results/`.
+
+Screens covered: the public site's catalog top page, series list, series detail, an episode with a comic body and one with no body, search results, sign-in, and not-found; the tenant console's dashboard, series list, series edit form, and theme settings with the public site preview; the operator console's dashboard and tenant list.
+
+Two things make a shot on one machine comparable with the run on another:
+
+- **The browser is pinned.** Fonts, FreeType, and Chromium all decide where a pixel goes, and a workstation shares none of them with a CI runner. `browser/Dockerfile` builds the Playwright image of the exact `@playwright/test` release this package depends on, adds the Noto CJK faces the font stacks fall back to on Linux — at a pinned package version, from a pinned Ubuntu archive snapshot, so a rebuild installs the same outlines rather than the day's — and runs `playwright run-server`; only the screenshot projects connect to it, through `connectOptions`. Everything else keeps driving the Playwright Chromium installed on the host. `task e2e:up` builds it, which pulls a base image of a couple of gigabytes the first time. Bumping `@playwright/test` means bumping the image tag in the same commit.
+- **The dates are pinned.** The development seed publishes its catalogue and creates its accounts relative to the moment it runs, and six of these screens print one of those timestamps. `db/seeds/scenarios/160_screenshot_baseline.sql`, applied by `task e2e:db`, rewrites them to fixed literals.
+
+### Updating a baseline after an intended change
+
+```bash
+task e2e:prepare
+task e2e:up && task e2e:db && task e2e:start-apps && task e2e:wait-ready
+task e2e:test -- --project=screenshots-host --project=screenshots-admin --project=screenshots-platform --update-snapshots
+task e2e:down
+```
+
+Run it against a stack that has just been seeded — a stack the whole suite has already run on holds the series, episodes, and tenants those suites created, and they are in the shot. Commit the changed PNGs with the change that caused them; a redesign pull request is reviewed by looking at them.
 
 ## Viewer rendering performance
 
@@ -141,7 +167,7 @@ Each measurement is attached to the test result as a `viewer-performance:<metric
 ## Adding scenarios
 
 1. Optionally add fixture SQL under `db/seeds/scenarios/<name>.sql` and apply it with `applyScenarioSql('name')` from `src/db.ts`.
-2. Add `e2e/tests/<area>.spec.ts` using `test` / `expect` from `@playwright/test`. `admin.*.spec.ts` runs under the web-admin project; `platform.*.spec.ts` under web-platform. Specs that stop shared processes must include `.outage.` or `.error-boundary.` and use the corresponding dependency chain; a spec that rewrites state the parallel specs read gets an isolated project named after its own file, the way `platform-locale-switching`, `platform-operator-management`, and `platform-setup` do.
+2. Add `e2e/tests/<area>.spec.ts` using `test` / `expect` from `@playwright/test`. `admin.*.spec.ts` runs under the web-admin project; `platform.*.spec.ts` under web-platform. Specs that stop shared processes must include `.outage.` or `.error-boundary.` and use the corresponding dependency chain; a spec that records a screen is named `.screenshots.` and joins the project of the app it photographs; a spec that rewrites state the parallel specs read gets an isolated project named after its own file, the way `platform-locale-switching`, `platform-operator-management`, and `platform-setup` do.
 3. For a new host, add a project `baseURL` in `playwright.config.ts` or use an absolute `page.goto` URL; centralize constants in `src/urls.ts`.
 4. When starting another process, add it and its probe to `scripts/start-apps.sh`, `wait-ready.sh`, and `stop-apps.sh`. Verify edge routing in [`routing/`](./routing/README.md), not here.
 5. Run `task e2e`, or keep the stack running and use `task e2e:test`.
@@ -158,6 +184,7 @@ Job: **Test / E2E** (`.github/workflows/ci.yml`)
 - Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, server, db, and related build inputs.
 - Failure artifact: `e2e-artifacts` (report, test results, and app logs).
 - Chromium only; `workers: 3`, `fullyParallel: false`, and one retry in CI.
+- The three screenshot projects run first, in the browser image compose builds; the rest of the suite waits on them.
 - Outage and error-boundary scenarios run as isolated dependent projects after the three ordinary projects, `platform-locale-switching` and then `platform-operator-management` follow the platform chain, `viewer-performance` runs after all of those so nothing competes with it for the runner, and `platform-setup` runs last of everything.
 - The required branch check is the final **Summary** job, as with all CI jobs.
 

@@ -37,6 +37,9 @@ export E2E_EMAIL_RENDERER_PORT="${E2E_EMAIL_RENDERER_PORT:-8300}"
 # web-host, so the browser can reach both from one origin the way the Dev
 # Container edge serves them.
 export E2E_EDGE_PORT="${E2E_EDGE_PORT:-3080}"
+# The pinned browser the screenshot projects connect to, so a baseline taken
+# here and the comparison run on CI are rasterized by the same fonts.
+export E2E_BROWSER_PORT="${E2E_BROWSER_PORT:-3090}"
 
 export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL:-postgres://publira_public:publicpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
@@ -71,6 +74,9 @@ export E2E_WEB_HOST_EDGE_BASE_URL="${E2E_WEB_HOST_EDGE_BASE_URL:-http://localhos
 # Mailpit's HTTP API. A spec reads the confirmation link out of the message a
 # flow mailed, because the database keeps only the token's hash.
 export E2E_MAILPIT_BASE_URL="${E2E_MAILPIT_BASE_URL:-http://127.0.0.1:${E2E_MAILPIT_HTTP_PORT}}"
+# Built from the port like the rest, so a second stack's screenshot projects
+# reach that stack's browser rather than the first one's.
+export E2E_BROWSER_WS_ENDPOINT="${E2E_BROWSER_WS_ENDPOINT:-ws://127.0.0.1:${E2E_BROWSER_PORT}}"
 
 # publish-episodes interval (seconds). Short so scheduled episodes can land in
 # the same Playwright run without multi-minute waits.
