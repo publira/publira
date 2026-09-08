@@ -72,6 +72,7 @@ type ContentDailyStat struct {
 	RatingSum         int64     `json:"rating_sum"`
 	FavoriteCount     int64     `json:"favorite_count"`
 	UpdatedAt         time.Time `json:"updated_at"`
+	CommentCount      int64     `json:"comment_count"`
 }
 
 type ContentEvent struct {

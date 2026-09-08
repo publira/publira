@@ -317,6 +317,57 @@ WITH candidates AS (
 SELECT (SELECT count(*) FROM candidates)::bigint AS candidate_count,
     (SELECT count(*) FROM inserted)::bigint AS inserted_count;
 
+-- Projects one comment's publication as the analytics event for that comment.
+-- episode_comments stays the source of truth: the author, the episode and the
+-- moment the comment became public are copied from the row, and the owning
+-- series is resolved from the catalog rather than taken from the caller.
+--
+-- Only a 'published' row is projected, so a comment still waiting for approval
+-- files nothing; the status CHECK on the table is what guarantees such a row
+-- carries the published_at this event occurs at. A comment removed afterwards
+-- keeps the event it already earned, because content_events is the history of
+-- what happened rather than of what still stands — content_daily_stats counts
+-- comments from episode_comments for exactly that reason.
+--
+-- The pair (source_table, source_id) is what makes this replayable: approval
+-- and the immediate-mode insert both land on the comment's own id, so a second
+-- attempt is turned into a no-op by the unique index.
+-- name: ProjectCommentContentEvent :one
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    payload,
+    occurred_at
+)
+SELECT
+    sqlc.arg('id'),
+    c.tenant_id,
+    'comment',
+    c.user_id,
+    e.series_id,
+    c.episode_id,
+    'episode_comments',
+    c.id,
+    '{}'::jsonb,
+    c.published_at
+FROM episode_comments c
+JOIN episodes e
+    ON e.tenant_id = c.tenant_id
+    AND e.id = c.episode_id
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.id = sqlc.arg('comment_id')
+    AND c.status = 'published'
+ON CONFLICT (tenant_id, source_table, source_id)
+WHERE source_id IS NOT NULL
+DO NOTHING
+RETURNING *;
+
 -- Ratings are append-only, like every other content_events row: a member who
 -- changes their score inserts another event instead of updating the previous
 -- one, so the history stays reconstructable and nothing has to be deleted.
@@ -412,7 +463,8 @@ INSERT INTO content_daily_stats (
     complete_count,
     rating_count,
     rating_sum,
-    favorite_count
+    favorite_count,
+    comment_count
 ) VALUES (
     sqlc.arg('id'),
     sqlc.arg('tenant_id'),
@@ -426,7 +478,8 @@ INSERT INTO content_daily_stats (
     sqlc.arg('complete_count'),
     sqlc.arg('rating_count'),
     sqlc.arg('rating_sum'),
-    sqlc.arg('favorite_count')
+    sqlc.arg('favorite_count'),
+    sqlc.arg('comment_count')
 )
 ON CONFLICT (tenant_id, stat_date, entity_type, entity_id) DO UPDATE
 SET view_count = EXCLUDED.view_count,
@@ -437,6 +490,7 @@ SET view_count = EXCLUDED.view_count,
     rating_count = EXCLUDED.rating_count,
     rating_sum = EXCLUDED.rating_sum,
     favorite_count = EXCLUDED.favorite_count,
+    comment_count = EXCLUDED.comment_count,
     updated_at = NOW()
 RETURNING *;
 

@@ -1101,6 +1101,22 @@ type Querier interface {
 	// code. Affecting no row is therefore a reused code, not a missing account.
 	MarkUserMfaTotpVerified(ctx context.Context, arg MarkUserMfaTotpVerifiedParams) (int64, error)
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
+	// Projects one comment's publication as the analytics event for that comment.
+	// episode_comments stays the source of truth: the author, the episode and the
+	// moment the comment became public are copied from the row, and the owning
+	// series is resolved from the catalog rather than taken from the caller.
+	//
+	// Only a 'published' row is projected, so a comment still waiting for approval
+	// files nothing; the status CHECK on the table is what guarantees such a row
+	// carries the published_at this event occurs at. A comment removed afterwards
+	// keeps the event it already earned, because content_events is the history of
+	// what happened rather than of what still stands — content_daily_stats counts
+	// comments from episode_comments for exactly that reason.
+	//
+	// The pair (source_table, source_id) is what makes this replayable: approval
+	// and the immediate-mode insert both land on the comment's own id, so a second
+	// attempt is turned into a no-op by the unique index.
+	ProjectCommentContentEvent(ctx context.Context, arg ProjectCommentContentEventParams) (ContentEvent, error)
 	// Projects one member's first completed read as the analytics event for that
 	// read. episode_reads stays the source of truth for the business state: its
 	// user, episode, and first read time are copied, and the owning series is

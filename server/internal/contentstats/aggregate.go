@@ -16,7 +16,8 @@ import (
 	"github.com/publira/publira/server/internal/tenantday"
 )
 
-// Aggregator rebuilds content_daily_stats from content_events and purchases.
+// Aggregator rebuilds content_daily_stats from content_events, purchases and
+// episode_comments.
 // Its database connection must use a role with BYPASSRLS (or be a superuser),
 // because each run reads and writes every tenant.
 type Aggregator struct {
@@ -166,10 +167,11 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 type sourceCounts struct {
 	events    int64
 	purchases int64
+	comments  int64
 }
 
 func (s sourceCounts) total() int64 {
-	return s.events + s.purchases
+	return s.events + s.purchases + s.comments
 }
 
 func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate, timeZone string) (sourceCounts, error) {
@@ -186,8 +188,14 @@ func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate,
 			 FROM purchases
 			 WHERE tenant_id = $1
 			   AND purchased_at >= ($2::date::timestamp AT TIME ZONE $3::text)
-			   AND purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text))
-	`, tenantID, statDate, timeZone).Scan(&counts.events, &counts.purchases)
+			   AND purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)),
+			(SELECT count(*)
+			 FROM episode_comments
+			 WHERE tenant_id = $1
+			   AND status = 'published'
+			   AND published_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+			   AND published_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text))
+	`, tenantID, statDate, timeZone).Scan(&counts.events, &counts.purchases, &counts.comments)
 	return counts, err
 }
 
@@ -199,6 +207,13 @@ func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate,
 // purchase_count comes from the purchases table alone. A purchase is also
 // projected into content_events, so counting both sources would double every
 // sale; purchases is the one that owns the fact.
+//
+// comment_count comes from episode_comments for the same reason and one more:
+// content_events records that a comment was published and never that it was
+// taken down again, so a count built from the events would keep counting a
+// comment staff removed. Reading the comment rows instead means a hidden or
+// withdrawn comment is gone from the next rebuild of its day, while the row
+// this batch already wrote for a past day keeps the day as it stood.
 const insertStatsSQL = `
 WITH episode_events AS (
 	SELECT
@@ -225,18 +240,35 @@ WITH episode_events AS (
 		AND p.purchased_at >= ($2::date::timestamp AT TIME ZONE $3::text)
 		AND p.purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
 	GROUP BY p.episode_id
+), published_comments AS (
+	SELECT c.episode_id AS entity_id, count(*) AS comment_count
+	FROM episode_comments c
+	WHERE c.tenant_id = $1
+		AND c.status = 'published'
+		AND c.published_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND c.published_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+	GROUP BY c.episode_id
+), episode_entities AS (
+	SELECT entity_id FROM episode_events
+	UNION
+	SELECT entity_id FROM purchases_by_episode
+	UNION
+	SELECT entity_id FROM published_comments
 ), episode_stats AS (
 	SELECT
-		COALESCE(ee.entity_id, pe.entity_id) AS entity_id,
+		ep.entity_id,
 		COALESCE(ee.view_count, 0) AS view_count,
 		COALESCE(ee.unique_viewer_count, 0) AS unique_viewer_count,
 		COALESCE(ee.member_view_count, 0) AS member_view_count,
 		COALESCE(pe.purchase_count, 0) AS purchase_count,
 		COALESCE(ee.complete_count, 0) AS complete_count,
 		COALESCE(ee.rating_count, 0) AS rating_count,
-		COALESCE(ee.rating_sum, 0) AS rating_sum
-	FROM episode_events ee
-	FULL OUTER JOIN purchases_by_episode pe ON pe.entity_id = ee.entity_id
+		COALESCE(ee.rating_sum, 0) AS rating_sum,
+		COALESCE(pc.comment_count, 0) AS comment_count
+	FROM episode_entities ep
+	LEFT JOIN episode_events ee ON ee.entity_id = ep.entity_id
+	LEFT JOIN purchases_by_episode pe ON pe.entity_id = ep.entity_id
+	LEFT JOIN published_comments pc ON pc.entity_id = ep.entity_id
 ), series_direct_stats AS (
 	SELECT
 		ce.series_id AS entity_id,
@@ -261,7 +293,8 @@ WITH episode_events AS (
 		sum(es.purchase_count) AS purchase_count,
 		sum(es.complete_count) AS complete_count,
 		sum(es.rating_count) AS rating_count,
-		sum(es.rating_sum) AS rating_sum
+		sum(es.rating_sum) AS rating_sum,
+		sum(es.comment_count) AS comment_count
 	FROM episode_stats es
 	JOIN episodes e ON e.id = es.entity_id AND e.tenant_id = $1
 	GROUP BY e.series_id
@@ -301,7 +334,8 @@ WITH episode_events AS (
 		complete_count,
 		rating_count,
 		rating_sum,
-		0::bigint AS favorite_count
+		0::bigint AS favorite_count,
+		comment_count
 	FROM episode_stats
 	UNION ALL
 	SELECT
@@ -314,7 +348,8 @@ WITH episode_events AS (
 		COALESCE(sr.complete_count, 0) AS complete_count,
 		COALESCE(sd.rating_count, 0) + COALESCE(sr.rating_count, 0) AS rating_count,
 		COALESCE(sd.rating_sum, 0) + COALESCE(sr.rating_sum, 0) AS rating_sum,
-		COALESCE(sd.favorite_count, 0) AS favorite_count
+		COALESCE(sd.favorite_count, 0) AS favorite_count,
+		COALESCE(sr.comment_count, 0) AS comment_count
 	FROM series_entities se
 	LEFT JOIN series_direct_stats sd ON sd.entity_id = se.entity_id
 	LEFT JOIN series_episode_rollup sr ON sr.entity_id = se.entity_id
@@ -323,12 +358,12 @@ WITH episode_events AS (
 INSERT INTO content_daily_stats (
 	id, tenant_id, stat_date, entity_type, entity_id,
 	view_count, unique_viewer_count, member_view_count, purchase_count, complete_count,
-	rating_count, rating_sum, favorite_count
+	rating_count, rating_sum, favorite_count, comment_count
 )
 SELECT
 	gen_random_uuid(), $1, $2::date, entity_type, entity_id,
 	view_count, unique_viewer_count, member_view_count, purchase_count, complete_count,
-	rating_count, rating_sum, favorite_count
+	rating_count, rating_sum, favorite_count, comment_count
 FROM rebuilt_stats
 WHERE view_count > 0
 	OR unique_viewer_count > 0
@@ -338,4 +373,5 @@ WHERE view_count > 0
 	OR rating_count > 0
 	OR rating_sum > 0
 	OR favorite_count > 0
+	OR comment_count > 0
 `

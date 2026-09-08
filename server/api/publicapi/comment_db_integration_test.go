@@ -651,3 +651,54 @@ func TestDBReportEpisodeCommentRequiresAReasonAndASession(t *testing.T) {
 		t.Fatalf("open_report_count after two rejected reports = %d, want 0", got)
 	}
 }
+
+// countCommentEvents counts the engagement events filed for one tenant's
+// comments, matched against the comment rows they were projected from: an event
+// only counts here when its actor, its target and its instant are the ones the
+// comment carries.
+func (e *publicDBEnv) countCommentEvents(t *testing.T, tenantID uuid.UUID) int {
+	t.Helper()
+
+	return e.countRows(t, `
+		SELECT COUNT(*)
+		FROM content_events ce
+		JOIN episode_comments c
+			ON c.tenant_id = ce.tenant_id AND c.id = ce.source_id
+		JOIN episodes ep
+			ON ep.tenant_id = c.tenant_id AND ep.id = c.episode_id
+		WHERE ce.tenant_id = $1
+			AND ce.event_type = 'comment'
+			AND ce.source_table = 'episode_comments'
+			AND ce.user_id = c.user_id
+			AND ce.episode_id = c.episode_id
+			AND ce.series_id = ep.series_id
+			AND ce.occurred_at = c.published_at
+	`, tenantID)
+}
+
+func TestDBPostEpisodeCommentFilesAnEngagementEventOnlyOnceItIsPublic(t *testing.T) {
+	fixture := newCommentFixture(t, "EVT")
+	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
+
+	// A comment that lands in the approval queue was never public, so nothing
+	// about it belongs in the engagement log yet.
+	env.setCommentMode(t, tenant.ID, "approval_required")
+	env.mustPostComment(t, tenant, member, episode.PublicID, "Wait for a moderator.")
+	if got := env.countCommentEvents(t, tenant.ID); got != 0 {
+		t.Fatalf("comment events after a post awaiting approval = %d, want 0", got)
+	}
+
+	env.setCommentMode(t, tenant.ID, "immediate")
+	published := env.mustPostComment(t, tenant, member, episode.PublicID, "Read this right away.")
+	if got := env.countCommentEvents(t, tenant.ID); got != 1 {
+		t.Fatalf("comment events after an immediately published post = %d, want 1", got)
+	}
+
+	// Removal takes the comment out of every count that is rebuilt from the
+	// comment rows, and leaves the event that records it was once written.
+	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "EVTSTAFF", "evt-staff@example.com", "Moderator")
+	env.hideComment(t, tenant, staff, published.PublicId)
+	if got := env.countCommentEvents(t, tenant.ID); got != 1 {
+		t.Fatalf("comment events after the removal = %d, want the event to stand at 1", got)
+	}
+}

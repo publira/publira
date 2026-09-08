@@ -586,3 +586,68 @@ func TestDBAdminListCommentsRejectsAnUnknownStatus(t *testing.T) {
 		t.Fatalf("ListComments with an unknown status error = %v, want invalid_argument", err)
 	}
 }
+
+// commentEventCount counts the engagement events filed for one comment, matched
+// against the comment row itself: an event only counts here when its actor, its
+// target and its instant are the ones that comment carries.
+func (f commentModerationFixture) commentEventCount(t *testing.T, commentID uuid.UUID) int {
+	t.Helper()
+
+	return f.env.countRows(t, `
+		SELECT count(*)
+		FROM content_events ce
+		JOIN episode_comments c
+			ON c.tenant_id = ce.tenant_id AND c.id = ce.source_id
+		JOIN episodes ep
+			ON ep.tenant_id = c.tenant_id AND ep.id = c.episode_id
+		WHERE ce.tenant_id = $1
+			AND ce.event_type = 'comment'
+			AND ce.source_table = 'episode_comments'
+			AND ce.source_id = $2
+			AND ce.user_id = c.user_id
+			AND ce.episode_id = c.episode_id
+			AND ce.series_id = ep.series_id
+			AND ce.occurred_at = c.published_at
+	`, f.admin.Tenant.ID, commentID)
+}
+
+func TestDBAdminApprovingACommentFilesItsEngagementEventOnce(t *testing.T) {
+	env := newAdminDBEnv(t)
+	fixture := newCommentModerationFixture(t, env, "CEV", "comment-events.example.com")
+	client := env.commentClient()
+	comment := fixture.seedComment(t, "CEVPENDING1", "pending")
+
+	// A comment in the approval queue has never been public, so it has earned
+	// no engagement event yet.
+	if got := fixture.commentEventCount(t, comment.ID); got != 0 {
+		t.Fatalf("comment events before approval = %d, want 0", got)
+	}
+
+	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+		Tenant:   fixture.admin.tenantContext(),
+		PublicId: comment.PublicID,
+	})); err != nil {
+		t.Fatalf("ApproveComment: %v", err)
+	}
+	if got := fixture.commentEventCount(t, comment.ID); got != 1 {
+		t.Fatalf("comment events after approval = %d, want 1", got)
+	}
+
+	// A removal and the restore that undoes it leave the event where it is:
+	// the comment was public once, and it is public again for the same reason.
+	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+		Tenant:   fixture.admin.tenantContext(),
+		PublicId: comment.PublicID,
+	})); err != nil {
+		t.Fatalf("HideComment: %v", err)
+	}
+	if _, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
+		Tenant:   fixture.admin.tenantContext(),
+		PublicId: comment.PublicID,
+	})); err != nil {
+		t.Fatalf("RestoreComment: %v", err)
+	}
+	if got := fixture.commentEventCount(t, comment.ID); got != 1 {
+		t.Fatalf("comment events after a removal and a restore = %d, want 1", got)
+	}
+}

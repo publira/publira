@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/commentmode"
+	"github.com/publira/publira/server/internal/contentevents"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
@@ -402,9 +403,12 @@ func enqueueStaffCommentNotification(
 		outbox.StaffCommentIdempotencyKey(eventType, tenantID, subjectKey))
 }
 
-// storeComment writes the comment and, when it landed in the approval queue,
-// the alert that tells staff it is waiting — one transaction, so a queue entry
-// nobody is told about cannot outlive the request that made it.
+// storeComment writes the comment and, in the same transaction, whichever
+// follow-on write its status calls for: the alert that tells staff a comment is
+// waiting in the approval queue, or the engagement event a comment that is
+// already public has earned. One transaction, so a queue entry nobody is told
+// about cannot outlive the request that made it, and neither can a public
+// comment the reader's own history never records.
 //
 // The public ID is generated here rather than by the caller: a collision is
 // resolved by retrying the insert, and inside a transaction that retry has to
@@ -432,6 +436,11 @@ func (s *apiServer) storeComment(
 		if err := enqueueStaffCommentNotification(
 			ctx, txq, outbox.EventTypeCommentAwaitingApprovalNotification, params.TenantID, subject,
 		); err != nil {
+			return dbmodels.EpisodeComment{}, err
+		}
+	}
+	if params.Status == commentStatusPublished {
+		if err := contentevents.ProjectComment(ctx, txq, params.TenantID, comment.ID); err != nil {
 			return dbmodels.EpisodeComment{}, err
 		}
 	}

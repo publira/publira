@@ -1,4 +1,6 @@
-// Package contentevents holds the retention side of the raw engagement log.
+// Package contentevents holds the parts of the raw engagement log that belong
+// to no single caller: the projections that file an event from the table which
+// owns the fact, and the retention that takes the rows away again.
 // content_events is append-only and high volume, so the rows themselves are
 // kept for a bounded window and the durable numbers live in the aggregates
 // (content_daily_stats) built from them. Keeping the raw log short is also

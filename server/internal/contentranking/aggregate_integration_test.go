@@ -30,6 +30,7 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 	otherTenant := pg.SeedTenant(t, "RANKTENANT02", "other-rankings.example.com", "Other Ranking Tenant")
 	rated := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "RANKSERIES01"})
 	viewed := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "RANKSERIES02"})
+	discussed := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "RANKSERIES04"})
 	bought := pg.SeedEpisode(t, tenant.ID, rated.ID, testutil.EpisodeSeed{PublicID: "RANKEPISO001"})
 	older := pg.SeedEpisode(t, tenant.ID, viewed.ID, testutil.EpisodeSeed{PublicID: "RANKEPISO002"})
 	otherSeries := pg.SeedSeries(t, otherTenant.ID, testutil.SeriesSeed{PublicID: "RANKSERIES03"})
@@ -44,9 +45,13 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 		viewCount: 30, uniqueViewerCount: 2})
 	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: weeklyStartDate, entityType: "series", entityID: viewed.ID,
 		viewCount: 100, uniqueViewerCount: 50})
-	// 1*5 views + 2*3 viewers + 20*2 purchases = 51.
+	// 1*5 views + 2*3 viewers + 20*2 purchases + 10*1 comment = 61.
 	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: referenceDate, entityType: "episode", entityID: bought.ID,
-		viewCount: 5, uniqueViewerCount: 3, purchaseCount: 2})
+		viewCount: 5, uniqueViewerCount: 3, purchaseCount: 2, commentCount: 1})
+	// Nobody opened it that day and three readers wrote about it: 10*3 = 30, so
+	// commenting alone is enough to place.
+	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: referenceDate, entityType: "series", entityID: discussed.ID,
+		commentCount: 3})
 	// Three days back, so (4 + 2*4) * 0.5 = 6 in the weekly window and nothing
 	// at all in the daily one.
 	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: "2026-08-25", entityType: "episode", entityID: older.ID,
@@ -68,7 +73,7 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 	insertStaleSnapshot(t, pg.DB, tenant.ID, DailyRankingKey, referenceDate, referenceDate, "series")
 
 	aggregator := New(pg.OpenPlatformDB(t))
-	want := Result{TenantCount: 2, SnapshotCount: 8, ItemCount: 11}
+	want := Result{TenantCount: 2, SnapshotCount: 8, ItemCount: 13}
 	result, err := aggregator.Run(context.Background(), runOptions())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -83,6 +88,7 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 		Items: []rankingItem{
 			{Rank: 1, EntityID: rated.ID, Score: 39, ViewCount: 10, ViewerDays: 6, RatingCount: 2, RatingSum: 9, FavoriteCount: 1, LastActiveDate: referenceDate},
 			{Rank: 2, EntityID: viewed.ID, Score: 34, ViewCount: 30, ViewerDays: 2, LastActiveDate: referenceDate},
+			{Rank: 3, EntityID: discussed.ID, Score: 30, CommentCount: 3, LastActiveDate: referenceDate},
 		},
 	})
 	// The faded older day is what puts the viewed series ahead over a week.
@@ -91,18 +97,19 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 		Items: []rankingItem{
 			{Rank: 1, EntityID: viewed.ID, Score: 84, ViewCount: 130, ViewerDays: 52, LastActiveDate: referenceDate},
 			{Rank: 2, EntityID: rated.ID, Score: 39, ViewCount: 10, ViewerDays: 6, RatingCount: 2, RatingSum: 9, FavoriteCount: 1, LastActiveDate: referenceDate},
+			{Rank: 3, EntityID: discussed.ID, Score: 30, CommentCount: 3, LastActiveDate: referenceDate},
 		},
 	})
 	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "episode"}, snapshot{
 		PeriodStart: referenceDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
-			{Rank: 1, EntityID: bought.ID, Score: 51, ViewCount: 5, ViewerDays: 3, PurchaseCount: 2, LastActiveDate: referenceDate},
+			{Rank: 1, EntityID: bought.ID, Score: 61, ViewCount: 5, ViewerDays: 3, PurchaseCount: 2, CommentCount: 1, LastActiveDate: referenceDate},
 		},
 	})
 	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, entityType: "episode"}, snapshot{
 		PeriodStart: weeklyStartDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
-			{Rank: 1, EntityID: bought.ID, Score: 51, ViewCount: 5, ViewerDays: 3, PurchaseCount: 2, LastActiveDate: referenceDate},
+			{Rank: 1, EntityID: bought.ID, Score: 61, ViewCount: 5, ViewerDays: 3, PurchaseCount: 2, CommentCount: 1, LastActiveDate: referenceDate},
 			{Rank: 2, EntityID: older.ID, Score: 6, ViewCount: 4, ViewerDays: 4, RatingCount: 2, RatingSum: 4, LastActiveDate: referenceDate},
 		},
 	})
@@ -313,6 +320,7 @@ type dailyStatSeed struct {
 	ratingCount       int64
 	ratingSum         int64
 	favoriteCount     int64
+	commentCount      int64
 }
 
 func insertDailyStat(t *testing.T, db *sql.DB, seed dailyStatSeed) {
@@ -322,11 +330,12 @@ func insertDailyStat(t *testing.T, db *sql.DB, seed dailyStatSeed) {
 	if _, err := db.ExecContext(ctx, `
 		INSERT INTO content_daily_stats (
 			id, tenant_id, stat_date, entity_type, entity_id,
-			view_count, unique_viewer_count, purchase_count, rating_count, rating_sum, favorite_count
-		) VALUES ($1, $2, $3::date, $4, $5, $6, $7, $8, $9, $10, $11)
+			view_count, unique_viewer_count, purchase_count, rating_count, rating_sum, favorite_count,
+			comment_count
+		) VALUES ($1, $2, $3::date, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.statDate, seed.entityType, seed.entityID,
 		seed.viewCount, seed.uniqueViewerCount, seed.purchaseCount,
-		seed.ratingCount, seed.ratingSum, seed.favoriteCount); err != nil {
+		seed.ratingCount, seed.ratingSum, seed.favoriteCount, seed.commentCount); err != nil {
 		t.Fatalf("insert daily stat: %v", err)
 	}
 }
@@ -397,6 +406,7 @@ type rankingItem struct {
 	RatingCount    int64     `json:"rating_count"`
 	RatingSum      int64     `json:"rating_sum"`
 	FavoriteCount  int64     `json:"favorite_count"`
+	CommentCount   int64     `json:"comment_count"`
 	LastActiveDate string    `json:"last_active_date"`
 }
 

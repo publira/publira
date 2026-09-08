@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/contentevents"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -561,6 +562,12 @@ func (s *adminServer) CountPendingComments(
 }
 
 // ApproveComment publishes one comment that was waiting for staff approval.
+//
+// Approval is the second of the two ways a comment becomes public, so it is
+// also where the engagement event for it is filed. The two writes share a
+// transaction: nothing replays this projection afterwards, and a comment that
+// is public without one is a comment its author's reading history has no
+// record of.
 func (s *adminServer) ApproveComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ApproveCommentRequest],
@@ -578,12 +585,25 @@ func (s *adminServer) ApproveComment(
 		return nil, commentStateError("approved", current.Status)
 	}
 
-	if _, err := s.queriesFor(ctx).ApproveEpisodeCommentByPublicIDForTenant(ctx, dbmodels.ApproveEpisodeCommentByPublicIDForTenantParams{
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin comment approval transaction", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	qtx := dbmodels.New(tx)
+	if _, err := qtx.ApproveEpisodeCommentByPublicIDForTenant(ctx, dbmodels.ApproveEpisodeCommentByPublicIDForTenantParams{
 		TenantID:   tenant.ID,
 		PublicID:   publicID,
 		ApprovedBy: sessionCtx.User.ID,
 	}); err != nil {
 		return nil, s.commentTransitionError(ctx, "approve", "approved", tenant.ID, publicID, err)
+	}
+	if err := contentevents.ProjectComment(ctx, qtx, tenant.ID, current.ID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to project the engagement event of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit the comment approval", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
 	}
 
 	updated, err := s.loadCommentForModeration(ctx, tenant.ID, publicID)

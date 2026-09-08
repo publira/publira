@@ -86,7 +86,7 @@ Run it before `aggregate-content-stats` for the same day. A late projection stil
 
 ## aggregate-content-stats
 
-Fully rebuilds `content_daily_stats` for one calendar day across every tenant, from `content_events` and the Phase 0 `purchases` table.
+Fully rebuilds `content_daily_stats` for one calendar day across every tenant. Views, completions and ratings come from `content_events`; `purchase_count` from the Phase 0 `purchases` table and `comment_count` from `episode_comments`, which are the tables that own those facts.
 
 A day is the tenant's own: the window runs from that tenant's local midnight to the next, resolved from `tenants.timezone` (falling back to `platform_config.default_timezone`). So one run covers different instants for tenants in different zones, and a tenant whose stored zone cannot be loaded fails on its own without stopping the rest.
 
@@ -131,6 +131,7 @@ A snapshot ranks whatever `content_daily_stats` recorded over its window. Each d
 1 × view_count
 + 2 × unique_viewer_count
 + 20 × purchase_count
++ 10 × comment_count
 + 8 × favorite_count
 + 3 × max(rating_sum − 3 × rating_count, 0)
 ```
@@ -159,7 +160,7 @@ Each entry of `items`:
 | `score` | The faded weighted score, rounded to four decimals. Comparable within one row, and nowhere else |
 | `view_count` | Views over the window |
 | `viewer_days` | Sum of the daily unique viewer counts. A reader who returns on five days counts five times — this is not a window-wide distinct count |
-| `purchase_count`, `rating_count`, `rating_sum`, `favorite_count` | Remaining engagement totals over the window |
+| `purchase_count`, `rating_count`, `rating_sum`, `favorite_count`, `comment_count` | Remaining engagement totals over the window |
 | `last_active_date` | Most recent day in the window that produced a daily stats row for this entity |
 
 #### What a reader must tolerate
@@ -307,7 +308,7 @@ Both tables carry `feature_version`, the version of the code that wrote the row.
 | `window_days`, `window_start`, `window_end` | The window this row summarises |
 | `view_count` | Views over the window |
 | `viewer_days` | Sum of the daily unique viewer counts. A reader who returns on five days counts five times — this is not a window-wide distinct count |
-| `purchase_count`, `rating_count`, `rating_sum`, `favorite_count` | Remaining engagement totals over the window |
+| `purchase_count`, `rating_count`, `rating_sum`, `favorite_count`, `comment_count` | Remaining engagement totals over the window |
 | `active_days` | Days in the window that produced any daily stats row |
 | `last_active_date` | Most recent such day |
 
@@ -319,7 +320,7 @@ Both tables carry `feature_version`, the version of the code that wrote the row.
 | `event_count` | Every event the reader produced in the window |
 | `view_count` | `episode_view` plus `series_view` events |
 | `purchase_count` | `purchase` events projected from `purchases` |
-| `rating_count`, `rating_sum`, `favorite_count` | Remaining engagement totals |
+| `rating_count`, `rating_sum`, `favorite_count`, `comment_count` | Remaining engagement totals |
 | `series_count` | Distinct series the reader touched |
 | `last_event_at` | Most recent event in the window |
 | `top_series` | Up to ten series, most engaged first, each with the same per-series totals and its own `last_event_at`. Never null — an empty list when there is nothing to rank |

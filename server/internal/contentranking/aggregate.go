@@ -27,7 +27,7 @@ const (
 	// build from one an older build left behind. It is part of the snapshot's
 	// unique key, so a bumped version writes alongside the old rows rather
 	// than overwriting them.
-	AlgorithmVersion = 1
+	AlgorithmVersion = 2
 
 	// DailyRankingKey ranks a single day, WeeklyRankingKey the seven days
 	// ending on it. The days are the tenant's own, because the daily stats
@@ -54,13 +54,16 @@ const (
 // of these means bumping AlgorithmVersion.
 //
 // The ordering behind the numbers: paying for an episode is the strongest
-// statement a reader makes, following a series the next strongest, and a view
-// the weakest. A distinct viewer counts for more than a repeat view, so a
-// title read once by many outranks one refreshed by a few.
+// statement a reader makes, writing about it the next strongest, following a
+// series after that, and a view the weakest. A distinct viewer counts for more
+// than a repeat view, so a title read once by many outranks one refreshed by a
+// few. A comment sits above a favourite because it costs the reader sentences
+// rather than a tap, and below a purchase because it costs them no money.
 const (
 	viewWeight          = 1
 	uniqueViewerWeight  = 2
 	purchaseWeight      = 20
+	commentWeight       = 10
 	favoriteWeight      = 8
 	ratingWeight        = 3
 	neutralRatingScore  = 3
@@ -269,7 +272,7 @@ func writeSnapshot(ctx context.Context, tx *sql.Tx, req snapshotRequest) (int, e
 		req.tenantID, req.periodStart, req.periodEnd, req.entityType, req.rankingKey,
 		req.itemLimit, AlgorithmVersion,
 		viewWeight, uniqueViewerWeight, purchaseWeight, favoriteWeight, ratingWeight,
-		neutralRatingScore, recencyHalfLifeDays,
+		neutralRatingScore, recencyHalfLifeDays, commentWeight,
 	).Scan(&items)
 	if err != nil {
 		return 0, fmt.Errorf("upsert snapshot: %w", err)
@@ -302,6 +305,7 @@ func countRankableRows(ctx context.Context, tx *sql.Tx, req snapshotRequest) (in
 				OR unique_viewer_count > 0
 				OR purchase_count > 0
 				OR favorite_count > 0
+				OR comment_count > 0
 				OR rating_sum > $5::numeric * rating_count
 			)
 	`, req.tenantID, req.entityType, req.periodStart, req.periodEnd, neutralRatingScore).Scan(&rankable)
@@ -333,6 +337,7 @@ WITH bounds AS (
 		sum(cds.rating_count)::bigint AS rating_count,
 		sum(cds.rating_sum)::bigint AS rating_sum,
 		sum(cds.favorite_count)::bigint AS favorite_count,
+		sum(cds.comment_count)::bigint AS comment_count,
 		max(cds.stat_date) AS last_active_date,
 		sum(
 			(
@@ -340,6 +345,7 @@ WITH bounds AS (
 				+ $9::numeric * cds.unique_viewer_count
 				+ $10::numeric * cds.purchase_count
 				+ $11::numeric * cds.favorite_count
+				+ $15::numeric * cds.comment_count
 				+ $12::numeric * greatest(cds.rating_sum - $13::numeric * cds.rating_count, 0)
 			) * power(0.5, (b.window_end - cds.stat_date)::numeric / $14::numeric)
 		) AS score
@@ -377,6 +383,7 @@ SELECT
 				'rating_count', r.rating_count,
 				'rating_sum', r.rating_sum,
 				'favorite_count', r.favorite_count,
+				'comment_count', r.comment_count,
 				'last_active_date', to_char(r.last_active_date, 'YYYY-MM-DD')
 			)
 			ORDER BY r.position
