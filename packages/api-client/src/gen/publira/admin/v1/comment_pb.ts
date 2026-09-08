@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/comment.proto.
  */
 export const file_publira_admin_v1_comment: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NvbW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEi0AIKDEFkbWluQ29tbWVudBIRCglwdWJsaWNfaWQYASABKAkSDAoEYm9keRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSEgoKY3JlYXRlZF9hdBgEIAEoCRIUCgxwdWJsaXNoZWRfYXQYBSABKAkSEQoJaGlkZGVuX2F0GAYgASgJEhUKDWhpZGRlbl9yZWFzb24YByABKAkSFAoMd2l0aGRyYXduX2F0GAggASgJEhQKDHB1cmdlX2R1ZV9hdBgJIAEoCRIYChBhdXRob3JfcHVibGljX2lkGAogASgJEhMKC2F1dGhvcl9uYW1lGAsgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAwgASgJEhUKDWVwaXNvZGVfdGl0bGUYDSABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgOIAEoCRIUCgxzZXJpZXNfdGl0bGUYDyABKAkiqQEKE0xpc3RDb21tZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnN0YXR1cxgCIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAMgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAQgASgJEg0KBWxpbWl0GAUgASgFEg0KBXRva2VuGAYgASgJInQKFExpc3RDb21tZW50c1Jlc3BvbnNlEjAKCGNvbW1lbnRzGAEgAygLMh4ucHVibGlyYS5hZG1pbi52MS5BZG1pbkNvbW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJOChtDb3VudFBlbmRpbmdDb21tZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IjUKHENvdW50UGVuZGluZ0NvbW1lbnRzUmVzcG9uc2USFQoNcGVuZGluZ19jb3VudBgBIAEoBSJrChVBcHByb3ZlQ29tbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiSQoWQXBwcm92ZUNvbW1lbnRSZXNwb25zZRIvCgdjb21tZW50GAEgASgLMh4ucHVibGlyYS5hZG1pbi52MS5BZG1pbkNvbW1lbnQiaAoSSGlkZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDgoGcmVhc29uGAMgASgJIkYKE0hpZGVDb21tZW50UmVzcG9uc2USLwoHY29tbWVudBgBIAEoCzIeLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Db21tZW50ImsKFVJlc3RvcmVDb21tZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEg4KBnJlYXNvbhgDIAEoCSJJChZSZXN0b3JlQ29tbWVudFJlc3BvbnNlEi8KB2NvbW1lbnQYASABKAsyHi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQ29tbWVudCJpChNQdXJnZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDgoGcmVhc29uGAMgASgJIhYKFFB1cmdlQ29tbWVudFJlc3BvbnNlMvwEChNBZG1pbkNvbW1lbnRTZXJ2aWNlEl8KDExpc3RDb21tZW50cxIlLnB1YmxpcmEuYWRtaW4udjEuTGlzdENvbW1lbnRzUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuTGlzdENvbW1lbnRzUmVzcG9uc2UiABJ3ChRDb3VudFBlbmRpbmdDb21tZW50cxItLnB1YmxpcmEuYWRtaW4udjEuQ291bnRQZW5kaW5nQ29tbWVudHNSZXF1ZXN0Gi4ucHVibGlyYS5hZG1pbi52MS5Db3VudFBlbmRpbmdDb21tZW50c1Jlc3BvbnNlIgASZQoOQXBwcm92ZUNvbW1lbnQSJy5wdWJsaXJhLmFkbWluLnYxLkFwcHJvdmVDb21tZW50UmVxdWVzdBooLnB1YmxpcmEuYWRtaW4udjEuQXBwcm92ZUNvbW1lbnRSZXNwb25zZSIAElwKC0hpZGVDb21tZW50EiQucHVibGlyYS5hZG1pbi52MS5IaWRlQ29tbWVudFJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkhpZGVDb21tZW50UmVzcG9uc2UiABJlCg5SZXN0b3JlQ29tbWVudBInLnB1YmxpcmEuYWRtaW4udjEuUmVzdG9yZUNvbW1lbnRSZXF1ZXN0GigucHVibGlyYS5hZG1pbi52MS5SZXN0b3JlQ29tbWVudFJlc3BvbnNlIgASXwoMUHVyZ2VDb21tZW50EiUucHVibGlyYS5hZG1pbi52MS5QdXJnZUNvbW1lbnRSZXF1ZXN0GiYucHVibGlyYS5hZG1pbi52MS5QdXJnZUNvbW1lbnRSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NvbW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEi6wIKDEFkbWluQ29tbWVudBIRCglwdWJsaWNfaWQYASABKAkSDAoEYm9keRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSEgoKY3JlYXRlZF9hdBgEIAEoCRIUCgxwdWJsaXNoZWRfYXQYBSABKAkSEQoJaGlkZGVuX2F0GAYgASgJEhUKDWhpZGRlbl9yZWFzb24YByABKAkSFAoMd2l0aGRyYXduX2F0GAggASgJEhQKDHB1cmdlX2R1ZV9hdBgJIAEoCRIYChBhdXRob3JfcHVibGljX2lkGAogASgJEhMKC2F1dGhvcl9uYW1lGAsgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAwgASgJEhUKDWVwaXNvZGVfdGl0bGUYDSABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgOIAEoCRIUCgxzZXJpZXNfdGl0bGUYDyABKAkSGQoRb3Blbl9yZXBvcnRfY291bnQYECABKAUi3QEKDUNvbW1lbnRSZXBvcnQSEQoJcmVwb3J0X2lkGAEgASgJEg4KBnJlYXNvbhgCIAEoCRIMCgRub3RlGAMgASgJEg4KBnN0YXR1cxgEIAEoCRISCgpjcmVhdGVkX2F0GAUgASgJEhMKC3Jlc29sdmVkX2F0GAYgASgJEhoKEnJlcG9ydGVyX3B1YmxpY19pZBgHIAEoCRIVCg1yZXBvcnRlcl9uYW1lGAggASgJEi8KB2NvbW1lbnQYCSABKAsyHi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQ29tbWVudCKpAQoTTGlzdENvbW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGc3RhdHVzGAIgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAyABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYBCABKAkSDQoFbGltaXQYBSABKAUSDQoFdG9rZW4YBiABKAkidAoUTGlzdENvbW1lbnRzUmVzcG9uc2USMAoIY29tbWVudHMYASADKAsyHi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQ29tbWVudBIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIk4KG0NvdW50UGVuZGluZ0NvbW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiNQocQ291bnRQZW5kaW5nQ29tbWVudHNSZXNwb25zZRIVCg1wZW5kaW5nX2NvdW50GAEgASgFImsKFUFwcHJvdmVDb21tZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEg4KBnJlYXNvbhgDIAEoCSJJChZBcHByb3ZlQ29tbWVudFJlc3BvbnNlEi8KB2NvbW1lbnQYASABKAsyHi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQ29tbWVudCJoChJIaWRlQ29tbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiRgoTSGlkZUNvbW1lbnRSZXNwb25zZRIvCgdjb21tZW50GAEgASgLMh4ucHVibGlyYS5hZG1pbi52MS5BZG1pbkNvbW1lbnQiawoVUmVzdG9yZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDgoGcmVhc29uGAMgASgJIkkKFlJlc3RvcmVDb21tZW50UmVzcG9uc2USLwoHY29tbWVudBgBIAEoCzIeLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Db21tZW50ImkKE1B1cmdlQ29tbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiFgoUUHVyZ2VDb21tZW50UmVzcG9uc2UiegoZTGlzdENvbW1lbnRSZXBvcnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGc3RhdHVzGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJInoKGkxpc3RDb21tZW50UmVwb3J0c1Jlc3BvbnNlEjAKB3JlcG9ydHMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkNvbW1lbnRSZXBvcnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSKFAQobUmVzb2x2ZUNvbW1lbnRSZXBvcnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglyZXBvcnRfaWQYAiABKAkSEgoKcmVzb2x1dGlvbhgDIAEoCRIOCgZyZWFzb24YBCABKAkiTwocUmVzb2x2ZUNvbW1lbnRSZXBvcnRSZXNwb25zZRIvCgZyZXBvcnQYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLkNvbW1lbnRSZXBvcnQy6AYKE0FkbWluQ29tbWVudFNlcnZpY2USXwoMTGlzdENvbW1lbnRzEiUucHVibGlyYS5hZG1pbi52MS5MaXN0Q29tbWVudHNSZXF1ZXN0GiYucHVibGlyYS5hZG1pbi52MS5MaXN0Q29tbWVudHNSZXNwb25zZSIAEncKFENvdW50UGVuZGluZ0NvbW1lbnRzEi0ucHVibGlyYS5hZG1pbi52MS5Db3VudFBlbmRpbmdDb21tZW50c1JlcXVlc3QaLi5wdWJsaXJhLmFkbWluLnYxLkNvdW50UGVuZGluZ0NvbW1lbnRzUmVzcG9uc2UiABJlCg5BcHByb3ZlQ29tbWVudBInLnB1YmxpcmEuYWRtaW4udjEuQXBwcm92ZUNvbW1lbnRSZXF1ZXN0GigucHVibGlyYS5hZG1pbi52MS5BcHByb3ZlQ29tbWVudFJlc3BvbnNlIgASXAoLSGlkZUNvbW1lbnQSJC5wdWJsaXJhLmFkbWluLnYxLkhpZGVDb21tZW50UmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuSGlkZUNvbW1lbnRSZXNwb25zZSIAEmUKDlJlc3RvcmVDb21tZW50EicucHVibGlyYS5hZG1pbi52MS5SZXN0b3JlQ29tbWVudFJlcXVlc3QaKC5wdWJsaXJhLmFkbWluLnYxLlJlc3RvcmVDb21tZW50UmVzcG9uc2UiABJfCgxQdXJnZUNvbW1lbnQSJS5wdWJsaXJhLmFkbWluLnYxLlB1cmdlQ29tbWVudFJlcXVlc3QaJi5wdWJsaXJhLmFkbWluLnYxLlB1cmdlQ29tbWVudFJlc3BvbnNlIgAScQoSTGlzdENvbW1lbnRSZXBvcnRzEisucHVibGlyYS5hZG1pbi52MS5MaXN0Q29tbWVudFJlcG9ydHNSZXF1ZXN0GiwucHVibGlyYS5hZG1pbi52MS5MaXN0Q29tbWVudFJlcG9ydHNSZXNwb25zZSIAEncKFFJlc29sdmVDb21tZW50UmVwb3J0Ei0ucHVibGlyYS5hZG1pbi52MS5SZXNvbHZlQ29tbWVudFJlcG9ydFJlcXVlc3QaLi5wdWJsaXJhLmFkbWluLnYxLlJlc29sdmVDb21tZW50UmVwb3J0UmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * One reader comment as tenant staff read it.
@@ -122,6 +122,15 @@ export type AdminComment = Message<"publira.admin.v1.AdminComment"> & {
    * @generated from field: string series_title = 15;
    */
   seriesTitle: string;
+
+  /**
+   * Distinct reports on this comment that are still open — the number the
+   * automatic removal threshold reads. It is the count of undecided reports
+   * rather than of reports ever made, so deciding on one lowers it.
+   *
+   * @generated from field: int32 open_report_count = 16;
+   */
+  openReportCount: number;
 };
 
 /**
@@ -130,6 +139,88 @@ export type AdminComment = Message<"publira.admin.v1.AdminComment"> & {
  */
 export const AdminCommentSchema: GenMessage<AdminComment> = /*@__PURE__*/
   messageDesc(file_publira_admin_v1_comment, 0);
+
+/**
+ * One reader's report on one comment, as the report queue reads it.
+ *
+ * The whole comment travels with the report rather than only its identifier:
+ * staff cannot judge a report without the text it is about, and the queue
+ * offers the hide, restore and purge actions from the same row, which need the
+ * state that AdminComment carries.
+ *
+ * @generated from message publira.admin.v1.CommentReport
+ */
+export type CommentReport = Message<"publira.admin.v1.CommentReport"> & {
+  /**
+   * The report's uuid, since a report has no public_id of its own. Nothing
+   * reader-facing ever names a report, so there is no identifier here to keep
+   * out of a URL a reader could see, and AdminNotification is identified the
+   * same way.
+   *
+   * @generated from field: string report_id = 1;
+   */
+  reportId: string;
+
+  /**
+   * One of spam, abuse, spoiler, other, as the reporter chose it.
+   *
+   * @generated from field: string reason = 2;
+   */
+  reason: string;
+
+  /**
+   * What the reporter added in their own words. Usually empty: the reason on
+   * its own is a complete report.
+   *
+   * @generated from field: string note = 3;
+   */
+  note: string;
+
+  /**
+   * One of open, resolved, rejected. Only an open report counts towards the
+   * automatic removal threshold.
+   *
+   * @generated from field: string status = 4;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string created_at = 5;
+   */
+  createdAt: string;
+
+  /**
+   * When staff decided this report. Empty while it is open.
+   *
+   * @generated from field: string resolved_at = 6;
+   */
+  resolvedAt: string;
+
+  /**
+   * The reader who sent the report. Staff see it because a queue full of one
+   * account's reports is itself the thing to act on; no reader ever does.
+   *
+   * @generated from field: string reporter_public_id = 7;
+   */
+  reporterPublicId: string;
+
+  /**
+   * @generated from field: string reporter_name = 8;
+   */
+  reporterName: string;
+
+  /**
+   * @generated from field: publira.admin.v1.AdminComment comment = 9;
+   */
+  comment?: AdminComment | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.CommentReport.
+ * Use `create(CommentReportSchema)` to create a new message.
+ */
+export const CommentReportSchema: GenMessage<CommentReport> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_comment, 1);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -185,7 +276,7 @@ export type ListCommentsRequest = Message<"publira.admin.v1.ListCommentsRequest"
  * Use `create(ListCommentsRequestSchema)` to create a new message.
  */
 export const ListCommentsRequestSchema: GenMessage<ListCommentsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 1);
+  messageDesc(file_publira_admin_v1_comment, 2);
 
 /**
  * @generated from message publira.admin.v1.ListCommentsResponse
@@ -218,7 +309,7 @@ export type ListCommentsResponse = Message<"publira.admin.v1.ListCommentsRespons
  * Use `create(ListCommentsResponseSchema)` to create a new message.
  */
 export const ListCommentsResponseSchema: GenMessage<ListCommentsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 2);
+  messageDesc(file_publira_admin_v1_comment, 3);
 
 /**
  * @generated from message publira.admin.v1.CountPendingCommentsRequest
@@ -235,7 +326,7 @@ export type CountPendingCommentsRequest = Message<"publira.admin.v1.CountPending
  * Use `create(CountPendingCommentsRequestSchema)` to create a new message.
  */
 export const CountPendingCommentsRequestSchema: GenMessage<CountPendingCommentsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 3);
+  messageDesc(file_publira_admin_v1_comment, 4);
 
 /**
  * @generated from message publira.admin.v1.CountPendingCommentsResponse
@@ -254,7 +345,7 @@ export type CountPendingCommentsResponse = Message<"publira.admin.v1.CountPendin
  * Use `create(CountPendingCommentsResponseSchema)` to create a new message.
  */
 export const CountPendingCommentsResponseSchema: GenMessage<CountPendingCommentsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 4);
+  messageDesc(file_publira_admin_v1_comment, 5);
 
 /**
  * @generated from message publira.admin.v1.ApproveCommentRequest
@@ -284,7 +375,7 @@ export type ApproveCommentRequest = Message<"publira.admin.v1.ApproveCommentRequ
  * Use `create(ApproveCommentRequestSchema)` to create a new message.
  */
 export const ApproveCommentRequestSchema: GenMessage<ApproveCommentRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 5);
+  messageDesc(file_publira_admin_v1_comment, 6);
 
 /**
  * @generated from message publira.admin.v1.ApproveCommentResponse
@@ -301,7 +392,7 @@ export type ApproveCommentResponse = Message<"publira.admin.v1.ApproveCommentRes
  * Use `create(ApproveCommentResponseSchema)` to create a new message.
  */
 export const ApproveCommentResponseSchema: GenMessage<ApproveCommentResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 6);
+  messageDesc(file_publira_admin_v1_comment, 7);
 
 /**
  * @generated from message publira.admin.v1.HideCommentRequest
@@ -331,7 +422,7 @@ export type HideCommentRequest = Message<"publira.admin.v1.HideCommentRequest"> 
  * Use `create(HideCommentRequestSchema)` to create a new message.
  */
 export const HideCommentRequestSchema: GenMessage<HideCommentRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 7);
+  messageDesc(file_publira_admin_v1_comment, 8);
 
 /**
  * @generated from message publira.admin.v1.HideCommentResponse
@@ -348,7 +439,7 @@ export type HideCommentResponse = Message<"publira.admin.v1.HideCommentResponse"
  * Use `create(HideCommentResponseSchema)` to create a new message.
  */
 export const HideCommentResponseSchema: GenMessage<HideCommentResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 8);
+  messageDesc(file_publira_admin_v1_comment, 9);
 
 /**
  * @generated from message publira.admin.v1.RestoreCommentRequest
@@ -377,7 +468,7 @@ export type RestoreCommentRequest = Message<"publira.admin.v1.RestoreCommentRequ
  * Use `create(RestoreCommentRequestSchema)` to create a new message.
  */
 export const RestoreCommentRequestSchema: GenMessage<RestoreCommentRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 9);
+  messageDesc(file_publira_admin_v1_comment, 10);
 
 /**
  * @generated from message publira.admin.v1.RestoreCommentResponse
@@ -394,7 +485,7 @@ export type RestoreCommentResponse = Message<"publira.admin.v1.RestoreCommentRes
  * Use `create(RestoreCommentResponseSchema)` to create a new message.
  */
 export const RestoreCommentResponseSchema: GenMessage<RestoreCommentResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 10);
+  messageDesc(file_publira_admin_v1_comment, 11);
 
 /**
  * @generated from message publira.admin.v1.PurgeCommentRequest
@@ -425,7 +516,7 @@ export type PurgeCommentRequest = Message<"publira.admin.v1.PurgeCommentRequest"
  * Use `create(PurgeCommentRequestSchema)` to create a new message.
  */
 export const PurgeCommentRequestSchema: GenMessage<PurgeCommentRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 11);
+  messageDesc(file_publira_admin_v1_comment, 12);
 
 /**
  * Deliberately empty. The row is deleted, so there is nothing left to return.
@@ -440,7 +531,140 @@ export type PurgeCommentResponse = Message<"publira.admin.v1.PurgeCommentRespons
  * Use `create(PurgeCommentResponseSchema)` to create a new message.
  */
 export const PurgeCommentResponseSchema: GenMessage<PurgeCommentResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_comment, 12);
+  messageDesc(file_publira_admin_v1_comment, 13);
+
+/**
+ * Cursor pagination. Field shape and token rules: proto/README.md.
+ *
+ * @generated from message publira.admin.v1.ListCommentReportsRequest
+ */
+export type ListCommentReportsRequest = Message<"publira.admin.v1.ListCommentReportsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * One of open, resolved, rejected. Empty lists every state, which is how the
+   * decisions already made are read back. Anything else is invalid_argument.
+   *
+   * @generated from field: string status = 2;
+   */
+  status: string;
+
+  /**
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
+   * @generated from field: int32 limit = 3;
+   */
+  limit: number;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 4;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ListCommentReportsRequest.
+ * Use `create(ListCommentReportsRequestSchema)` to create a new message.
+ */
+export const ListCommentReportsRequestSchema: GenMessage<ListCommentReportsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_comment, 14);
+
+/**
+ * @generated from message publira.admin.v1.ListCommentReportsResponse
+ */
+export type ListCommentReportsResponse = Message<"publira.admin.v1.ListCommentReportsResponse"> & {
+  /**
+   * Newest first.
+   *
+   * @generated from field: repeated publira.admin.v1.CommentReport reports = 1;
+   */
+  reports: CommentReport[];
+
+  /**
+   * Token for the previous page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ListCommentReportsResponse.
+ * Use `create(ListCommentReportsResponseSchema)` to create a new message.
+ */
+export const ListCommentReportsResponseSchema: GenMessage<ListCommentReportsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_comment, 15);
+
+/**
+ * @generated from message publira.admin.v1.ResolveCommentReportRequest
+ */
+export type ResolveCommentReportRequest = Message<"publira.admin.v1.ResolveCommentReportRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string report_id = 2;
+   */
+  reportId: string;
+
+  /**
+   * 'resolved' for a report staff agreed with, 'rejected' for one they did
+   * not. Anything else, the empty string included, is invalid_argument: which
+   * way the decision went is the whole content of this call.
+   *
+   * @generated from field: string resolution = 3;
+   */
+  resolution: string;
+
+  /**
+   * Recorded on the audit log row. Optional: the resolution itself is the
+   * decision, and a queue worked one obvious report at a time would otherwise
+   * ask for a sentence per row.
+   *
+   * @generated from field: string reason = 4;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ResolveCommentReportRequest.
+ * Use `create(ResolveCommentReportRequestSchema)` to create a new message.
+ */
+export const ResolveCommentReportRequestSchema: GenMessage<ResolveCommentReportRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_comment, 16);
+
+/**
+ * @generated from message publira.admin.v1.ResolveCommentReportResponse
+ */
+export type ResolveCommentReportResponse = Message<"publira.admin.v1.ResolveCommentReportResponse"> & {
+  /**
+   * The decided report, with the comment as it stands after the decision.
+   *
+   * @generated from field: publira.admin.v1.CommentReport report = 1;
+   */
+  report?: CommentReport | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.ResolveCommentReportResponse.
+ * Use `create(ResolveCommentReportResponseSchema)` to create a new message.
+ */
+export const ResolveCommentReportResponseSchema: GenMessage<ResolveCommentReportResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_comment, 17);
 
 /**
  * @generated from service publira.admin.v1.AdminCommentService
@@ -531,6 +755,41 @@ export const AdminCommentService: GenService<{
     methodKind: "unary";
     input: typeof PurgeCommentRequestSchema;
     output: typeof PurgeCommentResponseSchema;
+  },
+  /**
+   * Lists the tenant's comment reports for review, newest first.
+   *
+   * One entry per report, not per reported comment. A report is what staff
+   * decide on — each one carries the reason and the sentence one reader wrote,
+   * and ResolveCommentReport settles them one at a time — so the same comment
+   * appears once per report it collected, with the open count on it saying how
+   * many of those are still waiting.
+   *
+   * @generated from rpc publira.admin.v1.AdminCommentService.ListCommentReports
+   */
+  listCommentReports: {
+    methodKind: "unary";
+    input: typeof ListCommentReportsRequestSchema;
+    output: typeof ListCommentReportsResponseSchema;
+  },
+  /**
+   * Marks one open report resolved or rejected and records the decision.
+   *
+   * It leaves the comment itself untouched, whichever way it goes: agreeing
+   * with a report is not the same act as removing what it is about, and the
+   * removal is HideComment. What it does change is the comment's open report
+   * count, since a decided report no longer counts towards the automatic
+   * removal threshold.
+   *
+   * failed_precondition for a report that was already decided, and not_found
+   * for one of another tenant.
+   *
+   * @generated from rpc publira.admin.v1.AdminCommentService.ResolveCommentReport
+   */
+  resolveCommentReport: {
+    methodKind: "unary";
+    input: typeof ResolveCommentReportRequestSchema;
+    output: typeof ResolveCommentReportResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_comment, 0);

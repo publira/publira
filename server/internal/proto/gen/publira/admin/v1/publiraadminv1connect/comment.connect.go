@@ -51,6 +51,12 @@ const (
 	// AdminCommentServicePurgeCommentProcedure is the fully-qualified name of the AdminCommentService's
 	// PurgeComment RPC.
 	AdminCommentServicePurgeCommentProcedure = "/publira.admin.v1.AdminCommentService/PurgeComment"
+	// AdminCommentServiceListCommentReportsProcedure is the fully-qualified name of the
+	// AdminCommentService's ListCommentReports RPC.
+	AdminCommentServiceListCommentReportsProcedure = "/publira.admin.v1.AdminCommentService/ListCommentReports"
+	// AdminCommentServiceResolveCommentReportProcedure is the fully-qualified name of the
+	// AdminCommentService's ResolveCommentReport RPC.
+	AdminCommentServiceResolveCommentReportProcedure = "/publira.admin.v1.AdminCommentService/ResolveCommentReport"
 )
 
 // AdminCommentServiceClient is a client for the publira.admin.v1.AdminCommentService service.
@@ -93,6 +99,25 @@ type AdminCommentServiceClient interface {
 	// Separate from HideComment so the routine action stays reversible and the
 	// one that cannot be undone is asked for by name.
 	PurgeComment(context.Context, *connect.Request[v1.PurgeCommentRequest]) (*connect.Response[v1.PurgeCommentResponse], error)
+	// Lists the tenant's comment reports for review, newest first.
+	//
+	// One entry per report, not per reported comment. A report is what staff
+	// decide on — each one carries the reason and the sentence one reader wrote,
+	// and ResolveCommentReport settles them one at a time — so the same comment
+	// appears once per report it collected, with the open count on it saying how
+	// many of those are still waiting.
+	ListCommentReports(context.Context, *connect.Request[v1.ListCommentReportsRequest]) (*connect.Response[v1.ListCommentReportsResponse], error)
+	// Marks one open report resolved or rejected and records the decision.
+	//
+	// It leaves the comment itself untouched, whichever way it goes: agreeing
+	// with a report is not the same act as removing what it is about, and the
+	// removal is HideComment. What it does change is the comment's open report
+	// count, since a decided report no longer counts towards the automatic
+	// removal threshold.
+	//
+	// failed_precondition for a report that was already decided, and not_found
+	// for one of another tenant.
+	ResolveCommentReport(context.Context, *connect.Request[v1.ResolveCommentReportRequest]) (*connect.Response[v1.ResolveCommentReportResponse], error)
 }
 
 // NewAdminCommentServiceClient constructs a client for the publira.admin.v1.AdminCommentService
@@ -142,6 +167,18 @@ func NewAdminCommentServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(adminCommentServiceMethods.ByName("PurgeComment")),
 			connect.WithClientOptions(opts...),
 		),
+		listCommentReports: connect.NewClient[v1.ListCommentReportsRequest, v1.ListCommentReportsResponse](
+			httpClient,
+			baseURL+AdminCommentServiceListCommentReportsProcedure,
+			connect.WithSchema(adminCommentServiceMethods.ByName("ListCommentReports")),
+			connect.WithClientOptions(opts...),
+		),
+		resolveCommentReport: connect.NewClient[v1.ResolveCommentReportRequest, v1.ResolveCommentReportResponse](
+			httpClient,
+			baseURL+AdminCommentServiceResolveCommentReportProcedure,
+			connect.WithSchema(adminCommentServiceMethods.ByName("ResolveCommentReport")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -153,6 +190,8 @@ type adminCommentServiceClient struct {
 	hideComment          *connect.Client[v1.HideCommentRequest, v1.HideCommentResponse]
 	restoreComment       *connect.Client[v1.RestoreCommentRequest, v1.RestoreCommentResponse]
 	purgeComment         *connect.Client[v1.PurgeCommentRequest, v1.PurgeCommentResponse]
+	listCommentReports   *connect.Client[v1.ListCommentReportsRequest, v1.ListCommentReportsResponse]
+	resolveCommentReport *connect.Client[v1.ResolveCommentReportRequest, v1.ResolveCommentReportResponse]
 }
 
 // ListComments calls publira.admin.v1.AdminCommentService.ListComments.
@@ -183,6 +222,16 @@ func (c *adminCommentServiceClient) RestoreComment(ctx context.Context, req *con
 // PurgeComment calls publira.admin.v1.AdminCommentService.PurgeComment.
 func (c *adminCommentServiceClient) PurgeComment(ctx context.Context, req *connect.Request[v1.PurgeCommentRequest]) (*connect.Response[v1.PurgeCommentResponse], error) {
 	return c.purgeComment.CallUnary(ctx, req)
+}
+
+// ListCommentReports calls publira.admin.v1.AdminCommentService.ListCommentReports.
+func (c *adminCommentServiceClient) ListCommentReports(ctx context.Context, req *connect.Request[v1.ListCommentReportsRequest]) (*connect.Response[v1.ListCommentReportsResponse], error) {
+	return c.listCommentReports.CallUnary(ctx, req)
+}
+
+// ResolveCommentReport calls publira.admin.v1.AdminCommentService.ResolveCommentReport.
+func (c *adminCommentServiceClient) ResolveCommentReport(ctx context.Context, req *connect.Request[v1.ResolveCommentReportRequest]) (*connect.Response[v1.ResolveCommentReportResponse], error) {
+	return c.resolveCommentReport.CallUnary(ctx, req)
 }
 
 // AdminCommentServiceHandler is an implementation of the publira.admin.v1.AdminCommentService
@@ -226,6 +275,25 @@ type AdminCommentServiceHandler interface {
 	// Separate from HideComment so the routine action stays reversible and the
 	// one that cannot be undone is asked for by name.
 	PurgeComment(context.Context, *connect.Request[v1.PurgeCommentRequest]) (*connect.Response[v1.PurgeCommentResponse], error)
+	// Lists the tenant's comment reports for review, newest first.
+	//
+	// One entry per report, not per reported comment. A report is what staff
+	// decide on — each one carries the reason and the sentence one reader wrote,
+	// and ResolveCommentReport settles them one at a time — so the same comment
+	// appears once per report it collected, with the open count on it saying how
+	// many of those are still waiting.
+	ListCommentReports(context.Context, *connect.Request[v1.ListCommentReportsRequest]) (*connect.Response[v1.ListCommentReportsResponse], error)
+	// Marks one open report resolved or rejected and records the decision.
+	//
+	// It leaves the comment itself untouched, whichever way it goes: agreeing
+	// with a report is not the same act as removing what it is about, and the
+	// removal is HideComment. What it does change is the comment's open report
+	// count, since a decided report no longer counts towards the automatic
+	// removal threshold.
+	//
+	// failed_precondition for a report that was already decided, and not_found
+	// for one of another tenant.
+	ResolveCommentReport(context.Context, *connect.Request[v1.ResolveCommentReportRequest]) (*connect.Response[v1.ResolveCommentReportResponse], error)
 }
 
 // NewAdminCommentServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -271,6 +339,18 @@ func NewAdminCommentServiceHandler(svc AdminCommentServiceHandler, opts ...conne
 		connect.WithSchema(adminCommentServiceMethods.ByName("PurgeComment")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminCommentServiceListCommentReportsHandler := connect.NewUnaryHandler(
+		AdminCommentServiceListCommentReportsProcedure,
+		svc.ListCommentReports,
+		connect.WithSchema(adminCommentServiceMethods.ByName("ListCommentReports")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminCommentServiceResolveCommentReportHandler := connect.NewUnaryHandler(
+		AdminCommentServiceResolveCommentReportProcedure,
+		svc.ResolveCommentReport,
+		connect.WithSchema(adminCommentServiceMethods.ByName("ResolveCommentReport")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminCommentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminCommentServiceListCommentsProcedure:
@@ -285,6 +365,10 @@ func NewAdminCommentServiceHandler(svc AdminCommentServiceHandler, opts ...conne
 			adminCommentServiceRestoreCommentHandler.ServeHTTP(w, r)
 		case AdminCommentServicePurgeCommentProcedure:
 			adminCommentServicePurgeCommentHandler.ServeHTTP(w, r)
+		case AdminCommentServiceListCommentReportsProcedure:
+			adminCommentServiceListCommentReportsHandler.ServeHTTP(w, r)
+		case AdminCommentServiceResolveCommentReportProcedure:
+			adminCommentServiceResolveCommentReportHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -316,4 +400,12 @@ func (UnimplementedAdminCommentServiceHandler) RestoreComment(context.Context, *
 
 func (UnimplementedAdminCommentServiceHandler) PurgeComment(context.Context, *connect.Request[v1.PurgeCommentRequest]) (*connect.Response[v1.PurgeCommentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.PurgeComment is not implemented"))
+}
+
+func (UnimplementedAdminCommentServiceHandler) ListCommentReports(context.Context, *connect.Request[v1.ListCommentReportsRequest]) (*connect.Response[v1.ListCommentReportsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.ListCommentReports is not implemented"))
+}
+
+func (UnimplementedAdminCommentServiceHandler) ResolveCommentReport(context.Context, *connect.Request[v1.ResolveCommentReportRequest]) (*connect.Response[v1.ResolveCommentReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.ResolveCommentReport is not implemented"))
 }

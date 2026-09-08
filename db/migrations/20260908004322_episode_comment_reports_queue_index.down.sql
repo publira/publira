@@ -1,0 +1,1 @@
+DROP INDEX idx_episode_comment_reports_tenant_created_at;
