@@ -21,6 +21,17 @@ dev_env_die() {
   exit 1
 }
 
+# Fails on the first of the named commands that is not installed, naming it.
+# A step that cannot be undone looks its tools up through this before it runs,
+# so a sequence of such steps stops while everything it would remove is still
+# there and can be removed by running the command again.
+dev_env_require_commands() {
+  local required
+  for required in "$@"; do
+    command -v "${required}" >/dev/null 2>&1 || dev_env_die "required command not found: ${required}"
+  done
+}
+
 dev_env_identifier_is_valid() {
   [[ "$1" =~ ^[a-z][a-z0-9-]{0,31}$ ]]
 }
@@ -189,6 +200,23 @@ dev_env_redis_authority() {
     return 0
   fi
   printf 'redis:6379\n'
+}
+
+# The Redis-protocol client that talks to a profile's Valkey server. The Dev
+# Container image carries Valkey's own client, while a shell on the host more
+# often has the one a Redis installation brings; both speak what the server
+# answers, so whichever is present is used. Prints nothing and fails when
+# neither is, leaving the message to the caller, which knows what it wanted the
+# client for.
+dev_env_redis_cli() {
+  local client
+  for client in valkey-cli redis-cli; do
+    if command -v "${client}" >/dev/null 2>&1; then
+      printf '%s\n' "${client}"
+      return 0
+    fi
+  done
+  return 1
 }
 
 dev_env_s3_endpoint() {

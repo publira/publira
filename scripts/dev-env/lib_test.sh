@@ -66,6 +66,36 @@ if dev_env_identifier_is_valid "UPPER"; then
 fi
 pass "identifier validation rejects unsafe names"
 
+# Both Redis-protocol clients are looked up on PATH, so a PATH carrying only
+# one of them stands for a shell where only that one is installed.
+client_bin_dir="${test_dir}/bin"
+empty_bin_dir="${test_dir}/empty-bin"
+mkdir -p "${client_bin_dir}" "${empty_bin_dir}"
+for client_name in valkey-cli redis-cli; do
+  printf '#!/bin/sh\nexit 0\n' >"${client_bin_dir}/${client_name}"
+  chmod +x "${client_bin_dir}/${client_name}"
+done
+
+[[ "$(PATH="${client_bin_dir}" dev_env_redis_cli)" == "valkey-cli" ]] ||
+  fail "Valkey's own client was not preferred where both clients are installed"
+mkdir -p "${client_bin_dir}/redis-only"
+mv "${client_bin_dir}/redis-cli" "${client_bin_dir}/redis-only/redis-cli"
+[[ "$(PATH="${client_bin_dir}/redis-only" dev_env_redis_cli)" == "redis-cli" ]] ||
+  fail "Redis's client was not used where it is the only one installed"
+if (PATH="${empty_bin_dir}" dev_env_redis_cli) >/dev/null; then
+  fail "resolving a client succeeded where neither is installed"
+fi
+pass "the Redis-protocol client is whichever of Valkey's and Redis's is installed"
+
+if missing_message="$( (PATH="${client_bin_dir}" dev_env_require_commands valkey-cli not-an-installed-command) 2>&1 )"; then
+  fail "a command that is not installed was accepted"
+fi
+[[ "${missing_message}" == *"not-an-installed-command"* ]] ||
+  fail "the missing command was not named: ${missing_message}"
+(PATH="${client_bin_dir}" dev_env_require_commands valkey-cli) ||
+  fail "a command that is installed was reported as missing"
+pass "required commands are checked by name and the first missing one is reported"
+
 expect_profile_value() {
   local profile_path="$1" key="$2" expected="$3" actual
   actual="$(dev_env_profile_value "${profile_path}" "${key}")"
