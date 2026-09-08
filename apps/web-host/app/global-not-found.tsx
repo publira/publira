@@ -44,7 +44,7 @@ const GlobalNotFound = () => (
         <p className="text-sm tracking-wide text-muted-foreground uppercase">
           404 Not Found
         </p>
-        <h1 className="mt-4 font-serif text-3xl font-bold">
+        <h1 className="mt-4 font-serif text-4xl font-bold">
           {sharedMessage("host.errors.not_found_title", NOT_FOUND_LOCALE)}
         </h1>
         <p className="mt-4 text-muted-foreground">

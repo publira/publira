@@ -9,7 +9,7 @@ export const PublishedPageContent = ({ page }: { page: PublishedPage }) => (
   <main className="mx-auto max-w-3xl px-6 py-12">
     <article>
       <header className="mb-10">
-        <h1 className="font-serif text-3xl font-bold tracking-tight">
+        <h1 className="font-serif text-4xl font-bold tracking-tight">
           {page.title}
         </h1>
       </header>

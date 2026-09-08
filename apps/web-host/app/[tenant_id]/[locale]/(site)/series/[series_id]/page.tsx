@@ -119,7 +119,7 @@ const SeriesDetailContent = async (
         <div>
           <div className="mb-8">
             <div className="mb-2 flex flex-wrap items-start justify-between gap-4">
-              <h1 className="font-serif text-3xl font-bold">{series.title}</h1>
+              <h1 className="font-serif text-4xl font-bold">{series.title}</h1>
               <SectionErrorBoundary
                 title={
                   <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>

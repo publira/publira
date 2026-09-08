@@ -277,7 +277,7 @@ const LabelDetailContent = async ({
           <p className="mb-3 text-xs tracking-[0.24em] text-muted-foreground uppercase">
             {siteLabel}
           </p>
-          <h1 className="mb-2 font-serif text-3xl font-bold text-foreground">
+          <h1 className="mb-2 font-serif text-4xl font-bold text-foreground">
             {label.name}
           </h1>
           <p className="text-sm text-muted-foreground">

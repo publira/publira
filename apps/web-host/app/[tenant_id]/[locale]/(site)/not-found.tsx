@@ -28,7 +28,7 @@ const NotFound = () => (
     <p className="text-sm tracking-wide text-muted-foreground uppercase">
       404 Not Found
     </p>
-    <h1 className="mt-4 font-serif text-3xl font-bold">
+    <h1 className="mt-4 font-serif text-4xl font-bold">
       <Suspense fallback={<SkeletonLine className="h-9 w-72" />}>
         <Message message="host.errors.not_found_title" />
       </Suspense>
