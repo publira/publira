@@ -538,9 +538,16 @@ type ListPublishedSeriesRequest struct {
 	// Sort order. A token carries the order it was built for; sending it with a
 	// different order is invalid_argument, because the page it points at no
 	// longer exists in the new order. Changing the order restarts at page 1.
-	Order         SeriesOrder `protobuf:"varint,5,opt,name=order,proto3,enum=publira.v1.SeriesOrder" json:"order,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Order SeriesOrder `protobuf:"varint,5,opt,name=order,proto3,enum=publira.v1.SeriesOrder" json:"order,omitempty"`
+	// Keep only the series a reader can start without paying: those whose
+	// free_episode_count is above zero right now. A token carries the filters it
+	// was built for next to the order, and for the same reason — the row it names
+	// sits somewhere else in a differently filtered list — so sending it with a
+	// different filter is invalid_argument and changing the filter restarts at
+	// page 1.
+	HasFreeEpisodes bool `protobuf:"varint,6,opt,name=has_free_episodes,json=hasFreeEpisodes,proto3" json:"has_free_episodes,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ListPublishedSeriesRequest) Reset() {
@@ -599,6 +606,13 @@ func (x *ListPublishedSeriesRequest) GetOrder() SeriesOrder {
 		return x.Order
 	}
 	return SeriesOrder_SERIES_ORDER_UNSPECIFIED
+}
+
+func (x *ListPublishedSeriesRequest) GetHasFreeEpisodes() bool {
+	if x != nil {
+		return x.HasFreeEpisodes
+	}
+	return false
 }
 
 type ListPublishedSeriesResponse struct {
@@ -4357,12 +4371,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06labels\x18\x01 \x03(\v2\x17.publira.types.v1.LabelR\x06labels\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xbe\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xea\x01\n" +
 	"\x1aListPublishedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x12-\n" +
-	"\x05order\x18\x05 \x01(\x0e2\x17.publira.v1.SeriesOrderR\x05orderJ\x04\b\x03\x10\x04R\x06offset\"\x95\x01\n" +
+	"\x05order\x18\x05 \x01(\x0e2\x17.publira.v1.SeriesOrderR\x05order\x12*\n" +
+	"\x11has_free_episodes\x18\x06 \x01(\bR\x0fhasFreeEpisodesJ\x04\b\x03\x10\x04R\x06offset\"\x95\x01\n" +
 	"\x1bListPublishedSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +

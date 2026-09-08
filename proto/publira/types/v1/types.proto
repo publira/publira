@@ -139,6 +139,12 @@ message Series {
   repeated Genre genres = 16;
   // By name, so a series presents its tags the same way every time.
   repeated Tag tags = 17;
+  // How many published episodes of this series a reader can open without
+  // paying: the ones priced at 0, and the priced ones a free window is open
+  // on at the moment of the read. It is counted per read rather than stored,
+  // so an episode leaving its free window stops counting the moment it does,
+  // and a series with no free episode carries 0 rather than nothing.
+  int32 free_episode_count = 18;
 }
 
 message Episode {

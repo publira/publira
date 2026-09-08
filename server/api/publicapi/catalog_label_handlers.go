@@ -95,7 +95,7 @@ func (s *apiServer) publishedLabelSeriesPage(
 	}
 	var keys seriesCursorKeys
 	if !cursor.IsZero() {
-		keys, err = decodeSeriesCursorKeys(cursor, order)
+		keys, err = decodeSeriesCursorKeys(cursor, order, seriesFilters{})
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -120,15 +120,15 @@ func (s *apiServer) publishedLabelSeriesPage(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			previousToken = encodeSeriesCursor(pagination.Backward, order, rows[0])
+			previousToken = encodeSeriesCursor(pagination.Backward, order, seriesFilters{}, rows[0])
 		}
 		if hasNext {
-			nextToken = encodeSeriesCursor(pagination.Forward, order, rows[len(rows)-1])
+			nextToken = encodeSeriesCursor(pagination.Forward, order, seriesFilters{}, rows[len(rows)-1])
 		}
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		previousToken = encodeSeriesRecoveryToken(pagination.Backward, order, keys)
+		previousToken = encodeSeriesRecoveryToken(pagination.Backward, order, seriesFilters{}, keys)
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, keys)
+		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, seriesFilters{}, keys)
 	}
 	return items, previousToken, nextToken, nil
 }

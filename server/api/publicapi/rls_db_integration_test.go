@@ -60,6 +60,12 @@ var publicDataTables = []struct {
 	{name: "series", count: "SELECT count(*) FROM series"},
 	{name: "episodes", count: "SELECT count(*) FROM episodes"},
 	{name: "episode_listings", count: "SELECT count(*) FROM episode_listings"},
+	// A view answers with its owner's rights unless it is declared
+	// security_invoker, and this one's owner applies the migrations and
+	// bypasses row-level security. It is in this list because that is the
+	// difference between the catalog counting the tenant's free episodes and
+	// counting everyone's.
+	{name: "published_free_episodes", count: "SELECT count(*) FROM published_free_episodes"},
 	{name: "episode_reads", count: "SELECT count(*) FROM episode_reads"},
 	{name: "episode_reading_positions", count: "SELECT count(*) FROM episode_reading_positions"},
 	{name: "users", count: "SELECT count(*) FROM users"},
@@ -84,6 +90,13 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		Title:    "Tenant A Episode",
 		Status:   testutil.EpisodeStatusPublished,
 		Price:    500,
+	})
+	// A free episode as well as the priced one, so published_free_episodes has
+	// a row of its own to withhold.
+	env.PG.SeedEpisode(t, first.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEA0002",
+		Title:    "Tenant A Free Episode",
+		Status:   testutil.EpisodeStatusPublished,
 	})
 	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	env.PG.SeedPurchase(t, first.ID, member.ID, episode.ID, episode.Price)

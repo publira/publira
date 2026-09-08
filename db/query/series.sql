@@ -13,6 +13,11 @@
 -- Stage two is ListActiveSeriesByIDs, which builds the display data for the
 -- ids stage one settled on.
 --
+-- What counts as a free episode is the published_free_episodes view, which
+-- both stages read: stage one keeps only the series that have such an episode
+-- when the caller asks for those, and stage two counts them into
+-- free_episode_count, so a series the filter kept never reports none.
+--
 -- cursor rules: proto/README.md.
 -- name: ListActiveSeriesIDsByPublishedAtDesc :many
 SELECT s.id
@@ -21,6 +26,14 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND (
+        NOT sqlc.arg('has_free_episodes')::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
+        )
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -50,6 +63,14 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
     AND (
+        NOT sqlc.arg('has_free_episodes')::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
+        )
+    )
+    AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
@@ -78,6 +99,14 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
     AND (
+        NOT sqlc.arg('has_free_episodes')::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
+        )
+    )
+    AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
@@ -105,6 +134,14 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND (
+        NOT sqlc.arg('has_free_episodes')::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
+        )
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -140,6 +177,11 @@ SELECT s.id,
     s.published_at,
     s.eye_catch_image_id,
     NULL::timestamp AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)
+        FROM published_free_episodes fe
+        WHERE fe.series_id = s.id
+    )::int4 AS free_episode_count,
     COALESCE(
         json_agg(
             json_build_object(
@@ -429,6 +471,11 @@ SELECT s.id,
     sl.age_rating,
     s.is_published,
     s.published_at,
+    (
+        SELECT COUNT(*)
+        FROM published_free_episodes fe
+        WHERE fe.series_id = s.id
+    )::int4 AS free_episode_count,
     -- Collect the several creators into one column as a JSON array
     COALESCE(
         json_agg(

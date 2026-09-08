@@ -241,7 +241,7 @@ func TestCatalogGetPublishedLabelDetailSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
@@ -343,8 +343,8 @@ func TestCatalogGetPublishedLabelDetailFirstPageReportsNextToken(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)).
-			AddRow(ids[1], "SERIESBETA0", "Beta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`{}`)).
+			AddRow(ids[1], "SERIESBETA0", "Beta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{

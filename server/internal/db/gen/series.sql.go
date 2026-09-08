@@ -192,6 +192,11 @@ SELECT s.id,
     sl.age_rating,
     s.is_published,
     s.published_at,
+    (
+        SELECT COUNT(*)
+        FROM published_free_episodes fe
+        WHERE fe.series_id = s.id
+    )::int4 AS free_episode_count,
     -- Collect the several creators into one column as a JSON array
     COALESCE(
         json_agg(
@@ -294,6 +299,7 @@ type GetSeriesDetailRow struct {
 	AgeRating              sql.NullString  `json:"age_rating"`
 	IsPublished            bool            `json:"is_published"`
 	PublishedAt            sql.NullTime    `json:"published_at"`
+	FreeEpisodeCount       int32           `json:"free_episode_count"`
 	Creators               json.RawMessage `json:"creators"`
 	Episodes               json.RawMessage `json:"episodes"`
 }
@@ -315,6 +321,7 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 		&i.AgeRating,
 		&i.IsPublished,
 		&i.PublishedAt,
+		&i.FreeEpisodeCount,
 		&i.Creators,
 		&i.Episodes,
 	)
@@ -332,6 +339,11 @@ SELECT s.id,
     s.published_at,
     s.eye_catch_image_id,
     NULL::timestamp AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)
+        FROM published_free_episodes fe
+        WHERE fe.series_id = s.id
+    )::int4 AS free_episode_count,
     COALESCE(
         json_agg(
             json_build_object(
@@ -405,6 +417,7 @@ type ListActiveSeriesByIDsRow struct {
 	PublishedAt            sql.NullTime    `json:"published_at"`
 	EyeCatchImageID        uuid.NullUUID   `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt sql.NullTime    `json:"eye_catch_image_updated_at"`
+	FreeEpisodeCount       int32           `json:"free_episode_count"`
 	Creators               json.RawMessage `json:"creators"`
 	LabelInfo              json.RawMessage `json:"label_info"`
 }
@@ -432,6 +445,7 @@ func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSerie
 			&i.PublishedAt,
 			&i.EyeCatchImageID,
 			&i.EyeCatchImageUpdatedAt,
+			&i.FreeEpisodeCount,
 			&i.Creators,
 			&i.LabelInfo,
 		); err != nil {
@@ -456,29 +470,38 @@ WHERE s.tenant_id = $1
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
     AND (
-        $2::uuid IS NULL
+        NOT $2::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
+        )
+    )
+    AND (
+        $3::uuid IS NULL
         OR (
-            $3::boolean
+            $4::boolean
             AND (s.published_at, s.id) >= (
-                $4::timestamptz,
-                $2::uuid
+                $5::timestamptz,
+                $3::uuid
             )
         )
         OR (
-            NOT $3::boolean
+            NOT $4::boolean
             AND (s.published_at, s.id) > (
-                $4::timestamptz,
-                $2::uuid
+                $5::timestamptz,
+                $3::uuid
             )
         )
     )
 ORDER BY s.published_at ASC,
     s.id ASC
-LIMIT $5
+LIMIT $6
 `
 
 type ListActiveSeriesIDsByPublishedAtAscParams struct {
 	TenantID          uuid.UUID     `json:"tenant_id"`
+	HasFreeEpisodes   bool          `json:"has_free_episodes"`
 	CursorID          uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive   bool          `json:"cursor_inclusive"`
 	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
@@ -488,6 +511,7 @@ type ListActiveSeriesIDsByPublishedAtAscParams struct {
 func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtAsc,
 		arg.TenantID,
+		arg.HasFreeEpisodes,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorPublishedAt,
@@ -522,29 +546,38 @@ WHERE s.tenant_id = $1
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
     AND (
-        $2::uuid IS NULL
+        NOT $2::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
+        )
+    )
+    AND (
+        $3::uuid IS NULL
         OR (
-            $3::boolean
+            $4::boolean
             AND (s.published_at, s.id) <= (
-                $4::timestamptz,
-                $2::uuid
+                $5::timestamptz,
+                $3::uuid
             )
         )
         OR (
-            NOT $3::boolean
+            NOT $4::boolean
             AND (s.published_at, s.id) < (
-                $4::timestamptz,
-                $2::uuid
+                $5::timestamptz,
+                $3::uuid
             )
         )
     )
 ORDER BY s.published_at DESC,
     s.id DESC
-LIMIT $5
+LIMIT $6
 `
 
 type ListActiveSeriesIDsByPublishedAtDescParams struct {
 	TenantID          uuid.UUID     `json:"tenant_id"`
+	HasFreeEpisodes   bool          `json:"has_free_episodes"`
 	CursorID          uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive   bool          `json:"cursor_inclusive"`
 	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
@@ -566,10 +599,16 @@ type ListActiveSeriesIDsByPublishedAtDescParams struct {
 // Stage two is ListActiveSeriesByIDs, which builds the display data for the
 // ids stage one settled on.
 //
+// What counts as a free episode is the published_free_episodes view, which
+// both stages read: stage one keeps only the series that have such an episode
+// when the caller asks for those, and stage two counts them into
+// free_episode_count, so a series the filter kept never reports none.
+//
 // cursor rules: proto/README.md.
 func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtDesc,
 		arg.TenantID,
+		arg.HasFreeEpisodes,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorPublishedAt,
@@ -604,29 +643,38 @@ WHERE s.tenant_id = $1
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
     AND (
-        $2::uuid IS NULL
+        NOT $2::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
+        )
+    )
+    AND (
+        $3::uuid IS NULL
         OR (
-            $3::boolean
+            $4::boolean
             AND (s.title, s.id) >= (
-                $4::text,
-                $2::uuid
+                $5::text,
+                $3::uuid
             )
         )
         OR (
-            NOT $3::boolean
+            NOT $4::boolean
             AND (s.title, s.id) > (
-                $4::text,
-                $2::uuid
+                $5::text,
+                $3::uuid
             )
         )
     )
 ORDER BY s.title ASC,
     s.id ASC
-LIMIT $5
+LIMIT $6
 `
 
 type ListActiveSeriesIDsByTitleAscParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	HasFreeEpisodes bool           `json:"has_free_episodes"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorTitle     sql.NullString `json:"cursor_title"`
@@ -636,6 +684,7 @@ type ListActiveSeriesIDsByTitleAscParams struct {
 func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByTitleAsc,
 		arg.TenantID,
+		arg.HasFreeEpisodes,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorTitle,
@@ -670,29 +719,38 @@ WHERE s.tenant_id = $1
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
     AND (
-        $2::uuid IS NULL
+        NOT $2::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
+        )
+    )
+    AND (
+        $3::uuid IS NULL
         OR (
-            $3::boolean
+            $4::boolean
             AND (s.title, s.id) <= (
-                $4::text,
-                $2::uuid
+                $5::text,
+                $3::uuid
             )
         )
         OR (
-            NOT $3::boolean
+            NOT $4::boolean
             AND (s.title, s.id) < (
-                $4::text,
-                $2::uuid
+                $5::text,
+                $3::uuid
             )
         )
     )
 ORDER BY s.title DESC,
     s.id DESC
-LIMIT $5
+LIMIT $6
 `
 
 type ListActiveSeriesIDsByTitleDescParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	HasFreeEpisodes bool           `json:"has_free_episodes"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorTitle     sql.NullString `json:"cursor_title"`
@@ -702,6 +760,7 @@ type ListActiveSeriesIDsByTitleDescParams struct {
 func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByTitleDesc,
 		arg.TenantID,
+		arg.HasFreeEpisodes,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorTitle,

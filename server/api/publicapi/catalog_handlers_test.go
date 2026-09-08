@@ -32,12 +32,12 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, nil, false, nil, int32(21)).
+		WithArgs(tenantID, false, nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "completed", []byte("{2,6}"), "r15", now, seriesImageID, now, []byte(`[{"public_id":"CREATOR001","name":"Author A","role":"writer","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "completed", []byte("{2,6}"), "r15", now, seriesImageID, now, int32(2), []byte(`[{"public_id":"CREATOR001","name":"Author A","role":"writer","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
@@ -77,6 +77,11 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	if resp.Msg.Series[0].AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
 		t.Fatalf("series age_rating = %s, want R15", resp.Msg.Series[0].AgeRating)
 	}
+	// A card says how much of the series a reader can open for nothing, so a
+	// storefront can shelve it without asking the detail page.
+	if resp.Msg.Series[0].FreeEpisodeCount != 2 {
+		t.Fatalf("series free_episode_count = %d, want 2", resp.Msg.Series[0].FreeEpisodeCount)
+	}
 	if resp.Msg.PreviousToken != "" {
 		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
 	}
@@ -87,7 +92,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 }
 
 func seriesDetailColumns() *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "status", "schedule_weekdays", "age_rating", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "creators", "label_info"})
+	return sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "status", "schedule_weekdays", "age_rating", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "free_episode_count", "creators", "label_info"})
 }
 
 // seriesIDRows is what the keyset half of a page returns: ids only, already in
@@ -106,7 +111,7 @@ func seriesDetailRows(newest time.Time, ids []uuid.UUID) *sqlmock.Rows {
 	rows := seriesDetailColumns()
 	for i, id := range ids {
 		publishedAt := newest.Add(-time.Duration(i) * time.Second)
-		rows.AddRow(id, fmt.Sprintf("SERIES%03d", i), fmt.Sprintf("Series %d", i), nil, "ongoing", []byte("{}"), "all", publishedAt, nil, nil, []byte(`[]`), []byte(`{}`))
+		rows.AddRow(id, fmt.Sprintf("SERIES%03d", i), fmt.Sprintf("Series %d", i), nil, "ongoing", []byte("{}"), "all", publishedAt, nil, nil, int32(0), []byte(`[]`), []byte(`{}`))
 	}
 	return rows
 }
@@ -129,7 +134,7 @@ func TestCatalogListPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 	// The handler asks for one id past the page to learn that a next page exists.
 	ids := newSeriesIDs(3)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, nil, false, nil, int32(3)).
+		WithArgs(tenantID, false, nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -169,7 +174,7 @@ func TestCatalogListPublishedSeriesFollowsNextToken(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, boundaryID, false, boundaryPublishedAt, int32(3)).
+		WithArgs(tenantID, false, boundaryID, false, boundaryPublishedAt, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -212,13 +217,13 @@ func TestCatalogListPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 	olderID := uuid.Must(uuid.NewV7())
 	newerID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtAscQuery)).
-		WithArgs(tenantID, boundaryID, false, boundaryPublishedAt, int32(3)).
+		WithArgs(tenantID, false, boundaryID, false, boundaryPublishedAt, int32(3)).
 		WillReturnRows(seriesIDRows(olderID, newerID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(olderID, "SERIES_OLD", "Older", nil, "ongoing", []byte("{}"), "all", now.Add(-2*time.Second), nil, nil, []byte(`[]`), []byte(`{}`)).
-			AddRow(newerID, "SERIES_NEW", "Newer", nil, "ongoing", []byte("{}"), "all", now.Add(-time.Second), nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(olderID, "SERIES_OLD", "Older", nil, "ongoing", []byte("{}"), "all", now.Add(-2*time.Second), nil, nil, int32(0), []byte(`[]`), []byte(`{}`)).
+			AddRow(newerID, "SERIES_NEW", "Newer", nil, "ongoing", []byte("{}"), "all", now.Add(-time.Second), nil, nil, int32(0), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -260,7 +265,7 @@ func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, boundaryID, false, sortArg, int32(21)).
+				WithArgs(tenantID, false, boundaryID, false, sortArg, int32(21)).
 				WillReturnRows(seriesIDRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -388,7 +393,7 @@ func TestCatalogListPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, boundaryID, true, sortArg, int32(21)).
+				WithArgs(tenantID, false, boundaryID, true, sortArg, int32(21)).
 				WillReturnRows(seriesIDRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -451,7 +456,7 @@ func TestCatalogListPublishedSeriesSortsByRequestedOrder(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, nil, false, nil, int32(21)).
+				WithArgs(tenantID, false, nil, false, nil, int32(21)).
 				WillReturnRows(seriesIDRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -477,7 +482,7 @@ func TestCatalogListPublishedSeriesTitleTokenCarriesTheTitleKey(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByTitleAscQuery)).
-		WithArgs(tenantID, boundaryID, false, "Series 001", int32(21)).
+		WithArgs(tenantID, false, boundaryID, false, "Series 001", int32(21)).
 		WillReturnRows(seriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -587,7 +592,7 @@ func TestCatalogListPublishedSeriesLimitOutOfRangeUsesDefault(t *testing.T) {
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, nil, false, nil, int32(21)).
+		WithArgs(tenantID, false, nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -612,20 +617,20 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 	seriesBID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantAID, "TENANT_A", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantAID, nil, false, nil, int32(21)).
+		WithArgs(tenantAID, false, nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesAID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantAID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesAID, "SERIES_A", "Series A", "Synopsis A", "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(seriesAID, "SERIES_A", "Series A", "Synopsis A", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`{}`)))
 	expectTenantLookup(mock, tenantBID, "TENANT_B", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantBID, nil, false, nil, int32(21)).
+		WithArgs(tenantBID, false, nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesBID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantBID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesBID, "SERIES_B", "Series B", "Synopsis B", "ongoing", []byte("{}"), "all", now, nil, nil, []byte(`[]`), []byte(`{}`)))
+			AddRow(seriesBID, "SERIES_B", "Series B", "Synopsis B", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	respA, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -685,7 +690,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
 		WithArgs("SERIESPUB", tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "is_published", "published_at", "creators", "episodes"}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "is_published", "published_at", "free_episode_count", "creators", "episodes"}).
 			AddRow(
 				seriesID,
 				"SERIESPUB",
@@ -700,6 +705,9 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 				"r15",
 				true,
 				now,
+				// The one episode is priced, so this is the count of a free
+				// window standing open on it.
+				int32(1),
 				[]byte(`[{"name":"Author A","role":"writer","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`),
 				[]byte(`[{"public_id":"EP001","title":"Episode 1","order_index":1,"price":100,"reading_period_hours":24,"status":"published","scheduled_at":null,"published_at":"2026-03-18T00:00:00Z"}]`),
 			))
@@ -746,6 +754,9 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	}
 	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
 		t.Fatalf("series age_rating = %s, want R15", resp.Msg.Series.AgeRating)
+	}
+	if resp.Msg.Series.FreeEpisodeCount != 1 {
+		t.Fatalf("series free_episode_count = %d, want 1", resp.Msg.Series.FreeEpisodeCount)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -824,8 +835,8 @@ func TestCatalogGetSeriesDetailReturnsPermissionDeniedForUnpublishedSeries(t *te
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
 		WithArgs("SERIES_DRAFT", tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "is_published", "published_at", "creators", "episodes"}).
-			AddRow(uuid.Must(uuid.NewV7()), "SERIES_DRAFT", "Draft Series", nil, nil, nil, nil, nil, "ongoing", []byte("{}"), "all", false, nil, []byte(`[]`), []byte(`[]`)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "is_published", "published_at", "free_episode_count", "creators", "episodes"}).
+			AddRow(uuid.Must(uuid.NewV7()), "SERIES_DRAFT", "Draft Series", nil, nil, nil, nil, nil, "ongoing", []byte("{}"), "all", false, nil, int32(0), []byte(`[]`), []byte(`[]`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
@@ -848,7 +859,7 @@ func TestCatalogGetSeriesDetailReturnsNotFoundForMissingSeries(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
 		WithArgs("SERIES_MISSING", tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "is_published", "published_at", "creators", "episodes"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "is_published", "published_at", "free_episode_count", "creators", "episodes"}))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
@@ -915,7 +926,7 @@ func TestCatalogListPublishedSeriesDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, nil, false, nil, int32(21)).
+		WithArgs(tenantID, false, nil, false, nil, int32(21)).
 		WillReturnError(errors.New(`pq: relation "series" does not exist`))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)

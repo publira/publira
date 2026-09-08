@@ -829,9 +829,15 @@ type Series struct {
 	// In the tenant's genre order, not the order they were assigned in.
 	Genres []*Genre `protobuf:"bytes,16,rep,name=genres,proto3" json:"genres,omitempty"`
 	// By name, so a series presents its tags the same way every time.
-	Tags          []*Tag `protobuf:"bytes,17,rep,name=tags,proto3" json:"tags,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Tags []*Tag `protobuf:"bytes,17,rep,name=tags,proto3" json:"tags,omitempty"`
+	// How many published episodes of this series a reader can open without
+	// paying: the ones priced at 0, and the priced ones a free window is open
+	// on at the moment of the read. It is counted per read rather than stored,
+	// so an episode leaving its free window stops counting the moment it does,
+	// and a series with no free episode carries 0 rather than nothing.
+	FreeEpisodeCount int32 `protobuf:"varint,18,opt,name=free_episode_count,json=freeEpisodeCount,proto3" json:"free_episode_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Series) Reset() {
@@ -967,6 +973,13 @@ func (x *Series) GetTags() []*Tag {
 		return x.Tags
 	}
 	return nil
+}
+
+func (x *Series) GetFreeEpisodeCount() int32 {
+	if x != nil {
+		return x.FreeEpisodeCount
+	}
+	return 0
 }
 
 type Episode struct {
@@ -1791,7 +1804,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x04slug\x18\x03 \x01(\tR\x04slug\"-\n" +
 	"\x03Tag\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xe2\x05\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\"\x90\x06\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -1809,7 +1822,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12/\n" +
 	"\x06genres\x18\x10 \x03(\v2\x17.publira.types.v1.GenreR\x06genres\x12)\n" +
-	"\x04tags\x18\x11 \x03(\v2\x15.publira.types.v1.TagR\x04tagsJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x02\n" +
+	"\x04tags\x18\x11 \x03(\v2\x15.publira.types.v1.TagR\x04tags\x12,\n" +
+	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCountJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x02\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
