@@ -23,6 +23,8 @@ import { getSeriesDetail } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
+import { SeriesProgressAction } from "./_components/series-progress-action";
+
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id");
 
@@ -163,6 +165,22 @@ const SeriesDetailContent = async (
               {series.synopsis}
             </p>
           )}
+
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.series.progress_error" />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={null}>
+              <SeriesProgressAction
+                episodes={episodes}
+                seriesPublicId={series.publicId}
+                tenantId={tenantId}
+              />
+            </Suspense>
+          </SectionErrorBoundary>
         </div>
       </div>
 

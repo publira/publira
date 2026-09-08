@@ -29,6 +29,7 @@ import type {
 } from "#lib/catalog-top";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import type { HostMessageKey } from "#lib/locale";
+import { listMyRecentSeries } from "#lib/reading-progress";
 import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -89,6 +90,7 @@ const resolveUpdatedSeriesLinkIds = (
  */
 const SECTION_TITLES = {
   authors: "host.top.featured_authors_error",
+  continueReading: "host.top.continue_error",
   labels: "host.top.featured_labels_error",
   newEpisodes: "host.top.new_episodes_error",
   recommended: "host.top.recommended_error",
@@ -188,6 +190,84 @@ const ListSkeleton = ({ count = 4 }: { count?: number }) => (
     ))}
   </div>
 );
+
+/** As many offers as the other rows on this page show. */
+const maxContinueReading = 6;
+
+/**
+ * The reader's own "continue reading" row.
+ *
+ * It owns its heading rather than receiving one from the page, because a guest
+ * and a reader who is in the middle of nothing must see the home page they
+ * have always seen — heading included. Everything around it stays on the
+ * shared cache: this is the one section here that reads the session, and it
+ * reads it inside its own `<Suspense>` so the static shell is unaffected.
+ */
+const ContinueReadingSection = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
+  const [result, messages] = await Promise.all([
+    listMyRecentSeries(tenantId, { limit: maxContinueReading, locale }),
+    loadHostMessages(locale),
+  ]);
+
+  if (!result.ok) {
+    return (
+      <SectionReadError
+        description={result.message}
+        title={SECTION_TITLES.continueReading}
+      />
+    );
+  }
+
+  if (result.series.length === 0) {
+    return null;
+  }
+
+  return (
+    <section aria-labelledby="continue-reading" className="mb-12">
+      <h2
+        id="continue-reading"
+        className="mb-4 font-serif text-2xl font-semibold"
+      >
+        {getMessage(messages, "host.top.continue_heading")}
+      </h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {result.series.map(({ episode, series }) => (
+          <LocaleLink
+            key={series.publicId}
+            className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:border-secondary/40 hover:shadow-md"
+            href={`/series/${series.publicId}/episodes/${episode.publicId}`}
+          >
+            {series.eyeCatchImageVariants &&
+            series.eyeCatchImageVariants.length > 0 ? (
+              <div className="aspect-video overflow-hidden bg-muted">
+                <EyeCatchPicture
+                  alt={series.title}
+                  imgClassName="size-full object-cover"
+                  preferredType="landscape"
+                  variants={series.eyeCatchImageVariants}
+                />
+              </div>
+            ) : (
+              <div className="flex aspect-video items-center justify-center bg-linear-to-br from-secondary/25 via-primary/15 to-accent/20 text-secondary/50">
+                <CollectionIcon className="h-10 w-10" />
+              </div>
+            )}
+            <div className="p-5">
+              <h3 className="mb-1 line-clamp-2 font-serif text-lg font-semibold transition-colors group-hover:text-secondary">
+                {series.title}
+              </h3>
+              <p className="line-clamp-2 text-sm text-muted-foreground">
+                #{episode.orderIndex} {episode.title}
+              </p>
+            </div>
+          </LocaleLink>
+        ))}
+      </div>
+    </section>
+  );
+};
 
 const RecommendedSeriesSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
@@ -554,6 +634,18 @@ const Page = () => (
         </LocaleLink>
       </div>
     </header>
+
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message={SECTION_TITLES.continueReading} />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={null}>
+        <ContinueReadingSection />
+      </Suspense>
+    </SectionErrorBoundary>
 
     <section aria-labelledby="recommended-works" className="mb-12">
       <div className="mb-4 flex items-center justify-between gap-3">
