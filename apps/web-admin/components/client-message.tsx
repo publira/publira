@@ -80,20 +80,28 @@ const adminCatalog = (locale: Locale): Promise<AdminMessages> => {
 };
 
 /**
- * One catalog string for Client Components that cannot render `<Message>`.
+ * One catalog string for Client Components, which cannot render `<Message>`.
  *
- * Route-level `error.tsx` files must be client, so they cannot import the
- * server `<Message>`. The locale cookie is not httpOnly, and this chunk is
- * isolated to the error boundary.
+ * `<Message>` is an async Server Component, so anything below a `"use client"`
+ * boundary — a route-level `error.tsx`, a control that renders in the browser —
+ * resolves its copy here instead. It is what such a component reaches for
+ * rather than importing a catalog: `sharedCatalog` is a static map of every
+ * locale, so importing it from the client ships all of them, while this loads
+ * the one locale the reader is on.
+ *
+ * The locale cookie is not httpOnly, which is what makes reading it here
+ * possible at all.
  *
  * **Wrap it in a `<Suspense>` at the call site**, the same as `<Message>`. An
  * error boundary has no boundary of its own above it, so a suspend with
  * nothing to fall back to leaves React unable to flush the error screen at all.
  *
- * The tenant's saved default is out of reach here — resolving it needs the
- * admin API, and the boundary that renders this is the one the API failing
- * brought up. The locale therefore comes from the browser
- * ({@link readClientLocale}), which is the last thing still standing.
+ * The locale comes from the browser ({@link readClientLocale}) rather than
+ * from the server's own resolution, because there is no reaching that from
+ * here: the tenant's saved default needs the admin API, and on an error
+ * boundary the API failing is what brought this screen up in the first place.
+ * The cookie the proxy publishes is a copy of that same server-resolved value,
+ * so an ordinary control reads the language the console is already served in.
  */
 export const ClientMessage = ({
   message,

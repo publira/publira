@@ -1,14 +1,12 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState, useContext } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense, useActionState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { resolveCommentReportAction } from "../_lib/actions";
@@ -23,39 +21,62 @@ interface CommentReportDecisionButtonProps {
 }
 
 /**
- * The two ways one report is decided.
+ * What one decision control says, idle and while it is in flight.
+ *
+ * Each branch names its key inside the `<ClientMessage>` it returns, the same
+ * way the queue's server-rendered copy does, so the key stays where a
+ * translation extractor can see it.
+ */
+const DecisionLabel = ({
+  isPending,
+  resolution,
+}: {
+  isPending: boolean;
+  resolution: CommentReportResolution;
+}) => {
+  if (resolution === "resolved") {
+    return isPending ? (
+      <ClientMessage message="admin.comments.reports.resolving" />
+    ) : (
+      <ClientMessage message="admin.comments.reports.resolve" />
+    );
+  }
+
+  return isPending ? (
+    <ClientMessage message="admin.comments.reports.rejecting" />
+  ) : (
+    <ClientMessage message="admin.comments.reports.reject" />
+  );
+};
+
+/** What the toast says once the decision has landed. */
+const DecisionDone = ({
+  resolution,
+}: {
+  resolution: CommentReportResolution;
+}) =>
+  resolution === "resolved" ? (
+    <ClientMessage message="admin.comments.reports.resolved" />
+  ) : (
+    <ClientMessage message="admin.comments.reports.rejected" />
+  );
+
+/**
+ * One of the two ways a report is decided.
  *
  * Neither asks for a confirmation and neither takes a written reason: a
  * decision changes nothing about the comment, so there is nothing here a
  * tenant would later owe an author a statement of reasons for. Removing the
  * comment is a separate control on the same row, and that one does ask.
+ *
+ * The copy comes from `<ClientMessage>` rather than from a catalog this module
+ * loads: a catalog imported here would ship every locale to the browser, and
+ * each string keeps a boundary of its own this way.
  */
-const labels = (
-  resolution: CommentReportResolution,
-  messages: SharedMessages
-): { done: string; idle: string; pending: string } =>
-  resolution === "resolved"
-    ? {
-        done: getMessage(messages, "admin.comments.reports.resolved"),
-        idle: getMessage(messages, "admin.comments.reports.resolve"),
-        pending: getMessage(messages, "admin.comments.reports.resolving"),
-      }
-    : {
-        done: getMessage(messages, "admin.comments.reports.rejected"),
-        idle: getMessage(messages, "admin.comments.reports.reject"),
-        pending: getMessage(messages, "admin.comments.reports.rejecting"),
-      };
-
 export const CommentReportDecisionButton = ({
   reportId,
   resolution,
 }: CommentReportDecisionButtonProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
-  const copy = labels(resolution, messages);
   const tenantId = useTenantId();
   const { add } = useToastManager();
   const [state, formAction, isPending] = useActionState(
@@ -68,7 +89,16 @@ export const CommentReportDecisionButton = ({
         formData
       );
       if (nextState?.ok) {
-        add({ title: copy.done, type: "success" });
+        // The toast renders outside this subtree, so the boundary its copy
+        // needs travels with the node rather than sitting at this call site.
+        add({
+          title: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <DecisionDone resolution={resolution} />
+            </Suspense>
+          ),
+          type: "success",
+        });
       }
       return nextState;
     },
@@ -86,7 +116,9 @@ export const CommentReportDecisionButton = ({
         type="submit"
         variant={resolution === "resolved" ? "default" : "outline"}
       >
-        {isPending ? copy.pending : copy.idle}
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <DecisionLabel isPending={isPending} resolution={resolution} />
+        </Suspense>
       </Button>
       {state && !state.ok && state.reportId === reportId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
