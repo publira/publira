@@ -1,9 +1,16 @@
 import { getMessage } from "@publira/i18n";
+import {
+  EmptyState,
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import type { MeInfo, NotificationSettings } from "#lib/auth";
 import { getMe, getNotificationSettings } from "#lib/auth";
 import {
@@ -14,20 +21,12 @@ import { getLocale, loadHostMessages } from "#lib/locale";
 import type { HostMessageKey } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
+import { ReadingHistorySection } from "./_components/reading-history";
+import { parseMySearchParams } from "./_lib/search-params";
+
 const MY_RETURN_TO = "/my";
 
-const EmptyState = ({
-  description,
-  title,
-}: {
-  description: string;
-  title: string;
-}) => (
-  <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-5">
-    <p className="text-sm font-medium text-foreground">{title}</p>
-    <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-  </div>
-);
+type MyPageProps = PageProps<"/[tenant_id]/[locale]/my">;
 
 const ProfileSection = async ({ me }: { me: MeInfo }) => {
   const locale = await getLocale();
@@ -115,13 +114,16 @@ const SubscriptionSection = async () => {
         </p>
       </div>
       <div className="mt-4">
-        <EmptyState
-          description={getMessage(
-            messages,
-            "host.my.subscription_empty_description"
-          )}
-          title={getMessage(messages, "host.my.subscription_empty_title")}
-        />
+        <EmptyState>
+          <EmptyStateHeading>
+            <EmptyStateTitle>
+              {getMessage(messages, "host.my.subscription_empty_title")}
+            </EmptyStateTitle>
+            <EmptyStateDescription>
+              {getMessage(messages, "host.my.subscription_empty_description")}
+            </EmptyStateDescription>
+          </EmptyStateHeading>
+        </EmptyState>
       </div>
     </section>
   );
@@ -131,8 +133,19 @@ const SubscriptionSectionFallback = () => (
   <SectionSkeleton bodyClassName="h-20 w-full animate-pulse rounded-md bg-muted" />
 );
 
-const MyContent = async () => {
-  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
+const ReadingHistorySectionFallback = () => (
+  <SectionSkeleton bodyClassName="h-32 w-full animate-pulse rounded-md bg-muted" />
+);
+
+const MyContent = async ({
+  searchParams,
+}: Pick<MyPageProps, "searchParams">) => {
+  const [locale, tenantId, resolvedSearchParams] = await Promise.all([
+    getLocale(),
+    getTenantId(),
+    searchParams,
+  ]);
+  const { token } = parseMySearchParams(resolvedSearchParams);
   await requirePublicSession(locale, MY_RETURN_TO, tenantId);
   const [me, messages] = await Promise.all([
     withPublicSessionReauth(
@@ -175,18 +188,17 @@ const MyContent = async () => {
         </Suspense>
       ) : null}
 
-      <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold">
-          {getMessage(messages, "host.my.history_heading")}
-        </h2>
-        <EmptyState
-          description={getMessage(
-            messages,
-            "host.my.history_empty_description"
-          )}
-          title={getMessage(messages, "host.my.history_empty_title")}
-        />
-      </section>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="host.my.history_error" />
+          </Suspense>
+        }
+      >
+        <Suspense fallback={<ReadingHistorySectionFallback />}>
+          <ReadingHistorySection token={token} />
+        </Suspense>
+      </SectionErrorBoundary>
     </>
   );
 };
@@ -195,11 +207,11 @@ const MyContentFallback = () => (
   <>
     <ProfileSectionFallback />
     <SubscriptionSectionFallback />
-    <SectionSkeleton bodyClassName="h-20 w-full animate-pulse rounded-md bg-muted" />
+    <ReadingHistorySectionFallback />
   </>
 );
 
-const MyPage = () => (
+const MyPage = ({ searchParams }: MyPageProps) => (
   <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -237,7 +249,7 @@ const MyPage = () => (
     </section>
 
     <Suspense fallback={<MyContentFallback />}>
-      <MyContent />
+      <MyContent searchParams={searchParams} />
     </Suspense>
   </div>
 );

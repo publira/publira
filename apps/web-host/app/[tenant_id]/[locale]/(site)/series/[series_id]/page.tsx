@@ -23,6 +23,7 @@ import { getSeriesDetail } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
+import { EpisodeReadMarker } from "./_components/episode-read-marker";
 import { SeriesProgressAction } from "./_components/series-progress-action";
 
 export const generateStaticParams = () =>
@@ -206,6 +207,13 @@ const SeriesDetailContent = async (
                   <span className="flex-1 font-medium transition-colors group-hover:text-secondary">
                     {ep.title}
                   </span>
+                  <Suspense fallback={null}>
+                    <EpisodeReadMarker
+                      episodePublicId={ep.publicId}
+                      seriesPublicId={series.publicId}
+                      tenantId={tenantId}
+                    />
+                  </Suspense>
                   {ep.price > 0 ? (
                     <span className="rounded-full bg-warning/15 px-2.5 py-0.5 text-sm font-medium text-warning">
                       ¥{ep.price.toLocaleString(toIntlLocale(locale))}

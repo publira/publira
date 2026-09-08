@@ -9,6 +9,7 @@ import type {
 } from "@publira/api-client/public/types";
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { cache } from "react";
 
 import {
   apiClient,
@@ -51,7 +52,17 @@ export interface SeriesProgressItem {
 }
 
 export type SeriesProgressResult =
-  | { ok: true; progress: SeriesProgressItem | null; signedIn: boolean }
+  | {
+      /**
+       * The episodes of this series the reader has finished. Independent of
+       * `progress`: finishing an episode and saving a position in it are two
+       * different writes, so a reader can have one without the other.
+       */
+      finishedEpisodePublicIds: string[];
+      ok: true;
+      progress: SeriesProgressItem | null;
+      signedIn: boolean;
+    }
   | { message: string; ok: false };
 
 export interface ListMyRecentSeriesInput {
@@ -173,46 +184,66 @@ export const listMyRecentSeries = async (
 
 /**
  * Where the signed-in reader stands in one series: the episode they last moved
- * in and whether they finished it, or `null` when they have opened none of it.
+ * in and whether they finished it, plus every episode of the series they have
+ * already finished.
  *
  * Uncached for the reason {@link listMyRecentSeries} is. `signedIn` is part of
  * the answer because the two empty cases are different offers: a member with no
  * history is invited into the first episode, while a guest is offered nothing
  * and sees the series page a signed-out reader has always seen.
+ *
+ * Memoized with React's request cache because the series page reads it from two
+ * places that cannot share a value any other way — the call to action above the
+ * episode list, and the read marker on each row of that list, each inside its
+ * own `<Suspense>` so neither holds the page up. Both want the same answer for
+ * the same request, and the memo is what keeps that one RPC.
  */
-export const getMySeriesProgress = async (
-  tenantId: string,
-  seriesPublicId: string,
-  locale: Locale
-): Promise<SeriesProgressResult> => {
-  const sessionId = await resolveAccessToken();
-  if (!sessionId) {
-    return { ok: true, progress: null, signedIn: false };
-  }
-
-  try {
-    const response = await apiClient.episodeRead.getMySeriesProgress(
-      { seriesPublicId, tenant: { tenantId } },
-      buildSessionHeaders(sessionId)
-    );
-    return {
-      ok: true,
-      progress: mapSeriesProgress(response.progress),
-      signedIn: true,
-    };
-  } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    if (isUnauthenticatedRpcError(error)) {
-      return { ok: true, progress: null, signedIn: false };
+export const getMySeriesProgress = cache(
+  async (
+    tenantId: string,
+    seriesPublicId: string,
+    locale: Locale
+  ): Promise<SeriesProgressResult> => {
+    const sessionId = await resolveAccessToken();
+    if (!sessionId) {
+      return {
+        finishedEpisodePublicIds: [],
+        ok: true,
+        progress: null,
+        signedIn: false,
+      };
     }
-    const messages = await loadHostMessages(locale);
-    return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "host.series.progress_failed"),
-        { locale }
-      ),
-      ok: false,
-    };
+
+    try {
+      const response = await apiClient.episodeRead.getMySeriesProgress(
+        { seriesPublicId, tenant: { tenantId } },
+        buildSessionHeaders(sessionId)
+      );
+      return {
+        finishedEpisodePublicIds: response.finishedEpisodePublicIds ?? [],
+        ok: true,
+        progress: mapSeriesProgress(response.progress),
+        signedIn: true,
+      };
+    } catch (error) {
+      rethrowUnclassifiedRpcError(error);
+      if (isUnauthenticatedRpcError(error)) {
+        return {
+          finishedEpisodePublicIds: [],
+          ok: true,
+          progress: null,
+          signedIn: false,
+        };
+      }
+      const messages = await loadHostMessages(locale);
+      return {
+        message: rpcErrorMessage(
+          error,
+          getMessage(messages, "host.series.progress_failed"),
+          { locale }
+        ),
+        ok: false,
+      };
+    }
   }
-};
+);

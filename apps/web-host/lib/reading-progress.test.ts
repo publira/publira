@@ -143,6 +143,7 @@ describe("getMySeriesProgress", () => {
     await expect(
       getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
     ).resolves.toEqual({
+      finishedEpisodePublicIds: [],
       ok: true,
       progress: { episode, isFinished: false },
       signedIn: true,
@@ -153,12 +154,45 @@ describe("getMySeriesProgress", () => {
     );
   });
 
+  it("carries the episodes of the series the member has finished", async () => {
+    mockGetMySeriesProgress.mockResolvedValue({
+      finishedEpisodePublicIds: ["EPISODE_001", "EPISODE_002"],
+      progress: { episode, isFinished: false },
+    });
+
+    await expect(
+      getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
+    ).resolves.toMatchObject({
+      finishedEpisodePublicIds: ["EPISODE_001", "EPISODE_002"],
+    });
+  });
+
+  it("reports finished episodes for a member who has saved no position", async () => {
+    mockGetMySeriesProgress.mockResolvedValue({
+      finishedEpisodePublicIds: ["EPISODE_001"],
+    });
+
+    await expect(
+      getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
+    ).resolves.toEqual({
+      finishedEpisodePublicIds: ["EPISODE_001"],
+      ok: true,
+      progress: null,
+      signedIn: true,
+    });
+  });
+
   it("answers no progress for a member who opened none of the series", async () => {
     mockGetMySeriesProgress.mockResolvedValue({});
 
     await expect(
       getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
-    ).resolves.toEqual({ ok: true, progress: null, signedIn: true });
+    ).resolves.toEqual({
+      finishedEpisodePublicIds: [],
+      ok: true,
+      progress: null,
+      signedIn: true,
+    });
   });
 
   it("tells a guest apart from a member with no progress", async () => {
@@ -166,7 +200,12 @@ describe("getMySeriesProgress", () => {
 
     await expect(
       getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
-    ).resolves.toEqual({ ok: true, progress: null, signedIn: false });
+    ).resolves.toEqual({
+      finishedEpisodePublicIds: [],
+      ok: true,
+      progress: null,
+      signedIn: false,
+    });
     expect(mockGetMySeriesProgress).not.toHaveBeenCalled();
   });
 
@@ -177,7 +216,12 @@ describe("getMySeriesProgress", () => {
 
     await expect(
       getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
-    ).resolves.toEqual({ ok: true, progress: null, signedIn: false });
+    ).resolves.toEqual({
+      finishedEpisodePublicIds: [],
+      ok: true,
+      progress: null,
+      signedIn: false,
+    });
   });
 
   it("lets a failure it cannot explain reach the boundary", async () => {
