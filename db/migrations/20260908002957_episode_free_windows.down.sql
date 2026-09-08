@@ -1,5 +1,5 @@
 DROP TABLE IF EXISTS episode_free_windows;
 
--- Nothing else in this schema uses btree_gist, so it leaves with the table that
--- brought it in.
-DROP EXTENSION IF EXISTS btree_gist;
+-- btree_gist stays. The `up` created it with IF NOT EXISTS, so it may have been
+-- installed before this migration ran and be in use by something this schema
+-- does not own; dropping it here would take that away on a rollback.

@@ -17,17 +17,22 @@ import (
 // — the boundary an editor picks — and reach the queries as the absolute
 // instants that wall clock names.
 
-// tenantMidnight is the tenant's local midnight, dayOffset days from today.
-// Offset 0 is the midnight that started the tenant's current day, 1 the one
+// tenantMidnight is the tenant's local midnight, dayOffset days from the day
+// `now` falls on. Offset 0 is the midnight that started that day, 1 the one
 // that ends it.
-func tenantMidnight(t *testing.T, tenant testutil.Tenant, dayOffset int) time.Time {
+//
+// Every boundary of one test is derived from a single `now`. Reading the clock
+// per call would let a run that crosses the tenant's midnight between two calls
+// build a period the test did not mean — an empty one, or one that is open when
+// it should be over.
+func tenantMidnight(t *testing.T, tenant testutil.Tenant, now time.Time, dayOffset int) time.Time {
 	t.Helper()
 
 	location, err := time.LoadLocation(tenant.TimeZone)
 	if err != nil {
 		t.Fatalf("load tenant time zone %q: %v", tenant.TimeZone, err)
 	}
-	local := time.Now().In(location)
+	local := now.In(location)
 	midnight := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, location)
 	return midnight.AddDate(0, 0, dayOffset)
 }
@@ -61,8 +66,9 @@ func TestDBGetEpisodeDetailOpensAPaidEpisodeInsideItsFreeWindow(t *testing.T) {
 	}
 
 	// "Free until the end of today", as the tenant's own calendar states it.
-	endsAt := tenantMidnight(t, tenant, 1)
-	env.PG.SeedEpisodeFreeWindow(t, tenant.ID, episode.ID, tenantMidnight(t, tenant, 0), endsAt)
+	now := time.Now()
+	endsAt := tenantMidnight(t, tenant, now, 1)
+	env.PG.SeedEpisodeFreeWindow(t, tenant.ID, episode.ID, tenantMidnight(t, tenant, now, 0), endsAt)
 
 	inside, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(request()))
 	if err != nil {
@@ -87,6 +93,7 @@ func TestDBGetEpisodeDetailLocksAPaidEpisodeOutsideItsFreeWindow(t *testing.T) {
 	// One episode whose window closed at the midnight that started the tenant's
 	// day, and one whose window opens at the midnight that ends it. Both are
 	// outside their period right now, from either side of it.
+	now := time.Now()
 	over := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
 		PublicID: "EPISODEOVR01",
 		Title:    "Was Free Yesterday",
@@ -94,7 +101,7 @@ func TestDBGetEpisodeDetailLocksAPaidEpisodeOutsideItsFreeWindow(t *testing.T) {
 		Price:    500,
 	})
 	env.PG.SeedEpisodeImage(t, tenant.ID, over.ID, 1)
-	env.PG.SeedEpisodeFreeWindow(t, tenant.ID, over.ID, tenantMidnight(t, tenant, -1), tenantMidnight(t, tenant, 0))
+	env.PG.SeedEpisodeFreeWindow(t, tenant.ID, over.ID, tenantMidnight(t, tenant, now, -1), tenantMidnight(t, tenant, now, 0))
 
 	upcoming := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
 		PublicID: "EPISODEUPC01",
@@ -103,7 +110,7 @@ func TestDBGetEpisodeDetailLocksAPaidEpisodeOutsideItsFreeWindow(t *testing.T) {
 		Price:    500,
 	})
 	env.PG.SeedEpisodeImage(t, tenant.ID, upcoming.ID, 1)
-	env.PG.SeedEpisodeFreeWindow(t, tenant.ID, upcoming.ID, tenantMidnight(t, tenant, 1), tenantMidnight(t, tenant, 2))
+	env.PG.SeedEpisodeFreeWindow(t, tenant.ID, upcoming.ID, tenantMidnight(t, tenant, now, 1), tenantMidnight(t, tenant, now, 2))
 
 	client := env.catalogClient()
 	for _, publicID := range []string{over.PublicID, upcoming.PublicID} {

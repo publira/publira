@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -1256,5 +1258,105 @@ func TestServeConvertedRejectsOversizeConversion(t *testing.T) {
 	}
 	if _, ok := h.cache.Get(context.Background(), cacheKey("obj", req)); ok {
 		t.Fatal("oversized conversion was cached")
+	}
+}
+
+// A body that is public only because a free window is open must not be cached
+// past the window: the copy in a browser or a shared cache would be a paid page
+// still readable, and the token that fetched it still decrypts what is cached.
+func TestEpisodeImageBoundsPublicCachingToTheFreeWindow(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	store := &countingStore{
+		objects: map[string]storedObject{
+			"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+		},
+	}
+
+	cases := []struct {
+		name      string
+		freeUntil sql.NullTime
+		want      string
+	}{
+		{
+			name: "free by price keeps the full hour",
+			want: "public, max-age=3600",
+		},
+		{
+			name:      "a window shorter than the hour shortens the response",
+			freeUntil: sql.NullTime{Time: time.Now().Add(90 * time.Second), Valid: true},
+			want:      "public, max-age=90",
+		},
+		{
+			name:      "a window longer than the hour stays at the ceiling",
+			freeUntil: sql.NullTime{Time: time.Now().Add(6 * time.Hour), Valid: true},
+			want:      "public, max-age=3600",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newTestServer(t,
+				stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+				stubFactory{q: stubTenantQueries{
+					public: dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow{
+						ID:              mediaID,
+						ObjectKey:       "episodes/page.jpg",
+						ContentType:     "image/jpeg",
+						IsPublished:     sql.NullBool{Bool: true, Valid: true},
+						HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
+						FreeUntil:       tc.freeUntil,
+					},
+					userRefErr: sql.ErrNoRows,
+				}},
+				store,
+			)
+
+			req := httptest.NewRequest(http.MethodGet, "/images/episodes/"+mediaID.String(), nil)
+			req.Host = "example.test"
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+			}
+			// The remaining seconds are counted against the clock, so the
+			// second it took to get here is allowed to have passed.
+			got := rec.Header().Get("Cache-Control")
+			if got != tc.want && got != previousSecond(tc.want) {
+				t.Fatalf("Cache-Control = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// previousSecond is cacheControl one second shorter, the only other value a
+// response composed a moment later may carry.
+func previousSecond(cacheControl string) string {
+	const prefix = "public, max-age="
+	seconds, err := strconv.Atoi(strings.TrimPrefix(cacheControl, prefix))
+	if err != nil {
+		return cacheControl
+	}
+	return prefix + strconv.Itoa(seconds-1)
+}
+
+func TestFreeWindowCacheControl(t *testing.T) {
+	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name      string
+		freeUntil time.Time
+		want      string
+	}{
+		{name: "the seconds left in the window", freeUntil: now.Add(2 * time.Minute), want: "public, max-age=120"},
+		{name: "never past the public ceiling", freeUntil: now.Add(48 * time.Hour), want: "public, max-age=3600"},
+		{name: "a window that closed leaves nothing cacheable", freeUntil: now.Add(-time.Second), want: "public, max-age=0"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := freeWindowCacheControl(tc.freeUntil, now); got != tc.want {
+				t.Fatalf("freeWindowCacheControl = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }

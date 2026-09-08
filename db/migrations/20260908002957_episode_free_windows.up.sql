@@ -64,10 +64,14 @@ ALTER TABLE ONLY episode_free_windows
 ALTER TABLE ONLY episode_free_windows
     ADD CONSTRAINT episode_free_windows_tenant_episode_id_fkey FOREIGN KEY (tenant_id, episode_id) REFERENCES episodes(tenant_id, id) ON DELETE CASCADE;
 
--- FK CONSTRAINT: episode_free_windows episode_free_windows_created_by_user_id_fkey
--- Single-column on purpose: multi-column FK with ON DELETE SET NULL would also null tenant_id.
+-- FK CONSTRAINT: episode_free_windows episode_free_windows_tenant_created_by_user_id_fkey
+-- Composite FK prevents naming a scheduler from another tenant. SET NULL lists
+-- created_by_user_id so the reference can stay composite: without the column
+-- list the action would null tenant_id too, and the row would lose the tenant
+-- its isolation policy filters on. Deleting the account therefore leaves the
+-- window scheduled, and audit_logs keeps who scheduled it.
 ALTER TABLE ONLY episode_free_windows
-    ADD CONSTRAINT episode_free_windows_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL;
+    ADD CONSTRAINT episode_free_windows_tenant_created_by_user_id_fkey FOREIGN KEY (tenant_id, created_by_user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL (created_by_user_id);
 
 -- INDEX: idx_episode_free_windows_episode_period
 -- The access predicates ask one episode whether now falls inside a window. The

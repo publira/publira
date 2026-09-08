@@ -46,13 +46,22 @@ func parseFreeWindowPeriod(startsAt, endsAt string, now time.Time) (freeWindowPe
 	if err != nil {
 		return freeWindowPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("ends_at must be RFC3339"), "ends_at")
 	}
-	if !end.After(start) {
+	// Both instants are reported back with time.RFC3339, which carries no
+	// fractional second. Storing what is reported is what lets a client use one
+	// window's ends_at as the next one's starts_at, as the RPC documents:
+	// a stored microsecond the response cannot show would make that follow-up
+	// overlap by less than a second and be refused.
+	period := freeWindowPeriod{
+		startsAt: start.UTC().Truncate(time.Second),
+		endsAt:   end.UTC().Truncate(time.Second),
+	}
+	if !period.endsAt.After(period.startsAt) {
 		return freeWindowPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("ends_at must be after starts_at"), "ends_at")
 	}
-	if !end.After(now) {
+	if !period.endsAt.After(now) {
 		return freeWindowPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("ends_at must be in the future"), "ends_at")
 	}
-	return freeWindowPeriod{startsAt: start.UTC(), endsAt: end.UTC()}, nil
+	return period, nil
 }
 
 // errFreeWindowOverlap is what the database says when a period meets one the
