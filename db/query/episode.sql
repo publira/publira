@@ -391,6 +391,121 @@ ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
 SET read_at = episode_reads.read_at
 RETURNING *;
 
+-- name: ListMyEpisodeReadsDesc :many
+-- The episodes this reader has finished, most recently finished first.
+--
+-- Publication is re-checked here, so a history entry never names an episode
+-- the storefront has taken down; that is the same rule ListMyRecentSeries
+-- applies to a series. Body access is not re-checked: the reader did finish
+-- the episode, and a rental that has since expired is still part of what they
+-- read, which is also how ListMyPurchases keeps an expired purchase.
+--
+-- The scan starts from the (tenant_id, user_id) prefix of
+-- idx_episode_reads_tenant_user_read_at, so it is bounded by one reader's
+-- history rather than by the tenant's.
+--
+-- Backward calls ListMyEpisodeReadsAsc, and the caller sorts the rows back.
+-- cursor rules: proto/README.md.
+SELECT r.id,
+    r.read_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_reads r
+    JOIN episodes e ON e.id = r.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND r.user_id = sqlc.arg('user_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_read_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (r.read_at, r.id) <= (
+                sqlc.narg('cursor_read_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (r.read_at, r.id) < (
+                sqlc.narg('cursor_read_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY r.read_at DESC,
+    r.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListMyEpisodeReadsAsc :many
+-- The backward direction of ListMyEpisodeReadsDesc.
+SELECT r.id,
+    r.read_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_reads r
+    JOIN episodes e ON e.id = r.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND r.user_id = sqlc.arg('user_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_read_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (r.read_at, r.id) >= (
+                sqlc.narg('cursor_read_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (r.read_at, r.id) > (
+                sqlc.narg('cursor_read_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY r.read_at ASC,
+    r.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListMyFinishedEpisodePublicIDsInSeries :many
+-- Which episodes of one series this reader has already finished, so the series
+-- detail can mark the rows of its episode list.
+--
+-- Publication is left to the caller: the list this answers is the published
+-- episode list the series detail already holds, so an id that matches nothing
+-- in it marks nothing. What the query is scoped to is the reader, through the
+-- member RLS policy episode_reads carries and the columns repeated here.
+SELECT e.public_id
+FROM episode_reads r
+    JOIN episodes e ON e.id = r.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND r.user_id = sqlc.arg('user_id')
+    AND s.public_id = sqlc.arg('series_public_id')
+ORDER BY e.order_index ASC,
+    e.id ASC;
+
 -- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec
 UPDATE episode_listings el
 SET status = CASE

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 
@@ -21,6 +22,7 @@ const (
 	saveEpisodeReadingPositionQuery  = "-- name: SaveEpisodeReadingPosition :one\n"
 	getMyEpisodeReadingPositionQuery = "-- name: GetMyEpisodeReadingPosition :one\n"
 	getMySeriesReadingProgressQuery  = "-- name: GetMySeriesReadingProgress :one\n"
+	listMyFinishedEpisodesQuery      = "-- name: ListMyFinishedEpisodePublicIDsInSeries :many\n"
 	listMyRecentSeriesDescQuery      = "-- name: ListMyRecentSeriesDesc :many\n"
 	listMyRecentSeriesAscQuery       = "-- name: ListMyRecentSeriesAsc :many\n"
 )
@@ -69,6 +71,18 @@ func (f *readingPositionFixture) progress(seriesPublicID string) (*connect.Respo
 		Tenant:         &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
 		SeriesPublicId: seriesPublicID,
 	}, f.tenantID.String()))
+}
+
+// expectFinishedEpisodes stands in for the finished-episode read every
+// GetMySeriesProgress call makes before it looks for a progress row.
+func (f *readingPositionFixture) expectFinishedEpisodes(seriesPublicID string, publicIDs ...string) {
+	rows := sqlmock.NewRows([]string{"public_id"})
+	for _, publicID := range publicIDs {
+		rows.AddRow(publicID)
+	}
+	f.mock.ExpectQuery(regexp.QuoteMeta(listMyFinishedEpisodesQuery)).
+		WithArgs(f.tenantID, f.userID, seriesPublicID).
+		WillReturnRows(rows)
 }
 
 // expectSave stands in for the single statement that gates the episode and
@@ -214,6 +228,7 @@ func TestGetMyReadingPositionIsEmptyWithoutOne(t *testing.T) {
 
 func TestGetMySeriesProgressReturnsTheLastOpenedEpisode(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
+	fixture.expectFinishedEpisodes("SERIES001", "EPISODE001", "EPISODE002")
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(getMySeriesReadingProgressQuery)).
 		WithArgs(fixture.tenantID, fixture.userID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows([]string{
@@ -238,6 +253,9 @@ func TestGetMySeriesProgressReturnsTheLastOpenedEpisode(t *testing.T) {
 	if progress.IsFinished {
 		t.Fatal("is_finished = true, want false")
 	}
+	if !slices.Equal(response.Msg.FinishedEpisodePublicIds, []string{"EPISODE001", "EPISODE002"}) {
+		t.Fatalf("finished_episode_public_ids = %v, want the two finished episodes", response.Msg.FinishedEpisodePublicIds)
+	}
 	if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
@@ -246,6 +264,7 @@ func TestGetMySeriesProgressReturnsTheLastOpenedEpisode(t *testing.T) {
 
 func TestGetMySeriesProgressIsEmptyForAnUnopenedSeries(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
+	fixture.expectFinishedEpisodes("SERIES001")
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(getMySeriesReadingProgressQuery)).
 		WithArgs(fixture.tenantID, fixture.userID, "SERIES001").
 		WillReturnError(sql.ErrNoRows)
@@ -256,6 +275,31 @@ func TestGetMySeriesProgressIsEmptyForAnUnopenedSeries(t *testing.T) {
 	}
 	if response.Msg.Progress != nil {
 		t.Fatalf("progress = %+v, want none", response.Msg.Progress)
+	}
+	if len(response.Msg.FinishedEpisodePublicIds) != 0 {
+		t.Fatalf("finished_episode_public_ids = %v, want none", response.Msg.FinishedEpisodePublicIds)
+	}
+	assertPublicExpectations(t, fixture.mock)
+}
+
+// A reader can finish episodes without ever saving a position in one, so the
+// finished list is reported even when there is no progress row behind it.
+func TestGetMySeriesProgressReportsFinishedEpisodesWithoutAPosition(t *testing.T) {
+	fixture := newReadingPositionFixture(t)
+	fixture.expectFinishedEpisodes("SERIES001", "EPISODE001")
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(getMySeriesReadingProgressQuery)).
+		WithArgs(fixture.tenantID, fixture.userID, "SERIES001").
+		WillReturnError(sql.ErrNoRows)
+
+	response, err := fixture.progress("SERIES001")
+	if err != nil {
+		t.Fatalf("GetMySeriesProgress: %v", err)
+	}
+	if response.Msg.Progress != nil {
+		t.Fatalf("progress = %+v, want none", response.Msg.Progress)
+	}
+	if !slices.Equal(response.Msg.FinishedEpisodePublicIds, []string{"EPISODE001"}) {
+		t.Fatalf("finished_episode_public_ids = %v, want EPISODE001", response.Msg.FinishedEpisodePublicIds)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }

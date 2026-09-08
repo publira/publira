@@ -453,6 +453,17 @@ message GetMySeriesProgressResponse {
   // Unset when the member has opened no episode of the series they can still
   // read.
   SeriesProgress progress = 1;
+  // The public IDs of this series' episodes the member has already finished,
+  // in the order the series detail lists them. It rides on this response
+  // rather than on GetSeriesDetail because it is the member's own state, and
+  // rather than on an RPC of its own because the series page already makes
+  // this one private read; the episode list marks its rows from it.
+  //
+  // It is not derived from `progress`: a member is marked as having finished
+  // an episode by MarkEpisodeAsRead, which is a different write from the
+  // position SaveReadingPosition stores, so a reader can have finished
+  // episodes while `progress` is unset.
+  repeated string finished_episode_public_ids = 2;
 }
 
 // One series in the reader's "continue reading" row: the series itself, the
@@ -495,6 +506,37 @@ message ListMyRecentSeriesResponse {
   string next_token = 3;
 }
 
+// One episode the reader has finished, with the series it belongs to, which is
+// what a reading history entry links to and names.
+message MyEpisodeRead {
+  publira.types.v1.Series series = 1;
+  publira.types.v1.Episode episode = 2;
+  // When the reader first finished it. A re-read keeps this instant, so the
+  // history is ordered by when each episode was finished rather than by when
+  // it was last opened.
+  string read_at = 3;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// There is no order field: a reading history is read newest first, and the
+// reader has no second order to ask for.
+message ListMyEpisodeReadsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListMyEpisodeReadsResponse {
+  // Most recently finished first.
+  repeated MyEpisodeRead reads = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
 service EpisodeReadService {
   // Idempotently records that the authenticated member finished a currently
   // published episode they may read. Unpublished, foreign, missing, and
@@ -520,6 +562,12 @@ service EpisodeReadService {
   // published is skipped like one the member never read, so the list never
   // names something the storefront has taken down.
   rpc ListMyRecentSeries(ListMyRecentSeriesRequest) returns (ListMyRecentSeriesResponse) {}
+  // The episodes the authenticated member has finished, most recent first. An
+  // episode whose series or listing is no longer published is skipped, the way
+  // ListMyRecentSeries skips one, so the history never names something the
+  // storefront has taken down. Body access is not re-checked: the member did
+  // read the episode, and an expired rental is still part of what they read.
+  rpc ListMyEpisodeReads(ListMyEpisodeReadsRequest) returns (ListMyEpisodeReadsResponse) {}
 }
 
 // Kinds of public catalog targets a member can follow.

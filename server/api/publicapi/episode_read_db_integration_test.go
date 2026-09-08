@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -19,6 +20,22 @@ func episodeReadRequest(tenant testutil.Tenant, episodePublicID, token string) *
 		Tenant:          tenantContext(tenant),
 		EpisodePublicId: episodePublicID,
 	}, token)
+}
+
+func episodeReadListRequest(tenant testutil.Tenant, token string, limit int32, pageToken string) *connect.Request[publirav1.ListMyEpisodeReadsRequest] {
+	return newBearerRequest(&publirav1.ListMyEpisodeReadsRequest{
+		Tenant: tenantContext(tenant),
+		Limit:  limit,
+		Token:  pageToken,
+	}, token)
+}
+
+func historyEpisodePublicIDs(reads []*publirav1.MyEpisodeRead) []string {
+	ids := make([]string, 0, len(reads))
+	for _, read := range reads {
+		ids = append(ids, read.GetEpisode().GetPublicId())
+	}
+	return ids
 }
 
 func TestDBEpisodeReadServiceKeepsFirstReadDuringRepeatedAndConcurrentCalls(t *testing.T) {
@@ -218,5 +235,188 @@ func TestDBEpisodeReadProjectsOneCompleteEventPerRead(t *testing.T) {
 	}
 	if !occurredAt.Equal(readAt) {
 		t.Fatalf("occurred_at = %s, want the first read time %s", occurredAt, readAt)
+	}
+}
+
+func TestDBListMyEpisodeReadsPagesTheMostRecentlyFinishedFirst(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTREADF", "read-f.example.com", "Read F")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADF", "member-read-f@example.com", "Member F", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREADF", Title: "Public series", Published: true})
+	client := env.episodeReadClient()
+	token := tokenFor(t, tenant, member)
+
+	// Finished oldest first, so the history is the reverse of this order.
+	var finished []string
+	for _, publicID := range []string{"EPISODEREADJ", "EPISODEREADK", "EPISODEREADL"} {
+		episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: publicID, Title: publicID, Status: testutil.EpisodeStatusPublished})
+		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.PublicID, token)); err != nil {
+			t.Fatalf("MarkEpisodeAsRead %s: %v", episode.PublicID, err)
+		}
+		finished = append(finished, episode.PublicID)
+	}
+	first, second, third := finished[0], finished[1], finished[2]
+
+	page, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, token, 2, ""))
+	if err != nil {
+		t.Fatalf("ListMyEpisodeReads: %v", err)
+	}
+	if got, want := historyEpisodePublicIDs(page.Msg.Reads), []string{third, second}; !slices.Equal(got, want) {
+		t.Fatalf("first page = %v, want %v", got, want)
+	}
+	if got := page.Msg.Reads[0].GetSeries().GetPublicId(); got != series.PublicID {
+		t.Fatalf("series public id = %q, want the episode's own series %q", got, series.PublicID)
+	}
+	if page.Msg.Reads[0].GetReadAt() == "" {
+		t.Fatal("read_at is empty, want the instant the reader finished the episode")
+	}
+	if page.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", page.Msg.PreviousToken)
+	}
+	if page.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token while an episode remains")
+	}
+
+	rest, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, token, 2, page.Msg.NextToken))
+	if err != nil {
+		t.Fatalf("ListMyEpisodeReads next page: %v", err)
+	}
+	if got, want := historyEpisodePublicIDs(rest.Msg.Reads), []string{first}; !slices.Equal(got, want) {
+		t.Fatalf("second page = %v, want %v", got, want)
+	}
+	if rest.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", rest.Msg.NextToken)
+	}
+
+	back, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, token, 2, rest.Msg.PreviousToken))
+	if err != nil {
+		t.Fatalf("ListMyEpisodeReads previous page: %v", err)
+	}
+	if got, want := historyEpisodePublicIDs(back.Msg.Reads), []string{third, second}; !slices.Equal(got, want) {
+		t.Fatalf("page back = %v, want the first page again %v", got, want)
+	}
+}
+
+// Publication decides what the history may name; body access does not. A
+// series taken down disappears from it, while an episode whose rental has run
+// out stays, because the reader did read it.
+func TestDBListMyEpisodeReadsDropsWithdrawnSeriesAndKeepsExpiredRentals(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTREADG", "read-g.example.com", "Read G")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADG", "member-read-g@example.com", "Member G", "tenant_member")
+	staying := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREADG", Title: "Staying", Published: true})
+	withdrawn := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREADH", Title: "Withdrawn", Published: true})
+	rented := env.PG.SeedEpisode(t, tenant.ID, staying.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADM", Title: "Rented", Status: testutil.EpisodeStatusPublished, Price: 500})
+	withdrawnEpisode := env.PG.SeedEpisode(t, tenant.ID, withdrawn.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADN", Title: "Withdrawn", Status: testutil.EpisodeStatusPublished})
+	ticketID := uuid.Must(uuid.NewV7())
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, ticketID, tenant.ID, "TICKETREAD03", rented.ID, member.ID, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("seed access ticket: %v", err)
+	}
+	client := env.episodeReadClient()
+	token := tokenFor(t, tenant, member)
+
+	for _, publicID := range []string{rented.PublicID, withdrawnEpisode.PublicID} {
+		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, publicID, token)); err != nil {
+			t.Fatalf("MarkEpisodeAsRead %s: %v", publicID, err)
+		}
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(),
+		"UPDATE access_tickets SET expires_at = $1 WHERE id = $2", time.Now().Add(-time.Minute), ticketID,
+	); err != nil {
+		t.Fatalf("expire access ticket: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(),
+		"UPDATE series SET is_published = false WHERE id = $1", withdrawn.ID,
+	); err != nil {
+		t.Fatalf("unpublish series: %v", err)
+	}
+
+	response, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, token, 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyEpisodeReads: %v", err)
+	}
+	if got, want := historyEpisodePublicIDs(response.Msg.Reads), []string{rented.PublicID}; !slices.Equal(got, want) {
+		t.Fatalf("history = %v, want only the still published episode %v", got, want)
+	}
+}
+
+func TestDBListMyEpisodeReadsIsScopedToOneReaderAndTenant(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant, otherTenant := env.seedTwoTenants(t)
+	reader := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADH", "member-read-h@example.com", "Member H", "tenant_member")
+	neighbour := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADI", "member-read-i@example.com", "Member I", "tenant_member")
+	foreignMember := env.PG.SeedTenantUser(t, otherTenant.ID, "MEMBERREADJ", "member-read-j@example.com", "Member J", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREADI", Title: "Public series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADO", Title: "Free", Status: testutil.EpisodeStatusPublished})
+	foreignSeries := env.PG.SeedSeries(t, otherTenant.ID, testutil.SeriesSeed{PublicID: "SERIESREADJ", Title: "Foreign series", Published: true})
+	foreignEpisode := env.PG.SeedEpisode(t, otherTenant.ID, foreignSeries.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADP", Title: "Foreign", Status: testutil.EpisodeStatusPublished})
+	client := env.episodeReadClient()
+
+	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.PublicID, tokenFor(t, tenant, reader))); err != nil {
+		t.Fatalf("MarkEpisodeAsRead: %v", err)
+	}
+	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(otherTenant, foreignEpisode.PublicID, tokenFor(t, otherTenant, foreignMember))); err != nil {
+		t.Fatalf("MarkEpisodeAsRead in the other tenant: %v", err)
+	}
+
+	own, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, tokenFor(t, tenant, reader), 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyEpisodeReads as the reader: %v", err)
+	}
+	if got, want := historyEpisodePublicIDs(own.Msg.Reads), []string{episode.PublicID}; !slices.Equal(got, want) {
+		t.Fatalf("the reader's history = %v, want %v", got, want)
+	}
+
+	fromNeighbour, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, tokenFor(t, tenant, neighbour), 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyEpisodeReads as another member: %v", err)
+	}
+	if len(fromNeighbour.Msg.Reads) != 0 {
+		t.Fatalf("another member's view = %v, want none of the reader's history", historyEpisodePublicIDs(fromNeighbour.Msg.Reads))
+	}
+
+	fromOtherTenant, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(otherTenant, tokenFor(t, otherTenant, foreignMember), 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyEpisodeReads as a member of the other tenant: %v", err)
+	}
+	if got, want := historyEpisodePublicIDs(fromOtherTenant.Msg.Reads), []string{foreignEpisode.PublicID}; !slices.Equal(got, want) {
+		t.Fatalf("the other tenant's member sees %v, want only their own tenant's %v", got, want)
+	}
+}
+
+// The series page marks its episode list from this list, and a reader can have
+// finished episodes without ever saving a position, so it is reported whether
+// or not there is progress to report beside it.
+func TestDBSeriesProgressReportsTheFinishedEpisodesOfThatSeries(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTREADH", "read-h.example.com", "Read H")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADK", "member-read-k@example.com", "Member K", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREADK", Title: "Public series", Published: true})
+	other := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREADL", Title: "Other series", Published: true})
+	first := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADQ", Title: "Episode 1", Status: testutil.EpisodeStatusPublished, OrderIndex: 1})
+	second := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADR", Title: "Episode 2", Status: testutil.EpisodeStatusPublished, OrderIndex: 2})
+	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADS", Title: "Episode 3", Status: testutil.EpisodeStatusPublished, OrderIndex: 3})
+	elsewhere := env.PG.SeedEpisode(t, tenant.ID, other.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADT", Title: "Elsewhere", Status: testutil.EpisodeStatusPublished})
+	client := env.episodeReadClient()
+	token := tokenFor(t, tenant, member)
+
+	for _, publicID := range []string{second.PublicID, first.PublicID, elsewhere.PublicID} {
+		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, publicID, token)); err != nil {
+			t.Fatalf("MarkEpisodeAsRead %s: %v", publicID, err)
+		}
+	}
+
+	response, err := client.GetMySeriesProgress(context.Background(), seriesProgressRequest(tenant, series.PublicID, token))
+	if err != nil {
+		t.Fatalf("GetMySeriesProgress: %v", err)
+	}
+	if got, want := response.Msg.FinishedEpisodePublicIds, []string{first.PublicID, second.PublicID}; !slices.Equal(got, want) {
+		t.Fatalf("finished_episode_public_ids = %v, want this series' finished episodes in list order %v", got, want)
+	}
+	if response.Msg.Progress != nil {
+		t.Fatalf("progress = %+v, want none while the reader has saved no position", response.Msg.Progress)
 	}
 }
