@@ -101,7 +101,7 @@ export const ConsoleSidebarNavigation = ({
   hrefs,
 }: {
   children: ReactNode;
-  /** `navigationHrefs(sections)` from `@publira/layouts/navigation`. */
+  /** Every href the sections below render, so the set is known up front. */
   hrefs: readonly string[];
 }) => (
   <ConsoleNavigationHrefsContext value={hrefs}>

@@ -17,14 +17,6 @@ import {
   ConsoleSidebarBrand,
   ConsoleSidebarBrandName,
   ConsoleSidebarContext,
-  ConsoleSidebarNavigation,
-  ConsoleSidebarNavigationItem,
-  ConsoleSidebarNavigationItemHeading,
-  ConsoleSidebarNavigationItemIcon,
-  ConsoleSidebarNavigationItemLabel,
-  ConsoleSidebarNavigationItems,
-  ConsoleSidebarNavigationSection,
-  ConsoleSidebarNavigationTitle,
   ConsoleUserMenuAccountLink,
   ConsoleUserMenuContent,
   ConsoleUserMenuIdentity,
@@ -36,7 +28,6 @@ import {
   ConsoleUserMenuRole,
   ConsoleUserMenuSeparator,
   ConsoleUserMenuTrigger,
-  navigationHrefs,
 } from "@publira/layouts/admin";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import { redirect } from "next/navigation";
@@ -52,7 +43,7 @@ import { tenantBrandingVariant } from "../lib/tenant-branding-image";
 import type { TenantBrandingImage } from "../lib/tenant-branding-image";
 import { getTenantId } from "../lib/tenant-id";
 import { AdminBrandLogo } from "./admin-brand-logo";
-import { navigation } from "./admin-navigation";
+import { AdminNavigation } from "./admin-navigation";
 import { AdminLocaleSwitcher } from "./locale-switcher";
 import {
   NotificationBell,
@@ -180,35 +171,7 @@ export const AdminLayout = ({
         {logoVariant ? (
           <ConsoleSidebarContext>{tenant.name}</ConsoleSidebarContext>
         ) : null}
-        <ConsoleSidebarNavigation hrefs={navigationHrefs(navigation)}>
-          {navigation.map((section) => (
-            <ConsoleSidebarNavigationSection
-              key={section.id ?? section.items[0]?.href}
-            >
-              <ConsoleSidebarNavigationTitle>
-                {section.title}
-              </ConsoleSidebarNavigationTitle>
-              <ConsoleSidebarNavigationItems>
-                {section.items.map((item) => (
-                  <ConsoleSidebarNavigationItem
-                    href={item.href}
-                    key={item.href}
-                  >
-                    <ConsoleSidebarNavigationItemIcon>
-                      <item.icon className="size-4" />
-                    </ConsoleSidebarNavigationItemIcon>
-                    <ConsoleSidebarNavigationItemHeading>
-                      <ConsoleSidebarNavigationItemLabel>
-                        {item.label}
-                      </ConsoleSidebarNavigationItemLabel>
-                      {item.badge}
-                    </ConsoleSidebarNavigationItemHeading>
-                  </ConsoleSidebarNavigationItem>
-                ))}
-              </ConsoleSidebarNavigationItems>
-            </ConsoleSidebarNavigationSection>
-          ))}
-        </ConsoleSidebarNavigation>
+        <AdminNavigation />
       </ConsoleSidebar>
 
       <ConsoleLayoutContent>

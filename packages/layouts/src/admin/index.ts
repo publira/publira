@@ -54,5 +54,4 @@ export {
   ConsolePageTitle,
 } from "./console-page";
 
-export { isCurrentPath, navigationHrefs } from "../navigation";
-export type { NavItem, NavSection } from "../navigation";
+export { isCurrentPath } from "../navigation";

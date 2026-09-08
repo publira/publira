@@ -1,27 +1,3 @@
-import type { ComponentType, ReactNode, SVGProps } from "react";
-
-type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
-
-export interface NavItem {
-  href: string;
-  label: ReactNode;
-  icon: IconComponent;
-  /**
-   * Optional marker beside the label — a queue size, say. A node rather than a
-   * number, so the console that owns the item decides what it counts, how the
-   * count is worded for a screen reader, and which `<Suspense>` it resolves
-   * behind.
-   */
-  badge?: ReactNode;
-}
-
-export interface NavSection {
-  /** Stable list key when `title` is not a string. */
-  id?: string;
-  title: ReactNode;
-  items: NavItem[];
-}
-
 export const isCurrentPath = (
   pathname: string,
   href: string,
@@ -48,16 +24,6 @@ export const isCurrentPath = (
   }
   return true;
 };
-
-/**
- * Every href a console's navigation offers.
- *
- * {@link isCurrentPath} needs the whole set to decide which of two matching
- * items owns the active state, and the sections are what a console already has
- * to hand when it renders the sidebar.
- */
-export const navigationHrefs = (sections: readonly NavSection[]): string[] =>
-  sections.flatMap((section) => section.items.map((item) => item.href));
 
 /** The `[tenant_id]` segment `web-admin`'s proxy writes in front of a path. */
 const TENANT_ID_PATTERN =

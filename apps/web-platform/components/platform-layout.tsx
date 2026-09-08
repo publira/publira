@@ -17,14 +17,6 @@ import {
   ConsoleSidebarBrand,
   ConsoleSidebarBrandName,
   ConsoleSidebarContext,
-  ConsoleSidebarNavigation,
-  ConsoleSidebarNavigationItem,
-  ConsoleSidebarNavigationItemHeading,
-  ConsoleSidebarNavigationItemIcon,
-  ConsoleSidebarNavigationItemLabel,
-  ConsoleSidebarNavigationItems,
-  ConsoleSidebarNavigationSection,
-  ConsoleSidebarNavigationTitle,
   ConsoleUserMenuAccountLink,
   ConsoleUserMenuContent,
   ConsoleUserMenuIdentity,
@@ -36,7 +28,6 @@ import {
   ConsoleUserMenuRole,
   ConsoleUserMenuSeparator,
   ConsoleUserMenuTrigger,
-  navigationHrefs,
 } from "@publira/layouts/admin";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { redirect } from "next/navigation";
@@ -72,7 +63,7 @@ import {
   NotificationBellTrigger,
 } from "./notification-bell";
 import { NotificationBellErrorBoundary } from "./notification-bell-error-boundary";
-import { navigation } from "./platform-navigation";
+import { PlatformNavigation } from "./platform-navigation";
 
 const notificationMenuLimit = 5;
 
@@ -243,31 +234,7 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
         <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
       </ConsoleSidebarBrand>
       <ConsoleSidebarContext>Platform Console</ConsoleSidebarContext>
-      <ConsoleSidebarNavigation hrefs={navigationHrefs(navigation)}>
-        {navigation.map((section) => (
-          <ConsoleSidebarNavigationSection
-            key={section.id ?? section.items[0]?.href}
-          >
-            <ConsoleSidebarNavigationTitle>
-              {section.title}
-            </ConsoleSidebarNavigationTitle>
-            <ConsoleSidebarNavigationItems>
-              {section.items.map((item) => (
-                <ConsoleSidebarNavigationItem href={item.href} key={item.href}>
-                  <ConsoleSidebarNavigationItemIcon>
-                    <item.icon className="size-4" />
-                  </ConsoleSidebarNavigationItemIcon>
-                  <ConsoleSidebarNavigationItemHeading>
-                    <ConsoleSidebarNavigationItemLabel>
-                      {item.label}
-                    </ConsoleSidebarNavigationItemLabel>
-                  </ConsoleSidebarNavigationItemHeading>
-                </ConsoleSidebarNavigationItem>
-              ))}
-            </ConsoleSidebarNavigationItems>
-          </ConsoleSidebarNavigationSection>
-        ))}
-      </ConsoleSidebarNavigation>
+      <PlatformNavigation />
     </ConsoleSidebar>
 
     <ConsoleLayoutContent>
