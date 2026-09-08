@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 
 const GlobalNotFound = () => (
   <html lang={NOT_FOUND_LOCALE}>
-    <body className="min-h-dvh bg-background text-foreground antialiased">
+    <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
       <main className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
         <p className="text-sm tracking-wide text-muted-foreground uppercase">
           404 Not Found

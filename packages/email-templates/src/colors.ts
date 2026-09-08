@@ -13,6 +13,7 @@ export const emailColors = {
 } as const;
 
 export const emailFonts = {
-  sans: '"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Segoe UI", sans-serif',
-  serif: '"Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", Georgia, serif',
+  sans: '"Hiragino Sans", "BIZ UDPGothic", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP", system-ui, sans-serif',
+  serif:
+    '"Hiragino Mincho ProN", "BIZ UDPMincho", "Yu Mincho", "Noto Serif CJK JP", "Noto Serif JP", serif',
 } as const;

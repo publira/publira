@@ -4,7 +4,20 @@ The package that provides Publira's brand tokens.
 
 ## What it provides
 
-- `theme.css`: the color and font tokens used from Tailwind v4's `@theme`, and `.publira-theme-scope`, which re-derives those tokens on one element so a subtree can be painted from a `--publira-color-*` set other than the document's
+- `theme.css`: the color and typography tokens used from Tailwind v4's `@theme`, and `.publira-theme-scope`, which re-derives the color tokens on one element so a subtree can be painted from a `--publira-color-*` set other than the document's
+
+The typography tokens:
+
+| Token | Value | Utility |
+| --- | --- | --- |
+| `--font-serif` | `--publira-font-serif`, falling back to the Mincho stack | `font-serif` |
+| `--font-sans` | `--publira-font-sans`, falling back to the Gothic stack | `font-sans` |
+| `--leading-reading-cjk` / `--leading-reading-latin` | 1.9 / 1.6 | `leading-reading-cjk` / `leading-reading-latin` |
+| `--measure-prose` | `40rem` | `max-w-(--measure-prose)` |
+
+No font file is served: both stacks name faces the reader's platform already has.
+
+Sizes and the remaining line heights come from Tailwind: `text-xs` … `text-9xl`, `leading-tight` for a heading, `leading-normal` for UI text.
 
 ## Usage
 
