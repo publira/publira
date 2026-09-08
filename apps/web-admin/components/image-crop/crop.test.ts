@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { EYE_CATCH_ASPECTS } from "./aspects";
+import { EYE_CATCH_ASPECTS } from "#components/eye-catch/aspects";
+
 import type { CropAspect } from "./crop";
 import {
   centreCropRect,

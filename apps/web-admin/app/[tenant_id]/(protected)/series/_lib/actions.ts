@@ -354,7 +354,7 @@ export const updateSeriesEyeCatchAction = async (
 const eyeCatchAspectSchema = (messages: AdminMessages) =>
   z.object({
     crop: optionalCropRectFormSchema(
-      getMessage(messages, "admin.eye_catch.aspect.crop.invalid")
+      getMessage(messages, "admin.image_crop.invalid")
     ),
     publicId: requiredTrimmedString(
       getMessage(messages, "admin.series.validation.id_missing")

@@ -250,8 +250,11 @@ type CreateCreatorRequest struct {
 	ProfileText          string                 `protobuf:"bytes,3,opt,name=profile_text,json=profileText,proto3" json:"profile_text,omitempty"`
 	IconImageData        []byte                 `protobuf:"bytes,4,opt,name=icon_image_data,json=iconImageData,proto3" json:"icon_image_data,omitempty"`
 	IconImageContentType string                 `protobuf:"bytes,5,opt,name=icon_image_content_type,json=iconImageContentType,proto3" json:"icon_image_content_type,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Where in the upload the square icon is cut. Omitted, the image is cut
+	// from its centre as it always has been.
+	IconImageCrop *v1.ImageCropRect `protobuf:"bytes,6,opt,name=icon_image_crop,json=iconImageCrop,proto3" json:"icon_image_crop,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateCreatorRequest) Reset() {
@@ -319,6 +322,13 @@ func (x *CreateCreatorRequest) GetIconImageContentType() string {
 	return ""
 }
 
+func (x *CreateCreatorRequest) GetIconImageCrop() *v1.ImageCropRect {
+	if x != nil {
+		return x.IconImageCrop
+	}
+	return nil
+}
+
 type CreateCreatorResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Creator       *v1.Creator            `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
@@ -372,8 +382,11 @@ type UpdateCreatorRequest struct {
 	IconImageData        []byte                 `protobuf:"bytes,5,opt,name=icon_image_data,json=iconImageData,proto3" json:"icon_image_data,omitempty"`
 	IconImageContentType string                 `protobuf:"bytes,6,opt,name=icon_image_content_type,json=iconImageContentType,proto3" json:"icon_image_content_type,omitempty"`
 	ClearIconImage       bool                   `protobuf:"varint,7,opt,name=clear_icon_image,json=clearIconImage,proto3" json:"clear_icon_image,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Where in the upload the square icon is cut. Omitted, the image is cut
+	// from its centre as it always has been.
+	IconImageCrop *v1.ImageCropRect `protobuf:"bytes,8,opt,name=icon_image_crop,json=iconImageCrop,proto3" json:"icon_image_crop,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateCreatorRequest) Reset() {
@@ -455,6 +468,13 @@ func (x *UpdateCreatorRequest) GetClearIconImage() bool {
 	return false
 }
 
+func (x *UpdateCreatorRequest) GetIconImageCrop() *v1.ImageCropRect {
+	if x != nil {
+		return x.IconImageCrop
+	}
+	return nil
+}
+
 type UpdateCreatorResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Creator       *v1.Creator            `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
@@ -517,15 +537,16 @@ const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"I\n" +
 	"\x12GetCreatorResponse\x123\n" +
-	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\xe5\x01\n" +
+	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\xae\x02\n" +
 	"\x14CreateCreatorRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
 	"\fprofile_text\x18\x03 \x01(\tR\vprofileText\x12&\n" +
 	"\x0ficon_image_data\x18\x04 \x01(\fR\riconImageData\x125\n" +
-	"\x17icon_image_content_type\x18\x05 \x01(\tR\x14iconImageContentType\"L\n" +
+	"\x17icon_image_content_type\x18\x05 \x01(\tR\x14iconImageContentType\x12G\n" +
+	"\x0ficon_image_crop\x18\x06 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\riconImageCrop\"L\n" +
 	"\x15CreateCreatorResponse\x123\n" +
-	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\xac\x02\n" +
+	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\xf5\x02\n" +
 	"\x14UpdateCreatorRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
@@ -533,7 +554,8 @@ const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"\fprofile_text\x18\x04 \x01(\tR\vprofileText\x12&\n" +
 	"\x0ficon_image_data\x18\x05 \x01(\fR\riconImageData\x125\n" +
 	"\x17icon_image_content_type\x18\x06 \x01(\tR\x14iconImageContentType\x12(\n" +
-	"\x10clear_icon_image\x18\a \x01(\bR\x0eclearIconImage\"L\n" +
+	"\x10clear_icon_image\x18\a \x01(\bR\x0eclearIconImage\x12G\n" +
+	"\x0ficon_image_crop\x18\b \x01(\v2\x1f.publira.types.v1.ImageCropRectR\riconImageCrop\"L\n" +
 	"\x15UpdateCreatorResponse\x123\n" +
 	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator2\x99\x03\n" +
 	"\x13AdminCreatorService\x12_\n" +
@@ -567,6 +589,7 @@ var file_publira_admin_v1_creator_proto_goTypes = []any{
 	(*UpdateCreatorResponse)(nil), // 7: publira.admin.v1.UpdateCreatorResponse
 	(*v1.TenantContext)(nil),      // 8: publira.types.v1.TenantContext
 	(*v1.Creator)(nil),            // 9: publira.types.v1.Creator
+	(*v1.ImageCropRect)(nil),      // 10: publira.types.v1.ImageCropRect
 }
 var file_publira_admin_v1_creator_proto_depIdxs = []int32{
 	8,  // 0: publira.admin.v1.ListCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
@@ -574,22 +597,24 @@ var file_publira_admin_v1_creator_proto_depIdxs = []int32{
 	8,  // 2: publira.admin.v1.GetCreatorRequest.tenant:type_name -> publira.types.v1.TenantContext
 	9,  // 3: publira.admin.v1.GetCreatorResponse.creator:type_name -> publira.types.v1.Creator
 	8,  // 4: publira.admin.v1.CreateCreatorRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 5: publira.admin.v1.CreateCreatorResponse.creator:type_name -> publira.types.v1.Creator
-	8,  // 6: publira.admin.v1.UpdateCreatorRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 7: publira.admin.v1.UpdateCreatorResponse.creator:type_name -> publira.types.v1.Creator
-	0,  // 8: publira.admin.v1.AdminCreatorService.ListCreators:input_type -> publira.admin.v1.ListCreatorsRequest
-	2,  // 9: publira.admin.v1.AdminCreatorService.GetCreator:input_type -> publira.admin.v1.GetCreatorRequest
-	4,  // 10: publira.admin.v1.AdminCreatorService.CreateCreator:input_type -> publira.admin.v1.CreateCreatorRequest
-	6,  // 11: publira.admin.v1.AdminCreatorService.UpdateCreator:input_type -> publira.admin.v1.UpdateCreatorRequest
-	1,  // 12: publira.admin.v1.AdminCreatorService.ListCreators:output_type -> publira.admin.v1.ListCreatorsResponse
-	3,  // 13: publira.admin.v1.AdminCreatorService.GetCreator:output_type -> publira.admin.v1.GetCreatorResponse
-	5,  // 14: publira.admin.v1.AdminCreatorService.CreateCreator:output_type -> publira.admin.v1.CreateCreatorResponse
-	7,  // 15: publira.admin.v1.AdminCreatorService.UpdateCreator:output_type -> publira.admin.v1.UpdateCreatorResponse
-	12, // [12:16] is the sub-list for method output_type
-	8,  // [8:12] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	10, // 5: publira.admin.v1.CreateCreatorRequest.icon_image_crop:type_name -> publira.types.v1.ImageCropRect
+	9,  // 6: publira.admin.v1.CreateCreatorResponse.creator:type_name -> publira.types.v1.Creator
+	8,  // 7: publira.admin.v1.UpdateCreatorRequest.tenant:type_name -> publira.types.v1.TenantContext
+	10, // 8: publira.admin.v1.UpdateCreatorRequest.icon_image_crop:type_name -> publira.types.v1.ImageCropRect
+	9,  // 9: publira.admin.v1.UpdateCreatorResponse.creator:type_name -> publira.types.v1.Creator
+	0,  // 10: publira.admin.v1.AdminCreatorService.ListCreators:input_type -> publira.admin.v1.ListCreatorsRequest
+	2,  // 11: publira.admin.v1.AdminCreatorService.GetCreator:input_type -> publira.admin.v1.GetCreatorRequest
+	4,  // 12: publira.admin.v1.AdminCreatorService.CreateCreator:input_type -> publira.admin.v1.CreateCreatorRequest
+	6,  // 13: publira.admin.v1.AdminCreatorService.UpdateCreator:input_type -> publira.admin.v1.UpdateCreatorRequest
+	1,  // 14: publira.admin.v1.AdminCreatorService.ListCreators:output_type -> publira.admin.v1.ListCreatorsResponse
+	3,  // 15: publira.admin.v1.AdminCreatorService.GetCreator:output_type -> publira.admin.v1.GetCreatorResponse
+	5,  // 16: publira.admin.v1.AdminCreatorService.CreateCreator:output_type -> publira.admin.v1.CreateCreatorResponse
+	7,  // 17: publira.admin.v1.AdminCreatorService.UpdateCreator:output_type -> publira.admin.v1.UpdateCreatorResponse
+	14, // [14:18] is the sub-list for method output_type
+	10, // [10:14] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_creator_proto_init() }

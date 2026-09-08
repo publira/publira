@@ -10,8 +10,7 @@ import { useContext, useRef } from "react";
 import { AdminLocaleContext } from "#components/admin-locale-context";
 import type { CropRect } from "#lib/crop-rect";
 
-import type { EyeCatchAspect } from "./aspects";
-import type { CropCorner, CropSource } from "./crop";
+import type { CropAspect, CropCorner, CropSource } from "./crop";
 import {
   cropBounds,
   moveCropRect,
@@ -19,8 +18,8 @@ import {
   resizeCropRectToPointer,
 } from "./crop";
 
-interface EyeCatchCropFrameProps {
-  aspect: EyeCatchAspect;
+interface ImageCropFrameProps {
+  aspect: CropAspect;
   /**
    * The rectangle the editor has framed, in pixels of the picked file, and
    * that file's own size. Both are `null` until the browser has decoded the
@@ -37,10 +36,10 @@ interface EyeCatchCropFrameProps {
 const CROP_CORNERS: readonly CropCorner[] = ["nw", "ne", "se", "sw"];
 
 const CORNER_LABEL_KEYS = {
-  ne: "admin.eye_catch.aspect.crop.resize_top_right",
-  nw: "admin.eye_catch.aspect.crop.resize_top_left",
-  se: "admin.eye_catch.aspect.crop.resize_bottom_right",
-  sw: "admin.eye_catch.aspect.crop.resize_bottom_left",
+  ne: "admin.image_crop.resize_top_right",
+  nw: "admin.image_crop.resize_top_left",
+  se: "admin.image_crop.resize_bottom_right",
+  sw: "admin.image_crop.resize_bottom_left",
 } as const;
 
 /**
@@ -67,32 +66,26 @@ const arrowDirection = (key: string): { x: number; y: number } | undefined =>
 const percent = (value: number, total: number): string =>
   `${(value / total) * 100}%`;
 
-const cornerLabel = (
-  messages: SharedMessages,
-  corner: CropCorner,
-  variantType: string
-): string =>
-  getMessage(messages, CORNER_LABEL_KEYS[corner], {
-    variant_type: variantType,
-  });
+const cornerLabel = (messages: SharedMessages, corner: CropCorner): string =>
+  getMessage(messages, CORNER_LABEL_KEYS[corner]);
 
 /**
  * The picked file at full frame, with the rectangle that will be cut out of it
  * drawn on top. The frame is locked to the ratio, so an editor chooses where
  * the cut sits and how much of the image it covers, and nothing else.
  *
- * The rectangle is held by the slot rather than here: the slot posts it with
- * the upload and previews the same region, so this component reports every
+ * The rectangle is held by the form field rather than here: the field posts it
+ * with the upload and previews the same region, so this component reports every
  * change instead of keeping one.
  */
-export const EyeCatchCropFrame = ({
+export const ImageCropFrame = ({
   aspect,
   crop,
   imageUrl,
   onCropChange,
   onImageLoad,
   source,
-}: EyeCatchCropFrameProps) => {
+}: ImageCropFrameProps) => {
   const locale = useContext(AdminLocaleContext);
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
@@ -221,9 +214,7 @@ export const EyeCatchCropFrame = ({
           it, and this element's box is what the frame is measured against. */}
       {/* oxlint-disable-next-line next/no-img-element, react-doctor/nextjs-no-img-element */}
       <img
-        alt={getMessage(messages, "admin.eye_catch.aspect.crop.image_alt", {
-          variant_type: aspect.variantType,
-        })}
+        alt={getMessage(messages, "admin.image_crop.image_alt")}
         className="block max-h-[60vh] w-auto max-w-full touch-none select-none"
         draggable={false}
         onLoad={onImageLoad}
@@ -234,11 +225,7 @@ export const EyeCatchCropFrame = ({
       {frame ? (
         <div className="pointer-events-none absolute inset-0">
           <button
-            aria-label={getMessage(
-              messages,
-              "admin.eye_catch.aspect.crop.move",
-              { variant_type: aspect.variantType }
-            )}
+            aria-label={getMessage(messages, "admin.image_crop.move")}
             className="pointer-events-auto absolute cursor-grab touch-none shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] outline-2 outline-white focus-visible:outline-4 focus-visible:outline-blue-400 active:cursor-grabbing"
             onKeyDown={handleFrameKeyDown}
             onLostPointerCapture={endDrag}
@@ -257,7 +244,7 @@ export const EyeCatchCropFrame = ({
 
           {CROP_CORNERS.map((corner) => (
             <button
-              aria-label={cornerLabel(messages, corner, aspect.variantType)}
+              aria-label={cornerLabel(messages, corner)}
               className={cn(
                 "pointer-events-auto absolute size-4 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-white bg-blue-500 focus-visible:outline-4 focus-visible:outline-blue-400",
                 corner === "ne" || corner === "sw"

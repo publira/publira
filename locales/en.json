@@ -596,7 +596,9 @@
         "icon": "Author icon image",
         "current_icon_alt": "Current author icon",
         "clear_icon": "Remove the current icon image",
-        "icon_description": "Select a JPEG, PNG, or WebP image no larger than 10MB and at least 256x256px."
+        "icon_description": "Select a JPEG, PNG, or WebP image no larger than 10MB and at least 256x256px.",
+        "icon_crop_title": "Frame the author icon",
+        "icon_preview_alt": "The selected image, framed as the icon will be cut"
       },
       "validation": {
         "name_required": "Name is required.",
@@ -657,21 +659,21 @@
         "uploaded": "The image for this ratio was replaced.",
         "image_required": "Select an image to upload.",
         "image_invalid": "Check the image. For this ratio, choose a JPEG, PNG, or WebP image no larger than 10MB and at least {$width}x{$height}px, then try again.",
-        "crop": {
-          "title": "Frame the {$variant_type} image",
-          "description": "Drag the frame to choose the part of the image this ratio keeps. The frame is locked to the ratio, so only where it sits and how much it covers are yours to set.",
-          "adjust": "Adjust the frame",
-          "done": "Done",
-          "image_alt": "The image being framed for {$variant_type}",
-          "move": "Move the {$variant_type} crop frame",
-          "resize_top_left": "Resize the {$variant_type} crop frame from its top-left corner",
-          "resize_top_right": "Resize the {$variant_type} crop frame from its top-right corner",
-          "resize_bottom_left": "Resize the {$variant_type} crop frame from its bottom-left corner",
-          "resize_bottom_right": "Resize the {$variant_type} crop frame from its bottom-right corner",
-          "invalid": "The framed area could not be read. Select the image again and frame it once more."
-        },
+        "crop_title": "Frame the {$variant_type} image",
         "variant_type_missing": "The aspect ratio is missing."
       }
+    },
+    "image_crop": {
+      "description": "Drag the frame to choose the part of the image that is kept. The frame is locked to the shape the image is delivered in, so only where it sits and how much it covers are yours to set.",
+      "adjust": "Adjust the frame",
+      "done": "Done",
+      "image_alt": "The image being framed",
+      "move": "Move the crop frame",
+      "resize_top_left": "Resize the crop frame from its top-left corner",
+      "resize_top_right": "Resize the crop frame from its top-right corner",
+      "resize_bottom_left": "Resize the crop frame from its bottom-left corner",
+      "resize_bottom_right": "Resize the crop frame from its bottom-right corner",
+      "invalid": "The framed area could not be read. Select the image again and frame it once more."
     },
     "labels": {
       "detail_error": "Could not display the label",

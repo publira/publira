@@ -1,4 +1,6 @@
-import type { Locator, Page } from "@playwright/test";
+import { createHash } from "node:crypto";
+
+import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import {
@@ -22,11 +24,17 @@ import {
   publishedAtOneHourAgo,
   uniqueSuffix,
 } from "../src/scenarios/admin-publish";
+import { EYE_CATCH_SOURCE_FIXTURE } from "../src/scenarios/eye-catch";
 import {
   MULTI_TENANT_SCENARIO,
   OTHER_TENANT,
 } from "../src/scenarios/multi-tenant";
-import { hostPath, WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "../src/urls";
+import {
+  hostPath,
+  WEB_ADMIN_BASE_URL,
+  WEB_HOST_BASE_URL,
+  WEB_HOST_EDGE_BASE_URL,
+} from "../src/urls";
 
 const hostUrl = (pathname: string): string =>
   `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
@@ -59,6 +67,79 @@ const mainHeadingText = async (page: Page): Promise<string> => {
   const heading = page.getByRole("heading", { level: 1 }).first();
   const text = await heading.textContent({ timeout: 15_000 });
   return text?.trim() ?? "";
+};
+
+/**
+ * Where in the upload the editor leaves the frame. `centred` is where the
+ * dialog opens it, which is the square the API cuts on its own.
+ */
+type IconFraming = "centred" | "off-centre";
+
+/**
+ * The path the reader's origin serves the saved icon from.
+ *
+ * The console renders it through `next/image`, so what the console shows is an
+ * optimizer request carrying that path as its `url` parameter.
+ */
+const savedIconPath = async (page: Page): Promise<string> => {
+  const src = await page
+    .getByAltText("Current author icon")
+    .getAttribute("src", { timeout: 30_000 });
+  const url = new URL(src ?? "", WEB_ADMIN_BASE_URL);
+  return url.searchParams.get("url") ?? url.pathname;
+};
+
+/**
+ * Upload an author icon from the edit form and return the sha256 of the image
+ * the reader's origin ends up serving.
+ *
+ * Choosing a file opens the crop dialog, so framing is part of choosing and the
+ * dialog has to be closed before the form's own button is reachable again. The
+ * frame is moved by its keyboard step rather than by dragging: a press lands
+ * the same way on every runner, and it is the accessible path through the
+ * control besides.
+ */
+const uploadIcon = async (
+  page: Page,
+  request: APIRequestContext,
+  creatorPublicId: string,
+  framing: IconFraming
+): Promise<string> => {
+  await page.goto(adminUrl(`/creators/${creatorPublicId}`));
+  // Choosing a file is answered by React, so the pick is repeated until the
+  // dialog it opens is on screen: a file set before the form has hydrated
+  // reaches the input and nothing else, the same race the locale switcher
+  // retries past. The input is emptied first, so every attempt is a change
+  // rather than the same file set over itself.
+  const iconInput = page.locator('input[name="icon_image"]');
+  await expect(async () => {
+    await iconInput.setInputFiles([]);
+    await iconInput.setInputFiles(EYE_CATCH_SOURCE_FIXTURE);
+    await expect(
+      page.getByRole("heading", { name: "Frame the author icon" })
+    ).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 30_000 });
+  if (framing === "off-centre") {
+    await page
+      .getByRole("button", { name: "Move the crop frame" })
+      .press("Shift+ArrowUp");
+  }
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Update author" }).click();
+  await expect(formMessage(page)).toContainText("Author updated.");
+
+  // Read the saved icon from a fresh load rather than from the form the Action
+  // just re-rendered, so what is measured is what the console serves on the
+  // next visit.
+  await page.goto(adminUrl(`/creators/${creatorPublicId}`));
+  const path = await savedIconPath(page);
+  // Only the Traefik edge joins web-host and image-server under one host and
+  // port, so the console names the path and the bytes are read from the edge.
+  const response = await request.get(`${WEB_HOST_EDGE_BASE_URL}${path}`);
+  expect(response.status(), path).toBe(200);
+  return createHash("sha256")
+    .update(await response.body())
+    .digest("hex");
 };
 
 /** The public label list's card for one label, by the name on its heading. */
@@ -192,6 +273,28 @@ test.describe("admin catalog masters", () => {
       mainHeadingText(page)
     ).toBe(renamed);
     await expect(page.getByText(editedProfileText)).toBeVisible();
+  });
+
+  test("framing an author icon cuts the square where the editor put it", async ({
+    page,
+    request,
+  }) => {
+    const name = `E2E Icon Author ${uniqueSuffix()}`;
+    const creatorPublicId = trackCreator(
+      await createCreatorViaUi(page, { name })
+    );
+
+    const centred = await uploadIcon(page, request, creatorPublicId, "centred");
+    const framed = await uploadIcon(
+      page,
+      request,
+      creatorPublicId,
+      "off-centre"
+    );
+
+    // Same file and the same square: only the rectangle the editor framed
+    // separates the two.
+    expect(framed).not.toBe(centred);
   });
 
   test("registers a label and shows it in the list and on web-host", async ({

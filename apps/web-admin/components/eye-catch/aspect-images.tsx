@@ -11,15 +11,18 @@ import type { ChangeEventHandler, ReactEventHandler } from "react";
 import { useActionState, useContext, useEffect, useRef, useState } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import type { CropSource } from "#components/image-crop/crop";
+import {
+  centreCropRect,
+  framedPreviewStyle,
+} from "#components/image-crop/crop";
+import { ImageCropDialog } from "#components/image-crop/crop-dialog";
 import type { CropRect } from "#lib/crop-rect";
 import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EyeCatchAspect } from "./aspects";
 import { EYE_CATCH_ASPECTS, eyeCatchAspectClassName } from "./aspects";
-import type { CropSource } from "./crop";
-import { centreCropRect } from "./crop";
-import { EyeCatchCropDialog } from "./crop-dialog";
 import type { EyeCatchAspectActionState, EyeCatchVariantItem } from "./types";
 
 type EyeCatchAspectAction = (
@@ -47,18 +50,6 @@ const largestVariant = (
     .filter((variant) => variant.variantType === variantType)
     .toSorted((a, b) => a.width - b.width)
     .at(-1);
-
-/**
- * The picked file scaled and shifted so the slot shows the framed region and
- * nothing else. The frame carries the slot's own ratio, so the two scales agree
- * and the region fills the box exactly.
- */
-const framedPreviewStyle = (crop: CropRect, source: CropSource) => ({
-  height: `${(source.height / crop.height) * 100}%`,
-  left: `${(-crop.x / crop.width) * 100}%`,
-  top: `${(-crop.y / crop.height) * 100}%`,
-  width: `${(source.width / crop.width) * 100}%`,
-});
 
 const EyeCatchAspectSlot = ({
   aspect,
@@ -228,7 +219,7 @@ const EyeCatchAspectSlot = ({
             type="button"
             variant="outline"
           >
-            {getMessage(messages, "admin.eye_catch.aspect.crop.adjust")}
+            {getMessage(messages, "admin.image_crop.adjust")}
           </Button>
         ) : null}
         <Button
@@ -257,7 +248,7 @@ const EyeCatchAspectSlot = ({
       ) : null}
 
       {localPreviewUrl ? (
-        <EyeCatchCropDialog
+        <ImageCropDialog
           aspect={aspect}
           crop={crop}
           imageUrl={localPreviewUrl}
@@ -266,6 +257,9 @@ const EyeCatchAspectSlot = ({
           onOpenChange={setIsFraming}
           open={isFraming}
           source={source}
+          title={getMessage(messages, "admin.eye_catch.aspect.crop_title", {
+            variant_type: variantType,
+          })}
         />
       ) : null}
     </div>

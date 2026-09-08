@@ -48,10 +48,11 @@ func resolveEyeCatchAspect(variantType string) (imageproc.EyeCatchAspect, error)
 	)
 }
 
-// eyeCatchCropRect carries the requested rectangle into imageproc. A nil
-// message keeps the centre crop, which is what every upload did before the
-// rectangle existed.
-func eyeCatchCropRect(crop *publirattypesv1.ImageCropRect) *imageproc.CropRect {
+// imageCropRect carries the requested rectangle into imageproc. A nil message
+// keeps the centre crop, which is what every upload did before the rectangle
+// existed. Every upload an editor can frame goes through it, whatever shape
+// the image is cut to afterwards.
+func imageCropRect(crop *publirattypesv1.ImageCropRect) *imageproc.CropRect {
 	if crop == nil {
 		return nil
 	}
@@ -129,7 +130,7 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("series has no eye catch image yet"))
 	}
 
-	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, eyeCatchCropRect(req.Msg.Crop))
+	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, imageCropRect(req.Msg.Crop))
 	if err != nil {
 		return nil, eyeCatchAspectBuildError(err)
 	}
@@ -283,7 +284,7 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("label has no eye catch image yet"))
 	}
 
-	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, eyeCatchCropRect(req.Msg.Crop))
+	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, imageCropRect(req.Msg.Crop))
 	if err != nil {
 		return nil, eyeCatchAspectBuildError(err)
 	}

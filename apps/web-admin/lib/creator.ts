@@ -16,6 +16,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
   cursorPageRequest,
@@ -246,6 +247,8 @@ export const createCreator = async (
     profileText: string;
     iconImageContentType?: string;
     iconImageData?: Uint8Array;
+    /** Where in the upload the square is cut; omitted, the API centres it. */
+    iconImageCrop?: CropRect;
   },
   locale: Locale
 ): Promise<CreateCreatorResult> => {
@@ -262,6 +265,7 @@ export const createCreator = async (
     const response = await apiClient.creator.createCreator(
       {
         iconImageContentType: input.iconImageContentType,
+        iconImageCrop: input.iconImageCrop,
         iconImageData: input.iconImageData,
         name: input.name,
         profileText: input.profileText,
@@ -300,6 +304,8 @@ export const updateCreator = async (
     clearIconImage?: boolean;
     iconImageContentType?: string;
     iconImageData?: Uint8Array;
+    /** Where in the upload the square is cut; omitted, the API centres it. */
+    iconImageCrop?: CropRect;
   },
   locale: Locale
 ): Promise<UpdateCreatorResult> => {
@@ -317,6 +323,7 @@ export const updateCreator = async (
       {
         clearIconImage: input.clearIconImage,
         iconImageContentType: input.iconImageContentType,
+        iconImageCrop: input.iconImageCrop,
         iconImageData: input.iconImageData,
         name: input.name,
         profileText: input.profileText,
