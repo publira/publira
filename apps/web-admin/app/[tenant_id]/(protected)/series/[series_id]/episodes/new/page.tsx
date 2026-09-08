@@ -109,7 +109,7 @@ const NewEpisodePage = ({ params }: Pick<NewEpisodePageProps, "params">) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageContext>
-          <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <NewEpisodeContext params={params} />
           </Suspense>
         </AdminPageContext>

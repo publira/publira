@@ -66,6 +66,9 @@ const SeriesEpisodesPageSkeleton = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
+        <AdminPageContext>
+          <SkeletonLine className="h-4 w-40" />
+        </AdminPageContext>
         <AdminPageTitle>
           <SkeletonLine className="h-7 w-48" />
         </AdminPageTitle>
