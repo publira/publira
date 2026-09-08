@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"image/color"
 	"regexp"
 	"slices"
 	"testing"
@@ -430,6 +431,19 @@ func TestCreateCreatorValidationAndSuccess(t *testing.T) {
 				expectAdminAuditLogInsert(mock)
 			},
 		},
+		{
+			// The rectangle reaches the icon pipeline, which refuses one the
+			// upload cannot hold. Nothing is stored, so no setup is needed.
+			name: "crop-outside-image",
+			request: &publiraadminv1.CreateCreatorRequest{
+				Tenant:               &publirattypesv1.TenantContext{TenantId: ""},
+				Name:                 "Creator One",
+				IconImageData:        halvedImage(t, 600, 400, color.RGBA{R: 255, A: 255}, color.RGBA{B: 255, A: 255}),
+				IconImageContentType: "image/png",
+				IconImageCrop:        &publirattypesv1.ImageCropRect{X: 400, Y: 0, Width: 300, Height: 300},
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
 	}
 
 	for _, tc := range tests {
@@ -516,6 +530,34 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 	}
 	if resp.Msg.Creator.Name != "After" {
 		t.Fatalf("creator name = %q, want After", resp.Msg.Creator.Name)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdateCreatorRejectsACropTheUploadCannotHold(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateCreatorRequest{
+		Tenant:               &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId:             "CREATOR001",
+		Name:                 "After",
+		IconImageData:        halvedImage(t, 600, 400, color.RGBA{R: 255, A: 255}, color.RGBA{B: 255, A: 255}),
+		IconImageContentType: "image/png",
+		IconImageCrop:        &publirattypesv1.ImageCropRect{X: 400, Y: 0, Width: 300, Height: 300},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.UpdateCreator(context.Background(), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateCreator code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
 	assertExpectations(t, mock)
 }

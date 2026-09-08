@@ -366,7 +366,7 @@ func BuildEyeCatchAspectVariants(raw []byte, contentType string, variantType str
 
 	region := src
 	if crop != nil {
-		region, err = cropRegion(src, *crop)
+		region, err = CropImage(src, *crop)
 		if err != nil {
 			return nil, err
 		}
@@ -456,10 +456,13 @@ func centerCropToAspect(src image.Image, aspectW, aspectH int) image.Image {
 	))
 }
 
-// cropRegion cuts rect out of src. rect is stated in pixels of the uploaded
+// CropImage cuts rect out of src. rect is stated in pixels of the uploaded
 // image, so it is offset by the source bounds rather than taken as it stands:
 // src can be a sub-image whose bounds do not start at the origin.
-func cropRegion(src image.Image, rect CropRect) (image.Image, error) {
+//
+// A rectangle the image cannot hold fails with ErrInvalidCrop, so a caller can
+// report the selection rather than the image the editor picked.
+func CropImage(src image.Image, rect CropRect) (image.Image, error) {
 	bounds := src.Bounds()
 	if rect.Width <= 0 || rect.Height <= 0 {
 		return nil, fmt.Errorf("%w: crop size must be positive, got %dx%d", ErrInvalidCrop, rect.Width, rect.Height)

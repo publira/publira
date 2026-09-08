@@ -42,6 +42,9 @@ message CreateCreatorRequest {
   string profile_text = 3;
   bytes icon_image_data = 4;
   string icon_image_content_type = 5;
+  // Where in the upload the square icon is cut. Omitted, the image is cut
+  // from its centre as it always has been.
+  publira.types.v1.ImageCropRect icon_image_crop = 6;
 }
 
 message CreateCreatorResponse {
@@ -56,6 +59,9 @@ message UpdateCreatorRequest {
   bytes icon_image_data = 5;
   string icon_image_content_type = 6;
   bool clear_icon_image = 7;
+  // Where in the upload the square icon is cut. Omitted, the image is cut
+  // from its centre as it always has been.
+  publira.types.v1.ImageCropRect icon_image_crop = 8;
 }
 
 message UpdateCreatorResponse {

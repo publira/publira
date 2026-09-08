@@ -131,7 +131,11 @@ type normalizedCreatorIconImage struct {
 	Width       int32
 }
 
-func normalizeCreatorIconImage(data []byte, contentType string) (*normalizedCreatorIconImage, error) {
+// normalizeCreatorIconImage cuts the square an icon is delivered as out of an
+// upload. A nil crop takes it from the centre of the upload; a crop takes it
+// from the named rectangle instead, and the square is then fitted inside that
+// rectangle so a selection a few pixels off square still delivers a square.
+func normalizeCreatorIconImage(data []byte, contentType string, crop *imageproc.CropRect) (*normalizedCreatorIconImage, error) {
 	if len(data) == 0 {
 		return nil, nil
 	}
@@ -151,12 +155,22 @@ func normalizeCreatorIconImage(data []byte, contentType string) (*normalizedCrea
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("icon_image_data is not decodable"))
 	}
-	bounds := decoded.Bounds()
+	region := decoded
+	if crop != nil {
+		region, err = imageproc.CropImage(decoded, *crop)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+	bounds := region.Bounds()
 	cropSize := bounds.Dx()
 	if bounds.Dy() < cropSize {
 		cropSize = bounds.Dy()
 	}
 	if cropSize < creatorIconMinDimension {
+		if crop != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: icon crop must be at least %dx%d after fitting to a square", imageproc.ErrInvalidCrop, creatorIconMinDimension, creatorIconMinDimension))
+		}
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("icon image must be at least 256x256"))
 	}
 
@@ -165,7 +179,7 @@ func normalizeCreatorIconImage(data []byte, contentType string) (*normalizedCrea
 		Y: bounds.Min.Y + (bounds.Dy()-cropSize)/2,
 	}
 	cropped := image.NewRGBA(image.Rect(0, 0, cropSize, cropSize))
-	draw.Draw(cropped, cropped.Bounds(), decoded, origin, draw.Src)
+	draw.Draw(cropped, cropped.Bounds(), region, origin, draw.Src)
 
 	encodedContentType := normalizedContentType
 	var encoded bytes.Buffer
@@ -662,7 +676,7 @@ func (s *adminServer) CreateCreator(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
 
-	iconImage, err := normalizeCreatorIconImage(req.Msg.IconImageData, req.Msg.IconImageContentType)
+	iconImage, err := normalizeCreatorIconImage(req.Msg.IconImageData, req.Msg.IconImageContentType, imageCropRect(req.Msg.IconImageCrop))
 	if err != nil {
 		return nil, err
 	}
@@ -744,7 +758,7 @@ func (s *adminServer) UpdateCreator(
 	if req.Msg.ClearIconImage && len(req.Msg.IconImageData) > 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("clear_icon_image and icon_image_data cannot be used together"))
 	}
-	iconImage, err := normalizeCreatorIconImage(req.Msg.IconImageData, req.Msg.IconImageContentType)
+	iconImage, err := normalizeCreatorIconImage(req.Msg.IconImageData, req.Msg.IconImageContentType, imageCropRect(req.Msg.IconImageCrop))
 	if err != nil {
 		return nil, err
 	}
