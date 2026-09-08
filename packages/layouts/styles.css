@@ -22,6 +22,21 @@
   ::selection {
     @apply bg-primary/22;
   }
+
+  /**
+   * Every transition in this UI answers an action, so under reduced motion
+   * there is nothing left to shorten: the end state is what the person asked
+   * for. `!important` is what reaches a utility from the base layer, and
+   * dropping the animation leaves a skeleton at its `muted` fill.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
 }
 
 @layer components {

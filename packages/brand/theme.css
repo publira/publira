@@ -33,6 +33,20 @@
 }
 
 @theme {
+  /* Controls: inputs, buttons, chips, small thumbnails. */
+  --radius-control: 0.25rem;
+  /* Artwork and floating layers: covers, eyecatches, dialogs, popovers, toasts. */
+  --radius-surface: 0.5rem;
+
+  /* The only shadow. An in-flow surface is separated by a hairline instead. */
+  --shadow-floating: 0 8px 24px -12px rgb(31 29 26 / 0.35);
+
+  /* A state change a person asked for: a dialog opening, a toggle switching. */
+  --transition-duration-state: 150ms;
+  --ease-state: var(--ease-out);
+}
+
+@theme {
   --color-background: var(--publira-color-background, #f5f5f2);
   --color-foreground: var(--publira-color-foreground, #1f1d1a);
 
