@@ -104,30 +104,30 @@ func tenantThemeUpsertRow(tenantID uuid.UUID, primaryColor, secondaryColor, acce
 		secondaryColor,
 		accentColor,
 		now,
-		"#f6f2e9",
-		"#1e2b38",
-		"#fbf8f2",
-		"#1e2b38",
-		"#fffdf8",
-		"#1e2b38",
-		"#fffdf8",
-		"#1e2b38",
-		"#f4fbfb",
-		"#fff6f1",
-		"#0f2a1f",
-		"#e9e1d3",
-		"#5c6773",
-		"#d7ccba",
-		"#e3d8c7",
-		"#2d8d93",
-		"#2f8f5b",
-		"#f3fcf7",
-		"#c4872a",
-		"#fff8ea",
-		"#b54444",
-		"#fff4f4",
-		"#3c78c2",
-		"#f3f8ff",
+		"#f5f5f2",
+		"#1f1d1a",
+		"#fafaf8",
+		"#1f1d1a",
+		"#ffffff",
+		"#1f1d1a",
+		"#ffffff",
+		"#1f1d1a",
+		"#ffffff",
+		"#ffffff",
+		"#22407a",
+		"#e8e8e3",
+		"#5f5e59",
+		"#d6d6d0",
+		"#cfcfc8",
+		"#2b4c8c",
+		"#2a6b3f",
+		"#ffffff",
+		"#8a5a0b",
+		"#ffffff",
+		"#8f1d1d",
+		"#ffffff",
+		"#2f5d8a",
+		"#ffffff",
 		icon,
 		logo,
 	}
@@ -136,33 +136,33 @@ func tenantThemeUpsertRow(tenantID uuid.UUID, primaryColor, secondaryColor, acce
 func tenantThemeSelectRow(tenantID uuid.UUID, primaryColor, secondaryColor, accentColor string, icon, logo uuid.NullUUID, now time.Time) []driver.Value {
 	return []driver.Value{
 		tenantID,
-		"#f6f2e9",
-		"#1e2b38",
-		"#fbf8f2",
-		"#1e2b38",
-		"#fffdf8",
-		"#1e2b38",
-		"#fffdf8",
-		"#1e2b38",
+		"#f5f5f2",
+		"#1f1d1a",
+		"#fafaf8",
+		"#1f1d1a",
+		"#ffffff",
+		"#1f1d1a",
+		"#ffffff",
+		"#1f1d1a",
 		primaryColor,
-		"#f4fbfb",
+		"#ffffff",
 		secondaryColor,
-		"#fff6f1",
+		"#ffffff",
 		accentColor,
-		"#0f2a1f",
-		"#e9e1d3",
-		"#5c6773",
-		"#d7ccba",
-		"#e3d8c7",
-		"#2d8d93",
-		"#2f8f5b",
-		"#f3fcf7",
-		"#c4872a",
-		"#fff8ea",
-		"#b54444",
-		"#fff4f4",
-		"#3c78c2",
-		"#f3f8ff",
+		"#22407a",
+		"#e8e8e3",
+		"#5f5e59",
+		"#d6d6d0",
+		"#cfcfc8",
+		"#2b4c8c",
+		"#2a6b3f",
+		"#ffffff",
+		"#8a5a0b",
+		"#ffffff",
+		"#8f1d1d",
+		"#ffffff",
+		"#2f5d8a",
+		"#ffffff",
 		icon,
 		brandingImageUpdatedAt(icon, now),
 		logo,
@@ -203,7 +203,7 @@ func expectTenantThemeRead(mock sqlmock.Sqlmock, tenantID uuid.UUID, icon, logo 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
-			AddRow(tenantThemeSelectRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", icon, logo, now)...))
+			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", icon, logo, now)...))
 	expectTenantImageVariants(mock, icon, logo)
 }
 
@@ -275,7 +275,7 @@ func TestGetTenantThemeReturnsDefaultsWhenUnset(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
-			AddRow(tenantThemeSelectRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
+			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
 
 	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.GetTenantThemeRequest{
@@ -286,14 +286,14 @@ func TestGetTenantThemeReturnsDefaultsWhenUnset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTenantTheme: %v", err)
 	}
-	if resp.Msg.Theme.PrimaryColor != "#0f7c82" {
-		t.Fatalf("primary_color = %q, want #0f7c82", resp.Msg.Theme.PrimaryColor)
+	if resp.Msg.Theme.PrimaryColor != "#2b4c8c" {
+		t.Fatalf("primary_color = %q, want #2b4c8c", resp.Msg.Theme.PrimaryColor)
 	}
-	if resp.Msg.Theme.SecondaryColor != "#d96f4a" {
-		t.Fatalf("secondary_color = %q, want #d96f4a", resp.Msg.Theme.SecondaryColor)
+	if resp.Msg.Theme.SecondaryColor != "#c63d17" {
+		t.Fatalf("secondary_color = %q, want #c63d17", resp.Msg.Theme.SecondaryColor)
 	}
-	if resp.Msg.Theme.AccentColor != "#7aae90" {
-		t.Fatalf("accent_color = %q, want #7aae90", resp.Msg.Theme.AccentColor)
+	if resp.Msg.Theme.AccentColor != "#e3e9f5" {
+		t.Fatalf("accent_color = %q, want #e3e9f5", resp.Msg.Theme.AccentColor)
 	}
 	if len(resp.Msg.Theme.IconImageVariants) != 0 {
 		t.Fatalf("icon variants = %d, want none", len(resp.Msg.Theme.IconImageVariants))
@@ -373,33 +373,33 @@ func TestUpsertTenantThemeValidatesColorCode(t *testing.T) {
 
 func TestNormalizeTenantThemeRejectsInsufficientContrast(t *testing.T) {
 	theme := &publirattypesv1.TenantTheme{
-		PrimaryColor:               "#0f7c82",
-		SecondaryColor:             "#b35235",
-		AccentColor:                "#7aae90",
-		BackgroundColor:            "#f6f2e9",
-		ForegroundColor:            "#1e2b38",
-		SurfaceColor:               "#fbf8f2",
-		SurfaceForegroundColor:     "#1e2b38",
-		CardColor:                  "#fffdf8",
-		CardForegroundColor:        "#1e2b38",
-		PopoverColor:               "#fffdf8",
-		PopoverForegroundColor:     "#1e2b38",
-		PrimaryForegroundColor:     "#0f7c82",
-		SecondaryForegroundColor:   "#fff6f1",
-		AccentForegroundColor:      "#0f2a1f",
-		MutedColor:                 "#e9e1d3",
-		MutedForegroundColor:       "#56616e",
-		BorderColor:                "#d7ccba",
-		InputColor:                 "#e3d8c7",
-		RingColor:                  "#2d8d93",
-		SuccessColor:               "#247542",
-		SuccessForegroundColor:     "#f3fcf7",
-		WarningColor:               "#9b6217",
-		WarningForegroundColor:     "#fff8ea",
-		DestructiveColor:           "#b54444",
-		DestructiveForegroundColor: "#fff4f4",
-		InfoColor:                  "#2b5e9f",
-		InfoForegroundColor:        "#f3f8ff",
+		PrimaryColor:               "#2b4c8c",
+		SecondaryColor:             "#c63d17",
+		AccentColor:                "#e3e9f5",
+		BackgroundColor:            "#f5f5f2",
+		ForegroundColor:            "#1f1d1a",
+		SurfaceColor:               "#fafaf8",
+		SurfaceForegroundColor:     "#1f1d1a",
+		CardColor:                  "#ffffff",
+		CardForegroundColor:        "#1f1d1a",
+		PopoverColor:               "#ffffff",
+		PopoverForegroundColor:     "#1f1d1a",
+		PrimaryForegroundColor:     "#2b4c8c",
+		SecondaryForegroundColor:   "#ffffff",
+		AccentForegroundColor:      "#22407a",
+		MutedColor:                 "#e8e8e3",
+		MutedForegroundColor:       "#5f5e59",
+		BorderColor:                "#d6d6d0",
+		InputColor:                 "#cfcfc8",
+		RingColor:                  "#2b4c8c",
+		SuccessColor:               "#2a6b3f",
+		SuccessForegroundColor:     "#ffffff",
+		WarningColor:               "#8a5a0b",
+		WarningForegroundColor:     "#ffffff",
+		DestructiveColor:           "#8f1d1d",
+		DestructiveForegroundColor: "#ffffff",
+		InfoColor:                  "#2f5d8a",
+		InfoForegroundColor:        "#ffffff",
 	}
 
 	_, err := normalizeTenantTheme(theme)
@@ -423,69 +423,69 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(upsertTenantThemeQuery)).
 		WithArgs(
 			tenantID,
-			"#f6f2e9",
-			"#1e2b38",
-			"#fbf8f2",
-			"#1e2b38",
-			"#fffdf8",
-			"#1e2b38",
-			"#fffdf8",
-			"#1e2b38",
-			"#0f7c82",
-			"#f4fbfb",
-			"#b35235",
-			"#fff6f1",
-			"#7aae90",
-			"#0f2a1f",
-			"#e9e1d3",
-			"#56616e",
-			"#d7ccba",
-			"#e3d8c7",
-			"#2d8d93",
-			"#247542",
-			"#f3fcf7",
-			"#9b6217",
-			"#fff8ea",
-			"#b54444",
-			"#fff4f4",
-			"#2b5e9f",
-			"#f3f8ff",
+			"#f5f5f2",
+			"#1f1d1a",
+			"#fafaf8",
+			"#1f1d1a",
+			"#ffffff",
+			"#1f1d1a",
+			"#ffffff",
+			"#1f1d1a",
+			"#2b4c8c",
+			"#ffffff",
+			"#c63d17",
+			"#ffffff",
+			"#e3e9f5",
+			"#22407a",
+			"#e8e8e3",
+			"#5f5e59",
+			"#d6d6d0",
+			"#cfcfc8",
+			"#2b4c8c",
+			"#2a6b3f",
+			"#ffffff",
+			"#8a5a0b",
+			"#ffffff",
+			"#8f1d1d",
+			"#ffffff",
+			"#2f5d8a",
+			"#ffffff",
 		).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
-			AddRow(tenantThemeUpsertRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
+			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)
 
 	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.UpsertTenantThemeRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Theme: &publirattypesv1.TenantTheme{
-			PrimaryColor:               "  #0F7C82 ",
-			SecondaryColor:             "#B35235",
-			AccentColor:                "#7AAE90",
-			BackgroundColor:            "#F6F2E9",
-			ForegroundColor:            "#1E2B38",
-			SurfaceColor:               "#FBF8F2",
-			SurfaceForegroundColor:     "#1E2B38",
-			CardColor:                  "#FFFDF8",
-			CardForegroundColor:        "#1E2B38",
-			PopoverColor:               "#FFFDF8",
-			PopoverForegroundColor:     "#1E2B38",
-			PrimaryForegroundColor:     "#F4FBFB",
-			SecondaryForegroundColor:   "#FFF6F1",
-			AccentForegroundColor:      "#0F2A1F",
-			MutedColor:                 "#E9E1D3",
-			MutedForegroundColor:       "#56616E",
-			BorderColor:                "#D7CCBA",
-			InputColor:                 "#E3D8C7",
-			RingColor:                  "#2D8D93",
-			SuccessColor:               "#247542",
-			SuccessForegroundColor:     "#F3FCF7",
-			WarningColor:               "#9B6217",
-			WarningForegroundColor:     "#FFF8EA",
-			DestructiveColor:           "#B54444",
-			DestructiveForegroundColor: "#FFF4F4",
-			InfoColor:                  "#2B5E9F",
-			InfoForegroundColor:        "#F3F8FF",
+			PrimaryColor:               "  #2B4C8C ",
+			SecondaryColor:             "#C63D17",
+			AccentColor:                "#E3E9F5",
+			BackgroundColor:            "#F5F5F2",
+			ForegroundColor:            "#1F1D1A",
+			SurfaceColor:               "#FAFAF8",
+			SurfaceForegroundColor:     "#1F1D1A",
+			CardColor:                  "#FFFFFF",
+			CardForegroundColor:        "#1F1D1A",
+			PopoverColor:               "#FFFFFF",
+			PopoverForegroundColor:     "#1F1D1A",
+			PrimaryForegroundColor:     "#FFFFFF",
+			SecondaryForegroundColor:   "#FFFFFF",
+			AccentForegroundColor:      "#22407A",
+			MutedColor:                 "#E8E8E3",
+			MutedForegroundColor:       "#5F5E59",
+			BorderColor:                "#D6D6D0",
+			InputColor:                 "#CFCFC8",
+			RingColor:                  "#2B4C8C",
+			SuccessColor:               "#2A6B3F",
+			SuccessForegroundColor:     "#FFFFFF",
+			WarningColor:               "#8A5A0B",
+			WarningForegroundColor:     "#FFFFFF",
+			DestructiveColor:           "#8F1D1D",
+			DestructiveForegroundColor: "#FFFFFF",
+			InfoColor:                  "#2F5D8A",
+			InfoForegroundColor:        "#FFFFFF",
 		},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
@@ -493,14 +493,14 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpsertTenantTheme: %v", err)
 	}
-	if resp.Msg.Theme.PrimaryColor != "#0f7c82" {
-		t.Fatalf("primary_color = %q, want #0f7c82", resp.Msg.Theme.PrimaryColor)
+	if resp.Msg.Theme.PrimaryColor != "#2b4c8c" {
+		t.Fatalf("primary_color = %q, want #2b4c8c", resp.Msg.Theme.PrimaryColor)
 	}
-	if resp.Msg.Theme.SecondaryColor != "#d96f4a" {
-		t.Fatalf("secondary_color = %q, want #d96f4a", resp.Msg.Theme.SecondaryColor)
+	if resp.Msg.Theme.SecondaryColor != "#c63d17" {
+		t.Fatalf("secondary_color = %q, want #c63d17", resp.Msg.Theme.SecondaryColor)
 	}
-	if resp.Msg.Theme.AccentColor != "#7aae90" {
-		t.Fatalf("accent_color = %q, want #7aae90", resp.Msg.Theme.AccentColor)
+	if resp.Msg.Theme.AccentColor != "#e3e9f5" {
+		t.Fatalf("accent_color = %q, want #e3e9f5", resp.Msg.Theme.AccentColor)
 	}
 	assertExpectations(t, mock)
 }
@@ -538,7 +538,7 @@ func TestUploadTenantIconStoresImageAndPointsThemeAtIt(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
-			AddRow(tenantThemeSelectRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", uuid.NullUUID{UUID: previousImageID, Valid: true}, uuid.NullUUID{}, now)...))
+			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{UUID: previousImageID, Valid: true}, uuid.NullUUID{}, now)...))
 	mock.ExpectQuery(regexp.QuoteMeta(createTenantImageQuery)).
 		WithArgs(sqlmock.AnyArg(), tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "updated_at", "created_at"}).
@@ -555,7 +555,7 @@ func TestUploadTenantIconStoresImageAndPointsThemeAtIt(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(setTenantThemeIconImageQuery)).
 		WithArgs(tenantID, uuid.NullUUID{UUID: storedImageID, Valid: true}).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
-			AddRow(tenantThemeUpsertRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", uuid.NullUUID{UUID: storedImageID, Valid: true}, uuid.NullUUID{}, now)...))
+			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{UUID: storedImageID, Valid: true}, uuid.NullUUID{}, now)...))
 	mock.ExpectExec(regexp.QuoteMeta(deleteTenantImageQuery)).
 		WithArgs(previousImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -620,11 +620,11 @@ func TestDeleteTenantIconClearsReferenceAndDropsImage(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
-			AddRow(tenantThemeSelectRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", uuid.NullUUID{UUID: currentImageID, Valid: true}, uuid.NullUUID{}, now)...))
+			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{UUID: currentImageID, Valid: true}, uuid.NullUUID{}, now)...))
 	mock.ExpectQuery(regexp.QuoteMeta(setTenantThemeIconImageQuery)).
 		WithArgs(tenantID, uuid.NullUUID{}).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
-			AddRow(tenantThemeUpsertRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
+			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
 	mock.ExpectExec(regexp.QuoteMeta(deleteTenantImageQuery)).
 		WithArgs(currentImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -682,7 +682,7 @@ func TestUploadTenantLogoStoresImageAndPointsThemeAtIt(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
-			AddRow(tenantThemeSelectRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", uuid.NullUUID{}, uuid.NullUUID{UUID: previousImageID, Valid: true}, now)...))
+			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{UUID: previousImageID, Valid: true}, now)...))
 	mock.ExpectQuery(regexp.QuoteMeta(createTenantImageQuery)).
 		WithArgs(sqlmock.AnyArg(), tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "updated_at", "created_at"}).
@@ -699,7 +699,7 @@ func TestUploadTenantLogoStoresImageAndPointsThemeAtIt(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(setTenantThemeLogoImageQuery)).
 		WithArgs(tenantID, uuid.NullUUID{UUID: storedImageID, Valid: true}).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
-			AddRow(tenantThemeUpsertRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", uuid.NullUUID{}, uuid.NullUUID{UUID: storedImageID, Valid: true}, now)...))
+			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{UUID: storedImageID, Valid: true}, now)...))
 	mock.ExpectExec(regexp.QuoteMeta(deleteTenantImageQuery)).
 		WithArgs(previousImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -764,11 +764,11 @@ func TestDeleteTenantLogoClearsReferenceAndDropsImage(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
-			AddRow(tenantThemeSelectRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", uuid.NullUUID{}, uuid.NullUUID{UUID: currentImageID, Valid: true}, now)...))
+			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{UUID: currentImageID, Valid: true}, now)...))
 	mock.ExpectQuery(regexp.QuoteMeta(setTenantThemeLogoImageQuery)).
 		WithArgs(tenantID, uuid.NullUUID{}).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
-			AddRow(tenantThemeUpsertRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
+			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
 	mock.ExpectExec(regexp.QuoteMeta(deleteTenantImageQuery)).
 		WithArgs(currentImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))

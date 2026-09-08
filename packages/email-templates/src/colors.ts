@@ -3,13 +3,13 @@
  * Email clients do not load CSS variables, so the fallbacks are inlined here.
  */
 export const emailColors = {
-  background: "#f6f2e9",
-  border: "#d7ccba",
-  brand: "#0f7c82",
-  buttonForeground: "#f4fbfb",
-  card: "#fffdf8",
-  foreground: "#1e2b38",
-  muted: "#5c6773",
+  background: "#f5f5f2",
+  border: "#d6d6d0",
+  brand: "#2b4c8c",
+  buttonForeground: "#ffffff",
+  card: "#ffffff",
+  foreground: "#1f1d1a",
+  muted: "#5f5e59",
 } as const;
 
 export const emailFonts = {
