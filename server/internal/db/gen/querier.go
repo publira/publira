@@ -660,6 +660,31 @@ type Querier interface {
 	// The tie-break runs past occurred_at because two events from one actor can
 	// share a timestamp; id is UUIDv7, so the later insert wins.
 	ListLatestContentRatingsByEntity(ctx context.Context, arg ListLatestContentRatingsByEntityParams) ([]ListLatestContentRatingsByEntityRow, error)
+	// The backward direction of ListMyEpisodeReadsDesc.
+	ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeReadsAscParams) ([]ListMyEpisodeReadsAscRow, error)
+	// The episodes this reader has finished, most recently finished first.
+	//
+	// Publication is re-checked here, so a history entry never names an episode
+	// the storefront has taken down; that is the same rule ListMyRecentSeries
+	// applies to a series. Body access is not re-checked: the reader did finish
+	// the episode, and a rental that has since expired is still part of what they
+	// read, which is also how ListMyPurchases keeps an expired purchase.
+	//
+	// The scan starts from the (tenant_id, user_id) prefix of
+	// idx_episode_reads_tenant_user_read_at, so it is bounded by one reader's
+	// history rather than by the tenant's.
+	//
+	// Backward calls ListMyEpisodeReadsAsc, and the caller sorts the rows back.
+	// cursor rules: proto/README.md.
+	ListMyEpisodeReadsDesc(ctx context.Context, arg ListMyEpisodeReadsDescParams) ([]ListMyEpisodeReadsDescRow, error)
+	// Which episodes of one series this reader has already finished, so the series
+	// detail can mark the rows of its episode list.
+	//
+	// Publication is left to the caller: the list this answers is the published
+	// episode list the series detail already holds, so an id that matches nothing
+	// in it marks nothing. What the query is scoped to is the reader, through the
+	// member RLS policy episode_reads carries and the columns repeated here.
+	ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, arg ListMyFinishedEpisodePublicIDsInSeriesParams) ([]string, error)
 	ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error)
 	ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error)
 	// The backward direction of ListMyRecentSeriesDesc.

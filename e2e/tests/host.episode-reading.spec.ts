@@ -106,6 +106,31 @@ const clearReadingPosition = (): void => {
 
 const readingProgress = (page: Page) => page.getByLabel(VIEWER_PROGRESS_LABEL);
 
+/** The reading history section of `/my`, which names itself as a landmark. */
+const readingHistory = (page: Page) =>
+  page.getByRole("region", { name: "Reading history" });
+
+/** The history's entry for the seeded episode, as the link that opens it. */
+const historyEntry = (page: Page) =>
+  readingHistory(page).getByRole("link", { name: VIEWER_EPISODE_TITLE });
+
+/**
+ * The viewer's report that the episode is finished, answered.
+ *
+ * `sendBeacon` hands the report to the browser, which delivers it on its own
+ * schedule, so the next screen this reader opens could otherwise be rendered
+ * from a history the read had not reached yet. The Route Handler answers only
+ * after the API has stored the read, so its response is the moment the history
+ * behind every screen contains it. Start waiting before the last page turn:
+ * the viewer sends the beacon the moment that page appears.
+ */
+const episodeReadReported = (page: Page): Promise<unknown> =>
+  page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().endsWith(`/episodes/${VIEWER_EPISODE_ID}/read`)
+  );
+
 const pageCanvas = (page: Page, pageNumber: number) =>
   page.locator(`canvas[aria-label="${viewerPageLabel(pageNumber)}"]`);
 
@@ -172,17 +197,16 @@ const isStrictlyAscending = (values: readonly number[]): boolean =>
  * Reading one episode from its first page to its last, through the edge that
  * serves the reader and its body images under a single origin.
  *
- * The read state a finished episode leaves behind is asserted in the database,
- * because no screen a reader can reach reports it: `/my`'s reading history is a
- * fixed empty state, `/my/library` lists purchases and this episode is free,
- * and the public API has no RPC that reads `episode_reads` back — see
- * https://github.com/publira/publira/issues/1503. What the reader does produce
- * is the beacon the viewer sends on the last page, so the record is still
- * reached the way a reader reaches it rather than written by the fixture.
+ * What a finished read leaves behind is asserted through the reader's own
+ * screens: `/my` lists it in the reading history, and the series page marks
+ * the episode as finished. The reader's saved position is asserted the same
+ * way — what they can see of it is the page the episode opens at, which is
+ * what the resume test reads back.
  *
- * The reader's saved position is asserted the same way, and for the same
- * reason: what a reader can see of it is the page the episode opens at, which
- * is what the resume test reads back.
+ * Two things are still read from the database, because they are not the
+ * reader's to see: the stored `read_at` a repeated read must not move, and the
+ * `episode_complete` events the engagement report counts. Those are storage and
+ * analytics invariants of one reading, not state any screen reports.
  *
  * That read state and that position are the only things this suite writes, and
  * no other suite touches them, so the tests stay independent of one another
@@ -222,29 +246,38 @@ test.describe("web-host episode reading", () => {
     );
   });
 
-  test("finishing the episode records the member's read and keeps it across a reload", async ({
+  test("finishing the episode puts it in the reader's history and marks it on the series page", async ({
     page,
   }) => {
     clearEpisodeReadState();
     clearReadingPosition();
-    await signInAsMember(
-      page,
-      SEED_MEMBER,
-      VIEWER_EPISODE_PATH,
-      WEB_HOST_EDGE_BASE_URL
-    );
-    await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
-    expect(episodeReadAt(), "unread before the reader finishes it").toBe("");
+    await signInAsMember(page, SEED_MEMBER, "/my", WEB_HOST_EDGE_BASE_URL);
+    await expect(
+      readingHistory(page).getByText("No reading history yet"),
+      "the reader has finished nothing yet"
+    ).toBeVisible();
 
+    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
+    const readReported = episodeReadReported(page);
     await turnToLastPage(page);
+    await readReported;
 
-    // `sendBeacon` hands the report to the browser, which delivers it on its
-    // own schedule, so the record lands after the last page rather than with
-    // it.
-    await expect
-      .poll(episodeReadAt, { message: "the finished read was recorded" })
-      .not.toBe("");
+    await page.goto(edgeUrl("/my"));
+    await expect(historyEntry(page)).toHaveAttribute(
+      "href",
+      hostPath(VIEWER_EPISODE_PATH)
+    );
+
+    await page.goto(edgeUrl(seriesPath));
+    await expect(
+      page
+        .getByRole("listitem")
+        .filter({ hasText: VIEWER_EPISODE_TITLE })
+        .getByText("Finished"),
+      "the series page marks the episode the reader finished"
+    ).toBeVisible();
+
     const firstReadAt = episodeReadAt();
     await expect
       .poll(episodeCompleteEventCount, {
@@ -253,7 +286,7 @@ test.describe("web-host episode reading", () => {
       .toBe("1");
 
     // The reader stopped on the last page, so that is where the episode opens
-    // again. Waiting for the position to be written is what makes the reload
+    // again. Waiting for the position to be written is what makes the return
     // land somewhere this test can name, and it puts the reader back on the
     // last page without a single turn — which is the re-read this asserts is
     // not a second completion.
@@ -261,7 +294,7 @@ test.describe("web-host episode reading", () => {
       .poll(savedPageIndex, { message: "the last page was saved" })
       .toBe(String(VIEWER_PAGE_COUNT - 1));
 
-    await page.reload();
+    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
     await expect(readingProgress(page)).toHaveAttribute(
       "value",
       String(VIEWER_PAGE_COUNT)
@@ -278,6 +311,15 @@ test.describe("web-host episode reading", () => {
       episodeCompleteEventCount(),
       "a re-read is not a second completion"
     ).toBe("1");
+
+    // A later session renders the history from the stored read rather than
+    // from anything this browser was still holding.
+    await page.context().clearCookies();
+    await signInAsMember(page, SEED_MEMBER, "/my", WEB_HOST_EDGE_BASE_URL);
+    await expect(
+      historyEntry(page),
+      "the history is still there in a new session"
+    ).toBeVisible();
   });
 
   test("reopening the episode puts the member back on the page they stopped on", async ({

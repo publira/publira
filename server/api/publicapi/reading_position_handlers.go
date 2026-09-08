@@ -119,10 +119,16 @@ func (s *apiServer) GetMyReadingPosition(
 	}), nil
 }
 
-// GetMySeriesProgress answers what the series page needs to offer the member a
-// way back in: the episode they moved in most recently, where they stopped in
-// it, and whether they already finished it. It is its own RPC so GetSeriesDetail
-// keeps returning the same bytes to everyone and stays shared-cacheable.
+// GetMySeriesProgress answers everything the series page shows about this one
+// member: the episode they moved in most recently with where they stopped in
+// it, and which episodes of the series they have already finished. It is its
+// own RPC so GetSeriesDetail keeps returning the same bytes to everyone and
+// stays shared-cacheable.
+//
+// The finished episodes are read separately from the progress row because they
+// come from a different write: MarkEpisodeAsRead stores a completion, while the
+// progress row is the position SaveReadingPosition stores, so a member can have
+// finished episodes and no position at all.
 func (s *apiServer) GetMySeriesProgress(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetMySeriesProgressRequest],
@@ -139,30 +145,39 @@ func (s *apiServer) GetMySeriesProgress(
 		return nil, err
 	}
 
+	finished, err := s.queriesFor(ctx).ListMyFinishedEpisodePublicIDsInSeries(ctx, dbmodels.ListMyFinishedEpisodePublicIDsInSeriesParams{
+		TenantID:       tenant.ID,
+		UserID:         user.ID,
+		SeriesPublicID: seriesPublicID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list finished episodes of the series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	res := &publirav1.GetMySeriesProgressResponse{FinishedEpisodePublicIds: finished}
+
 	row, err := s.queriesFor(ctx).GetMySeriesReadingProgress(ctx, dbmodels.GetMySeriesReadingProgressParams{
 		TenantID:       tenant.ID,
 		UserID:         user.ID,
 		SeriesPublicID: seriesPublicID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return noStorePrivateResponse(&publirav1.GetMySeriesProgressResponse{}), nil
+		return noStorePrivateResponse(res), nil
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get series reading progress", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
-	return noStorePrivateResponse(&publirav1.GetMySeriesProgressResponse{
-		Progress: &publirav1.SeriesProgress{
-			Episode: protomapper.EpisodeFromGetMySeriesReadingProgressRow(row),
-			Position: &publirav1.ReadingPosition{
-				EpisodePublicId: row.EpisodePublicID,
-				PageIndex:       row.PageIndex,
-				PageCount:       row.PageCount,
-				UpdatedAt:       row.UpdatedAt.UTC().Format(time.RFC3339Nano),
-			},
-			IsFinished: row.IsFinished,
+	res.Progress = &publirav1.SeriesProgress{
+		Episode: protomapper.EpisodeFromGetMySeriesReadingProgressRow(row),
+		Position: &publirav1.ReadingPosition{
+			EpisodePublicId: row.EpisodePublicID,
+			PageIndex:       row.PageIndex,
+			PageCount:       row.PageCount,
+			UpdatedAt:       row.UpdatedAt.UTC().Format(time.RFC3339Nano),
 		},
-	}), nil
+		IsFinished: row.IsFinished,
+	}
+	return noStorePrivateResponse(res), nil
 }
 
 // ListMyRecentSeries answers what a "continue reading" row shows: the series

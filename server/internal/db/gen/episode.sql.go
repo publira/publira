@@ -660,6 +660,267 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 	return items, nil
 }
 
+const listMyEpisodeReadsAsc = `-- name: ListMyEpisodeReadsAsc :many
+SELECT r.id,
+    r.read_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_reads r
+    JOIN episodes e ON e.id = r.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE r.tenant_id = $1
+    AND r.user_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND (
+        $3::timestamptz IS NULL
+        OR (
+            $4::boolean
+            AND (r.read_at, r.id) >= (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (r.read_at, r.id) > (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+    )
+ORDER BY r.read_at ASC,
+    r.id ASC
+LIMIT $6
+`
+
+type ListMyEpisodeReadsAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	UserID          uuid.UUID     `json:"user_id"`
+	CursorReadAt    sql.NullTime  `json:"cursor_read_at"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListMyEpisodeReadsAscRow struct {
+	ID                uuid.UUID `json:"id"`
+	ReadAt            time.Time `json:"read_at"`
+	EpisodePublicID   string    `json:"episode_public_id"`
+	EpisodeTitle      string    `json:"episode_title"`
+	EpisodeOrderIndex int32     `json:"episode_order_index"`
+	SeriesPublicID    string    `json:"series_public_id"`
+	SeriesTitle       string    `json:"series_title"`
+}
+
+// The backward direction of ListMyEpisodeReadsDesc.
+func (q *Queries) ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeReadsAscParams) ([]ListMyEpisodeReadsAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMyEpisodeReadsAsc,
+		arg.TenantID,
+		arg.UserID,
+		arg.CursorReadAt,
+		arg.CursorInclusive,
+		arg.CursorID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyEpisodeReadsAscRow
+	for rows.Next() {
+		var i ListMyEpisodeReadsAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ReadAt,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.EpisodeOrderIndex,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMyEpisodeReadsDesc = `-- name: ListMyEpisodeReadsDesc :many
+SELECT r.id,
+    r.read_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_reads r
+    JOIN episodes e ON e.id = r.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE r.tenant_id = $1
+    AND r.user_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND (
+        $3::timestamptz IS NULL
+        OR (
+            $4::boolean
+            AND (r.read_at, r.id) <= (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (r.read_at, r.id) < (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+    )
+ORDER BY r.read_at DESC,
+    r.id DESC
+LIMIT $6
+`
+
+type ListMyEpisodeReadsDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	UserID          uuid.UUID     `json:"user_id"`
+	CursorReadAt    sql.NullTime  `json:"cursor_read_at"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListMyEpisodeReadsDescRow struct {
+	ID                uuid.UUID `json:"id"`
+	ReadAt            time.Time `json:"read_at"`
+	EpisodePublicID   string    `json:"episode_public_id"`
+	EpisodeTitle      string    `json:"episode_title"`
+	EpisodeOrderIndex int32     `json:"episode_order_index"`
+	SeriesPublicID    string    `json:"series_public_id"`
+	SeriesTitle       string    `json:"series_title"`
+}
+
+// The episodes this reader has finished, most recently finished first.
+//
+// Publication is re-checked here, so a history entry never names an episode
+// the storefront has taken down; that is the same rule ListMyRecentSeries
+// applies to a series. Body access is not re-checked: the reader did finish
+// the episode, and a rental that has since expired is still part of what they
+// read, which is also how ListMyPurchases keeps an expired purchase.
+//
+// The scan starts from the (tenant_id, user_id) prefix of
+// idx_episode_reads_tenant_user_read_at, so it is bounded by one reader's
+// history rather than by the tenant's.
+//
+// Backward calls ListMyEpisodeReadsAsc, and the caller sorts the rows back.
+// cursor rules: proto/README.md.
+func (q *Queries) ListMyEpisodeReadsDesc(ctx context.Context, arg ListMyEpisodeReadsDescParams) ([]ListMyEpisodeReadsDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMyEpisodeReadsDesc,
+		arg.TenantID,
+		arg.UserID,
+		arg.CursorReadAt,
+		arg.CursorInclusive,
+		arg.CursorID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyEpisodeReadsDescRow
+	for rows.Next() {
+		var i ListMyEpisodeReadsDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ReadAt,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.EpisodeOrderIndex,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMyFinishedEpisodePublicIDsInSeries = `-- name: ListMyFinishedEpisodePublicIDsInSeries :many
+SELECT e.public_id
+FROM episode_reads r
+    JOIN episodes e ON e.id = r.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE r.tenant_id = $1
+    AND r.user_id = $2
+    AND s.public_id = $3
+ORDER BY e.order_index ASC,
+    e.id ASC
+`
+
+type ListMyFinishedEpisodePublicIDsInSeriesParams struct {
+	TenantID       uuid.UUID `json:"tenant_id"`
+	UserID         uuid.UUID `json:"user_id"`
+	SeriesPublicID string    `json:"series_public_id"`
+}
+
+// Which episodes of one series this reader has already finished, so the series
+// detail can mark the rows of its episode list.
+//
+// Publication is left to the caller: the list this answers is the published
+// episode list the series detail already holds, so an id that matches nothing
+// in it marks nothing. What the query is scoped to is the reader, through the
+// member RLS policy episode_reads carries and the columns repeated here.
+func (q *Queries) ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, arg ListMyFinishedEpisodePublicIDsInSeriesParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listMyFinishedEpisodePublicIDsInSeries, arg.TenantID, arg.UserID, arg.SeriesPublicID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var public_id string
+		if err := rows.Scan(&public_id); err != nil {
+			return nil, err
+		}
+		items = append(items, public_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNeighborsForTenant :many
 (
     SELECT -1::int4 AS direction,

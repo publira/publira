@@ -464,6 +464,16 @@ There is no RPC for withdrawing a rating. Which rating counts is decided on read
 | `series_id` | Resolved from `episodes` rather than taken from client input |
 | Failure | Swallowed. The read is already stored, and `batch project-episode-reads` files whatever the request path lost |
 
+### The member's own reading history
+
+`EpisodeReadService.ListMyEpisodeReads` reads those same rows back for the member who wrote them, most recently finished first, with the episode and series each one names. It is the reader's counterpart of the operator's read-through report: cursor-paginated like every list RPC (`proto/README.md`), session-scoped, and `Cache-Control: private, no-store`.
+
+| Item | Value |
+| --- | --- |
+| Order | `read_at` descending, `episode_reads.id` as the tiebreaker, over `idx_episode_reads_tenant_user_read_at` |
+| Publication | Re-checked. An episode whose series or listing is no longer published drops out, so the history never names something the storefront has taken down |
+| Access | Not re-checked. The member did finish the episode, so an expired rental stays in the history the way an expired purchase stays in `ListMyPurchases` |
+
 ### Read-through rate
 
 `content_daily_stats` carries the two halves of the rate per episode, rolled up to the series by summing its episodes:
@@ -477,7 +487,7 @@ The rate is `complete_count / member_view_count` over a range of days. A period 
 
 ## Reading positions
 
-`EpisodeReadService.SaveReadingPosition` and `GetMyReadingPosition` carry where a member stopped inside an episode, as one `episode_reading_positions` row per member and episode. `GetMySeriesProgress` answers the same member's standing in one series — the episode they moved in most recently, the position they left in it, and whether `episode_reads` already records it as finished — so `CatalogService.GetSeriesDetail` keeps returning the same bytes to everyone.
+`EpisodeReadService.SaveReadingPosition` and `GetMyReadingPosition` carry where a member stopped inside an episode, as one `episode_reading_positions` row per member and episode. `GetMySeriesProgress` answers the same member's standing in one series — the episode they moved in most recently, the position they left in it, whether `episode_reads` already records it as finished, and every episode of the series they have finished — so `CatalogService.GetSeriesDetail` keeps returning the same bytes to everyone. That last list is read from `episode_reads` rather than derived from the progress row, because finishing an episode and saving a position in it are separate writes.
 
 | Item | Value |
 | --- | --- |

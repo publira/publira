@@ -15,7 +15,7 @@ The `Test / DB Migrations` CI job enforces this: it diffs `migrations/` against 
 - Create the pair with `task db:create NAME=<name>`. It runs `migrate create -ext sql -dir ./migrations -tz UTC`, which names both files with a 14-digit UTC timestamp.
 - Keep the numbering 14 digits wide and zero-padded. golang-migrate orders versions numerically while sqlc reads the directory in lexicographic order, and equal width is what keeps those two orders the same.
 - Write a `down` that actually undoes the `up`. The `Test / DB Migrations` CI job runs `up` → `down -all` → `up` against an empty database, so a broken `down` fails the build.
-- Give `CREATE INDEX CONCURRENTLY` a migration of its own. The golang-migrate postgres driver runs each file in a transaction, and that statement cannot execute inside one.
+- Give `CREATE INDEX CONCURRENTLY` a migration of its own, and prefer it for an index on a table that already carries rows a running deployment writes to. The golang-migrate postgres driver hands a file to PostgreSQL as one query string, and a string holding more than one statement runs as an implicit transaction — the one place that statement cannot execute. Alone in its file it runs outside one, and so does the matching `DROP INDEX CONCURRENTLY` in the down migration.
 - After changing schema SQL that sqlc reads, regenerate from the repo root with `task gen` and confirm `sqlc diff` is clean. See [`server/AGENTS.md`](../server/AGENTS.md) for the full Go verification checklist.
 
 ### The initial schema

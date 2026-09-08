@@ -8,6 +8,7 @@ export type {
   MyEpisodeComment,
 } from "../gen/publira/v1/comment_pb.js";
 export type {
+  MyEpisodeRead,
   MyFollow,
   MyPurchase,
   PublishedAuthor,
