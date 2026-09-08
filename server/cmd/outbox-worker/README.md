@@ -18,13 +18,17 @@ A long-lived worker that drains the Outbox and processes the entries as River jo
 | `admin_email_change_confirmation_email` | Admin console email change confirmation, one event per address to confirm |
 | `admin_email_changed_notice_email` | Admin console notice to the previous address once the change completes |
 
-It also handles one non-mail event:
+It also handles these non-mail events:
 
 | Event type | Side effect |
 | --- | --- |
 | `member_push_notification` | The mobile push that mirrors a member's `notifications` row, one message per device that reader registered |
+| `comment_awaiting_approval_notification` | A `notifications` row for every member of the tenant's staff, saying that one episode has comments waiting in the approval queue |
+| `comment_reported_notification` | The same, for an episode whose comments readers have reported |
 
-That handler is registered only when a Firebase credential is configured; see [Main environment variables](#main-environment-variables).
+The push handler is registered only when a Firebase credential is configured; see [Main environment variables](#main-environment-variables).
+
+Both comment events are keyed by the episode and the hour they arrived in, so an episode a hundred readers comment on within the hour produces one alert rather than a hundred. The window is held by `outbox_events.idempotency_key`, which is why a burst writes a single row here, and by the notification's own `(user_id, notification_type, subject_key)`, which is why a redelivered event writes no second row for anyone.
 
 The platform console rows carry no `tenant_id`: their handlers resolve the platform SMTP settings and the platform default locale and time zone rather than a tenant's. The reader and admin console rows name a tenant: the reader links point at that tenant's own domain, and the admin console links at its admin domain.
 

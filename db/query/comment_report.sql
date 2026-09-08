@@ -33,9 +33,17 @@
 -- The author is returned because a reader may not report their own comment, and
 -- that is a decision the caller makes rather than a row this query hides: the
 -- two cases are told apart in the answer the reporter gets.
+--
+-- The episode and the series the joins already visit are returned with it. The
+-- staff notification the report raises names what the queue is about, and
+-- reading it here keeps the report one round trip.
 SELECT c.id,
     c.user_id,
-    c.episode_id
+    c.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
 FROM episode_comments c
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id

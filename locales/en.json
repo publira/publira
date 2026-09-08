@@ -1506,10 +1506,15 @@
         "subject_episode": "“{$episode}”",
         "subject_series": "an episode of “{$series}”",
         "subject_unnamed": "the scheduled episode",
+        "subject_unknown": "an episode",
         "published_title": "An episode was published",
         "published_description": "{$subject} was published.",
         "publish_failed_title": "An episode could not be published",
         "publish_failed_description": "{$subject} could not be published.",
+        "comments_awaiting_approval_title": "Comments are waiting for approval",
+        "comments_awaiting_approval_description": "New comments on {$subject} are waiting for approval.",
+        "comments_reported_title": "Comments were reported",
+        "comments_reported_description": "Readers reported comments on {$subject}.",
         "unknown_title": "Notification",
         "unknown_description": "No further details are available."
       }

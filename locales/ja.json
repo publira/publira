@@ -1506,10 +1506,15 @@
         "subject_episode": "「{$episode}」",
         "subject_series": "「{$series}」のエピソード",
         "subject_unnamed": "予約していたエピソード",
+        "subject_unknown": "エピソード",
         "published_title": "エピソードが公開されました",
         "published_description": "{$subject}を公開しました。",
         "publish_failed_title": "エピソードの公開に失敗しました",
         "publish_failed_description": "{$subject}を公開できませんでした。",
+        "comments_awaiting_approval_title": "承認待ちのコメントがあります",
+        "comments_awaiting_approval_description": "{$subject}に承認待ちのコメントが届いています。",
+        "comments_reported_title": "コメントが報告されました",
+        "comments_reported_description": "{$subject}のコメントが読者から報告されました。",
         "unknown_title": "通知",
         "unknown_description": "内容の詳細はありません。"
       }

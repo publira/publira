@@ -106,6 +106,55 @@ describe("notificationDisplay", () => {
     });
   });
 
+  // A comment alert stands for a window's worth of comments on one episode, so
+  // it links to the moderation screen filtered to the queue it is about rather
+  // than to the episode, where there is nothing to act with.
+  it("sends a comment alert to the queue it is about", () => {
+    expect(
+      notificationDisplay(
+        "comment_awaiting_approval",
+        {
+          episode_id: "EP01",
+          episode_title: "Episode 1",
+          series_id: "SR01",
+          series_title: "Series A",
+        },
+        en
+      )
+    ).toEqual({
+      description:
+        "New comments on “Episode 1” (Series A) are waiting for approval.",
+      href: "/comments?episode=EP01&status=pending",
+      title: "Comments are waiting for approval",
+    });
+
+    // The report queue has no episode filter of its own, so the link opens the
+    // reports still waiting.
+    expect(
+      notificationDisplay(
+        "comment_reported",
+        {
+          episode_id: "EP01",
+          episode_title: "Episode 1",
+        },
+        en
+      )
+    ).toEqual({
+      description: "Readers reported comments on “Episode 1”.",
+      href: "/comments?report_status=open",
+      title: "Comments were reported",
+    });
+  });
+
+  // A payload that names neither the episode nor its series falls back to a
+  // subject of its own: the publication notices say "the scheduled episode",
+  // which a comment alert must not borrow.
+  it("names an unnamed comment subject without calling it scheduled", () => {
+    expect(
+      notificationDisplay("comment_awaiting_approval", {}, en).description
+    ).toBe("New comments on an episode are waiting for approval.");
+  });
+
   it("keeps an unknown type as generic instead of dropping it", () => {
     expect(
       notificationDisplay("invite_accepted", { series_id: "SR01" }, en)

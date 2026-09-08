@@ -94,7 +94,7 @@ func main() {
 		Encryptor: encryptor,
 		Mailer:    internalsmtp.NewClient(),
 		Renderer:  emailrenderer.NewClient(resolveEmailRendererURL()),
-	}, pushHandlers))
+	}, pushHandlers, outbox.StaffNotificationHandlerConfig{DB: db, Logger: logger}))
 	if err != nil {
 		logger.Error("failed to start outbox worker", "error", err)
 		os.Exit(1)
@@ -142,6 +142,7 @@ func workerConfig(
 	logger *slog.Logger,
 	emailHandlers outbox.EmailHandlerConfig,
 	pushHandlers outbox.PushHandlerConfig,
+	staffHandlers outbox.StaffNotificationHandlerConfig,
 ) outbox.Config {
 	emailHandlers.Logger = logger
 	handlers := outbox.DefaultRegistry()
@@ -158,6 +159,8 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeAdminPasswordResetEmail, outbox.NewAdminPasswordResetEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypeAdminEmailChangeConfirmationEmail, outbox.NewAdminEmailChangeConfirmationEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypeAdminEmailChangedNoticeEmail, outbox.NewAdminEmailChangedNoticeEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeCommentAwaitingApprovalNotification, outbox.NewCommentAwaitingApprovalNotificationHandler(staffHandlers))
+	handlers.Register(outbox.EventTypeCommentReportedNotification, outbox.NewCommentReportedNotificationHandler(staffHandlers))
 	if pushHandlers.Sender != nil {
 		handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
 	}
