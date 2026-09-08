@@ -55,6 +55,7 @@ const comment = (
   episodeTitle: "Episode 1",
   hiddenAt: "",
   hiddenReason: "unknown",
+  openReportCount: 0,
   publicId: "COMMENT0001",
   publishedAt: "",
   purgeDueAt: "",

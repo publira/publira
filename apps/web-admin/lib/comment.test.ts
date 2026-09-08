@@ -6,16 +6,20 @@ const {
   mockCountPendingComments,
   mockGetAccessToken,
   mockHideComment,
+  mockListCommentReports,
   mockListComments,
   mockPurgeComment,
+  mockResolveCommentReport,
   mockRestoreComment,
 } = vi.hoisted(() => ({
   mockApproveComment: vi.fn(),
   mockCountPendingComments: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockHideComment: vi.fn(),
+  mockListCommentReports: vi.fn(),
   mockListComments: vi.fn(),
   mockPurgeComment: vi.fn(),
+  mockResolveCommentReport: vi.fn(),
   mockRestoreComment: vi.fn(),
 }));
 
@@ -29,8 +33,10 @@ vi.mock("./api", () => ({
       approveComment: mockApproveComment,
       countPendingComments: mockCountPendingComments,
       hideComment: mockHideComment,
+      listCommentReports: mockListCommentReports,
       listComments: mockListComments,
       purgeComment: mockPurgeComment,
+      resolveCommentReport: mockResolveCommentReport,
       restoreComment: mockRestoreComment,
     },
   },
@@ -48,6 +54,38 @@ const adminComment = {
   episodeTitle: "Episode 1",
   hiddenAt: "2026-06-02T00:00:00Z",
   hiddenReason: "staff",
+  openReportCount: 2,
+  publicId: "COMMENT0001",
+  publishedAt: "2026-06-01T01:00:00Z",
+  purgeDueAt: "",
+  seriesPublicId: "SERIES001",
+  seriesTitle: "Series A",
+  status: "hidden",
+  withdrawnAt: "",
+};
+
+const commentReport = {
+  comment: adminComment,
+  createdAt: "2026-06-03T00:00:00Z",
+  note: "Nothing to do with the episode.",
+  reason: "spam",
+  reportId: "018f0f80-0001-7000-8000-000000000001",
+  reporterName: "Another Reader",
+  reporterPublicId: "USER002",
+  resolvedAt: "",
+  status: "open",
+};
+
+const mappedComment = {
+  authorName: "Reader",
+  authorPublicId: "USER001",
+  body: "A comment on the first episode.",
+  createdAt: "2026-06-01T00:00:00Z",
+  episodePublicId: "EPISODE001",
+  episodeTitle: "Episode 1",
+  hiddenAt: "2026-06-02T00:00:00Z",
+  hiddenReason: "staff",
+  openReportCount: 2,
   publicId: "COMMENT0001",
   publishedAt: "2026-06-01T01:00:00Z",
   purgeDueAt: "",
@@ -94,25 +132,7 @@ describe("comment lib", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(result).toEqual({
-      comments: [
-        {
-          authorName: "Reader",
-          authorPublicId: "USER001",
-          body: "A comment on the first episode.",
-          createdAt: "2026-06-01T00:00:00Z",
-          episodePublicId: "EPISODE001",
-          episodeTitle: "Episode 1",
-          hiddenAt: "2026-06-02T00:00:00Z",
-          hiddenReason: "staff",
-          publicId: "COMMENT0001",
-          publishedAt: "2026-06-01T01:00:00Z",
-          purgeDueAt: "",
-          seriesPublicId: "SERIES001",
-          seriesTitle: "Series A",
-          status: "hidden",
-          withdrawnAt: "",
-        },
-      ],
+      comments: [mappedComment],
       nextToken: "next-token",
       ok: true,
       previousToken: "",
@@ -239,5 +259,109 @@ describe("comment lib", () => {
         "en"
       )
     ).rejects.toThrow(ConnectError);
+  });
+
+  it("maps one page of reports with the comment each of them is about", async () => {
+    mockListCommentReports.mockResolvedValue({
+      nextToken: "next-token",
+      previousToken: "",
+      reports: [commentReport],
+    });
+
+    const { listCommentReports } = await import("./comment");
+    const result = await listCommentReports("TENANT001", "en", {
+      limit: 10,
+      status: " open ",
+      token: "current-token",
+    });
+
+    expect(mockListCommentReports).toHaveBeenCalledWith(
+      {
+        limit: 10,
+        status: "open",
+        tenant: { tenantId: "TENANT001" },
+        token: "current-token",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({
+      nextToken: "next-token",
+      ok: true,
+      previousToken: "",
+      reports: [
+        {
+          comment: mappedComment,
+          createdAt: "2026-06-03T00:00:00Z",
+          note: "Nothing to do with the episode.",
+          reason: "spam",
+          reportId: "018f0f80-0001-7000-8000-000000000001",
+          reporterName: "Another Reader",
+          reporterPublicId: "USER002",
+          resolvedAt: "",
+          status: "open",
+        },
+      ],
+    });
+  });
+
+  it("reads a report state and a reason this build does not know as work still waiting", async () => {
+    mockListCommentReports.mockResolvedValue({
+      reports: [{ ...commentReport, reason: "impersonation", status: "held" }],
+    });
+
+    const { listCommentReports } = await import("./comment");
+    const result = await listCommentReports("TENANT001", "en");
+
+    expect(result.reports[0]?.status).toBe("open");
+    expect(result.reports[0]?.reason).toBe("unknown");
+  });
+
+  it("sends the decision and which report it is about", async () => {
+    mockResolveCommentReport.mockResolvedValue({});
+
+    const { resolveCommentReport } = await import("./comment");
+    const result = await resolveCommentReport(
+      {
+        reason: "Advertising, as reported.",
+        reportId: "018f0f80-0001-7000-8000-000000000001",
+        resolution: "resolved",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockResolveCommentReport).toHaveBeenCalledWith(
+      {
+        reason: "Advertising, as reported.",
+        reportId: "018f0f80-0001-7000-8000-000000000001",
+        resolution: "resolved",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("says the report was already decided when another moderator got there first", async () => {
+    mockResolveCommentReport.mockRejectedValue(
+      new ConnectError("already decided", Code.FailedPrecondition)
+    );
+
+    const { resolveCommentReport } = await import("./comment");
+    const result = await resolveCommentReport(
+      {
+        reason: "",
+        reportId: "018f0f80-0001-7000-8000-000000000001",
+        resolution: "rejected",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "Another moderator already decided this report. Reload the queue to see it.",
+      ok: false,
+    });
   });
 });

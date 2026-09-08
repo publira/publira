@@ -8,8 +8,10 @@
 -- step, so the two cannot share one.
 --
 -- The tenant therefore owns both sides of the round trip: an administrator to
--- sign into its console as, and a member to post as. Password hashes match the
--- dev seed (`adminpass` for the admin, `memberpass` for the member).
+-- sign into its console as, and a member to post as. A reader may not report
+-- their own comment, so there is a second member to send the report the suite
+-- works from the console. Password hashes match the dev seed (`adminpass` for
+-- the admin, `memberpass` for both members).
 -- Applying this file is also how the suite resets itself: the comment rows it
 -- wrote are deleted below, so a re-run starts from an empty queue.
 --
@@ -21,6 +23,7 @@
 --   episode  ModrEPSDAAA1
 --   admin    ModrADMNAAA1 (moderate-admin@example.com)
 --   member   ModrMMBRAAA1 (moderate-member@example.com)
+--   reporter ModrMMBRAAA2 (moderate-reporter@example.com)
 
 WITH tenant_seed AS (
     SELECT '018f0f70-0001-7000-8000-000000000001'::uuid AS id
@@ -206,6 +209,13 @@ WITH user_seed (id, public_id, email, password_hash, name) AS (
             'moderate-member@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
             'Moderation E2E Member'
+        ),
+        (
+            '018f0f75-0003-7000-8000-000000000003'::uuid,
+            'ModrMMBRAAA2',
+            'moderate-reporter@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Moderation E2E Reporter'
         )
 )
 INSERT INTO users (

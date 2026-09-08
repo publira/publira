@@ -10,7 +10,12 @@ import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
-import { commentActionFailure, moderateComment } from "#lib/comment";
+import {
+  commentActionFailure,
+  commentReportActionFailure,
+  moderateComment,
+  resolveCommentReport,
+} from "#lib/comment";
 import type { CommentModerationAction } from "#lib/comment";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -18,7 +23,11 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 
-import type { CommentActionState } from "../comment-types";
+import { COMMENT_REPORT_RESOLUTIONS } from "../comment-types";
+import type {
+  CommentActionState,
+  CommentReportActionState,
+} from "../comment-types";
 
 /**
  * The reason is stored on the audit log row, which is where a tenant reads
@@ -122,3 +131,67 @@ export const purgeCommentAction = async (
   formData: FormData
 ): Promise<CommentActionState> =>
   await moderate("purge", formData, { requireReason: true });
+
+/**
+ * The report decision, which names a report rather than a comment: a comment
+ * several readers reported is several rows in the queue, and each of them is
+ * decided on its own.
+ */
+const reportDecisionSchema = (messages: SharedMessages) =>
+  z.object({
+    reason: optionalTrimmedString(1000),
+    reportId: requiredTrimmedString(
+      getMessage(messages, "admin.comments.validation.target_missing")
+    ),
+    resolution: z.enum(COMMENT_REPORT_RESOLUTIONS),
+    tenantId: requiredTrimmedString(
+      getMessage(messages, "admin.comments.validation.tenant_missing")
+    ),
+  });
+
+const reportDecisionFormFields = {
+  reason: "value",
+  reportId: { kind: "value", name: "report_id" },
+  resolution: "value",
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+export const resolveCommentReportAction = async (
+  _prevState: CommentReportActionState,
+  formData: FormData
+): Promise<CommentReportActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const messages = sharedCatalog(locale);
+  const input = toFormDataInput(formData, reportDecisionFormFields);
+  const reportId =
+    typeof input.reportId === "string" ? input.reportId.trim() : "";
+  const parsed = reportDecisionSchema(messages).safeParse(input);
+  if (!parsed.success) {
+    return commentReportActionFailure(
+      reportId,
+      toFormErrorMessage(parsed.error, { locale })
+    );
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    resolveCommentReport(
+      {
+        reason: parsed.data.reason,
+        reportId: parsed.data.reportId,
+        resolution: parsed.data.resolution,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return commentReportActionFailure(parsed.data.reportId, result.message);
+  }
+
+  // The queue read is uncached like the comment list, so there is no tag to
+  // drop: re-rendering the route is what brings the decided report back in the
+  // state it is now in.
+  refresh();
+  return { message: "", ok: true, reportId: parsed.data.reportId };
+};

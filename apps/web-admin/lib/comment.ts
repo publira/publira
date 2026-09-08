@@ -1,4 +1,7 @@
-import type { AdminComment } from "@publira/api-client/admin/types";
+import type {
+  AdminComment,
+  CommentReport,
+} from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { getMessage } from "@publira/i18n";
@@ -6,13 +9,22 @@ import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 
-import { COMMENT_STATUSES } from "../app/[tenant_id]/(protected)/comments/comment-types";
+import {
+  COMMENT_REPORT_STATUSES,
+  COMMENT_STATUSES,
+} from "../app/[tenant_id]/(protected)/comments/comment-types";
 import type {
   CommentActionState,
   CommentHiddenReason,
   CommentItem,
+  CommentReportActionState,
+  CommentReportItem,
+  CommentReportReason,
+  CommentReportResolution,
+  CommentReportStatus,
   CommentStatus,
   CountPendingCommentsResult,
+  ListCommentReportsResult,
   ListCommentsResult,
 } from "../app/[tenant_id]/(protected)/comments/comment-types";
 import {
@@ -44,6 +56,8 @@ const sessionErrorMessage = (messages: SharedMessages): string =>
   getMessage(messages, "errors.rpc.unauthenticated");
 const listErrorMessage = (messages: SharedMessages): string =>
   getMessage(messages, "admin.comments.list_failed");
+const reportListErrorMessage = (messages: SharedMessages): string =>
+  getMessage(messages, "admin.comments.reports.list_failed");
 const countErrorMessage = (messages: SharedMessages): string =>
   getMessage(messages, "admin.comments.count_failed");
 
@@ -100,6 +114,7 @@ type RawComment = Pick<
   | "episodeTitle"
   | "hiddenAt"
   | "hiddenReason"
+  | "openReportCount"
   | "publicId"
   | "publishedAt"
   | "purgeDueAt"
@@ -108,6 +123,45 @@ type RawComment = Pick<
   | "status"
   | "withdrawnAt"
 >;
+
+/** The generated `CommentReport` fields {@link mapCommentReport} reads. */
+type RawCommentReport = Pick<
+  CommentReport,
+  | "comment"
+  | "createdAt"
+  | "note"
+  | "reason"
+  | "reportId"
+  | "reporterName"
+  | "reporterPublicId"
+  | "resolvedAt"
+  | "status"
+>;
+
+const commentReportStatuses: ReadonlySet<string> = new Set(
+  COMMENT_REPORT_STATUSES
+);
+
+/**
+ * The stored state, or `open` for a value this build does not know.
+ *
+ * A report whose state cannot be read is still work waiting to be looked at,
+ * so it belongs in the queue rather than silently among the decided ones.
+ */
+const toCommentReportStatus = (raw: string): CommentReportStatus =>
+  commentReportStatuses.has(raw) ? (raw as CommentReportStatus) : "open";
+
+const toCommentReportReason = (raw: string): CommentReportReason => {
+  if (
+    raw === "spam" ||
+    raw === "abuse" ||
+    raw === "spoiler" ||
+    raw === "other"
+  ) {
+    return raw;
+  }
+  return "unknown";
+};
 
 const mapComment = (item: RawComment): CommentItem => ({
   authorName: item.authorName ?? "",
@@ -118,6 +172,7 @@ const mapComment = (item: RawComment): CommentItem => ({
   episodeTitle: item.episodeTitle ?? "",
   hiddenAt: item.hiddenAt ?? "",
   hiddenReason: toHiddenReason(item.hiddenReason ?? ""),
+  openReportCount: item.openReportCount ?? 0,
   publicId: item.publicId ?? "",
   publishedAt: item.publishedAt ?? "",
   purgeDueAt: item.purgeDueAt ?? "",
@@ -125,6 +180,45 @@ const mapComment = (item: RawComment): CommentItem => ({
   seriesTitle: item.seriesTitle ?? "",
   status: toCommentStatus(item.status ?? ""),
   withdrawnAt: item.withdrawnAt ?? "",
+});
+
+/**
+ * What a report shows for a response that carried no comment with it.
+ *
+ * The queue query joins the comment in, so this stands in for a response that
+ * changed under this build rather than for a state the API produces: the row
+ * still names the report and its decision still goes through, and the text is
+ * missing rather than the whole queue.
+ */
+const missingReportedComment: CommentItem = {
+  authorName: "",
+  authorPublicId: "",
+  body: "",
+  createdAt: "",
+  episodePublicId: "",
+  episodeTitle: "",
+  hiddenAt: "",
+  hiddenReason: "unknown",
+  openReportCount: 0,
+  publicId: "",
+  publishedAt: "",
+  purgeDueAt: "",
+  seriesPublicId: "",
+  seriesTitle: "",
+  status: "pending",
+  withdrawnAt: "",
+};
+
+const mapCommentReport = (item: RawCommentReport): CommentReportItem => ({
+  comment: item.comment ? mapComment(item.comment) : missingReportedComment,
+  createdAt: item.createdAt ?? "",
+  note: item.note ?? "",
+  reason: toCommentReportReason(item.reason ?? ""),
+  reportId: item.reportId ?? "",
+  reporterName: item.reporterName ?? "",
+  reporterPublicId: item.reporterPublicId ?? "",
+  resolvedAt: item.resolvedAt ?? "",
+  status: toCommentReportStatus(item.status ?? ""),
 });
 
 export interface ListCommentsFilters extends CursorPageOptions {
@@ -186,6 +280,130 @@ export const listComments = async (
     };
   }
 };
+
+export interface ListCommentReportsFilters extends CursorPageOptions {
+  /** Empty lists every state, decided reports included. */
+  status?: string;
+}
+
+/**
+ * One page of the tenant's comment reports, newest first.
+ *
+ * One entry per report rather than per reported comment: a report is what
+ * staff decide on, so a comment several readers reported is in the queue once
+ * per report, each carrying the reason and the sentence that reader wrote.
+ */
+export const listCommentReports = async (
+  tenantId: string,
+  locale: Locale,
+  filters: ListCommentReportsFilters = {}
+): Promise<ListCommentReportsResult> => {
+  const messages = sharedCatalog(locale);
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return {
+      ...emptyCursorPageTokens,
+      message: sessionErrorMessage(messages),
+      ok: false,
+      reports: [],
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.comments.listCommentReports(
+      {
+        ...cursorPageRequest(filters),
+        status: filters.status?.trim() ?? "",
+        tenant: { tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      ...cursorPageTokens(response),
+      ok: true,
+      reports: (response.reports ?? []).map((item) => mapCommentReport(item)),
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      ...emptyCursorPageTokens,
+      message: rpcErrorMessage(error, reportListErrorMessage(messages), {
+        locale,
+      }),
+      ok: false,
+      reports: [],
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+export interface ResolveCommentReportInput {
+  /** Recorded on the audit log row. Optional, as it is for an approval. */
+  reason: string;
+  reportId: string;
+  resolution: CommentReportResolution;
+  tenantId: string;
+}
+
+/**
+ * Decide one report, either way.
+ *
+ * It leaves the comment where it is: agreeing with a report is not the same
+ * act as removing what it is about, so a moderator who wants both presses
+ * Remove as well.
+ */
+export const resolveCommentReport = async (
+  input: ResolveCommentReportInput,
+  locale: Locale
+): Promise<ModerateCommentResult> => {
+  const messages = sharedCatalog(locale);
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return { message: sessionErrorMessage(messages), ok: false };
+  }
+
+  try {
+    await apiClient.comments.resolveCommentReport(
+      {
+        reason: input.reason,
+        reportId: input.reportId,
+        resolution: input.resolution,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        getMessage(messages, "admin.comments.reports.resolve_failed"),
+        {
+          locale,
+          // The report was decided between the queue being rendered and the
+          // button being pressed — another moderator got there first.
+          overrides: {
+            precondition: getMessage(
+              messages,
+              "admin.comments.reports.already_decided"
+            ),
+          },
+        }
+      ),
+      ok: false,
+    };
+  }
+};
+
+/** A report decision failure, addressed to the row it came from. */
+export const commentReportActionFailure = (
+  reportId: string,
+  message: string
+): CommentReportActionState => ({ message, ok: false, reportId });
 
 /**
  * Size of the approval queue, for the badge on the navigation entry.
