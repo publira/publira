@@ -730,30 +730,19 @@
       "image_invalid": "Check the image settings. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px, then try again."
     },
     "nav": {
-      "access_tickets_description": "Issue and revoke limited-access tickets",
       "access_tickets_label": "Access tickets",
       "administration": "Administration",
-      "announcements_description": "Write announcements and manage delivery",
       "announcements_label": "Announcements",
-      "audit_description": "Review and trace operation history",
       "audit_label": "Audit logs",
-      "comments_description": "Approve, remove, and purge reader comments",
       "comments_label": "Comments",
       "comments_pending": "{$count} comments awaiting approval",
-      "creators_description": "Manage author profiles",
       "creators_label": "Authors",
-      "dashboard_description": "Publishing readiness and editing status",
       "dashboard_label": "Dashboard",
-      "engagement_description": "Episode completions and read-through rate",
       "engagement_label": "Read-through",
-      "labels_description": "Manage label information",
       "labels_label": "Labels",
       "operations": "Operations",
-      "pages_description": "Create, edit, and publish standalone pages",
       "pages_label": "Pages",
-      "series_description": "Series details and publishing settings",
       "series_label": "Series",
-      "settings_description": "Manage branding and operating rules",
       "settings_label": "Settings"
     },
     "not_found": {
@@ -1522,15 +1511,12 @@
     "shell": {
       "account_menu": "Account menu for {$name}",
       "account_settings": "Account settings",
-      "domain": "Domain: {$domain}",
-      "eyebrow": "Current tenant",
       "logo_alt": "{$name} logo",
       "logout": "Sign out",
       "navigation_close": "Close navigation",
       "navigation_open": "Open navigation",
       "notifications_none": "Notifications, none unread",
       "notifications_unread": "Notifications, {$count} unread",
-      "status_online": "Online",
       "tenant_title": "{$name} Admin console",
       "title": "Admin console"
     },
@@ -2449,22 +2435,15 @@
       "root_title": "Could not display Platform Console"
     },
     "nav": {
-      "audit_description": "Search cross-tenant audit logs and follow changes",
       "audit_label": "Audit logs",
-      "dashboard_description": "Check platform-wide status",
       "dashboard_label": "Dashboard",
       "governance": "Governance",
-      "operators_description": "Manage platform operator roles and permissions",
       "operators_label": "Operators",
       "overview": "Overview",
-      "settings_description": "Manage platform defaults such as time zone and SMTP",
       "settings_label": "Settings",
-      "tenants_create_description": "Issue a tenant and start setup",
       "tenants_create_label": "Create tenant",
-      "tenants_list_description": "Manage tenant status, plans, and contacts",
       "tenants_list_label": "Tenants",
       "tenants_section": "Tenants",
-      "users_description": "Review user status and manage accounts",
       "users_label": "Users"
     },
     "not_found": {
@@ -2639,15 +2618,11 @@
       "account_menu": "Account menu for {$name}",
       "account_settings": "Account settings",
       "context": "Cross-tenant operations",
-      "eyebrow": "Platform Operations",
       "logout": "Sign out",
       "navigation_close": "Close navigation",
       "navigation_open": "Open navigation",
       "notifications_none": "Notifications, none unread",
-      "notifications_unread": "Notifications, {$count} unread",
-      "status_body": "Platform Console is available.",
-      "status_online": "Online",
-      "status_title": "Status"
+      "notifications_unread": "Notifications, {$count} unread"
     },
     "tenants": {
       "add_member": "Add member",

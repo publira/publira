@@ -39,7 +39,7 @@ const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
 };
 
 const ProtectedLayout = ({ children }: LayoutProps<"/[tenant_id]">) => (
-  <Suspense fallback={<ConsoleLayoutSkeleton theme="admin" />}>
+  <Suspense fallback={<ConsoleLayoutSkeleton />}>
     <ProtectedLayoutInner>{children}</ProtectedLayoutInner>
   </Suspense>
 );

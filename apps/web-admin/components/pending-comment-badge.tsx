@@ -1,5 +1,4 @@
 import { getMessage } from "@publira/i18n";
-import { Badge } from "@publira/ui-components/badge";
 
 import { countPendingComments } from "#lib/comment";
 import { getLocale, loadAdminMessages } from "#lib/locale";
@@ -32,12 +31,11 @@ export const PendingCommentBadge = async () => {
   }
 
   return (
-    <Badge
-      aria-label={getMessage(messages, "admin.nav.comments_pending", { count })}
-      tone="warning"
-      variant="solid"
-    >
-      {count}
-    </Badge>
+    <span className="text-xs font-medium text-secondary tabular-nums">
+      <span aria-hidden="true">{count}</span>
+      <span className="sr-only">
+        {getMessage(messages, "admin.nav.comments_pending", { count })}
+      </span>
+    </span>
   );
 };

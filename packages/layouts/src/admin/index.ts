@@ -2,7 +2,6 @@ export {
   ConsoleHeader,
   ConsoleHeaderActions,
   ConsoleHeaderContext,
-  ConsoleHeaderEyebrow,
   ConsoleHeaderLabel,
   ConsoleHeaderSkeleton,
   ConsoleHeaderText,
@@ -16,23 +15,18 @@ export {
   ConsoleMobileNavigationOpenButton,
   ConsoleSidebar,
   ConsoleSidebarBrand,
-  ConsoleSidebarBrandLabel,
   ConsoleSidebarBrandName,
   ConsoleSidebarContext,
-  ConsoleSidebarFooter,
   ConsoleSidebarNavigation,
-  ConsoleSidebarNavigationContent,
-  ConsoleSidebarNavigationIcon,
   ConsoleSidebarNavigationItem,
-  ConsoleSidebarNavigationItemDescription,
   ConsoleSidebarNavigationItemHeading,
+  ConsoleSidebarNavigationItemIcon,
   ConsoleSidebarNavigationItemLabel,
   ConsoleSidebarNavigationItems,
   ConsoleSidebarNavigationSection,
   ConsoleSidebarNavigationTitle,
   ConsoleSidebarSkeleton,
 } from "./console-layout";
-export type { ConsoleLayoutProps, ConsoleTheme } from "./console-layout";
 export {
   ConsoleHeaderUser,
   ConsoleUserMenu,
@@ -53,12 +47,12 @@ export {
   ConsolePage,
   ConsolePageActions,
   ConsolePageContent,
+  ConsolePageContext,
   ConsolePageDescription,
-  ConsolePageEyebrow,
   ConsolePageHeader,
   ConsolePageHeading,
   ConsolePageTitle,
 } from "./console-page";
 
-export { isCurrentPath } from "../navigation";
+export { isCurrentPath, navigationHrefs } from "../navigation";
 export type { NavItem, NavSection } from "../navigation";

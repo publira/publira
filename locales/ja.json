@@ -730,30 +730,19 @@
       "image_invalid": "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・2400x3200px以上の画像を選び、もう一度お試しください。"
     },
     "nav": {
-      "access_tickets_description": "限定閲覧チケットの発行と失効",
       "access_tickets_label": "アクセスチケット",
       "administration": "管理",
-      "announcements_description": "お知らせ作成と配信の管理",
       "announcements_label": "お知らせ",
-      "audit_description": "操作履歴の確認と追跡",
       "audit_label": "監査ログ",
-      "comments_description": "読者コメントの承認・非表示・完全削除",
       "comments_label": "コメント",
       "comments_pending": "承認待ちのコメント{$count}件",
-      "creators_description": "著者情報の管理",
       "creators_label": "著者",
-      "dashboard_description": "公開準備と編集状況の概況",
       "dashboard_label": "ダッシュボード",
-      "engagement_description": "エピソードの完読数と読了率",
       "engagement_label": "読了率",
-      "labels_description": "レーベル情報の管理",
       "labels_label": "レーベル",
       "operations": "運用",
-      "pages_description": "個別ページの作成・編集・公開管理",
       "pages_label": "ページ",
-      "series_description": "作品の基本情報と公開設定",
       "series_label": "シリーズ",
-      "settings_description": "ブランドと運用ルールの管理",
       "settings_label": "設定"
     },
     "not_found": {
@@ -1522,15 +1511,12 @@
     "shell": {
       "account_menu": "{$name}のアカウントメニュー",
       "account_settings": "アカウント設定",
-      "domain": "ドメイン: {$domain}",
-      "eyebrow": "現在の運用先",
       "logo_alt": "{$name}のロゴ",
       "logout": "ログアウト",
       "navigation_close": "ナビゲーションを閉じる",
       "navigation_open": "ナビゲーションを開く",
       "notifications_none": "通知、未読はありません",
       "notifications_unread": "通知、未読{$count}件",
-      "status_online": "Online",
       "tenant_title": "{$name} 管理画面",
       "title": "管理画面"
     },
@@ -2449,22 +2435,15 @@
       "root_title": "Platform Console を表示できませんでした"
     },
     "nav": {
-      "audit_description": "横断監査ログを検索して変更履歴を追跡",
       "audit_label": "監査ログ",
-      "dashboard_description": "プラットフォーム全体の稼働状況を確認",
       "dashboard_label": "ダッシュボード",
       "governance": "Governance",
-      "operators_description": "プラットフォーム運用者のロールと権限を管理",
       "operators_label": "オペレーター管理",
       "overview": "Overview",
-      "settings_description": "既定タイムゾーンや SMTP などプラットフォーム共通設定を管理",
       "settings_label": "設定",
-      "tenants_create_description": "新規テナントを発行して初期設定を開始",
       "tenants_create_label": "テナント作成",
-      "tenants_list_description": "テナントの状態・プラン・連絡先を横断管理",
       "tenants_list_label": "テナント一覧",
       "tenants_section": "Tenants",
-      "users_description": "ユーザーの状態確認とアカウント管理",
       "users_label": "ユーザー管理"
     },
     "not_found": {
@@ -2639,15 +2618,11 @@
       "account_menu": "{$name}のアカウントメニュー",
       "account_settings": "アカウント設定",
       "context": "テナント横断オペレーション",
-      "eyebrow": "Platform Operations",
       "logout": "ログアウト",
       "navigation_close": "ナビゲーションを閉じる",
       "navigation_open": "ナビゲーションを開く",
       "notifications_none": "通知、未読はありません",
-      "notifications_unread": "通知、未読{$count}件",
-      "status_body": "Platform Console は現在利用可能です。",
-      "status_online": "Online",
-      "status_title": "運用ステータス"
+      "notifications_unread": "通知、未読{$count}件"
     },
     "tenants": {
       "add_member": "メンバーを追加",

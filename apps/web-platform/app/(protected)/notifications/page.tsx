@@ -8,7 +8,6 @@ import {
   PlatformPage,
   PlatformPageContent,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -81,11 +80,6 @@ const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
-        <PlatformPageEyebrow>
-          <Suspense fallback={<SkeletonLine className="h-3 w-36" />}>
-            <Message message="platform.shell.eyebrow" />
-          </Suspense>
-        </PlatformPageEyebrow>
         <PlatformPageTitle>
           <Suspense fallback={<SkeletonLine className="h-8 w-24" />}>
             <Message message="platform.notifications.heading" />

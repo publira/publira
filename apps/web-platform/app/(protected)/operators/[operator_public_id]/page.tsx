@@ -25,7 +25,6 @@ import {
   PlatformPageActions,
   PlatformPageContent,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -140,7 +139,6 @@ const OperatorDetailContent = async ({
     <>
       <PlatformPageHeader>
         <PlatformPageHeading>
-          <PlatformPageEyebrow>Platform Governance</PlatformPageEyebrow>
           <PlatformPageTitle>
             {getMessage(messages, "platform.operators.detail_title", {
               name: operator.name,

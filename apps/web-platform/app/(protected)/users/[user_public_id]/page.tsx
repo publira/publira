@@ -32,7 +32,6 @@ import {
   PlatformPageActions,
   PlatformPageContent,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -171,7 +170,6 @@ const UserDetailContent = async ({
     <>
       <PlatformPageHeader>
         <PlatformPageHeading>
-          <PlatformPageEyebrow>Platform Users</PlatformPageEyebrow>
           <PlatformPageTitle>
             {getMessage(messages, "platform.users.detail_title", {
               name: user.name || user.publicId,

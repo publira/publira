@@ -15,7 +15,6 @@ import {
   PlatformPage,
   PlatformPageContent,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -35,7 +34,6 @@ const TenantNewPage = () => (
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
-        <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
         <PlatformPageTitle>
           <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
             <Message message="platform.tenants.create_heading" />

@@ -34,7 +34,6 @@ import {
   AdminPage,
   AdminPageContent,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -358,7 +357,6 @@ const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
             <Message message="admin.audit.title" />

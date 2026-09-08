@@ -8,7 +8,6 @@ import {
   AdminPage,
   AdminPageContent,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -80,7 +79,6 @@ const PagesPage = ({ searchParams }: PagesPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
             <Message message="admin.pages.title" />

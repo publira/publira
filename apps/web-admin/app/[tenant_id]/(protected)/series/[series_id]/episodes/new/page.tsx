@@ -13,8 +13,8 @@ import {
   AdminPage,
   AdminPageActions,
   AdminPageContent,
+  AdminPageContext,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -47,7 +47,7 @@ const resolveSeriesId = async (params: NewEpisodePageProps["params"]) => {
   return seriesId;
 };
 
-const NewEpisodeEyebrow = async ({
+const NewEpisodeContext = async ({
   params,
 }: Pick<NewEpisodePageProps, "params">) => {
   const seriesId = await resolveSeriesId(params);
@@ -108,11 +108,11 @@ const NewEpisodePage = ({ params }: Pick<NewEpisodePageProps, "params">) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>
+        <AdminPageContext>
           <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
-            <NewEpisodeEyebrow params={params} />
+            <NewEpisodeContext params={params} />
           </Suspense>
-        </AdminPageEyebrow>
+        </AdminPageContext>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
             <Message message="admin.series.episodes.new_title" />

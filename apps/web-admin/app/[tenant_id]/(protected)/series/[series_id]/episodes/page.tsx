@@ -26,8 +26,8 @@ import {
   AdminPage,
   AdminPageActions,
   AdminPageContent,
+  AdminPageContext,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -66,7 +66,6 @@ const SeriesEpisodesPageSkeleton = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Series</AdminPageEyebrow>
         <AdminPageTitle>
           <SkeletonLine className="h-7 w-48" />
         </AdminPageTitle>
@@ -129,7 +128,7 @@ const SeriesEpisodesPage = async ({
       <AdminPage>
         <AdminPageHeader>
           <AdminPageHeading>
-            <AdminPageEyebrow>{`Series ${series_id}`}</AdminPageEyebrow>
+            <AdminPageContext>{`Series ${series_id}`}</AdminPageContext>
             <AdminPageTitle>
               <Message message="admin.series.episodes.list_title" />
             </AdminPageTitle>

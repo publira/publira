@@ -3,7 +3,6 @@ import {
   ConsoleHeader,
   ConsoleHeaderActions,
   ConsoleHeaderContext,
-  ConsoleHeaderEyebrow,
   ConsoleHeaderLabel,
   ConsoleHeaderUser,
   ConsoleHeaderUserSkeleton,
@@ -16,14 +15,12 @@ import {
   ConsoleMobileNavigationOpenButton,
   ConsoleSidebar,
   ConsoleSidebarBrand,
-  ConsoleSidebarBrandLabel,
   ConsoleSidebarBrandName,
   ConsoleSidebarContext,
   ConsoleSidebarNavigation,
-  ConsoleSidebarNavigationContent,
-  ConsoleSidebarNavigationIcon,
   ConsoleSidebarNavigationItem,
-  ConsoleSidebarNavigationItemDescription,
+  ConsoleSidebarNavigationItemHeading,
+  ConsoleSidebarNavigationItemIcon,
   ConsoleSidebarNavigationItemLabel,
   ConsoleSidebarNavigationItems,
   ConsoleSidebarNavigationSection,
@@ -39,8 +36,8 @@ import {
   ConsoleUserMenuRole,
   ConsoleUserMenuSeparator,
   ConsoleUserMenuTrigger,
+  navigationHrefs,
 } from "@publira/layouts/admin";
-import { StatusChip } from "@publira/ui-components/badge";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -237,37 +234,16 @@ const PlatformMobileNavigation = async () => {
 };
 
 export const PlatformLayout = ({ children }: { children: ReactNode }) => (
-  <ConsoleLayout theme="platform">
+  <ConsoleLayout>
     <Suspense fallback={null}>
       <PlatformMobileNavigation />
     </Suspense>
     <ConsoleSidebar>
       <ConsoleSidebarBrand>
         <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
-        <ConsoleSidebarBrandLabel>Platform Console</ConsoleSidebarBrandLabel>
       </ConsoleSidebarBrand>
-      <ConsoleSidebarContext>
-        <div className="flex items-start justify-between gap-3">
-          <div className="grid gap-1">
-            <p className="text-sm font-medium text-foreground">
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <Message message="platform.shell.status_title" />
-              </Suspense>
-            </p>
-            <p className="text-xs leading-5 text-muted-foreground">
-              <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
-                <Message message="platform.shell.status_body" />
-              </Suspense>
-            </p>
-          </div>
-          <StatusChip status="success">
-            <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
-              <Message message="platform.shell.status_online" />
-            </Suspense>
-          </StatusChip>
-        </div>
-      </ConsoleSidebarContext>
-      <ConsoleSidebarNavigation>
+      <ConsoleSidebarContext>Platform Console</ConsoleSidebarContext>
+      <ConsoleSidebarNavigation hrefs={navigationHrefs(navigation)}>
         {navigation.map((section) => (
           <ConsoleSidebarNavigationSection
             key={section.id ?? section.items[0]?.href}
@@ -278,17 +254,14 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
             <ConsoleSidebarNavigationItems>
               {section.items.map((item) => (
                 <ConsoleSidebarNavigationItem href={item.href} key={item.href}>
-                  <ConsoleSidebarNavigationIcon>
-                    <item.icon className="size-5" />
-                  </ConsoleSidebarNavigationIcon>
-                  <ConsoleSidebarNavigationContent>
+                  <ConsoleSidebarNavigationItemIcon>
+                    <item.icon className="size-4" />
+                  </ConsoleSidebarNavigationItemIcon>
+                  <ConsoleSidebarNavigationItemHeading>
                     <ConsoleSidebarNavigationItemLabel>
                       {item.label}
                     </ConsoleSidebarNavigationItemLabel>
-                    <ConsoleSidebarNavigationItemDescription>
-                      {item.description}
-                    </ConsoleSidebarNavigationItemDescription>
-                  </ConsoleSidebarNavigationContent>
+                  </ConsoleSidebarNavigationItemHeading>
                 </ConsoleSidebarNavigationItem>
               ))}
             </ConsoleSidebarNavigationItems>
@@ -301,11 +274,6 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
       <ConsoleHeader>
         <ConsoleHeaderContext>
           <ConsoleHeaderText>
-            <ConsoleHeaderEyebrow>
-              <Suspense fallback={<SkeletonLine className="h-3 w-36" />}>
-                <Message message="platform.shell.eyebrow" />
-              </Suspense>
-            </ConsoleHeaderEyebrow>
             <ConsoleHeaderLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                 <Message message="platform.shell.context" />
@@ -315,7 +283,7 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
         </ConsoleHeaderContext>
         <ConsoleHeaderActions>
           <Suspense
-            fallback={<SkeletonLine className="h-9 w-24 rounded-full" />}
+            fallback={<SkeletonLine className="h-8 w-24 rounded-full" />}
           >
             <PlatformLocaleSwitcher />
           </Suspense>

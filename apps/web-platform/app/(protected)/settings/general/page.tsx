@@ -10,7 +10,6 @@ import {
   PlatformPage,
   PlatformPageContent,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -141,7 +140,6 @@ const PlatformGeneralSettingsPage = () => (
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
-        <PlatformPageEyebrow>Platform Settings</PlatformPageEyebrow>
         <PlatformPageTitle>
           <Suspense fallback={<SkeletonLine className="h-8 w-16" />}>
             <Message message="platform.settings.general_heading" />

@@ -8,7 +8,6 @@ import {
   PlatformPage,
   PlatformPageActions,
   PlatformPageDescription,
-  PlatformPageEyebrow,
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
@@ -58,7 +57,6 @@ const NotFound = () => (
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
-        <PlatformPageEyebrow>404 Not Found</PlatformPageEyebrow>
         <PlatformPageTitle>
           <Suspense fallback={<SkeletonLine className="h-8 w-56" />}>
             <Message message="platform.not_found.title" />

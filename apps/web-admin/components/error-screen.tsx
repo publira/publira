@@ -8,7 +8,6 @@ import {
   AdminPageActions,
   AdminPageContent,
   AdminPageDescription,
-  AdminPageEyebrow,
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
@@ -58,7 +57,6 @@ export const ErrorScreen = ({
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageEyebrow>Error</AdminPageEyebrow>
         <AdminPageTitle>{title}</AdminPageTitle>
         <AdminPageDescription>{description}</AdminPageDescription>
       </AdminPageHeading>

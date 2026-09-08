@@ -30,6 +30,11 @@ vi.mock("../lib/admin-auth", () => ({
   getAdminCurrentUser: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(),
+  usePathname: () => "/series",
+}));
+
 vi.mock("../lib/auth-session", () => ({
   redirectToLoginIfSessionRejected: vi.fn(),
 }));
@@ -109,17 +114,19 @@ describe("AdminLayout", () => {
     expect(screen.getAllByText("Acme Publishing").length).toBeGreaterThan(0);
   });
 
-  it("asks the shared stylesheet for the admin console background", () => {
-    const { container } = render(
+  it("marks the navigation item for the screen the console is on", () => {
+    render(
       <AdminLayout logo={null} tenant={tenant} tenantId="tenant-id">
         <p>Body</p>
       </AdminLayout>
     );
 
     expect(
-      container.querySelector<HTMLElement>(".publira-console-background")
-        ?.dataset.consoleTheme
-    ).toBe("admin");
+      screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("aria-current") === "page")
+        .map((link) => link.getAttribute("href"))
+    ).toEqual(["/series"]);
   });
 });
 
