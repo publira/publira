@@ -8,9 +8,23 @@ import 'package:publira/models/episode_detail.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/router.dart';
 import 'package:publira/viewer/episode_reader.dart';
+import 'package:publira/viewer/reading_position.dart';
+
+/// One episode as this screen opens it: its body, and the page the reader
+/// stopped on last time.
+class _OpenEpisode {
+  const _OpenEpisode({required this.detail, required this.startPage});
+
+  final EpisodeDetail detail;
+  final int startPage;
+}
 
 /// Episode reader. Loads the body of one published episode and hands its pages
 /// to [EpisodeReader].
+///
+/// The reading position is the screen's rather than the pager's: it is read
+/// beside the body, and the page the reader leaves on is recorded as the
+/// screen goes away, which the pager inside it is not there to see.
 class EpisodeViewerScreen extends StatefulWidget {
   const EpisodeViewerScreen({
     super.key,
@@ -25,38 +39,114 @@ class EpisodeViewerScreen extends StatefulWidget {
   State<EpisodeViewerScreen> createState() => _EpisodeViewerScreenState();
 }
 
-class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
-  late Future<EpisodeDetail?> _future;
+class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
+    with WidgetsBindingObserver {
+  late Future<_OpenEpisode?> _future;
   var _started = false;
   var _accessToken = '';
 
+  /// Records the page the reader rests on, for the session that is signed in
+  /// now. It holds the repository rather than the context, because the last
+  /// page is recorded as the screen goes away, when an inherited widget can no
+  /// longer be looked up.
+  ReadingPositionSaver? _saver;
+
+  @override
+  void initState() {
+    super.initState();
+    // A reader who leaves the app on a page never pops this screen, and the
+    // page they left on is the one they expect to come back to.
+    WidgetsBinding.instance.addObserver(this);
+  }
+
   /// Reloads whenever the reader signs in or out, because who is asking is
-  /// what decides whether this body comes back at all.
+  /// what decides whether this body comes back at all — and where they last
+  /// stopped in it.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final catalog = CatalogScope.of(context);
     final accessToken = AuthScope.of(context).accessToken;
     if (_started && accessToken == _accessToken) {
       return;
     }
     _started = true;
     _accessToken = accessToken;
-    _future = _load();
+    // A saver belongs to the session it records against. The page the reader
+    // before this one was on is theirs and cannot be written with this
+    // session, so a waiting page is dropped rather than carried over, and the
+    // pages this reader turns to are recorded from nothing.
+    _saver?.dispose();
+    _saver = ReadingPositionSaver(
+      send: (pageIndex) => catalog.saveReadingPosition(
+        widget.seriesId,
+        widget.episodeId,
+        pageIndex,
+      ),
+    );
+    _future = _load(catalog);
   }
 
-  Future<EpisodeDetail?> _load() =>
-      CatalogScope.of(context).getEpisode(widget.seriesId, widget.episodeId);
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _saver?.flush();
+    _saver?.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _saver?.flush();
+    }
+  }
+
+  /// The body and the page to open it on.
+  ///
+  /// Both reads are started before either is awaited: the position does not
+  /// depend on the body, and a reader made to wait out two round trips in a
+  /// row would see the first page later for it.
+  Future<_OpenEpisode?> _load(CatalogRepository catalog) async {
+    final position = _savedPageIndex(catalog);
+    final detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
+    final saved = await position;
+    if (detail == null) {
+      return null;
+    }
+    return _OpenEpisode(
+      detail: detail,
+      startPage: resumePageIndex(saved, detail.images.length),
+    );
+  }
+
+  /// Where the reader stopped, or `null` when nothing says.
+  ///
+  /// A position that could not be read is not what makes an episode
+  /// unreadable: the reader opens at the first page, which is where they
+  /// opened before there were positions at all.
+  Future<int?> _savedPageIndex(CatalogRepository catalog) async {
+    try {
+      return await catalog.getReadingPosition(
+        widget.seriesId,
+        widget.episodeId,
+      );
+    } on CatalogFailure {
+      return null;
+    }
+  }
 
   void _reload() {
     setState(() {
-      _future = _load();
+      _future = _load(CatalogScope.of(context));
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return FutureBuilder<EpisodeDetail?>(
+    return FutureBuilder<_OpenEpisode?>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -79,8 +169,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
             ),
           );
         }
-        final detail = snapshot.data;
-        if (detail == null) {
+        final open = snapshot.data;
+        if (open == null) {
           return _shell(
             title: messages.viewerTitle,
             body: _ViewerMessage(
@@ -93,14 +183,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
           );
         }
         return _shell(
-          title: detail.episode.title,
-          body: _body(messages, detail),
+          title: open.detail.episode.title,
+          body: _body(messages, open),
         );
       },
     );
   }
 
-  Widget _body(AppMessages messages, EpisodeDetail detail) {
+  Widget _body(AppMessages messages, _OpenEpisode open) {
+    final detail = open.detail;
     if (detail.access == EpisodeAccess.locked) {
       if (AuthScope.of(context).isSignedIn) {
         return _ViewerMessage(
@@ -124,6 +215,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen> {
     return EpisodeReader(
       images: detail.images,
       imageHeaders: detail.imageRequestHeaders,
+      initialPageIndex: open.startPage,
+      onPageChanged: (pageIndex) => _saver?.save(pageIndex),
       pageStore: OfflineScope.maybeOf(context),
     );
   }

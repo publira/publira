@@ -19,6 +19,15 @@ import 'support/artifacts.dart';
 /// Live public API, used when CI / `task mobile:e2e` starts api-server.
 const _liveApi = bool.fromEnvironment('PUBLIRA_LIVE_API');
 
+/// The seed member's session, as a launch that restores one from the keychain
+/// hands it over.
+AuthSession memberSession() => AuthSession(
+  accessToken: ConnectFixtureServer.memberAccessToken,
+  userPublicId: ConnectFixtureServer.memberPublicId,
+  userName: ConnectFixtureServer.memberName,
+  expiresAt: DateTime.now().toUtc().add(const Duration(hours: 24)),
+);
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -47,6 +56,7 @@ void main() {
       WidgetTester tester, {
       String? initialLocation,
       AppConfig? config,
+      AuthSession? session,
     }) async {
       await tester.pumpWidget(
         PubliraApp.fromConfig(
@@ -62,7 +72,7 @@ void main() {
           router: createAppRouter(
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
-          store: InMemorySessionStore(),
+          store: InMemorySessionStore(session: session),
           offline: FileOfflineLibrary(root: () async => offlineRoot),
         ),
       );
@@ -449,6 +459,62 @@ void main() {
         expect(find.byKey(const ValueKey('catalog-retry')), findsOneWidget);
       });
     });
+
+    testWidgets('an episode opens on the page the member stopped on', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-resume', () async {
+        // A position this install never wrote, which is what one saved on the
+        // website looks like to the app opening the episode afterwards.
+        server.readingPositions = {ConnectFixtureServer.seedEpisodeId: 1};
+        await pumpApp(
+          tester,
+          session: memberSession(),
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+
+        expect(
+          find.text('2 / ${ConnectFixtureServer.seedEpisodePageCount}'),
+          findsOneWidget,
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testWidgets('the page a member turns to is recorded at the API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-record-position', () async {
+        await pumpApp(
+          tester,
+          session: memberSession(),
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+        await pumpUntilTrue(
+          tester,
+          () =>
+              server.readingPositions[ConnectFixtureServer.seedEpisodeId] == 1,
+          description: 'the position to reach the API',
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
   });
 
   group('live public API', skip: !_liveApi, () {
@@ -746,13 +812,6 @@ void main() {
       );
     }
 
-    AuthSession memberSession() => AuthSession(
-      accessToken: ConnectFixtureServer.memberAccessToken,
-      userPublicId: ConnectFixtureServer.memberPublicId,
-      userName: ConnectFixtureServer.memberName,
-      expiresAt: DateTime.now().toUtc().add(const Duration(hours: 24)),
-    );
-
     testWidgets('a free episode read online turns again with the API gone', (
       tester,
     ) async {
@@ -951,6 +1010,61 @@ void main() {
           ),
           isNull,
         );
+      });
+    });
+
+    testWidgets('an episode reopens on its saved page with the API gone', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'offline-resume', () async {
+        await pumpLaunch(
+          tester,
+          apiBaseUrl: server.baseUrl,
+          session: memberSession(),
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+        await pumpUntilTrue(
+          tester,
+          () =>
+              server.readingPositions[ConnectFixtureServer.seedEpisodeId] == 1,
+          description: 'the position to reach the API',
+        );
+        await waitForSavedPage(
+          tester,
+          pageKey(ConnectFixtureServer.seedEpisodeId, 2),
+        );
+
+        final closedBaseUrl = server.baseUrl;
+        await server.close();
+
+        await pumpLaunch(
+          tester,
+          apiBaseUrl: closedBaseUrl,
+          session: memberSession(),
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+
+        expect(
+          find.text('2 / ${ConnectFixtureServer.seedEpisodePageCount}'),
+          findsOneWidget,
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });
   });

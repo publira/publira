@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/router.dart';
+import 'package:publira/viewer/reading_position.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -289,5 +290,74 @@ void main() {
     await pumpUntilFound(tester, find.text('Episodes'));
 
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
+  });
+
+  testWidgets('a saved position opens the body on that page', (tester) async {
+    catalog.readingPositions = {episodeKey(seriesId, episodeId): 1};
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilFound(tester, pageView);
+
+    expect(find.text('2 / 3'), findsOneWidget);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('a position past the end of the body opens on its last page', (
+    tester,
+  ) async {
+    catalog.readingPositions = {episodeKey(seriesId, episodeId): 9};
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilFound(tester, pageView);
+
+    expect(find.text('3 / 3'), findsOneWidget);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('a position that cannot be read opens the first page', (
+    tester,
+  ) async {
+    catalog
+      ..readingPositions = {episodeKey(seriesId, episodeId): 1}
+      ..readingPositionError = const CatalogFailure(CatalogFailureKind.network);
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilFound(tester, pageView);
+
+    expect(find.text('1 / 3'), findsOneWidget);
+    expect(find.byKey(const ValueKey('episode-viewer-error')), findsNothing);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('the page a reader rests on is recorded', (tester) async {
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilRouteSettled(tester, pageView);
+
+    await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+    await pumpUntilFound(tester, find.text('2 / 3'));
+    // Nothing is recorded while the reader may still be skimming past it.
+    expect(catalog.readingPositions, isEmpty);
+
+    await tester.pump(readingPositionSaveDelay);
+    expect(catalog.readingPositions[episodeKey(seriesId, episodeId)], 1);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('leaving the reader records the page it was left on', (
+    tester,
+  ) async {
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(seriesId),
+    );
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilFound(tester, find.text('Episodes'));
+    await tester.tap(find.byKey(ValueKey('episode-tile-$episodeId')));
+    await pumpUntilRouteSettled(tester, pageView);
+
+    await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+    await pumpUntilFound(tester, find.text('2 / 3'));
+    expect(catalog.readingPositions, isEmpty);
+
+    await tester.pageBack();
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(catalog.readingPositions[episodeKey(seriesId, episodeId)], 1);
   });
 }

@@ -727,6 +727,118 @@ void main() {
     );
   });
 
+  group('the reading history of one member', () {
+    late HttpCatalogRepository signedIn;
+
+    setUp(() {
+      server
+        ..readingPositions = {ConnectFixtureServer.seedEpisodeId: 11}
+        ..recentSeries = ConnectFixtureServer.populatedRecentSeries();
+      signedIn = HttpCatalogRepository(
+        config: AppConfig(
+          apiBaseUrl: server.baseUrl,
+          tenantHost: 'localhost',
+          imageBaseUrl: imageBaseUrl,
+        ),
+        client: ConnectClient(
+          baseUrl: server.baseUrl,
+          accessToken: () => ConnectFixtureServer.memberAccessToken,
+        ),
+      );
+    });
+
+    test('getReadingPosition answers the page the member stopped on', () async {
+      expect(
+        await signedIn.getReadingPosition(
+          ConnectFixtureServer.seedSeriesId,
+          ConnectFixtureServer.seedEpisodeId,
+        ),
+        11,
+      );
+    });
+
+    test('an episode the member never opened has no position', () async {
+      expect(
+        await signedIn.getReadingPosition(
+          ConnectFixtureServer.seedSeriesId,
+          ConnectFixtureServer.paidEpisodeId,
+        ),
+        isNull,
+      );
+    });
+
+    test('saveReadingPosition records the page against the episode', () async {
+      await signedIn.saveReadingPosition(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+        4,
+      );
+
+      expect(server.readingPositions[ConnectFixtureServer.seedEpisodeId], 4);
+      final recorded = server.requestsTo('SaveReadingPosition').single;
+      expect(
+        recorded.headers['authorization'],
+        'Bearer ${ConnectFixtureServer.memberAccessToken}',
+      );
+      expect(
+        (recorded.body['tenant']! as Map)['tenantId'],
+        ConnectFixtureServer.defaultTenantId,
+      );
+    });
+
+    test('listRecentSeries maps the series and the episode to open', () async {
+      final items = await signedIn.listRecentSeries(limit: 6);
+
+      expect(items, hasLength(1));
+      expect(items.single.series.id, ConnectFixtureServer.seedSeriesId);
+      expect(items.single.series.eyeCatchVariants, isNotEmpty);
+      expect(items.single.episode.id, ConnectFixtureServer.seedEpisodeId);
+      expect(server.requestsTo('ListMyRecentSeries').single.body['limit'], 6);
+    });
+
+    test('a guest asks the API for none of it', () async {
+      expect(
+        await catalog.getReadingPosition(
+          ConnectFixtureServer.seedSeriesId,
+          ConnectFixtureServer.seedEpisodeId,
+        ),
+        isNull,
+      );
+      await catalog.saveReadingPosition(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+        4,
+      );
+      expect(await catalog.listRecentSeries(limit: 6), isEmpty);
+
+      // Nothing was asked, so nothing was refused: the API answers a request
+      // without a session `unauthenticated`, and there is no answer in that
+      // worth a round trip.
+      expect(server.requestsTo('GetMyReadingPosition'), isEmpty);
+      expect(server.requestsTo('SaveReadingPosition'), isEmpty);
+      expect(server.requestsTo('ListMyRecentSeries'), isEmpty);
+      expect(server.readingPositions[ConnectFixtureServer.seedEpisodeId], 11);
+    });
+
+    test('a rejected session is reported rather than resumed from', () async {
+      server.activeAccessToken = 'another-token';
+
+      expect(
+        () => signedIn.getReadingPosition(
+          ConnectFixtureServer.seedSeriesId,
+          ConnectFixtureServer.seedEpisodeId,
+        ),
+        throwsA(
+          isA<CatalogFailure>().having(
+            (error) => error.kind,
+            'kind',
+            CatalogFailureKind.unexpected,
+          ),
+        ),
+      );
+    });
+  });
+
   test('getEpisode rejects a body without a series', () async {
     server.episodeResponse = {
       'episode': {'publicId': 'EP', 'title': 'Orphan'},

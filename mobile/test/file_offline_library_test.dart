@@ -202,6 +202,87 @@ void main() {
     expect(await reopened.readPage(episodePageKey(_pageUrl('EP1', 1))), isNull);
   });
 
+  test('a reading position is read back by the next launch', () async {
+    await open().writeReadingPosition(
+      _seriesId,
+      'EP1',
+      readerId: 'SeedMMBRAAA1',
+      pageIndex: 11,
+    );
+
+    expect(
+      await open().readReadingPosition(
+        _seriesId,
+        'EP1',
+        readerId: 'SeedMMBRAAA1',
+      ),
+      11,
+    );
+  });
+
+  test('a reading position is closed to a second reader', () async {
+    final library = open();
+    await library.writeReadingPosition(
+      _seriesId,
+      'EP1',
+      readerId: 'SeedMMBRAAA1',
+      pageIndex: 11,
+    );
+
+    expect(
+      await library.readReadingPosition(
+        _seriesId,
+        'EP1',
+        readerId: 'SeedMMBRAAA2',
+      ),
+      isNull,
+    );
+  });
+
+  test('a position is dropped with the episode it points into', () async {
+    final library = open();
+    await library.writeEpisode(_episode('EP1'));
+    await library.writeReadingPosition(
+      _seriesId,
+      'EP1',
+      readerId: 'SeedMMBRAAA1',
+      pageIndex: 11,
+    );
+
+    await library.removeEpisode(_seriesId, 'EP1');
+
+    expect(
+      await library.readReadingPosition(
+        _seriesId,
+        'EP1',
+        readerId: 'SeedMMBRAAA1',
+      ),
+      isNull,
+    );
+  });
+
+  test('a series the API dropped takes its positions with it', () async {
+    final library = open();
+    await library.writeEpisode(_episode('EP1'));
+    await library.writeReadingPosition(
+      _seriesId,
+      'EP1',
+      readerId: 'SeedMMBRAAA1',
+      pageIndex: 11,
+    );
+
+    await library.removeSeries(_seriesId);
+
+    expect(
+      await library.readReadingPosition(
+        _seriesId,
+        'EP1',
+        readerId: 'SeedMMBRAAA1',
+      ),
+      isNull,
+    );
+  });
+
   test('removing an episode takes its pages with it', () async {
     final library = open();
     final pageKey = episodePageKey(_pageUrl('EP1', 1));

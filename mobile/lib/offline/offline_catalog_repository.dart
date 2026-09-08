@@ -117,6 +117,100 @@ class OfflineCatalogRepository implements CatalogRepository {
     }
   }
 
+  /// Where the reader stopped, from the API when it answers and from the
+  /// device when it cannot.
+  ///
+  /// The API wins wherever both hold a page: it is the one place a position
+  /// saved on the website reaches, and the reader who left one there expects
+  /// the app to open on it. It wins only over a position it actually has,
+  /// though — an episode it knows nothing about leaves whatever the device
+  /// recorded while it was unreachable as the only page the reader stopped on.
+  @override
+  Future<int?> getReadingPosition(
+    String seriesPublicId,
+    String episodePublicId,
+  ) async {
+    final reader = _readerId();
+    // A position belongs to a member, so there is neither one to ask for nor
+    // one to answer with while nobody is signed in.
+    if (reader.isEmpty) {
+      return null;
+    }
+    try {
+      final position = await _origin.getReadingPosition(
+        seriesPublicId,
+        episodePublicId,
+      );
+      if (position == null) {
+        return await library.readReadingPosition(
+          seriesPublicId,
+          episodePublicId,
+          readerId: reader,
+        );
+      }
+      await library.writeReadingPosition(
+        seriesPublicId,
+        episodePublicId,
+        readerId: reader,
+        pageIndex: position,
+      );
+      return position;
+    } on CatalogFailure catch (failure) {
+      if (failure.kind != CatalogFailureKind.network) {
+        rethrow;
+      }
+      return library.readReadingPosition(
+        seriesPublicId,
+        episodePublicId,
+        readerId: reader,
+      );
+    }
+  }
+
+  /// Records the page on the device first, then at the API.
+  ///
+  /// The device is written first because it is the record that survives the
+  /// API being unreachable, which is the whole of what a reader turning pages
+  /// offline leaves behind.
+  @override
+  Future<void> saveReadingPosition(
+    String seriesPublicId,
+    String episodePublicId,
+    int pageIndex,
+  ) async {
+    final reader = _readerId();
+    if (reader.isEmpty) {
+      return;
+    }
+    await library.writeReadingPosition(
+      seriesPublicId,
+      episodePublicId,
+      readerId: reader,
+      pageIndex: pageIndex,
+    );
+    try {
+      await _origin.saveReadingPosition(
+        seriesPublicId,
+        episodePublicId,
+        pageIndex,
+      );
+    } on CatalogFailure catch (failure) {
+      if (failure.kind != CatalogFailureKind.network) {
+        rethrow;
+      }
+      // The device holds the page until the API can be reached again.
+    }
+  }
+
+  /// The reader's continue-reading row, which only the API can answer.
+  ///
+  /// Nothing about it is kept on the device: it is an offer to open something
+  /// the reader has not read yet, and what a reader without a network can open
+  /// is what the series screen already marks as saved.
+  @override
+  Future<List<RecentSeriesItem>> listRecentSeries({required int limit}) =>
+      _origin.listRecentSeries(limit: limit);
+
   /// Answers an episode the network could not, from what the device holds.
   Future<EpisodeDetail> _openSaved(
     String seriesPublicId,

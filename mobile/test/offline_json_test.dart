@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/offline/offline_json.dart';
+import 'package:publira/offline/offline_library.dart';
 
 Map<String, Object?> _index(
   Map<String, Object?> episode, {
@@ -115,5 +116,44 @@ void main() {
       variants.single.url.toString(),
       'http://images.test/images/series/IMG/portrait/800',
     );
+  });
+
+  test('a reading position survives the round trip', () {
+    final written = OfflineIndex(
+      positions: {
+        'SeedSERSAAA1/SeedEPSDAAA1': const SavedReadingPosition(
+          readerId: 'SeedMMBRAAA1',
+          pageIndex: 11,
+        ),
+      },
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    final position = decoded!.positions['SeedSERSAAA1/SeedEPSDAAA1']!;
+    expect(position.readerId, 'SeedMMBRAAA1');
+    expect(position.pageIndex, 11);
+  });
+
+  test('a position naming no reader is dropped', () {
+    // A position belongs to the member who left it, so one that names nobody
+    // is not a page to answer whoever is holding the phone with.
+    final decoded = OfflineIndex.fromJson({
+      ..._index(_episode(access: 'free', ownerId: '')),
+      'positions': const {
+        'SeedSERSAAA1/SeedEPSDAAA1': {'readerId': '', 'pageIndex': 11},
+      },
+    });
+
+    expect(decoded!.positions, isEmpty);
+  });
+
+  test('an index written before positions existed still reads', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(_episode(access: 'free', ownerId: '')),
+    );
+
+    expect(decoded!.episodes, hasLength(1));
+    expect(decoded.positions, isEmpty);
   });
 }

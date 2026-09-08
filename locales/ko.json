@@ -2145,6 +2145,7 @@
       "title": "계정"
     },
     "catalog": {
+      "continue_heading": "이어서 읽기",
       "empty": "아직 공개된 시리즈가 없습니다",
       "load_failed": "카탈로그를 표시할 수 없습니다",
       "offline_not_saved": "오프라인 상태이며, 이 기기에 저장된 카탈로그가 없습니다."

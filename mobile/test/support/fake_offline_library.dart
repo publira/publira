@@ -12,6 +12,7 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
   List<SeriesItem>? series;
   final Map<String, SeriesDetail> details = {};
   final Map<String, SavedEpisode> episodes = {};
+  final Map<String, SavedReadingPosition> positions = {};
   final Map<String, Uint8List> pages = {};
 
   @override
@@ -34,6 +35,9 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
   @override
   Future<void> removeSeries(String seriesPublicId) async {
     details.remove(seriesPublicId);
+    positions.removeWhere(
+      (key, position) => key.startsWith('$seriesPublicId/'),
+    );
     for (final episode in episodes.values.toList(growable: false)) {
       if (episode.detail.seriesId != seriesPublicId) {
         continue;
@@ -61,12 +65,34 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
     String seriesPublicId,
     String episodePublicId,
   ) async {
+    positions.remove(savedEpisodeKey(seriesPublicId, episodePublicId));
     final removed = episodes.remove(
       savedEpisodeKey(seriesPublicId, episodePublicId),
     );
     for (final key in removed?.pageKeys ?? const <String>[]) {
       pages.remove(key);
     }
+  }
+
+  @override
+  Future<int?> readReadingPosition(
+    String seriesPublicId,
+    String episodePublicId, {
+    required String readerId,
+  }) async {
+    final saved = positions[savedEpisodeKey(seriesPublicId, episodePublicId)];
+    return saved == null || saved.readerId != readerId ? null : saved.pageIndex;
+  }
+
+  @override
+  Future<void> writeReadingPosition(
+    String seriesPublicId,
+    String episodePublicId, {
+    required String readerId,
+    required int pageIndex,
+  }) async {
+    positions[savedEpisodeKey(seriesPublicId, episodePublicId)] =
+        SavedReadingPosition(readerId: readerId, pageIndex: pageIndex);
   }
 
   @override
@@ -97,6 +123,7 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
     series = null;
     details.clear();
     episodes.clear();
+    positions.clear();
     pages.clear();
   }
 }

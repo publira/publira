@@ -9,9 +9,13 @@ class FakeCatalogRepository implements CatalogRepository {
     this.series = const [],
     this.details = const {},
     this.episodes = const {},
+    this.recentSeries = const [],
+    this.readingPositions = const {},
     this.listError,
     this.detailError,
     this.episodeError,
+    this.readingPositionError,
+    this.recentSeriesError,
   });
 
   List<SeriesItem> series;
@@ -20,9 +24,22 @@ class FakeCatalogRepository implements CatalogRepository {
   /// Keyed by [episodeKey] so a fake can hold the same episode id under two
   /// series and still answer each pair separately.
   Map<String, EpisodeDetail> episodes;
+
+  /// What the continue-reading row is answered with.
+  List<RecentSeriesItem> recentSeries;
+
+  /// Saved positions keyed by [episodeKey], which [saveReadingPosition] writes
+  /// to so a test can assert what the viewer recorded.
+  Map<String, int> readingPositions;
+
   CatalogFailure? listError;
   CatalogFailure? detailError;
   CatalogFailure? episodeError;
+  CatalogFailure? readingPositionError;
+  CatalogFailure? recentSeriesError;
+
+  /// Limits [listRecentSeries] was called with, in order.
+  final List<int> recentSeriesLimits = <int>[];
 
   @override
   Future<List<SeriesItem>> listSeries() async {
@@ -52,6 +69,46 @@ class FakeCatalogRepository implements CatalogRepository {
       throw error;
     }
     return episodes[episodeKey(seriesPublicId, episodePublicId)];
+  }
+
+  @override
+  Future<int?> getReadingPosition(
+    String seriesPublicId,
+    String episodePublicId,
+  ) async {
+    final error = readingPositionError;
+    if (error != null) {
+      throw error;
+    }
+    return readingPositions[episodeKey(seriesPublicId, episodePublicId)];
+  }
+
+  @override
+  Future<void> saveReadingPosition(
+    String seriesPublicId,
+    String episodePublicId,
+    int pageIndex,
+  ) async {
+    final error = readingPositionError;
+    if (error != null) {
+      throw error;
+    }
+    readingPositions = {
+      ...readingPositions,
+      episodeKey(seriesPublicId, episodePublicId): pageIndex,
+    };
+  }
+
+  @override
+  Future<List<RecentSeriesItem>> listRecentSeries({required int limit}) async {
+    recentSeriesLimits.add(limit);
+    final error = recentSeriesError;
+    if (error != null) {
+      throw error;
+    }
+    // The API answers a page of at most [limit], so a fixture longer than the
+    // screen asked for must not reach it here either.
+    return List<RecentSeriesItem>.from(recentSeries.take(limit));
   }
 }
 
@@ -120,6 +177,18 @@ SeriesDetail fixtureDetail(SeriesItem item) {
 
 Map<String, SeriesDetail> fixtureDetails() {
   return {for (final item in fixtureSeries) item.id: fixtureDetail(item)};
+}
+
+/// A continue-reading row over the fixture series, each offering the first
+/// episode of its own series.
+List<RecentSeriesItem> fixtureRecentSeries() {
+  return [
+    for (final item in fixtureSeries)
+      RecentSeriesItem(
+        series: item,
+        episode: fixtureDetail(item).episodes.first,
+      ),
+  ];
 }
 
 /// A readable body for the first episode of every fixture series.

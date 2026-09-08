@@ -17,6 +17,8 @@ class ConnectFixtureServer {
     this.details = const {},
     this.episodes = const {},
     this.entitledEpisodes = const {},
+    this.readingPositions = const {},
+    this.recentSeries = const [],
     this.listStatus = HttpStatus.ok,
     this.detailStatus = HttpStatus.ok,
     this.episodeStatus = HttpStatus.ok,
@@ -207,6 +209,28 @@ class ConnectFixtureServer {
     };
   }
 
+  /// One `RecentSeries`: the seed series, offering the free episode the member
+  /// was last reading.
+  static List<Map<String, Object?>> populatedRecentSeries() {
+    return [
+      {
+        'series': {
+          'publicId': seedSeriesId,
+          'title': seedSeriesTitle,
+          'synopsis': seedSeriesSynopsis,
+          'eyeCatchImageVariants': seedEyeCatchVariants(),
+        },
+        'episode': {
+          'publicId': seedEpisodeId,
+          'title': seedEpisodeTitle,
+          'orderIndex': 1,
+          'price': 0,
+        },
+        'lastActivityAt': '2026-09-01T00:00:00Z',
+      },
+    ];
+  }
+
   static Map<String, Map<String, Object?>> populatedDetails() {
     return {
       seedSeriesId: {
@@ -249,6 +273,15 @@ class ConnectFixtureServer {
   /// The bodies a request carrying [activeAccessToken] gets instead, keyed the
   /// same way. An episode missing here answers from [episodes].
   Map<String, Map<String, Object?>> entitledEpisodes;
+
+  /// Zero-based reading positions of the signed-in member, keyed by episode
+  /// public id. `SaveReadingPosition` writes here, so a test can read back
+  /// what the viewer recorded.
+  Map<String, int> readingPositions;
+
+  /// `RecentSeries` entries `ListMyRecentSeries` answers a signed-in member
+  /// with, in the order they are given.
+  List<Map<String, Object?>> recentSeries;
   int listStatus;
   int detailStatus;
   int episodeStatus;
@@ -453,6 +486,22 @@ class ConnectFixtureServer {
       return;
     }
 
+    // Every read of the member's own history needs their session, the way the
+    // API refuses one without it.
+    if (path.endsWith('/GetMyReadingPosition') ||
+        path.endsWith('/SaveReadingPosition') ||
+        path.endsWith('/ListMyRecentSeries')) {
+      if (!_isAuthorized(request)) {
+        await _write(request, HttpStatus.unauthorized, {
+          'code': 'unauthenticated',
+          'message': 'invalid token',
+        });
+        return;
+      }
+      await _writeEpisodeRead(request, path, body);
+      return;
+    }
+
     if (path.endsWith('/RegisterPushDevice') ||
         path.endsWith('/UnregisterPushDevice')) {
       final registering = path.endsWith('/RegisterPushDevice');
@@ -469,6 +518,42 @@ class ConnectFixtureServer {
 
     request.response.statusCode = HttpStatus.notFound;
     await request.response.close();
+  }
+
+  /// Answers the reading-position and continue-reading RPCs of one member.
+  Future<void> _writeEpisodeRead(
+    HttpRequest request,
+    String path,
+    Map<String, Object?> body,
+  ) async {
+    if (path.endsWith('/ListMyRecentSeries')) {
+      await _write(request, HttpStatus.ok, {'series': recentSeries});
+      return;
+    }
+    final episodeId = body['episodePublicId'] as String? ?? '';
+    if (path.endsWith('/SaveReadingPosition')) {
+      final pageIndex = body['pageIndex'] as int? ?? 0;
+      readingPositions = {...readingPositions, episodeId: pageIndex};
+      await _write(request, HttpStatus.ok, {
+        'position': _readingPosition(episodeId, pageIndex),
+      });
+      return;
+    }
+    final pageIndex = readingPositions[episodeId];
+    await _write(request, HttpStatus.ok, {
+      // protojson omits an unset message, which is what a member who never
+      // opened the episode is answered with.
+      if (pageIndex != null) 'position': _readingPosition(episodeId, pageIndex),
+    });
+  }
+
+  Map<String, Object?> _readingPosition(String episodeId, int pageIndex) {
+    return {
+      'episodePublicId': episodeId,
+      'pageIndex': pageIndex,
+      'pageCount': seedEpisodePageCount,
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
   }
 
   String _publicIdOf(Map<String, Object?> body) {

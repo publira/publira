@@ -45,6 +45,21 @@ class SavedEpisode {
   ];
 }
 
+/// Where one reader stopped inside one episode.
+///
+/// It is the device's copy of what the API keeps, so it names the reader it
+/// belongs to: a position is per member there, and a device that answered one
+/// to whoever holds the phone would hand a second reader the first one's page.
+class SavedReadingPosition {
+  const SavedReadingPosition({required this.readerId, required this.pageIndex});
+
+  /// Public id of the reader who stopped there.
+  final String readerId;
+
+  /// Zero-based page of the episode.
+  final int pageIndex;
+}
+
 /// Index key of the episode [episodePublicId] under [seriesPublicId].
 String savedEpisodeKey(String seriesPublicId, String episodePublicId) =>
     '$seriesPublicId/$episodePublicId';
@@ -111,6 +126,24 @@ abstract class OfflineLibrary implements EpisodePageStore {
   Future<void> writeEpisode(SavedEpisode episode);
 
   Future<void> removeEpisode(String seriesPublicId, String episodePublicId);
+
+  /// The page [readerId] stopped on in [episodePublicId], or `null` when the
+  /// device holds none of theirs.
+  ///
+  /// It is what the viewer resumes at while the API cannot be reached, and it
+  /// outlives nothing: a position is dropped with the episode it points into.
+  Future<int?> readReadingPosition(
+    String seriesPublicId,
+    String episodePublicId, {
+    required String readerId,
+  });
+
+  Future<void> writeReadingPosition(
+    String seriesPublicId,
+    String episodePublicId, {
+    required String readerId,
+    required int pageIndex,
+  });
 
   /// Episodes of [seriesPublicId] this device could open right now for
   /// [readerId], which is what the series screen marks as saved.
