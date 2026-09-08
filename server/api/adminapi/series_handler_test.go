@@ -86,9 +86,11 @@ func expectSeriesClassificationReplace(mock sqlmock.Sqlmock, tenantID, seriesID 
 	mock.ExpectExec("DELETE FROM series_tags").
 		WithArgs(seriesID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mock.ExpectExec("DELETE FROM tags").
+	// Nothing is left unused in these cases, so the sweep locks no candidate
+	// and never reaches its delete.
+	mock.ExpectQuery("FROM tags").
 		WithArgs(tenantID).
-		WillReturnResult(sqlmock.NewResult(0, 0))
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 }
 
 func newSeriesClient(

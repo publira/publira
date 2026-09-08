@@ -9,11 +9,13 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
-const deleteUnusedTagsForTenant = `-- name: DeleteUnusedTagsForTenant :exec
+const deleteUnusedTagsByIDsForTenant = `-- name: DeleteUnusedTagsByIDsForTenant :exec
 DELETE FROM tags t
 WHERE t.tenant_id = $1
+    AND t.id = ANY($2::uuid[])
     AND NOT EXISTS (
         SELECT 1
         FROM series_tags st
@@ -21,13 +23,71 @@ WHERE t.tenant_id = $1
     )
 `
 
-// Removes the tags the last series carrying them just let go of. A tag has no
-// management screen and nothing else to say for itself, so one no series
-// carries is not a tag the tenant kept — it is one nobody would ever see
-// again.
-func (q *Queries) DeleteUnusedTagsForTenant(ctx context.Context, tenantID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteUnusedTagsForTenant, tenantID)
+type DeleteUnusedTagsByIDsForTenantParams struct {
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
+}
+
+// Deletes the candidates that are still unused. A tag has no management screen
+// and nothing else to say for itself, so one no series carries is not a tag the
+// tenant kept — it is one nobody would ever see again.
+func (q *Queries) DeleteUnusedTagsByIDsForTenant(ctx context.Context, arg DeleteUnusedTagsByIDsForTenantParams) error {
+	_, err := q.db.ExecContext(ctx, deleteUnusedTagsByIDsForTenant, arg.TenantID, pq.Array(arg.Ids))
 	return err
+}
+
+const lockUnusedTagsForTenant = `-- name: LockUnusedTagsForTenant :many
+
+SELECT t.id
+FROM tags t
+WHERE t.tenant_id = $1
+    AND NOT EXISTS (
+        SELECT 1
+        FROM series_tags st
+        WHERE st.tag_id = t.id
+    )
+ORDER BY t.id
+FOR UPDATE
+`
+
+// Removing the tags a save let go of takes two statements, because one cannot
+// be trusted on its own.
+//
+// A single DELETE decides what is unused from the snapshot it started with. A
+// save committing in another session between that snapshot and the row lock is
+// invisible to it, and READ COMMITTED re-checks the deleted row against the
+// same snapshot once the lock is granted — so the tag that save had just taken
+// would be deleted anyway, and the assignment with it.
+//
+// Locking first is what closes that window. A row locked FOR UPDATE cannot be
+// referenced by a concurrent insert into series_tags, whose foreign key wants a
+// key share on it, so nothing can take the tag from here on. The delete is then
+// a second statement, and a second statement in READ COMMITTED reads a fresh
+// snapshot: a save that committed while the lock was being waited for is
+// visible to it, and the tag it took stays.
+// Candidates for the sweep: the tags of this tenant no series carries. Locked
+// in id order so two saves sweeping at once queue up rather than deadlock.
+func (q *Queries) LockUnusedTagsForTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, lockUnusedTagsForTenant, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const upsertTagForTenant = `-- name: UpsertTagForTenant :one

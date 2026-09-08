@@ -166,11 +166,10 @@ type Querier interface {
 	// A tenant image is reachable from either branding slot, and the theme holds
 	// both, so one row can be the icon of one theme and nothing else anywhere.
 	DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error)
-	// Removes the tags the last series carrying them just let go of. A tag has no
-	// management screen and nothing else to say for itself, so one no series
-	// carries is not a tag the tenant kept — it is one nobody would ever see
-	// again.
-	DeleteUnusedTagsForTenant(ctx context.Context, tenantID uuid.UUID) error
+	// Deletes the candidates that are still unused. A tag has no management screen
+	// and nothing else to say for itself, so one no series carries is not a tag the
+	// tenant kept — it is one nobody would ever see again.
+	DeleteUnusedTagsByIDsForTenant(ctx context.Context, arg DeleteUnusedTagsByIDsForTenantParams) error
 	// Hard delete. Related rows go with the user wherever the foreign key cascades.
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error
@@ -995,6 +994,24 @@ type Querier interface {
 	// so waiting for the lock in the same statement would still see the pre-wait
 	// row.
 	LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
+	// Removing the tags a save let go of takes two statements, because one cannot
+	// be trusted on its own.
+	//
+	// A single DELETE decides what is unused from the snapshot it started with. A
+	// save committing in another session between that snapshot and the row lock is
+	// invisible to it, and READ COMMITTED re-checks the deleted row against the
+	// same snapshot once the lock is granted — so the tag that save had just taken
+	// would be deleted anyway, and the assignment with it.
+	//
+	// Locking first is what closes that window. A row locked FOR UPDATE cannot be
+	// referenced by a concurrent insert into series_tags, whose foreign key wants a
+	// key share on it, so nothing can take the tag from here on. The delete is then
+	// a second statement, and a second statement in READ COMMITTED reads a fresh
+	// snapshot: a save that committed while the lock was being waited for is
+	// visible to it, and the tag it took stays.
+	// Candidates for the sweep: the tags of this tenant no series carries. Locked
+	// in id order so two saves sweeping at once queue up rather than deadlock.
+	LockUnusedTagsForTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
 	// Inserts a read row for every announcement in the caller's inbox that lacks
 	// one: the tenant-wide announcements plus the ones addressed to that user.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)

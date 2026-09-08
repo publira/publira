@@ -424,9 +424,21 @@ func (s *adminServer) syncSeriesTags(
 	}
 	if replace {
 		// The links this save removed may have been the last ones a tag had.
-		// Nothing else keeps a tag alive, so it goes with them.
-		if err := s.queriesFor(ctx).DeleteUnusedTagsForTenant(ctx, tenantID); err != nil {
-			return nil, s.internalDBError(ctx, "failed to delete unused tags", err, "tenant_id", tenantID.String())
+		// Nothing else keeps a tag alive, so it goes with them — but only after
+		// the candidates are locked and re-checked, which is what keeps a save
+		// committing alongside this one from losing the tag it just took. The
+		// reasoning is in db/query/tag.sql.
+		unused, err := s.queriesFor(ctx).LockUnusedTagsForTenant(ctx, tenantID)
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to lock unused tags", err, "tenant_id", tenantID.String())
+		}
+		if len(unused) > 0 {
+			if err := s.queriesFor(ctx).DeleteUnusedTagsByIDsForTenant(ctx, dbmodels.DeleteUnusedTagsByIDsForTenantParams{
+				TenantID: tenantID,
+				Ids:      unused,
+			}); err != nil {
+				return nil, s.internalDBError(ctx, "failed to delete unused tags", err, "tenant_id", tenantID.String())
+			}
 		}
 	}
 	if len(tags) == 0 {

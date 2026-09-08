@@ -152,10 +152,13 @@ ALTER TABLE ONLY series_tags
     ADD CONSTRAINT series_tags_tenant_series_id_fkey FOREIGN KEY (tenant_id, series_id) REFERENCES series(tenant_id, id) ON DELETE CASCADE;
 
 -- FK CONSTRAINT: series_tags series_tags_tenant_tag_id_fkey
--- A tag is only as alive as the series carrying it, so this one cascades: the
--- series form deletes the tags its last series just let go of.
+-- A tag is only as alive as the series carrying it, and the series form is what
+-- removes the ones nothing carries any more. That sweep deletes only tags no
+-- row here names, so this key needs no ON DELETE clause — and without one, a
+-- sweep that raced a save which just took the tag is refused by the database
+-- instead of quietly deleting the assignment that save had committed.
 ALTER TABLE ONLY series_tags
-    ADD CONSTRAINT series_tags_tenant_tag_id_fkey FOREIGN KEY (tenant_id, tag_id) REFERENCES tags(tenant_id, id) ON DELETE CASCADE;
+    ADD CONSTRAINT series_tags_tenant_tag_id_fkey FOREIGN KEY (tenant_id, tag_id) REFERENCES tags(tenant_id, id);
 
 -- INDEX: idx_series_tags_tenant_tag
 -- Reads that start from the tag: the public list filtered by one tag, and the
