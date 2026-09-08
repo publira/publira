@@ -106,7 +106,9 @@ class FakeCatalogRepository implements CatalogRepository {
     if (error != null) {
       throw error;
     }
-    return List<RecentSeriesItem>.from(recentSeries);
+    // The API answers a page of at most [limit], so a fixture longer than the
+    // screen asked for must not reach it here either.
+    return List<RecentSeriesItem>.from(recentSeries.take(limit));
   }
 }
 

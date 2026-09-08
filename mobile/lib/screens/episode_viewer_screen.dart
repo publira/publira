@@ -45,9 +45,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   var _started = false;
   var _accessToken = '';
 
-  /// Records the page the reader rests on. It holds the repository rather than
-  /// the context, because the last page is recorded as the screen goes away,
-  /// when an inherited widget can no longer be looked up.
+  /// Records the page the reader rests on, for the session that is signed in
+  /// now. It holds the repository rather than the context, because the last
+  /// page is recorded as the screen goes away, when an inherited widget can no
+  /// longer be looked up.
   ReadingPositionSaver? _saver;
 
   @override
@@ -65,19 +66,24 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
-    _saver ??= ReadingPositionSaver(
-      send: (pageIndex) => catalog.saveReadingPosition(
-        widget.seriesId,
-        widget.episodeId,
-        pageIndex,
-      ),
-    );
     final accessToken = AuthScope.of(context).accessToken;
     if (_started && accessToken == _accessToken) {
       return;
     }
     _started = true;
     _accessToken = accessToken;
+    // A saver belongs to the session it records against. The page the reader
+    // before this one was on is theirs and cannot be written with this
+    // session, so a waiting page is dropped rather than carried over, and the
+    // pages this reader turns to are recorded from nothing.
+    _saver?.dispose();
+    _saver = ReadingPositionSaver(
+      send: (pageIndex) => catalog.saveReadingPosition(
+        widget.seriesId,
+        widget.episodeId,
+        pageIndex,
+      ),
+    );
     _future = _load(catalog);
   }
 

@@ -106,15 +106,27 @@ class HttpCatalogRepository implements CatalogRepository {
     // A guest holds no session, and every one of these RPCs answers a request
     // without one `unauthenticated`. Asking anyway would spend a round trip on
     // the answer the viewer already has: the first page.
-    if (_client.accessToken.isEmpty) {
+    //
+    // The token is read here and sent explicitly rather than left for the
+    // client to resolve at request time, which is what ties the answer to the
+    // reader the caller asked about: a sign-out and a second sign-in while the
+    // tenant lookup is in flight would otherwise file one reader's page under
+    // the other. Every read of the reader's own history does the same.
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
       return null;
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_readingPositionProcedure, {
-        'episodePublicId': episodePublicId,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
+      final body = await _client.unary(
+        _readingPositionProcedure,
+        {
+          'episodePublicId': episodePublicId,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
       final raw = body['position'];
       // protojson omits an unset message, which is the answer for a reader who
       // never opened the episode and for one who may no longer read it.
@@ -133,16 +145,22 @@ class HttpCatalogRepository implements CatalogRepository {
     String episodePublicId,
     int pageIndex,
   ) async {
-    if (_client.accessToken.isEmpty) {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
       return;
     }
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(_saveReadingPositionProcedure, {
-        'episodePublicId': episodePublicId,
-        'pageIndex': pageIndex,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
+      await _client.unary(
+        _saveReadingPositionProcedure,
+        {
+          'episodePublicId': episodePublicId,
+          'pageIndex': pageIndex,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -150,15 +168,21 @@ class HttpCatalogRepository implements CatalogRepository {
 
   @override
   Future<List<RecentSeriesItem>> listRecentSeries({required int limit}) async {
-    if (_client.accessToken.isEmpty) {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
       return const [];
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_recentSeriesProcedure, {
-        'limit': limit,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
+      final body = await _client.unary(
+        _recentSeriesProcedure,
+        {
+          'limit': limit,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
       return _parseRecentSeries(body['series']);
     } on ConnectException catch (error) {
       throw _toFailure(error);

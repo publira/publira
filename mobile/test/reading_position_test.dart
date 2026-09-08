@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/viewer/reading_position.dart';
 
@@ -120,6 +122,40 @@ void main() {
       saver.save(3);
       await tester.pump(delay * 2);
 
+      expect(sent, [3, 3]);
+    });
+
+    testWidgets('a page turned back to while its write is in flight is sent '
+        'again', (tester) async {
+      final sent = <int>[];
+      final gate = Completer<void>();
+      final saver = ReadingPositionSaver(
+        delay: delay,
+        send: (pageIndex) async {
+          sent.add(pageIndex);
+          // The first write is still on its way out when the reader turns
+          // back, and fails once they are there.
+          if (sent.length == 1) {
+            await gate.future;
+            throw StateError('the API could not be reached');
+          }
+        },
+      );
+      addTearDown(saver.dispose);
+
+      saver.save(3);
+      await tester.pump(delay * 2);
+      expect(sent, [3]);
+
+      saver
+        ..save(4)
+        ..save(3);
+      await tester.pump(delay * 2);
+      gate.complete();
+      await tester.pump();
+
+      // The page the reader is on was never recorded, so it is sent again
+      // rather than left to a write that turned out to fail.
       expect(sent, [3, 3]);
     });
 

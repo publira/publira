@@ -24,11 +24,16 @@ int resumePageIndex(int? savedPageIndex, int pageCount) {
 
 /// Collects page turns and records the page the reader rests on.
 ///
-/// A page equal to the last one recorded is not sent again, and turning back
-/// to it inside the delay drops what was waiting, so a reader paging over the
-/// same spread produces one request rather than one per turn. A send that
-/// failed leaves nothing recorded, which is what makes the next turn try that
-/// page again.
+/// A page equal to the last one the API accepted is not sent again, and
+/// turning back to it inside the delay drops what was waiting, so a reader
+/// paging over the same spread produces one request rather than one per turn.
+///
+/// A page counts as recorded only once its send has succeeded. A send that is
+/// still in flight, or one that failed, leaves the page unrecorded, so a
+/// reader who turns away and back to it while it is being written sends it
+/// again rather than resting on a write that may never land. The API takes
+/// the same page twice as one position, which is what makes the extra send
+/// cheaper than the lost one.
 class ReadingPositionSaver {
   ReadingPositionSaver({
     required this.send,
@@ -44,13 +49,16 @@ class ReadingPositionSaver {
 
   Timer? _timer;
   int? _pending;
-  int? _sent;
+
+  /// The last page [send] answered for, which is the one the API is known to
+  /// hold.
+  int? _recorded;
 
   /// The reader is on [pageIndex] now.
   void save(int pageIndex) {
     _timer?.cancel();
     _timer = null;
-    if (pageIndex == _sent) {
+    if (pageIndex == _recorded) {
       _pending = null;
       return;
     }
@@ -68,7 +76,6 @@ class ReadingPositionSaver {
     if (pageIndex == null) {
       return;
     }
-    _sent = pageIndex;
     unawaited(_send(pageIndex));
   }
 
@@ -83,12 +90,10 @@ class ReadingPositionSaver {
   Future<void> _send(int pageIndex) async {
     try {
       await send(pageIndex);
+      _recorded = pageIndex;
     } catch (_) {
-      // Forget that this page was recorded, so turning to it again sends it
-      // again rather than treating the failed attempt as the reader's place.
-      if (_sent == pageIndex) {
-        _sent = null;
-      }
+      // The page was not recorded, so nothing here says it was: turning to it
+      // again sends it again rather than resting on a failed attempt.
     }
   }
 }
