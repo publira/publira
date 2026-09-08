@@ -376,6 +376,11 @@ func (s *apiServer) PostEpisodeComment(
 	if err != nil {
 		return nil, err
 	}
+	// Charged before the stored policy is read, so a reader hammering this RPC
+	// is stopped at the allowance rather than at a query per attempt.
+	if err := s.chargeReaderAction(ctx, actionPostComment, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
 	mode, err := s.tenantCommentMode(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
@@ -410,8 +415,16 @@ func (s *apiServer) PostEpisodeComment(
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("episode body is not readable"))
 	}
 
+	// The reader takes their place for this body before it is written, so two
+	// requests carrying the same text cannot both find nothing to repeat.
+	duplicateKey := duplicateCommentKey(tenant.ID, user.ID, episode.ID, body)
+	if err := s.claimCommentBody(ctx, duplicateKey); err != nil {
+		return nil, err
+	}
+
 	commentID, err := uuid.NewV7()
 	if err != nil {
+		s.guards.limiter.Release(ctx, duplicateKey)
 		return nil, s.internalDBError(ctx, "failed to allocate comment id", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	comment, err := publicid.Insert(func(publicID string) (dbmodels.EpisodeComment, error) {
@@ -427,6 +440,10 @@ func (s *apiServer) PostEpisodeComment(
 		})
 	})
 	if err != nil {
+		// Nothing was stored, so the claim stands for a comment that does not
+		// exist. Giving it back is what lets the reader simply try again instead
+		// of being told they have already said this.
+		s.guards.limiter.Release(ctx, duplicateKey)
 		return nil, s.internalDBError(ctx, "failed to create episode comment", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
@@ -541,6 +558,11 @@ func (s *apiServer) ReportEpisodeComment(
 	}
 	note, err := validateCommentReportNote(req.Msg.Note)
 	if err != nil {
+		return nil, err
+	}
+	// A reporter who has spent their allowance is stopped before the lookup, so
+	// this RPC cannot be walked to find out which comments exist.
+	if err := s.chargeReaderAction(ctx, actionReportComment, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
 

@@ -2,6 +2,8 @@ package publicapi
 
 import (
 	"context"
+	"database/sql"
+	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"slices"
@@ -12,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/emailsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
@@ -56,9 +59,23 @@ func newTestPublicServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, nil, testutil.TokenManager()))
+	server := httptest.NewServer(mustPublicHandler(t, db, dbmodels.New(db), nil))
 	t.Cleanup(server.Close)
 	return server, mock
+}
+
+// mustPublicHandler builds the handler the way the server does, so a test that
+// is about the routes or the wiring exercises the real constructor. It fails
+// the test when the environment holds flood control settings the server would
+// refuse to start on.
+func mustPublicHandler(t *testing.T, db *sql.DB, queries Querier, encryptor emailsettings.SecretManager) http.Handler {
+	t.Helper()
+
+	handler, err := NewHandler(db, queries, &testStorageProvider{}, encryptor, testutil.TokenManager())
+	if err != nil {
+		t.Fatalf("NewHandler: %v", err)
+	}
+	return handler
 }
 
 type testStorageProvider struct{}

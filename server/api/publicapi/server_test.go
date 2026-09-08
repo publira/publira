@@ -12,7 +12,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/publira/publira/server/internal/logging"
-	"github.com/publira/publira/server/internal/testutil"
 )
 
 // TestPublicHandlerExposesOnlyPublicRoutes asserts that NewHandler serves the
@@ -47,7 +46,7 @@ func TestPublicHandlerExposesOnlyPublicRoutes(t *testing.T) {
 
 func newPublicRouteTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	return httptest.NewServer(NewHandler(nil, nil, nil, nil, testutil.TokenManager()))
+	return httptest.NewServer(mustPublicHandler(t, nil, nil, nil))
 }
 
 type captureHandler struct {

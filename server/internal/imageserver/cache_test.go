@@ -100,20 +100,3 @@ func TestJoinSplitCachePayload(t *testing.T) {
 		t.Fatal("splitCachePayload(invalid) = true")
 	}
 }
-
-func TestRedisURLEnabled(t *testing.T) {
-	t.Parallel()
-
-	cases := map[string]bool{
-		"":                   false,
-		"disabled":           false,
-		"OFF":                false,
-		"false":              false,
-		"redis://redis:6379": true,
-	}
-	for raw, want := range cases {
-		if got := redisURLEnabled(raw); got != want {
-			t.Errorf("redisURLEnabled(%q) = %v, want %v", raw, got, want)
-		}
-	}
-}

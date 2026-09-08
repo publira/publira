@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/publira/publira/server/internal/redisurl"
 )
 
 const (
@@ -163,20 +165,11 @@ func parseCacheTTL() time.Duration {
 	return defaultCacheTTL
 }
 
-func redisURLEnabled(raw string) bool {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "", "disabled", "off", "false":
-		return false
-	default:
-		return true
-	}
-}
-
 func newImageCacheFromEnv(logger *slog.Logger) ImageCache {
 	ttl := parseCacheTTL()
 	mem := newMemoryCache(ttl, defaultMemoryMaxBytes)
-	url := strings.TrimSpace(os.Getenv("PUBLIRA_REDIS_URL"))
-	if !redisURLEnabled(url) {
+	url := redisurl.FromEnv()
+	if url == "" {
 		return mem
 	}
 	redisCache, err := newRedisCache(url, ttl)

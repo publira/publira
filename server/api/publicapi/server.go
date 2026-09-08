@@ -39,6 +39,7 @@ type apiServer struct {
 	encryptor         emailsettings.SecretManager
 	tokens            *auth.TokenManager
 	logger            *slog.Logger
+	guards            readerGuards
 	newStripeProvider func(secretKey string) stripeSessionCreator
 }
 
@@ -127,8 +128,17 @@ func isSQLMockDB(db *sql.DB) bool {
 // NewHandler returns the HTTP handler for the public API alone. It serves
 // CatalogService, AuthService, NotificationService, TenantService, and
 // DomainService, and none of the admin API.
-func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) http.Handler {
-	return handlerFromServer(newAPIServer(db, queries, storageProvider, encryptor, tokens, slog.Default()))
+//
+// It fails rather than serves when the flood control the reader-writable RPCs
+// depend on is misconfigured, so a limit nobody can meet is caught at startup
+// instead of by the first reader who tries to post.
+func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) (http.Handler, error) {
+	logger := slog.Default()
+	guards, err := newReaderGuardsFromEnv(logger)
+	if err != nil {
+		return nil, err
+	}
+	return handlerFromServer(newAPIServer(db, queries, storageProvider, encryptor, tokens, logger, guards)), nil
 }
 
 func newAPIServer(
@@ -138,6 +148,7 @@ func newAPIServer(
 	encryptor emailsettings.SecretManager,
 	tokens *auth.TokenManager,
 	logger *slog.Logger,
+	guards readerGuards,
 ) *apiServer {
 	if logger == nil {
 		logger = slog.Default()
@@ -149,6 +160,7 @@ func newAPIServer(
 		encryptor: encryptor,
 		tokens:    tokens,
 		logger:    logger,
+		guards:    guards.withDefaults(),
 		newStripeProvider: func(secretKey string) stripeSessionCreator {
 			return newStripeCheckoutProvider(secretKey)
 		},

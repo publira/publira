@@ -90,7 +90,11 @@ func main() {
 		grpcAddr = defaultPublicGrpcServerURL
 	}
 
-	handler := publicapi.NewHandler(db, dbmodels.New(db), storageProvider, encryptor, tokens)
+	handler, err := publicapi.NewHandler(db, dbmodels.New(db), storageProvider, encryptor, tokens)
+	if err != nil {
+		logger.Error("failed to initialize public api handler", "error", err)
+		os.Exit(1)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
