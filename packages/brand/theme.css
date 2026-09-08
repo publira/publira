@@ -1,6 +1,89 @@
-@theme {
-  --font-serif: var(--publira-font-serif, "Noto Serif JP", serif);
+/**
+ * `static`, so every token below reaches `:root` whether or not a utility
+ * happens to name it. Tailwind otherwise emits a theme variable only once
+ * something uses it, and `--measure-prose` and the two reading line heights are
+ * read through `var()` from hand-written CSS and arbitrary values rather than
+ * from a utility of their own.
+ */
+@theme static {
+  /**
+   * Two roles, each filled by the faces the reader's platform already has. The
+   * platform serves no font file: a CJK family runs to several megabytes per
+   * weight even when sliced by Unicode range, and the reader on a phone is the
+   * one who pays for it.
+   *
+   * The order is Apple's faces, then the BIZ UD faces Windows ships, then Yu,
+   * then the Noto CJK faces a Linux desktop and the CI image carry. All of them
+   * cover Latin, so an English reader gets the same two faces. A tenant
+   * replaces either stack through `--publira-font-*`, the way it replaces a
+   * color.
+   */
+  --font-sans: var(
+    --publira-font-sans,
+    "Hiragino Sans",
+    "BIZ UDPGothic",
+    "Yu Gothic",
+    "Noto Sans CJK JP",
+    "Noto Sans JP",
+    system-ui,
+    sans-serif
+  );
+  --font-serif: var(
+    --publira-font-serif,
+    "Hiragino Mincho ProN",
+    "BIZ UDPMincho",
+    "Yu Mincho",
+    "Noto Serif CJK JP",
+    "Noto Serif JP",
+    serif
+  );
 
+  /**
+   * Reading text is set looser than the interface around it, and looser again
+   * in Japanese: a line of mixed kanji and kana carries more ink than a line of
+   * Latin at the same size, so it needs more air between lines to stay readable
+   * over a whole episode. The two reading values are picked per passage rather
+   * than per size, so they are their own tokens instead of a `--text-*`
+   * line height.
+   */
+  --leading-ui: 1.5;
+  --leading-heading: 1.25;
+  --leading-reading-cjk: 1.9;
+  --leading-reading-latin: 1.6;
+
+  /**
+   * A minor third (1.2) on a 16px base, rounded to whole pixels and then
+   * written in `rem` so the page grows with a reader who enlarges the browser's
+   * default text size. The namespace is cleared first: Tailwind's own `text-4xl`
+   * and up would otherwise stay and sit below `--text-3xl`, and a step outside
+   * this scale is one no screen is meant to reach for.
+   */
+  --text-*: initial;
+  --text-xs: 0.75rem; /* 12px */
+  --text-xs--line-height: var(--leading-ui);
+  --text-sm: 0.875rem; /* 14px */
+  --text-sm--line-height: var(--leading-ui);
+  --text-base: 1rem; /* 16px */
+  --text-base--line-height: var(--leading-ui);
+  --text-md: 1.1875rem; /* 19px */
+  --text-md--line-height: var(--leading-ui);
+  --text-lg: 1.4375rem; /* 23px */
+  --text-lg--line-height: var(--leading-heading);
+  --text-xl: 1.75rem; /* 28px */
+  --text-xl--line-height: var(--leading-heading);
+  --text-2xl: 2.125rem; /* 34px */
+  --text-2xl--line-height: var(--leading-heading);
+  --text-3xl: 2.5625rem; /* 41px */
+  --text-3xl--line-height: var(--leading-heading);
+
+  /**
+   * The measure reading text is capped at: forty full-width characters at the
+   * base size, and about seventy Latin ones.
+   */
+  --measure-prose: 40rem;
+}
+
+@theme {
   --color-background: var(--publira-color-background, #f6f2e9);
   --color-foreground: var(--publira-color-foreground, #1e2b38);
 

@@ -318,7 +318,7 @@ const AuthorDetailContent = async ({
               {siteLabel}
             </p>
             <div className="mb-2 flex flex-wrap items-start justify-between gap-4">
-              <h1 className="font-serif text-4xl font-bold text-foreground">
+              <h1 className="font-serif text-3xl font-bold text-foreground">
                 {author.name}
               </h1>
               <SectionErrorBoundary

@@ -238,7 +238,7 @@ const AuthorsPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/authors">) => (
   <main className="mx-auto max-w-6xl px-6 py-12">
-    <h1 className="mb-2 font-serif text-4xl font-bold">
+    <h1 className="mb-2 font-serif text-3xl font-bold">
       <Suspense fallback={<SkeletonLine className="h-9 w-48" />}>
         <Message message="host.authors.list_title" />
       </Suspense>

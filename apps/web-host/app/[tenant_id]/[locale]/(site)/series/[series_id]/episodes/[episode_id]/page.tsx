@@ -205,7 +205,7 @@ const EpisodeContent = async (
                   })}
                 </span>
               </div>
-              <h1 className="mb-3 font-serif text-3xl font-bold tracking-tight sm:text-4xl">
+              <h1 className="mb-3 font-serif text-3xl font-bold tracking-tight">
                 {episode.title}
               </h1>
               <p className="text-sm text-muted-foreground sm:text-base">

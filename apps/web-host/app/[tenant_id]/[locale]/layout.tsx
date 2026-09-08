@@ -76,7 +76,7 @@ const TenantRootLayout = ({
       {/* oxlint-disable-next-line next/no-css-tags, react-doctor/nextjs-no-css-link -- runtime tenant theme route */}
       <link href="/theme.css" rel="stylesheet" />
     </head>
-    <body className="min-h-dvh bg-background text-foreground antialiased">
+    <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
       {children}
     </body>
   </html>

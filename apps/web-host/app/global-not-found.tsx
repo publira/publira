@@ -39,12 +39,12 @@ export const metadata: Metadata = {
 
 const GlobalNotFound = () => (
   <html lang={NOT_FOUND_LOCALE}>
-    <body className="min-h-dvh bg-background text-foreground antialiased">
+    <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
       <main className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
         <p className="text-sm tracking-wide text-muted-foreground uppercase">
           404 Not Found
         </p>
-        <h1 className="mt-4 font-serif text-4xl font-bold">
+        <h1 className="mt-4 font-serif text-3xl font-bold">
           {sharedMessage("host.errors.not_found_title", NOT_FOUND_LOCALE)}
         </h1>
         <p className="mt-4 text-muted-foreground">

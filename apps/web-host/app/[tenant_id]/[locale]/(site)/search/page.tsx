@@ -262,7 +262,7 @@ const SearchFormFromParams = async ({
 
 const SearchPage = ({ searchParams }: SearchPageProps) => (
   <main className="mx-auto max-w-6xl px-6 py-12">
-    <h1 className="mb-2 font-serif text-4xl font-bold">
+    <h1 className="mb-2 font-serif text-3xl font-bold">
       <Suspense fallback={<SkeletonLine className="h-9 w-32" />}>
         <Message message="host.search.title" />
       </Suspense>

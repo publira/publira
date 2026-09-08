@@ -224,7 +224,7 @@ const LabelsPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/labels">) => (
   <main className="mx-auto max-w-6xl px-6 py-12">
-    <h1 className="mb-2 font-serif text-4xl font-bold">
+    <h1 className="mb-2 font-serif text-3xl font-bold">
       <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
         <Message message="host.labels.list_title" />
       </Suspense>

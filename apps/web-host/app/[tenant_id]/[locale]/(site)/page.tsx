@@ -517,7 +517,7 @@ const Page = () => (
       >
         <CatalogTopSiteLabel />
       </Suspense>
-      <h1 className="font-serif text-4xl font-bold">
+      <h1 className="font-serif text-3xl font-bold">
         <Suspense fallback={<SkeletonLine className="h-9 w-64" />}>
           <Message message="host.top.title" />
         </Suspense>

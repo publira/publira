@@ -32,7 +32,7 @@ const RootLayout = ({ children }: LayoutProps<"/">) => (
     <head>
       <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
     </head>
-    <body className="min-h-dvh antialiased">{children}</body>
+    <body className="min-h-dvh font-sans antialiased">{children}</body>
   </html>
 );
 
