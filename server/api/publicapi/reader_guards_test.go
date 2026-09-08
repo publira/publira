@@ -13,6 +13,24 @@ import (
 	"github.com/publira/publira/server/internal/redisurl"
 )
 
+// clearReaderGuardEnv empties every setting the policy reads, so a case that is
+// about a value states that value itself. A contributor with one of these
+// exported in their shell would otherwise be running a different test.
+func clearReaderGuardEnv(t *testing.T) {
+	t.Helper()
+
+	t.Setenv(redisurl.Env, "disabled")
+	for _, name := range []string{
+		postCommentPerMinuteEnv,
+		postCommentPerDayEnv,
+		reportCommentPerMinuteEnv,
+		reportCommentPerDayEnv,
+		duplicateCommentWindowEnv,
+	} {
+		t.Setenv(name, "")
+	}
+}
+
 // guardsFromEnv builds the policy the way the server does, with the shared
 // counters turned off: what a deployment configured is what these cases are
 // about, and reaching for the deployment's Redis to find out would make them
@@ -20,7 +38,6 @@ import (
 func guardsFromEnv(t *testing.T) readerGuards {
 	t.Helper()
 
-	t.Setenv(redisurl.Env, "disabled")
 	guards, err := newReaderGuardsFromEnv(slog.Default())
 	if err != nil {
 		t.Fatalf("newReaderGuardsFromEnv: %v", err)
@@ -29,6 +46,7 @@ func guardsFromEnv(t *testing.T) readerGuards {
 }
 
 func TestNewReaderGuardsFromEnvDefaults(t *testing.T) {
+	clearReaderGuardEnv(t)
 	guards := guardsFromEnv(t)
 
 	want := map[readerAction][]ratelimit.Rule{
@@ -58,6 +76,7 @@ func TestNewReaderGuardsFromEnvDefaults(t *testing.T) {
 }
 
 func TestNewReaderGuardsFromEnvTakesTheConfiguredLimits(t *testing.T) {
+	clearReaderGuardEnv(t)
 	t.Setenv(postCommentPerMinuteEnv, "3")
 	t.Setenv(postCommentPerDayEnv, " 7 ")
 	t.Setenv(reportCommentPerMinuteEnv, "2")
@@ -82,7 +101,7 @@ func TestNewReaderGuardsFromEnvRejectsALimitNobodyCanMeet(t *testing.T) {
 	// all. Both are better caught at startup than by the first reader.
 	for _, raw := range []string{"0", "-1", "ten", "1.5"} {
 		t.Run(raw, func(t *testing.T) {
-			t.Setenv(redisurl.Env, "disabled")
+			clearReaderGuardEnv(t)
 			t.Setenv(postCommentPerMinuteEnv, raw)
 			if _, err := newReaderGuardsFromEnv(slog.Default()); err == nil {
 				t.Fatalf("newReaderGuardsFromEnv with %q error = nil, want an error", raw)

@@ -270,6 +270,47 @@ func TestTieredStoreKeepsLimitingWhenTheSharedCounterIsGone(t *testing.T) {
 	}
 }
 
+// takenStore stands in for a Redis whose claim another instance made first.
+type takenStore struct {
+	freeAfter time.Time
+	now       func() time.Time
+}
+
+func (s *takenStore) Incr(context.Context, string, time.Duration) (int64, error) {
+	return 1, nil
+}
+
+func (s *takenStore) Add(context.Context, string, time.Duration) (bool, error) {
+	return !s.now().Before(s.freeAfter), nil
+}
+
+func (s *takenStore) Forget(context.Context, string) {}
+
+func TestTieredStoreDoesNotOutlastTheSharedClaim(t *testing.T) {
+	clock := &fakeClock{now: testStart}
+	memory := NewMemoryStore()
+	memory.now = clock.Now
+	// The shared claim was made a minute before this instance saw the body, so
+	// it runs out a minute before this instance's own window would.
+	limiter := New(&tieredStore{
+		memory: memory,
+		remote: &takenStore{freeAfter: testStart.Add(9 * time.Minute), now: clock.Now},
+	})
+	limiter.now = clock.Now
+	ctx := context.Background()
+
+	if taken, err := limiter.Claim(ctx, "same-body", 10*time.Minute); err != nil || taken {
+		t.Fatalf("Claim against a held shared claim = (%v, %v), want (false, nil)", taken, err)
+	}
+
+	clock.advance(9 * time.Minute)
+	// The shared claim has run out. Nothing else is refusing this body, so an
+	// entry this instance kept from the refused call would be refusing it alone.
+	if fresh, err := limiter.Claim(ctx, "same-body", 10*time.Minute); err != nil || !fresh {
+		t.Fatalf("Claim after the shared claim expired = (%v, %v), want (true, nil)", fresh, err)
+	}
+}
+
 // sharedStore stands in for a Redis that other instances have already charged.
 type sharedStore struct {
 	count int64

@@ -3,6 +3,7 @@ package ratelimit
 import (
 	"context"
 	"log/slog"
+	"sync/atomic"
 	"time"
 )
 
@@ -22,6 +23,11 @@ type tieredStore struct {
 	memory *MemoryStore
 	remote Store
 	logger *slog.Logger
+	// degradedNow records whether the last exchange with Redis failed, so the
+	// outage is logged when it starts and when it ends rather than once per
+	// request. Every refused request reaches this store, so a caller repeating
+	// one during an outage would otherwise decide how much this process logs.
+	degradedNow atomic.Bool
 }
 
 func (s *tieredStore) Incr(ctx context.Context, key string, ttl time.Duration) (int64, error) {
@@ -31,9 +37,10 @@ func (s *tieredStore) Incr(ctx context.Context, key string, ttl time.Duration) (
 	}
 	shared, err := s.remote.Incr(ctx, key, ttl)
 	if err != nil {
-		s.degraded(ctx, "failed to charge the shared rate limit counter", err, key)
+		s.degraded(ctx, "failed to charge the shared rate limit counter", err)
 		return local, nil
 	}
+	s.recovered(ctx)
 	return max(local, shared), nil
 }
 
@@ -52,8 +59,15 @@ func (s *tieredStore) Add(ctx context.Context, key string, ttl time.Duration) (b
 	}
 	shared, err := s.remote.Add(ctx, key, ttl)
 	if err != nil {
-		s.degraded(ctx, "failed to record the shared rate limit claim", err, key)
+		s.degraded(ctx, "failed to record the shared rate limit claim", err)
 		return true, nil
+	}
+	s.recovered(ctx)
+	if !shared {
+		// Another instance holds the claim, and it started theirs first. Keeping
+		// the entry this call just created would outlive the shared one by the
+		// difference between them and go on refusing a caller nothing else does.
+		s.memory.Forget(ctx, key)
 	}
 	return shared, nil
 }
@@ -63,9 +77,21 @@ func (s *tieredStore) Forget(ctx context.Context, key string) {
 	s.remote.Forget(ctx, key)
 }
 
-func (s *tieredStore) degraded(ctx context.Context, msg string, err error, key string) {
-	if s.logger == nil {
+// degraded reports that Redis did not answer. The key is deliberately left out
+// of the record: it names the reader, the episode and a digest of what they
+// wrote, none of which says anything about the outage.
+func (s *tieredStore) degraded(ctx context.Context, msg string, err error) {
+	if s.logger == nil || s.degradedNow.Swap(true) {
 		return
 	}
-	s.logger.WarnContext(ctx, msg, "error", err, "key", key)
+	s.logger.WarnContext(ctx, msg, "error", err)
+}
+
+// recovered reports that Redis is answering again, and says nothing while it
+// has been answering all along.
+func (s *tieredStore) recovered(ctx context.Context) {
+	if s.logger == nil || !s.degradedNow.Swap(false) {
+		return
+	}
+	s.logger.InfoContext(ctx, "rate limiter: the shared counters are reachable again")
 }

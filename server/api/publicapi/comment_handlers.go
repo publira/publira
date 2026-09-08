@@ -424,6 +424,9 @@ func (s *apiServer) PostEpisodeComment(
 
 	commentID, err := uuid.NewV7()
 	if err != nil {
+		// The claim is given back only here, before anything has been sent to the
+		// database: the write provably did not happen, so the reader may say the
+		// same thing again straight away.
 		s.guards.limiter.Release(ctx, duplicateKey)
 		return nil, s.internalDBError(ctx, "failed to allocate comment id", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -440,10 +443,11 @@ func (s *apiServer) PostEpisodeComment(
 		})
 	})
 	if err != nil {
-		// Nothing was stored, so the claim stands for a comment that does not
-		// exist. Giving it back is what lets the reader simply try again instead
-		// of being told they have already said this.
-		s.guards.limiter.Release(ctx, duplicateKey)
+		// The claim stands. An INSERT that reports a failure has not necessarily
+		// failed — a connection lost after the commit and before the returned row
+		// arrives looks exactly like one that stored nothing — and of the two
+		// wrong answers, a duplicate comment is the permanent, public one while a
+		// reader held off for the rest of the window is temporary.
 		return nil, s.internalDBError(ctx, "failed to create episode comment", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
