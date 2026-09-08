@@ -178,3 +178,15 @@ export const resizeCropRectBy = (
   corner: CropCorner,
   widthDelta: number
 ): CropRect => resizeCropRect(rect, bounds, corner, rect.width + widthDelta);
+
+/**
+ * The picked file scaled and shifted so a preview box shows the framed region
+ * and nothing else. The box carries the same shape the frame is locked to, so
+ * the two scales agree and the region fills it exactly.
+ */
+export const framedPreviewStyle = (crop: CropRect, source: CropSource) => ({
+  height: `${(source.height / crop.height) * 100}%`,
+  left: `${(-crop.x / crop.width) * 100}%`,
+  top: `${(-crop.y / crop.height) * 100}%`,
+  width: `${(source.width / crop.width) * 100}%`,
+});

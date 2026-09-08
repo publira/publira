@@ -103,7 +103,7 @@ const uploadAspectImage = async (
   await slot.locator('input[name="aspect_image"]').setInputFiles(fixture);
   if (framing === "off-centre") {
     await page
-      .getByRole("button", { name: `Move the ${aspect} crop frame` })
+      .getByRole("button", { name: "Move the crop frame" })
       .press("Shift+ArrowUp");
   }
   await page.getByRole("button", { name: "Done" }).click();

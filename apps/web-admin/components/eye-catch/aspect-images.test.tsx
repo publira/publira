@@ -76,16 +76,11 @@ const pickImage = (
 /**
  * Reports the picked file's size the way a browser would. jsdom decodes
  * nothing, so the frame has no dimensions to derive itself from until this
- * runs.
+ * runs. Only the slot a file was picked in renders a frame, so the one image
+ * being framed is that slot's.
  */
-const decodePickedImage = (
-  variantType: string,
-  width: number,
-  height: number
-) => {
-  const framed = screen.getByAltText(
-    `The image being framed for ${variantType}`
-  );
+const decodePickedImage = (width: number, height: number) => {
+  const framed = screen.getByAltText("The image being framed");
   Object.defineProperty(framed, "naturalWidth", { value: width });
   Object.defineProperty(framed, "naturalHeight", { value: height });
   fireEvent.load(framed);
@@ -242,7 +237,7 @@ it("frames the picked file where the API would have cut it anyway", () => {
   // API takes the cut from the centre as it always has.
   expect(form.querySelector('input[name="crop"]')).toBeNull();
 
-  decodePickedImage("landscape", 2400, 3200);
+  decodePickedImage(2400, 3200);
 
   // The centre of a 2400x3200 file at 16:9, which is exactly what an upload
   // carrying no rectangle delivers.
@@ -267,7 +262,7 @@ it("previews the framed region rather than the whole picked file", () => {
   );
 
   pickImage(container, "landscape");
-  decodePickedImage("landscape", 2400, 3200);
+  decodePickedImage(2400, 3200);
 
   const preview = container.querySelector<HTMLImageElement>(
     'img[alt="Generated image landscape"]'

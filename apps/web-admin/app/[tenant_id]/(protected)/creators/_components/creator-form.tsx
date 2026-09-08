@@ -20,35 +20,45 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
 import Image from "next/image";
-import { useActionState, useCallback, useState, useContext } from "react";
+import type { ChangeEventHandler, ReactEventHandler } from "react";
+import {
+  useActionState,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import type { CropAspect, CropSource } from "#components/image-crop/crop";
+import {
+  centreCropRect,
+  framedPreviewStyle,
+} from "#components/image-crop/crop";
+import { ImageCropDialog } from "#components/image-crop/crop-dialog";
+import type { CropRect } from "#lib/crop-rect";
+import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { CreatorActionState, CreatorListItem } from "../creator-types";
 
-interface CreatorFormProps {
-  mode: "create" | "update";
-  action: (
-    prevState: CreatorActionState,
-    formData: FormData
-  ) => Promise<CreatorActionState>;
-  initialCreator?: CreatorListItem;
-}
+/**
+ * An author icon is one square, cut out of whatever was uploaded for it. The
+ * minimum is the API's own (`creatorIconMinDimension`), so a frame this control
+ * allows is a frame the upload will be accepted with.
+ */
+const ICON_ASPECT: CropAspect = {
+  aspectHeight: 1,
+  aspectWidth: 1,
+  minWidth: 256,
+};
 
 interface IconImageFieldProps {
-  clearIconImage: boolean;
   initialCreator?: CreatorListItem;
   isUpdate: boolean;
-  onClearIconImageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const IconImageField = ({
-  clearIconImage,
-  initialCreator,
-  isUpdate,
-  onClearIconImageChange,
-}: IconImageFieldProps) => {
+const IconImageField = ({ initialCreator, isUpdate }: IconImageFieldProps) => {
   const locale = useContext(AdminLocaleContext);
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
@@ -57,13 +67,89 @@ const IconImageField = ({
   const iconImageUrl = initialCreator?.iconImageUrl ?? "";
   const hasExistingIconImage = iconImageUrl.length > 0;
 
+  const [clearIconImage, setClearIconImage] = useState(false);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+  /** The picked file's own size, and the part of it the editor framed. */
+  const [source, setSource] = useState<CropSource | null>(null);
+  const [crop, setCrop] = useState<CropRect | null>(null);
+  const [isFraming, setIsFraming] = useState(false);
+
+  useEffect(
+    () => () => {
+      if (localPreviewUrl) {
+        URL.revokeObjectURL(localPreviewUrl);
+      }
+    },
+    [localPreviewUrl]
+  );
+
+  const handleClearIconImageChange: ChangeEventHandler<HTMLInputElement> = (
+    event
+  ) => {
+    setClearIconImage(event.target.checked);
+  };
+
+  const handleImageFileChange: ChangeEventHandler<HTMLInputElement> = (
+    event
+  ) => {
+    const file = event.currentTarget.files?.[0];
+    if (!file) {
+      return;
+    }
+    setLocalPreviewUrl((current) => {
+      if (current) {
+        URL.revokeObjectURL(current);
+      }
+      return URL.createObjectURL(file);
+    });
+    // Both belong to the file that was just replaced. The new one reports its
+    // own size when it is decoded, and the frame is derived from that.
+    setSource(null);
+    setCrop(null);
+    setIsFraming(true);
+  };
+
+  /**
+   * The frame starts where the API would have cut on its own, so an editor who
+   * touches nothing gets the icon this form has always produced. A file whose
+   * frame is already set keeps it: the dialog remounts its image every time it
+   * is opened, and this runs again each time.
+   */
+  const handleCropImageLoad: ReactEventHandler<HTMLImageElement> = (event) => {
+    const size = {
+      height: event.currentTarget.naturalHeight,
+      width: event.currentTarget.naturalWidth,
+    };
+    setSource(size);
+    setCrop((current) => current ?? centreCropRect(size, ICON_ASPECT));
+  };
+
+  const framedStyle = crop && source ? framedPreviewStyle(crop, source) : null;
+
   return (
     <Field>
       <FieldLabel>
         {getMessage(messages, "admin.creators.form.icon")}
       </FieldLabel>
       <FieldContent>
-        {hasExistingIconImage && !clearIconImage ? (
+        {localPreviewUrl ? (
+          <div className="relative size-20 overflow-hidden rounded-full border">
+            {/* The picked file is a blob of unknown size, so next/image cannot
+                carry it. */}
+            {/* oxlint-disable-next-line next/no-img-element, react-doctor/nextjs-no-img-element */}
+            <img
+              alt={getMessage(messages, "admin.creators.form.icon_preview_alt")}
+              className={
+                framedStyle
+                  ? "absolute max-w-none"
+                  : "h-full w-full object-cover"
+              }
+              src={localPreviewUrl}
+              style={framedStyle ?? undefined}
+            />
+          </div>
+        ) : null}
+        {hasExistingIconImage && !(clearIconImage || localPreviewUrl) ? (
           <Image
             alt={getMessage(messages, "admin.creators.form.current_icon_alt")}
             className="size-20 rounded-full border object-cover"
@@ -75,13 +161,32 @@ const IconImageField = ({
         <Input
           accept="image/jpeg,image/png,image/webp"
           name="icon_image"
+          onChange={handleImageFileChange}
           type="file"
         />
+        {localPreviewUrl ? (
+          <Button
+            className="mt-2 w-fit"
+            onClick={() => setIsFraming(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            {getMessage(messages, "admin.image_crop.adjust")}
+          </Button>
+        ) : null}
+        {crop ? (
+          <input
+            name={CROP_RECT_FIELD}
+            type="hidden"
+            value={formatCropRect(crop)}
+          />
+        ) : null}
         {isUpdate && hasExistingIconImage ? (
           <label className="mt-2 flex items-center gap-2 text-sm">
             <input
               checked={clearIconImage}
-              onChange={onClearIconImageChange}
+              onChange={handleClearIconImageChange}
               type="checkbox"
             />
             {getMessage(messages, "admin.creators.form.clear_icon")}
@@ -96,9 +201,32 @@ const IconImageField = ({
           {getMessage(messages, "admin.creators.form.icon_description")}
         </FieldDescription>
       </FieldContent>
+
+      {localPreviewUrl ? (
+        <ImageCropDialog
+          aspect={ICON_ASPECT}
+          crop={crop}
+          imageUrl={localPreviewUrl}
+          onCropChange={setCrop}
+          onImageLoad={handleCropImageLoad}
+          onOpenChange={setIsFraming}
+          open={isFraming}
+          source={source}
+          title={getMessage(messages, "admin.creators.form.icon_crop_title")}
+        />
+      ) : null}
     </Field>
   );
 };
+
+interface CreatorFormProps {
+  mode: "create" | "update";
+  action: (
+    prevState: CreatorActionState,
+    formData: FormData
+  ) => Promise<CreatorActionState>;
+  initialCreator?: CreatorListItem;
+}
 
 export const CreatorForm = ({
   mode,
@@ -119,7 +247,6 @@ export const CreatorForm = ({
   const [profileText, setProfileText] = useState(
     initialCreator?.profileText ?? ""
   );
-  const [clearIconImage, setClearIconImage] = useState(false);
 
   const handleNameChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,13 +258,6 @@ export const CreatorForm = ({
   const handleProfileTextChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
       setProfileText(event.target.value);
-    },
-    []
-  );
-
-  const handleClearIconImageChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setClearIconImage(event.target.checked);
     },
     []
   );
@@ -217,11 +337,16 @@ export const CreatorForm = ({
             </FieldContent>
           </Field>
 
+          {/*
+            The saved icon's timestamp keys the field, so a save that replaced
+            or removed the icon remounts it: the picked file, its frame, and the
+            deletion checkbox all belong to that save and none of them mean
+            anything afterwards.
+          */}
           <IconImageField
-            clearIconImage={clearIconImage}
             initialCreator={initialCreator}
             isUpdate={isUpdate}
-            onClearIconImageChange={handleClearIconImageChange}
+            key={initialCreator?.iconImageUpdatedAt ?? ""}
           />
 
           {state ? (

@@ -11,9 +11,11 @@ import { z } from "zod";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { createCreator, updateCreator } from "#lib/creator";
+import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   flagOneFormSchema,
+  optionalCropRectFormSchema,
   optionalFileFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
@@ -26,6 +28,9 @@ const creatorCommonSchema = (messages: AdminMessages) =>
   z.object({
     clearIconImage: flagOneFormSchema,
     iconImage: optionalFileFormSchema,
+    iconImageCrop: optionalCropRectFormSchema(
+      getMessage(messages, "admin.image_crop.invalid")
+    ),
     name: requiredTrimmedString(
       getMessage(messages, "admin.creators.validation.name_required")
     ),
@@ -45,6 +50,7 @@ const creatorUpdateSchema = (messages: AdminMessages) =>
 const creatorFormFields = {
   clearIconImage: { kind: "value", name: "clear_icon_image" },
   iconImage: { kind: "file", name: "icon_image" },
+  iconImageCrop: { kind: "value", name: CROP_RECT_FIELD },
   name: "value",
   profileText: { kind: "value", name: "profile_text" },
   tenantId: { kind: "value", name: "tenant_id" },
@@ -84,13 +90,14 @@ export const createCreatorAction = async (
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
 
-  const { iconImage, name, profileText, tenantId } = parsed.data;
+  const { iconImage, iconImageCrop, name, profileText, tenantId } = parsed.data;
   const { iconImageContentType, iconImageData } = await toIconImage(iconImage);
 
   const result = await withAdminSessionReauth(() =>
     createCreator(
       {
         iconImageContentType,
+        iconImageCrop,
         iconImageData,
         name,
         profileText,
@@ -126,8 +133,15 @@ export const updateCreatorAction = async (
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
   }
 
-  const { clearIconImage, iconImage, name, profileText, publicId, tenantId } =
-    parsed.data;
+  const {
+    clearIconImage,
+    iconImage,
+    iconImageCrop,
+    name,
+    profileText,
+    publicId,
+    tenantId,
+  } = parsed.data;
   const { iconImageContentType, iconImageData } = await toIconImage(iconImage);
 
   const result = await withAdminSessionReauth(() =>
@@ -135,6 +149,7 @@ export const updateCreatorAction = async (
       {
         clearIconImage,
         iconImageContentType,
+        iconImageCrop,
         iconImageData,
         name,
         profileText,

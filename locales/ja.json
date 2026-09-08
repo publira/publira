@@ -595,7 +595,9 @@
         "icon": "著者アイコン画像",
         "current_icon_alt": "現在の著者アイコン",
         "clear_icon": "現在のアイコン画像を削除する",
-        "icon_description": "JPEG/PNG/WebP、10MB以下、256x256px以上の画像を選択してください。"
+        "icon_description": "JPEG/PNG/WebP、10MB以下、256x256px以上の画像を選択してください。",
+        "icon_crop_title": "著者アイコンの切り抜き範囲",
+        "icon_preview_alt": "選択した画像を、アイコンとして切り抜かれる範囲で表示"
       },
       "validation": {
         "name_required": "名前は必須です。",
@@ -656,21 +658,21 @@
         "uploaded": "この比率の画像を差し替えました。",
         "image_required": "入稿する画像を選択してください。",
         "image_invalid": "画像を確認してください。この比率には JPEG/PNG/WebP・10MB以下・{$width}x{$height}px 以上の画像を選び、もう一度お試しください。",
-        "crop": {
-          "title": "{$variant_type} の切り抜き範囲",
-          "description": "枠をドラッグして、この比率が残す範囲を選んでください。枠の形は比率に固定されているので、位置と大きさだけを指定できます。",
-          "adjust": "枠を調整する",
-          "done": "完了",
-          "image_alt": "{$variant_type} の切り抜き対象の画像",
-          "move": "{$variant_type} の切り抜き枠を移動",
-          "resize_top_left": "{$variant_type} の切り抜き枠を左上から拡大縮小",
-          "resize_top_right": "{$variant_type} の切り抜き枠を右上から拡大縮小",
-          "resize_bottom_left": "{$variant_type} の切り抜き枠を左下から拡大縮小",
-          "resize_bottom_right": "{$variant_type} の切り抜き枠を右下から拡大縮小",
-          "invalid": "切り抜き範囲を読み取れませんでした。画像を選び直して、もう一度範囲を指定してください。"
-        },
+        "crop_title": "{$variant_type} の切り抜き範囲",
         "variant_type_missing": "対象の比率が指定されていません。"
       }
+    },
+    "image_crop": {
+      "description": "枠をドラッグして、画像の残す範囲を選んでください。枠の形は配信される形に固定されているので、位置と大きさだけを指定できます。",
+      "adjust": "枠を調整する",
+      "done": "完了",
+      "image_alt": "切り抜き対象の画像",
+      "move": "切り抜き枠を移動",
+      "resize_top_left": "切り抜き枠を左上から拡大縮小",
+      "resize_top_right": "切り抜き枠を右上から拡大縮小",
+      "resize_bottom_left": "切り抜き枠を左下から拡大縮小",
+      "resize_bottom_right": "切り抜き枠を右下から拡大縮小",
+      "invalid": "切り抜き範囲を読み取れませんでした。画像を選び直して、もう一度範囲を指定してください。"
     },
     "labels": {
       "detail_error": "レーベルを表示できませんでした",
