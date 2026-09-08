@@ -21,7 +21,7 @@ import (
 
 const (
 	getTenantConfigByTenantIDQuery         = "-- name: GetTenantConfigByTenantID :one\nSELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode\nFROM tenant_config\nWHERE tenant_id = $1\nLIMIT 1\n"
-	getTenantThemeByTenantIDQuery          = "-- name: GetTenantThemeByTenantID :one\nSELECT\n    t.id AS tenant_id,\n    COALESCE(tt.background_color, '#f6f2e9') AS background_color,\n    COALESCE(tt.foreground_color, '#1e2b38') AS foreground_color,\n    COALESCE(tt.surface_color, '#fbf8f2') AS surface_color,\n    COALESCE(tt.surface_foreground_color, '#1e2b38') AS surface_foreground_color,\n    COALESCE(tt.card_color, '#fffdf8') AS card_color,\n    COALESCE(tt.card_foreground_color, '#1e2b38') AS card_foreground_color,\n    COALESCE(tt.popover_color, '#fffdf8') AS popover_color,\n    COALESCE(tt.popover_foreground_color, '#1e2b38') AS popover_foreground_color,\n    COALESCE(tt.primary_color, '#0f7c82') AS primary_color,\n    COALESCE(tt.primary_foreground_color, '#f4fbfb') AS primary_foreground_color,\n    COALESCE(tt.secondary_color, '#b35235') AS secondary_color,\n    COALESCE(tt.secondary_foreground_color, '#fff6f1') AS secondary_foreground_color,\n    COALESCE(tt.accent_color, '#7aae90') AS accent_color,\n    COALESCE(tt.accent_foreground_color, '#0f2a1f') AS accent_foreground_color,\n    COALESCE(tt.muted_color, '#e9e1d3') AS muted_color,\n    COALESCE(tt.muted_foreground_color, '#56616e') AS muted_foreground_color,\n    COALESCE(tt.border_color, '#d7ccba') AS border_color,\n    COALESCE(tt.input_color, '#e3d8c7') AS input_color,\n    COALESCE(tt.ring_color, '#2d8d93') AS ring_color,\n    COALESCE(tt.success_color, '#247542') AS success_color,\n    COALESCE(tt.success_foreground_color, '#f3fcf7') AS success_foreground_color,\n    COALESCE(tt.warning_color, '#9b6217') AS warning_color,\n    COALESCE(tt.warning_foreground_color, '#fff8ea') AS warning_foreground_color,\n    COALESCE(tt.destructive_color, '#b54444') AS destructive_color,\n    COALESCE(tt.destructive_foreground_color, '#fff4f4') AS destructive_foreground_color,\n    COALESCE(tt.info_color, '#2b5e9f') AS info_color,\n    COALESCE(tt.info_foreground_color, '#f3f8ff') AS info_foreground_color,\n    tt.icon_image_id,\n    fi.updated_at AS icon_image_updated_at,\n    tt.logo_image_id,\n    li.updated_at AS logo_image_updated_at,\n    COALESCE(tt.updated_at, NOW()) AS updated_at\nFROM tenants t\nLEFT JOIN tenant_themes tt ON tt.tenant_id = t.id\nLEFT JOIN tenant_images fi ON fi.id = tt.icon_image_id\nLEFT JOIN tenant_images li ON li.id = tt.logo_image_id\nWHERE t.id = $1\n"
+	getTenantThemeByTenantIDQuery          = "-- name: GetTenantThemeByTenantID :one\nSELECT\n    t.id AS tenant_id,\n    COALESCE(tt.background_color, '#f5f5f2') AS background_color,\n    COALESCE(tt.foreground_color, '#1f1d1a') AS foreground_color,\n    COALESCE(tt.surface_color, '#fafaf8') AS surface_color,\n    COALESCE(tt.surface_foreground_color, '#1f1d1a') AS surface_foreground_color,\n    COALESCE(tt.card_color, '#ffffff') AS card_color,\n    COALESCE(tt.card_foreground_color, '#1f1d1a') AS card_foreground_color,\n    COALESCE(tt.popover_color, '#ffffff') AS popover_color,\n    COALESCE(tt.popover_foreground_color, '#1f1d1a') AS popover_foreground_color,\n    COALESCE(tt.primary_color, '#2b4c8c') AS primary_color,\n    COALESCE(tt.primary_foreground_color, '#ffffff') AS primary_foreground_color,\n    COALESCE(tt.secondary_color, '#c63d17') AS secondary_color,\n    COALESCE(tt.secondary_foreground_color, '#ffffff') AS secondary_foreground_color,\n    COALESCE(tt.accent_color, '#e3e9f5') AS accent_color,\n    COALESCE(tt.accent_foreground_color, '#22407a') AS accent_foreground_color,\n    COALESCE(tt.muted_color, '#e8e8e3') AS muted_color,\n    COALESCE(tt.muted_foreground_color, '#5f5e59') AS muted_foreground_color,\n    COALESCE(tt.border_color, '#d6d6d0') AS border_color,\n    COALESCE(tt.input_color, '#cfcfc8') AS input_color,\n    COALESCE(tt.ring_color, '#2b4c8c') AS ring_color,\n    COALESCE(tt.success_color, '#2a6b3f') AS success_color,\n    COALESCE(tt.success_foreground_color, '#ffffff') AS success_foreground_color,\n    COALESCE(tt.warning_color, '#8a5a0b') AS warning_color,\n    COALESCE(tt.warning_foreground_color, '#ffffff') AS warning_foreground_color,\n    COALESCE(tt.destructive_color, '#8f1d1d') AS destructive_color,\n    COALESCE(tt.destructive_foreground_color, '#ffffff') AS destructive_foreground_color,\n    COALESCE(tt.info_color, '#2f5d8a') AS info_color,\n    COALESCE(tt.info_foreground_color, '#ffffff') AS info_foreground_color,\n    tt.icon_image_id,\n    fi.updated_at AS icon_image_updated_at,\n    tt.logo_image_id,\n    li.updated_at AS logo_image_updated_at,\n    COALESCE(tt.updated_at, NOW()) AS updated_at\nFROM tenants t\nLEFT JOIN tenant_themes tt ON tt.tenant_id = t.id\nLEFT JOIN tenant_images fi ON fi.id = tt.icon_image_id\nLEFT JOIN tenant_images li ON li.id = tt.logo_image_id\nWHERE t.id = $1\n"
 	listTenantImageVariantsByImageIDsQuery = "-- name: ListTenantImageVariantsByImageIDs :many\nSELECT tenant_image_id,\n    variant_type,\n    label,\n    content_type,\n    file_size_bytes,\n    width,\n    height\nFROM tenant_image_variants\nWHERE tenant_image_id = ANY($1::uuid [])\nORDER BY tenant_image_id,\n    variant_type\n"
 )
 
@@ -84,33 +84,33 @@ func tenantThemeSelectRowWithBrandingImages(
 	}
 	return []driver.Value{
 		tenantID,
-		"#f6f2e9",
-		"#1e2b38",
-		"#fbf8f2",
-		"#1e2b38",
-		"#fffdf8",
-		"#1e2b38",
-		"#fffdf8",
-		"#1e2b38",
+		"#f5f5f2",
+		"#1f1d1a",
+		"#fafaf8",
+		"#1f1d1a",
+		"#ffffff",
+		"#1f1d1a",
+		"#ffffff",
+		"#1f1d1a",
 		primaryColor,
-		"#f4fbfb",
-		"#b35235",
-		"#fff6f1",
-		"#7aae90",
-		"#0f2a1f",
-		"#e9e1d3",
-		"#56616e",
-		"#d7ccba",
-		"#e3d8c7",
-		"#2d8d93",
-		"#247542",
-		"#f3fcf7",
-		"#9b6217",
-		"#fff8ea",
-		"#b54444",
-		"#fff4f4",
-		"#2b5e9f",
-		"#f3f8ff",
+		"#ffffff",
+		"#c63d17",
+		"#ffffff",
+		"#e3e9f5",
+		"#22407a",
+		"#e8e8e3",
+		"#5f5e59",
+		"#d6d6d0",
+		"#cfcfc8",
+		"#2b4c8c",
+		"#2a6b3f",
+		"#ffffff",
+		"#8a5a0b",
+		"#ffffff",
+		"#8f1d1d",
+		"#ffffff",
+		"#2f5d8a",
+		"#ffffff",
 		iconImageID,
 		iconUpdatedAt,
 		logoImageID,
@@ -171,8 +171,8 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	if resp.Msg.Theme.PrimaryColor != "#112233" {
 		t.Fatalf("theme.primary_color = %q, want #112233", resp.Msg.Theme.PrimaryColor)
 	}
-	if resp.Msg.Theme.BackgroundColor != "#f6f2e9" {
-		t.Fatalf("theme.background_color = %q, want #f6f2e9", resp.Msg.Theme.BackgroundColor)
+	if resp.Msg.Theme.BackgroundColor != "#f5f5f2" {
+		t.Fatalf("theme.background_color = %q, want #f5f5f2", resp.Msg.Theme.BackgroundColor)
 	}
 	if resp.Msg.Timezone != "Asia/Tokyo" {
 		t.Fatalf("timezone = %q, want Asia/Tokyo", resp.Msg.Timezone)

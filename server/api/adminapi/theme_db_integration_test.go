@@ -64,8 +64,8 @@ func TestDBTenantIconUploadReplaceAndDelete(t *testing.T) {
 	if brandingImageURL(fetched.Msg.Theme.IconImageVariants) != firstURL {
 		t.Fatalf("reloaded icon variant url = %q, want %q", brandingImageURL(fetched.Msg.Theme.IconImageVariants), firstURL)
 	}
-	if fetched.Msg.Theme.PrimaryColor != "#0f7c82" {
-		t.Fatalf("primary_color = %q, want the column default #0f7c82", fetched.Msg.Theme.PrimaryColor)
+	if fetched.Msg.Theme.PrimaryColor != "#2b4c8c" {
+		t.Fatalf("primary_color = %q, want the column default #2b4c8c", fetched.Msg.Theme.PrimaryColor)
 	}
 
 	replaced, err := themes.UploadTenantIcon(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadTenantIconRequest{
@@ -211,8 +211,8 @@ func TestDBTenantLogoUploadReplaceAndDelete(t *testing.T) {
 	if brandingImageURL(fetched.Msg.Theme.LogoImageVariants) != firstURL {
 		t.Fatalf("reloaded logo variant url = %q, want %q", brandingImageURL(fetched.Msg.Theme.LogoImageVariants), firstURL)
 	}
-	if fetched.Msg.Theme.PrimaryColor != "#0f7c82" {
-		t.Fatalf("primary_color = %q, want the column default #0f7c82", fetched.Msg.Theme.PrimaryColor)
+	if fetched.Msg.Theme.PrimaryColor != "#2b4c8c" {
+		t.Fatalf("primary_color = %q, want the column default #2b4c8c", fetched.Msg.Theme.PrimaryColor)
 	}
 
 	replaced, err := themes.UploadTenantLogo(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadTenantLogoRequest{

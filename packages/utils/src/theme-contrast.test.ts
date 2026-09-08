@@ -22,7 +22,7 @@ describe("theme-contrast", () => {
   it("identifies both tokens in an unreadable pair", () => {
     const issues = findThemeTextContrastIssues({
       ...DEFAULT_TENANT_THEME_COLORS,
-      primaryForegroundColor: "#0f7c82",
+      primaryForegroundColor: "#2b4c8c",
     });
 
     expect(issues).toEqual([

@@ -33,44 +33,44 @@
 }
 
 @theme {
-  --color-background: var(--publira-color-background, #f6f2e9);
-  --color-foreground: var(--publira-color-foreground, #1e2b38);
+  --color-background: var(--publira-color-background, #f5f5f2);
+  --color-foreground: var(--publira-color-foreground, #1f1d1a);
 
-  --color-surface: var(--publira-color-surface, #fbf8f2);
-  --color-surface-foreground: var(--publira-color-surface-foreground, #1e2b38);
-  --color-card: var(--publira-color-card, #fffdf8);
-  --color-card-foreground: var(--publira-color-card-foreground, #1e2b38);
-  --color-popover: var(--publira-color-popover, #fffdf8);
-  --color-popover-foreground: var(--publira-color-popover-foreground, #1e2b38);
+  --color-surface: var(--publira-color-surface, #fafaf8);
+  --color-surface-foreground: var(--publira-color-surface-foreground, #1f1d1a);
+  --color-card: var(--publira-color-card, #ffffff);
+  --color-card-foreground: var(--publira-color-card-foreground, #1f1d1a);
+  --color-popover: var(--publira-color-popover, #ffffff);
+  --color-popover-foreground: var(--publira-color-popover-foreground, #1f1d1a);
 
-  --color-primary: var(--publira-color-primary, #0f7c82);
-  --color-primary-foreground: var(--publira-color-primary-foreground, #f4fbfb);
-  --color-secondary: var(--publira-color-secondary, #b35235);
+  --color-primary: var(--publira-color-primary, #2b4c8c);
+  --color-primary-foreground: var(--publira-color-primary-foreground, #ffffff);
+  --color-secondary: var(--publira-color-secondary, #c63d17);
   --color-secondary-foreground: var(
     --publira-color-secondary-foreground,
-    #fff6f1
+    #ffffff
   );
 
-  --color-accent: var(--publira-color-accent, #7aae90);
-  --color-accent-foreground: var(--publira-color-accent-foreground, #0f2a1f);
-  --color-muted: var(--publira-color-muted, #e9e1d3);
-  --color-muted-foreground: var(--publira-color-muted-foreground, #56616e);
+  --color-accent: var(--publira-color-accent, #e3e9f5);
+  --color-accent-foreground: var(--publira-color-accent-foreground, #22407a);
+  --color-muted: var(--publira-color-muted, #e8e8e3);
+  --color-muted-foreground: var(--publira-color-muted-foreground, #5f5e59);
 
-  --color-border: var(--publira-color-border, #d7ccba);
-  --color-input: var(--publira-color-input, #e3d8c7);
-  --color-ring: var(--publira-color-ring, #2d8d93);
+  --color-border: var(--publira-color-border, #d6d6d0);
+  --color-input: var(--publira-color-input, #cfcfc8);
+  --color-ring: var(--publira-color-ring, #2b4c8c);
 
-  --color-success: var(--publira-color-success, #247542);
-  --color-success-foreground: var(--publira-color-success-foreground, #f3fcf7);
-  --color-warning: var(--publira-color-warning, #9b6217);
-  --color-warning-foreground: var(--publira-color-warning-foreground, #fff8ea);
-  --color-destructive: var(--publira-color-destructive, #b54444);
+  --color-success: var(--publira-color-success, #2a6b3f);
+  --color-success-foreground: var(--publira-color-success-foreground, #ffffff);
+  --color-warning: var(--publira-color-warning, #8a5a0b);
+  --color-warning-foreground: var(--publira-color-warning-foreground, #ffffff);
+  --color-destructive: var(--publira-color-destructive, #8f1d1d);
   --color-destructive-foreground: var(
     --publira-color-destructive-foreground,
-    #fff4f4
+    #ffffff
   );
-  --color-info: var(--publira-color-info, #2b5e9f);
-  --color-info-foreground: var(--publira-color-info-foreground, #f3f8ff);
+  --color-info: var(--publira-color-info, #2f5d8a);
+  --color-info-foreground: var(--publira-color-info-foreground, #ffffff);
 }
 
 /**

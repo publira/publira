@@ -49,7 +49,7 @@ describe("GET /theme.css", () => {
     );
 
     await expect(response.text()).resolves.toContain(
-      "--publira-color-primary:#0f7c82;"
+      "--publira-color-primary:#2b4c8c;"
     );
     expect(mockGetTenantTheme).not.toHaveBeenCalled();
   });

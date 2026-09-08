@@ -35,9 +35,9 @@ const edgeUrl = (pathname: string): string =>
  * Default `--publira-color-primary`. Keep in sync with
  * `DEFAULT_TENANT_THEME_COLORS` in `@publira/utils/theme-css-variables`.
  */
-const DEFAULT_PRIMARY_COLOR = "#0f7c82";
+const DEFAULT_PRIMARY_COLOR = "#2b4c8c";
 
-/** A passing contrast pair against the default primary text color `#f4fbfb`. */
+/** A passing contrast pair against the default primary text color `#ffffff`. */
 const SAVED_PRIMARY_COLOR = "#1d4ed8";
 
 const SEED_TENANT_NAME = "Seed Tenant";
