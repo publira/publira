@@ -55,10 +55,18 @@ const requestEmailChange = async (
     "/settings/security"
   );
 
-  await page.getByLabel("Current email address").fill(currentEmail);
-  await page.getByLabel("New email address").fill(newEmail);
-  await page.getByLabel("Current password").fill(EMAIL_CHANGE_MEMBER.password);
-  await page.getByRole("button", { name: "Send confirmation emails" }).click();
+  // `/settings/security` also carries a password-change form asking for the
+  // current password, so the fields are reached through this section's own
+  // landmark rather than through a label that matches twice.
+  const section = page.getByRole("region", { name: "Change email address" });
+  await section.getByLabel("Current email address").fill(currentEmail);
+  await section.getByLabel("New email address").fill(newEmail);
+  await section
+    .getByLabel("Current password")
+    .fill(EMAIL_CHANGE_MEMBER.password);
+  await section
+    .getByRole("button", { name: "Send confirmation emails" })
+    .click();
 
   await page.waitForURL(/[?&]status=success(?:&|$)/u);
 };

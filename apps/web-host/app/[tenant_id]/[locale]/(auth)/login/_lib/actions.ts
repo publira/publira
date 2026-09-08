@@ -3,21 +3,17 @@
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { sessionCookieOptions } from "@publira/web-session";
-import { updateTag } from "next/cache";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { sealSessionCookieValue } from "#lib/api-client";
-import { PUBLIC_SESSION_COOKIE_NAME, loginPublic } from "#lib/auth";
+import { loginPublic } from "#lib/auth";
 import {
   emailFormSchema,
   passwordFormSchema,
   returnToFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
-import { getPublicSessionCacheTag } from "#lib/auth-shared";
+import { writePublicSessionCookie } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { loadHostMessages } from "#lib/messages";
@@ -95,18 +91,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     redirect(errorPath);
   }
 
-  const sealed = await sealSessionCookieValue({
-    accessToken: result.accessToken,
-    expiresAt: result.expiresAt.toISOString(),
-    tenantId,
-  });
-  const cookieStore = await cookies();
-  cookieStore.set({
-    ...sessionCookieOptions(result.expiresAt),
-    name: PUBLIC_SESSION_COOKIE_NAME,
-    value: sealed,
-  });
-  updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
+  await writePublicSessionCookie(result, tenantId);
 
   // `returnTo` is stored locale-less, so the reader comes back in whichever
   // language they signed in from rather than the one they left.

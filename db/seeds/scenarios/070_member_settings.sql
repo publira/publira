@@ -1,10 +1,10 @@
 -- Scenario: a member whose own account the settings E2E may rewrite
 --
 -- `host.member-settings.spec.ts` renames the reader, turns their email
--- notifications off, submits an email change, and follows a series. The dev
--- seed member cannot absorb that: `host.auth` signs in with its address,
--- `announcements.pagination` reads its announcement list, and both run beside
--- this suite under `workers: 3`.
+-- notifications off, submits an email change, changes their password, and
+-- follows a series. The dev seed member cannot absorb that: `host.auth` signs
+-- in with its address, `announcements.pagination` reads its announcement list,
+-- and both run beside this suite under `workers: 3`.
 --
 -- Applying this file is also how the suite restores what it changed, so every
 -- statement below either writes the starting value or deletes the rows the
