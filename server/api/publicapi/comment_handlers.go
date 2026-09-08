@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/publira/publira/server/internal/commentmode"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/publicid"
@@ -359,6 +361,86 @@ func (s *apiServer) ListMyEpisodeComments(
 	return noStorePrivateResponse(res), nil
 }
 
+// staffCommentSubject is the episode a staff alert is about. An alert stands
+// for a window's worth of comments rather than for one of them, so it names the
+// episode the queue is on and never the comment that happened to raise it.
+type staffCommentSubject struct {
+	episodePublicID string
+	episodeTitle    string
+	seriesPublicID  string
+	seriesTitle     string
+}
+
+// enqueueStaffCommentNotification queues one window's alert for the tenant's
+// staff, in the transaction that writes what it announces.
+//
+// The worker owns the fan-out: the recipients are every member of staff the
+// tenant has, and a reader waiting for their comment to be accepted must not
+// wait on an insert per person. The idempotency key holds the window open, so
+// the second comment of an hour writes nothing here and the staff bell keeps
+// one row per episode instead of one per reader.
+func enqueueStaffCommentNotification(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	eventType string,
+	tenantID uuid.UUID,
+	subject staffCommentSubject,
+) error {
+	subjectKey := outbox.StaffCommentSubjectKey(subject.episodePublicID, time.Now())
+	payload, err := json.Marshal(outbox.StaffCommentNotificationPayload{
+		TenantID:     tenantID.String(),
+		SubjectKey:   subjectKey,
+		EpisodeID:    subject.episodePublicID,
+		EpisodeTitle: subject.episodeTitle,
+		SeriesID:     subject.seriesPublicID,
+		SeriesTitle:  subject.seriesTitle,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal staff comment notification event: %w", err)
+	}
+	return insertPublicOutboxEvent(ctx, queries, tenantID, eventType, payload,
+		outbox.StaffCommentIdempotencyKey(eventType, tenantID, subjectKey))
+}
+
+// storeComment writes the comment and, when it landed in the approval queue,
+// the alert that tells staff it is waiting — one transaction, so a queue entry
+// nobody is told about cannot outlive the request that made it.
+//
+// The public ID is generated here rather than by the caller: a collision is
+// resolved by retrying the insert, and inside a transaction that retry has to
+// roll back to a savepoint, which is what publicid.InsertTx does.
+func (s *apiServer) storeComment(
+	ctx context.Context,
+	params dbmodels.CreateEpisodeCommentParams,
+	subject staffCommentSubject,
+) (dbmodels.EpisodeComment, error) {
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return dbmodels.EpisodeComment{}, err
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	comment, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.EpisodeComment, error) {
+		params.PublicID = publicID
+		return txq.CreateEpisodeComment(ctx, params)
+	})
+	if err != nil {
+		return dbmodels.EpisodeComment{}, err
+	}
+	if params.Status == commentStatusPending {
+		if err := enqueueStaffCommentNotification(
+			ctx, txq, outbox.EventTypeCommentAwaitingApprovalNotification, params.TenantID, subject,
+		); err != nil {
+			return dbmodels.EpisodeComment{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return dbmodels.EpisodeComment{}, err
+	}
+	return comment, nil
+}
+
 // PostEpisodeComment stores one comment by the authenticated reader.
 //
 // The checks run from the tenant-wide to the episode-specific: a tenant with
@@ -430,17 +512,19 @@ func (s *apiServer) PostEpisodeComment(
 		s.guards.limiter.Release(ctx, duplicateKey)
 		return nil, s.internalDBError(ctx, "failed to allocate comment id", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	comment, err := publicid.Insert(func(publicID string) (dbmodels.EpisodeComment, error) {
-		return s.queriesFor(ctx).CreateEpisodeComment(ctx, dbmodels.CreateEpisodeCommentParams{
-			ID:          commentID,
-			TenantID:    tenant.ID,
-			PublicID:    publicID,
-			EpisodeID:   episode.ID,
-			UserID:      user.ID,
-			Body:        body,
-			Status:      status,
-			PublishedAt: publishedAt,
-		})
+	comment, err := s.storeComment(ctx, dbmodels.CreateEpisodeCommentParams{
+		ID:          commentID,
+		TenantID:    tenant.ID,
+		EpisodeID:   episode.ID,
+		UserID:      user.ID,
+		Body:        body,
+		Status:      status,
+		PublishedAt: publishedAt,
+	}, staffCommentSubject{
+		episodePublicID: episode.PublicID,
+		episodeTitle:    episode.Title,
+		seriesPublicID:  episode.SeriesPublicID,
+		seriesTitle:     episode.SeriesTitle,
 	})
 	if err != nil {
 		// The claim stands. An INSERT that reports a failure has not necessarily
@@ -624,6 +708,15 @@ func (s *apiServer) ReportEpisodeComment(
 		CommentID: comment.ID,
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to refresh comment open report count", err, "tenant_id", tenant.ID.String(), "comment_id", comment.ID.String())
+	}
+
+	if err := enqueueStaffCommentNotification(ctx, txq, outbox.EventTypeCommentReportedNotification, tenant.ID, staffCommentSubject{
+		episodePublicID: comment.EpisodePublicID,
+		episodeTitle:    comment.EpisodeTitle,
+		seriesPublicID:  comment.SeriesPublicID,
+		seriesTitle:     comment.SeriesTitle,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to enqueue comment report notification", err, "tenant_id", tenant.ID.String(), "comment_id", comment.ID.String())
 	}
 
 	if err := tx.Commit(); err != nil {

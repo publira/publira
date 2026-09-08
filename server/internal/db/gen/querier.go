@@ -333,6 +333,10 @@ type Querier interface {
 	// The author is returned because a reader may not report their own comment, and
 	// that is a decision the caller makes rather than a row this query hides: the
 	// two cases are told apart in the answer the reporter gets.
+	//
+	// The episode and the series the joins already visit are returned with it. The
+	// staff notification the report raises names what the queue is about, and
+	// reading it here keeps the report one round trip.
 	GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Context, arg GetReportableEpisodeCommentByPublicIDForTenantParams) (GetReportableEpisodeCommentByPublicIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)

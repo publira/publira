@@ -211,7 +211,7 @@ func enqueueReaderEmailVerificationEmail(
 	if err != nil {
 		return fmt.Errorf("marshal reader email verification email event: %w", err)
 	}
-	return insertReaderOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderEmailVerificationEmail, payload,
+	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderEmailVerificationEmail, payload,
 		"reader_email_verification_email:"+tokenID.String())
 }
 
@@ -232,7 +232,7 @@ func enqueueReaderEmailChangeConfirmationEmail(
 	}
 	// One row per side, so a failure to deliver to one address is retried on its
 	// own rather than resending the other.
-	return insertReaderOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderEmailChangeConfirmationEmail, payload,
+	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderEmailChangeConfirmationEmail, payload,
 		"reader_email_change_confirmation_email:"+tokenID.String()+":"+recipientKind)
 }
 
@@ -248,7 +248,7 @@ func enqueueReaderEmailChangedNoticeEmail(
 	if err != nil {
 		return fmt.Errorf("marshal reader email changed notice email event: %w", err)
 	}
-	return insertReaderOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderEmailChangedNoticeEmail, payload,
+	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderEmailChangedNoticeEmail, payload,
 		"reader_email_changed_notice_email:"+tokenID.String())
 }
 
@@ -266,7 +266,7 @@ func enqueueReaderPasswordResetEmail(
 	if err != nil {
 		return fmt.Errorf("marshal reader password reset email event: %w", err)
 	}
-	return insertReaderOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderPasswordResetEmail, payload,
+	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderPasswordResetEmail, payload,
 		"reader_password_reset_email:"+tokenID.String())
 }
 
@@ -287,7 +287,7 @@ func enqueueReaderPasswordChangedNoticeEmail(
 	// twice has to hear about both. The version the change left behind is what
 	// separates them: it moves once per change and never moves back, so a retry
 	// of one change still collapses into a single send.
-	return insertReaderOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderPasswordChangedNoticeEmail, payload,
+	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderPasswordChangedNoticeEmail, payload,
 		fmt.Sprintf("reader_password_changed_notice_email:%s:%d", userID, credentialsVersion))
 }
 
@@ -307,11 +307,14 @@ func enqueueReaderSignupAttemptNoticeEmail(
 	// a repeated write into one send. An attempt writes no row, and a reader who
 	// is targeted again months later has to hear about it, so the key names the
 	// attempt instead.
-	return insertReaderOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderSignupAttemptNoticeEmail, payload,
+	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderSignupAttemptNoticeEmail, payload,
 		"reader_signup_attempt_notice_email:"+attemptID.String())
 }
 
-func insertReaderOutboxEvent(
+// insertPublicOutboxEvent queues one side effect of a public-API write, in the
+// transaction that performs it. The auth mails above and the staff alerts a
+// reader's comment raises are all queued through here.
+func insertPublicOutboxEvent(
 	ctx context.Context,
 	queries *dbmodels.Queries,
 	tenantID uuid.UUID,

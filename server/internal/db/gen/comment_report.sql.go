@@ -185,7 +185,11 @@ const getReportableEpisodeCommentByPublicIDForTenant = `-- name: GetReportableEp
 
 SELECT c.id,
     c.user_id,
-    c.episode_id
+    c.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
 FROM episode_comments c
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
@@ -211,9 +215,13 @@ type GetReportableEpisodeCommentByPublicIDForTenantParams struct {
 }
 
 type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
-	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"user_id"`
-	EpisodeID uuid.UUID `json:"episode_id"`
+	ID              uuid.UUID `json:"id"`
+	UserID          uuid.UUID `json:"user_id"`
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	SeriesTitle     string    `json:"series_title"`
 }
 
 // Reader reports on episode comments, and the open-report counter they keep on
@@ -251,10 +259,22 @@ type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
 // The author is returned because a reader may not report their own comment, and
 // that is a decision the caller makes rather than a row this query hides: the
 // two cases are told apart in the answer the reporter gets.
+//
+// The episode and the series the joins already visit are returned with it. The
+// staff notification the report raises names what the queue is about, and
+// reading it here keeps the report one round trip.
 func (q *Queries) GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Context, arg GetReportableEpisodeCommentByPublicIDForTenantParams) (GetReportableEpisodeCommentByPublicIDForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, getReportableEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetReportableEpisodeCommentByPublicIDForTenantRow
-	err := row.Scan(&i.ID, &i.UserID, &i.EpisodeID)
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.EpisodePublicID,
+		&i.EpisodeTitle,
+		&i.SeriesPublicID,
+		&i.SeriesTitle,
+	)
 	return i, err
 }
 

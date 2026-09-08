@@ -2,9 +2,14 @@ import { getMessage } from "@publira/i18n";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import { z } from "zod";
 
+import { buildQueryString } from "./query-string";
+
 export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
 export const NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED =
   "episode_publish_failed";
+export const NOTIFICATION_TYPE_COMMENT_AWAITING_APPROVAL =
+  "comment_awaiting_approval";
+export const NOTIFICATION_TYPE_COMMENT_REPORTED = "comment_reported";
 
 /**
  * Public IDs that can sit in a path segment. Anything else is dropped so a
@@ -50,9 +55,22 @@ export interface NotificationDisplay {
   title: string;
 }
 
+/**
+ * How an episode is named in a description.
+ *
+ * `unnamedKey` is the last resort, and it differs by event: a publication
+ * notice is about an episode that was scheduled, while a comment alert is
+ * about one readers are already reading. A payload that names neither the
+ * episode nor its series is a malformed one, so this is copy nobody should
+ * see — but it is the sentence the row falls back to, and naming the wrong
+ * thing there is worse than naming nothing.
+ */
 const episodeSubject = (
   messages: SharedMessages,
-  payload: NotificationPayload
+  payload: NotificationPayload,
+  unnamedKey:
+    | "admin.notifications.events.subject_unknown"
+    | "admin.notifications.events.subject_unnamed"
 ): string => {
   if (payload.episode_title && payload.series_title) {
     return getMessage(
@@ -74,7 +92,7 @@ const episodeSubject = (
       series: payload.series_title,
     });
   }
-  return getMessage(messages, "admin.notifications.events.subject_unnamed");
+  return getMessage(messages, unnamedKey);
 };
 
 export const notificationHref = (
@@ -121,7 +139,13 @@ export const notificationDisplay = (
       description: getMessage(
         messages,
         "admin.notifications.events.published_description",
-        { subject: episodeSubject(messages, payload) }
+        {
+          subject: episodeSubject(
+            messages,
+            payload,
+            "admin.notifications.events.subject_unnamed"
+          ),
+        }
       ),
       href,
       title: getMessage(messages, "admin.notifications.events.published_title"),
@@ -133,12 +157,65 @@ export const notificationDisplay = (
       description: getMessage(
         messages,
         "admin.notifications.events.publish_failed_description",
-        { subject: episodeSubject(messages, payload) }
+        {
+          subject: episodeSubject(
+            messages,
+            payload,
+            "admin.notifications.events.subject_unnamed"
+          ),
+        }
       ),
       href,
       title: getMessage(
         messages,
         "admin.notifications.events.publish_failed_title"
+      ),
+    };
+  }
+
+  if (type === NOTIFICATION_TYPE_COMMENT_AWAITING_APPROVAL) {
+    return {
+      description: getMessage(
+        messages,
+        "admin.notifications.events.comments_awaiting_approval_description",
+        {
+          subject: episodeSubject(
+            messages,
+            payload,
+            "admin.notifications.events.subject_unknown"
+          ),
+        }
+      ),
+      href: `/comments${buildQueryString({
+        episode: payload.episode_id,
+        status: "pending",
+      })}`,
+      title: getMessage(
+        messages,
+        "admin.notifications.events.comments_awaiting_approval_title"
+      ),
+    };
+  }
+
+  if (type === NOTIFICATION_TYPE_COMMENT_REPORTED) {
+    return {
+      description: getMessage(
+        messages,
+        "admin.notifications.events.comments_reported_description",
+        {
+          subject: episodeSubject(
+            messages,
+            payload,
+            "admin.notifications.events.subject_unknown"
+          ),
+        }
+      ),
+      // The report queue carries no episode filter of its own, so the link
+      // opens the reports still waiting rather than the ones on this episode.
+      href: `/comments${buildQueryString({ report_status: "open" })}`,
+      title: getMessage(
+        messages,
+        "admin.notifications.events.comments_reported_title"
       ),
     };
   }
