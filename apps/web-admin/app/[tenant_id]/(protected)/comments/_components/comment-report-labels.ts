@@ -1,6 +1,6 @@
-import { getMessage } from "@publira/i18n";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import type { BadgeTone } from "@publira/ui-components/badge";
+
+import type { AdminMessageKey } from "#components/message";
 
 import type {
   CommentReportReason,
@@ -8,27 +8,27 @@ import type {
 } from "../comment-types";
 
 /**
- * The name one stored report state goes by on screen.
+ * The catalog key one stored report state is named by.
  *
- * Written as a `switch` over literal keys rather than as
- * `admin.comments.reports.status_${status}`, for the reason
- * {@link commentStatusLabel} is: a key assembled by interpolation is never
+ * A key rather than a resolved string, so the caller renders it through
+ * `<Message message={…} />` inside its own boundary. Written as a `switch` over
+ * literal keys rather than as `admin.comments.reports.status_${status}`, for
+ * the reason {@link commentStatusMessage} is: an interpolated key is never
  * checked against the catalog, so a state renamed in the proto would render an
  * empty cell instead of failing the build.
  */
-export const commentReportStatusLabel = (
-  status: CommentReportStatus,
-  messages: SharedMessages
-): string => {
+export const commentReportStatusMessage = (
+  status: CommentReportStatus
+): AdminMessageKey => {
   switch (status) {
     case "open": {
-      return getMessage(messages, "admin.comments.reports.status_open");
+      return "admin.comments.reports.status_open";
     }
     case "resolved": {
-      return getMessage(messages, "admin.comments.reports.status_resolved");
+      return "admin.comments.reports.status_resolved";
     }
     default: {
-      return getMessage(messages, "admin.comments.reports.status_rejected");
+      return "admin.comments.reports.status_rejected";
     }
   }
 };
@@ -55,22 +55,21 @@ export const commentReportStatusTone = (
  * A reason this build does not know reads as "Something else", which is the
  * option the four are meant to fall back to.
  */
-export const commentReportReasonLabel = (
-  reason: CommentReportReason,
-  messages: SharedMessages
-): string => {
+export const commentReportReasonMessage = (
+  reason: CommentReportReason
+): AdminMessageKey => {
   switch (reason) {
     case "spam": {
-      return getMessage(messages, "admin.comments.reports.reason_spam");
+      return "admin.comments.reports.reason_spam";
     }
     case "abuse": {
-      return getMessage(messages, "admin.comments.reports.reason_abuse");
+      return "admin.comments.reports.reason_abuse";
     }
     case "spoiler": {
-      return getMessage(messages, "admin.comments.reports.reason_spoiler");
+      return "admin.comments.reports.reason_spoiler";
     }
     default: {
-      return getMessage(messages, "admin.comments.reports.reason_other");
+      return "admin.comments.reports.reason_other";
     }
   }
 };

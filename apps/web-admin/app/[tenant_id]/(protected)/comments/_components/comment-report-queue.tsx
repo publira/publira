@@ -1,7 +1,6 @@
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -41,11 +40,14 @@ import { CommentActionButton } from "./comment-action-button";
 import { CommentReasonDialog } from "./comment-reason-dialog";
 import { CommentReportDecisionButton } from "./comment-report-decision-button";
 import {
-  commentReportReasonLabel,
-  commentReportStatusLabel,
+  commentReportReasonMessage,
+  commentReportStatusMessage,
   commentReportStatusTone,
 } from "./comment-report-labels";
-import { commentStatusLabel, commentStatusTone } from "./comment-status-label";
+import {
+  commentStatusMessage,
+  commentStatusTone,
+} from "./comment-status-label";
 
 /**
  * One state the queue can be narrowed to, and where the link that does it
@@ -59,6 +61,7 @@ export interface CommentReportStatusOption {
 
 type CommentReportQueueProps = CursorPageHrefs & {
   listErrorMessage?: string;
+  /** For the timestamps and the two strings that have to be attributes. */
   locale: Locale;
   pageSize: number;
   reports: CommentReportItem[];
@@ -84,18 +87,15 @@ const formatReportDateTime = (
  * the operator had it.
  */
 const CommentReportStatusFilter = ({
-  messages,
+  ariaLabel,
   status,
   statusOptions,
 }: {
-  messages: SharedMessages;
+  ariaLabel: string;
   status: string;
   statusOptions: readonly CommentReportStatusOption[];
 }) => (
-  <nav
-    aria-label={getMessage(messages, "admin.comments.reports.filter_aria")}
-    className="flex flex-wrap gap-2"
-  >
+  <nav aria-label={ariaLabel} className="flex flex-wrap gap-2">
     {statusOptions.map((option) => (
       <LinkButton
         href={option.href}
@@ -103,9 +103,15 @@ const CommentReportStatusFilter = ({
         size="sm"
         variant={option.status === status ? "default" : "outline"}
       >
-        {option.status === ""
-          ? getMessage(messages, "admin.comments.reports.filter_all")
-          : commentReportStatusLabel(option.status, messages)}
+        <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+          <Message
+            message={
+              option.status === ""
+                ? "admin.comments.reports.filter_all"
+                : commentReportStatusMessage(option.status)
+            }
+          />
+        </Suspense>
       </LinkButton>
     ))}
   </nav>
@@ -138,17 +144,11 @@ const ReportedCommentActions = ({ report }: { report: CommentReportItem }) => (
 /**
  * What the comment's own state says to someone working the report.
  *
- * The removal that the threshold made is the case that needs it: staff are
- * reviewing a decision nobody made by hand, and rejecting the reports is not
+ * The removal the threshold made is the case that needs it: staff are
+ * reviewing a decision nobody made by hand, and deciding the reports is not
  * what puts the comment back.
  */
-const ReportedCommentNotes = ({
-  messages,
-  report,
-}: {
-  messages: SharedMessages;
-  report: CommentReportItem;
-}) => {
+const ReportedCommentNotes = ({ report }: { report: CommentReportItem }) => {
   if (report.comment.status !== "hidden") {
     return null;
   }
@@ -156,16 +156,113 @@ const ReportedCommentNotes = ({
   return (
     <>
       <span className="text-xs text-muted-foreground">
-        {report.comment.hiddenReason === "auto_reports"
-          ? getMessage(messages, "admin.comments.hidden_by_reports")
-          : getMessage(messages, "admin.comments.hidden_by_staff")}
+        <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+          <Message
+            message={
+              report.comment.hiddenReason === "auto_reports"
+                ? "admin.comments.hidden_by_reports"
+                : "admin.comments.hidden_by_staff"
+            }
+          />
+        </Suspense>
       </span>
       <span className="text-xs text-muted-foreground">
-        {getMessage(messages, "admin.comments.reports.removal_stands")}
+        <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
+          <Message message="admin.comments.reports.removal_stands" />
+        </Suspense>
       </span>
     </>
   );
 };
+
+/** One report: what the reader picked, what they wrote, and who they are. */
+const ReportSummary = ({
+  locale,
+  report,
+  timeZone,
+}: {
+  locale: Locale;
+  report: CommentReportItem;
+  timeZone: string;
+}) => (
+  <div className="grid gap-1">
+    <StatusChip status={commentReportStatusTone(report.status)}>
+      <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+        <Message message={commentReportStatusMessage(report.status)} />
+      </Suspense>
+    </StatusChip>
+    <span className="font-medium">
+      <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+        <Message message={commentReportReasonMessage(report.reason)} />
+      </Suspense>
+    </span>
+    {report.note ? (
+      <p className="text-xs whitespace-pre-wrap text-muted-foreground">
+        {report.note}
+      </p>
+    ) : null}
+    <span className="text-xs text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-3 w-56" />}>
+        <Message
+          message="admin.comments.reports.reported_by"
+          values={{
+            at: formatReportDateTime(report.createdAt, locale, timeZone),
+            reporter: report.reporterName || report.reporterPublicId,
+          }}
+        />
+      </Suspense>
+    </span>
+    {report.resolvedAt ? (
+      <span className="text-xs text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
+          <Message
+            message="admin.comments.reports.decided_at"
+            values={{
+              at: formatReportDateTime(report.resolvedAt, locale, timeZone),
+            }}
+          />
+        </Suspense>
+      </span>
+    ) : null}
+  </div>
+);
+
+/** The reported comment in the state it is actually in. */
+const ReportedComment = ({ report }: { report: CommentReportItem }) => (
+  <div className="grid gap-1">
+    <p className="text-sm whitespace-pre-wrap">{report.comment.body}</p>
+    <div className="flex flex-wrap items-center gap-2">
+      <StatusChip status={commentStatusTone(report.comment.status)}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+          <Message message={commentStatusMessage(report.comment.status)} />
+        </Suspense>
+      </StatusChip>
+      <span className="text-xs text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-3 w-32" />}>
+          <Message
+            message={
+              report.comment.openReportCount === 1
+                ? "admin.comments.reports.open_count_one"
+                : "admin.comments.reports.open_count"
+            }
+            values={{ count: report.comment.openReportCount }}
+          />
+        </Suspense>
+      </span>
+    </div>
+    <span className="text-xs text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
+        <Message
+          message="admin.comments.reports.written_by"
+          values={{
+            author: report.comment.authorName || report.comment.authorPublicId,
+          }}
+        />
+      </Suspense>
+    </span>
+    <ReportedCommentNotes report={report} />
+  </div>
+);
 
 const CommentReportListBody = ({
   hasPageLinks,
@@ -180,7 +277,6 @@ const CommentReportListBody = ({
   reports: CommentReportItem[];
   timeZone: string;
 }) => {
-  const messages = sharedCatalog(locale);
   if (listErrorMessage) {
     return (
       <SectionError>
@@ -199,13 +295,22 @@ const CommentReportListBody = ({
   if (reports.length === 0) {
     return (
       <CursorPageEmptyState
-        description={getMessage(
-          messages,
-          "admin.comments.reports.empty_description"
-        )}
+        description={
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.comments.reports.empty_description" />
+          </Suspense>
+        }
         hasPageLinks={hasPageLinks}
-        itemLabel={getMessage(messages, "admin.comments.reports.item_label")}
-        title={getMessage(messages, "admin.comments.reports.empty_title")}
+        // Interpolated into another message, so this one has to be a string.
+        itemLabel={getMessage(
+          sharedCatalog(locale),
+          "admin.comments.reports.item_label"
+        )}
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.comments.reports.empty_title" />
+          </Suspense>
+        }
       />
     );
   }
@@ -215,22 +320,29 @@ const CommentReportListBody = ({
       <TableHeader>
         <TableRow>
           <TableHead className="w-56">
-            {getMessage(messages, "admin.comments.reports.columns.report")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.comments.reports.columns.report" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.comments.reports.columns.comment")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.comments.reports.columns.comment" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-56">
-            {getMessage(messages, "admin.comments.reports.columns.episode")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.comments.reports.columns.episode" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-40">
-            {getMessage(messages, "admin.comments.reports.columns.decision")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.comments.reports.columns.decision" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-36">
-            {getMessage(
-              messages,
-              "admin.comments.reports.columns.comment_actions"
-            )}
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.comments.reports.columns.comment_actions" />
+            </Suspense>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -238,69 +350,14 @@ const CommentReportListBody = ({
         {reports.map((report) => (
           <TableRow key={report.reportId}>
             <TableCell>
-              <div className="grid gap-1">
-                <StatusChip status={commentReportStatusTone(report.status)}>
-                  {commentReportStatusLabel(report.status, messages)}
-                </StatusChip>
-                <span className="font-medium">
-                  {commentReportReasonLabel(report.reason, messages)}
-                </span>
-                {report.note ? (
-                  <p className="text-xs whitespace-pre-wrap text-muted-foreground">
-                    {report.note}
-                  </p>
-                ) : null}
-                <span className="text-xs text-muted-foreground">
-                  {getMessage(messages, "admin.comments.reports.reported_by", {
-                    at: formatReportDateTime(
-                      report.createdAt,
-                      locale,
-                      timeZone
-                    ),
-                    reporter: report.reporterName || report.reporterPublicId,
-                  })}
-                </span>
-                {report.resolvedAt ? (
-                  <span className="text-xs text-muted-foreground">
-                    {getMessage(messages, "admin.comments.reports.decided_at", {
-                      at: formatReportDateTime(
-                        report.resolvedAt,
-                        locale,
-                        timeZone
-                      ),
-                    })}
-                  </span>
-                ) : null}
-              </div>
+              <ReportSummary
+                locale={locale}
+                report={report}
+                timeZone={timeZone}
+              />
             </TableCell>
             <TableCell>
-              <div className="grid gap-1">
-                <p className="text-sm whitespace-pre-wrap">
-                  {report.comment.body}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusChip status={commentStatusTone(report.comment.status)}>
-                    {commentStatusLabel(report.comment.status, messages)}
-                  </StatusChip>
-                  <span className="text-xs text-muted-foreground">
-                    {getMessage(
-                      messages,
-                      report.comment.openReportCount === 1
-                        ? "admin.comments.reports.open_count_one"
-                        : "admin.comments.reports.open_count",
-                      { count: report.comment.openReportCount }
-                    )}
-                  </span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {getMessage(messages, "admin.comments.reports.written_by", {
-                    author:
-                      report.comment.authorName ||
-                      report.comment.authorPublicId,
-                  })}
-                </span>
-                <ReportedCommentNotes messages={messages} report={report} />
-              </div>
+              <ReportedComment report={report} />
             </TableCell>
             <TableCell>
               <div className="grid gap-0.5">
@@ -330,7 +387,9 @@ const CommentReportListBody = ({
                 </div>
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  {getMessage(messages, "admin.comments.reports.already_done")}
+                  <Suspense fallback={<SkeletonLine className="h-3 w-24" />}>
+                    <Message message="admin.comments.reports.already_done" />
+                  </Suspense>
                 </span>
               )}
             </TableCell>
@@ -355,7 +414,6 @@ export const CommentReportQueue = ({
   statusOptions,
   timeZone,
 }: CommentReportQueueProps) => {
-  const messages = sharedCatalog(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   const showPagination =
     !listErrorMessage && (reports.length > 0 || hasPageLinks);
@@ -364,16 +422,24 @@ export const CommentReportQueue = ({
     <Card>
       <CardHeader>
         <CardTitle>
-          {getMessage(messages, "admin.comments.reports.title")}
+          <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+            <Message message="admin.comments.reports.title" />
+          </Suspense>
         </CardTitle>
         <CardDescription>
-          {getMessage(messages, "admin.comments.reports.description")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+            <Message message="admin.comments.reports.description" />
+          </Suspense>
         </CardDescription>
       </CardHeader>
 
       <CardContent className="grid gap-4">
+        {/* An `aria-label` cannot be a node, so it is resolved as a string. */}
         <CommentReportStatusFilter
-          messages={messages}
+          ariaLabel={getMessage(
+            sharedCatalog(locale),
+            "admin.comments.reports.filter_aria"
+          )}
           status={status}
           statusOptions={statusOptions}
         />
@@ -389,14 +455,17 @@ export const CommentReportQueue = ({
         {showPagination ? (
           <PaginationFooter
             ariaLabel={getMessage(
-              messages,
+              sharedCatalog(locale),
               "admin.comments.reports.pagination_aria"
             )}
-            description={getMessage(
-              messages,
-              "admin.comments.reports.pagination_description",
-              { count: pageSize }
-            )}
+            description={
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message
+                  message="admin.comments.reports.pagination_description"
+                  values={{ count: pageSize }}
+                />
+              </Suspense>
+            }
             nextHref={nextHref}
             previousHref={previousHref}
           />
