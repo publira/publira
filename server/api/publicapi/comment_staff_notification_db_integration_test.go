@@ -179,9 +179,13 @@ func TestDBPendingCommentAlertNotifiesEveryStaffMemberOnce(t *testing.T) {
 		t.Fatalf("notifications addressed to the commenting reader = %d, want 0", got)
 	}
 
+	// The episode is what the key has to name here. Recomputing the whole key
+	// would read the clock a second time, and a run that crossed the UTC hour in
+	// between would expect the next window; the window format is the unit test's
+	// assertion, not this one's.
 	subjectKey, payload := env.staffNotification(t, tenant, outbox.NotificationTypeCommentAwaitingApproval)
-	if want := outbox.StaffCommentSubjectKey(episode.PublicID, time.Now()); subjectKey != want {
-		t.Fatalf("notification subject_key = %q, want %q", subjectKey, want)
+	if want := "episode:" + episode.PublicID + ":"; !strings.HasPrefix(subjectKey, want) {
+		t.Fatalf("notification subject_key = %q, want it to start with %q", subjectKey, want)
 	}
 	// The console assembles its copy and its link from the payload, so the
 	// alert has to name the episode and the series it is on.
