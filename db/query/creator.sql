@@ -91,6 +91,90 @@ ORDER BY c.name DESC,
     c.id DESC
 LIMIT sqlc.arg('limit');
 
+-- name: ListPublishedAuthorIDsBySearchNameAsc :many
+-- SearchPublishedAuthors. Stage one of the same two-stage shape
+-- ListPublishedAuthorIDsByNameAsc uses, narrowed to the creators whose name
+-- ILIKE-matches query_pattern. Stage two is ListPublishedAuthorsByIDs again:
+-- the search shows an author exactly as the list does.
+-- The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+-- with ESCAPE '!'.
+-- Only name is matched. profile_text would answer a creator-name search with
+-- everyone whose biography happens to mention that name.
+-- Index plan: idx_creators_tenant_name carries the keyset half. ILIKE '%q%'
+-- cannot ride a btree, so a sequential scan is enough while the LIMIT still
+-- bites after narrowing by tenant, the same trade SearchPublishedSeries makes.
+SELECT c.id
+FROM creators c
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.name ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (c.name, c.id) >= (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (c.name, c.id) > (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY c.name ASC,
+    c.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPublishedAuthorIDsBySearchNameDesc :many
+-- The backward direction of ListPublishedAuthorIDsBySearchNameAsc.
+SELECT c.id
+FROM creators c
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.name ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (c.name, c.id) <= (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (c.name, c.id) < (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY c.name DESC,
+    c.id DESC
+LIMIT sqlc.arg('limit');
+
 -- name: ListPublishedAuthorsByIDs :many
 -- No ORDER BY: the caller sorts the rows into the id order stage one settled
 -- on.

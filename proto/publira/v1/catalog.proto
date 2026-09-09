@@ -347,6 +347,66 @@ message SearchPublishedSeriesResponse {
   string next_token = 3;
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// Matches creators whose name contains `query` (case-insensitive substring)
+// and who hold at least one currently published series, the same population
+// ListPublishedAuthors shows. Sorted by name, then id. There is no order
+// field: name order is the only author list the storefront needs.
+// Only the name is matched. A biography mentioning another creator answers a
+// name search with someone the reader did not ask for.
+// The token carries the Unicode-lowercased query it was built for, exactly as
+// SearchPublishedSeries does; sending it with a query that lowers to a
+// different string is invalid_argument.
+message SearchPublishedAuthorsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Trimmed keyword. Empty after trim is invalid_argument. Max 100 runes.
+  // Not restricted to ASCII; Japanese names are the expected input.
+  string query = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message SearchPublishedAuthorsResponse {
+  repeated PublishedAuthor authors = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// Matches labels whose name contains `query` (case-insensitive substring) and
+// that hold at least one currently published series. Sorted by name, then id.
+// There is no order field: name order is the only label search the storefront
+// needs.
+// The published-series requirement is what separates this from
+// GetPublishedLabelDetail, which keeps answering for a label whose last series
+// was taken down so a shared URL stays valid. Nothing links to a search hit
+// that has nothing behind it.
+// The token carries the Unicode-lowercased query it was built for, exactly as
+// SearchPublishedSeries does; sending it with a query that lowers to a
+// different string is invalid_argument.
+message SearchPublishedLabelsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Trimmed keyword. Empty after trim is invalid_argument. Max 100 runes.
+  // Not restricted to ASCII; Japanese names are the expected input.
+  string query = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message SearchPublishedLabelsResponse {
+  repeated publira.types.v1.Label labels = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
 // Whether behavioural signals are behind a recommendation list at all. It
 // describes the tenant rather than the page: a later page of a ranked list is
 // all new arrivals, and still says RANKING. The list itself cannot be read for
@@ -502,6 +562,14 @@ service CatalogService {
   // built for; sending it with a query that lowers to a different string is
   // invalid_argument.
   rpc SearchPublishedSeries(SearchPublishedSeriesRequest) returns (SearchPublishedSeriesResponse) {}
+  // Keyword search over the names of creators who hold at least one currently
+  // published series. An empty query is invalid_argument, and the token rule
+  // is the one SearchPublishedSeries states.
+  rpc SearchPublishedAuthors(SearchPublishedAuthorsRequest) returns (SearchPublishedAuthorsResponse) {}
+  // Keyword search over the names of labels that hold at least one currently
+  // published series. An empty query is invalid_argument, and the token rule
+  // is the one SearchPublishedSeries states.
+  rpc SearchPublishedLabels(SearchPublishedLabelsRequest) returns (SearchPublishedLabelsResponse) {}
   // Every published series, ordered by the latest ranking snapshot of
   // behavioural signals and then by publication date, so a storefront slot can
   // take the first page and a "see more" view can keep paging into the rest.

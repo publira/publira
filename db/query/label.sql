@@ -167,6 +167,99 @@ WHERE labels.tenant_id = sqlc.arg('tenant_id')
 ORDER BY labels.created_at ASC, labels.id ASC
 LIMIT sqlc.arg('limit');
 
+-- SearchPublishedLabels orders by name instead of creation, so it takes its
+-- own pair of queries rather than the ListLabelsByTenant* pair above. It is
+-- one stage: a label row is a name and its eye catch, so there is nothing
+-- heavy to defer to a second query the way the author search does.
+-- Unlike GetPublishedLabelDetail, which answers for a label whose last series
+-- was taken down so a shared URL stays valid, a search hit has to have
+-- something behind it, hence the EXISTS.
+-- The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+-- with ESCAPE '!'. ILIKE '%q%' cannot ride a btree, so the scan is sequential
+-- once the tenant has been narrowed, the same trade SearchPublishedSeries
+-- makes.
+-- cursor rules: proto/README.md.
+-- name: ListPublishedLabelsBySearchNameAsc :many
+SELECT l.id,
+    l.public_id,
+    l.name,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = sqlc.arg('tenant_id')
+    AND l.name ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (l.name, l.id) >= (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (l.name, l.id) > (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY l.name ASC,
+    l.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPublishedLabelsBySearchNameDesc :many
+-- The backward direction of ListPublishedLabelsBySearchNameAsc.
+SELECT l.id,
+    l.public_id,
+    l.name,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = sqlc.arg('tenant_id')
+    AND l.name ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (l.name, l.id) <= (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (l.name, l.id) < (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY l.name DESC,
+    l.id DESC
+LIMIT sqlc.arg('limit');
+
 -- name: CreateLabel :one
 INSERT INTO labels (
         id,

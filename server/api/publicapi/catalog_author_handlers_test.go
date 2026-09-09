@@ -825,6 +825,8 @@ func TestListPublishedAuthorQueriesHavePublicationGuards(t *testing.T) {
 	queries := map[string]string{
 		"listPublishedAuthorIDsByNameAsc":          listPublishedAuthorIDsByNameAscQuery,
 		"listPublishedAuthorIDsByNameDesc":         listPublishedAuthorIDsByNameDescQuery,
+		"listPublishedAuthorIDsBySearchNameAsc":    listPublishedAuthorIDsBySearchNameAscQuery,
+		"listPublishedAuthorIDsBySearchNameDesc":   listPublishedAuthorIDsBySearchNameDescQuery,
 		"listPublishedAuthorsByIDs":                listPublishedAuthorsByIDsQuery,
 		"getPublishedAuthorByPublicID":             getPublishedAuthorByPublicIDQuery,
 		"listPublishedSeriesIDsByCreatorTitleAsc":  listPublishedSeriesIDsByCreatorTitleAscQuery,
@@ -856,6 +858,8 @@ func TestListPublishedAuthorQueriesHavePublicationGuards(t *testing.T) {
 	for _, name := range []string{
 		"listPublishedAuthorIDsByNameAsc",
 		"listPublishedAuthorIDsByNameDesc",
+		"listPublishedAuthorIDsBySearchNameAsc",
+		"listPublishedAuthorIDsBySearchNameDesc",
 		"listPublishedAuthorsByIDs",
 		"getPublishedAuthorByPublicID",
 	} {

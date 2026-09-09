@@ -430,3 +430,354 @@ func TestCatalogSearchPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing
 	}
 	assertPublicExpectations(t, mock)
 }
+
+// searchLabelColumns is the one-stage row SearchPublishedLabels reads: the
+// display fields plus the id its cursor is built from.
+func searchLabelColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"id", "public_id", "name", "eye_catch_image_id", "eye_catch_image_updated_at"})
+}
+
+func labelPublicIDs(items []*publirattypesv1.Label) []string {
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		ids = append(ids, item.PublicId)
+	}
+	return ids
+}
+
+func TestCatalogSearchPublishedAuthorsSuccess(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	authorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorIDsBySearchNameAscQuery)).
+		WithArgs(tenantID, "%sakura%", nil, false, nil, int32(21)).
+		WillReturnRows(seriesIDRows(authorID))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorsByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(authorListColumns().
+			AddRow(authorID, "AUTHOR00001", "Aoi Sakura", "Draws things", nil, nil, int64(0), int32(2)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "  Sakura  ",
+	}))
+	if err != nil {
+		t.Fatalf("SearchPublishedAuthors: %v", err)
+	}
+	if len(resp.Msg.Authors) != 1 || resp.Msg.Authors[0].PublicId != "AUTHOR00001" {
+		t.Fatalf("authors = %+v, want AUTHOR00001", resp.Msg.Authors)
+	}
+	if resp.Msg.Authors[0].PublishedSeriesCount != 2 {
+		t.Fatalf("published_series_count = %d, want 2", resp.Msg.Authors[0].PublishedSeriesCount)
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty on a single page", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogSearchPublishedAuthorsRejectsEmptyQuery(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "   ",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogSearchPublishedAuthorsRejectsQueryMismatchOnToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	boundaryID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	token := pagination.Encode(pagination.Forward, "akira", "Akira", boundaryID.String())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "Sakura",
+		Token:  token,
+	}))
+	if err.Error() != "invalid_argument: token was issued for another query" {
+		t.Fatalf("error = %q, want a query-mismatch message without token internals", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogSearchPublishedAuthorsFirstPageReportsNextToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	akiraID := uuid.Must(uuid.NewV7())
+	mikaID := uuid.Must(uuid.NewV7())
+	overFetchedID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorIDsBySearchNameAscQuery)).
+		WithArgs(tenantID, "%a%", nil, false, nil, int32(3)).
+		WillReturnRows(seriesIDRows(akiraID, mikaID, overFetchedID))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorsByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(authorListColumns().
+			AddRow(akiraID, "AUTHORAKIRA", "Akira", nil, nil, nil, int64(0), int32(1)).
+			AddRow(mikaID, "AUTHORMIKA0", "Mika", nil, nil, nil, int64(0), int32(1)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "A",
+		Limit:  2,
+	}))
+	if err != nil {
+		t.Fatalf("SearchPublishedAuthors: %v", err)
+	}
+	if got := len(resp.Msg.Authors); got != 2 {
+		t.Fatalf("author count = %d, want the over-fetched row dropped", got)
+	}
+	wantToken := pagination.Encode(pagination.Forward, "a", "Mika", mikaID.String())
+	if resp.Msg.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want the last returned search cursor", resp.Msg.NextToken)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogSearchPublishedAuthorsFollowsPreviousTokenBackwards(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	boundaryID := uuid.Must(uuid.NewV7())
+	token := pagination.Encode(pagination.Backward, "a", "Yuki", boundaryID.String())
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	akiraID := uuid.Must(uuid.NewV7())
+	mikaID := uuid.Must(uuid.NewV7())
+	// A backward page scans descending names, so Yuki's predecessor Mika comes
+	// first, then Akira. pagination.Page flips that back to name ascending.
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorIDsBySearchNameDescQuery)).
+		WithArgs(tenantID, "%a%", boundaryID, false, "Yuki", int32(3)).
+		WillReturnRows(seriesIDRows(mikaID, akiraID))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorsByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(authorListColumns().
+			AddRow(akiraID, "AUTHORAKIRA", "Akira", nil, nil, nil, int64(0), int32(1)).
+			AddRow(mikaID, "AUTHORMIKA0", "Mika", nil, nil, nil, int64(0), int32(1)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "A",
+		Limit:  2,
+		Token:  token,
+	}))
+	if err != nil {
+		t.Fatalf("SearchPublishedAuthors: %v", err)
+	}
+	if got := authorPublicIDs(resp.Msg.Authors); !slices.Equal(got, []string{"AUTHORAKIRA", "AUTHORMIKA0"}) {
+		t.Fatalf("authors = %v, want the backward page flipped back to name ascending", got)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogSearchPublishedLabelsSuccess(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedLabelsBySearchNameAscQuery)).
+		WithArgs(tenantID, "%jump%", nil, false, nil, int32(21)).
+		WillReturnRows(searchLabelColumns().AddRow(labelID, "LABELPUB001", "Jump", nil, nil))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "  Jump  ",
+	}))
+	if err != nil {
+		t.Fatalf("SearchPublishedLabels: %v", err)
+	}
+	if len(resp.Msg.Labels) != 1 || resp.Msg.Labels[0].PublicId != "LABELPUB001" {
+		t.Fatalf("labels = %+v, want LABELPUB001", resp.Msg.Labels)
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty on a single page", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogSearchPublishedLabelsRejectsEmptyQuery(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "   ",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogSearchPublishedLabelsRejectsQueryMismatchOnToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	boundaryID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	token := pagination.Encode(pagination.Forward, "jump", "Jump", boundaryID.String())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "Magazine",
+		Token:  token,
+	}))
+	if err.Error() != "invalid_argument: token was issued for another query" {
+		t.Fatalf("error = %q, want a query-mismatch message without token internals", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogSearchPublishedLabelsFirstPageReportsNextToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	alphaID := uuid.Must(uuid.NewV7())
+	betaID := uuid.Must(uuid.NewV7())
+	overFetchedID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedLabelsBySearchNameAscQuery)).
+		WithArgs(tenantID, "%comics%", nil, false, nil, int32(3)).
+		WillReturnRows(searchLabelColumns().
+			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil).
+			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil).
+			AddRow(overFetchedID, "LABELZETA01", "Zeta Comics", nil, nil))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "Comics",
+		Limit:  2,
+	}))
+	if err != nil {
+		t.Fatalf("SearchPublishedLabels: %v", err)
+	}
+	if got := len(resp.Msg.Labels); got != 2 {
+		t.Fatalf("label count = %d, want the over-fetched row dropped", got)
+	}
+	wantToken := pagination.Encode(pagination.Forward, "comics", "Beta Comics", betaID.String())
+	if resp.Msg.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want the last returned search cursor", resp.Msg.NextToken)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogSearchPublishedLabelsFollowsPreviousTokenBackwards(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	boundaryID := uuid.Must(uuid.NewV7())
+	token := pagination.Encode(pagination.Backward, "comics", "Zeta Comics", boundaryID.String())
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	alphaID := uuid.Must(uuid.NewV7())
+	betaID := uuid.Must(uuid.NewV7())
+	// A backward page scans descending names, so Zeta's predecessor Beta comes
+	// first, then Alpha. pagination.Page flips that back to name ascending.
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedLabelsBySearchNameDescQuery)).
+		WithArgs(tenantID, "%comics%", boundaryID, false, "Zeta Comics", int32(3)).
+		WillReturnRows(searchLabelColumns().
+			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil).
+			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "Comics",
+		Limit:  2,
+		Token:  token,
+	}))
+	if err != nil {
+		t.Fatalf("SearchPublishedLabels: %v", err)
+	}
+	if got := labelPublicIDs(resp.Msg.Labels); !slices.Equal(got, []string{"LABELALPHA1", "LABELBETA01"}) {
+		t.Fatalf("labels = %v, want the backward page flipped back to name ascending", got)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogSearchPublishedLabelsAttachesEyeCatchVariants(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedLabelsBySearchNameAscQuery)).
+		WithArgs(tenantID, "%jump%", nil, false, nil, int32(21)).
+		WillReturnRows(searchLabelColumns().AddRow(labelID, "LABELPUB001", "Jump", imageID, now))
+	mock.ExpectQuery(regexp.QuoteMeta(listLabelImageVariantsByImageIDsQuery)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"label_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(imageID, "portrait", "portrait_1200w", "image/webp", int64(2048), int32(1200), int32(1600)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "Jump",
+	}))
+	if err != nil {
+		t.Fatalf("SearchPublishedLabels: %v", err)
+	}
+	if len(resp.Msg.Labels) != 1 {
+		t.Fatalf("labels = %+v, want one hit", resp.Msg.Labels)
+	}
+	variants := resp.Msg.Labels[0].EyeCatchImageVariants
+	if len(variants) != 1 || variants[0].Label != "portrait_1200w" {
+		t.Fatalf("eye_catch_image_variants = %+v, want the seeded portrait variant", variants)
+	}
+	if resp.Msg.Labels[0].EyeCatchImageUpdatedAt == "" {
+		t.Fatal("eye_catch_image_updated_at is empty, want the stored timestamp")
+	}
+	assertPublicExpectations(t, mock)
+}

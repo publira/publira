@@ -526,6 +526,207 @@ func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTe
 	return items, nil
 }
 
+const listPublishedLabelsBySearchNameAsc = `-- name: ListPublishedLabelsBySearchNameAsc :many
+SELECT l.id,
+    l.public_id,
+    l.name,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = $1
+    AND l.name ILIKE $2::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (l.name, l.id) >= (
+                $5::text,
+                $3::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (l.name, l.id) > (
+                $5::text,
+                $3::uuid
+            )
+        )
+    )
+ORDER BY l.name ASC,
+    l.id ASC
+LIMIT $6
+`
+
+type ListPublishedLabelsBySearchNameAscParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	QueryPattern    string         `json:"query_pattern"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorName      sql.NullString `json:"cursor_name"`
+	Limit           int32          `json:"limit"`
+}
+
+type ListPublishedLabelsBySearchNameAscRow struct {
+	ID                     uuid.UUID     `json:"id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+}
+
+// SearchPublishedLabels orders by name instead of creation, so it takes its
+// own pair of queries rather than the ListLabelsByTenant* pair above. It is
+// one stage: a label row is a name and its eye catch, so there is nothing
+// heavy to defer to a second query the way the author search does.
+// Unlike GetPublishedLabelDetail, which answers for a label whose last series
+// was taken down so a shared URL stays valid, a search hit has to have
+// something behind it, hence the EXISTS.
+// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+// with ESCAPE '!'. ILIKE '%q%' cannot ride a btree, so the scan is sequential
+// once the tenant has been narrowed, the same trade SearchPublishedSeries
+// makes.
+// cursor rules: proto/README.md.
+func (q *Queries) ListPublishedLabelsBySearchNameAsc(ctx context.Context, arg ListPublishedLabelsBySearchNameAscParams) ([]ListPublishedLabelsBySearchNameAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedLabelsBySearchNameAsc,
+		arg.TenantID,
+		arg.QueryPattern,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorName,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedLabelsBySearchNameAscRow
+	for rows.Next() {
+		var i ListPublishedLabelsBySearchNameAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedLabelsBySearchNameDesc = `-- name: ListPublishedLabelsBySearchNameDesc :many
+SELECT l.id,
+    l.public_id,
+    l.name,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = $1
+    AND l.name ILIKE $2::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (l.name, l.id) <= (
+                $5::text,
+                $3::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (l.name, l.id) < (
+                $5::text,
+                $3::uuid
+            )
+        )
+    )
+ORDER BY l.name DESC,
+    l.id DESC
+LIMIT $6
+`
+
+type ListPublishedLabelsBySearchNameDescParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	QueryPattern    string         `json:"query_pattern"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorName      sql.NullString `json:"cursor_name"`
+	Limit           int32          `json:"limit"`
+}
+
+type ListPublishedLabelsBySearchNameDescRow struct {
+	ID                     uuid.UUID     `json:"id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+}
+
+// The backward direction of ListPublishedLabelsBySearchNameAsc.
+func (q *Queries) ListPublishedLabelsBySearchNameDesc(ctx context.Context, arg ListPublishedLabelsBySearchNameDescParams) ([]ListPublishedLabelsBySearchNameDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedLabelsBySearchNameDesc,
+		arg.TenantID,
+		arg.QueryPattern,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorName,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedLabelsBySearchNameDescRow
+	for rows.Next() {
+		var i ListPublishedLabelsBySearchNameDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockLabelByPublicIDForTenant = `-- name: LockLabelByPublicIDForTenant :one
 SELECT id
 FROM labels
