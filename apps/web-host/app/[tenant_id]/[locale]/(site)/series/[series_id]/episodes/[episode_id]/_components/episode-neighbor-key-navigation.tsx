@@ -53,7 +53,11 @@ const NeighborKeyListener = ({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isControlKeyTarget(event.target)) {
+      // A held key repeats on its own, and the reader who reaches the end
+      // holding it is exactly the one this guard is for: counting a repeat as
+      // the second press would arm on one event and leave the episode on the
+      // next. Only a key released and pressed again moves them.
+      if (event.repeat || isControlKeyTarget(event.target)) {
         return;
       }
       const side = resolveNeighborSide(event.key, readingDirection);

@@ -60,6 +60,11 @@ const pressBack = () => {
   fireEvent.keyDown(window, { key: "ArrowRight" });
 };
 
+/** The same key, still held down: what the browser sends on its own. */
+const holdForward = () => {
+  fireEvent.keyDown(window, { key: "ArrowLeft", repeat: true });
+};
+
 /** The button names itself "Next page" through its own default aria-label. */
 const turnPage = () => {
   fireEvent.click(screen.getByRole("button", { name: "Next page" }));
@@ -83,6 +88,23 @@ describe("EpisodeNeighborKeyNavigation", () => {
   it("opens the next episode on the second press", () => {
     renderViewer(1);
     pressForward();
+    pressForward();
+
+    expect(mockPush).toHaveBeenCalledExactlyOnceWith(`/en${NEXT_HREF}`);
+  });
+
+  it("does not count a held key's own repeat as the second press", () => {
+    renderViewer(1);
+    pressForward();
+    holdForward();
+    holdForward();
+
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("status").textContent,
+      "the reader is still being asked to press it again"
+    ).toBe(copy.nextHint);
+
     pressForward();
 
     expect(mockPush).toHaveBeenCalledExactlyOnceWith(`/en${NEXT_HREF}`);
