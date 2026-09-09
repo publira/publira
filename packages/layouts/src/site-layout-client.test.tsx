@@ -50,7 +50,7 @@ const renderHeader = () =>
               <button type="submit">Search</button>
             </form>
           </SiteLayoutMobileNavigationSearch>
-          <SiteLayoutMobileNavigationLinks aria-label="Site navigation">
+          <SiteLayoutMobileNavigationLinks>
             <SiteLayoutMobileNavigationLink href="/series">
               Series
             </SiteLayoutMobileNavigationLink>
@@ -80,15 +80,11 @@ describe("Site mobile navigation", () => {
   it("holds the controls the band stops drawing at a phone width", () => {
     renderHeader();
 
-    expect(screen.queryByRole("navigation", { name: "Site navigation" })).toBe(
-      null
-    );
+    expect(screen.queryByRole("navigation")).toBe(null);
 
     openNavigation();
 
-    expect(
-      screen.getByRole("navigation", { name: "Site navigation" })
-    ).toBeTruthy();
+    expect(screen.getByRole("navigation")).toBeTruthy();
     expect(
       screen.getByRole("searchbox", { name: "Search works" })
     ).toBeTruthy();
@@ -119,9 +115,7 @@ describe("Site mobile navigation", () => {
 
     fireEvent.click(screen.getByRole("link", { name: "Series" }));
 
-    expect(screen.queryByRole("navigation", { name: "Site navigation" })).toBe(
-      null
-    );
+    expect(screen.queryByRole("navigation")).toBe(null);
   });
 
   it("closes when the search field is submitted", () => {
@@ -130,9 +124,7 @@ describe("Site mobile navigation", () => {
 
     fireEvent.submit(screen.getByRole("searchbox", { name: "Search works" }));
 
-    expect(screen.queryByRole("navigation", { name: "Site navigation" })).toBe(
-      null
-    );
+    expect(screen.queryByRole("navigation")).toBe(null);
   });
 
   it("closes from its own close button", () => {
@@ -141,8 +133,6 @@ describe("Site mobile navigation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Close navigation" }));
 
-    expect(screen.queryByRole("navigation", { name: "Site navigation" })).toBe(
-      null
-    );
+    expect(screen.queryByRole("navigation")).toBe(null);
   });
 });
