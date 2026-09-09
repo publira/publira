@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { freezeClock } from "../src/clock";
 import { MISSING_PUBLIC_ID, SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
   VIEWER_EPISODE_PATH,
@@ -25,13 +26,28 @@ import { hostPath } from "../src/urls";
 /**
  * The moment the browser believes it is while the top page is recorded.
  *
- * That page words a publication date as how long ago it was, in the browser,
- * against its own clock — so the phrase moves on without the page changing.
- * Fixing the clock pins it. The value is later than every date
- * `160_screenshot_baseline.sql` writes (the last of them is in April 2026), so
- * every episode still reads as published in the past.
+ * That page words a publication date as how long ago it was, and it does so in
+ * the browser against its own clock, so the phrase moves on without the page
+ * changing. `freezeClock` pins it.
+ *
+ * Three days after the last date `160_screenshot_baseline.sql` writes
+ * (2026-04-17): late enough that every episode reads as published in the past,
+ * and close enough that the rows show the day-scale wording the design is
+ * about rather than a column of identical months.
  */
-const SCREENSHOT_CLOCK = "2026-06-01T00:00:00.000Z";
+const SCREENSHOT_CLOCK = "2026-04-20T00:00:00.000Z";
+
+/**
+ * What the newest row says under {@link SCREENSHOT_CLOCK}.
+ *
+ * Asserted before the shot because the clock has one way of going quiet: it is
+ * pinned in two places, `Date` and `Temporal.Now`, and which of them the phrase
+ * comes from is the browser's choice. A page that slipped back to the real
+ * clock would still photograph cleanly, and the baseline would then drift with
+ * the calendar until some unrelated pull request failed on it.
+ */
+const NEWEST_ROW_RELATIVE_TIME = "3 days ago";
+
 test.describe("web-host screenshots", () => {
   for (const viewport of SCREENSHOT_VIEWPORTS) {
     test.describe(`at ${viewport.label}px`, () => {
@@ -40,7 +56,7 @@ test.describe("web-host screenshots", () => {
       });
 
       test("the catalog top page", async ({ page }) => {
-        await page.clock.setFixedTime(SCREENSHOT_CLOCK);
+        await freezeClock(page, SCREENSHOT_CLOCK);
         await page.goto(hostPath("/"));
 
         // The featured work is the page's own heading, so its arrival is what
@@ -53,6 +69,9 @@ test.describe("web-host screenshots", () => {
             .getByRole("region", { name: "Featured authors" })
             .locator(`a[href^="${hostPath("/authors/")}"]`)
             .first()
+        ).toBeVisible();
+        await expect(
+          page.getByText(NEWEST_ROW_RELATIVE_TIME).first()
         ).toBeVisible();
 
         await expectScreenshot(page, viewport, "top-page");
