@@ -407,7 +407,11 @@ const TenantLayout = async ({
             <Suspense fallback={<SiteNavSkeleton />}>
               <SiteNav />
             </Suspense>
-            <div className="flex max-w-40 min-w-0 flex-1 justify-end sm:max-w-64">
+            {/* The band is one row of 36px controls, and below `md` there is
+                not enough of it for the field as well as the account actions.
+                It hides at the width the navigation hides at, where the search
+                link beside those navigation items goes with it. */}
+            <div className="hidden max-w-40 min-w-0 flex-1 justify-end md:flex lg:max-w-64">
               <Suspense fallback={<CatalogSearchFormSkeleton />}>
                 <CatalogSearchForm id="catalog-search-header" />
               </Suspense>

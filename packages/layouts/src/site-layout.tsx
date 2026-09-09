@@ -29,7 +29,7 @@ export const SiteLayoutBrand = ({
   href?: string;
 }) => (
   <Link
-    className="inline-flex min-w-0 items-center font-serif text-lg font-medium text-foreground transition-colors duration-state ease-state hover:text-muted-foreground"
+    className="inline-flex min-w-0 items-center truncate font-serif text-lg font-medium text-foreground transition-colors duration-state ease-state hover:text-muted-foreground"
     href={href}
   >
     {children}
