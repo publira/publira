@@ -394,16 +394,21 @@ export const getSeries = async (
   }
 };
 
+interface CreatorCredit {
+  creatorPublicId: string;
+  rolePublicId: string;
+}
+
 /**
- * The credit list a save sends, built from the creators the form picked. Each
- * one is credited in the tenant's leading role until the form itself asks for
- * a role per creator.
+ * The credit list a new series is created with. The form picks creators and
+ * cannot yet say in what capacity, so each one is credited in the tenant's
+ * leading role — which is what a series credited to one person means.
  */
-const toCreatorCredits = async (
+const toNewCreatorCredits = async (
   tenantId: string,
   sessionId: string,
   creatorPublicIds: string[]
-): Promise<{ creatorPublicId: string; rolePublicId: string }[]> => {
+): Promise<CreatorCredit[]> => {
   if (creatorPublicIds.length === 0) {
     return [];
   }
@@ -413,6 +418,66 @@ const toCreatorCredits = async (
     creatorPublicId,
     rolePublicId,
   }));
+};
+
+/**
+ * The credit list an update sends.
+ *
+ * An update replaces every credit the series holds, and the form still carries
+ * creators alone — so building this list from the leading role would rewrite
+ * what each of them is credited as every time somebody saved the title. The
+ * credits the series already holds are sent back instead, roles and all, and a
+ * role is only chosen for a creator this save added.
+ *
+ * The read goes straight to the API rather than through `getSeries`, whose
+ * result is cached: a stale credit list here would be written back as the new
+ * one.
+ *
+ * A credit the series has held since before roles existed states none, and the
+ * request has no way to say that, so sending it back gives it the leading role.
+ * That is the one thing this does not preserve, and it adds a role rather than
+ * losing a credit.
+ */
+const toUpdatedCreatorCredits = async (
+  tenantId: string,
+  publicId: string,
+  sessionId: string,
+  creatorPublicIds: string[]
+): Promise<CreatorCredit[]> => {
+  if (creatorPublicIds.length === 0) {
+    return [];
+  }
+
+  const current = await apiClient.series.getSeries(
+    { publicId, tenant: { tenantId } },
+    withSessionHeaders(sessionId)
+  );
+  const heldRoles = new Map<string, string[]>();
+  for (const creator of current.series?.creators ?? []) {
+    const rolePublicId = creator.role?.publicId?.trim();
+    if (rolePublicId) {
+      const held = heldRoles.get(creator.publicId) ?? [];
+      held.push(rolePublicId);
+      heldRoles.set(creator.publicId, held);
+    }
+  }
+
+  // Resolved once, before the list is built, and only when this save added a
+  // creator the series was not already crediting.
+  const needsLeadingRole = creatorPublicIds.some(
+    (creatorPublicId) => !heldRoles.has(creatorPublicId)
+  );
+  const leadingRolePublicId = needsLeadingRole
+    ? await getLeadingCreatorRolePublicId(tenantId, sessionId)
+    : "";
+
+  return creatorPublicIds.flatMap((creatorPublicId) => {
+    const held = heldRoles.get(creatorPublicId);
+    if (!held) {
+      return [{ creatorPublicId, rolePublicId: leadingRolePublicId }];
+    }
+    return held.map((rolePublicId) => ({ creatorPublicId, rolePublicId }));
+  });
 };
 
 export const createSeries = async (
@@ -442,7 +507,7 @@ export const createSeries = async (
   try {
     const response = await apiClient.series.createSeries(
       {
-        creatorCredits: await toCreatorCredits(
+        creatorCredits: await toNewCreatorCredits(
           input.tenantId,
           sessionId,
           input.creatorPublicIds
@@ -514,8 +579,9 @@ export const updateSeries = async (
     const response = await apiClient.series.updateSeries(
       {
         clearEyeCatchImage: input.clearEyeCatchImage,
-        creatorCredits: await toCreatorCredits(
+        creatorCredits: await toUpdatedCreatorCredits(
           input.tenantId,
+          input.publicId,
           sessionId,
           input.creatorPublicIds
         ),

@@ -163,6 +163,11 @@ func TestDBCreateSeriesRefusesACreatorRoleOfAnotherTenant(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInvalidArgument, err)
 	}
+	// The series as well as the credit: a create that resolved the role after
+	// writing the series would leave one behind with nothing crediting it.
+	if count := env.countRows(t, "SELECT count(*) FROM series WHERE tenant_id = $1", first.Tenant.ID); count != 0 {
+		t.Fatalf("series rows = %d, want 0 after a rejected create", count)
+	}
 	if count := env.countRows(t, "SELECT count(*) FROM series_creators WHERE tenant_id = $1", first.Tenant.ID); count != 0 {
 		t.Fatalf("series_creators rows = %d, want 0", count)
 	}

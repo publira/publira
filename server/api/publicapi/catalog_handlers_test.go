@@ -23,6 +23,24 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
+// assertCreatorRole checks that the role the aggregate carried through the
+// creators JSON reached the response as a CreatorRole. Both catalog reads build
+// their credits from the same fixture, so a mapping that dropped or flattened
+// the role would otherwise pass on the name alone.
+func assertCreatorRole(t *testing.T, creator *publirattypesv1.Creator) {
+	t.Helper()
+
+	if creator.GetRole() == nil {
+		t.Fatalf("creator %q carries no role", creator.GetName())
+	}
+	if got := creator.GetRole().GetPublicId(); got != "ROLEAUTHOR01" {
+		t.Fatalf("creator role public_id = %q, want ROLEAUTHOR01", got)
+	}
+	if got := creator.GetRole().GetName(); got != "Original Author" {
+		t.Fatalf("creator role name = %q, want Original Author", got)
+	}
+}
+
 func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
@@ -59,6 +77,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	if len(resp.Msg.Series[0].Creators) != 1 || resp.Msg.Series[0].Creators[0].IconImageUrl == "" {
 		t.Fatalf("series creators = %+v, want creator icon_image_url", resp.Msg.Series[0].Creators)
 	}
+	assertCreatorRole(t, resp.Msg.Series[0].Creators[0])
 	if got := len(resp.Msg.Series[0].EyeCatchImageVariants); got != 1 {
 		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
 	}
@@ -739,6 +758,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	if len(resp.Msg.Series.Creators) != 1 || resp.Msg.Series.Creators[0].Name != "Author A" {
 		t.Fatalf("series creators = %+v, want one creator Author A", resp.Msg.Series.Creators)
 	}
+	assertCreatorRole(t, resp.Msg.Series.Creators[0])
 	if got := len(resp.Msg.Series.EyeCatchImageVariants); got != 1 {
 		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
 	}
