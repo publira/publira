@@ -5,18 +5,25 @@ import { expect, test } from "@playwright/test";
 
 import {
   createCreatorViaUi,
+  createGenreViaUi,
   createLabelViaUi,
   createSeriesViaUi,
   creatorFormFields,
   fillField,
   formMessage,
+  genreCreateField,
+  genreNameField,
+  genreNamesInOrder,
+  genreRow,
   labelFormFields,
   seriesFormFields,
   signInAsSeedAdmin,
 } from "../src/admin";
 import {
   applyScenarioSql,
+  assignGenreToSeries,
   deleteCreatorsByPublicIds,
+  deleteGenresByNames,
   deleteLabelsByPublicIds,
   deleteSeriesByPublicIds,
 } from "../src/db";
@@ -163,11 +170,14 @@ test.describe("admin catalog masters", () => {
   let createdSeriesIds: string[] = [];
   let createdCreatorIds: string[] = [];
   let createdLabelIds: string[] = [];
+  /** Genres are addressed by name: the console never shows their public id. */
+  let createdGenreNames: string[] = [];
 
   test.beforeEach(async ({ page }) => {
     createdSeriesIds = [];
     createdCreatorIds = [];
     createdLabelIds = [];
+    createdGenreNames = [];
     await signInAsSeedAdmin(page);
   });
 
@@ -176,9 +186,11 @@ test.describe("admin catalog masters", () => {
     deleteSeriesByPublicIds(createdSeriesIds);
     deleteCreatorsByPublicIds(createdCreatorIds);
     deleteLabelsByPublicIds(createdLabelIds);
+    deleteGenresByNames(createdGenreNames);
     createdSeriesIds = [];
     createdCreatorIds = [];
     createdLabelIds = [];
+    createdGenreNames = [];
   });
 
   const trackSeries = (publicId: string): string => {
@@ -194,6 +206,19 @@ test.describe("admin catalog masters", () => {
   const trackLabel = (publicId: string): string => {
     createdLabelIds.push(publicId);
     return publicId;
+  };
+
+  /**
+   * Register a genre and remember it for the cleanup.
+   *
+   * The cleanup matches on the name, so a test that renames a genre tracks the
+   * new name as well — whichever one the row ends up holding is the one that
+   * has to be deleted.
+   */
+  const trackGenre = async (page: Page, name: string): Promise<string> => {
+    createdGenreNames.push(name);
+    await createGenreViaUi(page, name);
+    return name;
   };
 
   test("registers a creator and offers it in the list and the series picker", async ({
@@ -350,6 +375,124 @@ test.describe("admin catalog masters", () => {
     await pollHostPage(page, hostUrl(`/labels/${labelId}`), () =>
       mainHeadingText(page)
     ).toBe(renamed);
+  });
+
+  test("registers genres at the end of the list and moves one up", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const first = await trackGenre(page, `E2E Genre A ${suffix}`);
+    const second = await trackGenre(page, `E2E Genre B ${suffix}`);
+
+    // A new genre lands at the end, so the second one is below the first. The
+    // tenant may already have genres, so it is their relative order that is
+    // asserted rather than the whole list.
+    const created = await genreNamesInOrder(page);
+    expect(created.indexOf(first)).toBeLessThan(created.indexOf(second));
+
+    await page
+      .getByRole("button", { exact: true, name: `Move ${second} up` })
+      .click();
+
+    await expect
+      .poll(async () => {
+        const names = await genreNamesInOrder(page);
+        return names.indexOf(second) < names.indexOf(first);
+      })
+      .toBe(true);
+
+    // The order is the tenant's own, not this page's: reloading reads it back
+    // from the API rather than from the list the button rearranged.
+    await page.reload();
+    await expect(genreNameField(page, second)).toBeVisible();
+    const reloaded = await genreNamesInOrder(page);
+    expect(reloaded.indexOf(second)).toBeLessThan(reloaded.indexOf(first));
+  });
+
+  test("renames a genre and refuses a name another genre already holds", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const taken = await trackGenre(page, `E2E Genre Taken ${suffix}`);
+    const original = await trackGenre(page, `E2E Genre Rename ${suffix}`);
+
+    const row = genreRow(page, original);
+    await fillField(genreNameField(page, original), taken);
+    await row.getByRole("button", { exact: true, name: "Save" }).click();
+    await expect(row.getByRole("status")).toContainText(
+      "A genre with this name already exists."
+    );
+    // The field goes back to the name the genre still has: nothing was saved,
+    // and a field left holding a rejected name would read as if it had been.
+    await expect(genreNameField(page, original)).toHaveValue(original);
+
+    const renamed = `${original} (renamed)`;
+    createdGenreNames.push(renamed);
+    await fillField(genreNameField(page, original), renamed);
+    await row.getByRole("button", { exact: true, name: "Save" }).click();
+    // The row is addressed by the saved name, so a successful rename is what
+    // moves the message from the old row locator to the new one.
+    await expect(genreNameField(page, renamed)).toBeVisible();
+    await expect(genreRow(page, renamed).getByRole("status")).toContainText(
+      "Genre updated."
+    );
+  });
+
+  test("deletes an unused genre and refuses one a series still carries", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const assigned = await trackGenre(page, `E2E Genre Used ${suffix}`);
+    const unused = await trackGenre(page, `E2E Genre Unused ${suffix}`);
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        synopsis: `E2E genre series synopsis ${suffix}`,
+        title: `E2E Genre Series ${suffix}`,
+      })
+    );
+    assignGenreToSeries(seriesId, assigned);
+
+    await page.goto(adminUrl("/genres"));
+    const assignedRow = genreRow(page, assigned);
+    await assignedRow
+      .getByRole("button", { exact: true, name: "Delete" })
+      .click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { exact: true, name: "Delete" })
+      .click();
+    await expect(assignedRow.getByRole("status")).toContainText(
+      "Remove it from every series before deleting it."
+    );
+    await expect(genreNameField(page, assigned)).toBeVisible();
+
+    // The same button on a genre nothing carries takes the row away.
+    await genreRow(page, unused)
+      .getByRole("button", { exact: true, name: "Delete" })
+      .click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { exact: true, name: "Delete" })
+      .click();
+    await expect(genreNameField(page, unused)).toHaveCount(0);
+  });
+
+  test("a genre with no name shows the error instead of submitting", async ({
+    page,
+  }) => {
+    await page.goto(adminUrl("/genres"));
+    const field = genreCreateField(page);
+
+    // The control is `required`, so the browser refuses to submit and the
+    // Action never runs — the same path the creator and label forms take.
+    await page.getByRole("button", { name: "Create genre" }).click();
+    await expect(formMessage(page)).toHaveCount(0);
+
+    // Blanks satisfy the browser; the Action trims before it validates.
+    await fillField(field, "   ");
+    await page.getByRole("button", { name: "Create genre" }).click();
+    await expect(formMessage(page)).toContainText(/Genre name is required/u);
   });
 
   test("a creator with no name shows the error instead of submitting", async ({
