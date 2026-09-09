@@ -1198,6 +1198,16 @@ type Querier interface {
 	// write can move underneath it. The names come along because a reorder answers
 	// with the whole list, and nothing in this transaction changes them.
 	LockCreatorRolesForTenant(ctx context.Context, tenantID uuid.UUID) ([]LockCreatorRolesForTenantRow, error)
+	// Lock the episode row so two calls that rewrite a set hanging off it — its
+	// credits — serialize. Locking the credit rows themselves would not do it: a
+	// replacement deletes and recreates the whole set, so an episode credited to
+	// nobody has no row to lock and two replacements would both write.
+	//
+	// The read of the current credits must be a separate statement, for the reason
+	// the series lock's is: READ COMMITTED freezes a statement's snapshot at its
+	// start, so a read that waited for the lock inside the same statement would
+	// still answer from before the wait.
+	LockEpisodeByPublicIDForTenant(ctx context.Context, arg LockEpisodeByPublicIDForTenantParams) (LockEpisodeByPublicIDForTenantRow, error)
 	// Locks every genre of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
 	// write can move underneath it. The names come along because a reorder answers

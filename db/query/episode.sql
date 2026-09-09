@@ -184,6 +184,23 @@ WHERE e.series_id = s.id
     AND s.public_id = $2
     AND e.public_id = $3;
 
+-- name: LockEpisodeByPublicIDForTenant :one
+-- Lock the episode row so two calls that rewrite a set hanging off it — its
+-- credits — serialize. Locking the credit rows themselves would not do it: a
+-- replacement deletes and recreates the whole set, so an episode credited to
+-- nobody has no row to lock and two replacements would both write.
+--
+-- The read of the current credits must be a separate statement, for the reason
+-- the series lock's is: READ COMMITTED freezes a statement's snapshot at its
+-- start, so a read that waited for the lock inside the same statement would
+-- still answer from before the wait.
+SELECT id,
+    public_id
+FROM episodes
+WHERE tenant_id = $1
+    AND public_id = $2
+FOR UPDATE;
+
 -- name: GetEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,

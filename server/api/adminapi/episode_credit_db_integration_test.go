@@ -142,8 +142,13 @@ func TestDBEditingTheSeriesLeavesAnAlreadyCreatedEpisodeCredited(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEpisodeCredits: %v", err)
 	}
-	if got := creditedNames(listed.Msg.Creators); len(got) != 3 {
-		t.Fatalf("credits of the episode published before the change = %v, want the three it shipped with", got)
+	shipped := []string{
+		"Aoi Sakura / " + creatorroles.Defaults[0].Name,
+		"Ren Takahashi / " + creatorroles.Defaults[1].Name,
+		"Yuki Mori / " + creatorroles.Defaults[2].Name,
+	}
+	if got := creditedNames(listed.Msg.Creators); !slices.Equal(got, shipped) {
+		t.Fatalf("credits of the episode published before the change = %v, want the three it shipped with, %v", got, shipped)
 	}
 
 	next, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{

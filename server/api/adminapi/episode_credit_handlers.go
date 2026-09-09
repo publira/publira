@@ -54,10 +54,6 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.episodeForCreditsByPublicID(ctx, tenant.ID, req.Msg.EpisodePublicId)
-	if err != nil {
-		return nil, err
-	}
 	credits, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits))
 	if err != nil {
 		return nil, err
@@ -70,10 +66,24 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	defer tx.Rollback() //nolint:errcheck
 
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+	// The lock on the episode is what serializes two editors saving its
+	// credits: the whole set is deleted and rewritten, so there is no credit
+	// row for the second save to wait on, and without this it would read the
+	// provenance of rows the first save has already replaced.
+	episode, err := s.queriesFor(txCtx).LockEpisodeByPublicIDForTenant(txCtx, dbmodels.LockEpisodeByPublicIDForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: strings.TrimSpace(req.Msg.EpisodePublicId),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to lock episode for replace credits", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.EpisodePublicId)
+	}
 	// What the episode carries now, so a credit the request keeps keeps saying
-	// where it came from. Read inside the transaction that rewrites the set,
-	// otherwise a concurrent save could turn a baked credit into one this call
-	// records as the editor's own.
+	// where it came from. A separate statement from the lock, because READ
+	// COMMITTED freezes a statement's snapshot at its start and a read that
+	// waited inside the same one would answer from before the wait.
 	existing, err := s.queriesFor(txCtx).ListEpisodeCreatorsByEpisodeIDs(txCtx, []uuid.UUID{episode.ID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episode credits before replacing them", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
@@ -141,8 +151,9 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	}), nil
 }
 
-// episodeForCreditsByPublicID resolves the episode a credit call names, as the
-// not-found the console shows rather than as a write against nothing.
+// episodeForCreditsByPublicID resolves the episode a credit read names, as the
+// not-found the console shows rather than as an empty credit list. The write
+// takes the row under a lock instead, so it has no use for this.
 func (s *adminServer) episodeForCreditsByPublicID(
 	ctx context.Context,
 	tenantID uuid.UUID,
