@@ -1,15 +1,19 @@
 import { getMessage } from "@publira/i18n";
-import { UserIcon } from "@publira/icons";
+import {
+  EmptyState,
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
 import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import Image from "next/image";
 import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
@@ -27,6 +31,9 @@ import {
 
 const AUTHORS_PAGE_SIZE = 12;
 
+/** Enough rows to fill a phone screen while the read comes back. */
+const AUTHORS_SKELETON_COUNT = 8;
+
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
@@ -37,16 +44,15 @@ export const generateMetadata = async (): Promise<Metadata> => {
   return { title: getMessage(messages, "host.authors.list_title") };
 };
 
-const AuthorsListSkeleton = () => (
-  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-    {Array.from({ length: 6 }, (_, i) => (
+const AuthorRowsSkeleton = () => (
+  <div className="divide-y divide-border border-t border-border">
+    {Array.from({ length: AUTHORS_SKELETON_COUNT }, (_, index) => (
       <div
-        key={i}
-        className="overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm"
+        className="flex items-baseline justify-between gap-4 py-3"
+        key={index}
       >
-        <div className="mb-4 h-12 w-12 animate-pulse rounded-full bg-muted" />
-        <div className="mb-1 h-5 w-2/3 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-24" />
       </div>
     ))}
   </div>
@@ -69,6 +75,11 @@ const AuthorsListDescription = async () => {
   });
 };
 
+/**
+ * A cursor list has no page numbers to set in ink, so the two directions are
+ * all there is to render: the one that leads somewhere is an Ai text link, and
+ * the end of the list is the same words without one.
+ */
 const AuthorsPagination = async ({
   nextToken,
   previousToken,
@@ -82,12 +93,12 @@ const AuthorsPagination = async ({
   return (
     <nav
       aria-label={getMessage(messages, "host.authors.pagination_aria")}
-      className="mt-8 flex items-center justify-center gap-6"
+      className="flex items-baseline gap-6 border-t border-border pt-4"
     >
       {previousToken ? (
         <LocaleLink
+          className="text-sm text-primary underline underline-offset-4"
           href={authorsListHref(previousToken)}
-          className="text-sm text-primary underline-offset-4 hover:underline"
         >
           {getMessage(messages, "host.common.previous_page")}
         </LocaleLink>
@@ -99,8 +110,8 @@ const AuthorsPagination = async ({
 
       {nextToken ? (
         <LocaleLink
+          className="text-sm text-primary underline underline-offset-4"
           href={authorsListHref(nextToken)}
-          className="text-sm text-primary underline-offset-4 hover:underline"
         >
           {getMessage(messages, "host.common.next_page")}
         </LocaleLink>
@@ -154,14 +165,16 @@ const AuthorsListData = async ({
   if (authors.length === 0) {
     if (!token) {
       return (
-        <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-6 py-20 text-center">
-          <h2 className="mb-2 font-serif text-2xl font-semibold">
-            {getMessage(messages, "host.authors.list_empty_title")}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {getMessage(messages, "host.authors.list_empty_description")}
-          </p>
-        </div>
+        <EmptyState>
+          <EmptyStateHeading>
+            <EmptyStateTitle>
+              {getMessage(messages, "host.authors.list_empty_title")}
+            </EmptyStateTitle>
+            <EmptyStateDescription>
+              {getMessage(messages, "host.authors.list_empty_description")}
+            </EmptyStateDescription>
+          </EmptyStateHeading>
+        </EmptyState>
       );
     }
 
@@ -169,85 +182,74 @@ const AuthorsListData = async ({
     // the neighbouring page when it can, and empty tokens when it cannot — then
     // the only way out is the first page (`proto/README.md`).
     return (
-      <div className="py-20 text-center">
-        <p className="mb-4 text-muted-foreground">
-          {getMessage(messages, "host.authors.page_empty")}
-        </p>
+      <div className="grid gap-8">
+        <EmptyState>
+          <EmptyStateDescription>
+            {getMessage(messages, "host.authors.page_empty")}
+          </EmptyStateDescription>
+        </EmptyState>
         {previousToken || nextToken ? (
           <AuthorsPagination
             nextToken={nextToken}
             previousToken={previousToken}
           />
         ) : (
-          <LocaleLink
-            href={authorsListHref("")}
-            className="text-sm text-primary underline-offset-4 hover:underline"
-          >
-            {getMessage(messages, "host.authors.first_page")}
-          </LocaleLink>
+          <p>
+            <LocaleLink
+              className="text-sm text-primary underline underline-offset-4"
+              href={authorsListHref("")}
+            >
+              {getMessage(messages, "host.authors.first_page")}
+            </LocaleLink>
+          </p>
         )}
       </div>
     );
   }
 
   return (
-    <>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-8">
+      <ul className="divide-y divide-border border-t border-border">
         {authors.map((author) => (
-          <LocaleLink
-            key={author.id}
-            href={`/authors/${author.id}`}
-            className="group overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm transition hover:border-secondary/40 hover:shadow-md"
-          >
-            {author.iconImageUrl ? (
-              <div className="mb-4 h-12 w-12 overflow-hidden rounded-full border border-border/60 bg-muted/20">
-                <Image
-                  alt={getMessage(messages, "host.authors.icon_alt", {
-                    name: author.name,
-                  })}
-                  className="h-full w-full object-cover"
-                  decoding="async"
-                  height={48}
-                  src={author.iconImageUrl}
-                  width={48}
-                />
-              </div>
-            ) : (
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                <UserIcon className="h-6 w-6" />
-              </div>
-            )}
-            <h2 className="mb-1 font-serif text-lg font-semibold transition-colors group-hover:text-secondary">
-              {author.name}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {getMessage(messages, "host.common.series_count", {
-                count: author.seriesCount,
-              })}
-            </p>
-          </LocaleLink>
+          <li key={author.id}>
+            <LocaleLink
+              className="group flex items-baseline justify-between gap-4 py-3"
+              href={`/authors/${author.id}`}
+            >
+              <span className="truncate underline-offset-4 group-hover:underline">
+                {author.name}
+              </span>
+              <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                {getMessage(messages, "host.common.series_count", {
+                  count: author.seriesCount,
+                })}
+              </span>
+            </LocaleLink>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <AuthorsPagination nextToken={nextToken} previousToken={previousToken} />
-    </>
+    </div>
   );
 };
 
 const AuthorsPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/authors">) => (
-  <main className="mx-auto max-w-6xl px-6 py-12">
-    <h1 className="mb-2 font-serif text-4xl font-bold">
-      <Suspense fallback={<SkeletonLine className="h-9 w-48" />}>
-        <Message message="host.authors.list_title" />
-      </Suspense>
-    </h1>
-    <p className="mb-8 text-muted-foreground">
-      <Suspense fallback={<SkeletonLine className="h-5 w-80" />}>
-        <AuthorsListDescription />
-      </Suspense>
-    </p>
+  <main className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+    <div className="grid gap-2">
+      <h1 className="font-serif text-3xl leading-tight">
+        <Suspense fallback={<SkeletonLine className="h-8 w-32" />}>
+          <Message message="host.authors.list_title" />
+        </Suspense>
+      </h1>
+      <p className="text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-5 w-80" />}>
+          <AuthorsListDescription />
+        </Suspense>
+      </p>
+    </div>
 
     <SectionErrorBoundary
       title={
@@ -256,7 +258,7 @@ const AuthorsPage = ({
         </Suspense>
       }
     >
-      <Suspense fallback={<AuthorsListSkeleton />}>
+      <Suspense fallback={<AuthorRowsSkeleton />}>
         <AuthorsListData searchParams={searchParams} />
       </Suspense>
     </SectionErrorBoundary>
