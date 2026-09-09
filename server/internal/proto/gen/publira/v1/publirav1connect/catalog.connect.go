@@ -73,6 +73,12 @@ const (
 	// CatalogServiceSearchPublishedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// SearchPublishedSeries RPC.
 	CatalogServiceSearchPublishedSeriesProcedure = "/publira.v1.CatalogService/SearchPublishedSeries"
+	// CatalogServiceSearchPublishedAuthorsProcedure is the fully-qualified name of the CatalogService's
+	// SearchPublishedAuthors RPC.
+	CatalogServiceSearchPublishedAuthorsProcedure = "/publira.v1.CatalogService/SearchPublishedAuthors"
+	// CatalogServiceSearchPublishedLabelsProcedure is the fully-qualified name of the CatalogService's
+	// SearchPublishedLabels RPC.
+	CatalogServiceSearchPublishedLabelsProcedure = "/publira.v1.CatalogService/SearchPublishedLabels"
 	// CatalogServiceListRecommendedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// ListRecommendedSeries RPC.
 	CatalogServiceListRecommendedSeriesProcedure = "/publira.v1.CatalogService/ListRecommendedSeries"
@@ -156,6 +162,14 @@ type CatalogServiceClient interface {
 	// built for; sending it with a query that lowers to a different string is
 	// invalid_argument.
 	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
+	// Keyword search over the names of creators who hold at least one currently
+	// published series. An empty query is invalid_argument, and the token rule
+	// is the one SearchPublishedSeries states.
+	SearchPublishedAuthors(context.Context, *connect.Request[v1.SearchPublishedAuthorsRequest]) (*connect.Response[v1.SearchPublishedAuthorsResponse], error)
+	// Keyword search over the names of labels that hold at least one currently
+	// published series. An empty query is invalid_argument, and the token rule
+	// is the one SearchPublishedSeries states.
+	SearchPublishedLabels(context.Context, *connect.Request[v1.SearchPublishedLabelsRequest]) (*connect.Response[v1.SearchPublishedLabelsResponse], error)
 	// Every published series, ordered by the latest ranking snapshot of
 	// behavioural signals and then by publication date, so a storefront slot can
 	// take the first page and a "see more" view can keep paging into the rest.
@@ -258,6 +272,18 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedSeries")),
 			connect.WithClientOptions(opts...),
 		),
+		searchPublishedAuthors: connect.NewClient[v1.SearchPublishedAuthorsRequest, v1.SearchPublishedAuthorsResponse](
+			httpClient,
+			baseURL+CatalogServiceSearchPublishedAuthorsProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedAuthors")),
+			connect.WithClientOptions(opts...),
+		),
+		searchPublishedLabels: connect.NewClient[v1.SearchPublishedLabelsRequest, v1.SearchPublishedLabelsResponse](
+			httpClient,
+			baseURL+CatalogServiceSearchPublishedLabelsProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedLabels")),
+			connect.WithClientOptions(opts...),
+		),
 		listRecommendedSeries: connect.NewClient[v1.ListRecommendedSeriesRequest, v1.ListRecommendedSeriesResponse](
 			httpClient,
 			baseURL+CatalogServiceListRecommendedSeriesProcedure,
@@ -291,6 +317,8 @@ type catalogServiceClient struct {
 	listPublishedGenres      *connect.Client[v1.ListPublishedGenresRequest, v1.ListPublishedGenresResponse]
 	listPublishedTags        *connect.Client[v1.ListPublishedTagsRequest, v1.ListPublishedTagsResponse]
 	searchPublishedSeries    *connect.Client[v1.SearchPublishedSeriesRequest, v1.SearchPublishedSeriesResponse]
+	searchPublishedAuthors   *connect.Client[v1.SearchPublishedAuthorsRequest, v1.SearchPublishedAuthorsResponse]
+	searchPublishedLabels    *connect.Client[v1.SearchPublishedLabelsRequest, v1.SearchPublishedLabelsResponse]
 	listRecommendedSeries    *connect.Client[v1.ListRecommendedSeriesRequest, v1.ListRecommendedSeriesResponse]
 	listRankedSeries         *connect.Client[v1.ListRankedSeriesRequest, v1.ListRankedSeriesResponse]
 	listRelatedSeries        *connect.Client[v1.ListRelatedSeriesRequest, v1.ListRelatedSeriesResponse]
@@ -346,6 +374,16 @@ func (c *catalogServiceClient) SearchPublishedSeries(ctx context.Context, req *c
 	return c.searchPublishedSeries.CallUnary(ctx, req)
 }
 
+// SearchPublishedAuthors calls publira.v1.CatalogService.SearchPublishedAuthors.
+func (c *catalogServiceClient) SearchPublishedAuthors(ctx context.Context, req *connect.Request[v1.SearchPublishedAuthorsRequest]) (*connect.Response[v1.SearchPublishedAuthorsResponse], error) {
+	return c.searchPublishedAuthors.CallUnary(ctx, req)
+}
+
+// SearchPublishedLabels calls publira.v1.CatalogService.SearchPublishedLabels.
+func (c *catalogServiceClient) SearchPublishedLabels(ctx context.Context, req *connect.Request[v1.SearchPublishedLabelsRequest]) (*connect.Response[v1.SearchPublishedLabelsResponse], error) {
+	return c.searchPublishedLabels.CallUnary(ctx, req)
+}
+
 // ListRecommendedSeries calls publira.v1.CatalogService.ListRecommendedSeries.
 func (c *catalogServiceClient) ListRecommendedSeries(ctx context.Context, req *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error) {
 	return c.listRecommendedSeries.CallUnary(ctx, req)
@@ -390,6 +428,14 @@ type CatalogServiceHandler interface {
 	// built for; sending it with a query that lowers to a different string is
 	// invalid_argument.
 	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
+	// Keyword search over the names of creators who hold at least one currently
+	// published series. An empty query is invalid_argument, and the token rule
+	// is the one SearchPublishedSeries states.
+	SearchPublishedAuthors(context.Context, *connect.Request[v1.SearchPublishedAuthorsRequest]) (*connect.Response[v1.SearchPublishedAuthorsResponse], error)
+	// Keyword search over the names of labels that hold at least one currently
+	// published series. An empty query is invalid_argument, and the token rule
+	// is the one SearchPublishedSeries states.
+	SearchPublishedLabels(context.Context, *connect.Request[v1.SearchPublishedLabelsRequest]) (*connect.Response[v1.SearchPublishedLabelsResponse], error)
 	// Every published series, ordered by the latest ranking snapshot of
 	// behavioural signals and then by publication date, so a storefront slot can
 	// take the first page and a "see more" view can keep paging into the rest.
@@ -488,6 +534,18 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedSeries")),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceSearchPublishedAuthorsHandler := connect.NewUnaryHandler(
+		CatalogServiceSearchPublishedAuthorsProcedure,
+		svc.SearchPublishedAuthors,
+		connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedAuthors")),
+		connect.WithHandlerOptions(opts...),
+	)
+	catalogServiceSearchPublishedLabelsHandler := connect.NewUnaryHandler(
+		CatalogServiceSearchPublishedLabelsProcedure,
+		svc.SearchPublishedLabels,
+		connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedLabels")),
+		connect.WithHandlerOptions(opts...),
+	)
 	catalogServiceListRecommendedSeriesHandler := connect.NewUnaryHandler(
 		CatalogServiceListRecommendedSeriesProcedure,
 		svc.ListRecommendedSeries,
@@ -528,6 +586,10 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceListPublishedTagsHandler.ServeHTTP(w, r)
 		case CatalogServiceSearchPublishedSeriesProcedure:
 			catalogServiceSearchPublishedSeriesHandler.ServeHTTP(w, r)
+		case CatalogServiceSearchPublishedAuthorsProcedure:
+			catalogServiceSearchPublishedAuthorsHandler.ServeHTTP(w, r)
+		case CatalogServiceSearchPublishedLabelsProcedure:
+			catalogServiceSearchPublishedLabelsHandler.ServeHTTP(w, r)
 		case CatalogServiceListRecommendedSeriesProcedure:
 			catalogServiceListRecommendedSeriesHandler.ServeHTTP(w, r)
 		case CatalogServiceListRankedSeriesProcedure:
@@ -581,6 +643,14 @@ func (UnimplementedCatalogServiceHandler) ListPublishedTags(context.Context, *co
 
 func (UnimplementedCatalogServiceHandler) SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.SearchPublishedSeries is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) SearchPublishedAuthors(context.Context, *connect.Request[v1.SearchPublishedAuthorsRequest]) (*connect.Response[v1.SearchPublishedAuthorsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.SearchPublishedAuthors is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) SearchPublishedLabels(context.Context, *connect.Request[v1.SearchPublishedLabelsRequest]) (*connect.Response[v1.SearchPublishedLabelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.SearchPublishedLabels is not implemented"))
 }
 
 func (UnimplementedCatalogServiceHandler) ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error) {

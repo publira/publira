@@ -751,6 +751,170 @@ func (q *Queries) ListPublishedAuthorIDsByNameDesc(ctx context.Context, arg List
 	return items, nil
 }
 
+const listPublishedAuthorIDsBySearchNameAsc = `-- name: ListPublishedAuthorIDsBySearchNameAsc :many
+SELECT c.id
+FROM creators c
+WHERE c.tenant_id = $1
+    AND c.name ILIKE $2::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (c.name, c.id) >= (
+                $5::text,
+                $3::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (c.name, c.id) > (
+                $5::text,
+                $3::uuid
+            )
+        )
+    )
+ORDER BY c.name ASC,
+    c.id ASC
+LIMIT $6
+`
+
+type ListPublishedAuthorIDsBySearchNameAscParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	QueryPattern    string         `json:"query_pattern"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorName      sql.NullString `json:"cursor_name"`
+	Limit           int32          `json:"limit"`
+}
+
+// SearchPublishedAuthors. Stage one of the same two-stage shape
+// ListPublishedAuthorIDsByNameAsc uses, narrowed to the creators whose name
+// ILIKE-matches query_pattern. Stage two is ListPublishedAuthorsByIDs again:
+// the search shows an author exactly as the list does.
+// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+// with ESCAPE '!'.
+// Only name is matched. profile_text would answer a creator-name search with
+// everyone whose biography happens to mention that name.
+// Index plan: idx_creators_tenant_name carries the keyset half. ILIKE '%q%'
+// cannot ride a btree, so a sequential scan is enough while the LIMIT still
+// bites after narrowing by tenant, the same trade SearchPublishedSeries makes.
+func (q *Queries) ListPublishedAuthorIDsBySearchNameAsc(ctx context.Context, arg ListPublishedAuthorIDsBySearchNameAscParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedAuthorIDsBySearchNameAsc,
+		arg.TenantID,
+		arg.QueryPattern,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorName,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedAuthorIDsBySearchNameDesc = `-- name: ListPublishedAuthorIDsBySearchNameDesc :many
+SELECT c.id
+FROM creators c
+WHERE c.tenant_id = $1
+    AND c.name ILIKE $2::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (c.name, c.id) <= (
+                $5::text,
+                $3::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (c.name, c.id) < (
+                $5::text,
+                $3::uuid
+            )
+        )
+    )
+ORDER BY c.name DESC,
+    c.id DESC
+LIMIT $6
+`
+
+type ListPublishedAuthorIDsBySearchNameDescParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	QueryPattern    string         `json:"query_pattern"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorName      sql.NullString `json:"cursor_name"`
+	Limit           int32          `json:"limit"`
+}
+
+// The backward direction of ListPublishedAuthorIDsBySearchNameAsc.
+func (q *Queries) ListPublishedAuthorIDsBySearchNameDesc(ctx context.Context, arg ListPublishedAuthorIDsBySearchNameDescParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedAuthorIDsBySearchNameDesc,
+		arg.TenantID,
+		arg.QueryPattern,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorName,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublishedAuthorsByIDs = `-- name: ListPublishedAuthorsByIDs :many
 SELECT c.id,
     c.public_id,

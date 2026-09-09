@@ -27,6 +27,7 @@ const (
 	defaultLabelPageSize  = int32(20)
 	maxLabelPageSize      = int32(100)
 	seriesInclusiveKey    = "inclusive"
+	labelInclusiveKey     = "inclusive"
 )
 
 const (
@@ -661,35 +662,82 @@ func (s *apiServer) seriesEyeCatchVariantsByImageIDs(
 	return mapped, nil
 }
 
-type labelPageRow struct {
-	id                     uuid.UUID
+// labelDisplay is the part of a label every public list puts on the wire.
+// ListPublishedLabels and SearchPublishedLabels show a label the same way and
+// differ only in what they sort and page by, so the display half is shared and
+// the cursor half stays with each list.
+type labelDisplay struct {
 	publicID               string
 	name                   string
-	createdAt              time.Time
 	eyeCatchImageID        uuid.NullUUID
 	eyeCatchImageUpdatedAt sql.NullTime
 }
 
+type labelPageRow struct {
+	labelDisplay
+	id        uuid.UUID
+	createdAt time.Time
+}
+
 func labelPageFromDesc(row dbmodels.ListLabelsByTenantDescRow) labelPageRow {
 	return labelPageRow{
-		id:                     row.ID,
-		publicID:               row.PublicID,
-		name:                   row.Name,
-		createdAt:              row.CreatedAt,
-		eyeCatchImageID:        row.EyeCatchImageID,
-		eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+		labelDisplay: labelDisplay{
+			publicID:               row.PublicID,
+			name:                   row.Name,
+			eyeCatchImageID:        row.EyeCatchImageID,
+			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+		},
+		id:        row.ID,
+		createdAt: row.CreatedAt,
 	}
 }
 
 func labelPageFromAsc(row dbmodels.ListLabelsByTenantAscRow) labelPageRow {
 	return labelPageRow{
-		id:                     row.ID,
-		publicID:               row.PublicID,
-		name:                   row.Name,
-		createdAt:              row.CreatedAt,
-		eyeCatchImageID:        row.EyeCatchImageID,
-		eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+		labelDisplay: labelDisplay{
+			publicID:               row.PublicID,
+			name:                   row.Name,
+			eyeCatchImageID:        row.EyeCatchImageID,
+			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+		},
+		id:        row.ID,
+		createdAt: row.CreatedAt,
 	}
+}
+
+// labelItems maps label rows to the wire type and attaches every eye catch in
+// one further query, so a page of labels costs two round trips whatever
+// ordered it.
+func (s *apiServer) labelItems(ctx context.Context, rows []labelDisplay) ([]*publirattypesv1.Label, error) {
+	items := make([]*publirattypesv1.Label, 0, len(rows))
+	imageIDs := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		item := &publirattypesv1.Label{PublicId: row.publicID, Name: row.name}
+		if row.eyeCatchImageUpdatedAt.Valid {
+			item.EyeCatchImageUpdatedAt = row.eyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+		}
+		if row.eyeCatchImageID.Valid {
+			imageIDs = append(imageIDs, row.eyeCatchImageID.UUID)
+		}
+		items = append(items, item)
+	}
+	if len(imageIDs) == 0 {
+		return items, nil
+	}
+
+	variantsByImageID, err := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, err
+	}
+	for index, row := range rows {
+		if !row.eyeCatchImageID.Valid {
+			continue
+		}
+		if variants, ok := variantsByImageID[row.eyeCatchImageID.UUID]; ok {
+			items[index].EyeCatchImageVariants = variants
+		}
+	}
+	return items, nil
 }
 
 func toLabelPage[T any](rows []T, convert func(T) labelPageRow) []labelPageRow {
@@ -765,32 +813,13 @@ func (s *apiServer) ListPublishedLabels(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
-	items := make([]*publirattypesv1.Label, 0, len(rows))
-	imageIDs := make([]uuid.UUID, 0)
+	displays := make([]labelDisplay, 0, len(rows))
 	for _, row := range rows {
-		item := &publirattypesv1.Label{PublicId: row.publicID, Name: row.name}
-		if row.eyeCatchImageUpdatedAt.Valid {
-			item.EyeCatchImageUpdatedAt = row.eyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
-		}
-		if row.eyeCatchImageID.Valid {
-			imageIDs = append(imageIDs, row.eyeCatchImageID.UUID)
-		}
-		items = append(items, item)
+		displays = append(displays, row.labelDisplay)
 	}
-
-	// Fetch the label image variants.
-	if len(imageIDs) > 0 {
-		variantsByImageID, variantsErr := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
-		if variantsErr != nil {
-			return nil, variantsErr
-		}
-		for i, row := range rows {
-			if row.eyeCatchImageID.Valid {
-				if variants, ok := variantsByImageID[row.eyeCatchImageID.UUID]; ok {
-					items[i].EyeCatchImageVariants = variants
-				}
-			}
-		}
+	items, err := s.labelItems(ctx, displays)
+	if err != nil {
+		return nil, err
 	}
 
 	res := &publirav1.ListPublishedLabelsResponse{Labels: items}

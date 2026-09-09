@@ -825,6 +825,20 @@ type Querier interface {
 	// the published series count for the ids stage one settled on.
 	ListPublishedAuthorIDsByNameAsc(ctx context.Context, arg ListPublishedAuthorIDsByNameAscParams) ([]uuid.UUID, error)
 	ListPublishedAuthorIDsByNameDesc(ctx context.Context, arg ListPublishedAuthorIDsByNameDescParams) ([]uuid.UUID, error)
+	// SearchPublishedAuthors. Stage one of the same two-stage shape
+	// ListPublishedAuthorIDsByNameAsc uses, narrowed to the creators whose name
+	// ILIKE-matches query_pattern. Stage two is ListPublishedAuthorsByIDs again:
+	// the search shows an author exactly as the list does.
+	// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+	// with ESCAPE '!'.
+	// Only name is matched. profile_text would answer a creator-name search with
+	// everyone whose biography happens to mention that name.
+	// Index plan: idx_creators_tenant_name carries the keyset half. ILIKE '%q%'
+	// cannot ride a btree, so a sequential scan is enough while the LIMIT still
+	// bites after narrowing by tenant, the same trade SearchPublishedSeries makes.
+	ListPublishedAuthorIDsBySearchNameAsc(ctx context.Context, arg ListPublishedAuthorIDsBySearchNameAscParams) ([]uuid.UUID, error)
+	// The backward direction of ListPublishedAuthorIDsBySearchNameAsc.
+	ListPublishedAuthorIDsBySearchNameDesc(ctx context.Context, arg ListPublishedAuthorIDsBySearchNameDescParams) ([]uuid.UUID, error)
 	// No ORDER BY: the caller sorts the rows into the id order stage one settled
 	// on.
 	ListPublishedAuthorsByIDs(ctx context.Context, arg ListPublishedAuthorsByIDsParams) ([]ListPublishedAuthorsByIDsRow, error)
@@ -871,6 +885,21 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPublishedGenresByTenantAscParams) ([]ListPublishedGenresByTenantAscRow, error)
 	ListPublishedGenresByTenantDesc(ctx context.Context, arg ListPublishedGenresByTenantDescParams) ([]ListPublishedGenresByTenantDescRow, error)
+	// SearchPublishedLabels orders by name instead of creation, so it takes its
+	// own pair of queries rather than the ListLabelsByTenant* pair above. It is
+	// one stage: a label row is a name and its eye catch, so there is nothing
+	// heavy to defer to a second query the way the author search does.
+	// Unlike GetPublishedLabelDetail, which answers for a label whose last series
+	// was taken down so a shared URL stays valid, a search hit has to have
+	// something behind it, hence the EXISTS.
+	// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+	// with ESCAPE '!'. ILIKE '%q%' cannot ride a btree, so the scan is sequential
+	// once the tenant has been narrowed, the same trade SearchPublishedSeries
+	// makes.
+	// cursor rules: proto/README.md.
+	ListPublishedLabelsBySearchNameAsc(ctx context.Context, arg ListPublishedLabelsBySearchNameAscParams) ([]ListPublishedLabelsBySearchNameAscRow, error)
+	// The backward direction of ListPublishedLabelsBySearchNameAsc.
+	ListPublishedLabelsBySearchNameDesc(ctx context.Context, arg ListPublishedLabelsBySearchNameDescParams) ([]ListPublishedLabelsBySearchNameDescRow, error)
 	// Restricted to the pages flagged for the footer, which is the only place a
 	// reader navigates to them from.
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
