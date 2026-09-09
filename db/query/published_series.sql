@@ -55,7 +55,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             SELECT 1
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.series_id = s.id
+            WHERE sg.tenant_id = sqlc.arg('tenant_id')
+                AND sg.series_id = s.id
                 AND g.public_id = sqlc.narg('genre_public_id')::text
         )
     )
@@ -65,7 +66,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             SELECT 1
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.series_id = s.id
+            WHERE st.tenant_id = sqlc.arg('tenant_id')
+                AND st.series_id = s.id
                 AND t.slug = sqlc.narg('tag_slug')::text
         )
     )
@@ -74,7 +76,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
                 AND sl.status = sqlc.narg('status')::text
         )
     )
@@ -83,7 +86,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
         )
     )
@@ -129,7 +133,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             SELECT 1
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.series_id = s.id
+            WHERE sg.tenant_id = sqlc.arg('tenant_id')
+                AND sg.series_id = s.id
                 AND g.public_id = sqlc.narg('genre_public_id')::text
         )
     )
@@ -139,7 +144,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             SELECT 1
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.series_id = s.id
+            WHERE st.tenant_id = sqlc.arg('tenant_id')
+                AND st.series_id = s.id
                 AND t.slug = sqlc.narg('tag_slug')::text
         )
     )
@@ -148,7 +154,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
                 AND sl.status = sqlc.narg('status')::text
         )
     )
@@ -157,7 +164,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
         )
     )
@@ -203,7 +211,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             SELECT 1
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.series_id = s.id
+            WHERE sg.tenant_id = sqlc.arg('tenant_id')
+                AND sg.series_id = s.id
                 AND g.public_id = sqlc.narg('genre_public_id')::text
         )
     )
@@ -213,7 +222,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             SELECT 1
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.series_id = s.id
+            WHERE st.tenant_id = sqlc.arg('tenant_id')
+                AND st.series_id = s.id
                 AND t.slug = sqlc.narg('tag_slug')::text
         )
     )
@@ -222,7 +232,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
                 AND sl.status = sqlc.narg('status')::text
         )
     )
@@ -231,7 +242,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
         )
     )
@@ -277,7 +289,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             SELECT 1
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.series_id = s.id
+            WHERE sg.tenant_id = sqlc.arg('tenant_id')
+                AND sg.series_id = s.id
                 AND g.public_id = sqlc.narg('genre_public_id')::text
         )
     )
@@ -287,7 +300,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             SELECT 1
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.series_id = s.id
+            WHERE st.tenant_id = sqlc.arg('tenant_id')
+                AND st.series_id = s.id
                 AND t.slug = sqlc.narg('tag_slug')::text
         )
     )
@@ -296,7 +310,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
                 AND sl.status = sqlc.narg('status')::text
         )
     )
@@ -305,7 +320,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
         )
     )
@@ -380,7 +396,8 @@ WITH candidate AS (
                 SELECT 1
                 FROM series_genres sg
                     JOIN genres g ON g.id = sg.genre_id
-                WHERE sg.series_id = s.id
+                WHERE sg.tenant_id = sqlc.arg('tenant_id')
+                    AND sg.series_id = s.id
                     AND g.public_id = sqlc.narg('genre_public_id')::text
             )
         )
@@ -390,7 +407,8 @@ WITH candidate AS (
                 SELECT 1
                 FROM series_tags st
                     JOIN tags t ON t.id = st.tag_id
-                WHERE st.series_id = s.id
+                WHERE st.tenant_id = sqlc.arg('tenant_id')
+                    AND st.series_id = s.id
                     AND t.slug = sqlc.narg('tag_slug')::text
             )
         )
@@ -399,7 +417,8 @@ WITH candidate AS (
             OR EXISTS (
                 SELECT 1
                 FROM series_listings sl
-                WHERE sl.series_id = s.id
+                WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                    AND sl.series_id = s.id
                     AND sl.status = sqlc.narg('status')::text
             )
         )
@@ -408,7 +427,8 @@ WITH candidate AS (
             OR EXISTS (
                 SELECT 1
                 FROM series_listings sl
-                WHERE sl.series_id = s.id
+                WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                    AND sl.series_id = s.id
                     AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
             )
         )
@@ -471,7 +491,8 @@ WITH candidate AS (
                 SELECT 1
                 FROM series_genres sg
                     JOIN genres g ON g.id = sg.genre_id
-                WHERE sg.series_id = s.id
+                WHERE sg.tenant_id = sqlc.arg('tenant_id')
+                    AND sg.series_id = s.id
                     AND g.public_id = sqlc.narg('genre_public_id')::text
             )
         )
@@ -481,7 +502,8 @@ WITH candidate AS (
                 SELECT 1
                 FROM series_tags st
                     JOIN tags t ON t.id = st.tag_id
-                WHERE st.series_id = s.id
+                WHERE st.tenant_id = sqlc.arg('tenant_id')
+                    AND st.series_id = s.id
                     AND t.slug = sqlc.narg('tag_slug')::text
             )
         )
@@ -490,7 +512,8 @@ WITH candidate AS (
             OR EXISTS (
                 SELECT 1
                 FROM series_listings sl
-                WHERE sl.series_id = s.id
+                WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                    AND sl.series_id = s.id
                     AND sl.status = sqlc.narg('status')::text
             )
         )
@@ -499,7 +522,8 @@ WITH candidate AS (
             OR EXISTS (
                 SELECT 1
                 FROM series_listings sl
-                WHERE sl.series_id = s.id
+                WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                    AND sl.series_id = s.id
                     AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
             )
         )
@@ -598,7 +622,8 @@ SELECT s.id,
                 )
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.series_id = s.id
+            WHERE sg.tenant_id = sqlc.arg('tenant_id')
+                AND sg.series_id = s.id
         ),
         '[]'
     )::jsonb AS genres,
@@ -618,7 +643,8 @@ SELECT s.id,
                 )
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.series_id = s.id
+            WHERE st.tenant_id = sqlc.arg('tenant_id')
+                AND st.series_id = s.id
         ),
         '[]'
     )::jsonb AS tags,

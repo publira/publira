@@ -85,6 +85,7 @@ WITH counted AS (
         JOIN series_tags st ON st.tag_id = t.id
         JOIN series s ON s.id = st.series_id
     WHERE t.tenant_id = sqlc.arg('tenant_id')
+        AND st.tenant_id = sqlc.arg('tenant_id')
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
@@ -128,6 +129,7 @@ WITH counted AS (
         JOIN series_tags st ON st.tag_id = t.id
         JOIN series s ON s.id = st.series_id
     WHERE t.tenant_id = sqlc.arg('tenant_id')
+        AND st.tenant_id = sqlc.arg('tenant_id')
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()

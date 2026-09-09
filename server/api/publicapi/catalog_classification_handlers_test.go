@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"math"
 	"regexp"
 	"testing"
 	"time"
@@ -461,6 +462,29 @@ func TestCatalogPublishedClassificationRejectsAMalformedToken(t *testing.T) {
 	}
 
 	assertPublicExpectations(t, mock)
+}
+
+// The genre cursor's first key is a display_order, which the column stores as
+// an int4. A token carrying more than that would wrap on the way into the query
+// and name a position no genre holds, so it is refused before any query runs.
+func TestCatalogListPublishedGenresRejectsACursorOutsideTheColumnRange(t *testing.T) {
+	for _, count := range []int64{math.MaxInt32 + 1, math.MinInt32 - 1} {
+		testServer, mock := newTestPublicServer(t)
+
+		tenantID := uuid.Must(uuid.NewV7())
+		expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+
+		client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+		_, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+			Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			Token:  pagination.EncodeCountUUID(pagination.Forward, count, uuid.Must(uuid.NewV7())),
+		}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("cursor count %d code = %v, want invalid_argument (err=%v)", count, connect.CodeOf(err), err)
+		}
+
+		assertPublicExpectations(t, mock)
+	}
 }
 
 // An empty page under the latest-update order hands back a recovery token

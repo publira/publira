@@ -82,7 +82,8 @@ SELECT s.id,
                 )
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.series_id = s.id
+            WHERE sg.tenant_id = $1
+                AND sg.series_id = s.id
         ),
         '[]'
     )::jsonb AS genres,
@@ -102,7 +103,8 @@ SELECT s.id,
                 )
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.series_id = s.id
+            WHERE st.tenant_id = $1
+                AND st.series_id = s.id
         ),
         '[]'
     )::jsonb AS tags,
@@ -235,7 +237,8 @@ WITH candidate AS (
                 SELECT 1
                 FROM series_genres sg
                     JOIN genres g ON g.id = sg.genre_id
-                WHERE sg.series_id = s.id
+                WHERE sg.tenant_id = $5
+                    AND sg.series_id = s.id
                     AND g.public_id = $7::text
             )
         )
@@ -245,7 +248,8 @@ WITH candidate AS (
                 SELECT 1
                 FROM series_tags st
                     JOIN tags t ON t.id = st.tag_id
-                WHERE st.series_id = s.id
+                WHERE st.tenant_id = $5
+                    AND st.series_id = s.id
                     AND t.slug = $8::text
             )
         )
@@ -254,7 +258,8 @@ WITH candidate AS (
             OR EXISTS (
                 SELECT 1
                 FROM series_listings sl
-                WHERE sl.series_id = s.id
+                WHERE sl.tenant_id = $5
+                    AND sl.series_id = s.id
                     AND sl.status = $9::text
             )
         )
@@ -263,7 +268,8 @@ WITH candidate AS (
             OR EXISTS (
                 SELECT 1
                 FROM series_listings sl
-                WHERE sl.series_id = s.id
+                WHERE sl.tenant_id = $5
+                    AND sl.series_id = s.id
                     AND sl.schedule_weekdays @> ARRAY[$10::int2]
             )
         )
@@ -379,7 +385,8 @@ WITH candidate AS (
                 SELECT 1
                 FROM series_genres sg
                     JOIN genres g ON g.id = sg.genre_id
-                WHERE sg.series_id = s.id
+                WHERE sg.tenant_id = $5
+                    AND sg.series_id = s.id
                     AND g.public_id = $7::text
             )
         )
@@ -389,7 +396,8 @@ WITH candidate AS (
                 SELECT 1
                 FROM series_tags st
                     JOIN tags t ON t.id = st.tag_id
-                WHERE st.series_id = s.id
+                WHERE st.tenant_id = $5
+                    AND st.series_id = s.id
                     AND t.slug = $8::text
             )
         )
@@ -398,7 +406,8 @@ WITH candidate AS (
             OR EXISTS (
                 SELECT 1
                 FROM series_listings sl
-                WHERE sl.series_id = s.id
+                WHERE sl.tenant_id = $5
+                    AND sl.series_id = s.id
                     AND sl.status = $9::text
             )
         )
@@ -407,7 +416,8 @@ WITH candidate AS (
             OR EXISTS (
                 SELECT 1
                 FROM series_listings sl
-                WHERE sl.series_id = s.id
+                WHERE sl.tenant_id = $5
+                    AND sl.series_id = s.id
                     AND sl.schedule_weekdays @> ARRAY[$10::int2]
             )
         )
@@ -526,7 +536,8 @@ WHERE s.tenant_id = $1
             SELECT 1
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.series_id = s.id
+            WHERE sg.tenant_id = $1
+                AND sg.series_id = s.id
                 AND g.public_id = $3::text
         )
     )
@@ -536,7 +547,8 @@ WHERE s.tenant_id = $1
             SELECT 1
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.series_id = s.id
+            WHERE st.tenant_id = $1
+                AND st.series_id = s.id
                 AND t.slug = $4::text
         )
     )
@@ -545,7 +557,8 @@ WHERE s.tenant_id = $1
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
                 AND sl.status = $5::text
         )
     )
@@ -554,7 +567,8 @@ WHERE s.tenant_id = $1
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[$6::int2]
         )
     )
@@ -648,7 +662,8 @@ WHERE s.tenant_id = $1
             SELECT 1
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.series_id = s.id
+            WHERE sg.tenant_id = $1
+                AND sg.series_id = s.id
                 AND g.public_id = $3::text
         )
     )
@@ -658,7 +673,8 @@ WHERE s.tenant_id = $1
             SELECT 1
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.series_id = s.id
+            WHERE st.tenant_id = $1
+                AND st.series_id = s.id
                 AND t.slug = $4::text
         )
     )
@@ -667,7 +683,8 @@ WHERE s.tenant_id = $1
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
                 AND sl.status = $5::text
         )
     )
@@ -676,7 +693,8 @@ WHERE s.tenant_id = $1
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[$6::int2]
         )
     )
@@ -806,7 +824,8 @@ WHERE s.tenant_id = $1
             SELECT 1
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.series_id = s.id
+            WHERE sg.tenant_id = $1
+                AND sg.series_id = s.id
                 AND g.public_id = $3::text
         )
     )
@@ -816,7 +835,8 @@ WHERE s.tenant_id = $1
             SELECT 1
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.series_id = s.id
+            WHERE st.tenant_id = $1
+                AND st.series_id = s.id
                 AND t.slug = $4::text
         )
     )
@@ -825,7 +845,8 @@ WHERE s.tenant_id = $1
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
                 AND sl.status = $5::text
         )
     )
@@ -834,7 +855,8 @@ WHERE s.tenant_id = $1
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[$6::int2]
         )
     )
@@ -928,7 +950,8 @@ WHERE s.tenant_id = $1
             SELECT 1
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.series_id = s.id
+            WHERE sg.tenant_id = $1
+                AND sg.series_id = s.id
                 AND g.public_id = $3::text
         )
     )
@@ -938,7 +961,8 @@ WHERE s.tenant_id = $1
             SELECT 1
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.series_id = s.id
+            WHERE st.tenant_id = $1
+                AND st.series_id = s.id
                 AND t.slug = $4::text
         )
     )
@@ -947,7 +971,8 @@ WHERE s.tenant_id = $1
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
                 AND sl.status = $5::text
         )
     )
@@ -956,7 +981,8 @@ WHERE s.tenant_id = $1
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.series_id = s.id
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[$6::int2]
         )
     )

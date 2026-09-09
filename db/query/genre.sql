@@ -159,7 +159,8 @@ SELECT g.id,
         SELECT COUNT(*)
         FROM series_genres sg
             JOIN series s ON s.id = sg.series_id
-        WHERE sg.genre_id = g.id
+        WHERE sg.tenant_id = sqlc.arg('tenant_id')
+            AND sg.genre_id = g.id
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
@@ -191,7 +192,8 @@ SELECT g.id,
         SELECT COUNT(*)
         FROM series_genres sg
             JOIN series s ON s.id = sg.series_id
-        WHERE sg.genre_id = g.id
+        WHERE sg.tenant_id = sqlc.arg('tenant_id')
+            AND sg.genre_id = g.id
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()

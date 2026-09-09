@@ -69,6 +69,7 @@ WITH counted AS (
         JOIN series_tags st ON st.tag_id = t.id
         JOIN series s ON s.id = st.series_id
     WHERE t.tenant_id = $5
+        AND st.tenant_id = $5
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
@@ -156,6 +157,7 @@ WITH counted AS (
         JOIN series_tags st ON st.tag_id = t.id
         JOIN series s ON s.id = st.series_id
     WHERE t.tenant_id = $5
+        AND st.tenant_id = $5
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
