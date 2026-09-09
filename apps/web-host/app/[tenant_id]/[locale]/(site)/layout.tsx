@@ -1,4 +1,5 @@
 import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import {
   SiteLayout,
   SiteLayoutActions,
@@ -41,7 +42,7 @@ import {
   SiteLayoutUserMenuSeparator,
   SiteLayoutUserMenuTrigger,
 } from "@publira/layouts";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
@@ -196,16 +197,25 @@ const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
   );
 };
 
+/** The account menu's trigger, which shows an icon and carries its name as an attribute. */
+const AccountMenuTrigger = async () => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return (
+    <SiteLayoutUserMenuTrigger
+      aria-label={getMessage(messages, "host.nav.account_menu")}
+    />
+  );
+};
+
 const HeaderActions = async () => {
   const [cookieStore, tenantId, locale] = await Promise.all([
     cookies(),
     getTenantId(),
     getLocale(),
   ]);
-  const [defaultLocale, messages] = await Promise.all([
-    getTenantDefaultLocale(tenantId),
-    loadHostMessages(locale),
-  ]);
+  const defaultLocale = await getTenantDefaultLocale(tenantId);
   const hasSession = Boolean(
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
   );
@@ -220,12 +230,16 @@ const HeaderActions = async () => {
         <SiteLayoutSecondaryAction
           href={withLocalePrefix(locale, defaultLocale, "/login")}
         >
-          {getMessage(messages, "host.nav.login")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="host.nav.login" />
+          </Suspense>
         </SiteLayoutSecondaryAction>
         <SiteLayoutPrimaryAction
           href={withLocalePrefix(locale, defaultLocale, "/signup")}
         >
-          {getMessage(messages, "host.nav.signup")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.nav.signup" />
+          </Suspense>
         </SiteLayoutPrimaryAction>
       </SiteLayoutHeaderWideControls>
     );
@@ -240,21 +254,25 @@ const HeaderActions = async () => {
       </NotificationBellErrorBoundary>
       <SiteLayoutActions>
         <SiteLayoutUserMenu>
-          <SiteLayoutUserMenuTrigger
-            aria-label={getMessage(messages, "host.nav.account_menu")}
-          />
+          <Suspense fallback={<Skeleton className="size-9 rounded-control" />}>
+            <AccountMenuTrigger />
+          </Suspense>
           <SiteLayoutUserMenuContent>
             <SiteLayoutUserMenuMyPageLink
               href={withLocalePrefix(locale, defaultLocale, "/my")}
             >
-              {getMessage(messages, "host.nav.my_page")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="host.nav.my_page" />
+              </Suspense>
             </SiteLayoutUserMenuMyPageLink>
             <SiteLayoutUserMenuSeparator />
             <SiteLayoutUserMenuLogout
               action={logoutAction.bind(null, tenantId, locale)}
             >
               <SiteLayoutUserMenuLogoutButton>
-                {getMessage(messages, "host.nav.logout")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="host.nav.logout" />
+                </Suspense>
               </SiteLayoutUserMenuLogoutButton>
             </SiteLayoutUserMenuLogout>
           </SiteLayoutUserMenuContent>
@@ -318,38 +336,123 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * Bare hrefs, prefixed with the request's locale before they reach
  * `@publira/layouts` — that package is shared with the two consoles, which keep
  * their locale in a cookie, so it renders plain `next/link`s and cannot add the
- * prefix itself. The labels are resolved here for the same reason.
+ * prefix itself.
+ *
+ * Both locales come from the layout, which has resolved them already, so the
+ * links themselves are static and each label is the only thing behind a
+ * boundary.
  */
-const SiteNav = async () => {
-  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
-  const [defaultLocale, messages] = await Promise.all([
-    getTenantDefaultLocale(tenantId),
-    loadHostMessages(locale),
-  ]);
+const SiteNav = ({
+  defaultLocale,
+  locale,
+}: {
+  defaultLocale: Locale;
+  locale: Locale;
+}) => (
+  <SiteLayoutNav>
+    <SiteLayoutNavLink
+      href={withLocalePrefix(locale, defaultLocale, "/authors")}
+    >
+      <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
+        <Message message="host.nav.authors" />
+      </Suspense>
+    </SiteLayoutNavLink>
+    <SiteLayoutNavLink
+      href={withLocalePrefix(locale, defaultLocale, "/labels")}
+    >
+      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+        <Message message="host.nav.labels" />
+      </Suspense>
+    </SiteLayoutNavLink>
+    <SiteLayoutNavLink
+      href={withLocalePrefix(locale, defaultLocale, "/series")}
+    >
+      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+        <Message message="host.nav.series" />
+      </Suspense>
+    </SiteLayoutNavLink>
+    <SiteLayoutNavLink
+      href={withLocalePrefix(locale, defaultLocale, "/search")}
+    >
+      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+        <Message message="host.nav.search" />
+      </Suspense>
+    </SiteLayoutNavLink>
+  </SiteLayoutNav>
+);
+
+/** Same footprint as the rendered menu button, so the header does not shift. */
+const MobileNavigationOpenButtonSkeleton = () => (
+  <Skeleton className="size-9 rounded-control md:hidden" />
+);
+
+/** Same footprint as the pair it stands in for, at the foot of the drawer. */
+const MobileNavigationAccountActionsSkeleton = () => (
+  <div aria-hidden="true" className="mt-auto grid gap-2">
+    <Skeleton className="h-9 rounded-control" />
+    <Skeleton className="h-9 rounded-control" />
+  </div>
+);
+
+/** The drawer's close button, which carries its name as an attribute. */
+const MobileNavigationCloseButton = async () => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
 
   return (
-    <SiteLayoutNav>
-      <SiteLayoutNavLink
-        href={withLocalePrefix(locale, defaultLocale, "/authors")}
+    <SiteLayoutMobileNavigationCloseButton
+      aria-label={getMessage(messages, "host.nav.navigation_close")}
+    />
+  );
+};
+
+/** The band's menu button, which carries its name as an attribute. */
+const MobileNavigationOpenButton = async () => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return (
+    <SiteLayoutMobileNavigationOpenButton
+      aria-label={getMessage(messages, "host.nav.navigation_open")}
+    />
+  );
+};
+
+/**
+ * The pair at the foot of the drawer, drawn for a reader who is not signed in.
+ * Which of the two answers it is depends on a cookie, so this is the one part
+ * of the drawer that has to wait on a read of its own.
+ */
+const MobileNavigationAccountActions = async ({
+  defaultLocale,
+  locale,
+}: {
+  defaultLocale: Locale;
+  locale: Locale;
+}) => {
+  const cookieStore = await cookies();
+
+  if (cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value) {
+    return null;
+  }
+
+  return (
+    <SiteLayoutMobileNavigationActions>
+      <SiteLayoutMobileNavigationSecondaryAction
+        href={withLocalePrefix(locale, defaultLocale, "/login")}
       >
-        {getMessage(messages, "host.nav.authors")}
-      </SiteLayoutNavLink>
-      <SiteLayoutNavLink
-        href={withLocalePrefix(locale, defaultLocale, "/labels")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="host.nav.login" />
+        </Suspense>
+      </SiteLayoutMobileNavigationSecondaryAction>
+      <SiteLayoutMobileNavigationPrimaryAction
+        href={withLocalePrefix(locale, defaultLocale, "/signup")}
       >
-        {getMessage(messages, "host.nav.labels")}
-      </SiteLayoutNavLink>
-      <SiteLayoutNavLink
-        href={withLocalePrefix(locale, defaultLocale, "/series")}
-      >
-        {getMessage(messages, "host.nav.series")}
-      </SiteLayoutNavLink>
-      <SiteLayoutNavLink
-        href={withLocalePrefix(locale, defaultLocale, "/search")}
-      >
-        {getMessage(messages, "host.nav.search")}
-      </SiteLayoutNavLink>
-    </SiteLayoutNav>
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.nav.signup" />
+        </Suspense>
+      </SiteLayoutMobileNavigationPrimaryAction>
+    </SiteLayoutMobileNavigationActions>
   );
 };
 
@@ -359,90 +462,87 @@ const SiteNav = async () => {
  * Four controls and a 342px row do not fit, and the band would rather truncate
  * the tenant's name than any of them, so a phone reaches all four through the
  * menu button this renders beside the drawer holding them.
+ *
+ * The drawer itself is structure and resolves nothing: its rows, its field, and
+ * its buttons are drawn from the start, and only the strings inside them and
+ * the one answer that needs a cookie arrive behind boundaries of their own.
  */
-const SiteMobileNavigation = async () => {
-  const [cookieStore, tenantId, locale] = await Promise.all([
-    cookies(),
-    getTenantId(),
-    getLocale(),
-  ]);
-  const [defaultLocale, messages] = await Promise.all([
-    getTenantDefaultLocale(tenantId),
-    loadHostMessages(locale),
-  ]);
-  const hasSession = Boolean(
-    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
-  );
-
-  return (
-    <>
-      <SiteLayoutMobileNavigation>
-        <SiteLayoutMobileNavigationHeader>
-          <SiteLayoutMobileNavigationTitle>
-            {getMessage(messages, "host.nav.menu")}
-          </SiteLayoutMobileNavigationTitle>
-          <SiteLayoutMobileNavigationCloseButton
-            aria-label={getMessage(messages, "host.nav.navigation_close")}
-          />
-        </SiteLayoutMobileNavigationHeader>
-        <SiteLayoutMobileNavigationSearch>
-          <Suspense fallback={<CatalogSearchFormSkeleton />}>
-            <CatalogSearchForm id="catalog-search-menu" />
+const SiteMobileNavigation = ({
+  defaultLocale,
+  locale,
+}: {
+  defaultLocale: Locale;
+  locale: Locale;
+}) => (
+  <>
+    <SiteLayoutMobileNavigation>
+      <SiteLayoutMobileNavigationHeader>
+        <SiteLayoutMobileNavigationTitle>
+          <Suspense fallback={<SkeletonLine className="h-5 w-16" />}>
+            <Message message="host.nav.menu" />
           </Suspense>
-        </SiteLayoutMobileNavigationSearch>
-        <SiteLayoutMobileNavigationLinks
-          aria-label={getMessage(messages, "host.nav.navigation")}
+        </SiteLayoutMobileNavigationTitle>
+        <Suspense fallback={<Skeleton className="size-9 rounded-control" />}>
+          <MobileNavigationCloseButton />
+        </Suspense>
+      </SiteLayoutMobileNavigationHeader>
+      <SiteLayoutMobileNavigationSearch>
+        <Suspense fallback={<CatalogSearchFormSkeleton />}>
+          <CatalogSearchForm id="catalog-search-menu" />
+        </Suspense>
+      </SiteLayoutMobileNavigationSearch>
+      <SiteLayoutMobileNavigationLinks>
+        <SiteLayoutMobileNavigationLink
+          href={withLocalePrefix(locale, defaultLocale, "/authors")}
         >
-          <SiteLayoutMobileNavigationLink
-            href={withLocalePrefix(locale, defaultLocale, "/authors")}
-          >
-            {getMessage(messages, "host.nav.authors")}
-          </SiteLayoutMobileNavigationLink>
-          <SiteLayoutMobileNavigationLink
-            href={withLocalePrefix(locale, defaultLocale, "/labels")}
-          >
-            {getMessage(messages, "host.nav.labels")}
-          </SiteLayoutMobileNavigationLink>
-          <SiteLayoutMobileNavigationLink
-            href={withLocalePrefix(locale, defaultLocale, "/series")}
-          >
-            {getMessage(messages, "host.nav.series")}
-          </SiteLayoutMobileNavigationLink>
-          <SiteLayoutMobileNavigationLink
-            href={withLocalePrefix(locale, defaultLocale, "/search")}
-          >
-            {getMessage(messages, "host.nav.search")}
-          </SiteLayoutMobileNavigationLink>
-        </SiteLayoutMobileNavigationLinks>
-        <SiteLayoutMobileNavigationSection>
-          <SiteLayoutMobileNavigationSectionTitle>
-            {getMessage(messages, "host.nav.locale_switcher")}
-          </SiteLayoutMobileNavigationSectionTitle>
-          <Suspense fallback={<LocaleSwitcherLinksSkeleton />}>
-            <LocaleSwitcherLinks />
+          <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
+            <Message message="host.nav.authors" />
           </Suspense>
-        </SiteLayoutMobileNavigationSection>
-        {hasSession ? null : (
-          <SiteLayoutMobileNavigationActions>
-            <SiteLayoutMobileNavigationSecondaryAction
-              href={withLocalePrefix(locale, defaultLocale, "/login")}
-            >
-              {getMessage(messages, "host.nav.login")}
-            </SiteLayoutMobileNavigationSecondaryAction>
-            <SiteLayoutMobileNavigationPrimaryAction
-              href={withLocalePrefix(locale, defaultLocale, "/signup")}
-            >
-              {getMessage(messages, "host.nav.signup")}
-            </SiteLayoutMobileNavigationPrimaryAction>
-          </SiteLayoutMobileNavigationActions>
-        )}
-      </SiteLayoutMobileNavigation>
-      <SiteLayoutMobileNavigationOpenButton
-        aria-label={getMessage(messages, "host.nav.navigation_open")}
-      />
-    </>
-  );
-};
+        </SiteLayoutMobileNavigationLink>
+        <SiteLayoutMobileNavigationLink
+          href={withLocalePrefix(locale, defaultLocale, "/labels")}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="host.nav.labels" />
+          </Suspense>
+        </SiteLayoutMobileNavigationLink>
+        <SiteLayoutMobileNavigationLink
+          href={withLocalePrefix(locale, defaultLocale, "/series")}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="host.nav.series" />
+          </Suspense>
+        </SiteLayoutMobileNavigationLink>
+        <SiteLayoutMobileNavigationLink
+          href={withLocalePrefix(locale, defaultLocale, "/search")}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="host.nav.search" />
+          </Suspense>
+        </SiteLayoutMobileNavigationLink>
+      </SiteLayoutMobileNavigationLinks>
+      <SiteLayoutMobileNavigationSection>
+        <SiteLayoutMobileNavigationSectionTitle>
+          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+            <Message message="host.nav.locale_switcher" />
+          </Suspense>
+        </SiteLayoutMobileNavigationSectionTitle>
+        <Suspense fallback={<LocaleSwitcherLinksSkeleton />}>
+          <LocaleSwitcherLinks />
+        </Suspense>
+      </SiteLayoutMobileNavigationSection>
+      <Suspense fallback={<MobileNavigationAccountActionsSkeleton />}>
+        <MobileNavigationAccountActions
+          defaultLocale={defaultLocale}
+          locale={locale}
+        />
+      </Suspense>
+    </SiteLayoutMobileNavigation>
+    <Suspense fallback={<MobileNavigationOpenButtonSkeleton />}>
+      <MobileNavigationOpenButton />
+    </Suspense>
+  </>
+);
 
 const TenantBrand = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
@@ -487,22 +587,6 @@ const TenantFooterCopyright = async () => {
   ) : null;
 };
 
-/** Same footprint as the rendered nav, so the header does not shift. */
-const SiteNavSkeleton = () => (
-  <div
-    aria-hidden="true"
-    className="hidden h-5 w-64 animate-pulse rounded-control bg-muted md:block"
-  />
-);
-
-/** Same footprint as the rendered menu button, so the header does not shift. */
-const SiteMobileNavigationSkeleton = () => (
-  <div
-    aria-hidden="true"
-    className="size-9 animate-pulse rounded-control bg-muted md:hidden"
-  />
-);
-
 /**
  * Seeds the locale context for everything under `(site)`. The root layout
  * reads nothing, so this is the first place both values exist: the request's
@@ -528,9 +612,7 @@ const TenantLayout = async ({
                 <TenantBrand />
               </Suspense>
             </SiteLayoutBrand>
-            <Suspense fallback={<SiteNavSkeleton />}>
-              <SiteNav />
-            </Suspense>
+            <SiteNav defaultLocale={defaultLocale} locale={locale} />
             <SiteLayoutHeaderSearch>
               <Suspense fallback={<CatalogSearchFormSkeleton />}>
                 <CatalogSearchForm id="catalog-search-header" />
@@ -546,9 +628,10 @@ const TenantLayout = async ({
                 <HeaderActions />
               </Suspense>
             </SiteLayoutHeaderActions>
-            <Suspense fallback={<SiteMobileNavigationSkeleton />}>
-              <SiteMobileNavigation />
-            </Suspense>
+            <SiteMobileNavigation
+              defaultLocale={defaultLocale}
+              locale={locale}
+            />
           </SiteLayoutHeader>
           <SiteLayoutMain>{children}</SiteLayoutMain>
           <SiteLayoutFooter>

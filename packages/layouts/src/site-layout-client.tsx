@@ -144,18 +144,16 @@ export const SiteLayoutMobileNavigationSearch = ({
   return <div onSubmit={close}>{children}</div>;
 };
 
+/**
+ * The drawer's link list. It takes no name of its own: the region is inside a
+ * dialog the title names, and a name here would be a string the caller has to
+ * resolve before the list — a static structure — could be drawn at all.
+ */
 export const SiteLayoutMobileNavigationLinks = ({
-  "aria-label": ariaLabel,
   children,
 }: {
-  /** Names the drawer's link list for a screen reader. */
-  "aria-label": string;
   children: ReactNode;
-}) => (
-  <nav aria-label={ariaLabel} className="grid gap-1">
-    {children}
-  </nav>
-);
+}) => <nav className="grid gap-1">{children}</nav>;
 
 export const SiteLayoutMobileNavigationSection = ({
   children,

@@ -106,7 +106,7 @@ test.describe("web-host header at a phone width", () => {
     // The band still holds the wide-width copies of these controls, hidden, so
     // every assertion names the drawer's own.
     const menu = page.getByRole("dialog", { name: "Menu" });
-    const links = menu.getByRole("navigation", { name: "Site navigation" });
+    const links = menu.getByRole("navigation");
 
     await expect(links.getByRole("link", { name: "Series" })).toBeVisible();
     await expect(links.getByRole("link", { name: "Labels" })).toBeVisible();
