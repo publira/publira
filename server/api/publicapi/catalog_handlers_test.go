@@ -23,6 +23,24 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
+// assertCreatorRole checks that the role the aggregate carried through the
+// creators JSON reached the response as a CreatorRole. Both catalog reads build
+// their credits from the same fixture, so a mapping that dropped or flattened
+// the role would otherwise pass on the name alone.
+func assertCreatorRole(t *testing.T, creator *publirattypesv1.Creator) {
+	t.Helper()
+
+	if creator.GetRole() == nil {
+		t.Fatalf("creator %q carries no role", creator.GetName())
+	}
+	if got := creator.GetRole().GetPublicId(); got != "ROLEAUTHOR01" {
+		t.Fatalf("creator role public_id = %q, want ROLEAUTHOR01", got)
+	}
+	if got := creator.GetRole().GetName(); got != "Original Author" {
+		t.Fatalf("creator role name = %q, want Original Author", got)
+	}
+}
+
 func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
@@ -37,7 +55,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "completed", []byte("{2,6}"), "r15", now, seriesImageID, now, int32(2), []byte(`[{"public_id":"CREATOR001","name":"Author A","role":"writer","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`[]`), []byte(`[]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "completed", []byte("{2,6}"), "r15", now, seriesImageID, now, int32(2), []byte(`[{"public_id":"CREATOR001","name":"Author A","role_public_id":"ROLEAUTHOR01","role_name":"Original Author","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`[]`), []byte(`[]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
@@ -59,6 +77,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	if len(resp.Msg.Series[0].Creators) != 1 || resp.Msg.Series[0].Creators[0].IconImageUrl == "" {
 		t.Fatalf("series creators = %+v, want creator icon_image_url", resp.Msg.Series[0].Creators)
 	}
+	assertCreatorRole(t, resp.Msg.Series[0].Creators[0])
 	if got := len(resp.Msg.Series[0].EyeCatchImageVariants); got != 1 {
 		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
 	}
@@ -708,7 +727,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 				// The one episode is priced, so this is the count of a free
 				// window standing open on it.
 				int32(1),
-				[]byte(`[{"name":"Author A","role":"writer","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`),
+				[]byte(`[{"name":"Author A","role_public_id":"ROLEAUTHOR01","role_name":"Original Author","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`),
 				[]byte(`[{"public_id":"GENRE00001","name":"Fantasy","slug":"fantasy"}]`),
 				[]byte(`[{"name":"Swordplay","slug":"swordplay"}]`),
 				[]byte(`[{"public_id":"EP001","title":"Episode 1","order_index":1,"price":100,"reading_period_hours":24,"status":"published","scheduled_at":null,"published_at":"2026-03-18T00:00:00Z"}]`),
@@ -739,6 +758,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	if len(resp.Msg.Series.Creators) != 1 || resp.Msg.Series.Creators[0].Name != "Author A" {
 		t.Fatalf("series creators = %+v, want one creator Author A", resp.Msg.Series.Creators)
 	}
+	assertCreatorRole(t, resp.Msg.Series.Creators[0])
 	if got := len(resp.Msg.Series.EyeCatchImageVariants); got != 1 {
 		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
 	}

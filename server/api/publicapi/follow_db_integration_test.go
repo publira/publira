@@ -39,7 +39,7 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESFOLA1", Title: "Public series", Published: true})
 	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEFOLA", Title: "Public episode", Status: testutil.EpisodeStatusPublished})
 	author := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORFOLA1", Name: "Public author"})
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, author.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, author.ID, "")
 	client := env.followClient()
 
 	request := func(target *publirav1.FollowTarget) *connect.Request[publirav1.GetMyFollowStatusRequest] {
@@ -121,7 +121,7 @@ func TestDBFollowServiceListsOnlyPublicTargetsWithCursor(t *testing.T) {
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESFOLB1", Title: "Public series", Published: true})
 	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEFOLB", Title: "Public episode", Status: testutil.EpisodeStatusPublished})
 	author := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORFOLB1", Name: "Public author"})
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, author.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, author.ID, "")
 	draftSeries := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT", Title: "Draft series"})
 	draftEpisode := env.PG.SeedEpisode(t, tenant.ID, draftSeries.ID, testutil.EpisodeSeed{PublicID: "EPISODEDRFT", Title: "Draft episode", Status: testutil.EpisodeStatusPublished})
 

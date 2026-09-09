@@ -151,19 +151,19 @@ seed_creators AS (
     JOIN tenant_scope ts ON ts.id = c.tenant_id
     WHERE c.name LIKE 'Seed Author %'
 )
-INSERT INTO series_creators (series_id, creator_id, role, display_order, tenant_id)
+INSERT INTO series_creators (series_id, creator_id, role_id, display_order, tenant_id)
 SELECT
     ss.series_id,
     sc.creator_id,
-    'author',
+    cr.id,
     1,
     s.tenant_id
 FROM seed_series ss
 JOIN seed_creators sc ON sc.creator_no = ss.series_no
 JOIN series s ON s.id = ss.series_id
-ON CONFLICT (series_id, creator_id) DO UPDATE
-SET role = EXCLUDED.role,
-    display_order = EXCLUDED.display_order,
+JOIN creator_roles cr ON cr.tenant_id = s.tenant_id AND cr.name = 'Original Author'
+ON CONFLICT (series_id, creator_id, role_id) DO UPDATE
+SET display_order = EXCLUDED.display_order,
     tenant_id = EXCLUDED.tenant_id;
 
 WITH tenant_scope AS (

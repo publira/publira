@@ -578,8 +578,10 @@ SELECT s.id,
                 c.public_id,
                 'name',
                 c.name,
-                'role',
-                sc.role,
+                'role_public_id',
+                cr.public_id,
+                'role_name',
+                cr.name,
                 'profile_text',
                 c.profile_text,
                 'icon_image_url',
@@ -592,7 +594,11 @@ SELECT s.id,
                 'icon_image_updated_at',
                 COALESCE(ci.updated_at::TEXT, '')
             )
-            ORDER BY sc.display_order ASC
+            -- Role priority first, so the leading role opens the list. A
+            -- credit written before roles existed states none and comes last.
+            ORDER BY cr.display_priority ASC NULLS LAST,
+                sc.display_order ASC,
+                c.name ASC
         ) FILTER (
             WHERE c.id IS NOT NULL
         ),
@@ -662,6 +668,7 @@ FROM series s
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
+    LEFT JOIN creator_roles cr ON cr.id = sc.role_id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.id = ANY(sqlc.arg('ids')::uuid [])

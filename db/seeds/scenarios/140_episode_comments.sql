@@ -129,19 +129,21 @@ SET synopsis = EXCLUDED.synopsis,
     reading_period_hours = EXCLUDED.reading_period_hours,
     tenant_id = EXCLUDED.tenant_id;
 
-INSERT INTO series_creators (series_id, creator_id, role, display_order, tenant_id)
+\ir ../creator_roles.sql
+
+INSERT INTO series_creators (series_id, creator_id, role_id, display_order, tenant_id)
 SELECT
     s.id AS series_id,
     c.id AS creator_id,
-    'author',
+    cr.id,
     1,
     s.tenant_id
 FROM series s
 JOIN creators c ON c.id = '018f0f62-0001-7000-8000-000000000001'::uuid
+JOIN creator_roles cr ON cr.tenant_id = s.tenant_id AND cr.name = 'Original Author'
 WHERE s.id = '018f0f63-0001-7000-8000-000000000001'::uuid
-ON CONFLICT (series_id, creator_id) DO UPDATE
-SET role = EXCLUDED.role,
-    display_order = EXCLUDED.display_order,
+ON CONFLICT (series_id, creator_id, role_id) DO UPDATE
+SET display_order = EXCLUDED.display_order,
     tenant_id = EXCLUDED.tenant_id;
 
 INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)

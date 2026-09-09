@@ -49,7 +49,7 @@ func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T
 		Published:   true,
 		PublishedAt: time.Now().Add(-1 * time.Hour),
 	})
-	env.PG.SeedSeriesCreator(t, first.ID, subject.ID, creator.ID, "writer")
+	env.PG.SeedSeriesCreator(t, first.ID, subject.ID, creator.ID, "")
 	env.PG.SeedSeriesGenre(t, first.ID, subject.ID, genre.ID)
 
 	sameCreator := env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{
@@ -58,7 +58,7 @@ func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T
 		Published:   true,
 		PublishedAt: time.Now().Add(-5 * time.Hour),
 	})
-	env.PG.SeedSeriesCreator(t, first.ID, sameCreator.ID, creator.ID, "writer")
+	env.PG.SeedSeriesCreator(t, first.ID, sameCreator.ID, creator.ID, "")
 
 	env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{
 		PublicID:    "SERIESALAB01",
@@ -100,7 +100,7 @@ func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T
 		PublicID: "SERIESADRF01",
 		Title:    "Still A Draft",
 	})
-	env.PG.SeedSeriesCreator(t, first.ID, draft.ID, creator.ID, "writer")
+	env.PG.SeedSeriesCreator(t, first.ID, draft.ID, creator.ID, "")
 
 	resp := env.listRelatedSeries(t, &publirav1.ListRelatedSeriesRequest{
 		SeriesPublicId: subject.PublicID,
@@ -222,7 +222,7 @@ func TestDBListRelatedSeriesKeepsScoreAboveTheRanking(t *testing.T) {
 		Published:   true,
 		PublishedAt: time.Now().Add(-1 * time.Hour),
 	})
-	env.PG.SeedSeriesCreator(t, tenant.ID, subject.ID, creator.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, subject.ID, creator.ID, "")
 
 	related := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
 		PublicID:    "SERIESACRE01",
@@ -230,7 +230,7 @@ func TestDBListRelatedSeriesKeepsScoreAboveTheRanking(t *testing.T) {
 		Published:   true,
 		PublishedAt: time.Now().Add(-3 * time.Hour),
 	})
-	env.PG.SeedSeriesCreator(t, tenant.ID, related.ID, creator.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, related.ID, creator.ID, "")
 
 	popular := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
 		PublicID:    "SERIESAPOP01",
@@ -262,7 +262,7 @@ func TestDBListRelatedSeriesPagesAcrossTheScoreBoundary(t *testing.T) {
 		Published:   true,
 		PublishedAt: time.Now().Add(-1 * time.Hour),
 	})
-	env.PG.SeedSeriesCreator(t, tenant.ID, subject.ID, creator.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, subject.ID, creator.ID, "")
 
 	// Published in the reverse of the order the pages should walk, so a page
 	// boundary that fell back on publication date would be visible as a page
@@ -273,7 +273,7 @@ func TestDBListRelatedSeriesPagesAcrossTheScoreBoundary(t *testing.T) {
 		Published:   true,
 		PublishedAt: time.Now().Add(-4 * time.Hour),
 	})
-	env.PG.SeedSeriesCreator(t, tenant.ID, sameCreator.ID, creator.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, sameCreator.ID, creator.ID, "")
 
 	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
 		PublicID:    "SERIESALAB01",

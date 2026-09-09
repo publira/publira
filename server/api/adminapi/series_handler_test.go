@@ -67,7 +67,7 @@ func addSeriesRow(
 func expectSeriesRelationLookups(mock sqlmock.Sqlmock) {
 	mock.ExpectQuery("FROM series_creators").
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role", "display_order"}))
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
 	mock.ExpectQuery("FROM series_genres").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "slug"}))
@@ -821,6 +821,33 @@ func TestGetSeriesFailsOnAStoredStatusItDoesNotKnow(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+// testCreatorRolePublicID is the role every credit in these tests is held in.
+// The role vocabulary is exercised by its own tests; here it only has to
+// resolve.
+const testCreatorRolePublicID = "ROLEAUTHOR01"
+
+// expectCreatorRoleLookup answers the role resolution a save runs alongside the
+// creator lookup.
+func expectCreatorRoleLookup(mock sqlmock.Sqlmock, tenantID, roleID uuid.UUID) {
+	mock.ExpectQuery("FROM creator_roles").
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
+			AddRow(roleID, testCreatorRolePublicID, "Original Author", int32(1)))
+}
+
+// testCreatorCredits credits each creator in [testCreatorRolePublicID], in the
+// order given.
+func testCreatorCredits(creatorPublicIDs ...string) []*publiraadminv1.SeriesCreatorCredit {
+	credits := make([]*publiraadminv1.SeriesCreatorCredit, 0, len(creatorPublicIDs))
+	for _, creatorPublicID := range creatorPublicIDs {
+		credits = append(credits, &publiraadminv1.SeriesCreatorCredit{
+			CreatorPublicId: creatorPublicID,
+			RolePublicId:    testCreatorRolePublicID,
+		})
+	}
+	return credits
+}
+
 func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
@@ -829,6 +856,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 	seriesID := uuid.Must(uuid.NewV7())
 	creatorID1 := uuid.Must(uuid.NewV7())
 	creatorID2 := uuid.Must(uuid.NewV7())
+	roleID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
@@ -840,6 +868,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID1, tenantID, "CREATOR001", "Creator One", "", now).
 			AddRow(creatorID2, tenantID, "CREATOR002", "Creator Two", "", now))
+	expectCreatorRoleLookup(mock, tenantID, roleID)
 
 	mock.ExpectBegin()
 	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.NullUUID{})
@@ -853,10 +882,10 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectExec("INSERT INTO series_creators").
-		WithArgs(tenantID, seriesID, creatorID1, "creator", int32(0)).
+		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("INSERT INTO series_creators").
-		WithArgs(tenantID, seriesID, creatorID2, "creator", int32(1)).
+		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
@@ -867,11 +896,11 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Title:            "New Series",
-		Synopsis:         "Synopsis",
-		IsPublished:      true,
-		CreatorPublicIds: []string{"CREATOR001", "CREATOR002"},
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:          "New Series",
+		Synopsis:       "Synopsis",
+		IsPublished:    true,
+		CreatorCredits: testCreatorCredits("CREATOR001", "CREATOR002"),
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -896,6 +925,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 	seriesID := uuid.Must(uuid.NewV7())
 	creatorID1 := uuid.Must(uuid.NewV7())
 	creatorID2 := uuid.Must(uuid.NewV7())
+	roleID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
@@ -912,6 +942,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID1, tenantID, "CREATOR001", "Creator One", "", now).
 			AddRow(creatorID2, tenantID, "CREATOR002", "Creator Two", "", now))
+	expectCreatorRoleLookup(mock, tenantID, roleID)
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesBaseQuery)).
@@ -932,10 +963,10 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
 	mock.ExpectExec("INSERT INTO series_creators").
-		WithArgs(tenantID, seriesID, creatorID1, "creator", int32(0)).
+		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("INSERT INTO series_creators").
-		WithArgs(tenantID, seriesID, creatorID2, "creator", int32(1)).
+		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectSeriesClassificationReplace(mock, tenantID, seriesID)
 	mock.ExpectCommit()
@@ -948,12 +979,12 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		PublicId:         "SERIES001",
-		Title:            "After",
-		Synopsis:         "New synopsis",
-		IsPublished:      true,
-		CreatorPublicIds: []string{"CREATOR001", "CREATOR002"},
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId:       "SERIES001",
+		Title:          "After",
+		Synopsis:       "New synopsis",
+		IsPublished:    true,
+		CreatorCredits: testCreatorCredits("CREATOR001", "CREATOR002"),
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -986,9 +1017,9 @@ func TestCreateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Title:            "New Series",
-		CreatorPublicIds: []string{"NOSUCHCREATOR"},
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:          "New Series",
+		CreatorCredits: testCreatorCredits("NOSUCHCREATOR"),
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -1023,10 +1054,10 @@ func TestUpdateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		PublicId:         "SERIES001",
-		Title:            "After",
-		CreatorPublicIds: []string{"NOSUCHCREATOR"},
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId:       "SERIES001",
+		Title:          "After",
+		CreatorCredits: testCreatorCredits("NOSUCHCREATOR"),
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 

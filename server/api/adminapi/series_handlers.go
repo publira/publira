@@ -1,11 +1,13 @@
 package adminapi
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -186,64 +188,116 @@ func (s *adminServer) seriesEyeCatchVariantsByImageIDs(
 	return mapped, nil
 }
 
-func normalizePublicIDs(publicIDs []string) ([]string, error) {
-	normalized := make([]string, 0, len(publicIDs))
-	seen := make(map[string]struct{}, len(publicIDs))
-	for _, value := range publicIDs {
-		trimmed := strings.TrimSpace(value)
-		if trimmed == "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator_public_ids contains empty value"))
-		}
-		if _, ok := seen[trimmed]; ok {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator_public_ids contains duplicate value"))
-		}
-		seen[trimmed] = struct{}{}
-		normalized = append(normalized, trimmed)
-	}
-	return normalized, nil
+// seriesCreatorCredit is one credit a save asked for, with both ends resolved:
+// the person, and the role of this tenant they are credited in.
+type seriesCreatorCredit struct {
+	creator dbmodels.ListCreatorsByPublicIDsForTenantRow
+	role    dbmodels.ListCreatorRolesByPublicIDsForTenantRow
 }
 
-func (s *adminServer) resolveCreatorsByPublicIDs(
+// resolveSeriesCreatorCredits reads the credits a save asked for, keeping the
+// order they were given in. A public_id naming nothing of this tenant is a bad
+// request rather than a silently dropped credit, and so is the same person
+// credited twice in the same role: the pair is the identity of a credit, which
+// is why one person can still appear under two roles.
+func (s *adminServer) resolveSeriesCreatorCredits(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	creatorPublicIDs []string,
-) ([]dbmodels.ListCreatorsByPublicIDsForTenantRow, error) {
-	normalized, err := normalizePublicIDs(creatorPublicIDs)
-	if err != nil {
-		return nil, err
+	credits []*publiraadminv1.SeriesCreatorCredit,
+) ([]seriesCreatorCredit, error) {
+	creatorPublicIDs := make([]string, 0, len(credits))
+	rolePublicIDs := make([]string, 0, len(credits))
+	seenCreators := make(map[string]struct{}, len(credits))
+	seenRoles := make(map[string]struct{}, len(credits))
+	seenPairs := make(map[[2]string]struct{}, len(credits))
+	normalized := make([][2]string, 0, len(credits))
+	for _, credit := range credits {
+		creatorPublicID := strings.TrimSpace(credit.GetCreatorPublicId())
+		if creatorPublicID == "" {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("creator_public_id is required"), "creator_credits")
+		}
+		rolePublicID := strings.TrimSpace(credit.GetRolePublicId())
+		if rolePublicID == "" {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("role_public_id is required"), "creator_credits")
+		}
+		pair := [2]string{creatorPublicID, rolePublicID}
+		if _, ok := seenPairs[pair]; ok {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("creator_credits contains the same creator twice in one role"), "creator_credits")
+		}
+		seenPairs[pair] = struct{}{}
+		normalized = append(normalized, pair)
+		if _, ok := seenCreators[creatorPublicID]; !ok {
+			seenCreators[creatorPublicID] = struct{}{}
+			creatorPublicIDs = append(creatorPublicIDs, creatorPublicID)
+		}
+		if _, ok := seenRoles[rolePublicID]; !ok {
+			seenRoles[rolePublicID] = struct{}{}
+			rolePublicIDs = append(rolePublicIDs, rolePublicID)
+		}
 	}
 	if len(normalized) == 0 {
-		return []dbmodels.ListCreatorsByPublicIDsForTenantRow{}, nil
+		return []seriesCreatorCredit{}, nil
 	}
-	rows, err := s.queriesFor(ctx).ListCreatorsByPublicIDsForTenant(ctx, dbmodels.ListCreatorsByPublicIDsForTenantParams{
+
+	creatorRows, err := s.queriesFor(ctx).ListCreatorsByPublicIDsForTenant(ctx, dbmodels.ListCreatorsByPublicIDsForTenantParams{
 		TenantID:  tenantID,
-		PublicIds: normalized,
+		PublicIds: creatorPublicIDs,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list creators by public ids", err, "tenant_id", tenantID.String())
 	}
-	if len(rows) != len(normalized) {
+	// Checked before the roles are read so a request naming nobody real is
+	// refused without a second query, the way it was before credits carried a
+	// role.
+	if len(creatorRows) != len(creatorPublicIDs) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator not found"))
 	}
-	byPublicID := make(map[string]dbmodels.ListCreatorsByPublicIDsForTenantRow, len(rows))
-	for _, row := range rows {
-		byPublicID[row.PublicID] = row
+	creatorsByPublicID := make(map[string]dbmodels.ListCreatorsByPublicIDsForTenantRow, len(creatorRows))
+	for _, row := range creatorRows {
+		creatorsByPublicID[row.PublicID] = row
 	}
-	ordered := make([]dbmodels.ListCreatorsByPublicIDsForTenantRow, 0, len(normalized))
-	for _, publicID := range normalized {
-		creator, ok := byPublicID[publicID]
+
+	roleRows, err := s.queriesFor(ctx).ListCreatorRolesByPublicIDsForTenant(ctx, dbmodels.ListCreatorRolesByPublicIDsForTenantParams{
+		TenantID:  tenantID,
+		PublicIds: rolePublicIDs,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list creator roles by public ids", err, "tenant_id", tenantID.String())
+	}
+	if len(roleRows) != len(rolePublicIDs) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator role not found"))
+	}
+	rolesByPublicID := make(map[string]dbmodels.ListCreatorRolesByPublicIDsForTenantRow, len(roleRows))
+	for _, row := range roleRows {
+		rolesByPublicID[row.PublicID] = row
+	}
+
+	resolved := make([]seriesCreatorCredit, 0, len(normalized))
+	for _, pair := range normalized {
+		creator, ok := creatorsByPublicID[pair[0]]
 		if !ok {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator not found"))
 		}
-		ordered = append(ordered, creator)
+		role, ok := rolesByPublicID[pair[1]]
+		if !ok {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator role not found"))
+		}
+		resolved = append(resolved, seriesCreatorCredit{creator: creator, role: role})
 	}
-	return ordered, nil
+	return resolved, nil
 }
 
-func (s *adminServer) syncSeriesCreators(
+// syncSeriesCredits writes the whole credit list of a series. replace is false
+// on create, where there is nothing to clear first.
+//
+// display_order is the position in the request, which orders the creators who
+// share a role: the read sorts by role priority first, so a global index keeps
+// the order the editor gave within each role without carrying a second
+// counter.
+func (s *adminServer) syncSeriesCredits(
 	ctx context.Context,
 	tenantID, seriesID uuid.UUID,
-	creators []dbmodels.ListCreatorsByPublicIDsForTenantRow,
+	credits []seriesCreatorCredit,
 	replace bool,
 ) ([]*publirattypesv1.Creator, error) {
 	if replace {
@@ -251,19 +305,30 @@ func (s *adminServer) syncSeriesCreators(
 			return nil, s.internalDBError(ctx, "failed to delete series creators", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 		}
 	}
-	items := make([]*publirattypesv1.Creator, 0, len(creators))
-	for index, creator := range creators {
+	ordered := slices.SortedStableFunc(slices.Values(credits), func(left, right seriesCreatorCredit) int {
+		return cmp.Compare(left.role.DisplayPriority, right.role.DisplayPriority)
+	})
+	items := make([]*publirattypesv1.Creator, 0, len(ordered))
+	for index, credit := range ordered {
 		err := s.queriesFor(ctx).CreateSeriesCreator(ctx, dbmodels.CreateSeriesCreatorParams{
 			TenantID:     tenantID,
 			SeriesID:     seriesID,
-			CreatorID:    creator.ID,
-			Role:         "creator",
+			CreatorID:    credit.creator.ID,
+			RoleID:       credit.role.ID,
 			DisplayOrder: int32(index),
 		})
 		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to create series creator", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "creator_id", creator.ID.String())
+			return nil, s.internalDBError(ctx, "failed to create series creator", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "creator_id", credit.creator.ID.String())
 		}
-		items = append(items, protomapper.Creator(creator.PublicID, creator.Name, creator.ProfileText.String))
+		items = append(items, &publirattypesv1.Creator{
+			PublicId:    credit.creator.PublicID,
+			Name:        credit.creator.Name,
+			ProfileText: credit.creator.ProfileText.String,
+			Role: &publirattypesv1.CreatorRole{
+				PublicId: credit.role.PublicID,
+				Name:     credit.role.Name,
+			},
+		})
 	}
 	return items, nil
 }
@@ -281,11 +346,19 @@ func (s *adminServer) seriesCreatorsBySeriesIDs(
 	}
 	items := make(map[uuid.UUID][]*publirattypesv1.Creator, len(seriesIDs))
 	for _, row := range rows {
-		items[row.SeriesID] = append(items[row.SeriesID], &publirattypesv1.Creator{
+		creator := &publirattypesv1.Creator{
 			PublicId: row.PublicID,
 			Name:     row.Name,
-			Role:     row.Role,
-		})
+		}
+		// A credit written before roles existed carries none, and says so by
+		// leaving the field unset rather than by naming an empty role.
+		if row.RolePublicID.Valid {
+			creator.Role = &publirattypesv1.CreatorRole{
+				PublicId: row.RolePublicID.String,
+				Name:     row.RoleName.String,
+			}
+		}
+		items[row.SeriesID] = append(items[row.SeriesID], creator)
 	}
 	return items, nil
 }
@@ -591,7 +664,7 @@ func (s *adminServer) CreateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
-	creatorsToLink, err := s.resolveCreatorsByPublicIDs(ctx, tenant.ID, req.Msg.CreatorPublicIds)
+	creditsToLink, err := s.resolveSeriesCreatorCredits(ctx, tenant.ID, req.Msg.CreatorCredits)
 	if err != nil {
 		return nil, err
 	}
@@ -654,7 +727,7 @@ func (s *adminServer) CreateSeries(
 			return nil, s.internalDBError(ctx, "failed to update series eye catch image", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 		}
 	}
-	creators, err := s.syncSeriesCreators(txCtx, tenant.ID, base.ID, creatorsToLink, false)
+	creators, err := s.syncSeriesCredits(txCtx, tenant.ID, base.ID, creditsToLink, false)
 	if err != nil {
 		return nil, err
 	}
@@ -761,7 +834,7 @@ func (s *adminServer) UpdateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
-	creatorsToLink, err := s.resolveCreatorsByPublicIDs(ctx, tenant.ID, req.Msg.CreatorPublicIds)
+	creditsToLink, err := s.resolveSeriesCreatorCredits(ctx, tenant.ID, req.Msg.CreatorCredits)
 	if err != nil {
 		return nil, err
 	}
@@ -822,7 +895,7 @@ func (s *adminServer) UpdateSeries(
 			return nil, s.internalDBError(ctx, "failed to update series eye catch image", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 		}
 	}
-	creators, err := s.syncSeriesCreators(txCtx, tenant.ID, current.ID, creatorsToLink, true)
+	creators, err := s.syncSeriesCredits(txCtx, tenant.ID, current.ID, creditsToLink, true)
 	if err != nil {
 		return nil, err
 	}

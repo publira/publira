@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,11 +28,7 @@ func TestSeedsNameSupportedDefaultLocales(t *testing.T) {
 	defer cancel()
 
 	for _, path := range seedSQLFiles(t) {
-		statements, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("read %s: %v", path, err)
-		}
-		if _, err := pg.DB.ExecContext(ctx, string(statements)); err != nil {
+		if _, err := pg.DB.ExecContext(ctx, readSeedSQL(t, path)); err != nil {
 			t.Fatalf("apply %s: %v", path, err)
 		}
 	}
@@ -59,6 +56,29 @@ func seedSQLFiles(t *testing.T) []string {
 		paths = append(paths, matches...)
 	}
 	return paths
+}
+
+// readSeedSQL reads one seed file with its `\ir` includes expanded. psql
+// resolves those itself, relative to the including file's directory; the driver
+// these statements are sent through does not know the directive at all, so a
+// seed that shares a block with its siblings would fail to parse here.
+func readSeedSQL(t *testing.T, path string) string {
+	t.Helper()
+
+	statements, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+
+	lines := strings.Split(string(statements), "\n")
+	for index, line := range lines {
+		included, ok := strings.CutPrefix(strings.TrimSpace(line), `\ir `)
+		if !ok {
+			continue
+		}
+		lines[index] = readSeedSQL(t, filepath.Join(filepath.Dir(path), strings.TrimSpace(included)))
+	}
+	return strings.Join(lines, "\n")
 }
 
 func assertStoredLocalesResolve(ctx context.Context, t *testing.T, db *sql.DB, table, query string) {

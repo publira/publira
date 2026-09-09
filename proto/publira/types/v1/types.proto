@@ -24,14 +24,31 @@ message AccessToken {
   string expires_at = 2;
 }
 
-message Creator {
+// One entry of the creator-role vocabulary a tenant curates: original author,
+// artist, writer, supervisor, and whatever else its catalogue needs. It orders
+// the credits everywhere they are shown, so the leading role leads without
+// anyone ordering each series by hand.
+message CreatorRole {
   string public_id = 1;
   string name = 2;
-  string role = 3;
+}
+
+message Creator {
+  // 3 held `role` as a free string. The field keeps its name and becomes a
+  // CreatorRole, so the old number is reserved to keep a client from reading
+  // the new value as the old one.
+  reserved 3;
+
+  string public_id = 1;
+  string name = 2;
   string profile_text = 4;
   string icon_image_url = 5;
   int64 icon_image_file_size_bytes = 6;
   string icon_image_updated_at = 7;
+  // The role this credit is held in. Set where a Creator stands for a credit
+  // on a series; empty where it stands for the person alone, as the creator
+  // console reads them.
+  CreatorRole role = 8;
 }
 
 message Label {

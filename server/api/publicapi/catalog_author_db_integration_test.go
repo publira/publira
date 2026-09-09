@@ -58,9 +58,9 @@ func TestDBListPublishedAuthorsReturnsOnlyAuthorsWithPublishedSeries(t *testing.
 		Published:   true,
 		PublishedAt: time.Now().Add(24 * time.Hour),
 	})
-	env.PG.SeedSeriesCreator(t, tenant.ID, visible.ID, published.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, onlyDraft.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, future.ID, onlyFuture.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, visible.ID, published.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, onlyDraft.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, future.ID, onlyFuture.ID, "")
 
 	resp, err := env.catalogClient().ListPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.ListPublishedAuthorsRequest{
 		Tenant: tenantContext(tenant),
@@ -88,8 +88,8 @@ func TestDBListPublishedAuthorsExcludesAnotherTenantsAuthors(t *testing.T) {
 	theirs := env.PG.SeedCreator(t, second.ID, testutil.CreatorSeed{PublicID: "AUTHORB0001", Name: "Tenant B Author"})
 	mineSeries := env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Tenant A Series", Published: true})
 	theirSeries := env.PG.SeedSeries(t, second.ID, testutil.SeriesSeed{PublicID: "SERIESB00001", Title: "Tenant B Series", Published: true})
-	env.PG.SeedSeriesCreator(t, first.ID, mineSeries.ID, mine.ID, "writer")
-	env.PG.SeedSeriesCreator(t, second.ID, theirSeries.ID, theirs.ID, "writer")
+	env.PG.SeedSeriesCreator(t, first.ID, mineSeries.ID, mine.ID, "")
+	env.PG.SeedSeriesCreator(t, second.ID, theirSeries.ID, theirs.ID, "")
 
 	client := env.catalogClient()
 	listed, err := client.ListPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.ListPublishedAuthorsRequest{
@@ -124,7 +124,7 @@ func TestDBListPublishedAuthorsPagesForwardAndBack(t *testing.T) {
 			Title:     creator.Name + " Story",
 			Published: true,
 		})
-		env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, creator.ID, "writer")
+		env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, creator.ID, "")
 	}
 
 	client := env.catalogClient()
@@ -188,9 +188,9 @@ func TestDBGetPublishedAuthorDetailListsPublishedSeriesByTitle(t *testing.T) {
 	zeta := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESZETA01", Title: "Zeta", Published: true})
 	alpha := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESALPHA1", Title: "Alpha", Published: true})
 	draft := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT1", Title: "Draft Only"})
-	env.PG.SeedSeriesCreator(t, tenant.ID, zeta.ID, author.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, alpha.ID, author.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, author.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, zeta.ID, author.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, alpha.ID, author.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, author.ID, "")
 
 	resp, err := env.catalogClient().GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
 		Tenant:   tenantContext(tenant),
@@ -226,10 +226,10 @@ func TestDBGetPublishedAuthorDetailPagesForwardAndBack(t *testing.T) {
 	beta := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESBETA01", Title: "Beta", Published: true})
 	zeta := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESZETA01", Title: "Zeta", Published: true})
 	draft := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT1", Title: "Draft Only"})
-	env.PG.SeedSeriesCreator(t, tenant.ID, alpha.ID, author.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, beta.ID, author.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, zeta.ID, author.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, author.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, alpha.ID, author.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, beta.ID, author.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, zeta.ID, author.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, author.ID, "")
 
 	client := env.catalogClient()
 	firstPage, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
@@ -299,8 +299,8 @@ func TestDBGetPublishedAuthorDetailHidesAuthorsWithoutPublishedSeries(t *testing
 		Published:   true,
 		PublishedAt: time.Now().Add(24 * time.Hour),
 	})
-	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, draftOnly.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, future.ID, futureOnly.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, draftOnly.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, future.ID, futureOnly.ID, "")
 
 	client := env.catalogClient()
 	for _, publicID := range []string{draftOnly.PublicID, futureOnly.PublicID, "MISSING00001"} {

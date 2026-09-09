@@ -31,3 +31,5 @@ SET domain = EXCLUDED.domain,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
     default_locale = EXCLUDED.default_locale;
+
+\ir ../creator_roles.sql

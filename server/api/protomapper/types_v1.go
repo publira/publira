@@ -224,14 +224,6 @@ func SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row dbmodels.GetPublish
 	return series, nil
 }
 
-func Creator(publicID, name, profileText string) *publirattypesv1.Creator {
-	return &publirattypesv1.Creator{
-		PublicId:    publicID,
-		Name:        name,
-		ProfileText: profileText,
-	}
-}
-
 func CreatorFromRow(
 	publicID string,
 	name string,

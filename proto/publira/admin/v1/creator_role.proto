@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListCreatorRolesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListCreatorRolesResponse {
+  // In the tenant's own priority order, which is what ReorderCreatorRoles
+  // writes and what every credit is shown in.
+  repeated publira.types.v1.CreatorRole creator_roles = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message CreateCreatorRoleRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // A name another role of the tenant already holds is refused with
+  // already_exists, and two names that differ only in case are the same name:
+  // a list of choices where both appear offers the same choice twice.
+  string name = 2;
+}
+
+message CreateCreatorRoleResponse {
+  // Created last in priority. ReorderCreatorRoles is how it moves.
+  publira.types.v1.CreatorRole creator_role = 1;
+}
+
+message UpdateCreatorRoleRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // The public_id does not move, so every credit keeps the role it names.
+  string name = 3;
+}
+
+message UpdateCreatorRoleResponse {
+  publira.types.v1.CreatorRole creator_role = 1;
+}
+
+message ReorderCreatorRolesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Desired order after the write. Must be a permutation of
+  // expected_creator_role_public_ids.
+  repeated string creator_role_public_ids = 2;
+  // The order the client read before composing creator_role_public_ids. The
+  // RPC locks the tenant's roles, re-reads the current order, and rejects the
+  // write with failed_precondition when this no longer matches.
+  repeated string expected_creator_role_public_ids = 3;
+}
+
+message ReorderCreatorRolesResponse {
+  repeated publira.types.v1.CreatorRole creator_roles = 1;
+}
+
+// Removes a role no credit names. One that is still in use is refused with
+// failed_precondition: dropping it would take the credits holding it with it,
+// so the editor is told to re-credit them first.
+message DeleteCreatorRoleRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message DeleteCreatorRoleResponse {}
+
+service AdminCreatorRoleService {
+  rpc ListCreatorRoles(ListCreatorRolesRequest) returns (ListCreatorRolesResponse) {}
+  rpc CreateCreatorRole(CreateCreatorRoleRequest) returns (CreateCreatorRoleResponse) {}
+  rpc UpdateCreatorRole(UpdateCreatorRoleRequest) returns (UpdateCreatorRoleResponse) {}
+  rpc ReorderCreatorRoles(ReorderCreatorRolesRequest) returns (ReorderCreatorRolesResponse) {}
+  rpc DeleteCreatorRole(DeleteCreatorRoleRequest) returns (DeleteCreatorRoleResponse) {}
+}

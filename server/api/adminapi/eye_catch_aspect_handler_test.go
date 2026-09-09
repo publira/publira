@@ -159,7 +159,7 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", true, now, imageID, now, int64(0)))
 	mock.ExpectQuery("SELECT sc.series_id").
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role", "display_order"}))
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("series_image_id")).
@@ -330,7 +330,7 @@ func TestUploadSeriesEyeCatchAspectImageStoresTheRatioCutFromTheCrop(t *testing.
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", true, now, imageID, now, int64(0)))
 	mock.ExpectQuery("SELECT sc.series_id").
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role", "display_order"}))
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("series_image_id")).

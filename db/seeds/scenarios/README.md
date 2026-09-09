@@ -6,6 +6,7 @@ This directory holds scenario seeds for UI checks and E2E tests. They are separa
 
 - File name: `<nnn>_<slug>.sql` or `<slug>.sql` (for example, `010_multi_tenant.sql`)
 - A scenario seed contains only idempotent DML. Use `ON CONFLICT` and an ID range that does not break the shared development seeds
+- A block several seeds need is written once and pulled in with `\ir` (`\ir ../creator_roles.sql`), so a scenario stays runnable on its own without carrying a copy that drifts
 - Do not put DDL here. Schema changes go in a new migration under `db/migrations/` — see [`db/AGENTS.md`](../../AGENTS.md)
 
 ## Applying a scenario

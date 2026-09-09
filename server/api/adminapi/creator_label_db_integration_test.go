@@ -28,9 +28,9 @@ func TestDBCreateCreatorAndAttachToSeries(t *testing.T) {
 	}
 
 	series, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
-		Tenant:           tenant.tenantContext(),
-		Title:            "Series With Creator",
-		CreatorPublicIds: []string{creatorPublicID},
+		Tenant:         tenant.tenantContext(),
+		Title:          "Series With Creator",
+		CreatorCredits: env.creatorCredits(t, tenant, creatorPublicID),
 	}))
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
@@ -201,9 +201,9 @@ func TestDBSeriesRejectsCreatorFromAnotherTenant(t *testing.T) {
 	}
 
 	_, err = env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(first, &publiraadminv1.CreateSeriesRequest{
-		Tenant:           first.tenantContext(),
-		Title:            "Series Borrowing A Creator",
-		CreatorPublicIds: []string{theirCreator.Msg.Creator.PublicId},
+		Tenant:         first.tenantContext(),
+		Title:          "Series Borrowing A Creator",
+		CreatorCredits: env.creatorCredits(t, first, theirCreator.Msg.Creator.PublicId),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
