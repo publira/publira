@@ -29,6 +29,8 @@
 --     -> idx_content_events_tenant_series_occurred_at
 --   ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
 --     -> no index; sorts one tenant's published series (see the note there)
+--   ListRelatedSeriesIDs / ListRelatedSeriesIDsReversed
+--     -> no index; scores one tenant's published series (see the note there)
 --   ListEpisodeReadThroughDesc / ListEpisodeReadThroughAsc
 --     -> idx_content_daily_stats_tenant_date for the window, then a sort on the
 --        aggregate it groups (see the note there)
@@ -994,6 +996,254 @@ WHERE (
         )
     )
 ORDER BY sort_rank DESC,
+    published_at ASC,
+    id ASC
+LIMIT sqlc.arg('limit');
+
+-- The keyset scan behind the "more like this" strip. It scores every other
+-- published series of the tenant against one series and orders the whole
+-- catalogue by that score, so the strip has something to show under a series
+-- that shares nothing with anything.
+--
+-- A shared creator is the strongest signal a catalogue this size carries and
+-- counts 3; the same label counts 2, because an imprint groups titles a reader
+-- who liked one is likely to want; a shared genre or tag counts 1 each, and
+-- several of them add up to a label or a creator. The subject's own creators,
+-- genres, and tags are read here rather than passed in, so the score and the
+-- sets it is computed from can never come from two different moments.
+--
+-- The sort key is (score, sort_rank, published_at, id). Ties on the score are
+-- broken by the latest weekly ranking, which is what makes the unrelated tail
+-- the storefront's own order rather than an arbitrary one; a series the
+-- snapshot does not name borrows int4's maximum and sorts behind the ranked,
+-- exactly as it does in ListRecommendedSeriesIDs. published_at and then id
+-- settle the rest, and id keeps the key unique.
+--
+-- No index serves this either: the first sort key is computed per row. The
+-- scan is bounded by one tenant's published series, each scored by three
+-- lookups on primary-key-ordered join tables.
+-- name: ListRelatedSeriesIDs :many
+WITH subject AS (
+    SELECT s.id,
+        s.label_id
+    FROM series s
+    WHERE s.tenant_id = sqlc.arg('tenant_id')
+        AND s.id = sqlc.arg('series_id')
+),
+subject_creators AS (
+    SELECT sc.creator_id
+    FROM series_creators sc
+    WHERE sc.series_id = sqlc.arg('series_id')
+),
+subject_genres AS (
+    SELECT sg.genre_id
+    FROM series_genres sg
+    WHERE sg.series_id = sqlc.arg('series_id')
+),
+subject_tags AS (
+    SELECT st.tag_id
+    FROM series_tags st
+    WHERE st.series_id = sqlc.arg('series_id')
+),
+ranked AS (
+    SELECT (item->>'entity_id')::uuid AS entity_id,
+        min((item->>'rank')::int)::int AS rank
+    FROM jsonb_array_elements(sqlc.arg('ranking_items')::jsonb) AS item
+    GROUP BY (item->>'entity_id')::uuid
+),
+candidate AS (
+    SELECT s.id,
+        s.published_at,
+        (
+            3 * (
+                SELECT count(*)
+                FROM series_creators sc
+                WHERE sc.series_id = s.id
+                    AND sc.creator_id IN (
+                        SELECT creator_id
+                        FROM subject_creators
+                    )
+            ) + CASE
+                WHEN s.label_id IS NOT NULL
+                AND s.label_id = (
+                    SELECT label_id
+                    FROM subject
+                ) THEN 2
+                ELSE 0
+            END + (
+                SELECT count(*)
+                FROM series_genres sg
+                WHERE sg.series_id = s.id
+                    AND sg.genre_id IN (
+                        SELECT genre_id
+                        FROM subject_genres
+                    )
+            ) + (
+                SELECT count(*)
+                FROM series_tags st
+                WHERE st.series_id = s.id
+                    AND st.tag_id IN (
+                        SELECT tag_id
+                        FROM subject_tags
+                    )
+            )
+        )::int AS score,
+        COALESCE(r.rank, 2147483647)::int AS sort_rank
+    FROM series s
+        LEFT JOIN ranked r ON r.entity_id = s.id
+    WHERE s.tenant_id = sqlc.arg('tenant_id')
+        AND s.id <> sqlc.arg('series_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+)
+SELECT id, score, sort_rank
+FROM candidate
+WHERE (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR score < sqlc.narg('cursor_score')::int
+        OR (
+            score = sqlc.narg('cursor_score')::int
+            AND (
+                sort_rank > sqlc.narg('cursor_rank')::int
+                OR (
+                    sort_rank = sqlc.narg('cursor_rank')::int
+                    AND (
+                        (
+                            sqlc.arg('cursor_inclusive')::boolean
+                            AND (published_at, id) <= (
+                                sqlc.narg('cursor_published_at')::timestamptz,
+                                sqlc.narg('cursor_id')::uuid
+                            )
+                        )
+                        OR (
+                            NOT sqlc.arg('cursor_inclusive')::boolean
+                            AND (published_at, id) < (
+                                sqlc.narg('cursor_published_at')::timestamptz,
+                                sqlc.narg('cursor_id')::uuid
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+ORDER BY score DESC,
+    sort_rank ASC,
+    published_at DESC,
+    id DESC
+LIMIT sqlc.arg('limit');
+
+-- ListRelatedSeriesIDs walked the other way. It exists only to build a
+-- previous page; the order it describes is the same one.
+-- name: ListRelatedSeriesIDsReversed :many
+WITH subject AS (
+    SELECT s.id,
+        s.label_id
+    FROM series s
+    WHERE s.tenant_id = sqlc.arg('tenant_id')
+        AND s.id = sqlc.arg('series_id')
+),
+subject_creators AS (
+    SELECT sc.creator_id
+    FROM series_creators sc
+    WHERE sc.series_id = sqlc.arg('series_id')
+),
+subject_genres AS (
+    SELECT sg.genre_id
+    FROM series_genres sg
+    WHERE sg.series_id = sqlc.arg('series_id')
+),
+subject_tags AS (
+    SELECT st.tag_id
+    FROM series_tags st
+    WHERE st.series_id = sqlc.arg('series_id')
+),
+ranked AS (
+    SELECT (item->>'entity_id')::uuid AS entity_id,
+        min((item->>'rank')::int)::int AS rank
+    FROM jsonb_array_elements(sqlc.arg('ranking_items')::jsonb) AS item
+    GROUP BY (item->>'entity_id')::uuid
+),
+candidate AS (
+    SELECT s.id,
+        s.published_at,
+        (
+            3 * (
+                SELECT count(*)
+                FROM series_creators sc
+                WHERE sc.series_id = s.id
+                    AND sc.creator_id IN (
+                        SELECT creator_id
+                        FROM subject_creators
+                    )
+            ) + CASE
+                WHEN s.label_id IS NOT NULL
+                AND s.label_id = (
+                    SELECT label_id
+                    FROM subject
+                ) THEN 2
+                ELSE 0
+            END + (
+                SELECT count(*)
+                FROM series_genres sg
+                WHERE sg.series_id = s.id
+                    AND sg.genre_id IN (
+                        SELECT genre_id
+                        FROM subject_genres
+                    )
+            ) + (
+                SELECT count(*)
+                FROM series_tags st
+                WHERE st.series_id = s.id
+                    AND st.tag_id IN (
+                        SELECT tag_id
+                        FROM subject_tags
+                    )
+            )
+        )::int AS score,
+        COALESCE(r.rank, 2147483647)::int AS sort_rank
+    FROM series s
+        LEFT JOIN ranked r ON r.entity_id = s.id
+    WHERE s.tenant_id = sqlc.arg('tenant_id')
+        AND s.id <> sqlc.arg('series_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+)
+SELECT id, score, sort_rank
+FROM candidate
+WHERE (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR score > sqlc.narg('cursor_score')::int
+        OR (
+            score = sqlc.narg('cursor_score')::int
+            AND (
+                sort_rank < sqlc.narg('cursor_rank')::int
+                OR (
+                    sort_rank = sqlc.narg('cursor_rank')::int
+                    AND (
+                        (
+                            sqlc.arg('cursor_inclusive')::boolean
+                            AND (published_at, id) >= (
+                                sqlc.narg('cursor_published_at')::timestamptz,
+                                sqlc.narg('cursor_id')::uuid
+                            )
+                        )
+                        OR (
+                            NOT sqlc.arg('cursor_inclusive')::boolean
+                            AND (published_at, id) > (
+                                sqlc.narg('cursor_published_at')::timestamptz,
+                                sqlc.narg('cursor_id')::uuid
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+ORDER BY score ASC,
+    sort_rank DESC,
     published_at ASC,
     id ASC
 LIMIT sqlc.arg('limit');

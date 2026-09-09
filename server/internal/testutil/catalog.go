@@ -257,6 +257,125 @@ func (e *PostgresEnv) SeedSeriesCreator(t *testing.T, tenantID, seriesID, creato
 	}
 }
 
+// Genre is a seeded genres row. The public catalog addresses a genre by its
+// public ID; the UUID is what series_genres hangs off.
+type Genre struct {
+	ID       uuid.UUID
+	PublicID string
+	Name     string
+	Slug     string
+}
+
+// GenreSeed describes one genre to insert. Slug defaults to the lowercased
+// name, which is what the console derives it from.
+type GenreSeed struct {
+	PublicID     string
+	Name         string
+	Slug         string
+	DisplayOrder int32
+}
+
+// SeedGenre inserts a genre for the tenant. Uses the superuser connection,
+// which is not subject to RLS.
+func (e *PostgresEnv) SeedGenre(t *testing.T, tenantID uuid.UUID, seed GenreSeed) Genre {
+	t.Helper()
+	e.requireDB(t)
+
+	genreID := uuid.Must(uuid.NewV7())
+	publicID := seed.PublicID
+	if publicID == "" {
+		var err error
+		publicID, err = publicid.New()
+		if err != nil {
+			t.Fatalf("publicid.New: %v", err)
+		}
+	}
+	name := defaultIfEmpty(seed.Name, "Genre")
+	slug := defaultIfEmpty(seed.Slug, strings.ToLower(name))
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO genres (id, tenant_id, public_id, name, slug, display_order)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, genreID, tenantID, publicID, name, slug, seed.DisplayOrder); err != nil {
+		t.Fatalf("insert genre %s: %v", publicID, err)
+	}
+
+	return Genre{ID: genreID, PublicID: publicID, Name: name, Slug: slug}
+}
+
+// Tag is a seeded tags row. A tag has no public ID: the catalog addresses it by
+// slug, and series_tags hangs off the UUID.
+type Tag struct {
+	ID   uuid.UUID
+	Name string
+	Slug string
+}
+
+// TagSeed describes one tag to insert. Slug defaults to the lowercased name,
+// the way the series form derives it.
+type TagSeed struct {
+	Name string
+	Slug string
+}
+
+// SeedTag inserts a tag for the tenant. Uses the superuser connection, which is
+// not subject to RLS.
+func (e *PostgresEnv) SeedTag(t *testing.T, tenantID uuid.UUID, seed TagSeed) Tag {
+	t.Helper()
+	e.requireDB(t)
+
+	tagID := uuid.Must(uuid.NewV7())
+	name := defaultIfEmpty(seed.Name, "Tag")
+	slug := defaultIfEmpty(seed.Slug, strings.ToLower(name))
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO tags (id, tenant_id, name, slug)
+		VALUES ($1, $2, $3, $4)
+	`, tagID, tenantID, name, slug); err != nil {
+		t.Fatalf("insert tag %s: %v", slug, err)
+	}
+
+	return Tag{ID: tagID, Name: name, Slug: slug}
+}
+
+// SeedSeriesGenre classifies the series under the genre.
+func (e *PostgresEnv) SeedSeriesGenre(t *testing.T, tenantID, seriesID, genreID uuid.UUID) {
+	t.Helper()
+	e.requireDB(t)
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO series_genres (tenant_id, series_id, genre_id)
+		VALUES ($1, $2, $3)
+	`, tenantID, seriesID, genreID); err != nil {
+		t.Fatalf("insert series_genres series=%s genre=%s: %v", seriesID, genreID, err)
+	}
+}
+
+// SeedSeriesTag writes the tag on the series.
+func (e *PostgresEnv) SeedSeriesTag(t *testing.T, tenantID, seriesID, tagID uuid.UUID) {
+	t.Helper()
+	e.requireDB(t)
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO series_tags (tenant_id, series_id, tag_id)
+		VALUES ($1, $2, $3)
+	`, tenantID, seriesID, tagID); err != nil {
+		t.Fatalf("insert series_tags series=%s tag=%s: %v", seriesID, tagID, err)
+	}
+}
+
 // SeedEpisode inserts an episode of the series and the episode_listings row that
 // carries its price and publication state.
 func (e *PostgresEnv) SeedEpisode(t *testing.T, tenantID, seriesID uuid.UUID, seed EpisodeSeed) Episode {

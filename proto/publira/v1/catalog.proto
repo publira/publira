@@ -355,6 +355,35 @@ message ListRankedSeriesResponse {
   string period_end = 6;
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// There is no order field: relatedness to one series is the order this RPC
+// exists to produce. The token carries the series it was built for, because a
+// score means nothing outside the list it was scored against; sending it with
+// a different series is invalid_argument, and changing the series restarts at
+// page 1.
+message ListRelatedSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The series to find neighbours for. Unpublished, cross-tenant, and missing
+  // series are all surfaced as not_found, the way every other public read of a
+  // series is.
+  string series_public_id = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 12, which is what a
+  // "more like this" strip on the series page and the end-of-episode panel
+  // show.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListRelatedSeriesResponse {
+  // One page of the tenant's other published series, most related first.
+  repeated publira.types.v1.Series series = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
 service CatalogService {
   rpc ListPublishedLabels(ListPublishedLabelsRequest) returns (ListPublishedLabelsResponse) {}
   rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
@@ -393,6 +422,20 @@ service CatalogService {
   // and leaves a gap in the positions, because a snapshot describes a past
   // window rather than the catalogue as it stands now.
   rpc ListRankedSeries(ListRankedSeriesRequest) returns (ListRankedSeriesResponse) {}
+  // The tenant's other published series, ordered by how much they share with
+  // one series: each creator they have in common counts 3, the same label 2,
+  // and each genre and each tag 1. Ties go to the better position in the
+  // latest weekly ranking, and then to the newer series.
+  //
+  // The list is never cut off at the related ones. A catalogue with more than
+  // one series always has a page to show, because a series sharing nothing
+  // still scores 0 and takes its place among the unrelated by ranking — so the
+  // section under a brand new series is the storefront ranking rather than an
+  // empty strip.
+  //
+  // Nothing here depends on who is reading, so a response can be cached and
+  // shared between readers.
+  rpc ListRelatedSeries(ListRelatedSeriesRequest) returns (ListRelatedSeriesResponse) {}
 }
 
 message MarkEpisodeAsReadRequest {
