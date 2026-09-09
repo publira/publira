@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { freezeClock } from "../src/clock";
 import { MISSING_PUBLIC_ID, SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
   VIEWER_EPISODE_PATH,
@@ -21,6 +22,48 @@ import { hostPath } from "../src/urls";
  * `db/seeds/scenarios/160_screenshot_baseline.sql`, which pins what the
  * development seed dates from the moment it ran.
  */
+
+/**
+ * The moment the browser believes it is while the top page is recorded.
+ *
+ * That page words a publication date as how long ago it was, and it does so in
+ * the browser against its own clock, so the phrase moves on without the page
+ * changing. `freezeClock` pins it.
+ *
+ * Three days after the last date `160_screenshot_baseline.sql` writes
+ * (2026-04-17): late enough that every episode reads as published in the past,
+ * and close enough that the rows show the day-scale wording the design is
+ * about rather than a column of identical months.
+ */
+const SCREENSHOT_CLOCK = "2026-04-20T00:00:00.000Z";
+
+/**
+ * What the newest row says under {@link SCREENSHOT_CLOCK}.
+ *
+ * Asserted before the shot because the clock has one way of going quiet: it is
+ * pinned in two places, `Date` and `Temporal.Now`, and which of them the phrase
+ * comes from is the browser's choice. A page that slipped back to the real
+ * clock would still photograph cleanly, and the baseline would then drift with
+ * the calendar until some unrelated pull request failed on it.
+ */
+const NEWEST_ROW_RELATIVE_TIME = "3 days ago";
+
+/**
+ * The streamed sections of the top page, each with a link it only holds once
+ * its read has come back.
+ *
+ * Every one of them has a `Suspense` boundary of its own and they resolve in
+ * whatever order their reads return, so the shot waits for all five by name.
+ * Waiting for the last one on the page would only say that one arrived.
+ */
+const TOP_PAGE_SECTIONS = [
+  { href: "/series/", name: "New episodes" },
+  { href: "/series/", name: "Recommended" },
+  { href: "/series/", name: "Recently updated" },
+  { href: "/labels/", name: "Featured labels" },
+  { href: "/authors/", name: "Featured authors" },
+] as const;
+
 test.describe("web-host screenshots", () => {
   for (const viewport of SCREENSHOT_VIEWPORTS) {
     test.describe(`at ${viewport.label}px`, () => {
@@ -29,18 +72,23 @@ test.describe("web-host screenshots", () => {
       });
 
       test("the catalog top page", async ({ page }) => {
+        await freezeClock(page, SCREENSHOT_CLOCK);
         await page.goto(hostPath("/"));
 
+        // The featured work is the page's own heading.
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await Promise.all(
+          TOP_PAGE_SECTIONS.map(({ href, name }) =>
+            expect(
+              page
+                .getByRole("region", { name })
+                .locator(`a[href^="${hostPath(href)}"]`)
+                .first()
+            ).toBeVisible()
+          )
+        );
         await expect(
-          page.getByRole("heading", { level: 1, name: "Catalog" })
-        ).toBeVisible();
-        // The last of the five sections: once it holds a link, none of the
-        // ones above it is still a skeleton.
-        await expect(
-          page
-            .getByRole("region", { name: "Featured authors" })
-            .locator(`a[href^="${hostPath("/authors/")}"]`)
-            .first()
+          page.getByText(NEWEST_ROW_RELATIVE_TIME).first()
         ).toBeVisible();
 
         await expectScreenshot(page, viewport, "top-page");

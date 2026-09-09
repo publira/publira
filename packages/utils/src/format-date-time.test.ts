@@ -6,6 +6,7 @@ import {
   formatDate,
   formatDateTime,
   formatPlainDate,
+  formatRelativeTime,
   fromDateTimeLocalValue,
   parseInstant,
   startOfDayIsoString,
@@ -428,5 +429,102 @@ describe("formatPlainDate", () => {
 
   it("falls back to the original value when no fallback is given", () => {
     expect(formatPlainDate("not-a-date", { locale: "ja" })).toBe("not-a-date");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  /** 2026-09-09 21:00 in Asia/Tokyo, so a JST midnight is three hours away. */
+  const now = Temporal.Instant.from("2026-09-09T12:00:00Z");
+
+  it("counts seconds, minutes, and hours below a day", () => {
+    expect(
+      formatRelativeTime("2026-09-09T11:59:30Z", { locale: "en", now })
+    ).toBe("30 seconds ago");
+    expect(
+      formatRelativeTime("2026-09-09T11:45:00Z", { locale: "en", now })
+    ).toBe("15 minutes ago");
+    expect(
+      formatRelativeTime("2026-09-09T09:00:00Z", { locale: "en", now })
+    ).toBe("3 hours ago");
+  });
+
+  it("says yesterday once the calendar day changes, not after 24 hours", () => {
+    // 23:00 and 01:00 JST: two hours apart, on either side of midnight.
+    expect(
+      formatRelativeTime("2026-09-09T14:00:00Z", {
+        locale: "en",
+        now: Temporal.Instant.from("2026-09-09T16:00:00Z"),
+      })
+    ).toBe("yesterday");
+  });
+
+  it("words a gap of no whole months in weeks, not as this month", () => {
+    // 11 August to 9 September is 29 days and zero whole months, because
+    // adding a month to the 11th lands after the 9th.
+    expect(
+      formatRelativeTime("2026-08-11T12:00:00Z", { locale: "en", now })
+    ).toBe("4 weeks ago");
+    // A day earlier is one whole month, and reads as one.
+    expect(
+      formatRelativeTime("2026-08-09T12:00:00Z", { locale: "en", now })
+    ).toBe("last month");
+  });
+
+  it("counts days, weeks, months, and years above that", () => {
+    expect(
+      formatRelativeTime("2026-09-06T12:00:00Z", { locale: "en", now })
+    ).toBe("3 days ago");
+    expect(
+      formatRelativeTime("2026-08-26T12:00:00Z", { locale: "en", now })
+    ).toBe("2 weeks ago");
+    expect(
+      formatRelativeTime("2026-01-18T12:00:00Z", { locale: "en", now })
+    ).toBe("7 months ago");
+    expect(
+      formatRelativeTime("2024-09-09T12:00:00Z", { locale: "en", now })
+    ).toBe("2 years ago");
+  });
+
+  it("counts the days in the time zone it is given", () => {
+    // The same two instants fall on one calendar day in Los Angeles (07:00 and
+    // 09:00) and on two in Tokyo (23:00 and 01:00), so the phrase differs.
+    const value = "2026-09-09T14:00:00Z";
+    const later = Temporal.Instant.from("2026-09-09T16:00:00Z");
+
+    expect(
+      formatRelativeTime(value, {
+        locale: "en",
+        now: later,
+        timeZone: "America/Los_Angeles",
+      })
+    ).toBe("2 hours ago");
+    expect(
+      formatRelativeTime(value, {
+        locale: "en",
+        now: later,
+        timeZone: "Asia/Tokyo",
+      })
+    ).toBe("yesterday");
+  });
+
+  it("words the phrase in the UI locale", () => {
+    expect(
+      formatRelativeTime("2026-09-06T12:00:00Z", { locale: "ja", now })
+    ).toBe("3 日前");
+  });
+
+  it("returns fallback for a value that is not an absolute timestamp", () => {
+    expect(formatRelativeTime("", { fallback: "-", locale: "en", now })).toBe(
+      "-"
+    );
+    expect(
+      formatRelativeTime("2026-09-09", { fallback: "-", locale: "en", now })
+    ).toBe("-");
+  });
+
+  it("falls back to the original value when no fallback is given", () => {
+    expect(formatRelativeTime("not-a-date", { locale: "en", now })).toBe(
+      "not-a-date"
+    );
   });
 });

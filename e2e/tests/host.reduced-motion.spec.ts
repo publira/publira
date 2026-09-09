@@ -16,7 +16,7 @@ test.describe("web-host under reduced motion", () => {
     await page.goto(hostPath("/"));
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "Catalog" })
+      page.getByRole("heading", { level: 2, name: "New episodes" })
     ).toBeVisible();
     await expectNothingAnimates(page);
   });

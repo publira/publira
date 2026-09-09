@@ -1,24 +1,32 @@
 import { getMessage } from "@publira/i18n";
-import { CollectionIcon, ImageIcon } from "@publira/icons";
+import { LinkButton } from "@publira/ui-components/button";
+import {
+  EmptyState,
+  EmptyStateDescription,
+} from "@publira/ui-components/empty-state";
 import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatDate, formatList } from "@publira/utils";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { cn, formatDate, formatList } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
+import type { EyeCatchVariant } from "#components/eye-catch-picture";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import { RelativeTime } from "#components/relative-time";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
   getCatalogTopFeaturedAuthors,
   getCatalogTopFeaturedLabels,
+  getCatalogTopFeaturedWork,
   getCatalogTopNewEpisodes,
   getCatalogTopRecommendedSeries,
   getCatalogTopUpdatedSeries,
@@ -91,6 +99,7 @@ const resolveUpdatedSeriesLinkIds = (
 const SECTION_TITLES = {
   authors: "host.top.featured_authors_error",
   continueReading: "host.top.continue_error",
+  featuredWork: "host.top.featured_work_error",
   labels: "host.top.featured_labels_error",
   newEpisodes: "host.top.new_episodes_error",
   recommended: "host.top.recommended_error",
@@ -119,12 +128,66 @@ const SectionReadError = ({
 
 /** The empty state a section renders when the read succeeded with no rows. */
 const SectionEmpty = ({ message }: { message: HostMessageKey }) => (
-  <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-    <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-      <Message message={message} />
-    </Suspense>
-  </p>
+  <EmptyState>
+    <EmptyStateDescription>
+      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+        <Message message={message} />
+      </Suspense>
+    </EmptyStateDescription>
+  </EmptyState>
 );
+
+/**
+ * The frame a piece of artwork sits in, and what stands there when the work
+ * has none: a flat `muted` rectangle carrying whatever the caller writes into
+ * it, which for anything larger than a thumbnail is the title in the serif
+ * face. No gradient and no icon — a title says which work this is, and the two
+ * alternatives say nothing.
+ *
+ * A `<span>` rather than a `<div>`, because most of these frames are the first
+ * child of a link that wraps a whole row.
+ */
+const EyeCatchFrame = ({
+  alt,
+  children,
+  className,
+  fetchPriority,
+  loading,
+  preferredType,
+  sizes,
+  variants,
+}: {
+  alt: string;
+  children?: ReactNode;
+  className: string;
+  fetchPriority?: "high" | "low" | "auto";
+  loading?: "eager" | "lazy";
+  preferredType?: string;
+  sizes?: string;
+  variants: EyeCatchVariant[] | undefined;
+}) =>
+  variants && variants.length > 0 ? (
+    <span className={cn("block overflow-hidden bg-muted", className)}>
+      <EyeCatchPicture
+        alt={alt}
+        fetchPriority={fetchPriority}
+        imgClassName="size-full object-cover"
+        loading={loading}
+        preferredType={preferredType}
+        sizes={sizes}
+        variants={variants}
+      />
+    </span>
+  ) : (
+    <span
+      className={cn(
+        "flex items-center justify-center overflow-hidden bg-muted p-3 text-center",
+        className
+      )}
+    >
+      {children}
+    </span>
+  );
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -145,48 +208,56 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
-/**
- * The one suspended piece on this page with no `SectionErrorBoundary` around
- * it, on purpose: `getTenantSiteLabel` degrades to the catalog's stand-in
- * rather than failing, the same way the header brand and the `<title>` do,
- * because it is resolved before any shell exists. There is nothing here
- * for a boundary to catch.
- */
-const CatalogTopSiteLabel = async () => {
-  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const siteLabel = await getTenantSiteLabel(tenantId, locale);
+const FeaturedWorkSkeleton = () => (
+  <div className="grid gap-5">
+    <Skeleton className="aspect-16/7 w-full rounded-surface" />
+    <div className="grid gap-3">
+      <Skeleton className="h-8 w-2/3" />
+      <Skeleton className="h-4 w-1/3" />
+      <Skeleton className="h-10 w-48" />
+    </div>
+  </div>
+);
 
-  return (
-    <p className="text-sm tracking-[0.14em] text-muted-foreground uppercase">
-      {siteLabel}
-    </p>
-  );
-};
-
-const CardGridSkeleton = ({ count = 3 }: { count?: number }) => (
-  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+const ShelfSkeleton = ({ count = 6 }: { count?: number }) => (
+  <div className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
     {Array.from({ length: count }, (_, index) => (
-      <div
-        className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
-        key={index}
-      >
-        <div className="aspect-video animate-pulse bg-muted" />
-        <div className="space-y-2 p-5">
-          <div className="h-5 w-3/4 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+      <div className="grid gap-2" key={index}>
+        <Skeleton className="aspect-3/4 w-full rounded-surface" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-3 w-2/3" />
+      </div>
+    ))}
+  </div>
+);
+
+const EpisodeRowsSkeleton = ({ count = 6 }: { count?: number }) => (
+  <div className="divide-y divide-border">
+    {Array.from({ length: count }, (_, index) => (
+      <div className="flex items-center gap-4 py-3" key={index}>
+        <Skeleton className="size-14 shrink-0 rounded-control" />
+        <div className="flex-1 sm:flex sm:items-baseline sm:gap-4">
+          <Skeleton className="h-4 w-2/3 sm:flex-1" />
+          <div className="mt-2 flex items-baseline justify-between gap-3 sm:mt-0 sm:w-64 sm:shrink-0">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
         </div>
       </div>
     ))}
   </div>
 );
 
-const ListSkeleton = ({ count = 4 }: { count?: number }) => (
-  <div className="grid gap-3">
+const NameListSkeleton = ({ count = 6 }: { count?: number }) => (
+  <div className="divide-y divide-border">
     {Array.from({ length: count }, (_, index) => (
       <div
-        className="h-16 animate-pulse rounded-lg border border-border/70 bg-muted/40"
+        className="flex items-baseline justify-between gap-4 py-3"
         key={index}
-      />
+      >
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-20" />
+      </div>
     ))}
   </div>
 );
@@ -206,10 +277,10 @@ const maxContinueReading = 6;
 const ContinueReadingSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const [result, messages] = await Promise.all([
-    listMyRecentSeries(tenantId, { limit: maxContinueReading, locale }),
-    loadHostMessages(locale),
-  ]);
+  const result = await listMyRecentSeries(tenantId, {
+    limit: maxContinueReading,
+    locale,
+  });
 
   if (!result.ok) {
     return (
@@ -225,46 +296,157 @@ const ContinueReadingSection = async () => {
   }
 
   return (
-    <section aria-labelledby="continue-reading" className="mb-12">
-      <h2
-        id="continue-reading"
-        className="mb-4 font-serif text-2xl font-semibold"
-      >
-        {getMessage(messages, "host.top.continue_heading")}
-      </h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {result.series.map(({ episode, series }) => (
-          <LocaleLink
-            key={series.publicId}
-            className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:border-secondary/40 hover:shadow-md"
-            href={`/series/${series.publicId}/episodes/${episode.publicId}`}
-          >
-            {series.eyeCatchImageVariants &&
-            series.eyeCatchImageVariants.length > 0 ? (
-              <div className="aspect-video overflow-hidden bg-muted">
-                <EyeCatchPicture
-                  alt={series.title}
-                  imgClassName="size-full object-cover"
-                  preferredType="landscape"
-                  variants={series.eyeCatchImageVariants}
-                />
-              </div>
-            ) : (
-              <div className="flex aspect-video items-center justify-center bg-linear-to-br from-secondary/25 via-primary/15 to-accent/20 text-secondary/50">
-                <CollectionIcon className="h-10 w-10" />
-              </div>
-            )}
-            <div className="p-5">
-              <h3 className="mb-1 line-clamp-2 font-serif text-lg font-semibold transition-colors group-hover:text-secondary">
-                {series.title}
-              </h3>
-              <p className="line-clamp-2 text-sm text-muted-foreground">
-                #{episode.orderIndex} {episode.title}
-              </p>
-            </div>
-          </LocaleLink>
-        ))}
+    <section aria-labelledby="continue-reading">
+      <div className="border-b border-border pb-2">
+        <h2 className="font-serif text-xl leading-tight" id="continue-reading">
+          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+            <Message message="host.top.continue_heading" />
+          </Suspense>
+        </h2>
       </div>
+      <ol className="mt-2 divide-y divide-border">
+        {result.series.map(({ episode, series }) => (
+          <li key={series.publicId}>
+            <LocaleLink
+              className="group flex items-center gap-4 py-3"
+              href={`/series/${series.publicId}/episodes/${episode.publicId}`}
+            >
+              <EyeCatchFrame
+                alt={series.title}
+                className="size-14 shrink-0 rounded-control"
+                sizes="56px"
+                variants={series.eyeCatchImageVariants}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline gap-2">
+                  <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+                      <Message
+                        message="host.top.episode_number"
+                        values={{ number: episode.orderIndex }}
+                      />
+                    </Suspense>
+                  </span>
+                  <span className="truncate underline-offset-4 group-hover:underline">
+                    {episode.title}
+                  </span>
+                </span>
+                <span className="block truncate text-sm text-muted-foreground">
+                  {series.title}
+                </span>
+              </span>
+            </LocaleLink>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+};
+
+/**
+ * The work the page opens with.
+ *
+ * Its title is the page's `<h1>`: a reader arrives for a work, so the first
+ * thing the page names is one, rather than the site they are already looking
+ * at. An empty catalogue has no work to open with and draws nothing — the
+ * recommendation section below it is what says the catalogue is empty.
+ */
+const FeaturedWorkSection = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
+  const [result, timeZone] = await Promise.all([
+    getCatalogTopFeaturedWork(tenantId, { locale }),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
+
+  if (!result.ok) {
+    return (
+      <SectionReadError
+        description={result.message}
+        title={SECTION_TITLES.featuredWork}
+      />
+    );
+  }
+
+  const featured = result.value;
+
+  if (!featured) {
+    return null;
+  }
+
+  const { latestEpisode } = featured;
+
+  return (
+    <section>
+      <LocaleLink className="group block" href={`/series/${featured.seriesId}`}>
+        <EyeCatchFrame
+          alt={featured.seriesTitle}
+          className="aspect-16/7 w-full rounded-surface"
+          fetchPriority="high"
+          loading="eager"
+          preferredType="landscape"
+          sizes="(max-width: 1200px) 100vw, 1152px"
+          variants={featured.eyeCatchImageVariants}
+        >
+          <span className="font-serif text-2xl leading-tight text-muted-foreground">
+            {featured.seriesTitle}
+          </span>
+        </EyeCatchFrame>
+        <h1 className="mt-5 font-serif text-3xl leading-tight underline-offset-4 group-hover:underline">
+          {featured.seriesTitle}
+        </h1>
+      </LocaleLink>
+      {featured.creatorNames.length > 0 && (
+        <p className="mt-2 text-muted-foreground">
+          {formatList(featured.creatorNames, { locale })}
+        </p>
+      )}
+      {latestEpisode && (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+          <p className="text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="host.top.latest_update" />
+            </Suspense>{" "}
+            <span className="text-foreground tabular-nums">
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message
+                  message="host.top.episode_number"
+                  values={{ number: latestEpisode.orderIndex }}
+                />
+              </Suspense>
+            </span>{" "}
+            <span className="text-foreground">{latestEpisode.title}</span>{" "}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message
+                message="host.top.published_on"
+                values={{
+                  date: formatDate(latestEpisode.publishedAt, {
+                    fallback: "",
+                    locale,
+                    timeZone,
+                  }),
+                }}
+              />
+            </Suspense>
+          </p>
+          <LinkButton
+            render={
+              <LocaleLink
+                href={`/series/${featured.seriesId}/episodes/${latestEpisode.episodeId}`}
+              />
+            }
+            size="lg"
+            variant="secondary"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message
+                message="host.top.read_episode"
+                values={{ number: latestEpisode.orderIndex }}
+              />
+            </Suspense>
+          </LinkButton>
+        </div>
+      )}
     </section>
   );
 };
@@ -290,46 +472,36 @@ const RecommendedSeriesSection = async () => {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
       {recommendedSeries.map((series) => (
-        <LocaleLink
-          key={series.publicId}
-          className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:border-secondary/40 hover:shadow-md"
-          href={`/series/${series.publicId}`}
-        >
-          {series.eyeCatchImageVariants &&
-          series.eyeCatchImageVariants.length > 0 ? (
-            <div className="aspect-video overflow-hidden bg-muted">
-              <EyeCatchPicture
-                alt={series.title}
-                imgClassName="size-full object-cover"
-                preferredType="landscape"
-                variants={series.eyeCatchImageVariants}
-              />
-            </div>
-          ) : (
-            <div className="flex aspect-video items-center justify-center bg-linear-to-br from-secondary/25 via-primary/15 to-accent/20 text-secondary/50">
-              <CollectionIcon className="h-10 w-10" />
-            </div>
-          )}
-          <div className="p-5">
-            <h3 className="mb-2 line-clamp-2 font-serif text-lg font-semibold transition-colors group-hover:text-secondary">
+        <li key={series.publicId}>
+          <LocaleLink
+            className="group block"
+            href={`/series/${series.publicId}`}
+          >
+            <EyeCatchFrame
+              alt={series.title}
+              className="aspect-3/4 w-full rounded-surface"
+              preferredType="portrait"
+              sizes="(max-width: 640px) 33vw, 16vw"
+              variants={series.eyeCatchImageVariants}
+            >
+              <span className="line-clamp-4 font-serif text-xs leading-tight text-muted-foreground">
+                {series.title}
+              </span>
+            </EyeCatchFrame>
+            <span className="mt-2 block font-serif text-sm leading-tight underline-offset-4 group-hover:underline">
               {series.title}
-            </h3>
+            </span>
             {series.creatorNames.length > 0 && (
-              <p className="mb-2 text-sm text-muted-foreground">
+              <span className="mt-1 block truncate text-xs text-muted-foreground">
                 {formatList(series.creatorNames, { locale })}
-              </p>
+              </span>
             )}
-            {series.synopsis && (
-              <p className="line-clamp-3 text-sm text-muted-foreground">
-                {series.synopsis}
-              </p>
-            )}
-          </div>
-        </LocaleLink>
+          </LocaleLink>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 };
 
@@ -357,7 +529,7 @@ const NewEpisodesSection = async () => {
   }
 
   return (
-    <ol className="grid gap-3">
+    <ol className="divide-y divide-border">
       {newEpisodes.map((episode) => {
         const ids = resolveEpisodeLinkIds(episode);
         if (!ids) {
@@ -367,23 +539,43 @@ const NewEpisodesSection = async () => {
         return (
           <li key={`${ids.seriesId}-${ids.episodeId}`}>
             <LocaleLink
-              className="group flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 bg-card px-5 py-4 shadow-sm transition hover:border-accent/40 hover:shadow-md"
+              className="group flex items-center gap-4 py-3"
               href={`/series/${ids.seriesId}/episodes/${ids.episodeId}`}
             >
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  {episode.seriesTitle}
-                </p>
-                <p className="font-medium transition-colors group-hover:text-secondary">
-                  {episode.episodeTitle}
-                </p>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {formatDate(episode.publishedAt, {
-                  fallback: "",
-                  locale,
-                  timeZone,
-                })}
+              <EyeCatchFrame
+                alt={episode.seriesTitle}
+                className="size-14 shrink-0 rounded-control"
+                sizes="56px"
+                variants={episode.eyeCatchImageVariants}
+              />
+              <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
+                <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                  <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+                      <Message
+                        message="host.top.episode_number"
+                        values={{ number: episode.episodeOrderIndex }}
+                      />
+                    </Suspense>
+                  </span>
+                  <span className="truncate underline-offset-4 group-hover:underline">
+                    {episode.episodeTitle}
+                  </span>
+                </span>
+                <span className="flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:w-64 sm:shrink-0">
+                  <span className="truncate">{episode.seriesTitle}</span>
+                  <span className="shrink-0">
+                    <RelativeTime
+                      absolute={formatDate(episode.publishedAt, {
+                        fallback: "",
+                        locale,
+                        timeZone,
+                      })}
+                      timeZone={timeZone}
+                      value={episode.publishedAt}
+                    />
+                  </span>
+                </span>
               </span>
             </LocaleLink>
           </li>
@@ -396,10 +588,9 @@ const NewEpisodesSection = async () => {
 const UpdatedSeriesSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const [result, timeZone, messages] = await Promise.all([
+  const [result, timeZone] = await Promise.all([
     getCatalogTopUpdatedSeries(tenantId, { locale }),
     getTenantDisplayTimeZone(tenantId),
-    loadHostMessages(locale),
   ]);
 
   if (!result.ok) {
@@ -418,7 +609,7 @@ const UpdatedSeriesSection = async () => {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ol className="divide-y divide-border">
       {updatedSeries.map((item) => {
         const ids = resolveUpdatedSeriesLinkIds(item);
         if (!ids) {
@@ -426,64 +617,51 @@ const UpdatedSeriesSection = async () => {
         }
 
         return (
-          <article
-            key={ids.seriesId}
-            className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
-          >
-            <LocaleLink className="block" href={`/series/${ids.seriesId}`}>
-              {item.eyeCatchImageVariants &&
-              item.eyeCatchImageVariants.length > 0 ? (
-                <div className="aspect-video overflow-hidden bg-muted">
-                  <EyeCatchPicture
-                    alt={item.seriesTitle}
-                    imgClassName="size-full object-cover"
-                    preferredType="landscape"
-                    variants={item.eyeCatchImageVariants}
-                  />
-                </div>
-              ) : (
-                <div className="flex aspect-video items-center justify-center bg-linear-to-br from-secondary/25 via-primary/15 to-accent/20 text-secondary/50">
-                  <CollectionIcon className="h-10 w-10" />
-                </div>
-              )}
+          <li key={ids.seriesId}>
+            <LocaleLink
+              className="group flex items-center gap-4 py-3"
+              href={`/series/${ids.seriesId}/episodes/${ids.latestEpisodeId}`}
+            >
+              <EyeCatchFrame
+                alt={item.seriesTitle}
+                className="size-14 shrink-0 rounded-control"
+                sizes="56px"
+                variants={item.eyeCatchImageVariants}
+              />
+              <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
+                <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                  <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+                      <Message
+                        message="host.top.episode_number"
+                        values={{ number: item.latestEpisodeOrderIndex }}
+                      />
+                    </Suspense>
+                  </span>
+                  <span className="truncate underline-offset-4 group-hover:underline">
+                    {item.latestEpisodeTitle}
+                  </span>
+                </span>
+                <span className="flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:w-64 sm:shrink-0">
+                  <span className="truncate">{item.seriesTitle}</span>
+                  <span className="shrink-0">
+                    <RelativeTime
+                      absolute={formatDate(item.latestPublishedAt, {
+                        fallback: "",
+                        locale,
+                        timeZone,
+                      })}
+                      timeZone={timeZone}
+                      value={item.latestPublishedAt}
+                    />
+                  </span>
+                </span>
+              </span>
             </LocaleLink>
-            <div className="p-5">
-              <h3 className="mb-1 font-serif text-lg font-semibold">
-                <LocaleLink
-                  className="underline-offset-4 transition-colors hover:text-secondary hover:underline"
-                  href={`/series/${ids.seriesId}`}
-                >
-                  {item.seriesTitle}
-                </LocaleLink>
-              </h3>
-              {item.creatorNames.length > 0 && (
-                <p className="mb-3 text-sm text-muted-foreground">
-                  {formatList(item.creatorNames, { locale })}
-                </p>
-              )}
-              <p className="mb-2 text-xs text-muted-foreground">
-                {getMessage(messages, "host.top.latest_update")}
-              </p>
-              <LocaleLink
-                className="font-medium text-accent underline-offset-4 hover:underline"
-                href={`/series/${ids.seriesId}/episodes/${ids.latestEpisodeId}`}
-              >
-                {item.latestEpisodeTitle}
-              </LocaleLink>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {getMessage(messages, "host.top.published_on", {
-                  date: formatDate(item.latestPublishedAt, {
-                    fallback: getMessage(messages, "host.common.unset"),
-                    locale,
-                    timeZone,
-                  }),
-                })}
-              </p>
-            </div>
-          </article>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 };
 
@@ -508,44 +686,25 @@ const FeaturedLabelsSection = async () => {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="divide-y divide-border">
       {featuredLabels.map((label) => (
-        <LocaleLink
-          key={label.publicId}
-          href={`/labels/${label.publicId}`}
-          className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:border-secondary/40 hover:shadow-md"
-        >
-          {label.eyeCatchImageVariants &&
-          label.eyeCatchImageVariants.length > 0 ? (
-            <div className="aspect-video overflow-hidden bg-muted">
-              <EyeCatchPicture
-                alt={label.name}
-                imgClassName="size-full object-cover"
-                variants={label.eyeCatchImageVariants}
-              />
-            </div>
-          ) : (
-            <div className="flex aspect-video items-center justify-center bg-linear-to-br from-accent/25 via-primary/10 to-secondary/20 text-accent/55">
-              <ImageIcon className="h-10 w-10" />
-            </div>
-          )}
-
-          <div className="p-4">
-            <p className="font-medium">{label.name}</p>
-          </div>
-        </LocaleLink>
+        <li key={label.publicId}>
+          <LocaleLink
+            className="flex items-baseline justify-between gap-4 py-3 underline-offset-4 hover:underline"
+            href={`/labels/${label.publicId}`}
+          >
+            {label.name}
+          </LocaleLink>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 };
 
 const FeaturedAuthorsSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const [result, messages] = await Promise.all([
-    getCatalogTopFeaturedAuthors(tenantId, { locale }),
-    loadHostMessages(locale),
-  ]);
+  const result = await getCatalogTopFeaturedAuthors(tenantId, { locale });
 
   if (!result.ok) {
     return (
@@ -563,77 +722,44 @@ const FeaturedAuthorsSection = async () => {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="divide-y divide-border">
       {featuredAuthors.map((author) => (
-        <LocaleLink
-          key={author.id}
-          className="group rounded-lg border border-border/70 bg-card p-5 shadow-sm transition hover:border-accent/40 hover:shadow-md"
-          href={`/authors/${author.id}`}
-        >
-          <p className="mb-1 font-medium transition-colors group-hover:text-secondary">
-            {author.name}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {getMessage(messages, "host.common.series_count", {
-              count: author.seriesCount,
-            })}
-          </p>
-        </LocaleLink>
+        <li key={author.id}>
+          <LocaleLink
+            className="group flex items-baseline justify-between gap-4 py-3"
+            href={`/authors/${author.id}`}
+          >
+            <span className="truncate underline-offset-4 group-hover:underline">
+              {author.name}
+            </span>
+            <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message
+                  message="host.common.series_count"
+                  values={{ count: author.seriesCount }}
+                />
+              </Suspense>
+            </span>
+          </LocaleLink>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 };
 
 const Page = () => (
-  <main className="mx-auto max-w-6xl px-6 py-12">
-    <header className="mb-10 space-y-4">
-      <Suspense
-        fallback={
-          <div
-            aria-hidden
-            className="h-4 w-24 animate-pulse rounded bg-muted"
-          />
-        }
-      >
-        <CatalogTopSiteLabel />
+  <main className="mx-auto grid max-w-6xl gap-12 px-6 py-10">
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message={SECTION_TITLES.featuredWork} />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={<FeaturedWorkSkeleton />}>
+        <FeaturedWorkSection />
       </Suspense>
-      <h1 className="font-serif text-4xl font-bold">
-        <Suspense fallback={<SkeletonLine className="h-9 w-64" />}>
-          <Message message="host.top.title" />
-        </Suspense>
-      </h1>
-      <p className="max-w-3xl text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-5 w-full max-w-lg" />}>
-          <Message message="host.top.description" />
-        </Suspense>
-      </p>
-      <div className="flex flex-wrap gap-3">
-        <LocaleLink
-          className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition hover:opacity-90"
-          href="/series"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="host.top.to_series" />
-          </Suspense>
-        </LocaleLink>
-        <LocaleLink
-          className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition hover:opacity-90"
-          href="/labels"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="host.top.to_labels" />
-          </Suspense>
-        </LocaleLink>
-        <LocaleLink
-          className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-          href="/authors"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="host.top.to_authors" />
-          </Suspense>
-        </LocaleLink>
-      </div>
-    </header>
+    </SectionErrorBoundary>
 
     <SectionErrorBoundary
       title={
@@ -647,136 +773,157 @@ const Page = () => (
       </Suspense>
     </SectionErrorBoundary>
 
-    <section aria-labelledby="recommended-works" className="mb-12">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2
-          id="recommended-works"
-          className="font-serif text-2xl font-semibold"
+    <section aria-labelledby="new-episodes">
+      <div className="border-b border-border pb-2">
+        <h2 className="font-serif text-xl leading-tight" id="new-episodes">
+          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+            <Message message="host.top.new_episodes_heading" />
+          </Suspense>
+        </h2>
+      </div>
+      <div className="mt-2">
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message={SECTION_TITLES.newEpisodes} />
+            </Suspense>
+          }
         >
-          <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+          <Suspense fallback={<EpisodeRowsSkeleton />}>
+            <NewEpisodesSection />
+          </Suspense>
+        </SectionErrorBoundary>
+      </div>
+    </section>
+
+    <section aria-labelledby="recommended-works">
+      <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
+        <h2 className="font-serif text-xl leading-tight" id="recommended-works">
+          <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
             <Message message="host.top.recommended_heading" />
           </Suspense>
         </h2>
         <LocaleLink
-          className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+          className="text-sm text-primary underline underline-offset-4"
           href="/series"
         >
-          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="host.top.view_all" />
           </Suspense>
         </LocaleLink>
       </div>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message={SECTION_TITLES.recommended} />
+      <div className="mt-6">
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message={SECTION_TITLES.recommended} />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={<ShelfSkeleton />}>
+            <RecommendedSeriesSection />
           </Suspense>
-        }
-      >
-        <Suspense fallback={<CardGridSkeleton />}>
-          <RecommendedSeriesSection />
-        </Suspense>
-      </SectionErrorBoundary>
+        </SectionErrorBoundary>
+      </div>
     </section>
 
-    <section aria-labelledby="new-episodes" className="mb-12">
-      <h2 id="new-episodes" className="mb-4 font-serif text-2xl font-semibold">
-        <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-          <Message message="host.top.new_episodes_heading" />
-        </Suspense>
-      </h2>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message={SECTION_TITLES.newEpisodes} />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<ListSkeleton />}>
-          <NewEpisodesSection />
-        </Suspense>
-      </SectionErrorBoundary>
-    </section>
-
-    <section aria-labelledby="updated-series" className="mb-12">
-      <h2
-        id="updated-series"
-        className="mb-4 font-serif text-2xl font-semibold"
-      >
-        <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
-          <Message message="host.top.updated_heading" />
-        </Suspense>
-      </h2>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message={SECTION_TITLES.updated} />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<CardGridSkeleton />}>
-          <UpdatedSeriesSection />
-        </Suspense>
-      </SectionErrorBoundary>
-    </section>
-
-    <section aria-labelledby="featured-labels" className="mb-12">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 id="featured-labels" className="font-serif text-2xl font-semibold">
-          <Suspense fallback={<SkeletonLine className="h-7 w-44" />}>
-            <Message message="host.top.featured_labels_heading" />
+    <section aria-labelledby="updated-series">
+      <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
+        <h2 className="font-serif text-xl leading-tight" id="updated-series">
+          <Suspense fallback={<SkeletonLine className="h-5 w-36" />}>
+            <Message message="host.top.updated_heading" />
           </Suspense>
         </h2>
         <LocaleLink
-          className="text-sm font-medium text-accent underline-offset-4 hover:underline"
-          href="/labels"
+          className="text-sm text-primary underline underline-offset-4"
+          href="/series"
         >
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="host.top.to_labels" />
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.top.view_all" />
           </Suspense>
         </LocaleLink>
       </div>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message={SECTION_TITLES.labels} />
+      <div className="mt-2">
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message={SECTION_TITLES.updated} />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={<EpisodeRowsSkeleton />}>
+            <UpdatedSeriesSection />
           </Suspense>
-        }
-      >
-        <Suspense fallback={<CardGridSkeleton />}>
-          <FeaturedLabelsSection />
-        </Suspense>
-      </SectionErrorBoundary>
+        </SectionErrorBoundary>
+      </div>
     </section>
 
-    <section aria-labelledby="featured-authors">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 id="featured-authors" className="font-serif text-2xl font-semibold">
-          <Suspense fallback={<SkeletonLine className="h-7 w-36" />}>
-            <Message message="host.top.featured_authors_heading" />
-          </Suspense>
-        </h2>
-        <LocaleLink
-          className="text-sm font-medium text-accent underline-offset-4 hover:underline"
-          href="/authors"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="host.top.to_authors" />
-          </Suspense>
-        </LocaleLink>
-      </div>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message={SECTION_TITLES.authors} />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<CardGridSkeleton />}>
-          <FeaturedAuthorsSection />
-        </Suspense>
-      </SectionErrorBoundary>
-    </section>
+    <div className="grid gap-12 md:grid-cols-2">
+      <section aria-labelledby="featured-labels">
+        <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
+          <h2 className="font-serif text-xl leading-tight" id="featured-labels">
+            <Suspense fallback={<SkeletonLine className="h-5 w-36" />}>
+              <Message message="host.top.featured_labels_heading" />
+            </Suspense>
+          </h2>
+          <LocaleLink
+            className="text-sm text-primary underline underline-offset-4"
+            href="/labels"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="host.top.view_all" />
+            </Suspense>
+          </LocaleLink>
+        </div>
+        <div className="mt-2">
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message={SECTION_TITLES.labels} />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<NameListSkeleton />}>
+              <FeaturedLabelsSection />
+            </Suspense>
+          </SectionErrorBoundary>
+        </div>
+      </section>
+
+      <section aria-labelledby="featured-authors">
+        <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
+          <h2
+            className="font-serif text-xl leading-tight"
+            id="featured-authors"
+          >
+            <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+              <Message message="host.top.featured_authors_heading" />
+            </Suspense>
+          </h2>
+          <LocaleLink
+            className="text-sm text-primary underline underline-offset-4"
+            href="/authors"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="host.top.view_all" />
+            </Suspense>
+          </LocaleLink>
+        </div>
+        <div className="mt-2">
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message={SECTION_TITLES.authors} />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<NameListSkeleton />}>
+              <FeaturedAuthorsSection />
+            </Suspense>
+          </SectionErrorBoundary>
+        </div>
+      </section>
+    </div>
   </main>
 );
 

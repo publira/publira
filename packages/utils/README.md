@@ -77,6 +77,15 @@ startOfDayIsoString("2024-03-10", tenantTimeZone); // 00:00 in that TZ
 endOfDayIsoString("2024-03-10", tenantTimeZone); // the end of the same day (inclusive)
 ```
 
+```ts
+import { formatRelativeTime } from "@publira/utils";
+
+// How long ago: "3 days ago", "yesterday", "2 hours ago"
+formatRelativeTime(iso, { locale, timeZone: tenantTimeZone });
+```
+
+`formatRelativeTime` answers differently depending on when it is called, so it belongs in the browser: a Server Component that renders one under Cache Components writes the phrase into the prerendered shell, where it stops matching the clock. `timeZone` is what decides where "yesterday" starts — from an hour up the phrase counts calendar days in that zone rather than elapsed hours, so two timestamps two hours apart are yesterday and today when midnight falls between them. `now` takes the moment to measure against, so a test states one instead of moving with the clock.
+
 ### Picking and validating a time zone
 
 These are for a screen that lets someone choose an IANA name and saves it, such as the tenant time zone settings.

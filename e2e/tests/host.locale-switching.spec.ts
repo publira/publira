@@ -268,7 +268,7 @@ test.describe("web-host locale on a tenant whose default is Japanese", () => {
   }) => {
     await page.goto(japaneseDefaultUrl(hostPath("/")));
     await expect(
-      page.getByRole("heading", { level: 1, name: "カタログトップ" })
+      page.getByRole("heading", { level: 2, name: "新着エピソード" })
     ).toBeVisible();
 
     await switchHostLocale(page, "日本語", "English");
@@ -277,7 +277,7 @@ test.describe("web-host locale on a tenant whose default is Japanese", () => {
       (url) => url.pathname === localeHostPath("en", "/")
     );
     await expect(
-      page.getByRole("heading", { level: 1, name: "Catalog" })
+      page.getByRole("heading", { level: 2, name: "New episodes" })
     ).toBeVisible();
     await expectDocumentLocale(page, "English");
 
@@ -285,7 +285,7 @@ test.describe("web-host locale on a tenant whose default is Japanese", () => {
 
     await expect(page).toHaveURL((url) => url.pathname === hostPath("/"));
     await expect(
-      page.getByRole("heading", { level: 1, name: "カタログトップ" })
+      page.getByRole("heading", { level: 2, name: "新着エピソード" })
     ).toBeVisible();
     await expectDocumentLocale(page, "日本語");
   });

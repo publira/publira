@@ -158,7 +158,7 @@ test.describe("web-host public API outage", () => {
     const response = await page.goto(hostPath("/"));
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "Catalog" })
+      page.getByRole("heading", { level: 2, name: "New episodes" })
     ).toBeVisible();
   });
 });

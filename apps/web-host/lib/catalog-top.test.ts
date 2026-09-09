@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getCatalogTopFeaturedAuthors,
   getCatalogTopFeaturedLabels,
+  getCatalogTopFeaturedWork,
   getCatalogTopNewEpisodes,
   getCatalogTopRecommendedSeries,
   getCatalogTopUpdatedSeries,
@@ -157,6 +158,103 @@ describe("catalog-top section loaders", () => {
         locale: "en",
         maxRecommended: 6,
       })
+    ).resolves.toEqual({
+      message: "Could not load the recommended works. Please try again later.",
+      ok: false,
+    });
+  });
+
+  it("getCatalogTopFeaturedWork opens on the head of the recommendation order", async () => {
+    mockListRecommendedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        nextToken: "",
+        previousToken: "",
+        series: [seriesFixture[0], seriesFixture[1]],
+      },
+    });
+    mockGetSeriesDetail.mockResolvedValue({ ok: true, value: detailSeries1 });
+
+    const result = await getCatalogTopFeaturedWork("TENANT_001", {
+      locale: "en",
+    });
+
+    expect(mockGetSeriesDetail).toHaveBeenCalledWith(
+      "TENANT_001",
+      "SERIES_1",
+      "en"
+    );
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        creatorNames: ["Author A"],
+        eyeCatchImageVariants: undefined,
+        // The newest published episode, not the last one the detail listed.
+        latestEpisode: {
+          episodeId: "EP_1_2",
+          orderIndex: 2,
+          publishedAt: "2026-03-15T00:00:00Z",
+          title: "Episode 2",
+        },
+        seriesId: "SERIES_1",
+        seriesTitle: "Series 1",
+      },
+    });
+  });
+
+  it("getCatalogTopFeaturedWork has no work to open with on an empty catalogue", async () => {
+    mockListRecommendedSeries.mockResolvedValue({
+      ok: true,
+      value: { nextToken: "", previousToken: "", series: [] },
+    });
+
+    await expect(
+      getCatalogTopFeaturedWork("TENANT_001", { locale: "en" })
+    ).resolves.toEqual({ ok: true, value: null });
+    expect(mockGetSeriesDetail).not.toHaveBeenCalled();
+  });
+
+  it("getCatalogTopFeaturedWork offers no episode until one is published", async () => {
+    mockListRecommendedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        nextToken: "",
+        previousToken: "",
+        series: [seriesFixture[0]],
+      },
+    });
+    mockGetSeriesDetail.mockResolvedValue({
+      ok: true,
+      value: {
+        episodes: [
+          {
+            orderIndex: 1,
+            price: 0,
+            publicId: "EP_1_1",
+            publishedAt: "",
+            status: "draft",
+            title: "Episode 1",
+          },
+        ],
+        series: detailSeries1.series,
+      },
+    });
+
+    const result = await getCatalogTopFeaturedWork("TENANT_001", {
+      locale: "en",
+    });
+
+    expect(result.ok && result.value?.latestEpisode).toBeUndefined();
+  });
+
+  it("getCatalogTopFeaturedWork reports a failed recommendation read", async () => {
+    mockListRecommendedSeries.mockResolvedValue({
+      message: "Could not load the recommended works. Please try again later.",
+      ok: false,
+    });
+
+    await expect(
+      getCatalogTopFeaturedWork("TENANT_001", { locale: "en" })
     ).resolves.toEqual({
       message: "Could not load the recommended works. Please try again later.",
       ok: false,

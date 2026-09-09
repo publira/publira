@@ -37,13 +37,16 @@ test.describe("web-host tenant boundary", () => {
     const response = await page.goto(otherTenantUrl("/"));
     expect(response?.status(), await page.content()).toBe(200);
 
+    // The tenant's own work opens the page, and its name is on the header
+    // brand rather than above the work.
     await expect(
-      page.getByRole("heading", { level: 1, name: "Catalog" })
+      page.getByRole("heading", {
+        level: 1,
+        name: OTHER_TENANT.publishedSeries.title,
+      })
     ).toBeVisible();
     await expect(
-      page.getByRole("paragraph").filter({
-        hasText: new RegExp(`^${OTHER_TENANT.name}$`, "u"),
-      })
+      page.getByRole("link", { exact: true, name: OTHER_TENANT.name })
     ).toBeVisible();
     await expect(page.getByText(OTHER_TENANT.siteDescription)).toBeVisible();
 
@@ -235,7 +238,7 @@ test.describe("web-host tenant boundary", () => {
     // renders, so nothing has been committed yet.
     expect(response?.status(), await page.content()).toBe(404);
     await expect(
-      page.getByRole("heading", { exact: true, name: "Catalog" })
+      page.getByRole("heading", { exact: true, name: "New episodes" })
     ).toHaveCount(0);
   });
 });

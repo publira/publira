@@ -14,6 +14,7 @@ export {
   formatDate,
   formatDateTime,
   formatPlainDate,
+  formatRelativeTime,
   fromDateTimeLocalValue,
   parseInstant,
   startOfDayIsoString,
@@ -21,6 +22,7 @@ export {
   toInstantIsoString,
   type FormatDateTimeOptions,
   type FormatPlainDateOptions,
+  type FormatRelativeTimeOptions,
   type ToDateTimeLocalOptions,
 } from "./format-date-time";
 export { formatPercent, type FormatPercentOptions } from "./format-number";

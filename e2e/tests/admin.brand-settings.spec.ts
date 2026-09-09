@@ -316,7 +316,7 @@ test.describe("admin brand settings", () => {
     await disableThemeCssHttpCache(page);
     await pollHostPage(page, hostUrl("/"), async () => {
       await expect(
-        page.getByRole("heading", { exact: true, name: "Catalog" })
+        page.getByRole("heading", { exact: true, name: "New episodes" })
       ).toBeVisible({ timeout: 5000 });
       return await primaryCustomProperty(page);
     }).toBe(SAVED_PRIMARY_COLOR);

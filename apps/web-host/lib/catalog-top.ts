@@ -18,7 +18,14 @@ import type {
 
 export interface CatalogTopEpisodeItem {
   episodeId: string;
+  episodeOrderIndex: number;
   episodeTitle: string;
+  /**
+   * The series eye-catch. An episode carries no image of its own, and the row
+   * that shows it stands next to episodes of other series, so this is what
+   * tells one row from the next.
+   */
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
   publishedAt: string;
   seriesId: string;
   seriesTitle: string;
@@ -28,8 +35,24 @@ export interface CatalogTopUpdatedSeriesItem {
   creatorNames: string[];
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   latestEpisodeId: string;
+  latestEpisodeOrderIndex: number;
   latestEpisodeTitle: string;
   latestPublishedAt: string;
+  seriesId: string;
+  seriesTitle: string;
+}
+
+/** The work the top page opens with, and the episode its one button offers. */
+export interface CatalogTopFeaturedWork {
+  creatorNames: string[];
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
+  /** Absent while the series has no published episode: then there is nothing to read yet. */
+  latestEpisode?: {
+    episodeId: string;
+    orderIndex: number;
+    publishedAt: string;
+    title: string;
+  };
   seriesId: string;
   seriesTitle: string;
 }
@@ -80,6 +103,7 @@ const byNewestDateDesc = (
 interface SeriesDetailRow {
   creatorNames: string[];
   episodes: {
+    orderIndex: number;
     publicId: string;
     publishedAt: string;
     title: string;
@@ -165,6 +189,62 @@ export const getCatalogTopRecommendedSeries = async (
   return { ok: true, value: page.value.series };
 };
 
+/**
+ * The work the page opens with: the head of the recommendation order, with the
+ * latest episode its reading button offers.
+ *
+ * Which work that is has no tenant setting behind it yet, so "the first
+ * recommended series" is the rule. A `null` value is an empty catalogue rather
+ * than a failure — the recommendation section below says so in its own words,
+ * and the opening block simply has nothing to open with.
+ */
+export const getCatalogTopFeaturedWork = async (
+  tenantId: string,
+  { locale, maxRecommended = 6 }: CatalogTopDataOptions
+): Promise<CachedReadResult<CatalogTopFeaturedWork | null>> => {
+  "use cache";
+
+  const recommended = await getCatalogTopRecommendedSeries(tenantId, {
+    locale,
+    maxRecommended,
+  });
+  if (!recommended.ok) {
+    return cachedReadFailure(recommended.message);
+  }
+
+  const [series] = recommended.value;
+  if (!series) {
+    return { ok: true, value: null };
+  }
+
+  const detail = await getSeriesDetail(tenantId, series.publicId, locale);
+  if (!detail.ok) {
+    return cachedReadFailure(detail.message);
+  }
+
+  const [latestEpisode] = (detail.value?.episodes ?? [])
+    .filter((episode) => episode.publishedAt.trim().length > 0)
+    .toSorted(byNewestDateDesc);
+
+  return {
+    ok: true,
+    value: {
+      creatorNames: series.creatorNames,
+      eyeCatchImageVariants: series.eyeCatchImageVariants,
+      latestEpisode: latestEpisode
+        ? {
+            episodeId: latestEpisode.publicId,
+            orderIndex: latestEpisode.orderIndex,
+            publishedAt: latestEpisode.publishedAt,
+            title: latestEpisode.title,
+          }
+        : undefined,
+      seriesId: series.publicId,
+      seriesTitle: series.title,
+    },
+  };
+};
+
 export const getCatalogTopNewEpisodes = async (
   tenantId: string,
   {
@@ -193,7 +273,9 @@ export const getCatalogTopNewEpisodes = async (
           ? [
               {
                 episodeId: episode.publicId,
+                episodeOrderIndex: episode.orderIndex,
                 episodeTitle: episode.title,
+                eyeCatchImageVariants: row.eyeCatchImageVariants,
                 publishedAt: episode.publishedAt,
                 seriesId: row.publicId,
                 seriesTitle: row.title,
@@ -244,6 +326,7 @@ export const getCatalogTopUpdatedSeries = async (
           creatorNames: row.creatorNames,
           eyeCatchImageVariants: row.eyeCatchImageVariants,
           latestEpisodeId: latestEpisode.publicId,
+          latestEpisodeOrderIndex: latestEpisode.orderIndex,
           latestEpisodeTitle: latestEpisode.title,
           latestPublishedAt: latestEpisode.publishedAt,
           seriesId: row.publicId,

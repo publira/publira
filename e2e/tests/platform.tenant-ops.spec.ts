@@ -180,15 +180,14 @@ test.describe("platform tenant operations", () => {
     const hostBase = withHostname(WEB_HOST_BASE_URL, domain);
     const hostResponse = await page.goto(`${hostBase}/`);
     expect(hostResponse?.status(), await page.content()).toBe(200);
+    // A brand new tenant has no work for the top page to open with, so the
+    // first section heading is what says the page rendered.
     await expect(
-      page.getByRole("heading", { level: 1, name: "Catalog" })
+      page.getByRole("heading", { level: 2, name: "New episodes" })
     ).toBeVisible();
-    // New tenants have no site description; the tenant name is the site label.
-    await expect(
-      page
-        .getByRole("paragraph")
-        .filter({ hasText: new RegExp(`^${name}$`, "u") })
-    ).toBeVisible();
+    // New tenants have no site description; the tenant name is the site label,
+    // shown on the header brand.
+    await expect(page.getByRole("link", { exact: true, name })).toBeVisible();
 
     const adminBase = withHostname(WEB_ADMIN_BASE_URL, adminDomain);
     const adminResponse = await page.goto(`${adminBase}/login`);
@@ -226,11 +225,7 @@ test.describe("platform tenant operations", () => {
     const movedHost = withHostname(WEB_HOST_BASE_URL, movedDomain);
     const movedHostResponse = await page.goto(`${movedHost}/`);
     expect(movedHostResponse?.status(), await page.content()).toBe(200);
-    await expect(
-      page
-        .getByRole("paragraph")
-        .filter({ hasText: new RegExp(`^${name}$`, "u") })
-    ).toBeVisible();
+    await expect(page.getByRole("link", { exact: true, name })).toBeVisible();
 
     const movedAdmin = withHostname(WEB_ADMIN_BASE_URL, movedAdminDomain);
     const movedAdminResponse = await page.goto(`${movedAdmin}/login`);
