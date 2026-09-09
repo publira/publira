@@ -218,6 +218,19 @@ export const WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL = envUrl(
   withHostname(WEB_ADMIN_BASE_URL, "admin.locale.localhost")
 );
 
+/**
+ * Public site of the ranked tenant from the scenario seed
+ * `db/seeds/scenarios/170_ranking.sql`.
+ *
+ * A ranking snapshot is tenant-wide and decides what the top page's popularity
+ * module shows, so the one tenant that has been ranked is not a tenant whose
+ * home page another suite reads or photographs.
+ */
+export const WEB_HOST_RANKING_BASE_URL = envUrl(
+  "E2E_WEB_HOST_RANKING_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "ranking.localhost")
+);
+
 /** Host that maps to no tenant at all. */
 export const WEB_HOST_UNKNOWN_TENANT_BASE_URL = envUrl(
   "E2E_WEB_HOST_UNKNOWN_TENANT_BASE_URL",

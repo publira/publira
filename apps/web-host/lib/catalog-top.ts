@@ -8,11 +8,13 @@ import {
   getSeriesDetail,
   listPublishedLabels,
   listPublishedSeries,
+  listRankedSeries,
   listRecommendedSeries,
 } from "./catalog";
 import type {
   EyeCatchImageVariant,
   LabelListItem,
+  RankedSeriesItem,
   SeriesListItem,
 } from "./catalog";
 
@@ -63,6 +65,14 @@ export interface CatalogTopFeaturedAuthor {
   seriesCount: number;
 }
 
+/**
+ * The popularity module's two states: the weekly chart, and the cold-start
+ * shelf a tenant sees until the ranking batch has run for it.
+ */
+export type CatalogTopPopularSeries =
+  | { kind: "ranked"; rankedSeries: RankedSeriesItem[] }
+  | { kind: "recommended"; series: SeriesListItem[] };
+
 interface CatalogTopDataOptions {
   detailFetchLimit?: number;
   /** Part of every cache key here, because the failure copy is worded in it. */
@@ -70,6 +80,7 @@ interface CatalogTopDataOptions {
   maxAuthors?: number;
   maxLabels?: number;
   maxNewEpisodes?: number;
+  maxRanked?: number;
   maxRecommended?: number;
   maxUpdatedSeries?: number;
   seriesLimit?: number;
@@ -187,6 +198,55 @@ export const getCatalogTopRecommendedSeries = async (
   }
 
   return { ok: true, value: page.value.series };
+};
+
+/**
+ * What the top page's popularity module shows: the weekly chart when the batch
+ * has ranked this tenant, and the recommendation order when it has not.
+ *
+ * The two are one module rather than two, because they answer the same
+ * question and only one of them can be answered at a time. Which one it is
+ * decides the module's heading and where its link goes, so the shape is a
+ * union the section reads once instead of two lists it would have to compare.
+ *
+ * A tenant with no snapshot is the cold start every tenant begins in: the
+ * batch runs daily, and until it has, `ListRecommendedSeries` is the same
+ * newest-first shelf the page showed before rankings existed.
+ */
+export const getCatalogTopPopularSeries = async (
+  tenantId: string,
+  { locale, maxRanked = 10, maxRecommended = 6 }: CatalogTopDataOptions
+): Promise<CachedReadResult<CatalogTopPopularSeries>> => {
+  "use cache";
+
+  const ranking = await listRankedSeries(tenantId, {
+    limit: maxRanked,
+    locale,
+    period: "weekly",
+  });
+  if (!ranking.ok) {
+    return cachedReadFailure(ranking.message);
+  }
+
+  if (ranking.value.rankedSeries.length > 0) {
+    return {
+      ok: true,
+      value: { kind: "ranked", rankedSeries: ranking.value.rankedSeries },
+    };
+  }
+
+  const recommended = await getCatalogTopRecommendedSeries(tenantId, {
+    locale,
+    maxRecommended,
+  });
+  if (!recommended.ok) {
+    return cachedReadFailure(recommended.message);
+  }
+
+  return {
+    ok: true,
+    value: { kind: "recommended", series: recommended.value },
+  };
 };
 
 /**

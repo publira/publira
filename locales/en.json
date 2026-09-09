@@ -2075,6 +2075,25 @@
       "read_failed": "Could not load the page content. Please try again later.",
       "untitled": "Page"
     },
+    "ranking": {
+      "computed_at": "Updated {$datetime}",
+      "description": "The works being read the most right now.",
+      "first_page": "Go to the top of the ranking",
+      "list_empty": "No ranking has been computed yet.",
+      "list_error": "Could not show the ranking",
+      "list_failed": "Could not load the ranking. Please try again later.",
+      "list_title": "Ranking",
+      "movement_down": "Down {$count}",
+      "movement_new": "New",
+      "movement_none": "No change",
+      "movement_up": "Up {$count}",
+      "page_empty": "There are no works to show on this page.",
+      "pagination_aria": "Ranking pagination",
+      "period_daily": "Daily",
+      "period_nav": "Ranking period",
+      "period_weekly": "Weekly",
+      "rank_position": "No. {$rank}"
+    },
     "search": {
       "description": "Search published series by title and synopsis",
       "error": "Could not show the search results",
@@ -2186,6 +2205,7 @@
       "new_episodes_error": "Could not show the new episodes",
       "new_episodes_heading": "New episodes",
       "published_on": "Published {$date}",
+      "ranking_heading": "Top 10 this week",
       "read_episode": "Read episode {$number}",
       "recommended_empty": "There are no published series yet.",
       "recommended_error": "Could not show the recommended works",

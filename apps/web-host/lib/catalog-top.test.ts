@@ -5,6 +5,7 @@ import {
   getCatalogTopFeaturedLabels,
   getCatalogTopFeaturedWork,
   getCatalogTopNewEpisodes,
+  getCatalogTopPopularSeries,
   getCatalogTopRecommendedSeries,
   getCatalogTopUpdatedSeries,
 } from "./catalog-top";
@@ -17,11 +18,13 @@ const {
   mockGetSeriesDetail,
   mockListPublishedLabels,
   mockListPublishedSeries,
+  mockListRankedSeries,
   mockListRecommendedSeries,
 } = vi.hoisted(() => ({
   mockGetSeriesDetail: vi.fn(),
   mockListPublishedLabels: vi.fn(),
   mockListPublishedSeries: vi.fn(),
+  mockListRankedSeries: vi.fn(),
   mockListRecommendedSeries: vi.fn(),
 }));
 
@@ -37,6 +40,7 @@ vi.mock("./catalog", async (importOriginal) => {
     getSeriesDetail: mockGetSeriesDetail,
     listPublishedLabels: mockListPublishedLabels,
     listPublishedSeries: mockListPublishedSeries,
+    listRankedSeries: mockListRankedSeries,
     listRecommendedSeries: mockListRecommendedSeries,
   };
 });
@@ -116,7 +120,97 @@ describe("catalog-top section loaders", () => {
     mockListPublishedLabels.mockReset();
     mockListPublishedAuthors.mockReset();
     mockListPublishedSeries.mockReset();
+    mockListRankedSeries.mockReset();
     mockListRecommendedSeries.mockReset();
+  });
+
+  it("getCatalogTopPopularSeries shows the weekly chart when the batch has ranked the tenant", async () => {
+    mockListRankedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        computedAt: "2026-03-26T21:00:00Z",
+        nextToken: "",
+        periodEnd: "2026-03-25",
+        periodStart: "2026-03-19",
+        previousToken: "",
+        rankedSeries: [
+          { previousRank: 3, rank: 1, series: seriesFixture[1] },
+          { rank: 2, series: seriesFixture[0] },
+        ],
+      },
+    });
+
+    const result = await getCatalogTopPopularSeries("TENANT_001", {
+      locale: "en",
+      maxRanked: 10,
+    });
+
+    expect(mockListRankedSeries).toHaveBeenCalledWith("TENANT_001", {
+      limit: 10,
+      locale: "en",
+      period: "weekly",
+    });
+    expect(mockListRecommendedSeries).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        kind: "ranked",
+        rankedSeries: [
+          { previousRank: 3, rank: 1, series: seriesFixture[1] },
+          { rank: 2, series: seriesFixture[0] },
+        ],
+      },
+    });
+  });
+
+  it("getCatalogTopPopularSeries falls back to the recommendation order before the first snapshot", async () => {
+    mockListRankedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        computedAt: "",
+        nextToken: "",
+        periodEnd: "",
+        periodStart: "",
+        previousToken: "",
+        rankedSeries: [],
+      },
+    });
+    mockListRecommendedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        nextToken: "",
+        previousToken: "",
+        series: [seriesFixture[0], seriesFixture[1]],
+      },
+    });
+
+    const result = await getCatalogTopPopularSeries("TENANT_001", {
+      locale: "en",
+      maxRecommended: 6,
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        kind: "recommended",
+        series: [seriesFixture[0], seriesFixture[1]],
+      },
+    });
+  });
+
+  it("getCatalogTopPopularSeries reports a failed ranking read instead of falling back", async () => {
+    mockListRankedSeries.mockResolvedValue({
+      message: "Could not load the ranking. Please try again later.",
+      ok: false,
+    });
+
+    await expect(
+      getCatalogTopPopularSeries("TENANT_001", { locale: "en" })
+    ).resolves.toEqual({
+      message: "Could not load the ranking. Please try again later.",
+      ok: false,
+    });
+    expect(mockListRecommendedSeries).not.toHaveBeenCalled();
   });
 
   it("getCatalogTopRecommendedSeries keeps the order the ranking decided", async () => {

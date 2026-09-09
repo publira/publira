@@ -2075,6 +2075,25 @@
       "read_failed": "페이지 내용을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "untitled": "페이지"
     },
+    "ranking": {
+      "computed_at": "{$datetime} 업데이트",
+      "description": "지금 가장 많이 읽히는 작품입니다.",
+      "first_page": "랭킹의 첫 페이지로 이동",
+      "list_empty": "아직 집계된 랭킹이 없습니다.",
+      "list_error": "랭킹을 표시할 수 없습니다",
+      "list_failed": "랭킹을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "list_title": "랭킹",
+      "movement_down": "{$count}단계 하락",
+      "movement_new": "신규",
+      "movement_none": "변동 없음",
+      "movement_up": "{$count}단계 상승",
+      "page_empty": "이 페이지에는 표시할 작품이 없습니다.",
+      "pagination_aria": "랭킹 페이지 이동",
+      "period_daily": "일간",
+      "period_nav": "랭킹 기간",
+      "period_weekly": "주간",
+      "rank_position": "{$rank}위"
+    },
     "search": {
       "description": "공개 중인 시리즈를 제목과 줄거리로 검색할 수 있습니다",
       "error": "검색 결과를 표시할 수 없습니다",
@@ -2186,6 +2205,7 @@
       "new_episodes_error": "새 에피소드를 표시할 수 없습니다",
       "new_episodes_heading": "새 에피소드",
       "published_on": "{$date} 공개",
+      "ranking_heading": "이번 주 톱 10",
       "read_episode": "{$number}화 읽기",
       "recommended_empty": "아직 공개 중인 시리즈가 없습니다.",
       "recommended_error": "추천 작품을 표시할 수 없습니다",

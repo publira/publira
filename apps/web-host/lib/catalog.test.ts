@@ -1,22 +1,28 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { EpisodeAccess } from "@publira/api-client/public/catalog";
+import {
+  EpisodeAccess,
+  RankingPeriod,
+} from "@publira/api-client/public/catalog";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getEpisodeDetail,
   getEpisodeViewer,
   isPublicEpisodeBody,
+  listRankedSeries,
   toEpisodeAccessState,
 } from "./catalog";
 
-const { mockGetEpisodeDetail } = vi.hoisted(() => ({
+const { mockGetEpisodeDetail, mockListRankedSeries } = vi.hoisted(() => ({
   mockGetEpisodeDetail: vi.fn(),
+  mockListRankedSeries: vi.fn(),
 }));
 
 vi.mock("./api-client", () => ({
   apiClient: {
     catalog: {
       getEpisodeDetail: mockGetEpisodeDetail,
+      listRankedSeries: mockListRankedSeries,
     },
   },
   buildSessionHeaders: (sessionId: string) => ({
@@ -503,6 +509,136 @@ describe("catalog.getEpisodeViewer", () => {
         "session-token",
         "en"
       )
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("catalog.listRankedSeries", () => {
+  beforeEach(() => {
+    mockListRankedSeries.mockReset();
+  });
+
+  it("Ask for the period the caller named and keep the positions the snapshot recorded", async () => {
+    mockListRankedSeries.mockResolvedValueOnce({
+      computedAt: "2026-03-26T21:00:00Z",
+      nextToken: "next-token",
+      periodEnd: "2026-03-25",
+      periodStart: "2026-03-19",
+      previousToken: "",
+      rankedSeries: [
+        {
+          previousRank: 4,
+          rank: 1,
+          series: {
+            creators: [{ name: "Author A", publicId: "AUTHOR_1" }],
+            publicId: "SERIES_1",
+            synopsis: "S1",
+            title: "Series 1",
+          },
+        },
+        {
+          rank: 3,
+          series: {
+            creators: [],
+            publicId: "SERIES_2",
+            synopsis: "S2",
+            title: "Series 2",
+          },
+        },
+      ],
+    });
+
+    const result = await listRankedSeries("TENANT_001", {
+      limit: 10,
+      locale: "en",
+      period: "weekly",
+    });
+
+    expect(mockListRankedSeries).toHaveBeenCalledWith({
+      limit: 10,
+      period: RankingPeriod.WEEKLY,
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
+    });
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        computedAt: "2026-03-26T21:00:00Z",
+        nextToken: "next-token",
+        periodEnd: "2026-03-25",
+        periodStart: "2026-03-19",
+        previousToken: "",
+        rankedSeries: [
+          {
+            previousRank: 4,
+            rank: 1,
+            series: {
+              creatorNames: ["Author A"],
+              creators: [
+                {
+                  iconImageUrl: "",
+                  name: "Author A",
+                  profileText: "",
+                  publicId: "AUTHOR_1",
+                },
+              ],
+              eyeCatchImageUpdatedAt: undefined,
+              eyeCatchImageVariants: undefined,
+              labelName: "",
+              labelPublicId: "",
+              publicId: "SERIES_1",
+              synopsis: "S1",
+              title: "Series 1",
+            },
+          },
+          {
+            previousRank: undefined,
+            rank: 3,
+            series: {
+              creatorNames: [],
+              creators: [],
+              eyeCatchImageUpdatedAt: undefined,
+              eyeCatchImageVariants: undefined,
+              labelName: "",
+              labelPublicId: "",
+              publicId: "SERIES_2",
+              synopsis: "S2",
+              title: "Series 2",
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it("A tenant nothing has ranked yet is an empty chart rather than a failure", async () => {
+    mockListRankedSeries.mockResolvedValueOnce({});
+
+    await expect(
+      listRankedSeries("TENANT_001", { locale: "en", period: "daily" })
+    ).resolves.toEqual({
+      ok: true,
+      value: {
+        computedAt: "",
+        nextToken: "",
+        periodEnd: "",
+        periodStart: "",
+        previousToken: "",
+        rankedSeries: [],
+      },
+    });
+  });
+
+  it("Errors are not thrown and return a failure value", async () => {
+    mockListRankedSeries.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
+    await expect(
+      listRankedSeries("TENANT_001", { locale: "en", period: "daily" })
     ).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
       ok: false,
