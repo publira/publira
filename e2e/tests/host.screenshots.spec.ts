@@ -48,6 +48,22 @@ const SCREENSHOT_CLOCK = "2026-04-20T00:00:00.000Z";
  */
 const NEWEST_ROW_RELATIVE_TIME = "3 days ago";
 
+/**
+ * The streamed sections of the top page, each with a link it only holds once
+ * its read has come back.
+ *
+ * Every one of them has a `Suspense` boundary of its own and they resolve in
+ * whatever order their reads return, so the shot waits for all five by name.
+ * Waiting for the last one on the page would only say that one arrived.
+ */
+const TOP_PAGE_SECTIONS = [
+  { href: "/series/", name: "New episodes" },
+  { href: "/series/", name: "Recommended" },
+  { href: "/series/", name: "Recently updated" },
+  { href: "/labels/", name: "Featured labels" },
+  { href: "/authors/", name: "Featured authors" },
+] as const;
+
 test.describe("web-host screenshots", () => {
   for (const viewport of SCREENSHOT_VIEWPORTS) {
     test.describe(`at ${viewport.label}px`, () => {
@@ -59,17 +75,18 @@ test.describe("web-host screenshots", () => {
         await freezeClock(page, SCREENSHOT_CLOCK);
         await page.goto(hostPath("/"));
 
-        // The featured work is the page's own heading, so its arrival is what
-        // says the opening block has resolved.
+        // The featured work is the page's own heading.
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-        // The last of the sections: once it holds a link, none of the ones
-        // above it is still a skeleton.
-        await expect(
-          page
-            .getByRole("region", { name: "Featured authors" })
-            .locator(`a[href^="${hostPath("/authors/")}"]`)
-            .first()
-        ).toBeVisible();
+        await Promise.all(
+          TOP_PAGE_SECTIONS.map(({ href, name }) =>
+            expect(
+              page
+                .getByRole("region", { name })
+                .locator(`a[href^="${hostPath(href)}"]`)
+                .first()
+            ).toBeVisible()
+          )
+        );
         await expect(
           page.getByText(NEWEST_ROW_RELATIVE_TIME).first()
         ).toBeVisible();

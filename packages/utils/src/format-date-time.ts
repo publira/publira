@@ -360,8 +360,6 @@ const getRelativeFormatter = (intlLocale: string): Intl.RelativeTimeFormat => {
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 60 * 60;
 const DAYS_PER_WEEK = 7;
-/** Four weeks, above which the phrase counts months instead. */
-const DAYS_PER_MONTH_THRESHOLD = 28;
 const MONTHS_PER_YEAR = 12;
 
 /**
@@ -391,7 +389,12 @@ const relativeParts = (
   if (Math.abs(days) < DAYS_PER_WEEK) {
     return { unit: "day", value: days };
   }
-  if (Math.abs(days) < DAYS_PER_MONTH_THRESHOLD) {
+  // Weeks carry everything the month count cannot name. A calendar month is
+  // 28 to 31 days, so a gap of a month's worth of days can still be no whole
+  // months at all — 11 August to 9 September is 29 days and zero months — and
+  // a zero month count words itself as "this month", which is not what a gap
+  // that size means.
+  if (months === 0) {
     return { unit: "week", value: Math.trunc(days / DAYS_PER_WEEK) };
   }
   if (Math.abs(months) < MONTHS_PER_YEAR) {

@@ -458,6 +458,18 @@ describe("formatRelativeTime", () => {
     ).toBe("yesterday");
   });
 
+  it("words a gap of no whole months in weeks, not as this month", () => {
+    // 11 August to 9 September is 29 days and zero whole months, because
+    // adding a month to the 11th lands after the 9th.
+    expect(
+      formatRelativeTime("2026-08-11T12:00:00Z", { locale: "en", now })
+    ).toBe("4 weeks ago");
+    // A day earlier is one whole month, and reads as one.
+    expect(
+      formatRelativeTime("2026-08-09T12:00:00Z", { locale: "en", now })
+    ).toBe("last month");
+  });
+
   it("counts days, weeks, months, and years above that", () => {
     expect(
       formatRelativeTime("2026-09-06T12:00:00Z", { locale: "en", now })
