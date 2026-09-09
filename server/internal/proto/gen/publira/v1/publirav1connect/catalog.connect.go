@@ -64,6 +64,12 @@ const (
 	// CatalogServiceGetPublishedLabelDetailProcedure is the fully-qualified name of the
 	// CatalogService's GetPublishedLabelDetail RPC.
 	CatalogServiceGetPublishedLabelDetailProcedure = "/publira.v1.CatalogService/GetPublishedLabelDetail"
+	// CatalogServiceListPublishedGenresProcedure is the fully-qualified name of the CatalogService's
+	// ListPublishedGenres RPC.
+	CatalogServiceListPublishedGenresProcedure = "/publira.v1.CatalogService/ListPublishedGenres"
+	// CatalogServiceListPublishedTagsProcedure is the fully-qualified name of the CatalogService's
+	// ListPublishedTags RPC.
+	CatalogServiceListPublishedTagsProcedure = "/publira.v1.CatalogService/ListPublishedTags"
 	// CatalogServiceSearchPublishedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// SearchPublishedSeries RPC.
 	CatalogServiceSearchPublishedSeriesProcedure = "/publira.v1.CatalogService/SearchPublishedSeries"
@@ -140,6 +146,11 @@ type CatalogServiceClient interface {
 	// missing labels are surfaced as NotFound so a foreign label cannot be
 	// distinguished from one that does not exist.
 	GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error)
+	// The tenant's genres, in the order the console put them in, each with how
+	// many of its series are published right now.
+	ListPublishedGenres(context.Context, *connect.Request[v1.ListPublishedGenresRequest]) (*connect.Response[v1.ListPublishedGenresResponse], error)
+	// The tags at least one published series carries, the most-carried first.
+	ListPublishedTags(context.Context, *connect.Request[v1.ListPublishedTagsRequest]) (*connect.Response[v1.ListPublishedTagsResponse], error)
 	// Keyword search over published series titles and synopses. An empty query
 	// is invalid_argument. A token carries the Unicode-lowercased query it was
 	// built for; sending it with a query that lowers to a different string is
@@ -229,6 +240,18 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(catalogServiceMethods.ByName("GetPublishedLabelDetail")),
 			connect.WithClientOptions(opts...),
 		),
+		listPublishedGenres: connect.NewClient[v1.ListPublishedGenresRequest, v1.ListPublishedGenresResponse](
+			httpClient,
+			baseURL+CatalogServiceListPublishedGenresProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("ListPublishedGenres")),
+			connect.WithClientOptions(opts...),
+		),
+		listPublishedTags: connect.NewClient[v1.ListPublishedTagsRequest, v1.ListPublishedTagsResponse](
+			httpClient,
+			baseURL+CatalogServiceListPublishedTagsProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("ListPublishedTags")),
+			connect.WithClientOptions(opts...),
+		),
 		searchPublishedSeries: connect.NewClient[v1.SearchPublishedSeriesRequest, v1.SearchPublishedSeriesResponse](
 			httpClient,
 			baseURL+CatalogServiceSearchPublishedSeriesProcedure,
@@ -265,6 +288,8 @@ type catalogServiceClient struct {
 	listPublishedAuthors     *connect.Client[v1.ListPublishedAuthorsRequest, v1.ListPublishedAuthorsResponse]
 	getPublishedAuthorDetail *connect.Client[v1.GetPublishedAuthorDetailRequest, v1.GetPublishedAuthorDetailResponse]
 	getPublishedLabelDetail  *connect.Client[v1.GetPublishedLabelDetailRequest, v1.GetPublishedLabelDetailResponse]
+	listPublishedGenres      *connect.Client[v1.ListPublishedGenresRequest, v1.ListPublishedGenresResponse]
+	listPublishedTags        *connect.Client[v1.ListPublishedTagsRequest, v1.ListPublishedTagsResponse]
 	searchPublishedSeries    *connect.Client[v1.SearchPublishedSeriesRequest, v1.SearchPublishedSeriesResponse]
 	listRecommendedSeries    *connect.Client[v1.ListRecommendedSeriesRequest, v1.ListRecommendedSeriesResponse]
 	listRankedSeries         *connect.Client[v1.ListRankedSeriesRequest, v1.ListRankedSeriesResponse]
@@ -306,6 +331,16 @@ func (c *catalogServiceClient) GetPublishedLabelDetail(ctx context.Context, req 
 	return c.getPublishedLabelDetail.CallUnary(ctx, req)
 }
 
+// ListPublishedGenres calls publira.v1.CatalogService.ListPublishedGenres.
+func (c *catalogServiceClient) ListPublishedGenres(ctx context.Context, req *connect.Request[v1.ListPublishedGenresRequest]) (*connect.Response[v1.ListPublishedGenresResponse], error) {
+	return c.listPublishedGenres.CallUnary(ctx, req)
+}
+
+// ListPublishedTags calls publira.v1.CatalogService.ListPublishedTags.
+func (c *catalogServiceClient) ListPublishedTags(ctx context.Context, req *connect.Request[v1.ListPublishedTagsRequest]) (*connect.Response[v1.ListPublishedTagsResponse], error) {
+	return c.listPublishedTags.CallUnary(ctx, req)
+}
+
 // SearchPublishedSeries calls publira.v1.CatalogService.SearchPublishedSeries.
 func (c *catalogServiceClient) SearchPublishedSeries(ctx context.Context, req *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error) {
 	return c.searchPublishedSeries.CallUnary(ctx, req)
@@ -345,6 +380,11 @@ type CatalogServiceHandler interface {
 	// missing labels are surfaced as NotFound so a foreign label cannot be
 	// distinguished from one that does not exist.
 	GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error)
+	// The tenant's genres, in the order the console put them in, each with how
+	// many of its series are published right now.
+	ListPublishedGenres(context.Context, *connect.Request[v1.ListPublishedGenresRequest]) (*connect.Response[v1.ListPublishedGenresResponse], error)
+	// The tags at least one published series carries, the most-carried first.
+	ListPublishedTags(context.Context, *connect.Request[v1.ListPublishedTagsRequest]) (*connect.Response[v1.ListPublishedTagsResponse], error)
 	// Keyword search over published series titles and synopses. An empty query
 	// is invalid_argument. A token carries the Unicode-lowercased query it was
 	// built for; sending it with a query that lowers to a different string is
@@ -430,6 +470,18 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithSchema(catalogServiceMethods.ByName("GetPublishedLabelDetail")),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceListPublishedGenresHandler := connect.NewUnaryHandler(
+		CatalogServiceListPublishedGenresProcedure,
+		svc.ListPublishedGenres,
+		connect.WithSchema(catalogServiceMethods.ByName("ListPublishedGenres")),
+		connect.WithHandlerOptions(opts...),
+	)
+	catalogServiceListPublishedTagsHandler := connect.NewUnaryHandler(
+		CatalogServiceListPublishedTagsProcedure,
+		svc.ListPublishedTags,
+		connect.WithSchema(catalogServiceMethods.ByName("ListPublishedTags")),
+		connect.WithHandlerOptions(opts...),
+	)
 	catalogServiceSearchPublishedSeriesHandler := connect.NewUnaryHandler(
 		CatalogServiceSearchPublishedSeriesProcedure,
 		svc.SearchPublishedSeries,
@@ -470,6 +522,10 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceGetPublishedAuthorDetailHandler.ServeHTTP(w, r)
 		case CatalogServiceGetPublishedLabelDetailProcedure:
 			catalogServiceGetPublishedLabelDetailHandler.ServeHTTP(w, r)
+		case CatalogServiceListPublishedGenresProcedure:
+			catalogServiceListPublishedGenresHandler.ServeHTTP(w, r)
+		case CatalogServiceListPublishedTagsProcedure:
+			catalogServiceListPublishedTagsHandler.ServeHTTP(w, r)
 		case CatalogServiceSearchPublishedSeriesProcedure:
 			catalogServiceSearchPublishedSeriesHandler.ServeHTTP(w, r)
 		case CatalogServiceListRecommendedSeriesProcedure:
@@ -513,6 +569,14 @@ func (UnimplementedCatalogServiceHandler) GetPublishedAuthorDetail(context.Conte
 
 func (UnimplementedCatalogServiceHandler) GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetPublishedLabelDetail is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) ListPublishedGenres(context.Context, *connect.Request[v1.ListPublishedGenresRequest]) (*connect.Response[v1.ListPublishedGenresResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListPublishedGenres is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) ListPublishedTags(context.Context, *connect.Request[v1.ListPublishedTagsRequest]) (*connect.Response[v1.ListPublishedTagsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListPublishedTags is not implemented"))
 }
 
 func (UnimplementedCatalogServiceHandler) SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error) {

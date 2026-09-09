@@ -1,449 +1,5 @@
--- The cursor pagination of the published series list runs in two stages.
---
--- Stage one is the four keyset scans below, which settle nothing but the ids
--- of one page. The sort key is (published_at, id) or (title, id); id is a
--- UUIDv7, so the order stays unique even when published_at or title ties.
--- Every sort order gets its own query with a fixed ORDER BY, because
--- branching with CASE stops the rows from being read in index order and puts
--- a full sort ahead of the LIMIT. As written, each query walks
--- idx_series_tenant_published_at or idx_series_tenant_title directly.
--- Backward calls the query of the reversed order, and the caller sorts the
--- rows back.
---
--- Stage two is ListActiveSeriesByIDs, which builds the display data for the
--- ids stage one settled on.
---
--- What counts as a free episode is the published_free_episodes view, which
--- both stages read: stage one keeps only the series that have such an episode
--- when the caller asks for those, and stage two counts them into
--- free_episode_count, so a series the filter kept never reports none.
---
--- cursor rules: proto/README.md.
--- name: ListActiveSeriesIDsByPublishedAtDesc :many
-SELECT s.id
-FROM series s
-WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND (
-        NOT sqlc.arg('has_free_episodes')::boolean
-        OR EXISTS (
-            SELECT 1
-            FROM published_free_episodes fe
-            WHERE fe.series_id = s.id
-        )
-    )
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.published_at, s.id) <= (
-                sqlc.narg('cursor_published_at')::timestamptz,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.published_at, s.id) < (
-                sqlc.narg('cursor_published_at')::timestamptz,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.published_at DESC,
-    s.id DESC
-LIMIT sqlc.arg('limit');
-
--- name: ListActiveSeriesIDsByPublishedAtAsc :many
-SELECT s.id
-FROM series s
-WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND (
-        NOT sqlc.arg('has_free_episodes')::boolean
-        OR EXISTS (
-            SELECT 1
-            FROM published_free_episodes fe
-            WHERE fe.series_id = s.id
-        )
-    )
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.published_at, s.id) >= (
-                sqlc.narg('cursor_published_at')::timestamptz,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.published_at, s.id) > (
-                sqlc.narg('cursor_published_at')::timestamptz,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.published_at ASC,
-    s.id ASC
-LIMIT sqlc.arg('limit');
-
--- name: ListActiveSeriesIDsByTitleAsc :many
-SELECT s.id
-FROM series s
-WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND (
-        NOT sqlc.arg('has_free_episodes')::boolean
-        OR EXISTS (
-            SELECT 1
-            FROM published_free_episodes fe
-            WHERE fe.series_id = s.id
-        )
-    )
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) >= (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) > (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.title ASC,
-    s.id ASC
-LIMIT sqlc.arg('limit');
-
--- name: ListActiveSeriesIDsByTitleDesc :many
-SELECT s.id
-FROM series s
-WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND (
-        NOT sqlc.arg('has_free_episodes')::boolean
-        OR EXISTS (
-            SELECT 1
-            FROM published_free_episodes fe
-            WHERE fe.series_id = s.id
-        )
-    )
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) <= (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) < (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.title DESC,
-    s.id DESC
-LIMIT sqlc.arg('limit');
-
--- name: ListActiveSeriesByIDs :many
--- Display data for the published series, narrowed by tenant id.
--- No ORDER BY: the caller sorts the rows into the id order stage one settled
--- on.
-SELECT s.id,
-    s.public_id,
-    s.title,
-    sl.synopsis,
-    sl.status,
-    sl.schedule_weekdays,
-    sl.age_rating,
-    s.published_at,
-    s.eye_catch_image_id,
-    NULL::timestamp AS eye_catch_image_updated_at,
-    (
-        SELECT COUNT(*)
-        FROM published_free_episodes fe
-        WHERE fe.series_id = s.id
-    )::int4 AS free_episode_count,
-    COALESCE(
-        json_agg(
-            json_build_object(
-                'public_id',
-                c.public_id,
-                'name',
-                c.name,
-                'role',
-                sc.role,
-                'profile_text',
-                c.profile_text,
-                'icon_image_url',
-                CASE
-                    WHEN c.icon_image_id IS NOT NULL THEN '/images/creators/' || c.icon_image_id::text
-                    ELSE ''
-                END,
-                'icon_image_file_size_bytes',
-                0,
-                'icon_image_updated_at',
-                COALESCE(ci.updated_at::TEXT, '')
-            )
-            ORDER BY sc.display_order ASC
-        ) FILTER (
-            WHERE c.id IS NOT NULL
-        ),
-        '[]'
-    )::jsonb AS creators,
-    CASE
-        WHEN l.public_id IS NOT NULL THEN json_build_object(
-            'public_id',
-            l.public_id,
-            'name',
-            l.name
-        )
-        ELSE '{}'::json
-    END::jsonb AS label_info
-FROM series s
-    LEFT JOIN series_listings sl ON sl.series_id = s.id
-    LEFT JOIN labels l ON s.label_id = l.id
-    LEFT JOIN series_creators sc ON s.id = sc.series_id
-    LEFT JOIN creators c ON sc.creator_id = c.id
-    LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
-WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.id = ANY(sqlc.arg('ids')::uuid [])
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-GROUP BY s.id,
-    sl.series_id,
-    sl.synopsis,
-    sl.status,
-    sl.schedule_weekdays,
-    sl.age_rating,
-    l.public_id,
-    l.name;
-
--- name: ListPublishedSeriesIDsByCreatorTitleAsc :many
--- The related series of a creator detail page. A keyset scan on title + id.
--- The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc
--- uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by creator.
--- Backward calls ListPublishedSeriesIDsByCreatorTitleDesc, and the caller
--- sorts the rows back.
-SELECT s.id
-FROM series s
-    JOIN series_creators sc ON sc.series_id = s.id
-WHERE sc.creator_id = sqlc.arg('creator_id')
-    AND s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) >= (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) > (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.title ASC,
-    s.id ASC
-LIMIT sqlc.arg('limit');
-
--- name: ListPublishedSeriesIDsByCreatorTitleDesc :many
--- The backward direction of ListPublishedSeriesIDsByCreatorTitleAsc.
-SELECT s.id
-FROM series s
-    JOIN series_creators sc ON sc.series_id = s.id
-WHERE sc.creator_id = sqlc.arg('creator_id')
-    AND s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) <= (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) < (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.title DESC,
-    s.id DESC
-LIMIT sqlc.arg('limit');
-
--- name: ListPublishedSeriesIDsByLabelTitleAsc :many
--- The related series of a label detail page. A keyset scan on title + id.
--- The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc
--- uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by label_id.
--- Backward calls ListPublishedSeriesIDsByLabelTitleDesc, and the caller
--- sorts the rows back.
--- Index: idx_series_tenant_label_title
-SELECT s.id
-FROM series s
-WHERE s.label_id = sqlc.arg('label_id')::uuid
-    AND s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) >= (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) > (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.title ASC,
-    s.id ASC
-LIMIT sqlc.arg('limit');
-
--- name: ListPublishedSeriesIDsByLabelTitleDesc :many
--- The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
-SELECT s.id
-FROM series s
-WHERE s.label_id = sqlc.arg('label_id')::uuid
-    AND s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) <= (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) < (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.title DESC,
-    s.id DESC
-LIMIT sqlc.arg('limit');
-
--- name: ListPublishedSeriesIDsBySearchTitleAsc :many
--- SearchPublishedSeries. Takes the published series whose title or synopsis
--- ILIKE-matches query_pattern, by a keyset on title + id.
--- The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
--- with ESCAPE '!'.
--- Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
--- cannot ride a btree, so a sequential scan is enough while the LIMIT still
--- bites after narrowing by tenant and is_published. Once the row count makes
--- the latency visible, add a pg_trgm GIN index on title and
--- series_listings.synopsis.
-SELECT s.id
-FROM series s
-    LEFT JOIN series_listings sl ON sl.series_id = s.id
-WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND (
-        s.title ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
-        OR COALESCE(sl.synopsis, '') ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
-    )
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) >= (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) > (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.title ASC,
-    s.id ASC
-LIMIT sqlc.arg('limit');
-
--- name: ListPublishedSeriesIDsBySearchTitleDesc :many
--- The backward direction of ListPublishedSeriesIDsBySearchTitleAsc.
-SELECT s.id
-FROM series s
-    LEFT JOIN series_listings sl ON sl.series_id = s.id
-WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND (
-        s.title ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
-        OR COALESCE(sl.synopsis, '') ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
-    )
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) <= (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) < (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.title DESC,
-    s.id DESC
-LIMIT sqlc.arg('limit');
+-- A series as one row: locked, read, written, and listed for the console. The
+-- keyset scans behind the public series list are in published_series.sql.
 
 -- name: LockSeriesByPublicIDForTenant :one
 -- Lock the series row so concurrent CreateEpisode and ReorderEpisodes
@@ -504,6 +60,47 @@ SELECT s.id,
         ),
         '[]'
     )::jsonb AS creators,
+    -- The classification the list carries, so a detail page states the same
+    -- genres and tags a card did. Sub-selects rather than joins, because this
+    -- row is already grouped for the creators.
+    COALESCE(
+        (
+            SELECT json_agg(
+                    json_build_object(
+                        'public_id',
+                        g.public_id,
+                        'name',
+                        g.name,
+                        'slug',
+                        g.slug
+                    )
+                    ORDER BY g.display_order ASC,
+                        g.id ASC
+                )
+            FROM series_genres sg
+                JOIN genres g ON g.id = sg.genre_id
+            WHERE sg.series_id = s.id
+        ),
+        '[]'
+    )::jsonb AS genres,
+    COALESCE(
+        (
+            SELECT json_agg(
+                    json_build_object(
+                        'name',
+                        t.name,
+                        'slug',
+                        t.slug
+                    )
+                    ORDER BY t.name ASC,
+                        t.id ASC
+                )
+            FROM series_tags st
+                JOIN tags t ON t.id = st.tag_id
+            WHERE st.series_id = s.id
+        ),
+        '[]'
+    )::jsonb AS tags,
     COALESCE(
         (
             SELECT json_agg(

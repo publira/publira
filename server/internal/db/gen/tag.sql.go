@@ -7,6 +7,7 @@ package dbmodels
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
@@ -34,6 +35,216 @@ type DeleteUnusedTagsByIDsForTenantParams struct {
 func (q *Queries) DeleteUnusedTagsByIDsForTenant(ctx context.Context, arg DeleteUnusedTagsByIDsForTenantParams) error {
 	_, err := q.db.ExecContext(ctx, deleteUnusedTagsByIDsForTenant, arg.TenantID, pq.Array(arg.Ids))
 	return err
+}
+
+const getTagBySlugForTenant = `-- name: GetTagBySlugForTenant :one
+SELECT t.id
+FROM tags t
+WHERE t.tenant_id = $1
+    AND t.slug = $2
+LIMIT 1
+`
+
+type GetTagBySlugForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Slug     string    `json:"slug"`
+}
+
+// Whether a slug the series list was filtered by names a tag of this tenant.
+// A filter naming nothing is refused rather than answered with an empty list,
+// for the reason GetGenreIDByPublicIDForTenant gives.
+func (q *Queries) GetTagBySlugForTenant(ctx context.Context, arg GetTagBySlugForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getTagBySlugForTenant, arg.TenantID, arg.Slug)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const listPublishedTagsByTenantAsc = `-- name: ListPublishedTagsByTenantAsc :many
+WITH counted AS (
+    SELECT t.name,
+        t.slug,
+        COUNT(*)::int4 AS published_series_count
+    FROM tags t
+        JOIN series_tags st ON st.tag_id = t.id
+        JOIN series s ON s.id = st.series_id
+    WHERE t.tenant_id = $5
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+    GROUP BY t.id,
+        t.name,
+        t.slug
+)
+SELECT name,
+    slug,
+    published_series_count
+FROM counted
+WHERE (
+        $1::text IS NULL
+        OR published_series_count > $2::int4
+        OR (
+            published_series_count = $2::int4
+            AND (
+                (
+                    $3::boolean
+                    AND slug <= $1::text
+                )
+                OR (
+                    NOT $3::boolean
+                    AND slug < $1::text
+                )
+            )
+        )
+    )
+ORDER BY published_series_count ASC,
+    slug DESC
+LIMIT $4
+`
+
+type ListPublishedTagsByTenantAscParams struct {
+	CursorSlug                 sql.NullString `json:"cursor_slug"`
+	CursorPublishedSeriesCount sql.NullInt32  `json:"cursor_published_series_count"`
+	CursorInclusive            bool           `json:"cursor_inclusive"`
+	Limit                      int32          `json:"limit"`
+	TenantID                   uuid.UUID      `json:"tenant_id"`
+}
+
+type ListPublishedTagsByTenantAscRow struct {
+	Name                 string `json:"name"`
+	Slug                 string `json:"slug"`
+	PublishedSeriesCount int32  `json:"published_series_count"`
+}
+
+// ListPublishedTagsByTenantDesc walked the other way. It exists only to build
+// a previous page; the order it describes is the same one.
+func (q *Queries) ListPublishedTagsByTenantAsc(ctx context.Context, arg ListPublishedTagsByTenantAscParams) ([]ListPublishedTagsByTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedTagsByTenantAsc,
+		arg.CursorSlug,
+		arg.CursorPublishedSeriesCount,
+		arg.CursorInclusive,
+		arg.Limit,
+		arg.TenantID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedTagsByTenantAscRow
+	for rows.Next() {
+		var i ListPublishedTagsByTenantAscRow
+		if err := rows.Scan(&i.Name, &i.Slug, &i.PublishedSeriesCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedTagsByTenantDesc = `-- name: ListPublishedTagsByTenantDesc :many
+WITH counted AS (
+    SELECT t.name,
+        t.slug,
+        COUNT(*)::int4 AS published_series_count
+    FROM tags t
+        JOIN series_tags st ON st.tag_id = t.id
+        JOIN series s ON s.id = st.series_id
+    WHERE t.tenant_id = $5
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+    GROUP BY t.id,
+        t.name,
+        t.slug
+)
+SELECT name,
+    slug,
+    published_series_count
+FROM counted
+WHERE (
+        $1::text IS NULL
+        OR published_series_count < $2::int4
+        OR (
+            published_series_count = $2::int4
+            AND (
+                (
+                    $3::boolean
+                    AND slug >= $1::text
+                )
+                OR (
+                    NOT $3::boolean
+                    AND slug > $1::text
+                )
+            )
+        )
+    )
+ORDER BY published_series_count DESC,
+    slug ASC
+LIMIT $4
+`
+
+type ListPublishedTagsByTenantDescParams struct {
+	CursorSlug                 sql.NullString `json:"cursor_slug"`
+	CursorPublishedSeriesCount sql.NullInt32  `json:"cursor_published_series_count"`
+	CursorInclusive            bool           `json:"cursor_inclusive"`
+	Limit                      int32          `json:"limit"`
+	TenantID                   uuid.UUID      `json:"tenant_id"`
+}
+
+type ListPublishedTagsByTenantDescRow struct {
+	Name                 string `json:"name"`
+	Slug                 string `json:"slug"`
+	PublishedSeriesCount int32  `json:"published_series_count"`
+}
+
+// The public tag list: the tags at least one published series carries, the
+// most-carried first. A tag no published series carries is not listed — a tag
+// exists because a series carries it, so one nothing published carries has no
+// page to keep working, which is where it differs from a genre.
+//
+// No index can serve this order. Its first sort key is a count the query
+// itself groups, the way ListEpisodeReadThroughDesc sorts by an aggregate of
+// its own; the scan is bounded by one tenant's assignments, which
+// idx_series_tags_tenant_tag narrows first.
+//
+// (published_series_count, slug) is unique because slug is unique within the
+// tenant, so the keyset scan can neither skip nor repeat a tag two of them
+// tie on. The two keys run in opposite directions, so the comparison is
+// spelled out rather than written as a row value.
+// cursor rules: proto/README.md.
+func (q *Queries) ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPublishedTagsByTenantDescParams) ([]ListPublishedTagsByTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedTagsByTenantDesc,
+		arg.CursorSlug,
+		arg.CursorPublishedSeriesCount,
+		arg.CursorInclusive,
+		arg.Limit,
+		arg.TenantID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedTagsByTenantDescRow
+	for rows.Next() {
+		var i ListPublishedTagsByTenantDescRow
+		if err := rows.Scan(&i.Name, &i.Slug, &i.PublishedSeriesCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const lockUnusedTagsForTenant = `-- name: LockUnusedTagsForTenant :many

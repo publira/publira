@@ -58,6 +58,7 @@ Go encoding and validation live in [server/internal/pagination](../server/intern
 ### Lists with filters
 
 - A filter decides which rows the list holds, so a boundary row sits somewhere else once it changes — the same problem the order name solves. Bind the token to the filters as well, by appending the ones that are on to the order name in that first key (`published_at_desc+has_free_episodes`), and reject a mismatch with `invalid_argument`. A request with no filter therefore keeps the plain order name, and an unfiltered list needs no change.
+- A filter that narrows to one value carries that value in the key, after the filter's own name (`published_at_desc+genre:GENRE0000001`), because two values of the same filter are two different lists. Append the filters in a fixed order rather than in the order the request happened to carry them, so one narrowed list always names itself the same way.
 - Changing a filter resets the client to page 1, exactly as changing the order does.
 - Keep the filter out of the sort keys. It narrows the list rather than ordering it, so the keyset comparison and the index it walks stay as they are.
 

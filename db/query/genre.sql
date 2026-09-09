@@ -134,3 +134,92 @@ WHERE id = $1;
 -- name: DeleteGenre :exec
 DELETE FROM genres
 WHERE id = $1;
+
+-- The public genre list: the tenant's whole genre list, in the order the
+-- console put it in, each genre carrying how many of its series are published
+-- right now. A genre no published series carries stays in the list, for the
+-- reason a label with no published series does — the URL of its page has to
+-- keep working after its last series is taken down.
+--
+-- The count is a sub-select rather than a join so it cannot multiply the
+-- genre rows, and it walks idx_series_genres_tenant_genre from the genre into
+-- the series it names.
+--
+-- The cursor is the same (display_order, id) pair the console list pages on;
+-- forward uses the ascending query and backward the descending one, and the
+-- handler flips those rows back into display order.
+-- cursor rules: proto/README.md.
+-- name: ListPublishedGenresByTenantAsc :many
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.display_order,
+    (
+        SELECT COUNT(*)
+        FROM series_genres sg
+            JOIN series s ON s.id = sg.series_id
+        WHERE sg.genre_id = g.id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )::int4 AS published_series_count
+FROM genres g
+WHERE g.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) >= (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) > (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY g.display_order ASC,
+    g.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPublishedGenresByTenantDesc :many
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.display_order,
+    (
+        SELECT COUNT(*)
+        FROM series_genres sg
+            JOIN series s ON s.id = sg.series_id
+        WHERE sg.genre_id = g.id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )::int4 AS published_series_count
+FROM genres g
+WHERE g.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) <= (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) < (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY g.display_order DESC,
+    g.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: GetGenreIDByPublicIDForTenant :one
+-- Whether a public ID the series list was filtered by names a genre of this
+-- tenant. A filter naming nothing is refused rather than answered with an
+-- empty list, so a storefront cannot show an empty page for a genre that was
+-- deleted or belongs to somebody else.
+SELECT g.id
+FROM genres g
+WHERE g.tenant_id = $1
+    AND g.public_id = $2
+LIMIT 1;
