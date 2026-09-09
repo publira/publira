@@ -434,7 +434,7 @@ const TenantLayout = async ({
               <Suspense
                 fallback={
                   <SiteLayoutFooterNote>
-                    <Skeleton className="inline-block h-4 w-56 rounded" />
+                    <Skeleton className="inline-block h-4 w-56 rounded-control" />
                   </SiteLayoutFooterNote>
                 }
               >
@@ -443,7 +443,7 @@ const TenantLayout = async ({
               <Suspense
                 fallback={
                   <SiteLayoutFooterCopyright>
-                    <Skeleton className="inline-block h-4 w-48 rounded" />
+                    <Skeleton className="inline-block h-4 w-48 rounded-control" />
                   </SiteLayoutFooterCopyright>
                 }
               >
