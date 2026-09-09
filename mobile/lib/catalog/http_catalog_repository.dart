@@ -370,7 +370,35 @@ class HttpCatalogRepository implements CatalogRepository {
       seriesTitle: _readString(rawSeries, 'title', 'series'),
       access: _parseAccess(body['access']),
       images: _parseEpisodeImages(body['images']),
+      previousEpisode: _neighborFromJson(
+        body['previousEpisode'],
+        'previousEpisode',
+      ),
+      nextEpisode: _neighborFromJson(body['nextEpisode'], 'nextEpisode'),
       imageRequestHeaders: config.imageRequestHeaders(_client.accessToken),
+    );
+  }
+
+  /// One side of the episode, or `null` at that end of the series.
+  ///
+  /// protojson omits an unset message, which is what the server sends where
+  /// there is no episode on that side. A neighbour that names no episode is
+  /// read the same way: nothing can be opened from it.
+  EpisodeNeighbor? _neighborFromJson(Object? raw, String path) {
+    if (raw == null) {
+      return null;
+    }
+    final json = _expectMap(raw, path);
+    final id = _readString(json, 'publicId', path);
+    if (id.isEmpty) {
+      return null;
+    }
+    return EpisodeNeighbor(
+      id: id,
+      title: _readString(json, 'title', path),
+      orderIndex: _readInt(json, 'orderIndex', path),
+      price: _readInt(json, 'price', path),
+      isFree: _readBool(json, 'isFree', path),
     );
   }
 
@@ -447,6 +475,18 @@ class HttpCatalogRepository implements CatalogRepository {
       return value;
     }
     _invalidPayload('$path.$key must be an integer');
+  }
+
+  bool _readBool(Map<String, Object?> json, String key, String path) {
+    final value = json[key];
+    // protojson omits a false, which is what a paid neighbour arrives as.
+    if (value == null) {
+      return false;
+    }
+    if (value is bool) {
+      return value;
+    }
+    _invalidPayload('$path.$key must be a boolean');
   }
 
   Never _invalidPayload(String message) {

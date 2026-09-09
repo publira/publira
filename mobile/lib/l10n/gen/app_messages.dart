@@ -140,6 +140,9 @@ abstract class AppMessages {
   /// `mobile.common.back_to_catalog`
   String get commonBackToCatalog;
 
+  /// `mobile.common.free`
+  String get commonFree;
+
   /// `mobile.common.list_end`
   String commonListEnd({required String first, required String rest});
 
@@ -218,6 +221,15 @@ abstract class AppMessages {
   /// `mobile.viewer.back_to_series`
   String get viewerBackToSeries;
 
+  /// `mobile.viewer.end.up_next`
+  String get viewerEndUpNext;
+
+  /// `mobile.viewer.end.up_to_date_description`
+  String viewerEndUpToDateDescription({required String title});
+
+  /// `mobile.viewer.end.up_to_date_title`
+  String get viewerEndUpToDateTitle;
+
   /// `mobile.viewer.load_failed`
   String get viewerLoadFailed;
 
@@ -226,6 +238,9 @@ abstract class AppMessages {
 
   /// `mobile.viewer.locked_signed_out`
   String get viewerLockedSignedOut;
+
+  /// `mobile.viewer.next_episode`
+  String get viewerNextEpisode;
 
   /// `mobile.viewer.next_page`
   String get viewerNextPage;
@@ -251,6 +266,9 @@ abstract class AppMessages {
     required String last,
     required String total,
   });
+
+  /// `mobile.viewer.previous_episode`
+  String get viewerPreviousEpisode;
 
   /// `mobile.viewer.previous_page`
   String get viewerPreviousPage;
@@ -424,6 +442,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get commonFree {
+    return '無料';
+  }
+
+  @override
   String commonListEnd({required String first, required String rest}) {
     return '$first、$rest';
   }
@@ -554,6 +577,21 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get viewerEndUpNext {
+    return '次のエピソード';
+  }
+
+  @override
+  String viewerEndUpToDateDescription({required String title}) {
+    return '「$title」にはこの先のエピソードがまだありません';
+  }
+
+  @override
+  String get viewerEndUpToDateTitle {
+    return '最新のエピソードまで読み終えました';
+  }
+
+  @override
   String get viewerLoadFailed {
     return 'エピソードを表示できませんでした';
   }
@@ -566,6 +604,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get viewerLockedSignedOut {
     return 'この話は購入すると読めます。購入済みの場合はサインインしてください。';
+  }
+
+  @override
+  String get viewerNextEpisode {
+    return '次のエピソード';
   }
 
   @override
@@ -605,6 +648,11 @@ class _AppMessagesJa extends AppMessages {
     required String total,
   }) {
     return '$first–$last / $total';
+  }
+
+  @override
+  String get viewerPreviousEpisode {
+    return '前のエピソード';
   }
 
   @override
@@ -787,6 +835,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get commonFree {
+    return 'Free';
+  }
+
+  @override
   String commonListEnd({required String first, required String rest}) {
     return '$first, and $rest';
   }
@@ -917,6 +970,21 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get viewerEndUpNext {
+    return 'Up next';
+  }
+
+  @override
+  String viewerEndUpToDateDescription({required String title}) {
+    return '“$title” has no episode after this one yet.';
+  }
+
+  @override
+  String get viewerEndUpToDateTitle {
+    return 'You are up to date';
+  }
+
+  @override
   String get viewerLoadFailed {
     return 'Could not show the episode.';
   }
@@ -929,6 +997,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get viewerLockedSignedOut {
     return 'This episode can be read once it is purchased. If you have already bought it, sign in.';
+  }
+
+  @override
+  String get viewerNextEpisode {
+    return 'Next episode';
   }
 
   @override
@@ -968,6 +1041,11 @@ class _AppMessagesEn extends AppMessages {
     required String total,
   }) {
     return '$first–$last / $total';
+  }
+
+  @override
+  String get viewerPreviousEpisode {
+    return 'Previous episode';
   }
 
   @override
@@ -1150,6 +1228,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get commonFree {
+    return '무료';
+  }
+
+  @override
   String commonListEnd({required String first, required String rest}) {
     return '$first 및 $rest';
   }
@@ -1280,6 +1363,21 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get viewerEndUpNext {
+    return '다음 에피소드';
+  }
+
+  @override
+  String viewerEndUpToDateDescription({required String title}) {
+    return '“$title”에는 아직 다음 에피소드가 없습니다';
+  }
+
+  @override
+  String get viewerEndUpToDateTitle {
+    return '최신 에피소드까지 읽었습니다';
+  }
+
+  @override
   String get viewerLoadFailed {
     return '에피소드를 표시할 수 없습니다';
   }
@@ -1292,6 +1390,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get viewerLockedSignedOut {
     return '이 에피소드는 구매하면 읽을 수 있습니다. 이미 구매하셨다면 로그인해 주세요.';
+  }
+
+  @override
+  String get viewerNextEpisode {
+    return '다음 에피소드';
   }
 
   @override
@@ -1331,6 +1434,11 @@ class _AppMessagesKo extends AppMessages {
     required String total,
   }) {
     return '$first–$last / $total';
+  }
+
+  @override
+  String get viewerPreviousEpisode {
+    return '이전 에피소드';
   }
 
   @override

@@ -2174,6 +2174,7 @@
     },
     "common": {
       "back_to_catalog": "カタログへ戻る",
+      "free": "無料",
       "list_end": "{$first}、{$rest}",
       "list_middle": "{$first}、{$rest}",
       "list_start": "{$first}、{$rest}",
@@ -2210,9 +2211,15 @@
     },
     "viewer": {
       "back_to_series": "シリーズへ戻る",
+      "end": {
+        "up_next": "次のエピソード",
+        "up_to_date_description": "「{$title}」にはこの先のエピソードがまだありません",
+        "up_to_date_title": "最新のエピソードまで読み終えました"
+      },
       "load_failed": "エピソードを表示できませんでした",
       "locked": "この話は購入すると読めます",
       "locked_signed_out": "この話は購入すると読めます。購入済みの場合はサインインしてください。",
+      "next_episode": "次のエピソード",
       "next_page": "次のページ",
       "no_pages": "このエピソードにはまだページがありません",
       "not_found": "エピソードが見つかりません ({$id})",
@@ -2220,6 +2227,7 @@
       "page_failed": "このページを表示できませんでした",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
+      "previous_episode": "前のエピソード",
       "previous_page": "前のページ",
       "reload": "再読み込み",
       "save_expired": "保存したエピソードの閲覧期限が切れました。通信できる状態で開き直してください。",

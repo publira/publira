@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
@@ -5,8 +7,10 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/router.dart';
+import 'package:publira/viewer/episode_end_panel.dart';
 import 'package:publira/viewer/episode_reader.dart';
 import 'package:publira/viewer/reading_position.dart';
 
@@ -44,6 +48,12 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   late Future<_OpenEpisode?> _future;
   var _started = false;
   var _accessToken = '';
+  var _readerId = '';
+
+  /// Episodes of this series the device could open right now, which is what
+  /// marks the next one as saved. Empty on a run with no library, which is
+  /// what leaves the mark off.
+  var _saved = const <String>{};
 
   /// Records the page the reader rests on, for the session that is signed in
   /// now. It holds the repository rather than the context, because the last
@@ -72,6 +82,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     }
     _started = true;
     _accessToken = accessToken;
+    _readerId = AuthScope.of(context).session?.userPublicId ?? '';
     // A saver belongs to the session it records against. The page the reader
     // before this one was on is theirs and cannot be written with this
     // session, so a waiting page is dropped rather than carried over, and the
@@ -85,6 +96,30 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       ),
     );
     _future = _load(catalog);
+    final library = OfflineScope.maybeOf(context);
+    if (library != null) {
+      unawaited(_loadSaved(library, _readerId));
+    }
+  }
+
+  /// Asks the device which episodes of this series it holds, so the offer at
+  /// the end of the body can say whether the next one is already there.
+  ///
+  /// Which episodes are readable depends on who is signed in, so this is asked
+  /// again whenever the session changes rather than kept from the last reader.
+  Future<void> _loadSaved(OfflineLibrary library, String readerId) async {
+    final saved = await library.readableEpisodeIds(
+      widget.seriesId,
+      readerId: readerId,
+    );
+    // The reader may have signed in or out while the library was answering,
+    // in which case this answer is about somebody else.
+    if (!mounted || readerId != _readerId) {
+      return;
+    }
+    setState(() {
+      _saved = saved;
+    });
   }
 
   @override
@@ -212,12 +247,35 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         message: messages.viewerNoPages,
       );
     }
+    final next = detail.nextEpisode;
+    final previous = detail.previousEpisode;
     return EpisodeReader(
       images: detail.images,
       imageHeaders: detail.imageRequestHeaders,
       initialPageIndex: open.startPage,
       onPageChanged: (pageIndex) => _saver?.save(pageIndex),
+      endScreen: EpisodeEndPanel(
+        detail: detail,
+        nextSavedOffline: next != null && _saved.contains(next.id),
+        onOpenNext: _open,
+        onBackToSeries: () =>
+            context.go(AppRoutes.seriesDetailPath(widget.seriesId)),
+      ),
+      onNextEpisode: next == null ? null : () => _open(next),
+      onPreviousEpisode: previous == null ? null : () => _open(previous),
       pageStore: OfflineScope.maybeOf(context),
+    );
+  }
+
+  /// Opens [episode] in place of this one.
+  ///
+  /// The viewer replaces itself rather than stacking, so a reader who has gone
+  /// through several episodes leaves the last of them for the series screen
+  /// they opened the first from, instead of walking back through every episode
+  /// they read.
+  void _open(EpisodeNeighbor episode) {
+    context.pushReplacement(
+      AppRoutes.episodeViewerPath(widget.seriesId, episode.id),
     );
   }
 

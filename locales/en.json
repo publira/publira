@@ -2174,6 +2174,7 @@
     },
     "common": {
       "back_to_catalog": "Back to the catalog",
+      "free": "Free",
       "list_end": "{$first}, and {$rest}",
       "list_middle": "{$first}, {$rest}",
       "list_start": "{$first}, {$rest}",
@@ -2210,9 +2211,15 @@
     },
     "viewer": {
       "back_to_series": "Back to the series",
+      "end": {
+        "up_next": "Up next",
+        "up_to_date_description": "“{$title}” has no episode after this one yet.",
+        "up_to_date_title": "You are up to date"
+      },
       "load_failed": "Could not show the episode.",
       "locked": "This episode can be read once it is purchased.",
       "locked_signed_out": "This episode can be read once it is purchased. If you have already bought it, sign in.",
+      "next_episode": "Next episode",
       "next_page": "Next page",
       "no_pages": "This episode has no pages yet.",
       "not_found": "Episode not found ({$id})",
@@ -2220,6 +2227,7 @@
       "page_failed": "This page could not be loaded.",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
+      "previous_episode": "Previous episode",
       "previous_page": "Previous page",
       "reload": "Reload",
       "save_expired": "The saved copy of this episode has expired. Open it again while connected.",

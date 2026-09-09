@@ -50,6 +50,13 @@ EpisodeDetail _detail({
     seriesId: _seriesId,
     seriesTitle: 'Seed Series 001',
     access: access,
+    nextEpisode: const EpisodeNeighbor(
+      id: 'SeedEPSDAAA2',
+      title: 'Seed Episode 001-02',
+      orderIndex: 2,
+      price: 500,
+      isFree: false,
+    ),
     images: [
       EpisodeImageItem(
         id: '$_episodeId-page-1',
@@ -259,6 +266,18 @@ void main() {
       saved.detail.images.single.url.toString(),
       isNot(contains('media-token')),
     );
+  });
+
+  test('a saved body keeps the episode after it', () async {
+    await build().getEpisode(_seriesId, _episodeId);
+    origin.episodeError = _network;
+
+    final detail = await build().getEpisode(_seriesId, _episodeId);
+
+    // The offer at the end of a body read without a network is the same one
+    // the API made when the body was saved.
+    expect(detail!.nextEpisode!.id, 'SeedEPSDAAA2');
+    expect(detail.nextEpisode!.price, 500);
   });
 
   test('a body that came back locked is taken off the device', () async {

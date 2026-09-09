@@ -200,30 +200,53 @@ List<RecentSeriesItem> fixtureRecentSeries() {
   ];
 }
 
-/// A readable body for the first episode of every fixture series.
+/// A readable body for every published episode of every fixture series, each
+/// carrying the episodes either side of it the way `GetEpisodeDetail` does.
 Map<String, EpisodeDetail> fixtureEpisodes({
   EpisodeAccess access = EpisodeAccess.free,
   int pageCount = 3,
 }) {
-  return {
-    for (final item in fixtureSeries)
-      episodeKey(item.id, '${item.id}-ep-1'): EpisodeDetail(
-        episode: fixtureDetail(item).episodes.first,
+  final bodies = <String, EpisodeDetail>{};
+  for (final item in fixtureSeries) {
+    final episodes = fixtureDetail(item).episodes;
+    for (var index = 0; index < episodes.length; index++) {
+      final episode = episodes[index];
+      bodies[episodeKey(item.id, episode.id)] = EpisodeDetail(
+        episode: episode,
         seriesId: item.id,
         seriesTitle: item.title,
         access: access,
+        previousEpisode: index == 0
+            ? null
+            : fixtureNeighbor(episodes[index - 1]),
+        nextEpisode: index == episodes.length - 1
+            ? null
+            : fixtureNeighbor(episodes[index + 1]),
         images: [
           for (var page = 1; page <= pageCount; page++)
             EpisodeImageItem(
-              id: '${item.id}-ep-1-page-$page',
+              id: '${episode.id}-page-$page',
               url: Uri.parse(
-                'http://127.0.0.1:8200/images/episodes/${item.id}-ep-1-page-$page',
+                'http://127.0.0.1:8200/images/episodes/${episode.id}-page-$page',
               ),
               displayOrder: page,
               width: 800,
               height: 1200,
             ),
         ],
-      ),
-  };
+      );
+    }
+  }
+  return bodies;
 }
+
+/// The offer an episode beside [episode] makes to open it. A fixture episode
+/// is free exactly while it costs nothing, because no free window is open on
+/// any of them.
+EpisodeNeighbor fixtureNeighbor(EpisodeItem episode) => EpisodeNeighbor(
+  id: episode.id,
+  title: episode.title,
+  orderIndex: episode.orderIndex,
+  price: episode.price,
+  isFree: episode.price == 0,
+);

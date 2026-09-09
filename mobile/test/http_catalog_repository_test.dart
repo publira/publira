@@ -327,6 +327,53 @@ void main() {
     expect(detail!.images.map((image) => image.id), ['a', 'b']);
   });
 
+  test('getEpisode carries the episodes either side of this one', () async {
+    server.episodeResponse = {
+      'episode': {'publicId': 'EP', 'title': 'Middle', 'orderIndex': 2},
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+      'access': 'EPISODE_ACCESS_FREE',
+      'previousEpisode': {
+        'publicId': 'EP01',
+        'title': 'First',
+        'orderIndex': 1,
+        'isFree': true,
+      },
+      'nextEpisode': {
+        'publicId': 'EP03',
+        'title': 'Third',
+        'orderIndex': 3,
+        'price': 500,
+      },
+    };
+
+    final detail = await catalog.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.seedEpisodeId,
+    );
+
+    expect(detail!.previousEpisode!.id, 'EP01');
+    expect(detail.previousEpisode!.isFree, isTrue);
+    expect(detail.nextEpisode!.title, 'Third');
+    expect(detail.nextEpisode!.price, 500);
+    // protojson omits a false, so a paid neighbour arrives without the field.
+    expect(detail.nextEpisode!.isFree, isFalse);
+  });
+
+  test('getEpisode reports no neighbour at the ends of the series', () async {
+    final detail = await catalog.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.seedEpisodeId,
+    );
+
+    // protojson omits an unset message, which is what the server sends where
+    // there is no episode on that side.
+    expect(detail!.previousEpisode, isNull);
+    expect(detail.nextEpisode, isNull);
+  });
+
   test('getEpisode reports a locked paid body with no pages', () async {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
