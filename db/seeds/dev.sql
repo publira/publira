@@ -7,6 +7,7 @@ BEGIN;
 \ir dev/001_tenant_users.sql
 \ir creator_roles.sql
 \ir dev/010_catalog.sql
+\ir episode_creators.sql
 \ir dev/020_audit_logs.sql
 \ir dev/030_smtp_config.sql
 \ir dev/040_pages.sql

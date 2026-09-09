@@ -800,6 +800,7 @@ func TestCatalogGetEpisodeDetailReportsTheSeriesAgeRating(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "free_until"}).
 			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "r18", nil))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
+	expectEpisodeCreditsLookup(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
@@ -1020,6 +1021,7 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 				WillReturnRows(tc.rows)
 			if tc.wantCode == 0 {
 				expectEpisodeNeighborsLookup(mock, tenantID, normalSeriesID, int32(1), normalEpisodeID)
+				expectEpisodeCreditsLookup(mock)
 			}
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -1185,6 +1187,7 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			}
 
 			expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
+			expectEpisodeCreditsLookup(mock)
 
 			if tc.wantImageCount > 0 {
 				mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
@@ -1284,6 +1287,7 @@ func TestCatalogGetEpisodeDetailCarriesItsNeighbors(t *testing.T) {
 		episodeNeighbor{direction: -1, publicID: "EPISODE001", title: "Chapter One", orderIndex: 1, price: 0, isFree: true},
 		episodeNeighbor{direction: 1, publicID: "EPISODE003", title: "Chapter Three", orderIndex: 3, price: 500},
 	)
+	expectEpisodeCreditsLookup(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
@@ -1332,6 +1336,7 @@ func TestCatalogGetEpisodeDetailMarksAPricedNeighborInAFreeWindowAsFree(t *testi
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID,
 		episodeNeighbor{direction: 1, publicID: "EPISODE002", title: "Chapter Two", orderIndex: 2, price: 500, isFree: true},
 	)
+	expectEpisodeCreditsLookup(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
@@ -1370,6 +1375,7 @@ func TestCatalogGetEpisodeDetailLeavesAMissingNeighborUnset(t *testing.T) {
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID,
 		episodeNeighbor{direction: 1, publicID: "EPISODE002", title: "Chapter Two", orderIndex: 2, price: 0, isFree: true},
 	)
+	expectEpisodeCreditsLookup(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{

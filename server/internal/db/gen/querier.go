@@ -16,6 +16,15 @@ type Querier interface {
 	// Approval is what publishes a comment posted under approval_required, so it is
 	// also where published_at is first written.
 	ApproveEpisodeCommentByPublicIDForTenant(ctx context.Context, arg ApproveEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
+	// The copy that makes the episode the unit that is credited. It runs in the
+	// transaction that creates the episode, so an episode never exists without the
+	// team its series had at that moment, and a later edit of the series leaves it
+	// as it is.
+	//
+	// The columns are listed one for one against series_creators rather than
+	// selected with a star, so a column added to both tables — a share of the
+	// revenue, say — is one line here.
+	BakeSeriesCreatorsOntoEpisode(ctx context.Context, arg BakeSeriesCreatorsOntoEpisodeParams) error
 	BumpPlatformUserCredentialsVersion(ctx context.Context, id uuid.UUID) (PlatformUser, error)
 	BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error)
 	CancelTenantAdminInvitation(ctx context.Context, arg CancelTenantAdminInvitationParams) (TenantAdminInvitation, error)
@@ -27,6 +36,9 @@ type Querier interface {
 	CountAllTenants(ctx context.Context) (int32, error)
 	// For the tenant dashboard.
 	CountDraftEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
+	// Whether a role may still be deleted, counted over the episodes. The refusal
+	// is the handler's, and this is one half of what it is based on.
+	CountEpisodeCreatorsByRoleIDForTenant(ctx context.Context, arg CountEpisodeCreatorsByRoleIDForTenantParams) (int32, error)
 	CountPendingEndUsers(ctx context.Context) (int32, error)
 	// The size of the approval queue, for the console navigation that carries it on
 	// every screen. Counting is a query of its own rather than the length of a
@@ -88,6 +100,10 @@ type Querier interface {
 	// A repeat is deliberately not an update. The reason and the note are what the
 	// reader said the first time, and the report queue is worked from them.
 	CreateEpisodeCommentReport(ctx context.Context, arg CreateEpisodeCommentReportParams) (EpisodeCommentReport, error)
+	// role_id is cast to a plain uuid rather than left nullable like the column:
+	// the column admits NULL for the credits baked from ones that predate roles,
+	// and a credit written through here always names one.
+	CreateEpisodeCreator(ctx context.Context, arg CreateEpisodeCreatorParams) error
 	// Durable member follows. Episode, series, and creator follows have
 	// distinct source tables; content_events must not be used to model any of them.
 	CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error)
@@ -144,6 +160,7 @@ type Querier interface {
 	// at all. It names no status: content under a legal takedown has to go whatever
 	// state it is in, and the reversible removal is a different query.
 	DeleteEpisodeCommentByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeCommentByPublicIDForTenantParams) (int64, error)
+	DeleteEpisodeCreatorsByEpisodeID(ctx context.Context, episodeID uuid.UUID) error
 	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
 	// Returns the deleted row so a concurrent second delete is told apart from a
 	// public_id that never existed. What the caller audits and revalidates comes
@@ -634,6 +651,15 @@ type Querier interface {
 	// The author and the episode are joined in because a comment cannot be judged
 	// from its text alone: staff need to know who wrote it and what it is about.
 	ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentsForModerationByCreatedAtDescRow, error)
+	// Credits are presented in role priority first, so the leading role opens the
+	// list on every episode without anyone ordering it by hand. display_order
+	// sorts the creators who share a role, and the name settles a tie between two
+	// roles that carry the same priority.
+	//
+	// The join to the role is outer: a credit baked from one written before roles
+	// existed states none, and it is still a credit. Those come last, which is
+	// where a name with nothing said about it belongs.
+	ListEpisodeCreatorsByEpisodeIDs(ctx context.Context, episodeIds []uuid.UUID) ([]ListEpisodeCreatorsByEpisodeIDsRow, error)
 	// Every window with a boundary the apply-free-windows batch has not dropped
 	// the site caches for yet. A window whose start and end both passed while the
 	// batch was down comes back with both flags set, and one revalidation answers

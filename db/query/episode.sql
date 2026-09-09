@@ -276,6 +276,7 @@ LIMIT 1;
 -- moment the reader would follow it.
 (
     SELECT -1::int4 AS direction,
+        e.id,
         e.public_id,
         e.title,
         e.order_index,
@@ -309,6 +310,7 @@ LIMIT 1;
 UNION ALL
 (
     SELECT 1::int4 AS direction,
+        e.id,
         e.public_id,
         e.title,
         e.order_index,

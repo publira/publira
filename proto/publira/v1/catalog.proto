@@ -139,6 +139,11 @@ message EpisodeNeighbor {
   // cannot say "paid" about an episode that is free at the moment the reader
   // follows it.
   bool is_free = 5;
+  // Who the neighbouring episode is credited to, in role priority order. A
+  // series whose artist changed part way through credits its episodes
+  // differently, so a link to the next one names the team the reader will
+  // actually find on it.
+  repeated publira.types.v1.Creator creators = 6;
 }
 
 // Episode detail for public viewing.

@@ -69,6 +69,8 @@ var publicDataTables = []struct {
 	// The catalog reads a credit through its role, so the role list is on the
 	// storefront's read path as much as the genre list is.
 	{name: "creator_roles", count: "SELECT count(*) FROM creator_roles"},
+	// Every episode carries its own credits, which the episode detail reads.
+	{name: "episode_creators", count: "SELECT count(*) FROM episode_creators"},
 	{name: "genres", count: "SELECT count(*) FROM genres"},
 	{name: "tags", count: "SELECT count(*) FROM tags"},
 	{name: "series_genres", count: "SELECT count(*) FROM series_genres"},
@@ -105,6 +107,8 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		Title:    "Tenant A Free Episode",
 		Status:   testutil.EpisodeStatusPublished,
 	})
+	creator := env.PG.SeedCreator(t, first.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Aoi Sakura"})
+	env.PG.SeedEpisodeCreator(t, first.ID, episode.ID, creator.ID, "")
 	genre := env.PG.SeedGenre(t, first.ID, testutil.GenreSeed{PublicID: "GENREA000001", Name: "Fantasy"})
 	env.PG.SeedSeriesGenre(t, first.ID, series.ID, genre.ID)
 	tag := env.PG.SeedTag(t, first.ID, testutil.TagSeed{Name: "Swordplay"})

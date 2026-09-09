@@ -924,6 +924,7 @@ func (q *Queries) ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, ar
 const listPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNeighborsForTenant :many
 (
     SELECT -1::int4 AS direction,
+        e.id,
         e.public_id,
         e.title,
         e.order_index,
@@ -957,6 +958,7 @@ const listPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
 UNION ALL
 (
     SELECT 1::int4 AS direction,
+        e.id,
         e.public_id,
         e.title,
         e.order_index,
@@ -998,6 +1000,7 @@ type ListPublishedEpisodeNeighborsForTenantParams struct {
 
 type ListPublishedEpisodeNeighborsForTenantRow struct {
 	Direction  int32        `json:"direction"`
+	ID         uuid.UUID    `json:"id"`
 	PublicID   string       `json:"public_id"`
 	Title      string       `json:"title"`
 	OrderIndex int32        `json:"order_index"`
@@ -1035,6 +1038,7 @@ func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, ar
 		var i ListPublishedEpisodeNeighborsForTenantRow
 		if err := rows.Scan(
 			&i.Direction,
+			&i.ID,
 			&i.PublicID,
 			&i.Title,
 			&i.OrderIndex,

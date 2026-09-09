@@ -258,6 +258,8 @@ SET price = EXCLUDED.price,
     published_at = EXCLUDED.published_at,
     tenant_id = EXCLUDED.tenant_id;
 
+\ir ../episode_creators.sql
+
 -- A page owned by this tenant, so the seed tenant's console can be asked to
 -- open it by id. It stays a draft with no version: the edit screen must answer
 -- the same way for a foreign page as for one that never existed.

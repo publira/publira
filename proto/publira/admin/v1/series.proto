@@ -232,6 +232,42 @@ message UpdateEpisodePublishScheduleResponse {
   publira.types.v1.Episode episode = 1;
 }
 
+// One credit line on an episode: who, and in what role. It is the same shape a
+// series credit has, and a separate message because the two lists are edited
+// separately: what the series carries is what the next episode is created
+// with, and what an episode carries is what that episode shipped with.
+message EpisodeCreatorCredit {
+  string creator_public_id = 1;
+  // A role of this tenant, by public_id. Credits carry no order of their own
+  // across roles: the role's priority is what puts the leading one first.
+  string role_public_id = 2;
+}
+
+message ListEpisodeCreditsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+}
+
+message ListEpisodeCreditsResponse {
+  // In role priority order, the order the storefront shows them in.
+  repeated publira.types.v1.Creator creators = 1;
+}
+
+// The whole credit list of one episode: what this request holds is what the
+// episode carries afterwards, and an empty list clears it. A credit the
+// request adds is recorded as the episode's own; one that was baked from the
+// series and is still listed keeps saying so, so a later range edit can tell
+// the standing team from a guest on this episode.
+message ReplaceEpisodeCreditsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  repeated EpisodeCreatorCredit creator_credits = 3;
+}
+
+message ReplaceEpisodeCreditsResponse {
+  repeated publira.types.v1.Creator creators = 1;
+}
+
 // Replaces the image of one aspect ratio of a series eye-catch. The other
 // ratios keep the images they already hold.
 message UploadSeriesEyeCatchAspectImageRequest {
@@ -316,6 +352,8 @@ service AdminSeriesService {
   rpc ListEpisodeImages(ListEpisodeImagesRequest) returns (ListEpisodeImagesResponse) {}
   rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
+  rpc ListEpisodeCredits(ListEpisodeCreditsRequest) returns (ListEpisodeCreditsResponse) {}
+  rpc ReplaceEpisodeCredits(ReplaceEpisodeCreditsRequest) returns (ReplaceEpisodeCreditsResponse) {}
   rpc UploadSeriesEyeCatchAspectImage(UploadSeriesEyeCatchAspectImageRequest) returns (UploadSeriesEyeCatchAspectImageResponse) {}
   rpc CreateEpisodeFreeWindow(CreateEpisodeFreeWindowRequest) returns (CreateEpisodeFreeWindowResponse) {}
   rpc CreateSeriesFreeWindows(CreateSeriesFreeWindowsRequest) returns (CreateSeriesFreeWindowsResponse) {}

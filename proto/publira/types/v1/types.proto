@@ -173,6 +173,12 @@ message Episode {
   string status = 6;
   string scheduled_at = 7;
   string published_at = 8;
+  // Who this episode is credited to, in role priority order. Every episode
+  // carries its own credits, baked from the series when it was created, so an
+  // artist who took over at episode 12 is on episode 12 onwards and not on the
+  // eleven before it. Set where an Episode stands for one episode a reader or
+  // an editor opened; empty in the lists that carry an episode as a link.
+  repeated Creator creators = 9;
 }
 
 message EpisodeImage {

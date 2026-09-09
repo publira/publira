@@ -357,6 +357,15 @@ func expectUpdateEpisodeOrderIndex(mock sqlmock.Sqlmock, tenantID uuid.UUID, ser
 		WillReturnResult(sqlmock.NewResult(0, 1))
 }
 
+// expectBakeSeriesCreatorsOntoEpisode is the copy that credits a new episode
+// with the team its series carries. It runs in the transaction that creates
+// the episode, between the listing insert and the commit.
+func expectBakeSeriesCreatorsOntoEpisode(mock sqlmock.Sqlmock, tenantID, seriesID, episodeID uuid.UUID) {
+	mock.ExpectExec("INSERT INTO episode_creators").
+		WithArgs(episodeID, tenantID, seriesID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
 func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, tenantID uuid.UUID, title string, orderIndex int32, now time.Time, publicID string) {
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery("INSERT INTO episodes").

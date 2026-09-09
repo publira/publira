@@ -376,10 +376,47 @@ func configurePool(db *sql.DB) {
 	db.SetConnMaxLifetime(time.Minute)
 }
 
-func runMigrations(postgresURL string) error {
+// MigrateTo takes the schema to one version of db/migrations, running the
+// `down` of every migration applied after it. It is what a test of a
+// migration's own effect on data needs: the shared container is migrated to
+// the head before any test runs, so the only way to watch a migration act on
+// rows that were already there is to take the schema back behind it, seed
+// them, and let [PostgresEnv.MigrateUp] apply it again.
+func (e *PostgresEnv) MigrateTo(t *testing.T, version uint) {
+	t.Helper()
+
+	m, err := newMigrate(e.URL)
+	if err != nil {
+		t.Fatalf("migrate to version %d: %v", version, err)
+	}
+	defer m.Close() //nolint:errcheck
+
+	if err := m.Migrate(version); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		t.Fatalf("migrate to version %d: %v", version, err)
+	}
+}
+
+// MigrateUp applies every pending migration, which is how a test that called
+// [PostgresEnv.MigrateTo] leaves the schema where the rest of the suite
+// expects it.
+func (e *PostgresEnv) MigrateUp(t *testing.T) {
+	t.Helper()
+
+	m, err := newMigrate(e.URL)
+	if err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+	defer m.Close() //nolint:errcheck
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		t.Fatalf("migrate up: %v", err)
+	}
+}
+
+func newMigrate(postgresURL string) (*migrate.Migrate, error) {
 	migrationsDir, err := findMigrationsDir()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// migrate's pgx/v5 driver expects the pgx5:// scheme.
@@ -387,7 +424,15 @@ func runMigrations(postgresURL string) error {
 
 	m, err := migrate.New("file://"+filepath.ToSlash(migrationsDir), migrateURL)
 	if err != nil {
-		return fmt.Errorf("migrate.New: %w", err)
+		return nil, fmt.Errorf("migrate.New: %w", err)
+	}
+	return m, nil
+}
+
+func runMigrations(postgresURL string) error {
+	m, err := newMigrate(postgresURL)
+	if err != nil {
+		return err
 	}
 	defer m.Close() //nolint:errcheck
 
