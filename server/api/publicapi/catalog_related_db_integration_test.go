@@ -38,8 +38,10 @@ func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T
 	creator := env.PG.SeedCreator(t, first.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Creator A"})
 	genre := env.PG.SeedGenre(t, first.ID, testutil.GenreSeed{PublicID: "GENREA000001", Name: "Adventure"})
 
-	// Published newest first, so publication order cannot be mistaken for the
-	// scoring order the list is asserted on.
+	// Every candidate is published in the exact reverse of the order it should
+	// come back in, so publication date — the last tie-break — would produce
+	// the opposite list. Only the scoring can produce the asserted one, at
+	// every step of it.
 	subject := env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{
 		PublicID:    "SERIESASUB01",
 		Title:       "The Series Being Read",
@@ -54,7 +56,7 @@ func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T
 		PublicID:    "SERIESACRE01",
 		Title:       "By The Same Creator",
 		Published:   true,
-		PublishedAt: time.Now().Add(-2 * time.Hour),
+		PublishedAt: time.Now().Add(-5 * time.Hour),
 	})
 	env.PG.SeedSeriesCreator(t, first.ID, sameCreator.ID, creator.ID, "writer")
 
@@ -63,14 +65,14 @@ func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T
 		Title:       "On The Same Label",
 		LabelID:     label.ID,
 		Published:   true,
-		PublishedAt: time.Now().Add(-3 * time.Hour),
+		PublishedAt: time.Now().Add(-4 * time.Hour),
 	})
 
 	sameGenre := env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{
 		PublicID:    "SERIESAGEN01",
 		Title:       "In The Same Genre",
 		Published:   true,
-		PublishedAt: time.Now().Add(-4 * time.Hour),
+		PublishedAt: time.Now().Add(-3 * time.Hour),
 	})
 	env.PG.SeedSeriesGenre(t, first.ID, sameGenre.ID, genre.ID)
 
@@ -78,7 +80,7 @@ func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T
 		PublicID:    "SERIESANON01",
 		Title:       "Sharing Nothing",
 		Published:   true,
-		PublishedAt: time.Now().Add(-5 * time.Hour),
+		PublishedAt: time.Now().Add(-2 * time.Hour),
 	})
 
 	// The other tenant's series carries the same kind of relation and must
@@ -262,11 +264,14 @@ func TestDBListRelatedSeriesPagesAcrossTheScoreBoundary(t *testing.T) {
 	})
 	env.PG.SeedSeriesCreator(t, tenant.ID, subject.ID, creator.ID, "writer")
 
+	// Published in the reverse of the order the pages should walk, so a page
+	// boundary that fell back on publication date would be visible as a page
+	// holding the wrong series.
 	sameCreator := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
 		PublicID:    "SERIESACRE01",
 		Title:       "By The Same Creator",
 		Published:   true,
-		PublishedAt: time.Now().Add(-2 * time.Hour),
+		PublishedAt: time.Now().Add(-4 * time.Hour),
 	})
 	env.PG.SeedSeriesCreator(t, tenant.ID, sameCreator.ID, creator.ID, "writer")
 
@@ -281,7 +286,7 @@ func TestDBListRelatedSeriesPagesAcrossTheScoreBoundary(t *testing.T) {
 		PublicID:    "SERIESANON01",
 		Title:       "Sharing Nothing",
 		Published:   true,
-		PublishedAt: time.Now().Add(-4 * time.Hour),
+		PublishedAt: time.Now().Add(-2 * time.Hour),
 	})
 
 	// Page 1 stops inside the related run, page 2 crosses out of it — the

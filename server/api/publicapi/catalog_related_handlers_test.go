@@ -171,7 +171,7 @@ func TestCatalogListRelatedSeriesPagesOnTheScoreAndTheRank(t *testing.T) {
 			int32(2),
 			unrankedSortRank,
 			false,
-			sqlmock.AnyArg(),
+			publishedAt,
 			int32(2),
 			tenantID,
 			subjectID,
@@ -290,7 +290,7 @@ func TestCatalogListRelatedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	expectSubjectSeriesLookup(mock, tenantID, subjectID)
 	expectRankingSnapshotLookup(mock, tenantID, now, rankingItemsJSON())
 	mock.ExpectQuery(regexp.QuoteMeta(listRelatedSeriesIDsQuery)).
-		WithArgs(boundary, int32(3), int32(1), false, sqlmock.AnyArg(), int32(2), tenantID, subjectID, rankingItemsJSON()).
+		WithArgs(boundary, int32(3), int32(1), false, now, int32(2), tenantID, subjectID, rankingItemsJSON()).
 		WillReturnRows(relatedSeriesIDRows())
 
 	resp, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{

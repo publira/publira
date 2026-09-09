@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 
+	"github.com/publira/publira/server/internal/catalogslug"
 	"github.com/publira/publira/server/internal/publicid"
 )
 
@@ -257,6 +258,19 @@ func (e *PostgresEnv) SeedSeriesCreator(t *testing.T, tenantID, seriesID, creato
 	}
 }
 
+// slugFromName derives a seed's default slug the way the console and the series
+// form do, so a row a test seeds is the row a save would have found rather than
+// a second one beside it.
+func slugFromName(t *testing.T, name string) string {
+	t.Helper()
+
+	slug, err := catalogslug.FromName(name)
+	if err != nil {
+		t.Fatalf("catalogslug.FromName(%q): %v", name, err)
+	}
+	return slug
+}
+
 // Genre is a seeded genres row. The public catalog addresses a genre by its
 // public ID; the UUID is what series_genres hangs off.
 type Genre struct {
@@ -266,8 +280,8 @@ type Genre struct {
 	Slug     string
 }
 
-// GenreSeed describes one genre to insert. Slug defaults to the lowercased
-// name, which is what the console derives it from.
+// GenreSeed describes one genre to insert. Slug defaults to what the console
+// derives from the name.
 type GenreSeed struct {
 	PublicID     string
 	Name         string
@@ -291,7 +305,7 @@ func (e *PostgresEnv) SeedGenre(t *testing.T, tenantID uuid.UUID, seed GenreSeed
 		}
 	}
 	name := defaultIfEmpty(seed.Name, "Genre")
-	slug := defaultIfEmpty(seed.Slug, strings.ToLower(name))
+	slug := defaultIfEmpty(seed.Slug, slugFromName(t, name))
 
 	ctx, cancel := seedContext()
 	defer cancel()
@@ -314,8 +328,8 @@ type Tag struct {
 	Slug string
 }
 
-// TagSeed describes one tag to insert. Slug defaults to the lowercased name,
-// the way the series form derives it.
+// TagSeed describes one tag to insert. Slug defaults to what the series form
+// derives from the name.
 type TagSeed struct {
 	Name string
 	Slug string
@@ -329,7 +343,7 @@ func (e *PostgresEnv) SeedTag(t *testing.T, tenantID uuid.UUID, seed TagSeed) Ta
 
 	tagID := uuid.Must(uuid.NewV7())
 	name := defaultIfEmpty(seed.Name, "Tag")
-	slug := defaultIfEmpty(seed.Slug, strings.ToLower(name))
+	slug := defaultIfEmpty(seed.Slug, slugFromName(t, name))
 
 	ctx, cancel := seedContext()
 	defer cancel()
