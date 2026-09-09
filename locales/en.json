@@ -1840,6 +1840,12 @@
         "title": "Comments"
       },
       "detail_failed": "Could not load the episode. Please try again later.",
+      "end": {
+        "back_to_series": "Back to the series",
+        "up_next": "Up next",
+        "up_to_date_description": "“{$title}” has no episode after this one yet. Follow the series to hear when the next one arrives.",
+        "up_to_date_title": "You are up to date"
+      },
       "gate": {
         "guest_payable_description": "To read this episode, sign in and buy it, or ask an administrator to grant you a ticket.",
         "guest_title": "This episode is paid",
@@ -1851,6 +1857,13 @@
         "signed_in_unpayable_description": "This site cannot take purchases at the moment. Check whether your ticket has expired or has not been granted yet."
       },
       "images_empty": "The pages of this episode have not been published yet.",
+      "navigation": {
+        "label": "Episode navigation",
+        "next": "Next episode",
+        "next_hint": "Press the key again to open the next episode.",
+        "previous": "Previous episode",
+        "previous_hint": "Press the key again to open the previous episode."
+      },
       "page_count": "Pages",
       "page_count_value": "{$count} pages",
       "price": "Price",

@@ -4,17 +4,21 @@ import { resolveAccessToken } from "#lib/api-client";
 import type {
   EpisodeDetail,
   EpisodeImageItem,
+  EpisodeNeighborItem,
   EpisodeSeriesSummary,
 } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getMyReadingPosition } from "#lib/reading-position";
 import { getTenantId } from "#lib/tenant-id";
 
+import { episodePath } from "../_lib/episode-path";
 import { resumePageIndex } from "../_lib/reading-position";
 import { VIEWER_HEIGHT_CLASS } from "../_lib/viewer-layout";
 import { toViewerPages } from "../_lib/viewer-pages";
 import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeComicViewer } from "./episode-comic-viewer";
+import { EpisodeNeighborKeyNavigation } from "./episode-neighbor-key-navigation";
+import { EpisodeNeighborLinks } from "./episode-neighbor-links";
 import { EpisodeReadRecorder } from "./episode-read-recorder";
 import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
 
@@ -31,10 +35,16 @@ import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recor
 export const EpisodeViewer = async ({
   episode,
   images,
+  nextEpisode,
+  previousEpisode,
   series,
 }: {
   episode: EpisodeDetail;
   images: EpisodeImageItem[];
+  /** Absent on the last published episode of the series. */
+  nextEpisode?: EpisodeNeighborItem;
+  /** Absent on the first one. */
+  previousEpisode?: EpisodeNeighborItem;
   series: EpisodeSeriesSummary;
 }) => {
   const locale = await getLocale();
@@ -59,6 +69,12 @@ export const EpisodeViewer = async ({
     episodePublicId: episode.publicId,
     tenantId,
   });
+  const nextHref = nextEpisode
+    ? episodePath(series.publicId, nextEpisode.publicId)
+    : undefined;
+  const previousHref = previousEpisode
+    ? episodePath(series.publicId, previousEpisode.publicId)
+    : undefined;
 
   return (
     <div className={`${VIEWER_HEIGHT_CLASS} w-full`}>
@@ -95,6 +111,26 @@ export const EpisodeViewer = async ({
         {accessToken ? (
           <EpisodeReadingPositionRecorder episode={episode} series={series} />
         ) : null}
+        <EpisodeNeighborLinks
+          copy={{
+            label: getMessage(messages, "host.episode.navigation.label"),
+            next: getMessage(messages, "host.episode.navigation.next"),
+            previous: getMessage(messages, "host.episode.navigation.previous"),
+          }}
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
+        <EpisodeNeighborKeyNavigation
+          copy={{
+            nextHint: getMessage(messages, "host.episode.navigation.next_hint"),
+            previousHint: getMessage(
+              messages,
+              "host.episode.navigation.previous_hint"
+            ),
+          }}
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
       </EpisodeComicViewer>
     </div>
   );

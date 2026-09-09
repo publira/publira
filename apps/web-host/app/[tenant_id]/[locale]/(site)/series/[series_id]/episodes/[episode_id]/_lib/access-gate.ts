@@ -1,10 +1,12 @@
 import type { HostMessageKey } from "#lib/locale";
 
+import { episodePath } from "./episode-path";
+
 export const episodeLoginHref = (
   seriesPublicId: string,
   episodePublicId: string
 ): string => {
-  const returnTo = `/series/${seriesPublicId}/episodes/${episodePublicId}`;
+  const returnTo = episodePath(seriesPublicId, episodePublicId);
   return `/login?returnTo=${encodeURIComponent(returnTo)}`;
 };
 

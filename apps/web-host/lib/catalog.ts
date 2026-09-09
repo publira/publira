@@ -7,6 +7,7 @@ import { EpisodeAccess } from "@publira/api-client/public/catalog";
 import type { ListRecommendedSeriesResponse } from "@publira/api-client/public/catalog";
 import type {
   EpisodeImage,
+  EpisodeNeighbor,
   Series,
   SeriesEyeCatchVariant,
 } from "@publira/api-client/public/types";
@@ -220,6 +221,50 @@ const mapEpisodeImages = (
       width: image.width ?? 0,
     }))
     .toSorted((left, right) => left.displayOrder - right.displayOrder);
+
+/**
+ * A published episode next to the one being read, in the same series.
+ *
+ * `isFree` rather than `price === 0`: a priced episode inside an open free
+ * window is readable right now, and `price` is what it costs again once that
+ * window closes. A link that read the price alone would call such an episode
+ * paid on the way in and then open it for nothing.
+ */
+export interface EpisodeNeighborItem {
+  isFree: boolean;
+  orderIndex: number;
+  price: number;
+  publicId: string;
+  title: string;
+}
+
+/** The generated `EpisodeNeighbor` fields {@link mapEpisodeNeighbor} reads. */
+type RawEpisodeNeighbor = Pick<
+  EpisodeNeighbor,
+  "isFree" | "orderIndex" | "price" | "publicId" | "title"
+>;
+
+/**
+ * `undefined` at the ends of a series, which is what the server sends when
+ * there is no episode on that side, and also what a neighbour with no
+ * `public_id` has to become: nothing can link to it.
+ */
+const mapEpisodeNeighbor = (
+  neighbor: RawEpisodeNeighbor | undefined
+): EpisodeNeighborItem | undefined => {
+  const publicId = neighbor?.publicId ?? "";
+  if (!neighbor || !publicId) {
+    return undefined;
+  }
+
+  return {
+    isFree: neighbor.isFree ?? false,
+    orderIndex: neighbor.orderIndex ?? 0,
+    price: neighbor.price ?? 0,
+    publicId,
+    title: neighbor.title ?? "",
+  };
+};
 
 export interface EpisodeSeriesSummary {
   publicId: string;
@@ -547,6 +592,8 @@ export const getEpisodeDetail = async (
     access: EpisodeAccessState;
     episode: EpisodeDetail;
     images: EpisodeImageItem[];
+    nextEpisode: EpisodeNeighborItem | undefined;
+    previousEpisode: EpisodeNeighborItem | undefined;
     series: EpisodeSeriesSummary;
   } | null>
 > => {
@@ -614,6 +661,8 @@ export const getEpisodeDetail = async (
       access: toEpisodeAccessState(response.access, episode.price),
       episode,
       images: mapEpisodeImages(response.images),
+      nextEpisode: mapEpisodeNeighbor(response.nextEpisode),
+      previousEpisode: mapEpisodeNeighbor(response.previousEpisode),
       series,
     },
   };

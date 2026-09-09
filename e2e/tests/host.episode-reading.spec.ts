@@ -6,6 +6,11 @@ import { signInAsMember } from "../src/host";
 import { SEED_MEMBER } from "../src/scenarios/member-announcements";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
+  LAST_EPISODE_PATH,
+  LAST_EPISODE_PRICE_LABEL,
+  NEXT_EPISODE_PATH,
+  NEXT_EPISODE_TITLE,
+  PENULTIMATE_EPISODE_PATH,
   VIEWER_EPISODE_ID,
   VIEWER_EPISODE_ORDER_INDEX,
   VIEWER_EPISODE_PATH,
@@ -429,6 +434,70 @@ test.describe("web-host episode reading", () => {
     expect(visited.at(-1), "the rest of the episode is still readable").toBe(
       VIEWER_PAGE_COUNT
     );
+  });
+
+  test("the end of an episode opens the next one in a single click", async ({
+    page,
+  }) => {
+    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+
+    await expect(
+      page.getByRole("link", { name: "Next episode" }),
+      "the viewer's own chrome links to the episode that follows"
+    ).toHaveAttribute("href", hostPath(NEXT_EPISODE_PATH));
+    await expect(
+      page.getByRole("link", { name: "Previous episode" }),
+      "and to the one before it"
+    ).toBeVisible();
+
+    await turnToLastPage(page);
+    await page.getByRole("link", { name: NEXT_EPISODE_TITLE }).click();
+
+    await expect(page).toHaveURL(new RegExp(`${NEXT_EPISODE_PATH}$`, "u"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: NEXT_EPISODE_TITLE })
+    ).toBeVisible();
+  });
+
+  test("a paid next episode says what it costs before the reader opens it", async ({
+    page,
+  }) => {
+    await page.goto(edgeUrl(PENULTIMATE_EPISODE_PATH));
+
+    await expect(page.getByRole("heading", { name: "Up next" })).toBeVisible();
+    // The episode being read is free, so the only price on the page is the one
+    // the panel puts on the episode it offers.
+    await expect(page.getByText(LAST_EPISODE_PRICE_LABEL)).toBeVisible();
+
+    await page
+      .getByRole("link", { name: SEED_TENANT.series.paidEpisodeTitle })
+      .click();
+
+    await expect(page).toHaveURL(new RegExp(`${LAST_EPISODE_PATH}$`, "u"));
+    await expect(
+      page.getByText("This episode is paid"),
+      "the gate still decides who reads a paid body"
+    ).toBeVisible();
+  });
+
+  test("the last episode of a series says so and offers to follow it", async ({
+    page,
+  }) => {
+    await page.goto(edgeUrl(LAST_EPISODE_PATH));
+
+    await expect(
+      page.getByRole("heading", { name: "You are up to date" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", {
+        name: `Sign in to follow ${SEED_TENANT.series.title}`,
+      })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Up next" }),
+      "there is no episode after the last one to offer"
+    ).toHaveCount(0);
   });
 
   test("the episode information below the viewer names its series and links back to it", async ({

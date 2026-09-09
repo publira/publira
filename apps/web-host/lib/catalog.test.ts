@@ -109,6 +109,98 @@ describe("catalog.getEpisodeDetail", () => {
     expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
   });
 
+  it("Carry the episodes either side of this one", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 2,
+        price: 0,
+        publicId: "EP_002",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 2",
+      },
+      images: [],
+      // Priced, and free until the window on it closes: the link says free
+      // and still knows what it costs afterwards.
+      nextEpisode: {
+        isFree: true,
+        orderIndex: 3,
+        price: 500,
+        publicId: "EP_003",
+        title: "Episode 3",
+      },
+      previousEpisode: {
+        isFree: true,
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        title: "Episode 1",
+      },
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_002",
+      "en"
+    );
+
+    const detail = result.ok ? result.value : null;
+    expect(detail?.previousEpisode).toEqual({
+      isFree: true,
+      orderIndex: 1,
+      price: 0,
+      publicId: "EP_001",
+      title: "Episode 1",
+    });
+    expect(detail?.nextEpisode).toEqual({
+      isFree: true,
+      orderIndex: 3,
+      price: 500,
+      publicId: "EP_003",
+      title: "Episode 3",
+    });
+  });
+
+  it("Leave the ends of a series with no neighbour", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    const detail = result.ok ? result.value : null;
+    expect(detail?.previousEpisode).toBeUndefined();
+    expect(detail?.nextEpisode).toBeUndefined();
+  });
+
   it("null if episode is missing", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       episode: undefined,

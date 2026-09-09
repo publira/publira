@@ -23,6 +23,28 @@ export const VIEWER_PAGE_COUNT = 8;
 export const VIEWER_EPISODE_PATH = `/series/${SEED_TENANT.series.publicId}/episodes/${VIEWER_EPISODE_ID}`;
 
 /**
+ * The published episode after it, which is what the end of the episode offers
+ * and what the viewer's own chrome links to. Free, like every seeded episode
+ * but `Seed Episode 001-10`.
+ */
+export const NEXT_EPISODE_ID = "SeedEPSDAAA3";
+export const NEXT_EPISODE_TITLE = "Seed Episode 001-03";
+export const NEXT_EPISODE_PATH = `/series/${SEED_TENANT.series.publicId}/episodes/${NEXT_EPISODE_ID}`;
+
+/**
+ * The episode before the priced one, so what it offers next is an episode a
+ * reader has to buy: the price has to be on screen before the tap, and the
+ * tap has to land on the access gate.
+ */
+export const PENULTIMATE_EPISODE_PATH = `/series/${SEED_TENANT.series.publicId}/episodes/SeedEPSDAAA9`;
+
+/** The last published episode of the series, which nothing follows. */
+export const LAST_EPISODE_PATH = `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_TENANT.series.paidEpisodeId}`;
+
+/** What `Seed Episode 001-10` costs, as the seed prices it. */
+export const LAST_EPISODE_PRICE_LABEL = "¥500";
+
+/**
  * The accessible name the viewer gives one page's canvas, from
  * `host.episode.viewer.page_title` in the seed tenant's default locale.
  */

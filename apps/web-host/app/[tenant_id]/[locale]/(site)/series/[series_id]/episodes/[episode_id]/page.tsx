@@ -22,6 +22,7 @@ import { getTenantId } from "#lib/tenant-id";
 
 import { EpisodeBody } from "./_components/episode-body";
 import { EpisodeComments } from "./_components/episode-comments";
+import { EpisodeEndPanel } from "./_components/episode-end-panel";
 import {
   COMMENT_TOKEN_PARAM,
   parseCommentSearchParams,
@@ -98,7 +99,8 @@ const EpisodeContent = async (
     notFound();
   }
 
-  const { access, episode, images, series } = result.value;
+  const { access, episode, images, nextEpisode, previousEpisode, series } =
+    result.value;
   // The site-info read resolves the tenant zone. The fallback only covers an
   // unavailable tenant read, never the host machine's local zone.
   const timeZone = tenant?.timeZone ?? DEFAULT_TIME_ZONE;
@@ -136,6 +138,8 @@ const EpisodeContent = async (
               }
               episode={episode}
               images={images}
+              nextEpisode={nextEpisode}
+              previousEpisode={previousEpisode}
               series={series}
               tenantId={tenantId}
             />
@@ -162,6 +166,15 @@ const EpisodeContent = async (
             {getMessage(messages, "host.episode.checkout_error")}
           </p>
         ) : null}
+
+        {/* Directly under the pages, because finishing them is when a reader
+            decides whether to keep going. */}
+        <EpisodeEndPanel
+          episode={episode}
+          nextEpisode={nextEpisode}
+          series={series}
+          tenantId={tenantId}
+        />
 
         <nav className="mb-8 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <LocaleLink
