@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/publira/publira/server/internal/creatorroles"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -65,12 +66,25 @@ func mustInsertTenant(t *testing.T, ctx context.Context, db *sql.DB, publicID, d
 	if err != nil {
 		t.Fatalf("uuid: %v", err)
 	}
-	_, err = db.ExecContext(ctx, `
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin insert tenant %s: %v", publicID, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
 		VALUES ($1, $2, $3, $4, $5, 'active', 'ja')
-	`, id, publicID, domain, adminDomain, name)
-	if err != nil {
+	`, id, publicID, domain, adminDomain, name); err != nil {
 		t.Fatalf("insert tenant %s: %v", publicID, err)
+	}
+	// The creator roles tenant creation gives a tenant, because a credit names
+	// one and the column is NOT NULL.
+	if err := creatorroles.CreateDefaults(ctx, tx, id); err != nil {
+		t.Fatalf("create default creator roles for %s: %v", publicID, err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit insert tenant %s: %v", publicID, err)
 	}
 	return id
 }

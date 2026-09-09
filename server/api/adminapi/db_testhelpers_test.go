@@ -12,7 +12,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -60,6 +62,31 @@ func (e *adminDBEnv) seedTenantWithAdmin(t *testing.T, tenantPublicID, domain, n
 	tenant := e.PG.SeedTenant(t, tenantPublicID, domain, name)
 	admin := e.PG.SeedTenantAdmin(t, tenant.ID, userPublicID, email, name+" Admin")
 	return adminDBTenant{Tenant: tenant, User: admin}
+}
+
+// leadingCreatorRolePublicID is the role tenant creation puts first, which is
+// what a series credited to one person is credited in. Tests that are about
+// something other than the role itself take this one rather than seeding a
+// vocabulary of their own.
+func (e *adminDBEnv) leadingCreatorRolePublicID(t *testing.T, tenant adminDBTenant) string {
+	t.Helper()
+	return e.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[0].Name).PublicID
+}
+
+// creatorCredits builds the credit list for a save from creator public IDs,
+// all in the tenant's leading role.
+func (e *adminDBEnv) creatorCredits(t *testing.T, tenant adminDBTenant, creatorPublicIDs ...string) []*publiraadminv1.SeriesCreatorCredit {
+	t.Helper()
+
+	rolePublicID := e.leadingCreatorRolePublicID(t, tenant)
+	credits := make([]*publiraadminv1.SeriesCreatorCredit, 0, len(creatorPublicIDs))
+	for _, creatorPublicID := range creatorPublicIDs {
+		credits = append(credits, &publiraadminv1.SeriesCreatorCredit{
+			CreatorPublicId: creatorPublicID,
+			RolePublicId:    rolePublicID,
+		})
+	}
+	return credits
 }
 
 // as signs subsequent requests as another user of the same tenant, which is how
@@ -111,6 +138,10 @@ func (e *adminDBEnv) labelClient() publiraadminv1connect.AdminLabelServiceClient
 
 func (e *adminDBEnv) genreClient() publiraadminv1connect.AdminGenreServiceClient {
 	return publiraadminv1connect.NewAdminGenreServiceClient(e.Server.Client(), e.Server.URL)
+}
+
+func (e *adminDBEnv) creatorRoleClient() publiraadminv1connect.AdminCreatorRoleServiceClient {
+	return publiraadminv1connect.NewAdminCreatorRoleServiceClient(e.Server.Client(), e.Server.URL)
 }
 
 func (e *adminDBEnv) themeClient() publiraadminv1connect.TenantThemeServiceClient {

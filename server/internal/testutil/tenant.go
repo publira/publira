@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -44,9 +45,11 @@ type TenantUser struct {
 	CredentialsVersion int32
 }
 
-// SeedTenant inserts an active tenant. The admin domain is derived from the
-// domain so two tenants seeded with distinct domains never collide on it.
-// Uses the superuser connection, which is not subject to RLS.
+// SeedTenant inserts an active tenant, with the creator roles tenant creation
+// gives one: a credit names a role, so a tenant without them cannot be
+// credited. The admin domain is derived from the domain so two tenants seeded
+// with distinct domains never collide on it. Uses the superuser connection,
+// which is not subject to RLS.
 func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Tenant {
 	t.Helper()
 	if e.DB == nil {
@@ -61,7 +64,13 @@ func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Te
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	tenant, err := dbmodels.New(e.DB).CreateTenant(ctx, dbmodels.CreateTenantParams{
+	tx, err := e.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin seed tenant %s: %v", publicID, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	tenant, err := dbmodels.New(tx).CreateTenant(ctx, dbmodels.CreateTenantParams{
 		ID:            uuid.Must(uuid.NewV7()),
 		PublicID:      publicID,
 		Domain:        domain,
@@ -72,6 +81,12 @@ func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Te
 	})
 	if err != nil {
 		t.Fatalf("CreateTenant %s: %v", publicID, err)
+	}
+	if err := creatorroles.CreateDefaults(ctx, tx, tenant.ID); err != nil {
+		t.Fatalf("creatorroles.CreateDefaults %s: %v", publicID, err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit seed tenant %s: %v", publicID, err)
 	}
 
 	return Tenant{

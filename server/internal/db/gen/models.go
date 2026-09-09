@@ -144,6 +144,15 @@ type CreatorImageVariant struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
+type CreatorRole struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	PublicID        string    `json:"public_id"`
+	Name            string    `json:"name"`
+	DisplayPriority int32     `json:"display_priority"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
 type Episode struct {
 	ID         uuid.UUID `json:"id"`
 	SeriesID   uuid.UUID `json:"series_id"`
@@ -482,11 +491,11 @@ type Series struct {
 }
 
 type SeriesCreator struct {
-	SeriesID     uuid.UUID `json:"series_id"`
-	CreatorID    uuid.UUID `json:"creator_id"`
-	Role         string    `json:"role"`
-	DisplayOrder int32     `json:"display_order"`
-	TenantID     uuid.UUID `json:"tenant_id"`
+	SeriesID     uuid.UUID     `json:"series_id"`
+	CreatorID    uuid.UUID     `json:"creator_id"`
+	DisplayOrder int32         `json:"display_order"`
+	TenantID     uuid.UUID     `json:"tenant_id"`
+	RoleID       uuid.NullUUID `json:"role_id"`
 }
 
 type SeriesFollow struct {

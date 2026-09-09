@@ -15,6 +15,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/publicid"
@@ -269,6 +270,20 @@ func expectPublicIDAttemptReleased(mock sqlmock.Sqlmock) {
 
 func expectPublicIDAttemptRolledBack(mock sqlmock.Sqlmock) {
 	mock.ExpectExec("^ROLLBACK TO SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+// expectDefaultCreatorRoleInserts answers the creator-role vocabulary a tenant
+// is created with: one savepointed insert per role, inside the transaction the
+// tenant itself was written in.
+func expectDefaultCreatorRoleInserts(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
+	for _, role := range creatorroles.Defaults {
+		expectPublicIDAttempt(mock)
+		mock.ExpectQuery("INSERT INTO creator_roles").
+			WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), role.Name, role.DisplayPriority).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "display_priority", "created_at"}).
+				AddRow(uuid.Must(uuid.NewV7()), tenantID, "ROLEAUTHOR01", role.Name, role.DisplayPriority, now))
+		expectPublicIDAttemptReleased(mock)
+	}
 }
 
 // publicIDArgument matches any string argument and records what was passed, so

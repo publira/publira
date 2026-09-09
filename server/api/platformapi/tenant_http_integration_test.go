@@ -96,6 +96,7 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
 			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 	expectPublicIDAttemptReleased(mock)
+	expectDefaultCreatorRoleInserts(mock, tenantID, now)
 	mock.ExpectCommit()
 	expectIntegrationAuditLogInsert(mock)
 
@@ -210,6 +211,7 @@ func TestCreateTenantStoresRequestedLocale(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
 			AddRow(tenantID, "4ERDqTx5YB8m", "en.example.com", "English Tenant", nil, now, "active", nil, "Asia/Tokyo", "en"))
 	expectPublicIDAttemptReleased(mock)
+	expectDefaultCreatorRoleInserts(mock, tenantID, now)
 	mock.ExpectCommit()
 	expectIntegrationAuditLogInsert(mock)
 

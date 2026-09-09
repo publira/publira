@@ -16,6 +16,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { getLeadingCreatorRolePublicId } from "./creator-roles";
 import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -393,6 +394,27 @@ export const getSeries = async (
   }
 };
 
+/**
+ * The credit list a save sends, built from the creators the form picked. Each
+ * one is credited in the tenant's leading role until the form itself asks for
+ * a role per creator.
+ */
+const toCreatorCredits = async (
+  tenantId: string,
+  sessionId: string,
+  creatorPublicIds: string[]
+): Promise<{ creatorPublicId: string; rolePublicId: string }[]> => {
+  if (creatorPublicIds.length === 0) {
+    return [];
+  }
+
+  const rolePublicId = await getLeadingCreatorRolePublicId(tenantId, sessionId);
+  return creatorPublicIds.map((creatorPublicId) => ({
+    creatorPublicId,
+    rolePublicId,
+  }));
+};
+
 export const createSeries = async (
   input: {
     tenantId: string;
@@ -420,7 +442,11 @@ export const createSeries = async (
   try {
     const response = await apiClient.series.createSeries(
       {
-        creatorPublicIds: input.creatorPublicIds,
+        creatorCredits: await toCreatorCredits(
+          input.tenantId,
+          sessionId,
+          input.creatorPublicIds
+        ),
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
         isPublished: input.isPublished,
@@ -488,7 +514,11 @@ export const updateSeries = async (
     const response = await apiClient.series.updateSeries(
       {
         clearEyeCatchImage: input.clearEyeCatchImage,
-        creatorPublicIds: input.creatorPublicIds,
+        creatorCredits: await toCreatorCredits(
+          input.tenantId,
+          sessionId,
+          input.creatorPublicIds
+        ),
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
         isPublished: input.isPublished,

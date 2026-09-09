@@ -37,7 +37,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "completed", []byte("{2,6}"), "r15", now, seriesImageID, now, int32(2), []byte(`[{"public_id":"CREATOR001","name":"Author A","role":"writer","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`[]`), []byte(`[]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "completed", []byte("{2,6}"), "r15", now, seriesImageID, now, int32(2), []byte(`[{"public_id":"CREATOR001","name":"Author A","role_public_id":"ROLEAUTHOR01","role_name":"Original Author","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`[]`), []byte(`[]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
@@ -708,7 +708,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 				// The one episode is priced, so this is the count of a free
 				// window standing open on it.
 				int32(1),
-				[]byte(`[{"name":"Author A","role":"writer","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`),
+				[]byte(`[{"name":"Author A","role_public_id":"ROLEAUTHOR01","role_name":"Original Author","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`),
 				[]byte(`[{"public_id":"GENRE00001","name":"Fantasy","slug":"fantasy"}]`),
 				[]byte(`[{"name":"Swordplay","slug":"swordplay"}]`),
 				[]byte(`[{"public_id":"EP001","title":"Episode 1","order_index":1,"price":100,"reading_period_hours":24,"status":"published","scheduled_at":null,"published_at":"2026-03-18T00:00:00Z"}]`),

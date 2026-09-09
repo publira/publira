@@ -13,6 +13,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/locale"
@@ -248,6 +249,10 @@ func (s *platformServer) CreateTenant(
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeAlreadyExists, errors.New(field+" already exists"), field)
 		}
 		return nil, s.internalDBError(ctx, "failed to create tenant", err)
+	}
+
+	if err := creatorroles.CreateDefaults(ctx, tx, tenant.ID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to create default creator roles", err, "tenant_id", tenant.ID.String())
 	}
 
 	for _, email := range initialAdminEmails {

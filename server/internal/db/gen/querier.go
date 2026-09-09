@@ -43,6 +43,9 @@ type Querier interface {
 	// Whether a genre may still be deleted. The refusal is the handler's, and this
 	// is what it is based on.
 	CountSeriesByGenreIDForTenant(ctx context.Context, arg CountSeriesByGenreIDForTenantParams) (int32, error)
+	// Whether a role may still be deleted. The refusal is the handler's, and this
+	// is what it is based on.
+	CountSeriesCreatorsByRoleIDForTenant(ctx context.Context, arg CountSeriesCreatorsByRoleIDForTenantParams) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
@@ -53,6 +56,7 @@ type Querier interface {
 	CreateCreatorFollow(ctx context.Context, arg CreateCreatorFollowParams) (CreatorFollow, error)
 	CreateCreatorImage(ctx context.Context, arg CreateCreatorImageParams) (CreatorImage, error)
 	CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error)
+	CreateCreatorRole(ctx context.Context, arg CreateCreatorRoleParams) (CreatorRole, error)
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
 	// Reader comments on published episodes.
 	//
@@ -110,6 +114,9 @@ type Querier interface {
 	// producing two entitlements.
 	CreatePurchaseFromStripeCheckout(ctx context.Context, arg CreatePurchaseFromStripeCheckoutParams) (Purchase, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
+	// role_id is cast to a plain uuid rather than left nullable like the column:
+	// the column admits NULL for the credits that predate roles, and a credit
+	// written through here always names one.
 	CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error
 	CreateSeriesFollow(ctx context.Context, arg CreateSeriesFollowParams) (SeriesFollow, error)
 	CreateSeriesGenre(ctx context.Context, arg CreateSeriesGenreParams) error
@@ -132,6 +139,7 @@ type Querier interface {
 	CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserMfaRecoveryCodeParams) error
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
 	DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error)
+	DeleteCreatorRole(ctx context.Context, id uuid.UUID) error
 	// The irreversible removal staff reach for when the text must not be retained
 	// at all. It names no status: content under a legal takedown has to go whatever
 	// state it is in, and the reversible removal is a different query.
@@ -214,6 +222,7 @@ type Querier interface {
 	GetContentRankingSnapshotByID(ctx context.Context, arg GetContentRankingSnapshotByIDParams) (ContentRankingSnapshot, error)
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
+	GetCreatorRoleByPublicIDForTenant(ctx context.Context, arg GetCreatorRoleByPublicIDForTenantParams) (GetCreatorRoleByPublicIDForTenantRow, error)
 	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
@@ -254,6 +263,8 @@ type Querier interface {
 	// files its snapshots beside the old ones rather than replacing them, and wins
 	// here because it was computed later.
 	GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error)
+	// Where a newly created role goes: after everything that already exists.
+	GetMaxCreatorRoleDisplayPriorityForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
 	GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error)
 	// Where a newly created genre goes: after everything that already exists.
@@ -571,6 +582,18 @@ type Querier interface {
 	ListContentEventsByTenantOccurredAt(ctx context.Context, arg ListContentEventsByTenantOccurredAtParams) ([]ContentEvent, error)
 	// Representative type-filtered timeline. EXPLAIN: idx_content_events_tenant_type_occurred_at.
 	ListContentEventsByTenantTypeOccurredAt(ctx context.Context, arg ListContentEventsByTenantTypeOccurredAtParams) ([]ContentEvent, error)
+	// Resolves the roles a series form credited creators in. The caller compares
+	// the row count against what it asked for, so a public_id of another tenant
+	// reads as a role that does not exist.
+	ListCreatorRolesByPublicIDsForTenant(ctx context.Context, arg ListCreatorRolesByPublicIDsForTenantParams) ([]ListCreatorRolesByPublicIDsForTenantRow, error)
+	// The role list is read in the order the tenant put it in, so the cursor sorts
+	// on (display_priority, id) — the same pair
+	// idx_creator_roles_tenant_display_priority holds. Forward uses the ascending
+	// query; backward uses the descending one so the index is scanned in reverse,
+	// and the handler flips those rows back into priority order.
+	// cursor rules: proto/README.md.
+	ListCreatorRolesByTenantAsc(ctx context.Context, arg ListCreatorRolesByTenantAscParams) ([]ListCreatorRolesByTenantAscRow, error)
+	ListCreatorRolesByTenantDesc(ctx context.Context, arg ListCreatorRolesByTenantDescParams) ([]ListCreatorRolesByTenantDescRow, error)
 	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error)
 	ListCreatorsByTenantAsc(ctx context.Context, arg ListCreatorsByTenantAscParams) ([]ListCreatorsByTenantAscRow, error)
 	// Admin ListCreators is (created_at, id) DESC. Forward uses the DESC query;
@@ -1067,6 +1090,14 @@ type Querier interface {
 	// UUIDv7, so the order stays unique even when created_at ties.
 	// cursor rules: proto/README.md.
 	ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error)
+	// Credits are presented in role priority first, so the leading role opens the
+	// list on every series without anyone ordering it by hand. display_order sorts
+	// the creators who share a role, and the name settles a tie between two roles
+	// that carry the same priority.
+	//
+	// The join to the role is outer: a credit written before roles existed states
+	// none, and it is still a credit. Those come last, which is where a name with
+	// nothing said about it belongs.
 	ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error)
 	// Genres read back in the tenant's own genre order rather than the order they
 	// were assigned in, so every series presents them the same way the genre list
@@ -1136,6 +1167,11 @@ type Querier interface {
 	// exactly as it was, because the removal is silent; only the author's own
 	// withdrawal takes it away from them.
 	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error)
+	// Locks every role of the tenant and hands back the order they are in now, so
+	// a reorder can check the client's expected order against a list no concurrent
+	// write can move underneath it. The names come along because a reorder answers
+	// with the whole list, and nothing in this transaction changes them.
+	LockCreatorRolesForTenant(ctx context.Context, tenantID uuid.UUID) ([]LockCreatorRolesForTenantRow, error)
 	// Locks every genre of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
 	// write can move underneath it. The names come along because a reorder answers
@@ -1387,6 +1423,8 @@ type Querier interface {
 	// this event (unique skip). attempts and available_at stay as they were.
 	UnclaimOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
+	UpdateCreatorRole(ctx context.Context, arg UpdateCreatorRoleParams) error
+	UpdateCreatorRoleDisplayPriority(ctx context.Context, arg UpdateCreatorRoleDisplayPriorityParams) error
 	UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error

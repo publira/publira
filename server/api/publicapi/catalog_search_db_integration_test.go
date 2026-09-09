@@ -27,8 +27,8 @@ func TestDBSearchPublishedAuthorsMatchesPartOfTheName(t *testing.T) {
 		ProfileText: "Assisted by Aoi Sakura on an earlier work",
 	})
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPUB001", Title: "Published Story", Published: true})
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, matching.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, profileOnly.ID, "artist")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, matching.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, profileOnly.ID, "Artist")
 
 	resp, err := env.catalogClient().SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
 		Tenant: tenantContext(tenant),
@@ -52,8 +52,8 @@ func TestDBSearchPublishedAuthorsMatchesNonASCIINameCaseInsensitively(t *testing
 	japanese := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORJP001", Name: "夏目 漱石"})
 	recased := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORUP001", Name: "NATSUME Soseki"})
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPUB001", Title: "Published Story", Published: true})
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, japanese.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, recased.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, japanese.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, recased.ID, "")
 
 	client := env.catalogClient()
 	japaneseHit, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
@@ -96,9 +96,9 @@ func TestDBSearchPublishedAuthorsRequiresAPublishedSeries(t *testing.T) {
 		Published:   true,
 		PublishedAt: time.Now().Add(24 * time.Hour),
 	})
-	env.PG.SeedSeriesCreator(t, tenant.ID, visible.ID, published.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, onlyDraft.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, future.ID, onlyFuture.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, visible.ID, published.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, onlyDraft.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, future.ID, onlyFuture.ID, "")
 
 	resp, err := env.catalogClient().SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
 		Tenant: tenantContext(tenant),
@@ -119,8 +119,8 @@ func TestDBSearchPublishedAuthorsEscapesIlikeMetacharacters(t *testing.T) {
 	literal := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORPCT01", Name: "100% Studio"})
 	other := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHOROTH01", Name: "100 Studio"})
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPUB001", Title: "Published Story", Published: true})
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, literal.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, other.ID, "artist")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, literal.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, other.ID, "Artist")
 
 	resp, err := env.catalogClient().SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
 		Tenant: tenantContext(tenant),
@@ -142,8 +142,8 @@ func TestDBSearchPublishedAuthorsExcludesAnotherTenant(t *testing.T) {
 	theirs := env.PG.SeedCreator(t, second.ID, testutil.CreatorSeed{PublicID: "AUTHORB0001", Name: "Shared Name Artist"})
 	mineSeries := env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Tenant A Series", Published: true})
 	theirSeries := env.PG.SeedSeries(t, second.ID, testutil.SeriesSeed{PublicID: "SERIESB00001", Title: "Tenant B Series", Published: true})
-	env.PG.SeedSeriesCreator(t, first.ID, mineSeries.ID, mine.ID, "writer")
-	env.PG.SeedSeriesCreator(t, second.ID, theirSeries.ID, theirs.ID, "writer")
+	env.PG.SeedSeriesCreator(t, first.ID, mineSeries.ID, mine.ID, "")
+	env.PG.SeedSeriesCreator(t, second.ID, theirSeries.ID, theirs.ID, "")
 
 	resp, err := env.catalogClient().SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
 		Tenant: tenantContext(first),
@@ -165,9 +165,9 @@ func TestDBSearchPublishedAuthorsPagesForwardAndBack(t *testing.T) {
 	akira := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORAKIRA", Name: "Akira Ink"})
 	mika := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORMIKA0", Name: "Mika Ink"})
 	yuki := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORYUKI0", Name: "Yuki Ink"})
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, akira.ID, "writer")
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, mika.ID, "artist")
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, yuki.ID, "editor")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, akira.ID, "")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, mika.ID, "Artist")
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, yuki.ID, "")
 
 	client := env.catalogClient()
 	firstPage, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{

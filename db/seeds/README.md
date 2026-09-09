@@ -13,6 +13,7 @@ Initial data for local development and UI checks is managed as SQL.
 - `prod.sql`: **Production** entry point — database users, roles, and object ownership only
 - `dev.sql`: **Development** entry point — `prod.sql` plus development sample data
 - `baseline/`: Minimal files shared between environments (referenced by both prod and dev)
+- `creator_roles.sql`: The creator-role vocabulary a tenant starts with, for the tenants a seed created (included with `\ir` from every seed that inserts a tenant)
 - `dev/`: Data used only in development (referenced only by dev.sql)
   - `001_tenant_users.sql`: Tenants, users, and roles
   - `010_catalog.sql`: Labels, creators, series, and episodes

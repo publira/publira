@@ -281,8 +281,12 @@ func publishFollowTargets(t *testing.T, ctx context.Context, db *sql.DB, targets
 		t.Fatalf("publish episode: %v", err)
 	}
 	if _, err := db.ExecContext(ctx, `
-		INSERT INTO series_creators (series_id, creator_id, role, tenant_id)
-		VALUES ($1, $2, 'author', $3)
+		INSERT INTO series_creators (series_id, creator_id, role_id, tenant_id)
+		SELECT $1, $2, cr.id, $3
+		FROM creator_roles cr
+		WHERE cr.tenant_id = $3
+		ORDER BY cr.display_priority ASC, cr.id ASC
+		LIMIT 1
 	`, seriesID, targets.creatorID, targets.tenantID); err != nil {
 		t.Fatalf("associate creator: %v", err)
 	}

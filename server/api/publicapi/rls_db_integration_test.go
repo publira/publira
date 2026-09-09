@@ -66,6 +66,9 @@ var publicDataTables = []struct {
 	// difference between the catalog counting the tenant's free episodes and
 	// counting everyone's.
 	{name: "published_free_episodes", count: "SELECT count(*) FROM published_free_episodes"},
+	// The catalog reads a credit through its role, so the role list is on the
+	// storefront's read path as much as the genre list is.
+	{name: "creator_roles", count: "SELECT count(*) FROM creator_roles"},
 	{name: "genres", count: "SELECT count(*) FROM genres"},
 	{name: "tags", count: "SELECT count(*) FROM tags"},
 	{name: "series_genres", count: "SELECT count(*) FROM series_genres"},

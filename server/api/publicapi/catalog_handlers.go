@@ -446,11 +446,35 @@ func (s *apiServer) activeSeriesRowsInOrder(
 type creatorJSON struct {
 	PublicID               string `json:"public_id"`
 	Name                   string `json:"name"`
-	Role                   string `json:"role"`
+	RolePublicID           string `json:"role_public_id"`
+	RoleName               string `json:"role_name"`
 	ProfileText            string `json:"profile_text"`
 	IconImageURL           string `json:"icon_image_url"`
 	IconImageFileSizeBytes int64  `json:"icon_image_file_size_bytes"`
 	IconImageUpdatedAt     string `json:"icon_image_updated_at"`
+}
+
+// creatorFromJSON rebuilds one credit of a series row. The credits arrive
+// already in role priority order, so nothing here reorders them.
+func creatorFromJSON(creator creatorJSON) *publirattypesv1.Creator {
+	mapped := &publirattypesv1.Creator{
+		PublicId:               creator.PublicID,
+		Name:                   creator.Name,
+		ProfileText:            creator.ProfileText,
+		IconImageUrl:           creator.IconImageURL,
+		IconImageFileSizeBytes: creator.IconImageFileSizeBytes,
+		IconImageUpdatedAt:     creator.IconImageUpdatedAt,
+	}
+	// A credit written before roles existed carries none: the aggregate reads
+	// null for both columns, and the field stays unset rather than naming an
+	// empty role.
+	if creator.RolePublicID != "" {
+		mapped.Role = &publirattypesv1.CreatorRole{
+			PublicId: creator.RolePublicID,
+			Name:     creator.RoleName,
+		}
+	}
+	return mapped
 }
 
 type genreJSON struct {
@@ -542,15 +566,7 @@ func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattyp
 	}
 	item.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
 	for _, creator := range creators {
-		item.Creators = append(item.Creators, &publirattypesv1.Creator{
-			PublicId:               creator.PublicID,
-			Name:                   creator.Name,
-			Role:                   creator.Role,
-			ProfileText:            creator.ProfileText,
-			IconImageUrl:           creator.IconImageURL,
-			IconImageFileSizeBytes: creator.IconImageFileSizeBytes,
-			IconImageUpdatedAt:     creator.IconImageUpdatedAt,
-		})
+		item.Creators = append(item.Creators, creatorFromJSON(creator))
 	}
 	genres, err := seriesGenresFromJSON(row.Genres)
 	if err != nil {
@@ -1015,15 +1031,7 @@ func (s *apiServer) GetSeriesDetail(
 
 	res.Msg.Series.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
 	for _, creator := range creators {
-		res.Msg.Series.Creators = append(res.Msg.Series.Creators, &publirattypesv1.Creator{
-			PublicId:               creator.PublicID,
-			Name:                   creator.Name,
-			Role:                   creator.Role,
-			ProfileText:            creator.ProfileText,
-			IconImageUrl:           creator.IconImageURL,
-			IconImageFileSizeBytes: creator.IconImageFileSizeBytes,
-			IconImageUpdatedAt:     creator.IconImageUpdatedAt,
-		})
+		res.Msg.Series.Creators = append(res.Msg.Series.Creators, creatorFromJSON(creator))
 	}
 	for _, episode := range episodes {
 		item := &publirattypesv1.Episode{

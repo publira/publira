@@ -35,6 +35,8 @@ SET domain = EXCLUDED.domain,
     status = EXCLUDED.status,
     default_locale = EXCLUDED.default_locale;
 
+\ir ../creator_roles.sql
+
 WITH admin_user_seed AS (
     SELECT '018f0f21-0001-7000-8000-000000000001'::uuid AS id
 )

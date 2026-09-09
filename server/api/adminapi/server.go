@@ -316,6 +316,17 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(genrePath, genreHandler)
+	creatorRolePath, creatorRoleHandler := publiraadminv1connect.NewAdminCreatorRoleServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(creatorRolePath, creatorRoleHandler)
 	auditPath, auditHandler := publiraadminv1connect.NewAdminAuditLogServiceHandler(
 		server,
 		traced,

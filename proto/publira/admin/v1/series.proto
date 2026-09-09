@@ -6,14 +6,27 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 
 import "publira/types/v1/types.proto";
 
+// One credit line on a series: who, and in what role. The same creator may
+// appear twice under two roles — an original author who also draws it — and
+// not twice under the same one.
+message SeriesCreatorCredit {
+  string creator_public_id = 1;
+  // A role of this tenant, by public_id. Credits carry no order of their own
+  // across roles: the role's priority is what puts the leading one first.
+  string role_public_id = 2;
+}
+
 message CreateSeriesRequest {
+  // 7 held `creator_public_ids`, a creator list with no way to state a role.
+  reserved 7;
+  reserved "creator_public_ids";
+
   publira.types.v1.TenantContext tenant = 1;
   string title = 2;
   string synopsis = 3;
   string label_public_id = 4;
   bool is_published = 5;
   int32 reading_period_hours = 6;
-  repeated string creator_public_ids = 7;
   bytes eye_catch_image_data = 8;
   string eye_catch_image_content_type = 9;
   string published_at = 12;
@@ -31,6 +44,9 @@ message CreateSeriesRequest {
   // the tag; one that matches an existing tag's slug resolves to it, keeping
   // the name that tag was created under. At most 20 per series.
   repeated string tag_names = 17;
+  // Who the series is credited to. The order given is the order within a role,
+  // so an editor decides which of two artists is named first.
+  repeated SeriesCreatorCredit creator_credits = 18;
 }
 
 message CreateSeriesResponse {
@@ -38,13 +54,16 @@ message CreateSeriesResponse {
 }
 
 message UpdateSeriesRequest {
+  // 7 held `creator_public_ids`, a creator list with no way to state a role.
+  reserved 7;
+  reserved "creator_public_ids";
+
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
   string title = 3;
   string synopsis = 4;
   bool is_published = 5;
   int32 reading_period_hours = 6;
-  repeated string creator_public_ids = 7;
   string label_public_id = 8;
   bytes eye_catch_image_data = 9;
   string eye_catch_image_content_type = 10;
@@ -58,12 +77,14 @@ message UpdateSeriesRequest {
   // before it is stored; empty keeps no weekly schedule.
   repeated int32 schedule_weekdays = 14;
   publira.types.v1.SeriesAgeRating age_rating = 15;
-  // The whole assignment, the way creator_public_ids is: what this field holds
-  // is what the series carries afterwards, and an empty field clears it.
+  // The whole assignment: what this field holds is what the series carries
+  // afterwards, and an empty field clears it.
   repeated string genre_public_ids = 16;
   // Likewise the whole tag list. A tag the last series here lets go of is
   // deleted, because nothing else keeps a tag alive.
   repeated string tag_names = 17;
+  // Likewise the whole credit list, replacing every credit the series had.
+  repeated SeriesCreatorCredit creator_credits = 18;
 }
 
 message UpdateSeriesResponse {

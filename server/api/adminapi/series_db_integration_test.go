@@ -367,10 +367,10 @@ func TestDBCreateSeriesUnknownCreatorLeavesNoRows(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
 	_, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
-		Tenant:           tenant.tenantContext(),
-		Title:            "Orphan Series",
-		Synopsis:         "Should not persist",
-		CreatorPublicIds: []string{"NOSUCHCREATOR"},
+		Tenant:         tenant.tenantContext(),
+		Title:          "Orphan Series",
+		Synopsis:       "Should not persist",
+		CreatorCredits: env.creatorCredits(t, tenant, "NOSUCHCREATOR"),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
@@ -401,10 +401,10 @@ func TestDBUpdateSeriesUnknownCreatorPreservesExistingLinks(t *testing.T) {
 	creatorPublicID := createdCreator.Msg.Creator.PublicId
 
 	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
-		Tenant:           tenant.tenantContext(),
-		Title:            "Original Title",
-		Synopsis:         "Original synopsis",
-		CreatorPublicIds: []string{creatorPublicID},
+		Tenant:         tenant.tenantContext(),
+		Title:          "Original Title",
+		Synopsis:       "Original synopsis",
+		CreatorCredits: env.creatorCredits(t, tenant, creatorPublicID),
 	}))
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
@@ -412,11 +412,11 @@ func TestDBUpdateSeriesUnknownCreatorPreservesExistingLinks(t *testing.T) {
 	publicID := created.Msg.Series.PublicId
 
 	_, err = client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
-		Tenant:           tenant.tenantContext(),
-		PublicId:         publicID,
-		Title:            "Hijacked Title",
-		Synopsis:         "Hijacked synopsis",
-		CreatorPublicIds: []string{"NOSUCHCREATOR"},
+		Tenant:         tenant.tenantContext(),
+		PublicId:       publicID,
+		Title:          "Hijacked Title",
+		Synopsis:       "Hijacked synopsis",
+		CreatorCredits: env.creatorCredits(t, tenant, "NOSUCHCREATOR"),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)

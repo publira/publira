@@ -11,6 +11,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/publira/publira/server/internal/catalogslug"
+	"github.com/publira/publira/server/internal/creatorroles"
 	"github.com/publira/publira/server/internal/publicid"
 )
 
@@ -242,8 +243,30 @@ func (e *PostgresEnv) SeedCreator(t *testing.T, tenantID uuid.UUID, seed Creator
 	return Creator{ID: creatorID, PublicID: publicID, Name: name}
 }
 
-// SeedSeriesCreator credits the creator on the series. Role defaults to writer.
-func (e *PostgresEnv) SeedSeriesCreator(t *testing.T, tenantID, seriesID, creatorID uuid.UUID, role string) {
+// SeedSeriesCreator credits the creator on the series in one of the tenant's
+// roles, named the way the console shows it. An empty roleName takes the
+// leading role, which is what a series credited to one person means.
+func (e *PostgresEnv) SeedSeriesCreator(t *testing.T, tenantID, seriesID, creatorID uuid.UUID, roleName string) {
+	t.Helper()
+	e.requireDB(t)
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	role := e.CreatorRoleByName(t, tenantID, defaultIfEmpty(roleName, creatorroles.Defaults[0].Name))
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO series_creators (series_id, creator_id, role_id, display_order, tenant_id)
+		VALUES ($1, $2, $3, 0, $4)
+	`, seriesID, creatorID, role.ID, tenantID); err != nil {
+		t.Fatalf("insert series_creators series=%s creator=%s: %v", seriesID, creatorID, err)
+	}
+}
+
+// SeedSeriesCreatorWithoutRole credits the creator on the series stating no
+// role, which is the shape a credit written before the tenant had a role
+// vocabulary still has. Nothing writes one any more, so this is the only way
+// to reach that row from a test.
+func (e *PostgresEnv) SeedSeriesCreatorWithoutRole(t *testing.T, tenantID, seriesID, creatorID uuid.UUID) {
 	t.Helper()
 	e.requireDB(t)
 
@@ -251,11 +274,42 @@ func (e *PostgresEnv) SeedSeriesCreator(t *testing.T, tenantID, seriesID, creato
 	defer cancel()
 
 	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO series_creators (series_id, creator_id, role, display_order, tenant_id)
-		VALUES ($1, $2, $3, 0, $4)
-	`, seriesID, creatorID, defaultIfEmpty(role, "writer"), tenantID); err != nil {
-		t.Fatalf("insert series_creators series=%s creator=%s: %v", seriesID, creatorID, err)
+		INSERT INTO series_creators (series_id, creator_id, role_id, display_order, tenant_id)
+		VALUES ($1, $2, NULL, 0, $3)
+	`, seriesID, creatorID, tenantID); err != nil {
+		t.Fatalf("insert role-less series_creators series=%s creator=%s: %v", seriesID, creatorID, err)
 	}
+}
+
+// CreatorRole is a seeded creator_roles row. A credit names one, and the admin
+// series requests address one by public ID, so tests need both.
+type CreatorRole struct {
+	ID       uuid.UUID
+	PublicID string
+	Name     string
+}
+
+// CreatorRoleByName reads one of the roles [PostgresEnv.SeedTenant] created,
+// so a test states the role it means by the name the console shows rather than
+// by an identifier it would have to seed itself.
+func (e *PostgresEnv) CreatorRoleByName(t *testing.T, tenantID uuid.UUID, name string) CreatorRole {
+	t.Helper()
+	e.requireDB(t)
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	role := CreatorRole{Name: name}
+	if err := e.DB.QueryRowContext(ctx, `
+		SELECT id, public_id
+		FROM creator_roles
+		WHERE tenant_id = $1
+			AND name = $2
+	`, tenantID, name).Scan(&role.ID, &role.PublicID); err != nil {
+		t.Fatalf("read creator role %q of tenant %s: %v", name, tenantID, err)
+	}
+
+	return role
 }
 
 // slugFromName derives a seed's default slug the way the console and the series
