@@ -77,6 +77,80 @@ void main() {
     expect(items.last.eyeCatchVariants, isEmpty);
   });
 
+  test(
+    'listSeries carries the credits in the order the API sent them',
+    () async {
+      final items = await catalog.listSeries();
+
+      final creators = items.first.creators;
+      expect(creators.map((creator) => creator.name), [
+        'Seed Author 001',
+        'Seed Author 002',
+        'Seed Author 003',
+      ]);
+      expect(creators.first.id, 'SeedAUTHAAA1');
+    },
+  );
+
+  test(
+    'listSeries reads a series credited to nobody as carrying none',
+    () async {
+      final items = await catalog.listSeries();
+
+      expect(items.last.creators, isEmpty);
+    },
+  );
+
+  test('listSeries drops a credit with no name', () async {
+    server.series = [
+      {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+        'creators': [
+          {'publicId': 'SeedAUTHAAA1', 'name': ''},
+          {'publicId': 'SeedAUTHAAA2', 'name': 'Seed Author 002'},
+        ],
+      },
+    ];
+
+    final items = await catalog.listSeries();
+
+    expect(items.first.creators.map((creator) => creator.name), [
+      'Seed Author 002',
+    ]);
+  });
+
+  test('listSeries rejects a credits field that is not a list', () async {
+    server.series = [
+      {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+        'creators': 'not a list',
+      },
+    ];
+
+    expect(
+      () => catalog.listSeries(),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.unexpected,
+        ),
+      ),
+    );
+  });
+
+  test('getSeries carries the credits of the series', () async {
+    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+
+    expect(detail!.series.creators.map((creator) => creator.name), [
+      'Seed Author 001',
+      'Seed Author 002',
+      'Seed Author 003',
+    ]);
+  });
+
   test('getSeries carries the cover renditions of the series', () async {
     final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
 

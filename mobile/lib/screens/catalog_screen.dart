@@ -7,6 +7,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/series_cover.dart';
+import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
@@ -105,12 +106,29 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         ),
                       ),
                       title: Text(item.title),
-                      subtitle: item.description.isEmpty
+                      subtitle:
+                          item.creators.isEmpty && item.description.isEmpty
                           ? null
-                          : Text(
-                              item.description,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (item.creators.isNotEmpty)
+                                  Text(
+                                    messages.formatList([
+                                      for (final creator in item.creators)
+                                        creator.name,
+                                    ]),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                if (item.description.isNotEmpty)
+                                  Text(
+                                    item.description,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
                             ),
                       trailing: item.labelName.isEmpty
                           ? null

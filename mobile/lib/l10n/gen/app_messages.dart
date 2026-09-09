@@ -140,6 +140,18 @@ abstract class AppMessages {
   /// `mobile.common.back_to_catalog`
   String get commonBackToCatalog;
 
+  /// `mobile.common.list_end`
+  String commonListEnd({required String first, required String rest});
+
+  /// `mobile.common.list_middle`
+  String commonListMiddle({required String first, required String rest});
+
+  /// `mobile.common.list_start`
+  String commonListStart({required String first, required String rest});
+
+  /// `mobile.common.list_two`
+  String commonListTwo({required String first, required String rest});
+
   /// `mobile.common.retry`
   String get commonRetry;
 
@@ -409,6 +421,26 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get commonBackToCatalog {
     return 'カタログへ戻る';
+  }
+
+  @override
+  String commonListEnd({required String first, required String rest}) {
+    return '$first、$rest';
+  }
+
+  @override
+  String commonListMiddle({required String first, required String rest}) {
+    return '$first、$rest';
+  }
+
+  @override
+  String commonListStart({required String first, required String rest}) {
+    return '$first、$rest';
+  }
+
+  @override
+  String commonListTwo({required String first, required String rest}) {
+    return '$first、$rest';
   }
 
   @override
@@ -755,6 +787,26 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String commonListEnd({required String first, required String rest}) {
+    return '$first, and $rest';
+  }
+
+  @override
+  String commonListMiddle({required String first, required String rest}) {
+    return '$first, $rest';
+  }
+
+  @override
+  String commonListStart({required String first, required String rest}) {
+    return '$first, $rest';
+  }
+
+  @override
+  String commonListTwo({required String first, required String rest}) {
+    return '$first and $rest';
+  }
+
+  @override
   String get commonRetry {
     return 'Retry';
   }
@@ -1095,6 +1147,26 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get commonBackToCatalog {
     return '카탈로그로 돌아가기';
+  }
+
+  @override
+  String commonListEnd({required String first, required String rest}) {
+    return '$first 및 $rest';
+  }
+
+  @override
+  String commonListMiddle({required String first, required String rest}) {
+    return '$first, $rest';
+  }
+
+  @override
+  String commonListStart({required String first, required String rest}) {
+    return '$first, $rest';
+  }
+
+  @override
+  String commonListTwo({required String first, required String rest}) {
+    return '$first 및 $rest';
   }
 
   @override
