@@ -323,3 +323,145 @@ export const formatPlainDate = (
     plainDate.toZonedDateTime("UTC").epochMilliseconds
   );
 };
+
+export interface FormatRelativeTimeOptions {
+  fallback?: string;
+  /** UI locale the phrase is worded in. Required, for the reason above. */
+  locale: Locale;
+  /**
+   * The moment `value` is measured against. Defaults to now, and is a
+   * parameter so a test can name one instead of moving with the clock.
+   */
+  now?: Temporal.Instant;
+  /**
+   * IANA time zone the calendar days are counted in. Defaults to
+   * {@link DEFAULT_TIME_ZONE}. It is what decides where "yesterday" starts:
+   * two timestamps two hours apart are yesterday and today when midnight falls
+   * between them, and a count of elapsed seconds cannot tell.
+   */
+  timeZone?: string;
+}
+
+const relativeFormatterCache = new Map<string, Intl.RelativeTimeFormat>();
+
+const getRelativeFormatter = (intlLocale: string): Intl.RelativeTimeFormat => {
+  const cached = relativeFormatterCache.get(intlLocale);
+  if (cached) {
+    return cached;
+  }
+  // `auto` is what words -1 day as "yesterday" instead of "1 day ago".
+  const formatter = new Intl.RelativeTimeFormat(intlLocale, {
+    numeric: "auto",
+  });
+  relativeFormatterCache.set(intlLocale, formatter);
+  return formatter;
+};
+
+const SECONDS_PER_MINUTE = 60;
+const SECONDS_PER_HOUR = 60 * 60;
+const DAYS_PER_WEEK = 7;
+/** Four weeks, above which the phrase counts months instead. */
+const DAYS_PER_MONTH_THRESHOLD = 28;
+const MONTHS_PER_YEAR = 12;
+
+/**
+ * The unit and the amount an elapsed time is worded in, given the seconds
+ * between the two moments and the calendar difference between their days.
+ *
+ * Both inputs are needed. Under an hour only the elapsed seconds mean
+ * anything — a minute either side of midnight is a minute, not a day. From an
+ * hour up, the calendar is what a reader means, so the day count comes from
+ * plain dates in the display zone and "yesterday" is the previous date rather
+ * than "between 24 and 48 hours ago".
+ */
+const relativeParts = (
+  seconds: number,
+  days: number,
+  months: number
+): { unit: Intl.RelativeTimeFormatUnit; value: number } => {
+  if (Math.abs(seconds) < SECONDS_PER_MINUTE) {
+    return { unit: "second", value: Math.trunc(seconds) };
+  }
+  if (Math.abs(seconds) < SECONDS_PER_HOUR) {
+    return { unit: "minute", value: Math.trunc(seconds / SECONDS_PER_MINUTE) };
+  }
+  if (days === 0) {
+    return { unit: "hour", value: Math.trunc(seconds / SECONDS_PER_HOUR) };
+  }
+  if (Math.abs(days) < DAYS_PER_WEEK) {
+    return { unit: "day", value: days };
+  }
+  if (Math.abs(days) < DAYS_PER_MONTH_THRESHOLD) {
+    return { unit: "week", value: Math.trunc(days / DAYS_PER_WEEK) };
+  }
+  if (Math.abs(months) < MONTHS_PER_YEAR) {
+    return { unit: "month", value: months };
+  }
+  return { unit: "year", value: Math.trunc(months / MONTHS_PER_YEAR) };
+};
+
+/**
+ * Whole calendar days and whole months between two instants, counted from the
+ * dates they fall on in `timeZone`. `null` when the zone is not one the
+ * runtime knows.
+ */
+const calendarDifference = (
+  from: Temporal.Instant,
+  to: Temporal.Instant,
+  timeZone: string
+): { days: number; months: number } | null => {
+  try {
+    const fromDate = from.toZonedDateTimeISO(timeZone).toPlainDate();
+    const toDate = to.toZonedDateTimeISO(timeZone).toPlainDate();
+    const { days } = fromDate.until(toDate, { largestUnit: "day" });
+    const { months, years } = fromDate.until(toDate, { largestUnit: "year" });
+
+    return { days, months: years * MONTHS_PER_YEAR + months };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Format an absolute timestamp as how long ago it was: "3 days ago",
+ * "yesterday", "2 hours ago".
+ *
+ * What it returns depends on when it is read, so it belongs in the browser. A
+ * Server Component that renders one under Cache Components writes it into the
+ * prerendered shell, where "2 hours ago" stays two hours ago for as long as
+ * that entry lives; `web-host`'s `RelativeTime` is what calls this, over an
+ * absolute date the server can state truthfully.
+ *
+ * Invalid or empty input returns `options.fallback` (default: the original
+ * `value`), the same contract as {@link formatDate}.
+ */
+export const formatRelativeTime = (
+  value: string,
+  options: FormatRelativeTimeOptions
+): string => {
+  const fallback = options.fallback ?? value;
+  const timeZone = options.timeZone ?? DEFAULT_TIME_ZONE;
+
+  const instant = parseInstant(value);
+  if (!instant) {
+    return fallback;
+  }
+
+  const now = options.now ?? Temporal.Now.instant();
+  const difference = calendarDifference(now, instant, timeZone);
+  if (!difference) {
+    return fallback;
+  }
+
+  const { seconds } = now.until(instant, { largestUnit: "second" });
+  const { unit, value: amount } = relativeParts(
+    seconds,
+    difference.days,
+    difference.months
+  );
+
+  return getRelativeFormatter(toIntlLocale(options.locale)).format(
+    amount,
+    unit
+  );
+};
