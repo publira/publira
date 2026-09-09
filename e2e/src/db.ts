@@ -183,6 +183,58 @@ export const deleteCreatorsByPublicIds = (
 };
 
 /**
+ * Attach a genre to a series.
+ *
+ * A series carries its genres as a field of `UpdateSeries` rather than through
+ * an assignment RPC, and the console's series form has no control for that
+ * field yet, so the join row is written here. It is what puts a genre into the
+ * state the console's delete refusal exists for.
+ */
+export const assignGenreToSeries = (
+  seriesPublicId: string,
+  genreName: string
+): void => {
+  runSql(
+    `INSERT INTO series_genres (tenant_id, series_id, genre_id)
+     SELECT s.tenant_id, s.id, g.id
+     FROM series AS s
+     JOIN genres AS g ON g.tenant_id = s.tenant_id
+     WHERE s.public_id = ${quoteSqlLiteral(seriesPublicId)}
+       AND g.name = ${quoteSqlLiteral(genreName)};`
+  );
+};
+
+/**
+ * Remove genres created by admin tests, by name.
+ *
+ * By name rather than by public id, because a genre is made and read entirely
+ * through the console list, which never puts its public id on screen. The
+ * names those tests use carry a per-run suffix, so the match is theirs alone.
+ *
+ * The assignments go first: `series_genres` holds the genre down rather than
+ * cascading from it, which is the whole point of the console refusing to
+ * delete a genre a series still carries. The series themselves stay for
+ * {@link deleteSeriesByPublicIds}.
+ */
+export const deleteGenresByNames = (names: readonly string[]): void => {
+  const quoted: string[] = [];
+  for (const name of names) {
+    const trimmed = name.trim();
+    if (trimmed.length > 0) {
+      quoted.push(quoteSqlLiteral(trimmed));
+    }
+  }
+  if (quoted.length === 0) {
+    return;
+  }
+  const list = quoted.join(", ");
+  runSql(
+    `DELETE FROM series_genres WHERE genre_id IN (SELECT id FROM genres WHERE name IN (${list}));
+     DELETE FROM genres WHERE name IN (${list});`
+  );
+};
+
+/**
  * Remove pages created by admin published-page tests.
  *
  * `page_versions` cascade from the page, and `pages.published_version_id`

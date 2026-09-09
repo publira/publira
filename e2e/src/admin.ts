@@ -437,3 +437,48 @@ export const createPageViaUi = async (
 export const formMessage = (page: Page): Locator =>
   // FormMessage renders a <p role="status">.
   page.getByRole("status");
+
+/**
+ * The genre list on `/genres`, which is one `<ul>` named after the card it
+ * sits in. Scoping to it keeps the row fields apart from the create form's own
+ * "Genre name" field.
+ */
+export const genreList = (page: Page): Locator =>
+  page.getByRole("list", { name: "Genres" });
+
+/**
+ * The name field of the create card, which carries the required marker in its
+ * accessible name the way every other console form's label does.
+ */
+export const genreCreateField = (page: Page): Locator =>
+  page.getByRole("textbox", { name: /Genre name/u });
+
+/** The in-place name field of one genre row, addressed by its saved name. */
+export const genreNameField = (page: Page, name: string): Locator =>
+  page.getByRole("textbox", { exact: true, name: `Name of ${name}` });
+
+/** The row of one genre, so its own buttons are the ones that get pressed. */
+export const genreRow = (page: Page, name: string): Locator =>
+  genreList(page)
+    .getByRole("listitem")
+    .filter({ has: genreNameField(page, name) });
+
+/** The saved names of every genre, in the order the console lists them. */
+export const genreNamesInOrder = async (page: Page): Promise<string[]> => {
+  const fields = await genreList(page).getByRole("textbox").all();
+  return await Promise.all(fields.map((field) => field.inputValue()));
+};
+
+/**
+ * Add a genre from the `/genres` create form. Resolves once the new row is on
+ * screen, which is what says the list read the write back.
+ */
+export const createGenreViaUi = async (
+  page: Page,
+  name: string
+): Promise<void> => {
+  await page.goto(adminUrl("/genres"));
+  await fillField(genreCreateField(page), name);
+  await page.getByRole("button", { name: "Create genre" }).click();
+  await expect(genreNameField(page, name)).toBeVisible({ timeout: 15_000 });
+};

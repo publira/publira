@@ -15,11 +15,22 @@ import { isCropRectField, parseCropRect } from "./crop-rect";
  */
 const NUMBER_RE = /^[+-]?\d+(?:\.\d+)?$/u;
 
+/**
+ * `tooLongMessage` defaults to `message`, which is right wherever the length
+ * bound is a backstop the UI already keeps a field inside. Pass it where the
+ * bound is small enough for an editor to reach on purpose: "… is required." is
+ * not an answer to a name that was typed and is merely too long.
+ */
 export const requiredTrimmedString = (
   message: string,
-  maxLength = 255
+  maxLength = 255,
+  tooLongMessage = message
 ): z.ZodType<string, unknown> =>
-  z.string({ error: message }).trim().min(1, message).max(maxLength, message);
+  z
+    .string({ error: message })
+    .trim()
+    .min(1, message)
+    .max(maxLength, tooLongMessage);
 
 export const optionalTrimmedString = (
   maxLength = 255,

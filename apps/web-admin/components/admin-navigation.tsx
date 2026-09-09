@@ -34,6 +34,7 @@ const hrefs = [
   "/",
   "/labels",
   "/creators",
+  "/genres",
   "/series",
   "/pages",
   "/announcements",
@@ -85,6 +86,18 @@ export const AdminNavigation = () => (
             <ConsoleSidebarNavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="admin.nav.creators_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/genres">
+          <ConsoleSidebarNavigationItemIcon>
+            <CollectionIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
+                <Message message="admin.nav.genres_label" />
               </Suspense>
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
