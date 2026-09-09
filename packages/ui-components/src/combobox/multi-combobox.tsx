@@ -124,7 +124,7 @@ export const MultiComboboxInputGroup = ({
 }) => (
   <BaseCombobox.InputGroup
     className={cn(
-      "relative flex min-h-10 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-1.5 py-1 shadow-xs focus-within:ring-2 focus-within:ring-ring focus-within:outline-none",
+      "relative flex min-h-10 w-full flex-wrap items-center gap-1 rounded-control border border-input bg-card px-1.5 py-1 focus-within:ring-2 focus-within:ring-ring focus-within:outline-none",
       className
     )}
   >
@@ -156,7 +156,7 @@ export const MultiComboboxChip = ({
 }) => (
   <BaseCombobox.Chip
     aria-label={item.label}
-    className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs"
+    className="inline-flex items-center gap-1 rounded-control bg-muted px-2 py-1 text-xs"
   >
     {children}
   </BaseCombobox.Chip>
@@ -170,7 +170,7 @@ export const MultiComboboxChipRemove = ({
 }) => (
   <BaseCombobox.ChipRemove
     aria-label={ariaLabel}
-    className="rounded p-0.5 hover:bg-background"
+    className="rounded-control p-0.5 transition-colors duration-state ease-state hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
   >
     <CloseIcon className="h-3 w-3" />
   </BaseCombobox.ChipRemove>

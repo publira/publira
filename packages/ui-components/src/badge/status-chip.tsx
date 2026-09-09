@@ -13,16 +13,21 @@ export const StatusChip = ({
   className,
   status = "muted",
   variant = "soft",
-  withIndicator = true,
+  withIndicator,
   ...props
-}: StatusChipProps) => (
-  <Badge {...props} className={className} tone={status} variant={variant}>
-    {withIndicator ? (
-      <span
-        aria-hidden="true"
-        className="size-1.5 shrink-0 rounded-full bg-current"
-      />
-    ) : null}
-    <span className="min-w-0">{children}</span>
-  </Badge>
-);
+}: StatusChipProps) => {
+  // The outline badge is a dot and its text already, so it carries its own.
+  const showIndicator = withIndicator ?? variant !== "outline";
+
+  return (
+    <Badge {...props} className={className} tone={status} variant={variant}>
+      {showIndicator ? (
+        <span
+          aria-hidden="true"
+          className="size-1.5 shrink-0 rounded-full bg-current"
+        />
+      ) : null}
+      <span className="min-w-0">{children}</span>
+    </Badge>
+  );
+};

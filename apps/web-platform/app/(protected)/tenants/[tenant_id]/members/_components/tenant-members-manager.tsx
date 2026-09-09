@@ -458,7 +458,7 @@ const TenantMemberDeleteButton = ({
         </ConfirmDialogHeader>
         <ConfirmDialogFooter>
           <ConfirmDialogCancel>{copy.cancel}</ConfirmDialogCancel>
-          <ConfirmDialogAction onClick={handleDelete} variant="destructive">
+          <ConfirmDialogAction onClick={handleDelete}>
             {isPending ? copy.deleteMemberPending : copy.deleteMemberAction}
           </ConfirmDialogAction>
         </ConfirmDialogFooter>
@@ -719,10 +719,7 @@ const TenantInvitationRow = ({
               </ConfirmDialogHeader>
               <ConfirmDialogFooter>
                 <ConfirmDialogCancel>{copy.cancel}</ConfirmDialogCancel>
-                <ConfirmDialogAction
-                  onClick={handleCancelAction}
-                  variant="destructive"
-                >
+                <ConfirmDialogAction onClick={handleCancelAction}>
                   {isCancelPending
                     ? copy.cancelInvitePending
                     : copy.cancelInviteAction}

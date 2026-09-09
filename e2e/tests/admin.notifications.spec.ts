@@ -52,6 +52,10 @@ test.describe("web-admin notification bell", () => {
     await expect(more).toHaveAttribute("href", "/notifications");
     await Promise.all([page.waitForURL(/\/notifications\/?$/u), more.click()]);
     await expect(page).toHaveURL(/\/notifications\/?$/u);
+    // The menu transitions out, so it is still in the document for a frame
+    // after the navigation — with a heading and an empty line of its own that
+    // would each match twice.
+    await expect(menu).toBeHidden();
     await expect(
       page.getByRole("heading", { exact: true, name: "Notifications" })
     ).toBeVisible();

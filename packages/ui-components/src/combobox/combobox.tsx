@@ -6,6 +6,8 @@ import { cn } from "@publira/utils";
 import { createContext, useCallback, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
 
+import { FLOATING_TRANSITION } from "../motion";
+
 export interface ComboboxItem {
   label: string;
   value: string;
@@ -100,7 +102,7 @@ export const ComboboxInput = ({
     <BaseCombobox.Input
       aria-label={ariaLabel}
       className={cn(
-        "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-10 w-full rounded-control border border-input bg-card px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       id={id}
@@ -116,7 +118,12 @@ export const ComboboxInput = ({
 export const ComboboxPopup = ({ children }: { children: ReactNode }) => (
   <BaseCombobox.Portal>
     <BaseCombobox.Positioner className="z-50 outline-none" sideOffset={4}>
-      <BaseCombobox.Popup className="max-h-72 w-(--anchor-width) max-w-(--available-width) overflow-y-auto rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-md">
+      <BaseCombobox.Popup
+        className={cn(
+          "max-h-72 w-(--anchor-width) max-w-(--available-width) origin-[var(--transform-origin)] overflow-y-auto rounded-surface border border-border bg-popover py-1 text-popover-foreground shadow-floating",
+          FLOATING_TRANSITION
+        )}
+      >
         {children}
       </BaseCombobox.Popup>
     </BaseCombobox.Positioner>
@@ -135,7 +142,7 @@ export const ComboboxItems = () => (
   <BaseCombobox.List>
     {(item: ComboboxItem) => (
       <BaseCombobox.Item
-        className="grid cursor-default grid-cols-[0.75rem_1fr] items-center gap-2 px-3 py-2 text-sm outline-none data-highlighted:bg-muted"
+        className="grid cursor-default grid-cols-[0.75rem_1fr] items-center gap-2 rounded-control px-3 py-2 text-sm outline-none data-highlighted:bg-muted"
         key={item.value}
         value={item}
       >

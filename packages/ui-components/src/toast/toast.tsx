@@ -4,6 +4,8 @@ import { Toast as BaseToast } from "@base-ui/react/toast";
 import { cn } from "@publira/utils";
 import type { ReactNode } from "react";
 
+import { FLOATING_FADE } from "../motion";
+
 export const { useToastManager } = BaseToast;
 
 export const ToastViewport = ({
@@ -23,7 +25,8 @@ export const ToastRoot = ({ className, ...props }: BaseToast.Root.Props) => (
   <BaseToast.Root
     {...props}
     className={cn(
-      "pointer-events-auto rounded-lg border bg-card px-4 py-3 text-card-foreground shadow-lg",
+      "pointer-events-auto rounded-surface border border-border bg-popover px-4 py-3 text-popover-foreground shadow-floating",
+      FLOATING_FADE,
       props.toast?.type === "success" &&
         "border-success/40 bg-success/10 text-success",
       props.toast?.type === "destructive" &&
@@ -51,10 +54,7 @@ export const ToastDescription = ({
   className,
   ...props
 }: BaseToast.Description.Props) => (
-  <BaseToast.Description
-    {...props}
-    className={cn("text-xs opacity-90", className)}
-  />
+  <BaseToast.Description {...props} className={cn("text-xs", className)} />
 );
 
 export const ToastClose = ({
@@ -65,7 +65,7 @@ export const ToastClose = ({
   <BaseToast.Close
     {...props}
     className={cn(
-      "absolute top-2 right-2 flex size-5 items-center justify-center rounded text-current opacity-60 hover:opacity-100 focus-visible:outline focus-visible:outline-2",
+      "absolute top-2 right-2 flex size-5 items-center justify-center rounded-control text-muted-foreground transition-colors duration-state ease-state hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
       className
     )}
   >

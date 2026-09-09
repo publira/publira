@@ -42,7 +42,7 @@ export const SectionError = ({ className, ...props }: DivProps) => (
   <div
     {...props}
     className={cn(
-      "grid gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-6",
+      "grid gap-3 border border-destructive/40 bg-destructive/10 p-6",
       className
     )}
     role="alert"

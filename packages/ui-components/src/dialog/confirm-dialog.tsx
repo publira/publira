@@ -88,7 +88,7 @@ export const ConfirmDialogCancel = ({ children }: { children: ReactNode }) => (
 export const ConfirmDialogAction = ({
   children,
   onClick,
-  variant = "destructive",
+  variant = "destructiveFilled",
 }: {
   children: ReactNode;
   onClick?: () => void;

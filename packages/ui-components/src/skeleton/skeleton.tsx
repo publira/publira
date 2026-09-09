@@ -10,7 +10,7 @@ export const Skeleton = ({ className, ...props }: DivProps) => (
     {...props}
     aria-hidden
     className={cn(
-      "rounded-md bg-muted/70 motion-safe:animate-pulse",
+      "rounded-control bg-muted motion-safe:animate-pulse",
       className
     )}
   />
@@ -30,7 +30,7 @@ export const SkeletonLine = ({ className, ...props }: SkeletonLineProps) => (
     {...props}
     aria-hidden
     className={cn(
-      "inline-block rounded-md bg-muted/70 align-middle motion-safe:animate-pulse",
+      "inline-block rounded-control bg-muted align-middle motion-safe:animate-pulse",
       className
     )}
   />
@@ -58,10 +58,7 @@ export const SkeletonText = ({
 export type SkeletonCardProps = ComponentPropsWithoutRef<"div">;
 
 export const SkeletonCard = ({ className, ...props }: SkeletonCardProps) => (
-  <div
-    {...props}
-    className={cn("rounded-xl border border-border bg-card p-5", className)}
-  >
+  <div {...props} className={cn("border border-border bg-card p-5", className)}>
     <div className="grid gap-4">
       <div className="grid gap-2">
         <Skeleton className="h-5 w-1/3" />

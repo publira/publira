@@ -44,14 +44,14 @@ export const RadioGroup = ({
           <label
             key={item.value}
             className={cn(
-              "flex cursor-pointer items-start gap-3 rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors hover:bg-muted/60 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
+              "flex cursor-pointer items-start gap-3 rounded-control border border-input bg-card px-3 py-2 text-sm transition-colors duration-state ease-state hover:bg-muted has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
               itemClassName
             )}
           >
             <BaseRadio.Root
               aria-describedby={item.description ? descriptionId : undefined}
               aria-labelledby={labelId}
-              className="relative mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-input bg-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[checked]:border-primary data-[checked]:bg-primary"
+              className="relative mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-input bg-card transition-colors duration-state ease-state focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[checked]:border-primary data-[checked]:bg-primary"
               disabled={item.disabled}
               value={item.value}
             >

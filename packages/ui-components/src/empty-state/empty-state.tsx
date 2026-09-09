@@ -8,6 +8,11 @@ type DivProps = ComponentPropsWithoutRef<"div">;
 /**
  * The "nothing here yet" state of a list or a section.
  *
+ * A hairline and centred text where the list would have been, not a dashed box
+ * around empty space: the rule is the same one that separates the rows of a
+ * list that does have something in it, so an empty section keeps the page's
+ * structure instead of drawing a placeholder for itself.
+ *
  * Composed rather than prop-driven, so each region is an element the caller
  * writes: a heading that streams from a catalog can carry its own `<Suspense>`
  * boundary, and the actions region takes whatever control belongs there.
@@ -31,7 +36,7 @@ export const EmptyState = ({ className, ...props }: DivProps) => (
   <div
     {...props}
     className={cn(
-      "grid gap-3 rounded-xl border border-dashed border-border bg-muted/30 p-6 text-center",
+      "grid gap-3 border-t border-border px-4 py-10 text-center",
       className
     )}
   />

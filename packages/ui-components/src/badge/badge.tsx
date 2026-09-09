@@ -6,11 +6,11 @@ import type { VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithoutRef } from "react";
 
 export const badgeVariants = cva(
-  "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs leading-5 font-medium whitespace-normal",
+  "inline-flex max-w-full items-center gap-1.5 text-xs leading-5 font-medium whitespace-normal",
   {
     compoundVariants: [
       {
-        className: "border-destructive/30 text-destructive",
+        className: "before:bg-destructive",
         tone: "destructive",
         variant: "outline",
       },
@@ -25,7 +25,7 @@ export const badgeVariants = cva(
         variant: "solid",
       },
       {
-        className: "border-info/30 text-info",
+        className: "before:bg-info",
         tone: "info",
         variant: "outline",
       },
@@ -40,7 +40,7 @@ export const badgeVariants = cva(
         variant: "solid",
       },
       {
-        className: "border-border text-muted-foreground",
+        className: "before:bg-muted-foreground",
         tone: "muted",
         variant: "outline",
       },
@@ -55,7 +55,7 @@ export const badgeVariants = cva(
         variant: "solid",
       },
       {
-        className: "border-success/30 text-success",
+        className: "before:bg-success",
         tone: "success",
         variant: "outline",
       },
@@ -70,7 +70,7 @@ export const badgeVariants = cva(
         variant: "solid",
       },
       {
-        className: "border-warning/30 text-warning",
+        className: "before:bg-warning",
         tone: "warning",
         variant: "outline",
       },
@@ -98,9 +98,16 @@ export const badgeVariants = cva(
         warning: "",
       },
       variant: {
-        outline: "bg-background",
-        soft: "",
-        solid: "border-transparent",
+        /**
+         * A dot in the tone's colour and the text in ink, with no box around
+         * either. The form a status column wants: a column of outlined boxes
+         * fights the hairlines of the table it sits in, while a column of dots
+         * lines up and stays readable at a glance.
+         */
+        outline:
+          "text-foreground before:size-1.5 before:shrink-0 before:rounded-full before:content-['']",
+        soft: "rounded-control border px-2.5 py-0.5",
+        solid: "rounded-control border border-transparent px-2.5 py-0.5",
       },
     },
   }
