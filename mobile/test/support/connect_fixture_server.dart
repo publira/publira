@@ -123,6 +123,20 @@ class ConnectFixtureServer {
     ];
   }
 
+  /// Credits of the seed series, in the shape `Creator` arrives in and in the
+  /// order the tenant put them in.
+  static List<Map<String, Object?>> seedCreators() {
+    return [
+      for (var index = 1; index <= 3; index++)
+        {
+          'publicId': 'SeedAUTHAAA$index',
+          'name': 'Seed Author 00$index',
+          'role': 'creator',
+          'profileText': 'Profile text for Seed Author 00$index',
+        },
+    ];
+  }
+
   static List<Map<String, Object?>> populatedSeries() {
     return [
       {
@@ -130,6 +144,7 @@ class ConnectFixtureServer {
         'title': seedSeriesTitle,
         'synopsis': seedSeriesSynopsis,
         'label': {'name': 'Seed Label 01', 'publicId': 'SeedLABLAAA1'},
+        'creators': seedCreators(),
         'eyeCatchImageVariants': seedEyeCatchVariants(),
       },
       {
@@ -238,6 +253,7 @@ class ConnectFixtureServer {
           'publicId': seedSeriesId,
           'title': seedSeriesTitle,
           'synopsis': seedSeriesSynopsis,
+          'creators': seedCreators(),
           'eyeCatchImageVariants': seedEyeCatchVariants(),
         },
         'episodes': [

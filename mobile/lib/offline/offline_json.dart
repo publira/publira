@@ -100,6 +100,7 @@ Map<String, Object?> _seriesToJson(SeriesItem series) => {
   'description': series.description,
   'episodeCount': series.episodeCount,
   'labelName': series.labelName,
+  'creators': [for (final creator in series.creators) _creatorToJson(creator)],
   'eyeCatchVariants': [
     for (final variant in series.eyeCatchVariants) _variantToJson(variant),
   ],
@@ -114,17 +115,41 @@ SeriesItem? _seriesFromJson(Object? decoded) {
     return null;
   }
   final rawVariants = decoded['eyeCatchVariants'];
+  final rawCreators = decoded['creators'];
   return SeriesItem(
     id: id,
     title: _string(decoded['title']),
     description: _string(decoded['description']),
     episodeCount: _int(decoded['episodeCount']),
     labelName: _string(decoded['labelName']),
+    // A file written before credits were saved holds none, and is read as a
+    // series credited to nobody rather than dropped.
+    creators: [
+      for (final item in rawCreators is List ? rawCreators : const [])
+        ?_creatorFromJson(item),
+    ],
     eyeCatchVariants: [
       for (final item in rawVariants is List ? rawVariants : const [])
         ?_variantFromJson(item),
     ],
   );
+}
+
+Map<String, Object?> _creatorToJson(SeriesCreator creator) => {
+  'id': creator.id,
+  'name': creator.name,
+};
+
+SeriesCreator? _creatorFromJson(Object? decoded) {
+  if (decoded is! Map) {
+    return null;
+  }
+  final name = _string(decoded['name']);
+  // A credit with no name is a line with nothing on it.
+  if (name.isEmpty) {
+    return null;
+  }
+  return SeriesCreator(id: _string(decoded['id']), name: name);
 }
 
 Map<String, Object?> _variantToJson(EyeCatchVariant variant) => {

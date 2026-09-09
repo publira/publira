@@ -2170,6 +2170,10 @@
     },
     "common": {
       "back_to_catalog": "카탈로그로 돌아가기",
+      "list_end": "{$first} 및 {$rest}",
+      "list_middle": "{$first}, {$rest}",
+      "list_start": "{$first}, {$rest}",
+      "list_two": "{$first} 및 {$rest}",
       "retry": "다시 시도",
       "sign_in": "로그인"
     },

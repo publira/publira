@@ -2170,6 +2170,10 @@
     },
     "common": {
       "back_to_catalog": "Back to the catalog",
+      "list_end": "{$first}, and {$rest}",
+      "list_middle": "{$first}, {$rest}",
+      "list_start": "{$first}, {$rest}",
+      "list_two": "{$first} and {$rest}",
       "retry": "Retry",
       "sign_in": "Sign in"
     },

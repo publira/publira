@@ -51,6 +51,57 @@ void main() {
     }
   });
 
+  testWidgets('a catalog tile names the creators of its series', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    expect(
+      find.text('Seed Author 001, Seed Author 002, and Seed Author 003'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a catalog tile of a series credited to nobody shows no '
+      'credit line', (tester) async {
+    catalog.series = [fixtureSeries.last];
+    await pumpApp(tester);
+
+    final tile = find.byKey(ValueKey('series-tile-${fixtureSeries.last.id}'));
+    expect(
+      find.descendant(of: tile, matching: find.byType(Text)),
+      findsNWidgets(2),
+    );
+    expect(find.text(fixtureSeries.last.description), findsOneWidget);
+  });
+
+  testWidgets('the series detail screen names the creators under the title', (
+    tester,
+  ) async {
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.first.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('series-creators'))).data,
+      'Seed Author 001, Seed Author 002, and Seed Author 003',
+    );
+  });
+
+  testWidgets('a series credited to nobody shows no credit line', (
+    tester,
+  ) async {
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.last.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(find.byKey(const ValueKey('series-creators')), findsNothing);
+  });
+
   testWidgets('tapping a series opens its detail screen', (tester) async {
     await pumpApp(tester);
 

@@ -2170,6 +2170,10 @@
     },
     "common": {
       "back_to_catalog": "カタログへ戻る",
+      "list_end": "{$first}、{$rest}",
+      "list_middle": "{$first}、{$rest}",
+      "list_start": "{$first}、{$rest}",
+      "list_two": "{$first}、{$rest}",
       "retry": "再試行",
       "sign_in": "サインイン"
     },

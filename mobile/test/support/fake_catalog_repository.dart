@@ -142,6 +142,14 @@ final fixtureEyeCatchVariants = <EyeCatchVariant>[
     ),
 ];
 
+/// The people credited on [fixtureSeries]' first series. The second series is
+/// credited to nobody, which is what leaves its credit line off the screen.
+const fixtureCreators = <SeriesCreator>[
+  SeriesCreator(id: 'SeedAUTHAAA1', name: 'Seed Author 001'),
+  SeriesCreator(id: 'SeedAUTHAAA2', name: 'Seed Author 002'),
+  SeriesCreator(id: 'SeedAUTHAAA3', name: 'Seed Author 003'),
+];
+
 final fixtureSeries = <SeriesItem>[
   SeriesItem(
     id: 'SeedSERSAAA1',
@@ -149,6 +157,7 @@ final fixtureSeries = <SeriesItem>[
     description: 'A published series of Seed Tenant.',
     episodeCount: 10,
     labelName: 'Seed Label 01',
+    creators: fixtureCreators,
     eyeCatchVariants: fixtureEyeCatchVariants,
     imageRequestHeaders: fixtureImageHeaders,
   ),

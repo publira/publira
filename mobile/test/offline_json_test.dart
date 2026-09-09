@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_json.dart';
 import 'package:publira/offline/offline_library.dart';
 
@@ -116,6 +117,44 @@ void main() {
       variants.single.url.toString(),
       'http://images.test/images/series/IMG/portrait/800',
     );
+  });
+
+  test('the credits of a saved series survive the round trip', () {
+    final written = OfflineIndex(
+      series: const [
+        SeriesItem(
+          id: 'SeedSERSAAA1',
+          title: 'Seed Series 001',
+          description: 'synopsis',
+          creators: [
+            SeriesCreator(id: 'SeedAUTHAAA1', name: 'Seed Author 001'),
+            SeriesCreator(id: 'SeedAUTHAAA2', name: 'Seed Author 002'),
+          ],
+        ),
+      ],
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    final creators = decoded!.series!.single.creators;
+    expect(creators.map((creator) => creator.name), [
+      'Seed Author 001',
+      'Seed Author 002',
+    ]);
+    expect(creators.first.id, 'SeedAUTHAAA1');
+  });
+
+  test('a series saved before this build carries no credits', () {
+    // Files written by an earlier build hold no `creators`, and they are read
+    // rather than dropped: the series shows none until it is loaded again.
+    final decoded = OfflineIndex.fromJson(
+      _index(
+        _episode(access: 'free', ownerId: ''),
+        series: _series(),
+      ),
+    );
+
+    expect(decoded!.series!.single.creators, isEmpty);
   });
 
   test('a reading position survives the round trip', () {

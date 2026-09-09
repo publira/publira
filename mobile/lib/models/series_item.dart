@@ -24,6 +24,16 @@ class EyeCatchVariant {
   final int height;
 }
 
+/// One person credited on a series, as `publira.types.v1.Creator` describes
+/// them.
+class SeriesCreator {
+  const SeriesCreator({required this.id, required this.name});
+
+  /// Public id (`public_id`), which addresses the creator.
+  final String id;
+  final String name;
+}
+
 /// A published series as shown on the catalog list and detail screens.
 class SeriesItem {
   const SeriesItem({
@@ -32,6 +42,7 @@ class SeriesItem {
     required this.description,
     this.episodeCount = 0,
     this.labelName = '',
+    this.creators = const [],
     this.eyeCatchVariants = const [],
     this.imageRequestHeaders = const {},
   });
@@ -42,6 +53,11 @@ class SeriesItem {
   final String description;
   final int episodeCount;
   final String labelName;
+
+  /// Who is credited on the series, in the order the API returned them, which
+  /// is the order the tenant put them in. Empty for a series credited to
+  /// nobody, which leaves the line off the screen entirely.
+  final List<SeriesCreator> creators;
 
   /// Cover renditions in the order the API returned them. Empty for a series
   /// with no eye-catch, which is what puts the placeholder on screen.

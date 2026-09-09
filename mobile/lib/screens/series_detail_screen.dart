@@ -204,6 +204,18 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           ),
           const SizedBox(height: 16),
           Text(series.title, style: theme.textTheme.headlineSmall),
+          if (series.creators.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              key: const ValueKey('series-creators'),
+              messages.formatList([
+                for (final creator in series.creators) creator.name,
+              ]),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           Text(
             messages.seriesEpisodeCount(

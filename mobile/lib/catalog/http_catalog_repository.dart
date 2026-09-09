@@ -245,6 +245,7 @@ class HttpCatalogRepository implements CatalogRepository {
         description: series.description,
         episodeCount: episodes.length,
         labelName: series.labelName,
+        creators: series.creators,
         eyeCatchVariants: series.eyeCatchVariants,
         imageRequestHeaders: series.imageRequestHeaders,
       ),
@@ -266,12 +267,35 @@ class HttpCatalogRepository implements CatalogRepository {
       title: _readString(json, 'title', path),
       description: _readString(json, 'synopsis', path),
       labelName: labelName.trim(),
+      creators: _parseCreators(json['creators'], path),
       eyeCatchVariants: _parseEyeCatchVariants(
         json['eyeCatchImageVariants'],
         path,
       ),
       imageRequestHeaders: config.publicImageRequestHeaders,
     );
+  }
+
+  List<SeriesCreator> _parseCreators(Object? raw, String path) {
+    // protojson omits an empty repeated field, so a series credited to nobody
+    // arrives without the key at all.
+    if (raw == null) {
+      return const [];
+    }
+    final creatorPath = '$path.creators[]';
+    final creators = _expectList(raw, '$path.creators')
+        .map((item) => _expectMap(item, creatorPath))
+        .map((json) {
+          return SeriesCreator(
+            id: _readString(json, 'publicId', creatorPath),
+            name: _readString(json, 'name', creatorPath),
+          );
+        })
+        // A nameless credit is nothing a reader can be shown, and the site
+        // drops it from the same field for the same reason.
+        .where((creator) => creator.name.isNotEmpty)
+        .toList();
+    return List<SeriesCreator>.unmodifiable(creators);
   }
 
   List<EyeCatchVariant> _parseEyeCatchVariants(Object? raw, String path) {
