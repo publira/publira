@@ -11,6 +11,8 @@ import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
+import 'package:publira/comments/comment_repository.dart';
+import 'package:publira/comments/http_comment_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/l10n/locale_negotiation.dart';
@@ -35,6 +37,7 @@ class PubliraApp extends StatefulWidget {
     required this.router,
     required this.catalog,
     required this.auth,
+    this.comments,
     this.offline,
     this.push,
     this.tenantDefaultLocale,
@@ -97,6 +100,7 @@ class PubliraApp extends StatefulWidget {
         imageRequestHeaders: resolved.publicImageRequestHeaders,
       ),
       auth: auth,
+      comments: HttpCommentRepository(client: client, tenants: tenants),
       offline: library,
       push: PushController(
         messaging: messaging,
@@ -110,6 +114,13 @@ class PubliraApp extends StatefulWidget {
   final GoRouter router;
   final CatalogRepository catalog;
   final AuthController auth;
+
+  /// The reader comments on an episode.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// comments at all, and the end of an episode then offers none.
+  final CommentRepository? comments;
 
   /// What the device holds for reading without a network.
   ///
@@ -295,17 +306,20 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
           library: widget.offline,
           child: CatalogScope(
             repository: widget.catalog,
-            child: MaterialApp.router(
-              title: 'Publira',
-              scaffoldMessengerKey: _messengerKey,
-              locale: _locale,
-              supportedLocales: AppMessages.supportedLocales,
-              localizationsDelegates: appLocalizationsDelegates,
-              theme: ThemeData(
-                colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-                useMaterial3: true,
+            child: CommentScope(
+              repository: widget.comments,
+              child: MaterialApp.router(
+                title: 'Publira',
+                scaffoldMessengerKey: _messengerKey,
+                locale: _locale,
+                supportedLocales: AppMessages.supportedLocales,
+                localizationsDelegates: appLocalizationsDelegates,
+                theme: ThemeData(
+                  colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+                  useMaterial3: true,
+                ),
+                routerConfig: widget.router,
               ),
-              routerConfig: widget.router,
             ),
           ),
         ),

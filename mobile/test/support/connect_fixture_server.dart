@@ -19,11 +19,15 @@ class ConnectFixtureServer {
     this.entitledEpisodes = const {},
     this.readingPositions = const {},
     this.recentSeries = const [],
+    this.commentMode = 'COMMENT_MODE_IMMEDIATE',
+    this.episodeComments = const {},
+    this.myEpisodeComments = const {},
     this.listStatus = HttpStatus.ok,
     this.detailStatus = HttpStatus.ok,
     this.episodeStatus = HttpStatus.ok,
     this.tenantStatus = HttpStatus.ok,
     this.pushDeviceStatus = HttpStatus.ok,
+    this.commentStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
     this.encryptImages = true,
     this.listResponse,
@@ -298,6 +302,18 @@ class ConnectFixtureServer {
   /// `RecentSeries` entries `ListMyRecentSeries` answers a signed-in member
   /// with, in the order they are given.
   List<Map<String, Object?>> recentSeries;
+
+  /// The tenant's comment policy, as `GetTenant` answers it. Set it to
+  /// `COMMENT_MODE_DISABLED` to act out a tenant that takes no comments.
+  String commentMode;
+
+  /// Published `EpisodeComment` rows keyed by episode public id, newest first.
+  Map<String, List<Map<String, Object?>>> episodeComments;
+
+  /// `MyEpisodeComment` rows the public list omits, keyed the same way.
+  /// `PostEpisodeComment` adds to them, so a test can read back what the app
+  /// sent and see it in the next list.
+  Map<String, List<Map<String, Object?>>> myEpisodeComments;
   int listStatus;
   int detailStatus;
   int episodeStatus;
@@ -306,6 +322,10 @@ class ConnectFixtureServer {
   /// What `RegisterPushDevice` and `UnregisterPushDevice` answer with, so a
   /// test can act out an API that turns the registration down.
   int pushDeviceStatus;
+
+  /// What every `CommentService` RPC answers with, so a test can act out an
+  /// API that will not take a comment.
+  int commentStatus;
 
   /// The bearer `GetMe` accepts and `GetEpisodeDetail` unlocks for. Set it to
   /// another value to act out a token the API has stopped accepting.
@@ -518,6 +538,22 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/GetTenant')) {
+      await _write(request, tenantStatus, {
+        if (tenantStatus == HttpStatus.ok) 'tenantPublicId': tenantId,
+        if (tenantStatus == HttpStatus.ok) 'defaultLocale': defaultLocale,
+        if (tenantStatus == HttpStatus.ok) 'commentMode': commentMode,
+        if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
+        if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
+      });
+      return;
+    }
+
+    if (path.contains('/publira.v1.CommentService/')) {
+      await _writeComment(request, path, body);
+      return;
+    }
+
     if (path.endsWith('/RegisterPushDevice') ||
         path.endsWith('/UnregisterPushDevice')) {
       final registering = path.endsWith('/RegisterPushDevice');
@@ -534,6 +570,64 @@ class ConnectFixtureServer {
 
     request.response.statusCode = HttpStatus.notFound;
     await request.response.close();
+  }
+
+  /// Answers the reader-facing comment RPCs of one episode.
+  ///
+  /// Everything but the public list needs the member's session, the way the
+  /// API refuses one without it.
+  Future<void> _writeComment(
+    HttpRequest request,
+    String path,
+    Map<String, Object?> body,
+  ) async {
+    if (commentStatus != HttpStatus.ok) {
+      await _write(request, commentStatus, const {
+        'code': 'unavailable',
+        'message': 'unavailable',
+      });
+      return;
+    }
+    final episodeId = body['episodePublicId'] as String? ?? '';
+    if (path.endsWith('/ListEpisodeComments')) {
+      await _write(request, HttpStatus.ok, {
+        // protojson omits an empty repeated field, which is what an episode
+        // nobody has commented on is answered with.
+        'comments': ?episodeComments[episodeId],
+      });
+      return;
+    }
+
+    if (!_isAuthorized(request)) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid token',
+      });
+      return;
+    }
+    if (path.endsWith('/ListMyEpisodeComments')) {
+      await _write(request, HttpStatus.ok, {
+        'comments': ?myEpisodeComments[episodeId],
+      });
+      return;
+    }
+    if (path.endsWith('/PostEpisodeComment')) {
+      final comment = {
+        'publicId': 'SeedCMNT${myEpisodeComments.length}',
+        'body': body['body'],
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+        if (commentMode == 'COMMENT_MODE_APPROVAL_REQUIRED')
+          'awaitingApproval': true,
+      };
+      myEpisodeComments = {
+        ...myEpisodeComments,
+        episodeId: [comment, ...?myEpisodeComments[episodeId]],
+      };
+      await _write(request, HttpStatus.ok, {'comment': comment});
+      return;
+    }
+    // Withdrawing and reporting are both deliberately empty answers.
+    await _write(request, HttpStatus.ok, const {});
   }
 
   /// Answers the reading-position and continue-reading RPCs of one member.

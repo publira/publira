@@ -137,8 +137,134 @@ abstract class AppMessages {
   /// `mobile.catalog.offline_not_saved`
   String get catalogOfflineNotSaved;
 
+  /// `mobile.comments.approval_notice`
+  String get commentsApprovalNotice;
+
+  /// `mobile.comments.awaiting_approval`
+  String get commentsAwaitingApproval;
+
+  /// `mobile.comments.body_label`
+  String get commentsBodyLabel;
+
+  /// `mobile.comments.body_placeholder`
+  String get commentsBodyPlaceholder;
+
+  /// `mobile.comments.body_required`
+  String get commentsBodyRequired;
+
+  /// `mobile.comments.body_too_long`
+  String commentsBodyTooLong({required String max});
+
+  /// `mobile.comments.delete`
+  String get commentsDelete;
+
+  /// `mobile.comments.delete_aria`
+  String commentsDeleteAria({required String date});
+
+  /// `mobile.comments.delete_failed`
+  String get commentsDeleteFailed;
+
+  /// `mobile.comments.deleted`
+  String get commentsDeleted;
+
+  /// `mobile.comments.deleting`
+  String get commentsDeleting;
+
+  /// `mobile.comments.disabled`
+  String get commentsDisabled;
+
+  /// `mobile.comments.empty`
+  String get commentsEmpty;
+
+  /// `mobile.comments.list_failed`
+  String get commentsListFailed;
+
+  /// `mobile.comments.newer`
+  String get commentsNewer;
+
+  /// `mobile.comments.older`
+  String get commentsOlder;
+
+  /// `mobile.comments.own_failed`
+  String get commentsOwnFailed;
+
+  /// `mobile.comments.page_empty`
+  String get commentsPageEmpty;
+
+  /// `mobile.comments.post_failed`
+  String get commentsPostFailed;
+
+  /// `mobile.comments.posted`
+  String get commentsPosted;
+
+  /// `mobile.comments.posted_awaiting_approval`
+  String get commentsPostedAwaitingApproval;
+
+  /// `mobile.comments.posting`
+  String get commentsPosting;
+
+  /// `mobile.comments.report`
+  String get commentsReport;
+
+  /// `mobile.comments.report_aria`
+  String commentsReportAria({required String author, required String date});
+
+  /// `mobile.comments.report_confirm`
+  String get commentsReportConfirm;
+
+  /// `mobile.comments.report_description`
+  String get commentsReportDescription;
+
+  /// `mobile.comments.report_failed`
+  String get commentsReportFailed;
+
+  /// `mobile.comments.report_note_label`
+  String get commentsReportNoteLabel;
+
+  /// `mobile.comments.report_note_placeholder`
+  String get commentsReportNotePlaceholder;
+
+  /// `mobile.comments.report_note_too_long`
+  String commentsReportNoteTooLong({required String max});
+
+  /// `mobile.comments.report_reason_abuse`
+  String get commentsReportReasonAbuse;
+
+  /// `mobile.comments.report_reason_label`
+  String get commentsReportReasonLabel;
+
+  /// `mobile.comments.report_reason_other`
+  String get commentsReportReasonOther;
+
+  /// `mobile.comments.report_reason_spam`
+  String get commentsReportReasonSpam;
+
+  /// `mobile.comments.report_reason_spoiler`
+  String get commentsReportReasonSpoiler;
+
+  /// `mobile.comments.report_title`
+  String get commentsReportTitle;
+
+  /// `mobile.comments.reported`
+  String get commentsReported;
+
+  /// `mobile.comments.reporting`
+  String get commentsReporting;
+
+  /// `mobile.comments.sign_in_prompt`
+  String get commentsSignInPrompt;
+
+  /// `mobile.comments.submit`
+  String get commentsSubmit;
+
+  /// `mobile.comments.title`
+  String get commentsTitle;
+
   /// `mobile.common.back_to_catalog`
   String get commonBackToCatalog;
+
+  /// `mobile.common.cancel`
+  String get commonCancel;
 
   /// `mobile.common.free`
   String get commonFree;
@@ -437,8 +563,218 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get commentsApprovalNotice {
+    return 'コメントは運営の承認後に表示されます。';
+  }
+
+  @override
+  String get commentsAwaitingApproval {
+    return '承認待ち';
+  }
+
+  @override
+  String get commentsBodyLabel {
+    return 'コメント';
+  }
+
+  @override
+  String get commentsBodyPlaceholder {
+    return 'このエピソードの感想を書く';
+  }
+
+  @override
+  String get commentsBodyRequired {
+    return 'コメントを入力してください。';
+  }
+
+  @override
+  String commentsBodyTooLong({required String max}) {
+    return 'コメントは$max文字以内で入力してください。';
+  }
+
+  @override
+  String get commentsDelete {
+    return '削除';
+  }
+
+  @override
+  String commentsDeleteAria({required String date}) {
+    return '$dateに投稿したコメントを削除';
+  }
+
+  @override
+  String get commentsDeleteFailed {
+    return 'コメントを削除できませんでした。時間をおいて再度お試しください。';
+  }
+
+  @override
+  String get commentsDeleted {
+    return 'コメントを削除しました。';
+  }
+
+  @override
+  String get commentsDeleting {
+    return '削除中…';
+  }
+
+  @override
+  String get commentsDisabled {
+    return 'このサイトではコメントを受け付けていません。';
+  }
+
+  @override
+  String get commentsEmpty {
+    return 'まだコメントはありません。';
+  }
+
+  @override
+  String get commentsListFailed {
+    return 'コメントを読み込めませんでした。時間をおいて再度お試しください。';
+  }
+
+  @override
+  String get commentsNewer {
+    return '新しいコメント';
+  }
+
+  @override
+  String get commentsOlder {
+    return '古いコメント';
+  }
+
+  @override
+  String get commentsOwnFailed {
+    return '自分のコメントを読み込めませんでした。時間をおいて再度お試しください。';
+  }
+
+  @override
+  String get commentsPageEmpty {
+    return 'このページにコメントはありません。';
+  }
+
+  @override
+  String get commentsPostFailed {
+    return 'コメントを投稿できませんでした。時間をおいて再度お試しください。';
+  }
+
+  @override
+  String get commentsPosted {
+    return 'コメントを投稿しました。';
+  }
+
+  @override
+  String get commentsPostedAwaitingApproval {
+    return 'コメントを送信しました。運営の承認後に表示されます。';
+  }
+
+  @override
+  String get commentsPosting {
+    return '投稿中…';
+  }
+
+  @override
+  String get commentsReport {
+    return '報告';
+  }
+
+  @override
+  String commentsReportAria({required String author, required String date}) {
+    return '$authorさんが$dateに投稿したコメントを報告';
+  }
+
+  @override
+  String get commentsReportConfirm {
+    return '報告を送信';
+  }
+
+  @override
+  String get commentsReportDescription {
+    return 'このコメントのどこが問題かをモデレーターに伝えてください。報告を見るのはモデレーターだけで、投稿者に知らされることはありません。';
+  }
+
+  @override
+  String get commentsReportFailed {
+    return '報告を送信できませんでした。しばらくしてからもう一度お試しください。';
+  }
+
+  @override
+  String get commentsReportNoteLabel {
+    return '補足';
+  }
+
+  @override
+  String get commentsReportNotePlaceholder {
+    return '任意。このコメントの何が問題かを書いてください。';
+  }
+
+  @override
+  String commentsReportNoteTooLong({required String max}) {
+    return '補足は$max文字以内で入力してください。';
+  }
+
+  @override
+  String get commentsReportReasonAbuse {
+    return '誹謗中傷・嫌がらせ';
+  }
+
+  @override
+  String get commentsReportReasonLabel {
+    return '報告する理由を選んでください';
+  }
+
+  @override
+  String get commentsReportReasonOther {
+    return 'その他';
+  }
+
+  @override
+  String get commentsReportReasonSpam {
+    return 'スパム・宣伝';
+  }
+
+  @override
+  String get commentsReportReasonSpoiler {
+    return 'ネタバレ';
+  }
+
+  @override
+  String get commentsReportTitle {
+    return 'このコメントを報告しますか?';
+  }
+
+  @override
+  String get commentsReported {
+    return '報告を受け付けました。モデレーターが確認します。';
+  }
+
+  @override
+  String get commentsReporting {
+    return '送信中…';
+  }
+
+  @override
+  String get commentsSignInPrompt {
+    return 'コメントするにはログインしてください。';
+  }
+
+  @override
+  String get commentsSubmit {
+    return 'コメントを投稿';
+  }
+
+  @override
+  String get commentsTitle {
+    return 'コメント';
+  }
+
+  @override
   String get commonBackToCatalog {
     return 'カタログへ戻る';
+  }
+
+  @override
+  String get commonCancel {
+    return 'キャンセル';
   }
 
   @override
@@ -830,8 +1166,218 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get commentsApprovalNotice {
+    return 'A comment appears here once a moderator approves it.';
+  }
+
+  @override
+  String get commentsAwaitingApproval {
+    return 'Awaiting approval';
+  }
+
+  @override
+  String get commentsBodyLabel {
+    return 'Your comment';
+  }
+
+  @override
+  String get commentsBodyPlaceholder {
+    return 'Share what you thought of this episode';
+  }
+
+  @override
+  String get commentsBodyRequired {
+    return 'Write something before posting.';
+  }
+
+  @override
+  String commentsBodyTooLong({required String max}) {
+    return 'A comment can be at most $max characters.';
+  }
+
+  @override
+  String get commentsDelete {
+    return 'Delete';
+  }
+
+  @override
+  String commentsDeleteAria({required String date}) {
+    return 'Delete your comment posted on $date';
+  }
+
+  @override
+  String get commentsDeleteFailed {
+    return 'Could not delete the comment. Please try again later.';
+  }
+
+  @override
+  String get commentsDeleted {
+    return 'Your comment has been deleted.';
+  }
+
+  @override
+  String get commentsDeleting {
+    return 'Deleting…';
+  }
+
+  @override
+  String get commentsDisabled {
+    return 'This site is not taking comments.';
+  }
+
+  @override
+  String get commentsEmpty {
+    return 'No comments yet.';
+  }
+
+  @override
+  String get commentsListFailed {
+    return 'Could not load the comments. Please try again later.';
+  }
+
+  @override
+  String get commentsNewer {
+    return 'Newer comments';
+  }
+
+  @override
+  String get commentsOlder {
+    return 'Older comments';
+  }
+
+  @override
+  String get commentsOwnFailed {
+    return 'Could not load your own comments. Please try again later.';
+  }
+
+  @override
+  String get commentsPageEmpty {
+    return 'This page has no comments.';
+  }
+
+  @override
+  String get commentsPostFailed {
+    return 'Could not post the comment. Please try again later.';
+  }
+
+  @override
+  String get commentsPosted {
+    return 'Your comment has been posted.';
+  }
+
+  @override
+  String get commentsPostedAwaitingApproval {
+    return 'Your comment has been sent for approval. It appears here once a moderator approves it.';
+  }
+
+  @override
+  String get commentsPosting {
+    return 'Posting…';
+  }
+
+  @override
+  String get commentsReport {
+    return 'Report';
+  }
+
+  @override
+  String commentsReportAria({required String author, required String date}) {
+    return 'Report the comment $author posted on $date';
+  }
+
+  @override
+  String get commentsReportConfirm {
+    return 'Send report';
+  }
+
+  @override
+  String get commentsReportDescription {
+    return 'Tell the moderators why this comment breaks the rules. Only they see your report — its author is not told about it.';
+  }
+
+  @override
+  String get commentsReportFailed {
+    return 'Could not send the report. Please try again later.';
+  }
+
+  @override
+  String get commentsReportNoteLabel {
+    return 'Anything to add';
+  }
+
+  @override
+  String get commentsReportNotePlaceholder {
+    return 'Optional. Describe what is wrong with this comment.';
+  }
+
+  @override
+  String commentsReportNoteTooLong({required String max}) {
+    return 'A note can be at most $max characters.';
+  }
+
+  @override
+  String get commentsReportReasonAbuse {
+    return 'Abuse or harassment';
+  }
+
+  @override
+  String get commentsReportReasonLabel {
+    return 'Why are you reporting this comment?';
+  }
+
+  @override
+  String get commentsReportReasonOther {
+    return 'Something else';
+  }
+
+  @override
+  String get commentsReportReasonSpam {
+    return 'Spam or advertising';
+  }
+
+  @override
+  String get commentsReportReasonSpoiler {
+    return 'Spoilers';
+  }
+
+  @override
+  String get commentsReportTitle {
+    return 'Report this comment?';
+  }
+
+  @override
+  String get commentsReported {
+    return 'Thank you. Your report has been sent to the moderators.';
+  }
+
+  @override
+  String get commentsReporting {
+    return 'Sending…';
+  }
+
+  @override
+  String get commentsSignInPrompt {
+    return 'Sign in to leave a comment.';
+  }
+
+  @override
+  String get commentsSubmit {
+    return 'Post comment';
+  }
+
+  @override
+  String get commentsTitle {
+    return 'Comments';
+  }
+
+  @override
   String get commonBackToCatalog {
     return 'Back to the catalog';
+  }
+
+  @override
+  String get commonCancel {
+    return 'Cancel';
   }
 
   @override
@@ -1223,8 +1769,218 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get commentsApprovalNotice {
+    return '댓글은 운영자가 승인한 후에 표시됩니다.';
+  }
+
+  @override
+  String get commentsAwaitingApproval {
+    return '승인 대기 중';
+  }
+
+  @override
+  String get commentsBodyLabel {
+    return '댓글';
+  }
+
+  @override
+  String get commentsBodyPlaceholder {
+    return '이 에피소드를 읽은 소감을 남겨 주세요';
+  }
+
+  @override
+  String get commentsBodyRequired {
+    return '댓글을 입력해 주세요.';
+  }
+
+  @override
+  String commentsBodyTooLong({required String max}) {
+    return '댓글은 $max자 이내로 입력해 주세요.';
+  }
+
+  @override
+  String get commentsDelete {
+    return '삭제';
+  }
+
+  @override
+  String commentsDeleteAria({required String date}) {
+    return '$date에 작성한 댓글 삭제';
+  }
+
+  @override
+  String get commentsDeleteFailed {
+    return '댓글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get commentsDeleted {
+    return '댓글을 삭제했습니다.';
+  }
+
+  @override
+  String get commentsDeleting {
+    return '삭제하는 중…';
+  }
+
+  @override
+  String get commentsDisabled {
+    return '이 사이트는 댓글을 받지 않습니다.';
+  }
+
+  @override
+  String get commentsEmpty {
+    return '아직 댓글이 없습니다.';
+  }
+
+  @override
+  String get commentsListFailed {
+    return '댓글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get commentsNewer {
+    return '최신 댓글';
+  }
+
+  @override
+  String get commentsOlder {
+    return '이전 댓글';
+  }
+
+  @override
+  String get commentsOwnFailed {
+    return '내 댓글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get commentsPageEmpty {
+    return '이 페이지에는 댓글이 없습니다.';
+  }
+
+  @override
+  String get commentsPostFailed {
+    return '댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get commentsPosted {
+    return '댓글을 등록했습니다.';
+  }
+
+  @override
+  String get commentsPostedAwaitingApproval {
+    return '댓글을 보냈습니다. 운영자가 승인하면 여기에 표시됩니다.';
+  }
+
+  @override
+  String get commentsPosting {
+    return '등록하는 중…';
+  }
+
+  @override
+  String get commentsReport {
+    return '신고';
+  }
+
+  @override
+  String commentsReportAria({required String author, required String date}) {
+    return '$author님이 $date에 남긴 댓글을 신고';
+  }
+
+  @override
+  String get commentsReportConfirm {
+    return '신고 보내기';
+  }
+
+  @override
+  String get commentsReportDescription {
+    return '이 댓글의 어떤 점이 문제인지 운영자에게 알려 주세요. 신고 내용은 운영자만 확인하며, 작성자에게는 알려지지 않습니다.';
+  }
+
+  @override
+  String get commentsReportFailed {
+    return '신고를 보내지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get commentsReportNoteLabel {
+    return '추가 설명';
+  }
+
+  @override
+  String get commentsReportNotePlaceholder {
+    return '선택 사항입니다. 이 댓글의 어떤 점이 문제인지 적어 주세요.';
+  }
+
+  @override
+  String commentsReportNoteTooLong({required String max}) {
+    return '추가 설명은 $max자 이내로 입력해 주세요.';
+  }
+
+  @override
+  String get commentsReportReasonAbuse {
+    return '비방 또는 괴롭힘';
+  }
+
+  @override
+  String get commentsReportReasonLabel {
+    return '신고하는 이유를 선택해 주세요';
+  }
+
+  @override
+  String get commentsReportReasonOther {
+    return '기타';
+  }
+
+  @override
+  String get commentsReportReasonSpam {
+    return '스팸 또는 광고';
+  }
+
+  @override
+  String get commentsReportReasonSpoiler {
+    return '스포일러';
+  }
+
+  @override
+  String get commentsReportTitle {
+    return '이 댓글을 신고할까요?';
+  }
+
+  @override
+  String get commentsReported {
+    return '신고가 접수되었습니다. 운영자가 확인합니다.';
+  }
+
+  @override
+  String get commentsReporting {
+    return '보내는 중…';
+  }
+
+  @override
+  String get commentsSignInPrompt {
+    return '댓글을 남기려면 로그인해 주세요.';
+  }
+
+  @override
+  String get commentsSubmit {
+    return '댓글 등록';
+  }
+
+  @override
+  String get commentsTitle {
+    return '댓글';
+  }
+
+  @override
   String get commonBackToCatalog {
     return '카탈로그로 돌아가기';
+  }
+
+  @override
+  String get commonCancel {
+    return '취소';
   }
 
   @override

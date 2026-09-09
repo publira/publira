@@ -15,6 +15,7 @@ class EpisodeEndPanel extends StatelessWidget {
     required this.detail,
     required this.nextSavedOffline,
     required this.onOpenNext,
+    required this.onOpenComments,
     required this.onBackToSeries,
   });
 
@@ -29,6 +30,13 @@ class EpisodeEndPanel extends StatelessWidget {
   /// drew rather than reading it again, so the offer and what it opens cannot
   /// come apart.
   final ValueChanged<EpisodeNeighbor> onOpenNext;
+
+  /// Opens the episode's comments, or `null` where the tenant takes none.
+  ///
+  /// This is the only way to them, and it is here rather than beside the
+  /// pages on purpose: what a reader has to say about an episode comes after
+  /// they have read it, and the screen past the last page is where they have.
+  final VoidCallback? onOpenComments;
 
   final VoidCallback onBackToSeries;
 
@@ -53,6 +61,17 @@ class EpisodeEndPanel extends StatelessWidget {
                 onOpen: () => onOpenNext(next),
               ),
             const SizedBox(height: 24),
+            if (onOpenComments != null)
+              OutlinedButton.icon(
+                key: const ValueKey('episode-end-comments'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white24),
+                ),
+                onPressed: onOpenComments,
+                icon: const Icon(Icons.mode_comment_outlined),
+                label: Text(messages.commentsTitle),
+              ),
             TextButton(
               key: const ValueKey('episode-end-back-to-series'),
               style: TextButton.styleFrom(foregroundColor: Colors.white70),

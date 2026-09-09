@@ -124,12 +124,13 @@ mobile/
 │   ├── api/                      # Connect JSON client, tenant lookup, page fetch and decryption
 │   ├── auth/                     # Session, secure storage, AuthController
 │   ├── catalog/                  # CatalogRepository, eye-catch rendition choice and cover widget
+│   ├── comments/                 # CommentRepository, tenant comment mode, own-comment merge
 │   ├── crypto/                   # HMAC-SHA256 keystream shared by delivery and storage
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
-│   ├── models/                   # Series / episode body
+│   ├── models/                   # Series / episode body / episode comment
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / series detail / viewer / sign-in / account
+│   ├── screens/                  # Catalog / series detail / viewer / comments / sign-in / account
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
 ├── integration_test/             # On-device navigation
@@ -145,13 +146,14 @@ mobile/
 
 The following routes are defined with `go_router`. The catalog reads from the public API (Connect JSON).
 
-| Path                                    | Screen                        |
-| --------------------------------------- | ----------------------------- |
-| `/`                                     | Catalog list                  |
-| `/sign-in`                              | Sign-in form                  |
-| `/account`                              | Signed-in reader and sign-out |
-| `/series/:seriesId`                     | Series details                |
-| `/series/:seriesId/episodes/:episodeId` | Episode viewer                |
+| Path | Screen |
+| --- | --- |
+| `/` | Catalog list |
+| `/sign-in` | Sign-in form |
+| `/account` | Signed-in reader and sign-out |
+| `/series/:seriesId` | Series details |
+| `/series/:seriesId/episodes/:episodeId` | Episode viewer |
+| `/series/:seriesId/episodes/:episodeId/comments` | Episode comments |
 
 The list displays loading, empty, and network-error-with-retry states. Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
@@ -191,6 +193,17 @@ The viewer displays the images returned by `GetEpisodeDetail` as episode content
 - Leaving the reader evicts the episode's pages from the shared image cache, so a body's decoded pixels are not left behind whatever is read next
 - A signed-in reader opens the episode on the page `GetMyReadingPosition` answers with, which is the same position `web-host` writes, and the page they rest on is recorded with `SaveReadingPosition`. A guest has no position and opens on the first page
 - The screen after the last page ends the episode: it offers the next one `GetEpisodeDetail` names, with what it costs, and leads back to the series; the last published episode of a series says so instead. The bottom bar carries the episodes either side of this one beside the page controls, and taking either of them replaces the reader rather than stacking a second one on it
+
+## Comments
+
+The comments on an episode are offered at the end of it and nowhere else: what a reader has to say about an episode comes after they have read it, so the way to them is on the screen past the last page rather than beside the pages. It opens `/series/:seriesId/episodes/:episodeId/comments`, which lists the published comments newest first, twenty to a page, and pages with the cursor token every list RPC shares.
+
+- The tenant's comment mode, which `GetTenant` answers, decides whether any of this is offered. Under `disabled` the end of the episode offers nothing, and a link kept from before the setting changed lands on a screen saying the site takes no comments; under `approval_required` the screen says a comment appears once a moderator has approved it. A lookup that could not reach the API is not the tenant saying no: the offer stays, and the screen behind it reports the failure
+- A signed-in reader writes one in the box above the list, and a reader who is signed out is offered the way to sign in instead of the box. The body is measured against the API's limit — 1000 Unicode code points rather than UTF-16 units — before the request, so an emoji-heavy comment is measured the way the server measures it
+- `ListMyEpisodeComments` is read beside the public page, and its rows are placed among it by date, which is what shows an author the comment of theirs that is still waiting for approval. A comment staff removed keeps rendering to its author exactly as it did before — never marked, moved, or repeated — because a removal the platform makes silently must not become visible through the way its author's screen changes
+- A reader takes their own comment down, and reports somebody else's. Reporting asks for one of four reasons and an optional sentence in a dialog, and a repeat report is answered exactly as a first one is
+- Comments are online only, and are no part of what the device keeps for reading without a network. A list that cannot reach the API says so and offers a retry, and a comment written without a connection fails with the same wording rather than being queued; what the reader wrote stays in the box for them to send again
+- A comment's time is rendered in the zone the device is set to, where the site renders it in the tenant's: every other time on a phone reads in the zone its holder chose
 
 ## Offline reading
 
