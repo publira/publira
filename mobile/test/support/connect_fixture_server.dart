@@ -613,7 +613,8 @@ class ConnectFixtureServer {
     }
     if (path.endsWith('/PostEpisodeComment')) {
       final comment = {
-        'publicId': 'SeedCMNT${myEpisodeComments.length}',
+        'publicId':
+            'SeedCMNT${(myEpisodeComments[episodeId]?.length ?? 0) + 1}',
         'body': body['body'],
         'createdAt': DateTime.now().toUtc().toIso8601String(),
         if (commentMode == 'COMMENT_MODE_APPROVAL_REQUIRED')

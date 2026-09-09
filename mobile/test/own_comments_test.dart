@@ -98,6 +98,28 @@ void main() {
     expect(merged, isEmpty);
   });
 
+  test('a row whose timestamp could not be read reaches the oldest page', () {
+    final page = EpisodeCommentPage(
+      comments: [comment('public', at: DateTime.utc(2026, 9, 8, 12))],
+      previousToken: 'newer-page',
+    );
+
+    final merged = mergeOwnComments(page, [comment('undated')]);
+
+    expect(idsOf(merged), ['public', 'undated']);
+  });
+
+  test('a row whose timestamp could not be read is on no page above it', () {
+    // It would otherwise be on every page at once, and a row the reader is
+    // shown twice is the marker a removal may not acquire.
+    final page = EpisodeCommentPage(
+      comments: [comment('public', at: DateTime.utc(2026, 9, 8, 12))],
+      nextToken: 'older-page',
+    );
+
+    expect(idsOf(mergeOwnComments(page, [comment('undated')])), ['public']);
+  });
+
   test('a row whose timestamp could not be read sorts last', () {
     final merged = mergeOwnComments(const EpisodeCommentPage(), [
       comment('undated'),

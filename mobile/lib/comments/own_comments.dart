@@ -30,10 +30,7 @@ int _newestFirst(EpisodeComment left, EpisodeComment right) {
 /// Without this the same private row would be repeated on every page, and
 /// repetition is exactly the kind of marker a removed comment must not
 /// acquire.
-bool _withinPage(DateTime? at, {DateTime? newest, DateTime? oldest}) {
-  if (at == null) {
-    return false;
-  }
+bool _withinPage(DateTime at, {DateTime? newest, DateTime? oldest}) {
   if (newest != null && at.isAfter(newest)) {
     return false;
   }
@@ -51,6 +48,12 @@ bool _withinPage(DateTime? at, {DateTime? newest, DateTime? oldest}) {
 /// and only page. A cursor that lands past the end of the list has no window
 /// to place anything in, and showing the reader's own comments there would
 /// make that empty page look like a page of theirs.
+///
+/// A row whose timestamp could not be read has no date to be placed by, and it
+/// goes on the oldest page, which is where the order puts an undated row
+/// anyway. Measuring it against a window instead would keep it off every page
+/// at once, and the reader would lose a comment of their own to a timestamp
+/// they never see.
 ///
 /// The two lists are disjoint at the API — the caller's list carries only what
 /// the public one omits — but they are read a moment apart, and in the moment
@@ -80,12 +83,15 @@ List<EpisodeComment> mergeOwnComments(
     return unpublished..sort(_newestFirst);
   }
 
-  final placed = unpublished.where(
-    (comment) => _withinPage(
-      comment.createdAt,
-      newest: page.previousToken.isEmpty ? null : page.comments.first.createdAt,
-      oldest: page.nextToken.isEmpty ? null : page.comments.last.createdAt,
-    ),
-  );
+  final newest = page.previousToken.isEmpty
+      ? null
+      : page.comments.first.createdAt;
+  final oldest = page.nextToken.isEmpty ? null : page.comments.last.createdAt;
+  final placed = unpublished.where((comment) {
+    final at = comment.createdAt;
+    return at == null
+        ? page.nextToken.isEmpty
+        : _withinPage(at, newest: newest, oldest: oldest);
+  });
   return [...page.comments, ...placed]..sort(_newestFirst);
 }
