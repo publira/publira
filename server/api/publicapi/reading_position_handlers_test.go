@@ -347,8 +347,8 @@ func TestListMyRecentSeriesReturnsTheEpisodeToContinueFrom(t *testing.T) {
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(fixture.tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(started, "SERIES002", "Started", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("{}")).
-			AddRow(resumed, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("{}")))
+			AddRow(started, "SERIES002", "Started", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")).
+			AddRow(resumed, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
 	response, err := fixture.recent(2, "")
 	if err != nil {
@@ -409,7 +409,7 @@ func TestListMyRecentSeriesPagesForwardOnTheActivityCursor(t *testing.T) {
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(fixture.tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(series, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("{}")))
+			AddRow(series, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
 	response, err := fixture.recent(1, "")
 	if err != nil {
@@ -440,7 +440,7 @@ func TestListMyRecentSeriesReadsTheBackwardDirectionAscending(t *testing.T) {
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(fixture.tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(series, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("{}")))
+			AddRow(series, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
 	response, err := fixture.recent(0, token)
 	if err != nil {

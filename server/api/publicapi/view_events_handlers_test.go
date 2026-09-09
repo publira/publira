@@ -471,10 +471,12 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 			"id", "public_id", "title", "label_public_id", "label_name",
 			"eye_catch_image_id", "eye_catch_image_updated_at", "synopsis",
 			"status", "schedule_weekdays", "age_rating",
-			"is_published", "published_at", "free_episode_count", "creators", "episodes",
+			"is_published", "published_at", "free_episode_count", "creators",
+			"genres", "tags", "episodes",
 		}).AddRow(
 			seriesID, "SERIES001", "Series Title", nil, nil, nil, nil,
-			"Synopsis", "ongoing", []byte("{}"), "all", true, now.UTC(), int32(0), []byte(`[]`), []byte(`[]`),
+			"Synopsis", "ongoing", []byte("{}"), "all", true, now.UTC(), int32(0), []byte(`[]`),
+			[]byte(`[]`), []byte(`[]`), []byte(`[]`),
 		))
 	recorded := forbidSeriesViewEventInsert(mock)
 
