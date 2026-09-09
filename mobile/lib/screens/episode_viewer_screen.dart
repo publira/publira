@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/comments/comment_failure.dart';
+import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/offline/offline_library.dart';
@@ -55,6 +57,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// what leaves the mark off.
   var _saved = const <String>{};
 
+  /// Whether the end of the episode offers its comments.
+  ///
+  /// It starts off and is turned on by the tenant's answer, which is read
+  /// beside the body so it is in hand long before the reader has finished
+  /// reading. A lookup that fails still offers them: the answer that takes the
+  /// offer away is the tenant having turned commenting off, and a reader whose
+  /// connection dropped is told that on the comments screen rather than
+  /// quietly losing the way to it.
+  var _commentsOffered = false;
+
   /// Records the page the reader rests on, for the session that is signed in
   /// now. It holds the repository rather than the context, because the last
   /// page is recorded as the screen goes away, when an inherited widget can no
@@ -96,6 +108,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       ),
     );
     _future = _load(catalog);
+    final comments = CommentScope.maybeOf(context);
+    if (comments != null) {
+      unawaited(_loadCommentMode(comments));
+    }
     final library = OfflineScope.maybeOf(context);
     if (library != null) {
       unawaited(_loadSaved(library, _readerId));
@@ -119,6 +135,24 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     }
     setState(() {
       _saved = saved;
+    });
+  }
+
+  /// Asks the tenant whether it takes comments at all, which is what decides
+  /// that the end of the episode offers them.
+  Future<void> _loadCommentMode(CommentRepository comments) async {
+    bool offered;
+    try {
+      offered = (await comments.commentMode()).takesComments;
+    } on CommentFailure {
+      // Nobody could be asked, which is not the tenant saying no.
+      offered = true;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _commentsOffered = offered;
     });
   }
 
@@ -258,12 +292,21 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         detail: detail,
         nextSavedOffline: next != null && _saved.contains(next.id),
         onOpenNext: _open,
+        onOpenComments: _commentsOffered ? _openComments : null,
         onBackToSeries: () =>
             context.go(AppRoutes.seriesDetailPath(widget.seriesId)),
       ),
       onNextEpisode: next == null ? null : () => _open(next),
       onPreviousEpisode: previous == null ? null : () => _open(previous),
       pageStore: OfflineScope.maybeOf(context),
+    );
+  }
+
+  /// Opens what the other readers of this episode had to say about it, which
+  /// the reader reaches once they have read it themselves.
+  void _openComments() {
+    context.push(
+      AppRoutes.episodeCommentsPath(widget.seriesId, widget.episodeId),
     );
   }
 

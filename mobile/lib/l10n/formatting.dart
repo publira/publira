@@ -11,6 +11,20 @@ extension AppMessagesFormatting on AppMessages {
   String formatInteger(int value) =>
       NumberFormat.decimalPattern(intlLocale).format(value);
 
+  /// [value] as the date and time this locale writes them, in the zone the
+  /// device is set to.
+  ///
+  /// The site renders the same timestamp in the tenant's display zone, because
+  /// a visitor of a tenant's site is reading that tenant's clock. A phone is
+  /// somewhere, and every other time on it reads in the zone its holder set,
+  /// so the app follows the device instead.
+  ///
+  /// The symbols come from `flutter_localizations`, whose delegates load them
+  /// for every locale it ships; the app installs those alongside its own
+  /// catalog (`lib/l10n/localizations.dart`).
+  String formatDateTime(DateTime value) =>
+      DateFormat.yMMMd(intlLocale).add_jm().format(value.toLocal());
+
   /// [values] read as one list in this locale — `Alice, Bob, and Carol` under
   /// `en-US`, `Alice、Bob、Carol` under `ja-JP`.
   ///

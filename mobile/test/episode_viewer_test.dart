@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/catalog/catalog_failure.dart';
+import 'package:publira/models/episode_comment.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
@@ -12,6 +13,7 @@ import 'package:publira/viewer/reading_position.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
+import 'support/fake_comment_repository.dart';
 import 'support/fake_offline_library.dart';
 import 'support/pump_until.dart';
 
@@ -66,6 +68,7 @@ void main() {
     WidgetTester tester, {
     AuthSession? session,
     Size screen = portrait,
+    FakeCommentRepository? comments,
   }) async {
     tester.view
       ..physicalSize = screen
@@ -76,6 +79,7 @@ void main() {
         router: router,
         catalog: catalog,
         auth: fakeAuthController(session: session),
+        comments: comments,
         offline: offline,
       ),
     );
@@ -471,6 +475,40 @@ void main() {
     await pumpUntilFound(tester, find.text('Episodes'));
 
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
+  });
+
+  testWidgets('the end of an episode leads to its comments', (tester) async {
+    // The only way to them: what a reader has to say about an episode comes
+    // after they have read it.
+    await pumpApp(tester, comments: FakeCommentRepository());
+    await pumpUntilFound(tester, pageView);
+    await turnToEnd(tester);
+
+    final open = find.byKey(const ValueKey('episode-end-comments'));
+    await pumpUntilFound(tester, open);
+    await tester.tap(open);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('episode-comments-empty')),
+    );
+
+    expect(
+      router.state.uri.path,
+      AppRoutes.episodeCommentsPath(seriesId, episodeId),
+    );
+  });
+
+  testWidgets('a tenant that takes no comments offers none at the end', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      comments: FakeCommentRepository(mode: CommentMode.disabled),
+    );
+    await pumpUntilFound(tester, pageView);
+    await turnToEnd(tester);
+
+    expect(find.byKey(const ValueKey('episode-end-comments')), findsNothing);
   });
 
   testWidgets('the panel leads back to the series', (tester) async {

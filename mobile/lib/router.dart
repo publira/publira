@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:publira/screens/account_screen.dart';
 import 'package:publira/screens/catalog_screen.dart';
+import 'package:publira/screens/episode_comments_screen.dart';
 import 'package:publira/screens/episode_viewer_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/series_detail_screen.dart';
@@ -13,11 +14,15 @@ abstract final class AppRoutes {
   static const account = '/account';
   static const seriesDetail = '/series/:seriesId';
   static const episodeViewer = 'episodes/:episodeId';
+  static const episodeComments = 'comments';
 
   static String seriesDetailPath(String seriesId) => '/series/$seriesId';
 
   static String episodeViewerPath(String seriesId, String episodeId) =>
       '/series/$seriesId/episodes/$episodeId';
+
+  static String episodeCommentsPath(String seriesId, String episodeId) =>
+      '${episodeViewerPath(seriesId, episodeId)}/comments';
 }
 
 /// Application router. Kept as a factory so widget tests can inject a fresh
@@ -58,6 +63,19 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.catalog}) {
               seriesId: state.pathParameters['seriesId']!,
               episodeId: state.pathParameters['episodeId']!,
             ),
+            // Nested for the same reason the viewer is nested under its
+            // series: the comments are read once the episode has been, and
+            // going back from them lands on the episode rather than out.
+            routes: [
+              GoRoute(
+                path: AppRoutes.episodeComments,
+                name: 'episodeComments',
+                builder: (context, state) => EpisodeCommentsScreen(
+                  seriesId: state.pathParameters['seriesId']!,
+                  episodeId: state.pathParameters['episodeId']!,
+                ),
+              ),
+            ],
           ),
         ],
       ),
