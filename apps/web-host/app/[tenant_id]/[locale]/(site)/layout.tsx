@@ -13,7 +13,22 @@ import {
   SiteLayoutHeader,
   SiteLayoutHeaderActions,
   SiteLayoutHeaderActionsSkeleton,
+  SiteLayoutHeaderSearch,
+  SiteLayoutHeaderWideControls,
   SiteLayoutMain,
+  SiteLayoutMobileNavigation,
+  SiteLayoutMobileNavigationActions,
+  SiteLayoutMobileNavigationCloseButton,
+  SiteLayoutMobileNavigationHeader,
+  SiteLayoutMobileNavigationLink,
+  SiteLayoutMobileNavigationLinks,
+  SiteLayoutMobileNavigationOpenButton,
+  SiteLayoutMobileNavigationPrimaryAction,
+  SiteLayoutMobileNavigationSearch,
+  SiteLayoutMobileNavigationSecondaryAction,
+  SiteLayoutMobileNavigationSection,
+  SiteLayoutMobileNavigationSectionTitle,
+  SiteLayoutMobileNavigationTitle,
   SiteLayoutNav,
   SiteLayoutNavLink,
   SiteLayoutPrimaryAction,
@@ -42,6 +57,8 @@ import {
 } from "#components/locale-provider";
 import {
   LocaleSwitcher,
+  LocaleSwitcherLinks,
+  LocaleSwitcherLinksSkeleton,
   LocaleSwitcherSkeleton,
 } from "#components/locale-switcher";
 import { Message } from "#components/message";
@@ -66,7 +83,6 @@ import { NotificationBellErrorBoundary } from "#components/notification-bell-err
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getLocale, loadHostMessages } from "#lib/locale";
-import type { HostMessageKey } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { logoutAction } from "#lib/logout-action";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
@@ -78,19 +94,6 @@ import {
 } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { resolveTenantLogoVariant } from "#lib/tenant-logo";
-
-/**
- * Bare hrefs, prefixed with the request's locale before they reach
- * `@publira/layouts` — that package is shared with the two consoles, which keep
- * their locale in a cookie, so it renders plain `next/link`s and cannot add the
- * prefix itself. The labels are resolved here for the same reason.
- */
-const siteNavItems: { href: string; label: HostMessageKey }[] = [
-  { href: "/authors", label: "host.nav.authors" },
-  { href: "/labels", label: "host.nav.labels" },
-  { href: "/series", label: "host.nav.series" },
-  { href: "/search", label: "host.nav.search" },
-];
 
 const notificationMenuLimit = 5;
 
@@ -207,51 +210,55 @@ const HeaderActions = async () => {
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
   );
   const moreHref = withLocalePrefix(locale, defaultLocale, "/notifications");
+
+  // Signing in and signing up are the pair the phone band hands to the drawer,
+  // so at that width this branch draws nothing and the row keeps the brand and
+  // the menu button. The bell and the account menu are single icons and stay.
+  if (!hasSession) {
+    return (
+      <SiteLayoutHeaderWideControls>
+        <SiteLayoutSecondaryAction
+          href={withLocalePrefix(locale, defaultLocale, "/login")}
+        >
+          {getMessage(messages, "host.nav.login")}
+        </SiteLayoutSecondaryAction>
+        <SiteLayoutPrimaryAction
+          href={withLocalePrefix(locale, defaultLocale, "/signup")}
+        >
+          {getMessage(messages, "host.nav.signup")}
+        </SiteLayoutPrimaryAction>
+      </SiteLayoutHeaderWideControls>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2">
-      {hasSession ? (
-        <NotificationBellErrorBoundary moreHref={moreHref}>
-          <Suspense fallback={<NotificationBellSkeleton />}>
-            <HostNotificationBell moreHref={moreHref} />
-          </Suspense>
-        </NotificationBellErrorBoundary>
-      ) : null}
+      <NotificationBellErrorBoundary moreHref={moreHref}>
+        <Suspense fallback={<NotificationBellSkeleton />}>
+          <HostNotificationBell moreHref={moreHref} />
+        </Suspense>
+      </NotificationBellErrorBoundary>
       <SiteLayoutActions>
-        {hasSession ? (
-          <SiteLayoutUserMenu>
-            <SiteLayoutUserMenuTrigger
-              aria-label={getMessage(messages, "host.nav.account_menu")}
-            />
-            <SiteLayoutUserMenuContent>
-              <SiteLayoutUserMenuMyPageLink
-                href={withLocalePrefix(locale, defaultLocale, "/my")}
-              >
-                {getMessage(messages, "host.nav.my_page")}
-              </SiteLayoutUserMenuMyPageLink>
-              <SiteLayoutUserMenuSeparator />
-              <SiteLayoutUserMenuLogout
-                action={logoutAction.bind(null, tenantId, locale)}
-              >
-                <SiteLayoutUserMenuLogoutButton>
-                  {getMessage(messages, "host.nav.logout")}
-                </SiteLayoutUserMenuLogoutButton>
-              </SiteLayoutUserMenuLogout>
-            </SiteLayoutUserMenuContent>
-          </SiteLayoutUserMenu>
-        ) : (
-          <SiteLayoutSecondaryAction
-            href={withLocalePrefix(locale, defaultLocale, "/login")}
-          >
-            {getMessage(messages, "host.nav.login")}
-          </SiteLayoutSecondaryAction>
-        )}
-        {hasSession ? null : (
-          <SiteLayoutPrimaryAction
-            href={withLocalePrefix(locale, defaultLocale, "/signup")}
-          >
-            {getMessage(messages, "host.nav.signup")}
-          </SiteLayoutPrimaryAction>
-        )}
+        <SiteLayoutUserMenu>
+          <SiteLayoutUserMenuTrigger
+            aria-label={getMessage(messages, "host.nav.account_menu")}
+          />
+          <SiteLayoutUserMenuContent>
+            <SiteLayoutUserMenuMyPageLink
+              href={withLocalePrefix(locale, defaultLocale, "/my")}
+            >
+              {getMessage(messages, "host.nav.my_page")}
+            </SiteLayoutUserMenuMyPageLink>
+            <SiteLayoutUserMenuSeparator />
+            <SiteLayoutUserMenuLogout
+              action={logoutAction.bind(null, tenantId, locale)}
+            >
+              <SiteLayoutUserMenuLogoutButton>
+                {getMessage(messages, "host.nav.logout")}
+              </SiteLayoutUserMenuLogoutButton>
+            </SiteLayoutUserMenuLogout>
+          </SiteLayoutUserMenuContent>
+        </SiteLayoutUserMenu>
       </SiteLayoutActions>
     </div>
   );
@@ -307,6 +314,12 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
+/**
+ * Bare hrefs, prefixed with the request's locale before they reach
+ * `@publira/layouts` — that package is shared with the two consoles, which keep
+ * their locale in a cookie, so it renders plain `next/link`s and cannot add the
+ * prefix itself. The labels are resolved here for the same reason.
+ */
 const SiteNav = async () => {
   const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
   const [defaultLocale, messages] = await Promise.all([
@@ -316,15 +329,118 @@ const SiteNav = async () => {
 
   return (
     <SiteLayoutNav>
-      {siteNavItems.map((item) => (
-        <SiteLayoutNavLink
-          href={withLocalePrefix(locale, defaultLocale, item.href)}
-          key={item.href}
-        >
-          {getMessage(messages, item.label)}
-        </SiteLayoutNavLink>
-      ))}
+      <SiteLayoutNavLink
+        href={withLocalePrefix(locale, defaultLocale, "/authors")}
+      >
+        {getMessage(messages, "host.nav.authors")}
+      </SiteLayoutNavLink>
+      <SiteLayoutNavLink
+        href={withLocalePrefix(locale, defaultLocale, "/labels")}
+      >
+        {getMessage(messages, "host.nav.labels")}
+      </SiteLayoutNavLink>
+      <SiteLayoutNavLink
+        href={withLocalePrefix(locale, defaultLocale, "/series")}
+      >
+        {getMessage(messages, "host.nav.series")}
+      </SiteLayoutNavLink>
+      <SiteLayoutNavLink
+        href={withLocalePrefix(locale, defaultLocale, "/search")}
+      >
+        {getMessage(messages, "host.nav.search")}
+      </SiteLayoutNavLink>
     </SiteLayoutNav>
+  );
+};
+
+/**
+ * What the band stops drawing below `md`: the catalog field, the navigation,
+ * the language, and — for a reader who is not signed in — the account actions.
+ * Four controls and a 342px row do not fit, and the band would rather truncate
+ * the tenant's name than any of them, so a phone reaches all four through the
+ * menu button this renders beside the drawer holding them.
+ */
+const SiteMobileNavigation = async () => {
+  const [cookieStore, tenantId, locale] = await Promise.all([
+    cookies(),
+    getTenantId(),
+    getLocale(),
+  ]);
+  const [defaultLocale, messages] = await Promise.all([
+    getTenantDefaultLocale(tenantId),
+    loadHostMessages(locale),
+  ]);
+  const hasSession = Boolean(
+    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
+  );
+
+  return (
+    <>
+      <SiteLayoutMobileNavigation>
+        <SiteLayoutMobileNavigationHeader>
+          <SiteLayoutMobileNavigationTitle>
+            {getMessage(messages, "host.nav.menu")}
+          </SiteLayoutMobileNavigationTitle>
+          <SiteLayoutMobileNavigationCloseButton
+            aria-label={getMessage(messages, "host.nav.navigation_close")}
+          />
+        </SiteLayoutMobileNavigationHeader>
+        <SiteLayoutMobileNavigationSearch>
+          <Suspense fallback={<CatalogSearchFormSkeleton />}>
+            <CatalogSearchForm id="catalog-search-menu" />
+          </Suspense>
+        </SiteLayoutMobileNavigationSearch>
+        <SiteLayoutMobileNavigationLinks
+          aria-label={getMessage(messages, "host.nav.navigation")}
+        >
+          <SiteLayoutMobileNavigationLink
+            href={withLocalePrefix(locale, defaultLocale, "/authors")}
+          >
+            {getMessage(messages, "host.nav.authors")}
+          </SiteLayoutMobileNavigationLink>
+          <SiteLayoutMobileNavigationLink
+            href={withLocalePrefix(locale, defaultLocale, "/labels")}
+          >
+            {getMessage(messages, "host.nav.labels")}
+          </SiteLayoutMobileNavigationLink>
+          <SiteLayoutMobileNavigationLink
+            href={withLocalePrefix(locale, defaultLocale, "/series")}
+          >
+            {getMessage(messages, "host.nav.series")}
+          </SiteLayoutMobileNavigationLink>
+          <SiteLayoutMobileNavigationLink
+            href={withLocalePrefix(locale, defaultLocale, "/search")}
+          >
+            {getMessage(messages, "host.nav.search")}
+          </SiteLayoutMobileNavigationLink>
+        </SiteLayoutMobileNavigationLinks>
+        <SiteLayoutMobileNavigationSection>
+          <SiteLayoutMobileNavigationSectionTitle>
+            {getMessage(messages, "host.nav.locale_switcher")}
+          </SiteLayoutMobileNavigationSectionTitle>
+          <Suspense fallback={<LocaleSwitcherLinksSkeleton />}>
+            <LocaleSwitcherLinks />
+          </Suspense>
+        </SiteLayoutMobileNavigationSection>
+        {hasSession ? null : (
+          <SiteLayoutMobileNavigationActions>
+            <SiteLayoutMobileNavigationSecondaryAction
+              href={withLocalePrefix(locale, defaultLocale, "/login")}
+            >
+              {getMessage(messages, "host.nav.login")}
+            </SiteLayoutMobileNavigationSecondaryAction>
+            <SiteLayoutMobileNavigationPrimaryAction
+              href={withLocalePrefix(locale, defaultLocale, "/signup")}
+            >
+              {getMessage(messages, "host.nav.signup")}
+            </SiteLayoutMobileNavigationPrimaryAction>
+          </SiteLayoutMobileNavigationActions>
+        )}
+      </SiteLayoutMobileNavigation>
+      <SiteLayoutMobileNavigationOpenButton
+        aria-label={getMessage(messages, "host.nav.navigation_open")}
+      />
+    </>
   );
 };
 
@@ -379,6 +495,14 @@ const SiteNavSkeleton = () => (
   />
 );
 
+/** Same footprint as the rendered menu button, so the header does not shift. */
+const SiteMobileNavigationSkeleton = () => (
+  <div
+    aria-hidden="true"
+    className="size-9 animate-pulse rounded-control bg-muted md:hidden"
+  />
+);
+
 /**
  * Seeds the locale context for everything under `(site)`. The root layout
  * reads nothing, so this is the first place both values exist: the request's
@@ -407,23 +531,24 @@ const TenantLayout = async ({
             <Suspense fallback={<SiteNavSkeleton />}>
               <SiteNav />
             </Suspense>
-            {/* The band is one row of 36px controls, and below `md` there is
-                not enough of it for the field as well as the account actions.
-                It hides at the width the navigation hides at, where the search
-                link beside those navigation items goes with it. */}
-            <div className="hidden max-w-40 min-w-0 flex-1 justify-end md:flex lg:max-w-64">
+            <SiteLayoutHeaderSearch>
               <Suspense fallback={<CatalogSearchFormSkeleton />}>
                 <CatalogSearchForm id="catalog-search-header" />
               </Suspense>
-            </div>
-            <Suspense fallback={<LocaleSwitcherSkeleton />}>
-              <LocaleSwitcher />
-            </Suspense>
+            </SiteLayoutHeaderSearch>
+            <SiteLayoutHeaderWideControls>
+              <Suspense fallback={<LocaleSwitcherSkeleton />}>
+                <LocaleSwitcher />
+              </Suspense>
+            </SiteLayoutHeaderWideControls>
             <SiteLayoutHeaderActions>
               <Suspense fallback={<SiteLayoutHeaderActionsSkeleton />}>
                 <HeaderActions />
               </Suspense>
             </SiteLayoutHeaderActions>
+            <Suspense fallback={<SiteMobileNavigationSkeleton />}>
+              <SiteMobileNavigation />
+            </Suspense>
           </SiteLayoutHeader>
           <SiteLayoutMain>{children}</SiteLayoutMain>
           <SiteLayoutFooter>
