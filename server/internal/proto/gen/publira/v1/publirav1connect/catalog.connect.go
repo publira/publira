@@ -73,6 +73,9 @@ const (
 	// CatalogServiceListRankedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// ListRankedSeries RPC.
 	CatalogServiceListRankedSeriesProcedure = "/publira.v1.CatalogService/ListRankedSeries"
+	// CatalogServiceListRelatedSeriesProcedure is the fully-qualified name of the CatalogService's
+	// ListRelatedSeries RPC.
+	CatalogServiceListRelatedSeriesProcedure = "/publira.v1.CatalogService/ListRelatedSeries"
 	// EpisodeReadServiceMarkEpisodeAsReadProcedure is the fully-qualified name of the
 	// EpisodeReadService's MarkEpisodeAsRead RPC.
 	EpisodeReadServiceMarkEpisodeAsReadProcedure = "/publira.v1.EpisodeReadService/MarkEpisodeAsRead"
@@ -157,6 +160,20 @@ type CatalogServiceClient interface {
 	// and leaves a gap in the positions, because a snapshot describes a past
 	// window rather than the catalogue as it stands now.
 	ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error)
+	// The tenant's other published series, ordered by how much they share with
+	// one series: each creator they have in common counts 3, the same label 2,
+	// and each genre and each tag 1. Ties go to the better position in the
+	// latest weekly ranking, and then to the newer series.
+	//
+	// The list is never cut off at the related ones. A catalogue with more than
+	// one series always has a page to show, because a series sharing nothing
+	// still scores 0 and takes its place among the unrelated by ranking — so the
+	// section under a brand new series is the storefront ranking rather than an
+	// empty strip.
+	//
+	// Nothing here depends on who is reading, so a response can be cached and
+	// shared between readers.
+	ListRelatedSeries(context.Context, *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error)
 }
 
 // NewCatalogServiceClient constructs a client for the publira.v1.CatalogService service. By
@@ -230,6 +247,12 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(catalogServiceMethods.ByName("ListRankedSeries")),
 			connect.WithClientOptions(opts...),
 		),
+		listRelatedSeries: connect.NewClient[v1.ListRelatedSeriesRequest, v1.ListRelatedSeriesResponse](
+			httpClient,
+			baseURL+CatalogServiceListRelatedSeriesProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("ListRelatedSeries")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -245,6 +268,7 @@ type catalogServiceClient struct {
 	searchPublishedSeries    *connect.Client[v1.SearchPublishedSeriesRequest, v1.SearchPublishedSeriesResponse]
 	listRecommendedSeries    *connect.Client[v1.ListRecommendedSeriesRequest, v1.ListRecommendedSeriesResponse]
 	listRankedSeries         *connect.Client[v1.ListRankedSeriesRequest, v1.ListRankedSeriesResponse]
+	listRelatedSeries        *connect.Client[v1.ListRelatedSeriesRequest, v1.ListRelatedSeriesResponse]
 }
 
 // ListPublishedLabels calls publira.v1.CatalogService.ListPublishedLabels.
@@ -297,6 +321,11 @@ func (c *catalogServiceClient) ListRankedSeries(ctx context.Context, req *connec
 	return c.listRankedSeries.CallUnary(ctx, req)
 }
 
+// ListRelatedSeries calls publira.v1.CatalogService.ListRelatedSeries.
+func (c *catalogServiceClient) ListRelatedSeries(ctx context.Context, req *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error) {
+	return c.listRelatedSeries.CallUnary(ctx, req)
+}
+
 // CatalogServiceHandler is an implementation of the publira.v1.CatalogService service.
 type CatalogServiceHandler interface {
 	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
@@ -336,6 +365,20 @@ type CatalogServiceHandler interface {
 	// and leaves a gap in the positions, because a snapshot describes a past
 	// window rather than the catalogue as it stands now.
 	ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error)
+	// The tenant's other published series, ordered by how much they share with
+	// one series: each creator they have in common counts 3, the same label 2,
+	// and each genre and each tag 1. Ties go to the better position in the
+	// latest weekly ranking, and then to the newer series.
+	//
+	// The list is never cut off at the related ones. A catalogue with more than
+	// one series always has a page to show, because a series sharing nothing
+	// still scores 0 and takes its place among the unrelated by ranking — so the
+	// section under a brand new series is the storefront ranking rather than an
+	// empty strip.
+	//
+	// Nothing here depends on who is reading, so a response can be cached and
+	// shared between readers.
+	ListRelatedSeries(context.Context, *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error)
 }
 
 // NewCatalogServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -405,6 +448,12 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithSchema(catalogServiceMethods.ByName("ListRankedSeries")),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceListRelatedSeriesHandler := connect.NewUnaryHandler(
+		CatalogServiceListRelatedSeriesProcedure,
+		svc.ListRelatedSeries,
+		connect.WithSchema(catalogServiceMethods.ByName("ListRelatedSeries")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.CatalogService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CatalogServiceListPublishedLabelsProcedure:
@@ -427,6 +476,8 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceListRecommendedSeriesHandler.ServeHTTP(w, r)
 		case CatalogServiceListRankedSeriesProcedure:
 			catalogServiceListRankedSeriesHandler.ServeHTTP(w, r)
+		case CatalogServiceListRelatedSeriesProcedure:
+			catalogServiceListRelatedSeriesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -474,6 +525,10 @@ func (UnimplementedCatalogServiceHandler) ListRecommendedSeries(context.Context,
 
 func (UnimplementedCatalogServiceHandler) ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListRankedSeries is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) ListRelatedSeries(context.Context, *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListRelatedSeries is not implemented"))
 }
 
 // EpisodeReadServiceClient is a client for the publira.v1.EpisodeReadService service.

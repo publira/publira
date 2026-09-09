@@ -405,6 +405,8 @@ type Querier interface {
 	//     -> idx_content_events_tenant_series_occurred_at
 	//   ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
 	//     -> no index; sorts one tenant's published series (see the note there)
+	//   ListRelatedSeriesIDs / ListRelatedSeriesIDsReversed
+	//     -> no index; scores one tenant's published series (see the note there)
 	//   ListEpisodeReadThroughDesc / ListEpisodeReadThroughAsc
 	//     -> idx_content_daily_stats_tenant_date for the window, then a sort on the
 	//        aggregate it groups (see the note there)
@@ -926,6 +928,32 @@ type Querier interface {
 	// this misses is a deleted live object: every table that holds an object_key
 	// has to be listed here.
 	ListReferencedObjectKeys(ctx context.Context, objectKeys []string) ([]string, error)
+	// The keyset scan behind the "more like this" strip. It scores every other
+	// published series of the tenant against one series and orders the whole
+	// catalogue by that score, so the strip has something to show under a series
+	// that shares nothing with anything.
+	//
+	// A shared creator is the strongest signal a catalogue this size carries and
+	// counts 3; the same label counts 2, because an imprint groups titles a reader
+	// who liked one is likely to want; a shared genre or tag counts 1 each, and
+	// several of them add up to a label or a creator. The subject's own creators,
+	// genres, and tags are read here rather than passed in, so the score and the
+	// sets it is computed from can never come from two different moments.
+	//
+	// The sort key is (score, sort_rank, published_at, id). Ties on the score are
+	// broken by the latest weekly ranking, which is what makes the unrelated tail
+	// the storefront's own order rather than an arbitrary one; a series the
+	// snapshot does not name borrows int4's maximum and sorts behind the ranked,
+	// exactly as it does in ListRecommendedSeriesIDs. published_at and then id
+	// settle the rest, and id keeps the key unique.
+	//
+	// No index serves this either: the first sort key is computed per row. The
+	// scan is bounded by one tenant's published series, each scored by three
+	// lookups on primary-key-ordered join tables.
+	ListRelatedSeriesIDs(ctx context.Context, arg ListRelatedSeriesIDsParams) ([]ListRelatedSeriesIDsRow, error)
+	// ListRelatedSeriesIDs walked the other way. It exists only to build a
+	// previous page; the order it describes is the same one.
+	ListRelatedSeriesIDsReversed(ctx context.Context, arg ListRelatedSeriesIDsReversedParams) ([]ListRelatedSeriesIDsReversedRow, error)
 	ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error)
 	// Admin ListSeries is (created_at, id) DESC. Forward uses the DESC query;
 	// backward uses ASC so idx_series_tenant_created_at can be scanned in

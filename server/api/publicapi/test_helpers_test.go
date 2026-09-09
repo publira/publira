@@ -153,6 +153,8 @@ const (
 	listRankedSeriesIDsReversedQuery       = "-- name: ListRankedSeriesIDsReversed :many\n"
 	listRecommendedSeriesIDsQuery          = "-- name: ListRecommendedSeriesIDs :many\n"
 	listRecommendedSeriesIDsReversedQuery  = "-- name: ListRecommendedSeriesIDsReversed :many\n"
+	listRelatedSeriesIDsQuery              = "-- name: ListRelatedSeriesIDs :many\n"
+	listRelatedSeriesIDsReversedQuery      = "-- name: ListRelatedSeriesIDsReversed :many\n"
 )
 
 // assertSeriesPublicIDs compares a series list against the public ids it should
