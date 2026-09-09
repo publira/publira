@@ -42,7 +42,7 @@ import { useLocale, useTenantDefaultLocale } from "./locale-provider";
 export const LocaleSwitcherSkeleton = () => (
   <div
     aria-hidden="true"
-    className="h-9 w-24 animate-pulse rounded-full bg-muted"
+    className="h-9 w-24 animate-pulse rounded-control bg-muted"
   />
 );
 
@@ -58,7 +58,7 @@ export const LocaleSwitcher = () => {
     <Popover>
       <PopoverTrigger
         aria-label={`${label}: ${getLocaleLabel(currentLocale)}`}
-        className="inline-flex h-9 max-w-28 items-center rounded-full border border-border/70 bg-card px-3 text-sm font-medium text-foreground transition-colors hover:border-border hover:bg-muted data-popup-open:bg-muted"
+        className="inline-flex h-9 max-w-28 items-center rounded-control border border-input bg-card px-3 text-sm font-medium text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted"
       >
         <span className="truncate">{getLocaleLabel(currentLocale)}</span>
       </PopoverTrigger>
@@ -75,8 +75,8 @@ export const LocaleSwitcher = () => {
                 aria-current={current ? "true" : undefined}
                 className={
                   current
-                    ? "rounded-xl bg-muted px-3 py-2 text-sm font-medium text-foreground"
-                    : "rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:outline-hidden"
+                    ? "rounded-control bg-muted px-3 py-2 text-sm font-medium text-foreground"
+                    : "rounded-control px-3 py-2 text-sm text-muted-foreground transition-colors duration-state ease-state hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:outline-hidden"
                 }
                 href={withLocalePrefix(locale, defaultLocale, barePathname)}
                 hrefLang={locale}

@@ -375,7 +375,7 @@ const TenantFooterCopyright = async () => {
 const SiteNavSkeleton = () => (
   <div
     aria-hidden="true"
-    className="hidden h-5 w-64 animate-pulse rounded bg-muted md:block"
+    className="hidden h-5 w-64 animate-pulse rounded-control bg-muted md:block"
   />
 );
 
@@ -407,7 +407,11 @@ const TenantLayout = async ({
             <Suspense fallback={<SiteNavSkeleton />}>
               <SiteNav />
             </Suspense>
-            <div className="flex max-w-40 min-w-0 flex-1 justify-end sm:max-w-64">
+            {/* The band is one row of 36px controls, and below `md` there is
+                not enough of it for the field as well as the account actions.
+                It hides at the width the navigation hides at, where the search
+                link beside those navigation items goes with it. */}
+            <div className="hidden max-w-40 min-w-0 flex-1 justify-end md:flex lg:max-w-64">
               <Suspense fallback={<CatalogSearchFormSkeleton />}>
                 <CatalogSearchForm id="catalog-search-header" />
               </Suspense>
@@ -430,7 +434,7 @@ const TenantLayout = async ({
               <Suspense
                 fallback={
                   <SiteLayoutFooterNote>
-                    <Skeleton className="inline-block h-4 w-56 rounded" />
+                    <Skeleton className="inline-block h-4 w-56 rounded-control" />
                   </SiteLayoutFooterNote>
                 }
               >
@@ -439,7 +443,7 @@ const TenantLayout = async ({
               <Suspense
                 fallback={
                   <SiteLayoutFooterCopyright>
-                    <Skeleton className="inline-block h-4 w-48 rounded" />
+                    <Skeleton className="inline-block h-4 w-48 rounded-control" />
                   </SiteLayoutFooterCopyright>
                 }
               >

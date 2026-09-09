@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const itemClassName =
-  "flex w-full cursor-default items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-foreground outline-hidden select-none data-highlighted:bg-muted/70 data-highlighted:text-foreground";
+  "flex w-full cursor-default items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground outline-hidden select-none data-highlighted:bg-muted data-highlighted:text-foreground";
 
 /** A compact account menu for a public site's header. */
 export const SiteLayoutUserMenu = ({ children }: { children: ReactNode }) => (
@@ -21,7 +21,7 @@ export const SiteLayoutUserMenuTrigger = ({
 }) => (
   <Menu.Trigger
     aria-label={ariaLabel}
-    className="inline-flex size-9 items-center justify-center rounded-full border border-border/70 bg-card text-foreground transition-colors hover:border-border hover:bg-muted data-popup-open:bg-muted"
+    className="inline-flex size-9 items-center justify-center rounded-control border border-input text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted"
   >
     <UserIcon aria-hidden="true" className="size-4" />
   </Menu.Trigger>
@@ -34,7 +34,7 @@ export const SiteLayoutUserMenuContent = ({
 }) => (
   <Menu.Portal>
     <Menu.Positioner align="end" className="z-40 outline-hidden" sideOffset={8}>
-      <Menu.Popup className="w-52 max-w-[calc(100vw-2rem)] origin-[var(--transform-origin)] rounded-2xl border border-border bg-card p-1.5 text-card-foreground shadow-lg outline-hidden">
+      <Menu.Popup className="w-52 max-w-[calc(100vw-2rem)] origin-[var(--transform-origin)] rounded-surface border border-border bg-popover p-1.5 text-popover-foreground shadow-floating outline-hidden">
         {children}
       </Menu.Popup>
     </Menu.Positioner>
@@ -59,7 +59,7 @@ export const SiteLayoutUserMenuMyPageLink = ({
 );
 
 export const SiteLayoutUserMenuSeparator = () => (
-  <Menu.Separator className="my-1.5 h-px bg-border/70" />
+  <Menu.Separator className="my-1.5 h-px bg-border" />
 );
 
 export const SiteLayoutUserMenuLogout = ({
