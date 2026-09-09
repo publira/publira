@@ -2173,6 +2173,7 @@
     },
     "common": {
       "back_to_catalog": "카탈로그로 돌아가기",
+      "free": "무료",
       "list_end": "{$first} 및 {$rest}",
       "list_middle": "{$first}, {$rest}",
       "list_start": "{$first}, {$rest}",
@@ -2209,9 +2210,15 @@
     },
     "viewer": {
       "back_to_series": "시리즈로 돌아가기",
+      "end": {
+        "up_next": "다음 에피소드",
+        "up_to_date_description": "“{$title}”에는 아직 다음 에피소드가 없습니다",
+        "up_to_date_title": "최신 에피소드까지 읽었습니다"
+      },
       "load_failed": "에피소드를 표시할 수 없습니다",
       "locked": "이 에피소드는 구매하면 읽을 수 있습니다",
       "locked_signed_out": "이 에피소드는 구매하면 읽을 수 있습니다. 이미 구매하셨다면 로그인해 주세요.",
+      "next_episode": "다음 에피소드",
       "next_page": "다음 페이지",
       "no_pages": "이 에피소드에는 아직 페이지가 없습니다",
       "not_found": "에피소드를 찾을 수 없습니다 ({$id})",
@@ -2219,6 +2226,7 @@
       "page_failed": "이 페이지를 표시할 수 없습니다",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
+      "previous_episode": "이전 에피소드",
       "previous_page": "이전 페이지",
       "reload": "새로고침",
       "save_expired": "저장된 에피소드의 열람 기한이 만료되었습니다. 통신이 가능한 상태에서 다시 열어 주세요.",

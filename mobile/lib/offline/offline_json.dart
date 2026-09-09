@@ -5,8 +5,8 @@ import 'package:publira/offline/offline_library.dart';
 /// Layout of what the library writes. A file written under another number is
 /// dropped rather than read, so a shape change costs the saved episodes and
 /// never a failed launch. It also covers the shape of the files themselves:
-/// version 2 is where every write started carrying its own nonce.
-const offlineIndexVersion = 2;
+/// the nonce every write carries arrived as one of these numbers.
+const offlineIndexVersion = 3;
 
 /// The whole of one device's saved metadata: the catalog snapshot, the series
 /// screens behind it, and the episodes whose pages are on disk.
@@ -202,6 +202,32 @@ EpisodeItem? _episodeFromJson(Object? decoded) {
   );
 }
 
+Map<String, Object?> _neighborToJson(EpisodeNeighbor neighbor) => {
+  'id': neighbor.id,
+  'title': neighbor.title,
+  'orderIndex': neighbor.orderIndex,
+  'price': neighbor.price,
+  'isFree': neighbor.isFree,
+};
+
+EpisodeNeighbor? _neighborFromJson(Object? decoded) {
+  if (decoded is! Map) {
+    return null;
+  }
+  final id = _string(decoded['id']);
+  // A neighbour naming no episode is nothing the end of the body can offer.
+  if (id.isEmpty) {
+    return null;
+  }
+  return EpisodeNeighbor(
+    id: id,
+    title: _string(decoded['title']),
+    orderIndex: _int(decoded['orderIndex']),
+    price: _int(decoded['price']),
+    isFree: decoded['isFree'] == true,
+  );
+}
+
 Map<String, Object?> _seriesDetailToJson(SeriesDetail detail) => {
   'series': _seriesToJson(detail.series),
   'episodes': [for (final episode in detail.episodes) _episodeToJson(episode)],
@@ -260,6 +286,13 @@ Map<String, Object?> _savedEpisodeToJson(SavedEpisode saved) {
     'access': detail.access.name,
     'episode': _episodeToJson(detail.episode),
     'images': [for (final image in detail.images) _imageToJson(image)],
+    // The neighbours are saved with the body so the end of an episode read
+    // without a network still offers the one after it, which is the same
+    // offer the reader was made online.
+    if (detail.previousEpisode case final previous?)
+      'previousEpisode': _neighborToJson(previous),
+    if (detail.nextEpisode case final next?)
+      'nextEpisode': _neighborToJson(next),
   };
 }
 
@@ -295,6 +328,8 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
         for (final item in rawImages is List ? rawImages : const [])
           ?_imageFromJson(item),
       ],
+      previousEpisode: _neighborFromJson(decoded['previousEpisode']),
+      nextEpisode: _neighborFromJson(decoded['nextEpisode']),
     ),
   );
 }

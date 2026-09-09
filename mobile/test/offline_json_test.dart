@@ -157,6 +157,77 @@ void main() {
     expect(decoded!.series!.single.creators, isEmpty);
   });
 
+  test('the episodes either side of a saved body survive the round trip', () {
+    final written = OfflineIndex(
+      episodes: {
+        'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
+          ownerId: '',
+          checkedAt: DateTime.utc(2026, 9, 1),
+          detail: const EpisodeDetail(
+            episode: EpisodeItem(
+              id: 'SeedEPSDAAA1',
+              title: 'Seed Episode 001-02',
+              orderIndex: 2,
+              price: 0,
+            ),
+            seriesId: 'SeedSERSAAA1',
+            seriesTitle: 'Seed Series 001',
+            access: EpisodeAccess.free,
+            images: [],
+            previousEpisode: EpisodeNeighbor(
+              id: 'SeedEPSDAAA0',
+              title: 'Seed Episode 001-01',
+              orderIndex: 1,
+              price: 0,
+              isFree: true,
+            ),
+            nextEpisode: EpisodeNeighbor(
+              id: 'SeedEPSDAAA2',
+              title: 'Seed Episode 001-03',
+              orderIndex: 3,
+              price: 500,
+              isFree: false,
+            ),
+          ),
+        ),
+      },
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    final detail = decoded!.episodes.values.single.detail;
+    expect(detail.previousEpisode!.id, 'SeedEPSDAAA0');
+    expect(detail.nextEpisode!.title, 'Seed Episode 001-03');
+    expect(detail.nextEpisode!.price, 500);
+    expect(detail.nextEpisode!.isFree, isFalse);
+  });
+
+  test('a saved body at the end of its series carries no next episode', () {
+    // A neighbour that is not there is written as no key at all, which is what
+    // a body at either end of its series is saved as.
+    final decoded = OfflineIndex.fromJson(
+      _index(_episode(access: 'free', ownerId: '')),
+    );
+
+    final detail = decoded!.episodes.values.single.detail;
+    expect(detail.previousEpisode, isNull);
+    expect(detail.nextEpisode, isNull);
+  });
+
+  test('a neighbour naming no episode is dropped', () {
+    // There is nothing to open behind a neighbour with no public id, so the
+    // body is read as one with no episode on that side rather than offering
+    // something that goes nowhere.
+    final decoded = OfflineIndex.fromJson(
+      _index({
+        ..._episode(access: 'free', ownerId: ''),
+        'nextEpisode': const {'title': 'Seed Episode 001-02', 'orderIndex': 2},
+      }),
+    );
+
+    expect(decoded!.episodes.values.single.detail.nextEpisode, isNull);
+  });
+
   test('a reading position survives the round trip', () {
     final written = OfflineIndex(
       positions: {

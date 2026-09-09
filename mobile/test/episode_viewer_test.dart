@@ -6,11 +6,13 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
 import 'package:publira/viewer/reading_position.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
+import 'support/fake_offline_library.dart';
 import 'support/pump_until.dart';
 
 void main() {
@@ -25,6 +27,7 @@ void main() {
   const landscape = Size(900, 600);
 
   final pageView = find.byKey(const ValueKey('episode-page-view'));
+  final endPanel = find.byKey(const ValueKey('episode-end-panel'));
 
   /// The image the reader draws for the one-based page [number].
   Finder page(int number) =>
@@ -47,6 +50,7 @@ void main() {
 
   late GoRouter router;
   late FakeCatalogRepository catalog;
+  late InMemoryOfflineLibrary offline;
 
   setUp(() {
     router = createAppRouter(initialLocation: viewerPath);
@@ -55,6 +59,7 @@ void main() {
       details: fixtureDetails(),
       episodes: fixtureEpisodes(),
     );
+    offline = InMemoryOfflineLibrary();
   });
 
   Future<void> pumpApp(
@@ -71,10 +76,31 @@ void main() {
         router: router,
         catalog: catalog,
         auth: fakeAuthController(session: session),
+        offline: offline,
       ),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
+  }
+
+  /// Reads [pages] pages to the end of the body and one screen further, which
+  /// is where the panel that ends the episode is.
+  Future<void> turnToEnd(WidgetTester tester, {int pages = 3}) async {
+    for (var turn = 0; turn < pages; turn++) {
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      // A turn started before the one before it has settled is dropped: the
+      // pager reports the page it is leaving once it arrives, and that report
+      // puts the reader back on it.
+      await pumpUntilNoPendingFrameCallbacks(tester);
+    }
+    await pumpUntilFound(tester, endPanel);
+  }
+
+  /// The reader opened at [episodeId] of the first fixture series.
+  void openEpisode(String episodeId) {
+    router = createAppRouter(
+      initialLocation: AppRoutes.episodeViewerPath(seriesId, episodeId),
+    );
   }
 
   testWidgets('a free body opens on its first page', (tester) async {
@@ -199,6 +225,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('episode-next-page')));
     await pumpUntilFound(tester, find.text('4–5 / 5'));
+    await pumpUntilNoPendingFrameCallbacks(tester);
+
+    await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+    await pumpUntilFound(tester, endPanel);
 
     final next = tester.widget<IconButton>(
       find.byKey(const ValueKey('episode-next-page')),
@@ -324,6 +354,189 @@ void main() {
     expect(find.text('1 / 3'), findsOneWidget);
     expect(find.byKey(const ValueKey('episode-viewer-error')), findsNothing);
     await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('turning past the last page offers the next episode', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+    await turnToEnd(tester);
+
+    expect(find.text('Up next'), findsOneWidget);
+    expect(find.text('${fixtureSeries.first.title} #2'), findsOneWidget);
+    expect(find.text('Free'), findsOneWidget);
+    // The panel is not a page of the episode, so the counter still names the
+    // last one the reader read.
+    expect(find.text('3 / 3'), findsOneWidget);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('the offer prices a next episode that is not free', (
+    tester,
+  ) async {
+    openEpisode('$seriesId-ep-9');
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+    await turnToEnd(tester);
+
+    expect(find.text('¥500'), findsOneWidget);
+    expect(find.text('Free'), findsNothing);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('the last episode of a series says the reader is up to date', (
+    tester,
+  ) async {
+    openEpisode('$seriesId-ep-10');
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+    await turnToEnd(tester);
+
+    expect(find.text('You are up to date'), findsOneWidget);
+    expect(find.textContaining(fixtureSeries.first.title), findsWidgets);
+    expect(find.text('Up next'), findsNothing);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('a next episode saved on the device is marked', (tester) async {
+    final next = fixtureDetail(fixtureSeries.first).episodes[1];
+    await offline.writeEpisode(
+      SavedEpisode(
+        ownerId: '',
+        checkedAt: DateTime.now(),
+        detail: EpisodeDetail(
+          episode: next,
+          seriesId: seriesId,
+          seriesTitle: fixtureSeries.first.title,
+          access: EpisodeAccess.free,
+          images: const [],
+        ),
+      ),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+    await turnToEnd(tester);
+
+    expect(
+      find.byKey(const ValueKey('episode-end-next-saved')),
+      findsOneWidget,
+    );
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('an episode the device does not hold is not marked', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+    await turnToEnd(tester);
+
+    expect(find.byKey(const ValueKey('episode-end-next-saved')), findsNothing);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('taking the offer opens the next episode in place of this one', (
+    tester,
+  ) async {
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(seriesId),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.text('Episodes'));
+    await tester.tap(find.byKey(ValueKey('episode-tile-$episodeId')));
+    await pumpUntilRouteSettled(tester, pageView);
+    await turnToEnd(tester);
+
+    await tester.tap(find.byKey(const ValueKey('episode-end-next')));
+    // The route is what says the offer was taken. The panel the tap was made
+    // on is still on screen for the frame after it, next episode's title and
+    // all, so what is drawn cannot tell one episode from the other yet.
+    await pumpUntilTrue(
+      tester,
+      () =>
+          router.state.uri.path ==
+          AppRoutes.episodeViewerPath(seriesId, '$seriesId-ep-2'),
+      description: 'the next episode to open',
+    );
+    await pumpUntilRouteSettled(tester, pageView);
+
+    // The episode that opens is read from its first page, not from where the
+    // reader stopped in the one before it.
+    expect(find.text('1 / 3'), findsOneWidget);
+
+    // The episode read before it was replaced rather than stacked, so the way
+    // back is the series it was opened from.
+    await tester.pageBack();
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
+  });
+
+  testWidgets('the panel leads back to the series', (tester) async {
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+    await turnToEnd(tester);
+
+    await tester.tap(find.byKey(const ValueKey('episode-end-back-to-series')));
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
+  });
+
+  testWidgets('the control bar opens the episode after this one', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+
+    await tester.tap(find.byKey(const ValueKey('episode-next-episode')));
+    await pumpUntilTrue(
+      tester,
+      () =>
+          router.state.uri.path ==
+          AppRoutes.episodeViewerPath(seriesId, '$seriesId-ep-2'),
+      description: 'the next episode to open',
+    );
+    await pumpUntilFound(tester, pageView);
+
+    expect(find.text('${fixtureSeries.first.title} #2'), findsOneWidget);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('the control bar opens the episode before this one', (
+    tester,
+  ) async {
+    openEpisode('$seriesId-ep-2');
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+
+    await tester.tap(find.byKey(const ValueKey('episode-previous-episode')));
+    await pumpUntilTrue(
+      tester,
+      () => router.state.uri.path == viewerPath,
+      description: 'the previous episode to open',
+    );
+    await pumpUntilFound(tester, pageView);
+
+    expect(find.text('${fixtureSeries.first.title} #1'), findsOneWidget);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('the first episode has no episode before it to open', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+
+    final previous = tester.widget<IconButton>(
+      find.byKey(const ValueKey('episode-previous-episode')),
+    );
+    final next = tester.widget<IconButton>(
+      find.byKey(const ValueKey('episode-next-episode')),
+    );
+    expect(previous.onPressed, isNull);
+    expect(next.onPressed, isNotNull);
   });
 
   testWidgets('the page a reader rests on is recorded', (tester) async {
