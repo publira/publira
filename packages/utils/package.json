@@ -75,7 +75,7 @@
   },
   "dependencies": {
     "@publira/i18n": "workspace:*",
-    "cn": "0.2.5"
+    "cn": "0.2.6"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
