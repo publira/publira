@@ -21,6 +21,17 @@ import { hostPath } from "../src/urls";
  * `db/seeds/scenarios/160_screenshot_baseline.sql`, which pins what the
  * development seed dates from the moment it ran.
  */
+
+/**
+ * The moment the browser believes it is while the top page is recorded.
+ *
+ * That page words a publication date as how long ago it was, in the browser,
+ * against its own clock — so the phrase moves on without the page changing.
+ * Fixing the clock pins it. The value is later than every date
+ * `160_screenshot_baseline.sql` writes (the last of them is in April 2026), so
+ * every episode still reads as published in the past.
+ */
+const SCREENSHOT_CLOCK = "2026-06-01T00:00:00.000Z";
 test.describe("web-host screenshots", () => {
   for (const viewport of SCREENSHOT_VIEWPORTS) {
     test.describe(`at ${viewport.label}px`, () => {
@@ -29,13 +40,14 @@ test.describe("web-host screenshots", () => {
       });
 
       test("the catalog top page", async ({ page }) => {
+        await page.clock.setFixedTime(SCREENSHOT_CLOCK);
         await page.goto(hostPath("/"));
 
-        await expect(
-          page.getByRole("heading", { level: 1, name: "Catalog" })
-        ).toBeVisible();
-        // The last of the five sections: once it holds a link, none of the
-        // ones above it is still a skeleton.
+        // The featured work is the page's own heading, so its arrival is what
+        // says the opening block has resolved.
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        // The last of the sections: once it holds a link, none of the ones
+        // above it is still a skeleton.
         await expect(
           page
             .getByRole("region", { name: "Featured authors" })

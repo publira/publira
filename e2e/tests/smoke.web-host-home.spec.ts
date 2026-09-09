@@ -15,12 +15,13 @@ test.describe("web-host catalog top", () => {
     expect(response?.status(), content).toBe(200);
 
     await expect(
-      page.getByRole("heading", { exact: true, name: "Catalog" })
+      page.getByRole("heading", { exact: true, name: "New episodes" })
     ).toBeVisible();
-    // Seed tenant name (db/seeds/dev/001_tenant_users.sql → "Seed Tenant")
-    // Exact match: site chrome may also include the name in nav / footer.
+    // Seed tenant name (db/seeds/dev/001_tenant_users.sql → "Seed Tenant"),
+    // read off the header brand: the top page itself opens with a work rather
+    // than with the name of the site the reader is already on.
     await expect(
-      page.getByRole("paragraph").filter({ hasText: /^Seed Tenant$/u })
+      page.getByRole("link", { exact: true, name: "Seed Tenant" })
     ).toBeVisible();
   });
 

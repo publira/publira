@@ -22,8 +22,11 @@ test.describe("web-host catalog browsing", () => {
     const response = await page.goto(hostPath("/"));
     expect(response?.status(), await page.content()).toBe(200);
 
+    // The featured work is the page's own heading, and its reading button is
+    // the single Shu element the design allows on this screen.
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(
-      page.getByRole("heading", { level: 1, name: "Catalog" })
+      page.getByRole("link", { name: /^Read episode \d+$/u })
     ).toBeVisible();
 
     const recommended = page.getByRole("region", { name: "Recommended" });
@@ -66,7 +69,10 @@ test.describe("web-host catalog browsing", () => {
     page,
   }) => {
     await page.goto(hostPath("/"));
-    await page.getByRole("link", { name: "Browse series" }).click();
+    await page
+      .getByRole("region", { name: "Recommended" })
+      .getByRole("link", { name: "View all" })
+      .click();
 
     await expect(
       page.getByRole("heading", { level: 1, name: "Series" })
