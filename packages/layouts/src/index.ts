@@ -12,10 +12,27 @@ export {
   SiteLayoutHeader,
   SiteLayoutHeaderActions,
   SiteLayoutHeaderActionsSkeleton,
+  SiteLayoutHeaderSearch,
+  SiteLayoutHeaderWideControls,
   SiteLayoutMain,
   SiteLayoutNav,
   SiteLayoutNavLink,
 } from "./site-layout";
+export {
+  SiteLayoutMobileNavigation,
+  SiteLayoutMobileNavigationActions,
+  SiteLayoutMobileNavigationCloseButton,
+  SiteLayoutMobileNavigationHeader,
+  SiteLayoutMobileNavigationLink,
+  SiteLayoutMobileNavigationLinks,
+  SiteLayoutMobileNavigationOpenButton,
+  SiteLayoutMobileNavigationPrimaryAction,
+  SiteLayoutMobileNavigationSearch,
+  SiteLayoutMobileNavigationSecondaryAction,
+  SiteLayoutMobileNavigationSection,
+  SiteLayoutMobileNavigationSectionTitle,
+  SiteLayoutMobileNavigationTitle,
+} from "./site-layout-client";
 export {
   SiteLayoutActions,
   SiteLayoutPrimaryAction,

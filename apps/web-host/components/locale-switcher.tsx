@@ -1,12 +1,14 @@
 "use client";
 
 import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import { SiteLayoutMobileNavigationLink } from "@publira/layouts";
 import {
   Popover,
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
 } from "@publira/ui-components/popover";
+import { Skeleton } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -91,4 +93,38 @@ export const LocaleSwitcher = () => {
       </PopoverContent>
     </Popover>
   );
+};
+
+/** Same footprint as the rendered list, so the drawer does not shift. */
+export const LocaleSwitcherLinksSkeleton = () => (
+  <div aria-hidden="true" className="grid gap-1">
+    <Skeleton className="h-9 rounded-control" />
+    <Skeleton className="h-9 rounded-control" />
+    <Skeleton className="h-9 rounded-control" />
+  </div>
+);
+
+/**
+ * The same choice {@link LocaleSwitcher} offers, laid out as a list.
+ *
+ * The drawer the phone header opens is already a panel, so the popover the
+ * band uses would be a second one inside it. The options are rows of the
+ * drawer instead, and each closes it on the way to the other language.
+ */
+export const LocaleSwitcherLinks = () => {
+  const currentLocale = useLocale();
+  const defaultLocale = useTenantDefaultLocale();
+  const barePathname = toBarePathname(usePathname());
+
+  return getLocales().map((locale) => (
+    <SiteLayoutMobileNavigationLink
+      current={locale === currentLocale}
+      href={withLocalePrefix(locale, defaultLocale, barePathname)}
+      hrefLang={locale}
+      key={locale}
+      lang={locale}
+    >
+      {getLocaleLabel(locale)}
+    </SiteLayoutMobileNavigationLink>
+  ));
 };

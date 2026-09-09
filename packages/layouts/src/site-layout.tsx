@@ -2,10 +2,10 @@ import { Skeleton } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { SiteLayoutClient } from "./site-layout-client";
+
 export const SiteLayout = ({ children }: { children: ReactNode }) => (
-  <div className="flex min-h-dvh flex-col bg-background text-foreground">
-    {children}
-  </div>
+  <SiteLayoutClient>{children}</SiteLayoutClient>
 );
 
 /**
@@ -58,6 +58,32 @@ export const SiteLayoutNavLink = ({
   </Link>
 );
 
+/**
+ * The catalog field's slot in the band. It is the child that gives up width
+ * first, and below `md` the band does not draw it at all: the drawer holds the
+ * field there, where the row has room for it.
+ */
+export const SiteLayoutHeaderSearch = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <div className="hidden max-w-40 min-w-0 flex-1 justify-end md:flex lg:max-w-64">
+    {children}
+  </div>
+);
+
+/**
+ * A control the band draws from `md` up only. Below that the same control is
+ * in the drawer, so that a phone band holds the brand, the account controls,
+ * and the menu button without the four of them landing on each other.
+ */
+export const SiteLayoutHeaderWideControls = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <div className="hidden items-center gap-2 md:flex">{children}</div>;
+
 export const SiteLayoutMain = ({ children }: { children: ReactNode }) => (
   <main className="flex-1">{children}</main>
 );
@@ -68,8 +94,18 @@ export const SiteLayoutHeaderActions = ({
   children: ReactNode;
 }) => children;
 
+/**
+ * The two account buttons the band draws while it does not yet know whether
+ * the reader is signed in. Wide-only, like the buttons themselves: a phone
+ * band reserves nothing there, because what it draws once the answer arrives
+ * is either nothing or the notification bell and the account menu.
+ */
 export const SiteLayoutHeaderActionsSkeleton = () => (
-  <div aria-busy="true" aria-live="polite" className="flex items-center gap-2">
+  <div
+    aria-busy="true"
+    aria-live="polite"
+    className="hidden items-center gap-2 md:flex"
+  >
     <Skeleton className="inline-block h-9 w-20 rounded-control" />
     <Skeleton className="inline-block h-9 w-24 rounded-control" />
   </div>
